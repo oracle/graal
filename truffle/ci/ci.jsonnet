@@ -73,10 +73,12 @@
     name: 'gate-external-mvn-simplelanguage-' + self.jdk_version,
     packages+: {
       maven: "==3.3.9",
-      "00:devtoolset": "==7", # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-      "01:binutils": ">=2.34",
       ruby: ">=2.1.0",
-    },
+    } + (if self.arch == "aarch64" then {
+      "00:devtoolset": "==10", # GCC 10.2.1, make 4.2.1, binutils 2.35, valgrind 3.16.1
+    } else {
+      "00:devtoolset": "==11", # GCC 11.2, make 4.3, binutils 2.36, valgrind 3.17
+    }),
     mx_cmd: ["mx", "-p", "../vm", "--dynamicimports", "/substratevm", "--native-images=none"],
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],
@@ -108,17 +110,17 @@
 
   local truffle_weekly = common.weekly + {notify_groups:: ["truffle"]},
 
-  builds: [b for b in std.flattenArrays([
+  builds: std.flattenArrays([
       [
         linux_amd64  + jdk + sigtest + guard,
         linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
         linux_amd64  + jdk + simple_language_maven_project_gate,
         darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
-      ] for jdk in [common.oraclejdk20, common.oraclejdk17]
-    ]) if b.name != "gate-external-mvn-simplelanguage-20" /* GR-42727	*/] +
+      ] for jdk in [common.oraclejdk21, common.oraclejdk17]
+    ]) +
   [
     linux_amd64 + common.oraclejdk17 + truffle_gate + guard + {timelimit: "45:00"},
-    linux_amd64 + common.oraclejdk20 + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
+    linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
     truffle_common + linux_amd64 + common.oraclejdk17 + guard {
       name: "gate-truffle-javadoc",

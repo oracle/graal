@@ -13,7 +13,9 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   local t(limit) = {timelimit: limit},
 
   libgraal_build(build_args):: {
-    local build_command = if repo_config.graalvm_edition == 'ce' then 'build' else 'build-libgraal-pgo',
+    local usePGO = std.length(std.find('-Ob', build_args)) == 0,
+    local ee_build_version = if usePGO == false then 'build' else 'build-libgraal-pgo',
+    local build_command = if repo_config.graalvm_edition == 'ce' then 'build' else ee_build_version,
     run+: [
       ['mx', '--env', vm.libgraal_env] + ['--extra-image-builder-argument=%s' % arg for arg in build_args] + [build_command]
     ]
@@ -80,13 +82,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
   local dailies = {
-    "daily-vm-libgraal_compiler-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_compiler_zgc-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle_zgc-labsjdk-17-linux-amd64": {},
     "daily-vm-libgraal_truffle_zgc-labsjdk-21-linux-amd64": {},
-    "daily-vm-libgraal_compiler_quickbuild-labsjdk-17-linux-amd64": {},
-    "daily-vm-libgraal_truffle_quickbuild-labsjdk-17-linux-amd64": {},
   },
 
   # See definition of `weeklies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -123,7 +119,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "17",
       "21"
     ]
     for os_arch in all_os_arches
@@ -151,7 +146,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     for jdk in [
       "22"
     ]
-    for os_arch in ["linux-amd64"]
+    for os_arch in all_os_arches
     for task in [
       "libgraal_compiler",
     ]
@@ -175,7 +170,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "17",
       "21",
     ]
     for os_arch in all_os_arches

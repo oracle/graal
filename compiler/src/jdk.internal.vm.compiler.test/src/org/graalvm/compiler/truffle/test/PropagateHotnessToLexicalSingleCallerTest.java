@@ -26,8 +26,6 @@ package org.graalvm.compiler.truffle.test;
 
 import java.util.function.Function;
 
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Test;
@@ -41,6 +39,8 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchronousCompiling {
 
@@ -86,7 +86,7 @@ public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchrono
 
     static class RootNodeWithLoop extends NamedRootNode {
 
-        @Child LoopNode loopNode = GraalTruffleRuntime.getRuntime().createLoopNode(new SimpleLoopNode());
+        @Child LoopNode loopNode = OptimizedTruffleRuntime.getRuntime().createLoopNode(new SimpleLoopNode());
 
         protected RootNodeWithLoop(String name, FrameDescriptor parentFrameDescriptor) {
             super(name, parentFrameDescriptor);
@@ -122,7 +122,7 @@ public class PropagateHotnessToLexicalSingleCallerTest extends TestWithSynchrono
         @CompilerDirectives.TruffleBoundary
         private void createCallNode(FrameDescriptor frameDescriptor) {
             target = (OptimizedCallTarget) rootNodeFactory.apply(frameDescriptor).getCallTarget();
-            callNode = insert(GraalTruffleRuntime.getRuntime().createDirectCallNode(target));
+            callNode = insert(OptimizedTruffleRuntime.getRuntime().createDirectCallNode(target));
         }
     }
 

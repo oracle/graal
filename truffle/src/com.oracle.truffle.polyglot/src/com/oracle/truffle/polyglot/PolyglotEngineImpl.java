@@ -1254,6 +1254,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             contexts.clear();
 
             if (RUNTIME.onEngineClosing(this.runtimeData)) {
+                getAPIAccess().engineClosed(api);
                 return;
             }
             closingThread = currentThread;
@@ -1722,14 +1723,14 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     throw PolyglotEngineException.illegalArgument("Cannot allowHostFileAccess() because the privilege is removed at image build time");
                 }
                 FileSystem fs = customFileSystem != null ? customFileSystem : FileSystems.newNoIOFileSystem();
-                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs, tmpDir);
+                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs);
             } else if (allowHostFileAccess) {
                 FileSystem fs = FileSystems.newDefaultFileSystem(tmpDir);
-                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs, tmpDir);
+                fileSystemConfig = new FileSystemConfig(ioAccess, fs, fs);
             } else if (customFileSystem != null) {
-                fileSystemConfig = new FileSystemConfig(ioAccess, customFileSystem, customFileSystem, tmpDir);
+                fileSystemConfig = new FileSystemConfig(ioAccess, customFileSystem, customFileSystem);
             } else {
-                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newLanguageHomeFileSystem(tmpDir), tmpDir);
+                fileSystemConfig = new FileSystemConfig(ioAccess, FileSystems.newNoIOFileSystem(), FileSystems.newLanguageHomeFileSystem());
             }
             if (currentWorkingDirectory != null) {
                 Path publicFsCwd;
@@ -1859,7 +1860,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 }
             }
         }
-        checkTruffleRuntime();
+        logTruffleRuntimeWarning();
         return context;
     }
 
@@ -1963,14 +1964,19 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         return preInitializedLanguages.isEmpty();
     }
 
-    private void checkTruffleRuntime() {
+    private void logTruffleRuntimeWarning() {
         if (getEngineOptionValues().get(PolyglotEngineOptions.WarnInterpreterOnly) && Truffle.getRuntime().getClass() == DefaultTruffleRuntime.class) {
-            getEngineLogger().log(Level.WARNING, "" +
-                            "The polyglot context is using an implementation that does not support runtime compilation.\n" +
-                            "The guest application code will therefore be executed in interpreted mode only.\n" +
-                            "Execution only in interpreted mode will strongly impact the guest application performance.\n" +
-                            "For more information on using GraalVM see https://www.graalvm.org/java/quickstart/.\n" +
-                            "To disable this warning the '--engine.WarnInterpreterOnly=false' option or use the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.");
+            DefaultTruffleRuntime runtime = (DefaultTruffleRuntime) Truffle.getRuntime();
+            String reason = runtime.getFallbackReason();
+            if (reason == null) {
+                reason = "No optimizing Truffle runtime found.";
+            }
+            getEngineLogger().log(Level.WARNING, String.format("""
+                            The polyglot context uses a fallback Truffle implementation that does not support runtime optimization.
+                              Execution without runtime optimization will strongly impact the guest application performance.
+                              The following reason was found: %s
+                              For more information see: https://www.graalvm.org/latest/reference-manual/embed-languages/.
+                              To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.""", reason));
         }
     }
 

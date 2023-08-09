@@ -25,9 +25,6 @@
 
 package org.graalvm.component.installer.gds.rest;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONException;
-import com.oracle.truffle.tools.utils.json.JSONObject;
 import java.util.Arrays;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.TestBase;
@@ -40,6 +37,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONException;
+import org.graalvm.shadowed.org.json.JSONObject;
 import org.junit.Test;
 import java.util.Collections;
 import java.util.Locale;

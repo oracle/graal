@@ -107,7 +107,7 @@ diff --git a/DeclarationClientCapabilities.java b/DeclarationClientCapabilities.
 index e202a63..5ad2708 100644
 --- a/DeclarationClientCapabilities.java
 +++ b/DeclarationClientCapabilities.java
-@@ -28,6 +28,8 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
+@@ -28,6 +28,8 @@ import org.graalvm.shadowed.org.json.JSONObject;
  import java.util.Objects;
  
  /**
@@ -157,8 +157,8 @@ index 453e4c2..8f9b38d 100644
   */
  package org.graalvm.tools.lsp.server.types;
  
-+import com.oracle.truffle.tools.utils.json.JSONArray;
- import com.oracle.truffle.tools.utils.json.JSONObject;
++import org.graalvm.shadowed.org.json.JSONArray;
+ import org.graalvm.shadowed.org.json.JSONObject;
 +import java.util.ArrayList;
 +import java.util.Collections;
 +import java.util.List;
@@ -234,7 +234,7 @@ diff --git a/ImplementationClientCapabilities.java b/ImplementationClientCapabil
 index 4eb28e2..9f04aea 100644
 --- a/ImplementationClientCapabilities.java
 +++ b/ImplementationClientCapabilities.java
-@@ -28,6 +28,8 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
+@@ -28,6 +28,8 @@ import org.graalvm.shadowed.org.json.JSONObject;
  import java.util.Objects;
  
  /**
@@ -276,7 +276,7 @@ diff --git a/Position.java b/Position.java
 index 114cf8a..d321258 100644
 --- a/Position.java
 +++ b/Position.java
-@@ -28,10 +28,7 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
+@@ -28,10 +28,7 @@ import org.graalvm.shadowed.org.json.JSONObject;
  
  /**
   * Position in a text document expressed as zero-based line and character offset.
@@ -543,7 +543,7 @@ diff --git a/TypeDefinitionClientCapabilities.java b/TypeDefinitionClientCapabil
 index 9af515d..db1a734 100644
 --- a/TypeDefinitionClientCapabilities.java
 +++ b/TypeDefinitionClientCapabilities.java
-@@ -28,6 +28,8 @@ import com.oracle.truffle.tools.utils.json.JSONObject;
+@@ -28,6 +28,8 @@ import org.graalvm.shadowed.org.json.JSONObject;
  import java.util.Objects;
  
  /**

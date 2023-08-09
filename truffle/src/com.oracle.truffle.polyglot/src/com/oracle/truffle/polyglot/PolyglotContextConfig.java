@@ -121,13 +121,11 @@ final class PolyglotContextConfig {
         final IOAccess ioAccess;
         final FileSystem fileSystem;
         final FileSystem internalFileSystem;
-        final String hostTmpDir;
 
-        FileSystemConfig(IOAccess ioAccess, FileSystem publicFileSystem, FileSystem internalFileSystem, String hostTmpDir) {
+        FileSystemConfig(IOAccess ioAccess, FileSystem publicFileSystem, FileSystem internalFileSystem) {
             this.ioAccess = ioAccess;
             this.fileSystem = publicFileSystem;
             this.internalFileSystem = internalFileSystem;
-            this.hostTmpDir = hostTmpDir;
         }
 
         static FileSystemConfig createPatched(FileSystemConfig preInitialized, FileSystemConfig patch) {
@@ -135,7 +133,7 @@ final class PolyglotContextConfig {
             preInitFs.onLoadPreinitializedContext(patch.fileSystem);
             PreInitializeContextFileSystem preInitInternalFs = (PreInitializeContextFileSystem) preInitialized.internalFileSystem;
             preInitInternalFs.onLoadPreinitializedContext(patch.internalFileSystem);
-            return new FileSystemConfig(patch.ioAccess, preInitFs, preInitInternalFs, patch.hostTmpDir);
+            return new FileSystemConfig(patch.ioAccess, preInitFs, preInitInternalFs);
         }
     }
 

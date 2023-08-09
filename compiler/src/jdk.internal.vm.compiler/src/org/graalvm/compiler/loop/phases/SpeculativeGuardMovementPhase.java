@@ -194,7 +194,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
 
     private static class SpeculativeGuardMovement implements Runnable {
 
-        private final boolean ignoreProfiles;
+        private final boolean ignoreFrequency;
         private final LoopsData loops;
         private final NodeMap<HIRBlock> earliestCache;
         private final StructuredGraph graph;
@@ -204,20 +204,20 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         private final NodeBitMap toProcess;
 
         SpeculativeGuardMovement(LoopsData loops, NodeMap<HIRBlock> earliestCache, StructuredGraph graph, ProfilingInfo profilingInfo, SpeculationLog speculationLog, NodeBitMap toProcess,
-                        boolean ignoreProfiles) {
+                        boolean ignoreFrequency) {
             this.loops = loops;
             this.earliestCache = earliestCache;
             this.graph = graph;
             this.profilingInfo = profilingInfo;
             this.speculationLog = speculationLog;
             this.toProcess = toProcess;
-            this.ignoreProfiles = ignoreProfiles;
+            this.ignoreFrequency = ignoreFrequency;
         }
 
         @Override
         public void run() {
             for (GuardNode guard : graph.getNodes(GuardNode.TYPE)) {
-                if (toProcess == null || toProcess.contains(guard)) {
+                if (toProcess == null || (!toProcess.isNew(guard) && toProcess.contains(guard))) {
                     HIRBlock anchorBlock = loops.getCFG().blockFor(guard.getAnchor().asNode());
                     if (exitsLoop(anchorBlock, earliestBlock(guard))) {
                         iterate = true;
@@ -522,8 +522,12 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
             return graph.addOrUniqueWithInputs(ShortCircuitOrNode.create(compare, !limitIncluded, newCompare, false, BranchProbabilityData.unknown()));
         }
 
-        private static boolean shouldHoistBasedOnFrequency(HIRBlock anchorBlock, HIRBlock proposedNewAnchor) {
-            return proposedNewAnchor.getRelativeFrequency() <= anchorBlock.getRelativeFrequency();
+        private static boolean shouldHoistBasedOnFrequency(HIRBlock proposedNewAnchor, HIRBlock anchorBlock) {
+            return shouldHoistBasedOnFrequency(proposedNewAnchor.getRelativeFrequency(), anchorBlock.getRelativeFrequency());
+        }
+
+        private static boolean shouldHoistBasedOnFrequency(double proposedNewAnchorFrequency, double anchorFrequency) {
+            return SchedulePhase.Instance.compareRelativeFrequencies(proposedNewAnchorFrequency, anchorFrequency) <= 0;
         }
 
         private OptimizedCompareTests shouldOptimizeCompare(CompareNode compare, InductionVariable iv, ValueNode bound, GuardNode guard, boolean mirrored) {
@@ -587,7 +591,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                         loopFreqThreshold++;
                     }
                 }
-                if (!ignoreProfiles && ProfileSource.isTrusted(loopEx.localFrequencySource()) &&
+                if (!ignoreFrequency && ProfileSource.isTrusted(loopEx.localFrequencySource()) &&
                                 loopEx.localLoopFrequency() < loopFreqThreshold) {
                     debug.log("shouldOptimizeCompare(%s):loop frequency too low.", guard);
                     // loop frequency is too low -- the complexity introduced by hoisting this guard
@@ -621,7 +625,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
              * the loop, thus we still want to try hoisting the guard.
              */
             if (!isInverted(iv.getLoop()) && !guardAnchorBlock.dominates(iv.getLoop().loop().getHeader())) {
-                if (!ignoreProfiles && !shouldHoistBasedOnFrequency(guardAnchorBlock, ivLoop.getHeader().getDominator())) {
+                if (!ignoreFrequency && !shouldHoistBasedOnFrequency(ivLoop.getHeader().getDominator(), guardAnchorBlock)) {
                     debug.log("hoisting is not beneficial based on frequency", guard);
                     return null;
                 }
@@ -638,7 +642,17 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 }
             }
             if (fitsInInt) {
-                OptimizedCompareTests tests = computeNewCompareGuards(compare, iv, bound, mirrored, iv.getLoop().counted().getOverFlowGuard());
+                CountedLoopInfo countedLoopInfo = iv.getLoop().counted();
+                GuardingNode overflowGuard = countedLoopInfo.getOverFlowGuard();
+                if (overflowGuard == null && !countedLoopInfo.counterNeverOverflows()) {
+                    if (graph.getGuardsStage().allowsFloatingGuards()) {
+                        overflowGuard = iv.getLoop().counted().createOverFlowGuard();
+                    } else {
+                        debug.log("shouldOptimizeCompare(%s): abort, cannot create overflow guard", compare);
+                        return null;
+                    }
+                }
+                OptimizedCompareTests tests = computeNewCompareGuards(compare, iv, bound, mirrored, overflowGuard);
                 /**
                  * Determine if, based on loop bounds and guard bounds the moved guard is always
                  * false, i.e., deopts unconditionally. In such cases, avoid optimizing the compare.
@@ -775,11 +789,50 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 return null; // the guard would not hoist, don't hoist the compare
             }
 
-            Loop<HIRBlock> result = anchorBlock.getLoop();
-            while (result.getParent() != valueBlock.getLoop()) {
-                result = result.getParent();
+            //@formatter:off
+            /*
+             * At this point, we know that the guard can be hoisted if the instanceOf gets hoisted.
+             * How far both nodes are moved towards the instanceOf value, depends on:
+             *  1) if the current loop allows guard movement based on its speculation log
+             *  2) if hoisting does not end in a block with larger rel. frequency than before
+             *
+             * Assume the following loop nest, where "value" is the input to the instanceOf:
+             *
+             * L0
+             *  -- value [fq = 100]
+             *   L1
+             *     -- (...) [fq = 100k]
+             *     L2
+             *       -- instanceOf [fq = 10k]
+             *         -- guard
+             *
+             * The goal would be to move the instanceOf and its guard to the header of L1 with frequency 100.
+             *
+             * First, it is assumed that the guard can be hoisted from its immediate loop L2.
+             * Then, all outer loops (dominated by value) are traversed for finding the loop header
+             * with the lowest frequency.
+             * If one loop does not allow hoisting based on the speculation log, the traversal terminates sooner.
+             */
+            //@formatter:on
+            Loop<HIRBlock> hoistFrom = anchorBlock.getLoop();
+            Loop<HIRBlock> curLoop = anchorBlock.getLoop();
+
+            // check hoisting from loop nests
+            while (curLoop.getParent() != valueBlock.getLoop()) {
+                curLoop = curLoop.getParent();
+                if (!allowsSpeculativeGuardMovement(guard.getReason(), (LoopBeginNode) curLoop.getHeader().getBeginNode(), true)) {
+                    break;
+                } else if (ignoreFrequency || shouldHoistBasedOnFrequency(curLoop.getHeader().getDominator(), hoistFrom.getHeader().getDominator())) {
+                    hoistFrom = curLoop;
+                }
             }
-            return result;
+
+            // compare lowest rel. frequency of outer loops and initial anchor rel. frequency
+            if (!ignoreFrequency && !shouldHoistBasedOnFrequency(hoistFrom.getHeader().getDominator(), anchorBlock)) {
+                debug.log("hoisting is not beneficial based on frequency", guard);
+                return null;
+            }
+            return hoistFrom;
         }
 
         private HIRBlock earliestBlockForGuard(GuardNode guard, Loop<HIRBlock> forcedHoisting) {
@@ -822,14 +875,14 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                     if (!allowsSpeculativeGuardMovement(guard.getReason(), loopBegin, true)) {
                         break;
                     } else {
-                        double relativeFrequency = candidateAnchor.getRelativeFrequency();
-                        if (ignoreProfiles || SchedulePhase.Instance.compareRelativeFrequencies(relativeFrequency, minFrequency) <= 0) {
+                        double candidateFrequency = candidateAnchor.getRelativeFrequency();
+                        if (ignoreFrequency || shouldHoistBasedOnFrequency(candidateFrequency, minFrequency)) {
                             debug.log("earliestBlockForGuard(%s) hoisting above %s", guard, loopBegin);
                             outerMostExitedLoop = loopBegin;
                             newAnchorEarliest = candidateAnchor;
-                            minFrequency = relativeFrequency;
+                            minFrequency = candidateFrequency;
                         } else {
-                            debug.log("earliestBlockForGuard(%s) %s not worth it, old relative frequency %f, new relative frequency %f", guard, loopBegin, minFrequency, relativeFrequency);
+                            debug.log("earliestBlockForGuard(%s) %s not worth it, old relative frequency %f, new relative frequency %f", guard, loopBegin, minFrequency, candidateFrequency);
                         }
                     }
                 }

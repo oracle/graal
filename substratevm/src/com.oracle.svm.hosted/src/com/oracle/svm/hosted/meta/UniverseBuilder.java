@@ -76,6 +76,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.ExcludeFromReferenceMap;
+import com.oracle.svm.core.heap.FillerArray;
 import com.oracle.svm.core.heap.FillerObject;
 import com.oracle.svm.core.heap.InstanceReferenceMapEncoder;
 import com.oracle.svm.core.heap.ReferenceMapEncoder;
@@ -84,6 +85,7 @@ import com.oracle.svm.core.heap.SubstrateReferenceMap;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.hub.LayoutEncoding;
+import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.reflect.SubstrateConstructorAccessor;
 import com.oracle.svm.core.reflect.SubstrateMethodAccessor;
@@ -393,7 +395,8 @@ public class UniverseBuilder {
                     StoredContinuation.class,
                     SubstrateMethodAccessor.class,
                     SubstrateConstructorAccessor.class,
-                    FillerObject.class));
+                    FillerObject.class,
+                    FillerArray.class));
 
     private void collectMonitorFieldInfo(BigBang bb) {
         if (!SubstrateOptions.MultiThreaded.getValue()) {
@@ -1065,9 +1068,11 @@ public class UniverseBuilder {
             assert ((SubstrateReferenceMap) referenceMap).hasNoDerivedOffsets();
             long referenceMapIndex = referenceMapEncoder.lookupEncoding(referenceMap);
 
+            boolean isProxyClass = ImageSingletons.lookup(DynamicProxyRegistry.class).isProxyClass(type.getJavaClass());
+
             DynamicHub hub = type.getHub();
             hub.setData(layoutHelper, type.getTypeID(), monitorOffset, optionalIdHashOffset, type.getTypeCheckStart(), type.getTypeCheckRange(),
-                            type.getTypeCheckSlot(), type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance);
+                            type.getTypeCheckSlot(), type.getTypeCheckSlots(), vtable, referenceMapIndex, type.isInstantiated(), canInstantiateAsInstance, isProxyClass);
         }
     }
 
@@ -1121,6 +1126,6 @@ final class InvalidVTableEntryFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true);
+        access.registerAsRoot(InvalidMethodPointerHandler.INVALID_VTABLE_ENTRY_HANDLER_METHOD, true, "Registered in " + InvalidVTableEntryFeature.class);
     }
 }

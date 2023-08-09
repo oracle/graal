@@ -308,48 +308,48 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
 
     @Override
     public boolean isValidMemoryAddress(long address, int length) {
-        final WasmMemory memory = instance.memory();
+        final WasmMemory memory = instance.memory(0);
         return address >= 0 && address + length < memory.byteSize();
     }
 
     @TruffleBoundary
     public byte loadI8FromMemory(long address) {
-        final WasmMemory memory = instance.memory();
+        final WasmMemory memory = instance.memory(0);
         return (byte) memory.load_i32_8s(this, address);
     }
 
     @TruffleBoundary
     public short loadI16FromMemory(long address) {
-        final WasmMemory memory = instance.memory();
+        final WasmMemory memory = instance.memory(0);
         return (short) memory.load_i32_16s(this, address);
     }
 
     @TruffleBoundary
     public int loadI32FromMemory(long address) {
-        final WasmMemory memory = instance.memory();
+        final WasmMemory memory = instance.memory(0);
         return memory.load_i32(this, address);
     }
 
     @TruffleBoundary
     public long loadI64FromMemory(long address) {
-        final WasmMemory memory = instance.memory();
+        final WasmMemory memory = instance.memory(0);
         return memory.load_i64(this, address);
     }
 
     @TruffleBoundary
     public float loadF32FromMemory(long address) {
-        final WasmMemory memory = instance.memory();
+        final WasmMemory memory = instance.memory(0);
         return memory.load_f32(this, address);
     }
 
     @TruffleBoundary
     public double loadF64FromMemory(long address) {
-        final WasmMemory memory = instance.memory();
+        final WasmMemory memory = instance.memory(0);
         return memory.load_f64(this, address);
     }
 
     private byte[] loadByteArrayFromMemory(long address, int length) {
-        final WasmMemory memory = instance.memory();
+        final WasmMemory memory = instance.memory(0);
         byte[] dataArray = new byte[length];
         for (int i = 0; i < length; i++) {
             dataArray[i] = (byte) memory.load_i32_8s(this, address + i);

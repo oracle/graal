@@ -25,8 +25,7 @@
 package org.graalvm.compiler.truffle.test;
 
 import com.oracle.truffle.sl.runtime.SLStrings;
-import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionStability;
 import org.graalvm.polyglot.Context;
@@ -35,6 +34,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 

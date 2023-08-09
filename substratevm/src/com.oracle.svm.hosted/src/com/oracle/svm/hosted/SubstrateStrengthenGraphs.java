@@ -96,12 +96,13 @@ public class SubstrateStrengthenGraphs extends StrengthenGraphs {
          * Uninterruptible methods might not be able to access the heap yet for the error message
          * constant, so we skip it for such methods too.
          *
-         * We also do not print out this message for runtime compiled methods because it would
-         * require us to preserve additional graph state.
+         * We also do not print out this message for runtime compiled methods and methods which can
+         * deopt for testing because it would require us to preserve additional graph state.
          */
         boolean insertMessage = SubstrateUtil.assertionsEnabled() &&
                         !Uninterruptible.Utils.isUninterruptible(graph.method()) &&
-                        !SubstrateCompilationDirectives.isRuntimeCompiledMethod(graph.method());
+                        !SubstrateCompilationDirectives.isRuntimeCompiledMethod(graph.method()) &&
+                        !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(graph.method());
         if (insertMessage) {
             ConstantNode messageNode = ConstantNode.forConstant(providers.getConstantReflection().forString(message.get()), providers.getMetaAccess(), graph);
             ForeignCallNode foreignCallNode = graph.add(new ForeignCallNode(SnippetRuntime.UNSUPPORTED_FEATURE, messageNode));

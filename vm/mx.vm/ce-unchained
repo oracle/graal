@@ -1,0 +1,5 @@
+DYNAMIC_IMPORTS=/compiler,/sdk,/substratevm,/tools,/truffle
+COMPONENTS=cmp,lg,ni,nic,nil,sdk,sdkl,svm,svmt,svmsl,tflc,tflsm
+NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-flang,graalvm-native-ld,lib:jvmcicompiler,lib:native-image-agent,lib:native-image-diagnostics-agent,native-image
+NON_REBUILDABLE_IMAGES=lib:jvmcicompiler
+DISABLE_INSTALLABLES=False

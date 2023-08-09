@@ -23,7 +23,7 @@ To build a native executable with the JFR events support, you first need to add 
 
 Follow the steps below to practice building a native executable with JFR support and recording events at run time.
 
-> Note: You are expected to have GraalVM installed with Native Image support. The easiest way to install GraalVM is to use the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader).
+> Note: Make sure you have installed a GraalVM JDK. The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal). For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 1. Install VisualVM by running:
     ```bash

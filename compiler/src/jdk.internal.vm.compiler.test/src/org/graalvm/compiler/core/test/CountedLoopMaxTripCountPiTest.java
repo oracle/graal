@@ -105,6 +105,8 @@ public class CountedLoopMaxTripCountPiTest extends GraalCompilerTest {
     void checkGraph(StructuredGraph graph, LoopsData loops) {
         loops.detectCountedLoops();
         for (LoopEx loop : loops.loops()) {
+            // max trip count can only be used if a loop does not overflow
+            loop.counted().createOverFlowGuard();
             Assert.assertTrue("expect all loops to be counted", loop.isCounted());
             ValueNode maxTripCountNode = loop.counted().maxTripCountNode();
             Assert.assertTrue("expect a PiNode for the guarded maxTripCount, got: " + maxTripCountNode, maxTripCountNode instanceof PiNode);

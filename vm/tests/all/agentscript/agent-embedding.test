@@ -18,7 +18,7 @@ OK 2 times!
 > if [ -z $TRUFFLE_DSL_PROCESSOR_JAR ]
 >   echo "The TRUFFLE_DSL_PROCESSOR_JAR environment variable must be set and point to the Truffle DSL jar"
 > fi
->[0] javac -cp $INSIGHT_LIBS/lib/truffle/truffle-api.jar:$TRUFFLE_DSL_PROCESSOR_JAR:$INSIGHT_LIBS/tools/insight/insight.jar -d ${TMP_DIR}/instrument Emb*Instrument.java
+>[0] javac -proc:full -cp $INSIGHT_LIBS/lib/truffle/truffle-api.jar:$TRUFFLE_DSL_PROCESSOR_JAR:$INSIGHT_LIBS/tools/insight/insight.jar -d ${TMP_DIR}/instrument Emb*Instrument.java
 >[0] jar cf ${TMP_DIR}/instrument.jar -C ${TMP_DIR}/instrument META-INF -C ${TMP_DIR}/instrument registersymbols
 # ##################################################################
 # Register instrument using deprecated -Dtruffle.class.path.append

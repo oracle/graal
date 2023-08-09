@@ -73,36 +73,6 @@ public class Hello {
         }
     }
 
-    public static void main(String[] args) {
-        Greeter greeter = Greeter.greeter(args);
-        greeter.greet();
-        /*-
-         * Perform the following call chains
-         *
-         * main --no-inline--> noInlineFoo --inline--> inlineMee --inline--> inlineMoo
-         * main --inline--> inlineCallChain --inline--> inlineMee --inline--> inlineMoo
-         * main --no-inline--> noInlineThis --inline--> inlineIs --inline--> inlineA --no-inline--> noInlineTest
-         * main --inline--> inlineFrom --no-inline--> noInlineHere --inline--> inlineMixTo --no-inline--+
-         *                                                 ^                                            |
-         *                                                 +-------------(rec call n-times)-------------+
-         * main --inline--> inlineFrom --inline--> inlineHere --inline--> inlineTo --inline--+
-         *                                             ^                                     |
-         *                                             +---------(rec call n-times)----------+
-         */
-        noInlineFoo();
-        inlineCallChain();
-        noInlineThis();
-        inlineFrom();
-        noInlineManyArgs(0, 1, 2, 3, true, 5, 6, 7, 8, 9,
-                        0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F, 10.125D, false, 12.375F);
-        noInlinePassConstants();
-        // create and manipulate some foreign types
-        CStructTests tests = new CStructTests();
-        tests.composite();
-        tests.weird();
-        System.exit(0);
-    }
-
     @NeverInline("For testing purposes")
     private static void noInlineFoo() {
         inlineMee();
@@ -234,4 +204,46 @@ public class Hello {
         System.out.println(String.format("q = %g\n", q));
         System.out.println(String.format("t = %s\n", t));
     }
+
+    private static java.util.function.Supplier<String> lambda = () -> {
+        StringBuilder sb = new StringBuilder("lambda");
+        sb.append(System.getProperty("never_optimize_away", "Text"));
+        return sb.toString();
+    };
+
+    /* Add new methods above main */
+    public static void main(String[] args) {
+        Greeter greeter = Greeter.greeter(args);
+        greeter.greet();
+        /*-
+         * Perform the following call chains
+         *
+         * main --no-inline--> noInlineFoo --inline--> inlineMee --inline--> inlineMoo
+         * main --inline--> inlineCallChain --inline--> inlineMee --inline--> inlineMoo
+         * main --no-inline--> noInlineThis --inline--> inlineIs --inline--> inlineA --no-inline--> noInlineTest
+         * main --inline--> inlineFrom --no-inline--> noInlineHere --inline--> inlineMixTo --no-inline--+
+         *                                                 ^                                            |
+         *                                                 +-------------(rec call n-times)-------------+
+         * main --inline--> inlineFrom --inline--> inlineHere --inline--> inlineTo --inline--+
+         *                                             ^                                     |
+         *                                             +---------(rec call n-times)----------+
+         */
+        noInlineFoo();
+        inlineCallChain();
+        noInlineThis();
+        inlineFrom();
+        noInlineManyArgs(0, 1, 2, 3, true, 5, 6, 7, 8, 9,
+                        0.0F, 1.125F, 2.25F, 3.375F, 4.5F, 5.625F, 6.75F, 7.875F, 9.0F, 10.125D, false, 12.375F);
+        noInlinePassConstants();
+        System.out.println(lambda.get());
+        // create and manipulate some foreign types
+        CStructTests tests = new CStructTests();
+        tests.composite();
+        tests.weird();
+        System.exit(0);
+    }
+    /*
+     * Keep main the last method in the file and add new methods right above it to avoid updating
+     * all line numbers in testhello.py each time new methods are added
+     */
 }

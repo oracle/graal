@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.threadlocal;
 
-import java.util.Arrays;
 import java.util.Collection;
 
 import org.graalvm.compiler.word.ObjectAccess;
@@ -37,26 +36,27 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.heap.ReferenceAccess;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.log.Log;
 
 @AutomaticallyRegisteredImageSingleton
 public class VMThreadLocalInfos {
+    /**
+     * The {@link VMThreadLocalInfo} objects are scanned during analysis as soon as they are
+     * discovered. After analysis, they are sorted and stored in the infos field.
+     */
+    @UnknownObjectField(availability = ReadyForCompilation.class)//
     private VMThreadLocalInfo[] infos;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static boolean setInfos(Collection<VMThreadLocalInfo> infos) {
+    public static void setInfos(Collection<VMThreadLocalInfo> infos) {
         VMThreadLocalInfos singleton = ImageSingletons.lookup(VMThreadLocalInfos.class);
-        VMThreadLocalInfo[] array = infos.toArray(new VMThreadLocalInfo[infos.size()]);
-        if (!Arrays.equals(singleton.infos, array)) {
-            singleton.infos = array;
-            return true;
-        } else {
-            return false;
-        }
+        singleton.infos = infos.toArray(new VMThreadLocalInfo[0]);
     }
 
     public static void dumpToLog(Log log, IsolateThread thread, boolean isJavaHeapAccessAllowed) {

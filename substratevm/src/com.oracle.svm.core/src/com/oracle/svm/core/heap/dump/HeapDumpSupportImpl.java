@@ -25,22 +25,25 @@
 package com.oracle.svm.core.heap.dump;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
-import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.UNRESTRICTED;
 
 import java.io.IOException;
 
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.nativeimage.impl.HeapDumpSupport;
+import org.graalvm.nativeimage.c.type.CCharPointer;
+import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.UnmanagedMemoryUtil;
+import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.log.Log;
@@ -50,15 +53,60 @@ import com.oracle.svm.core.os.RawFileOperationSupport.RawFileDescriptor;
 import com.oracle.svm.core.thread.NativeVMOperation;
 import com.oracle.svm.core.thread.NativeVMOperationData;
 import com.oracle.svm.core.thread.VMOperation;
+import com.oracle.svm.core.util.TimeUtils;
 
-public class HeapDumpSupportImpl implements HeapDumpSupport {
+public class HeapDumpSupportImpl extends HeapDumping {
     private final HeapDumpWriter writer;
     private final HeapDumpOperation heapDumpOperation;
+
+    private CCharPointer outOfMemoryHeapDumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapDumpSupportImpl(HeapDumpMetadata metadata) {
         this.writer = new HeapDumpWriter(metadata);
         this.heapDumpOperation = new HeapDumpOperation();
+    }
+
+    @Override
+    public void initializeDumpHeapOnOutOfMemoryError() {
+        String defaultFilename = getDefaultHeapDumpFilename("OOME");
+        String heapDumpPath = getHeapDumpPath(defaultFilename);
+        outOfMemoryHeapDumpPath = getFileSupport().allocateCPath(heapDumpPath);
+    }
+
+    @Override
+    public void teardownDumpHeapOnOutOfMemoryError() {
+        ImageSingletons.lookup(UnmanagedMemorySupport.class).free(outOfMemoryHeapDumpPath);
+        outOfMemoryHeapDumpPath = WordFactory.nullPointer();
+    }
+
+    @Override
+    @RestrictHeapAccess(access = NO_ALLOCATION, reason = "OutOfMemoryError heap dumping must not allocate.")
+    public void dumpHeapOnOutOfMemoryError() {
+        if (outOfMemoryHeapDumpPath.isNull()) {
+            Log.log().string("OutOfMemoryError heap dumping failed because the heap dump file path could not be allocated.").newline();
+            return;
+        }
+
+        RawFileDescriptor fd = getFileSupport().create(outOfMemoryHeapDumpPath, FileCreationMode.CREATE_OR_REPLACE, RawFileOperationSupport.FileAccessMode.READ_WRITE);
+        if (!getFileSupport().isValid(fd)) {
+            Log.log().string("OutOfMemoryError heap dumping failed because the heap dump file could not be created: ").string(outOfMemoryHeapDumpPath).newline();
+            return;
+        }
+
+        try {
+            Log.log().string("Dumping heap to ").string(outOfMemoryHeapDumpPath).string(" ...").newline();
+            long start = System.currentTimeMillis();
+            if (dumpHeap(fd, false)) {
+                long fileSize = getFileSupport().size(fd);
+                long elapsedMs = System.currentTimeMillis() - start;
+                long seconds = elapsedMs / TimeUtils.millisPerSecond;
+                long ms = elapsedMs % TimeUtils.millisPerSecond;
+                Log.log().string("Heap dump file created [").signed(fileSize).string(" bytes in ").signed(seconds).character('.').signed(ms).string(" secs]").newline();
+            }
+        } finally {
+            getFileSupport().close(fd);
+        }
     }
 
     @Override
@@ -75,16 +123,19 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
         }
     }
 
-    public void writeHeapTo(RawFileDescriptor fd, boolean gcBefore) throws IOException {
+    private boolean dumpHeap(RawFileDescriptor fd, boolean gcBefore) {
         int size = SizeOf.get(HeapDumpVMOperationData.class);
         HeapDumpVMOperationData data = StackValue.get(size);
         UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
-
         data.setGCBefore(gcBefore);
         data.setRawFileDescriptor(fd);
         heapDumpOperation.enqueue(data);
+        return data.getSuccess();
+    }
 
-        if (!data.getSuccess()) {
+    public void writeHeapTo(RawFileDescriptor fd, boolean gcBefore) throws IOException {
+        boolean success = dumpHeap(fd, gcBefore);
+        if (!success) {
             throw new IOException("An error occurred while writing the heap dump.");
         }
     }
@@ -126,21 +177,16 @@ public class HeapDumpSupportImpl implements HeapDumpSupport {
         protected void operate(NativeVMOperationData d) {
             HeapDumpVMOperationData data = (HeapDumpVMOperationData) d;
             if (data.getGCBefore()) {
-                System.gc();
+                Heap.getHeap().getGC().collectCompletely(GCCause.HeapDump);
             }
 
             try {
                 boolean success = writer.dumpHeap(data.getRawFileDescriptor());
                 data.setSuccess(success);
             } catch (Throwable e) {
-                reportError(e);
+                Log.log().string("An exception occurred during heap dumping. The data in the heap dump file may be corrupt: ").string(e.getClass().getName()).newline();
+                data.setSuccess(false);
             }
-        }
-
-        @RestrictHeapAccess(access = UNRESTRICTED, reason = "Error reporting may allocate.")
-        private void reportError(Throwable e) {
-            Log.log().string("An exception occurred during heap dumping. The data in the heap dump file may be corrupt.").newline().string(e.getClass().getName()).string(": ")
-                            .string(e.getMessage());
         }
     }
 }

@@ -139,6 +139,7 @@ class NativeImageVM(GraalVm):
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
             # use list() to create fresh copies to safeguard against accidental modification
             self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
+            self.extra_jvm_args = bm_suite.extra_jvm_arg(self.benchmark_name, args)
             self.extra_agent_run_args = bm_suite.extra_agent_run_arg(self.benchmark_name, args, list(image_run_args))
             self.extra_agentlib_options = bm_suite.extra_agentlib_options(self.benchmark_name, args, list(image_run_args))
             for option in self.extra_agentlib_options:
@@ -149,7 +150,7 @@ class NativeImageVM(GraalVm):
             self.extra_agent_profile_run_args = bm_suite.extra_agent_profile_run_arg(self.benchmark_name, args, list(image_run_args))
             self.benchmark_output_dir = bm_suite.benchmark_output_dir(self.benchmark_name, args)
             self.pgo_iteration_num = bm_suite.pgo_iteration_num(self.benchmark_name, args)
-            self.params = ['extra-image-build-argument', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
+            self.params = ['extra-image-build-argument', 'extra-jvm-arg', 'extra-run-arg', 'extra-agent-run-arg', 'extra-profile-run-arg',
                            'extra-agent-profile-run-arg', 'benchmark-output-dir', 'stages', 'skip-agent-assertions']
 
             self.profile_file_extension = '.iprof'
@@ -204,6 +205,8 @@ class NativeImageVM(GraalVm):
                 self.base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
             if vm.no_inlining_before_analysis:
                 self.base_image_build_args += ['-H:-InlineBeforeAnalysis']
+            if vm.optimization_level:
+                self.base_image_build_args += ['-' + vm.optimization_level]
             if vm.async_sampler:
                 self.base_image_build_args += ['-R:+FlightRecorder',
                                                '-R:StartFlightRecording=filename=default.jfr',
@@ -257,6 +260,7 @@ class NativeImageVM(GraalVm):
         self.profile_inference_feature_extraction = False
         self.analysis_context_sensitivity = None
         self.no_inlining_before_analysis = False
+        self.optimization_level = None
         self._configure_from_name(config_name)
 
     def _configure_from_name(self, config_name):
@@ -276,7 +280,7 @@ class NativeImageVM(GraalVm):
         # This defines the allowed config names for NativeImageVM. The ones registered will be available via --jvm-config
         rule = r'^(?P<native_architecture>native-architecture-)?(?P<string_inlining>string-inlining-)?(?P<gate>gate-)?(?P<upx>upx-)?(?P<quickbuild>quickbuild-)?(?P<gc>g1gc-)?(?P<llvm>llvm-)?(?P<pgo>pgo-|pgo-ctx-insens-)?(?P<inliner>inline-|iterative-|inline-explored-)?' \
                r'(?P<analysis_context_sensitivity>insens-|allocsens-|1obj-|2obj1h-|3obj2h-|4obj3h-)?(?P<no_inlining_before_analysis>no-inline-)?(?P<jdk_profiles>jdk-profiles-collect-|adopted-jdk-pgo-)?' \
-               r'(?P<profile_inference>profile-inference-feature-extraction-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<edition>ce-|ee-)?$'
+               r'(?P<profile_inference>profile-inference-feature-extraction-)?(?P<sampler>safepoint-sampler-|async-sampler-)?(?P<optimization_level>O0-|O1-|O2-|O3-)?(?P<edition>ce-|ee-)?$'
 
         mx.logv(f"== Registering configuration: {config_name}")
         match_name = f"{config_name}-"  # adding trailing dash to simplify the regex
@@ -397,6 +401,14 @@ class NativeImageVM(GraalVm):
             edition = matching.group("edition")[:-1]
             mx.logv(f"GraalVM edition is set to: {edition}")
             self.graalvm_edition = edition
+
+        if matching.group("optimization_level") is not None:
+            olevel = matching.group("optimization_level")[:-1]
+            mx.logv(f"GraalVM optimization level is set to: {olevel}")
+            if olevel in ["O0", "O1", "O2", "O3"]:
+                self.optimization_level = olevel
+            else:
+                mx.abort(f"Unknown configuration for optimization level: {olevel}")
 
         if matching.group("no_inlining_before_analysis") is not None:
             option = matching.group("no_inlining_before_analysis")[:-1]
@@ -868,6 +880,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_agent(self, config, stages):
         hotspot_vm_args = ['-ea', '-esa'] if self.is_gate and not config.skip_agent_assertions else []
+        hotspot_vm_args += config.extra_jvm_args
         agentlib_options = ['native-image-agent=config-output-dir=' + str(config.config_dir)] + config.extra_agentlib_options
         hotspot_vm_args += ['-agentlib:' + ','.join(agentlib_options)]
 
@@ -911,6 +924,10 @@ class NativeImageVM(GraalVm):
                 out('Instrumented image size: ' + str(image_size) + ' B')
 
     def _ensureSamplesAreInProfile(self, profile_path):
+        # If your benchmark suite fails this assertion and the suite does not expect PGO Sampling profiles (e.g. Truffle workloads)
+        # Override checkSamplesInPgo in your suite and have it return False.
+        if not self.bmSuite.checkSamplesInPgo():
+            return
         # GR-42738 --pgo-sampling does not work with LLVM. Sampling is disabled when doing JDK profiles collection.
         if not self.is_llvm and not self.jdk_profiles_collect:
             with open(profile_path) as profile_file:
@@ -924,6 +941,7 @@ class NativeImageVM(GraalVm):
 
     def run_stage_instrument_run(self, config, stages, image_path, profile_path):
         image_run_cmd = [image_path, '-XX:ProfilesDumpFile=' + profile_path]
+        image_run_cmd += config.extra_jvm_args
         image_run_cmd += config.extra_profile_run_args
         with stages.set_command(image_run_cmd) as s:
             s.execute_command()
@@ -949,8 +967,9 @@ class NativeImageVM(GraalVm):
             # choose appropriate profiles
             jdk_version = mx.get_jdk().javaCompliance
             jdk_profiles = f"JDK{jdk_version}_PROFILES"
-            adopted_profiles_zip = mx.library(jdk_profiles).get_path(False)
-            if adopted_profiles_zip:
+            adopted_profiles_lib = mx.library(jdk_profiles, fatalIfMissing=False)
+            if adopted_profiles_lib:
+                adopted_profiles_zip = adopted_profiles_lib.get_path(True)
                 adopted_profiles_dir = os.path.dirname(adopted_profiles_zip)
                 with zipfile.ZipFile(adopted_profiles_zip, 'r') as zip_ref:
                     zip_ref.extractall(adopted_profiles_dir)
@@ -986,7 +1005,7 @@ class NativeImageVM(GraalVm):
         if not config.is_runnable:
             mx.abort(f"Benchmark {config.benchmark_suite_name}:{config.benchmark_name} is not runnable.")
         image_path = os.path.join(config.output_dir, config.final_image_name)
-        with stages.set_command([image_path] + config.image_run_args) as s:
+        with stages.set_command([image_path] + config.extra_jvm_args + config.image_run_args) as s:
             s.execute_command(vm=self)
             if s.exit_code == 0:
                 self._print_binary_size(config, out)
@@ -1543,6 +1562,8 @@ def register_graalvm_vms():
             mx_polybenchmarks_benchmark.polybenchmark_vm_registry.add_vm(PolyBenchVm(host_vm_name, "native", [], ["--native"]))
             mx_polybenchmarks_benchmark.rules = polybenchmark_rules
 
+    optimization_levels = ['O0', 'O1', 'O2', 'O3']
+
     # Inlining before analysis is done by default
     analysis_context_sensitivity = ['insens', 'allocsens', '1obj', '2obj1h', '3obj2h', '4obj3h']
     analysis_context_sensitivity_no_inline = [f"{analysis_component}-no-inline" for analysis_component in analysis_context_sensitivity]
@@ -1552,7 +1573,15 @@ def register_graalvm_vms():
             for main_config in ['default', 'gate', 'llvm', 'native-architecture'] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
                 final_config_name = f'{main_config}-{config_suffix}'
                 mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
-            break
+                # ' '  force the empty O<> configs as well
+            for main_config in ['llvm', 'native-architecture', 'g1gc', 'native-architecture-g1gc', ''] + analysis_context_sensitivity + analysis_context_sensitivity_no_inline:
+                for optimization_level in optimization_levels:
+                    if len(main_config) > 0:
+                        final_config_name = f'{main_config}-{optimization_level}-{config_suffix}'
+                    else:
+                        final_config_name = f'{optimization_level}-{config_suffix}'
+                    mx_benchmark.add_java_vm(NativeImageVM('native-image', final_config_name), _suite, 10)
+
 
     # Adding JAVA_HOME VMs to be able to run benchmarks on GraalVM binaries without the need of building it first
     for java_home_config in ['default', 'pgo', 'g1gc', 'g1gc-pgo', 'upx', 'upx-g1gc', 'quickbuild', 'quickbuild-g1gc']:

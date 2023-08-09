@@ -51,6 +51,9 @@ public interface BuildArtifacts {
         /* Language home artifacts for Truffle languages needed at run-time. */
         LANGUAGE_HOME("language_home"),
 
+        /* Unpacked internal resources for Truffle languages and instruments needed at run-time. */
+        LANGUAGE_INTERNAL_RESOURCES("language_resources"),
+
         /* ARTIFACTS NOT NEEDED AT RUN-TIME: */
 
         /*

@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.truffle.test.builtins;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.options.OptionDescriptor;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -33,6 +31,8 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
 
 /**
  * Looks up the value of an option in {@link OptimizedRuntimeOptions}. In the future this builtin

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1428,6 +1428,19 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     public static int clampShiftAmt(int size, long shiftAmt) {
         assert size == 32 || size == 64;
         return (int) (shiftAmt & (size - 1));
+    }
+
+    /**
+     * C6.2.338 Unsigned bitfield extract.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null, stackpointer or zero-register.
+     * @param src general purpose register. May not be null, stackpointer or zero-register.
+     * @param r must be in the range 0 to size - 1
+     * @param s must be in the range 0 to size - 1
+     */
+    public void ubfx(int size, Register dst, Register src, int r, int s) {
+        ubfm(size, dst, src, r, r + s - 1);
     }
 
     /**

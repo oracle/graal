@@ -227,6 +227,13 @@ public final class CTypeConversion {
      * @since 19.0
      */
     public abstract static class CCharPointerPointerHolder implements AutoCloseable {
+
+        /**
+         * @since 19.0
+         */
+        public CCharPointerPointerHolder() {
+        }
+
         /**
          * Returns the C pointer to pointers of null-terminated C char[] arrays.
          *

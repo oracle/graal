@@ -41,6 +41,8 @@
 package com.oracle.truffle.regex.tregex.parser;
 
 import java.util.EnumSet;
+import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -57,8 +59,11 @@ import com.oracle.truffle.regex.tregex.parser.ast.Group;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTRootNode;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import com.oracle.truffle.regex.tregex.parser.ast.Sequence;
 import com.oracle.truffle.regex.tregex.parser.ast.Term;
 import com.oracle.truffle.regex.tregex.string.Encodings;
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
 
 public final class JSRegexParser implements RegexParser {
 
@@ -89,7 +94,7 @@ public final class JSRegexParser implements RegexParser {
 
     @Override
     public AbstractRegexObject getNamedCaptureGroups() {
-        return AbstractRegexObject.createNamedCaptureGroupMapInt(lexer.getNamedCaptureGroups());
+        return AbstractRegexObject.createNamedCaptureGroupMapListInt(lexer.getNamedCaptureGroups());
     }
 
     @Override
@@ -212,7 +217,9 @@ public final class JSRegexParser implements RegexParser {
         if (!astBuilder.curGroupIsRoot()) {
             throw syntaxError(JsErrorMessages.UNTERMINATED_GROUP);
         }
-        return astBuilder.popRootGroup();
+        RegexAST ast = astBuilder.popRootGroup();
+        checkNamedCaptureGroups(ast);
+        return ast;
     }
 
     private static boolean isNestedInLookBehindAssertion(Term t) {
@@ -224,6 +231,46 @@ public final class JSRegexParser implements RegexParser {
             parent = parent.getParent().getSubTreeParent();
         }
         return false;
+    }
+
+    private void checkNamedCaptureGroups(RegexAST ast) {
+        if (lexer.getNamedCaptureGroups() != null) {
+            for (Map.Entry<String, List<Integer>> entry : lexer.getNamedCaptureGroups().entrySet()) {
+                for (int i = 0; i < entry.getValue().size() - 1; i++) {
+                    for (int j = i + 1; j < entry.getValue().size(); j++) {
+                        if (canBothParticipate(ast.getGroup(entry.getValue().get(i)), ast.getGroup(entry.getValue().get(j)))) {
+                            throw syntaxError(JsErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private static boolean canBothParticipate(Group a, Group b) {
+        // Find the lowest common ancestor Group between Groups `a` and `b` and check whether
+        // `a` and `b` lie in the same alternative of that ancestor group.
+        EconomicMap<Group, Integer> ancestorsA = EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE);
+        Group ancestorA = a;
+        while (ancestorA != null && !ancestorA.getParent().isRoot()) {
+            Sequence sequenceA = ancestorA.getParent().isSubtreeRoot() ? ancestorA.getParent().getParent().asSequence() : ancestorA.getParent().asSequence();
+            ancestorA = sequenceA.getParent().asGroup();
+            int indexA = ancestorA.getAlternatives().indexOf(sequenceA);
+            assert indexA >= 0;
+            ancestorsA.put(ancestorA, indexA);
+        }
+        Group ancestorB = b;
+        while (ancestorB != null && !ancestorB.getParent().isRoot()) {
+            Sequence sequenceB = ancestorB.getParent().isSubtreeRoot() ? ancestorB.getParent().getParent().asSequence() : ancestorB.getParent().asSequence();
+            ancestorB = sequenceB.getParent().asGroup();
+            if (ancestorsA.containsKey(ancestorB)) {
+                int indexA = ancestorsA.get(ancestorB);
+                int indexB = ancestorB.getAlternatives().indexOf(sequenceB);
+                assert indexB >= 0;
+                return indexA == indexB;
+            }
+        }
+        throw CompilerDirectives.shouldNotReachHere("no common ancestor found for named capture groups in regexp");
     }
 
     private RegexSyntaxException syntaxError(String msg) {

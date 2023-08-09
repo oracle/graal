@@ -337,6 +337,21 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         executor.execute(task);
     }
 
+    public void postTask(final Runnable task) {
+        executor.execute(new CompletionExecutor.DebugContextRunnable() {
+            @Override
+            public void run(DebugContext ignore) {
+                task.run();
+            }
+
+            @Override
+            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
+                assert opts == getOptions();
+                return DebugContext.disabled(opts);
+            }
+        });
+    }
+
     @Override
     public final boolean executorIsStarted() {
         return executor.isStarted();
@@ -374,8 +389,9 @@ public abstract class AbstractAnalysisEngine implements BigBang {
             if (frameState != null) {
                 if (frameState.outerFrameState() != null) {
                     /*
-                     * If the outer framestate is not null, then inlinebeforeanalysis has inlined this call. We
-                     * store the position of the original call to prevent recursive flows.
+                     * If the outer framestate is not null, then inlinebeforeanalysis has inlined
+                     * this call. We store the position of the original call to prevent recursive
+                     * flows.
                      */
                     var current = frameState;
                     while (current.outerFrameState() != null) {
@@ -385,7 +401,8 @@ public abstract class AbstractAnalysisEngine implements BigBang {
                     bci = current.bci;
                 } else if (bci == BytecodeFrame.UNKNOWN_BCI) {
                     /*
-                     * If there is a single framestate, then use its bci if nothing better is available
+                     * If there is a single framestate, then use its bci if nothing better is
+                     * available
                      */
                     bci = frameState.bci;
                 }

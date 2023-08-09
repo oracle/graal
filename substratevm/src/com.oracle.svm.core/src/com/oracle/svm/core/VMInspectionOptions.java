@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core;
 
+import java.io.IOException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -37,6 +38,8 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.heap.dump.HeapDumping;
+import com.oracle.svm.core.jdk.management.ManagementAgentModule;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
@@ -104,6 +107,25 @@ public final class VMInspectionOptions {
         return hasAllOrKeywordMonitoringSupport(MONITORING_HEAPDUMP_NAME) && !Platform.includedIn(WINDOWS.class);
     }
 
+    public static boolean dumpImageHeap() {
+        if (hasHeapDumpSupport()) {
+            String absoluteHeapDumpPath = HeapDumping.getHeapDumpPath(SubstrateOptions.Name.getValue() + ".hprof");
+            try {
+                HeapDumping.singleton().dumpHeap(absoluteHeapDumpPath, true);
+            } catch (IOException e) {
+                System.err.println("Failed to create heap dump:");
+                e.printStackTrace();
+                return false;
+            }
+            System.out.println("Heap dump created at '" + absoluteHeapDumpPath + "'.");
+            return true;
+        } else {
+            System.out.println("Unable to dump heap. Heap dumping is only supported on Linux and MacOS for native executables built with '" +
+                            VMInspectionOptions.getHeapdumpsCommandArgument() + "'.");
+            return false;
+        }
+    }
+
     /**
      * Use {@link com.oracle.svm.core.jfr.HasJfrSupport#get()} instead and don't call this method
      * directly because the VM inspection options are only one of multiple ways to enable the JFR
@@ -121,7 +143,7 @@ public final class VMInspectionOptions {
 
     @Fold
     public static boolean hasJmxServerSupport() {
-        return hasAllOrKeywordMonitoringSupport(MONITORING_JMXSERVER_NAME) && !Platform.includedIn(WINDOWS.class);
+        return hasAllOrKeywordMonitoringSupport(MONITORING_JMXSERVER_NAME) && !Platform.includedIn(WINDOWS.class) && ManagementAgentModule.isPresent();
     }
 
     @Fold

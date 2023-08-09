@@ -125,6 +125,7 @@ suite = {
             "requires": [
                 "java.logging",
                 "jdk.unsupported", # sun.misc.Signal
+                "java.management",
             ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance" : "17+",
@@ -312,6 +313,10 @@ suite = {
 
     "distributions": {
         "ESPRESSO": {
+            "moduleInfo" : {
+                "name" : "org.graalvm.espresso",
+            },
+            "description" : "Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso",
@@ -319,16 +324,11 @@ suite = {
             "distDependencies": [
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
-                "truffle:TRUFFLE_NFI_LIBFFI",
-                "tools:TRUFFLE_PROFILER",
-            ],
-            "exclude": [
-                "truffle:TRUFFLE_ASM_9.5",
             ],
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
             },
-            "maven": False,
+            "noMavenJavadoc": True,
         },
 
         "ESPRESSO_LAUNCHER": {

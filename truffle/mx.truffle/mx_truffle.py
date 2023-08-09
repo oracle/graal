@@ -40,6 +40,7 @@
 #
 import os
 import re
+import shutil
 import tempfile
 import difflib
 import zipfile
@@ -57,11 +58,14 @@ import mx_sdk_vm
 import mx_unittest
 import tck
 from mx_gate import Task
-from mx_javamodules import as_java_module, get_java_module_info, get_module_name
+from mx_javamodules import as_java_module, get_module_name
 from mx_sigtest import sigtest
 from mx_unittest import unittest
 
 _suite = mx.suite('truffle')
+
+# re-export custom mx project classes, so they can be used from suite.py
+from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
 
 class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 
@@ -87,8 +91,28 @@ mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
     extraArgs = mx_sdk.build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'Truffle')
-    mx.javadoc(['--unified', '--exclude-packages',
-                'com.oracle.truffle.tck,com.oracle.truffle.tck.impl'] + extraArgs + args)
+    projects = [
+        'org.graalvm.collections',
+        'org.graalvm.word',
+        'org.graalvm.options',
+        'org.graalvm.nativeimage',
+        'org.graalvm.home',
+        'org.graalvm.polyglot',
+        'com.oracle.svm.core.annotate',
+        'com.oracle.truffle.api',
+        'com.oracle.truffle.api.dsl',
+        'com.oracle.truffle.api.profiles',
+        'com.oracle.truffle.api.utilities',
+        'com.oracle.truffle.api.library',
+        'com.oracle.truffle.api.strings',
+        'com.oracle.truffle.api.interop',
+        'com.oracle.truffle.api.exception',
+        'com.oracle.truffle.api.instrumentation',
+        'com.oracle.truffle.api.debug',
+        'com.oracle.truffle.api.object',
+        'com.oracle.truffle.api.staticobject',
+    ]
+    mx.javadoc(['--unified', '--projects', ','.join(projects)] + extraArgs + args, includeDeps=False)
     javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
     checkLinks(javadoc_dir)
 
@@ -140,33 +164,6 @@ def checkLinks(javadocDir):
     if err:
         mx.abort('There are wrong references in Javadoc')
 
-def _path_args(depNames=None):
-    """
-    Gets the VM args for putting the dependencies named in `depNames` on the
-    class path and module path (if running on JDK9 or later).
-
-    :param names: a Dependency, str or list containing Dependency/str objects. If None,
-           then all registered dependencies are used.
-    """
-    jdk = mx.get_jdk()
-    if jdk.javaCompliance >= '1.9':
-        modules = [as_java_module(dist, jdk) for dist in _suite.dists if get_java_module_info(dist)]
-        if modules:
-            # Partition resources between the class path and module path
-            modulepath = []
-            classpath = []
-            cpEntryToModule = {m.dist.path : m for m in modules}
-
-            for e in mx.classpath(depNames).split(os.pathsep):
-                if e in cpEntryToModule:
-                    modulepath.append(cpEntryToModule[e].jarpath)
-                else:
-                    classpath.append(e)
-            # The Truffle modules must be eagerly loaded as they could be referenced from
-            # the main class hence the --add-modules argument
-            return ['--add-modules=' + ','.join([m.name for m in modules]), '--module-path=' + os.pathsep.join(modulepath), '-cp', os.pathsep.join(classpath)]
-    return ['-cp', mx.classpath(depNames)]
-
 def _open_module_exports_args():
     """
     Gets the VM args for exporting all Truffle API packages on JDK9 or later.
@@ -197,6 +194,13 @@ def _unittest_config_participant(config):
     # in turn allows us to dynamically open fields/methods to reflection.
     vmArgs = vmArgs + ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED']
 
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sdk/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sl/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=org.graalvm.sl'])
+
     config = (vmArgs, mainClass, mainClassArgs)
     if _shouldRunTCKParticipant:
         config = _unittest_config_participant_tck(config)
@@ -204,10 +208,57 @@ def _unittest_config_participant(config):
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
+# simple utility that returns the right distribution names to use
+# for building a language module path
+def resolve_truffle_dist_names(use_optimized_runtime=True, use_enterprise=True):
+    if use_optimized_runtime:
+        enterprise_dist = _get_enterprise_truffle()
+        if enterprise_dist and use_enterprise:
+            return ['graal-enterprise:TRUFFLE_ENTERPRISE']
+        else:
+            return ['truffle:TRUFFLE_RUNTIME']
+    else:
+        return ['truffle:TRUFFLE_API']
+
+def _get_enterprise_truffle():
+    return mx.distribution('graal-enterprise:TRUFFLE_ENTERPRISE', False)
+
+def resolve_sl_dist_names(use_optimized_runtime=True, use_enterprise=True):
+    return ['TRUFFLE_SL', 'TRUFFLE_SL_LAUNCHER'] + resolve_truffle_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
+
 def sl(args):
     """run an SL program"""
-    vmArgs, slArgs = mx.extract_VM_args(args)
-    mx.run_java(vmArgs + _path_args(["TRUFFLE_API", "com.oracle.truffle.sl", "com.oracle.truffle.sl.launcher"]) + ["com.oracle.truffle.sl.launcher.SLMain"] + slArgs)
+    vm_args, sl_args = mx.extract_VM_args(args)
+    return mx.run(_sl_command(vm_args, sl_args))
+
+def _sl_command(vm_args, sl_args, use_optimized_runtime=True, use_enterprise=True):
+    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
+    java_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('java'))
+    dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
+    return [java_path] + vm_args + mx.get_runtime_jvm_args(names=dist_names) + ["com.oracle.truffle.sl.launcher.SLMain"] + sl_args
+
+def slnative(args):
+    """build a native image of an SL program"""
+    vm_args, sl_args = mx.extract_VM_args(args)
+    target_dir = tempfile.mkdtemp()
+    image = _native_image_sl(vm_args, target_dir, use_optimized_runtime=True)
+    if not image:
+        mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(mx_sdk_vm.graalvm_home(fatalIfMissing=True)))
+    mx.log("Image build completed. Running {}".format(" ".join([image] + sl_args)))
+    result = mx.run([image] + sl_args)
+    return result
+
+def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True):
+    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
+    native_image_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('native-image'))
+    if not exists(native_image_path):
+        native_image_path = os.path.join(graalvm_home, 'bin', mx.cmd_suffix('native-image'))
+        if not exists(native_image_path):
+            mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(graalvm_home))
+            return None
+    target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
+    mx.run([native_image_path] + vm_args + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)) + ["com.oracle.truffle.sl.launcher.SLMain", target_path])
+    return target_path
 
 def _truffle_gate_runner(args, tasks):
     jdk = mx.get_jdk(tag=mx.DEFAULT_JDK_TAG)
@@ -228,6 +279,114 @@ def _truffle_gate_runner(args, tasks):
                 _truffle_gate_state_bitwidth_tests()
     with Task('Validate parsers', tasks) as t:
         if t: validate_parsers()
+
+# invoked by vm gate runner in ce-unchained configuration
+def sl_jvm_gate_tests():
+    def run_jvm_fallback(test_file):
+        return _sl_command([], [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false'], use_optimized_runtime=False)
+    def run_jvm_optimized(test_file):
+        return _sl_command([], [test_file, '--disable-launcher-output'], use_optimized_runtime=True)
+    def run_jvm_optimized_immediately(test_file):
+        return _sl_command([], [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'], use_optimized_runtime=True)
+
+    mx.log("Run SL JVM Fallback Test")
+    _run_sl_tests(run_jvm_fallback)
+    mx.log("Run SL JVM Optimized Test")
+    _run_sl_tests(run_jvm_optimized)
+    mx.log("Run SL JVM Optimized Immediately Test")
+    _run_sl_tests(run_jvm_optimized_immediately)
+
+    # test if the enterprise compiler is in use
+    # that everything works fine if truffle-enterprise.jar is not availble
+    enterprise = _get_enterprise_truffle()
+    if enterprise:
+        def run_jvm_no_enterprise_optimized(test_file):
+            return _sl_command([], [test_file, '--disable-launcher-output'], use_optimized_runtime=True, use_enterprise=False)
+        def run_jvm_no_enterprise_optimized_immediately(test_file):
+            return _sl_command([], [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'], use_optimized_runtime=True, use_enterprise=False)
+
+        mx.log("Run SL JVM Optimized  Test No Truffle Enterprise")
+        _run_sl_tests(run_jvm_no_enterprise_optimized)
+        mx.log("Run SL JVM Optimized Immediately Test No Truffle Enterprise")
+        _run_sl_tests(run_jvm_no_enterprise_optimized_immediately)
+
+# invoked by vm gate runner in ce-unchained configuration
+def sl_native_optimized_gate_tests():
+    target_dir = tempfile.mkdtemp()
+    image = _native_image_sl([], target_dir, use_optimized_runtime=True, use_enterprise=True)
+
+    def run_native_optimized(test_file):
+        return [image] + [test_file, '--disable-launcher-output']
+    def run_native_optimized_immediately(test_file):
+        return [image] + [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false']
+
+    mx.log("Run SL Native Optimized Test")
+    _run_sl_tests(run_native_optimized)
+    mx.log("Run SL Native Optimized Immediately Test")
+    _run_sl_tests(run_native_optimized_immediately)
+
+    mx.rmtree(target_dir)
+
+    # test if the enterprise compiler is in use
+    # that everything works fine if truffle-enterprise.jar is not availble
+    enterprise = _get_enterprise_truffle()
+    if enterprise:
+        target_dir = tempfile.mkdtemp()
+        image = _native_image_sl([], target_dir, use_optimized_runtime=True, use_enterprise=False)
+
+        def run_no_enterprise_native_optimized(test_file):
+            return [image] + [test_file, '--disable-launcher-output']
+        def run_no_enterprise_native_optimized_immediately(test_file):
+            return [image] + [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false']
+
+        mx.log("Run SL Native Optimized Test No Truffle Enterprise")
+        _run_sl_tests(run_no_enterprise_native_optimized)
+        mx.log("Run SL Native Optimized Immediately Test No Truffle Enterprise")
+        _run_sl_tests(run_no_enterprise_native_optimized_immediately)
+
+        shutil.rmtree(target_dir)
+
+# invoked by vm gate runner in ce-unchained configuration
+def sl_native_fallback_gate_tests():
+    target_dir = tempfile.mkdtemp()
+    image = _native_image_sl([], target_dir, use_optimized_runtime=False)
+
+    def run_native_fallback(test_file):
+        return [image] + [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false']
+
+    mx.log("Run SL Native Fallback Test")
+    _run_sl_tests(run_native_fallback)
+
+    mx.rmtree(target_dir)
+
+def _run_sl_tests(create_command):
+    sl_test = mx.project("com.oracle.truffle.sl.test")
+    test_path = join(_suite.dir, sl_test.subDir, sl_test.name, "src", "tests")
+    for f in os.listdir(test_path):
+        if f.endswith('.sl'):
+            base_name = os.path.splitext(f)[0]
+            test_file = join(test_path, base_name + '.sl')
+            expected_file = join(test_path, base_name + '.output')
+            temp = tempfile.NamedTemporaryFile(delete=False)
+            command = create_command(test_file)
+            mx.log("Running SL test {}".format(test_file))
+            with open(temp.name, 'w') as out:
+                mx.run(command, nonZeroIsFatal=False, out=out, err=out)
+                out.flush()
+            diff = compare_files(expected_file, temp.name)
+            if diff:
+                mx.log("Failed command: {}".format(" ".join(command)))
+                mx.abort("Output does not match expected output: {}".format(''.join(diff)))
+
+            # delete file only on success
+            os.unlink(temp.name)
+
+def compare_files(file1_path, file2_path):
+    with open(file1_path, 'r') as file1, open(file2_path, 'r') as file2:
+        content1 = file1.readlines()
+        content2 = file2.readlines()
+        diff = difflib.unified_diff(content1, content2, fromfile=file1_path, tofile=file2_path)
+        return list(diff)
 
 # The Truffle DSL specialization state bit width computation is complicated and
 # rarely used as the default maximum bit width of 32 is rarely exceeded. Therefore
@@ -255,6 +414,7 @@ mx_gate.add_gate_runner(_suite, _truffle_gate_runner)
 mx.update_commands(_suite, {
     'javadoc' : [javadoc, '[SL args|@VM options]'],
     'sl' : [sl, '[SL args|@VM options]'],
+    'slnative' : [slnative, '[SL args|@VM options]'],
 })
 
 def _is_graalvm(jdk):
@@ -727,7 +887,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
         self.out_dir = self.get_output_root()
         if mx.get_os() == 'windows':
             self.delegate = mx_native.DefaultNativeProject(suite, name, subDir, [], [], None,
-                                                           mx.join(self.out_dir, 'libffi-3.4.2'),
+                                                           mx.join(self.out_dir, 'libffi-3.4.4'),
                                                            'static_lib',
                                                            deliverable='ffi',
                                                            cflags=['-MD', '-O2', '-DFFI_BUILDING_DLL'])
@@ -764,7 +924,7 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
                                                   'include/ffi.h',
                                                   'include/ffitarget.h'],
                                                  mx.join(self.out_dir, 'libffi-build'),
-                                                 mx.join(self.out_dir, 'libffi-3.4.2'))
+                                                 mx.join(self.out_dir, 'libffi-3.4.4'))
             configure_args = ['--disable-dependency-tracking',
                               '--disable-shared',
                               '--with-pic',
@@ -798,8 +958,9 @@ class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency)
             return mx.join(self.source_dirs()[0], d)
 
         def get_patches(patchdir):
-            for patch in os.listdir(patchdir):
-                yield mx.join(patchdir, patch)
+            if os.path.isdir(patchdir):
+                for patch in os.listdir(patchdir):
+                    yield mx.join(patchdir, patch)
 
         for p in get_patches(patch_dir('common')):
             yield p
@@ -861,23 +1022,24 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         mx.rmtree(self.subject.out_dir, ignore_errors=True)
 
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle API',
     short_name='tfla',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['Graal SDK'],
+    dependencies=['Graal SDK', 'Truffle Compiler'],
     jar_distributions=[],
     jvmci_parent_jars=[
+        'sdk:JNIUTILS',
         'truffle:TRUFFLE_API',
+        'truffle:TRUFFLE_RUNTIME',
     ],
     stability="supported",
 ))
 
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle',
     short_name='tfl',
@@ -886,7 +1048,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=[
         'Truffle API',
-        'GraalVM Launcher Common'
+        'GraalVM Launcher Common',
     ],
     jar_distributions=[],
     jvmci_parent_jars=[
@@ -895,28 +1057,23 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     stability="supported",
 ))
 
-# This component is useful only if `SubstrateVM` is included. However, we do
-# not declare a dependency because:
-# - it should be possible to build a GraalVM that includes this macro and not
-#   `SubstrateVM`, which can be installed via `gu`
-# - we prefer to define this component here rather than in the `substratevm`
-#   suite
-# - The `SubstrateVM` component explicitly depends on this macro, to make sure
-#   that it is always present whenever `SubstrateVM` is included
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVMSvmMacro(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
-    name='Truffle Macro',
-    short_name='tflm',
+    name='Truffle Compiler',
+    short_name='tflc',
     dir_name='truffle',
     license_files=[],
     third_party_license_files=[],
     dependencies=[],
-    support_distributions=['truffle:TRUFFLE_GRAALVM_SUPPORT'],
+    jar_distributions=[],
+    jvmci_parent_jars=[
+        'truffle:TRUFFLE_COMPILER',
+    ],
     stability="supported",
 ))
 
 # Typically not included in releases
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle DSL Processor',
     short_name='tflp',
@@ -966,7 +1123,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle'],
-    truffle_jars=['truffle:ICU4J', 'truffle:ICU4J-CHARSET'],
+    truffle_jars=[
+        'truffle:TRUFFLE_ICU4J',
+    ],
     support_distributions=['truffle:TRUFFLE_ICU4J_GRAALVM_SUPPORT'],
     installable=True,
     standalone=False,
@@ -984,6 +1143,23 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     truffle_jars=['truffle:ANTLR4'],
     support_distributions=['truffle:TRUFFLE_ANTLR4_GRAALVM_SUPPORT'],
     installable=True,
+    standalone=False,
+    stability="supported",
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='Truffle JSON Library',
+    short_name='truffle-json',
+    dir_name='truffle-json',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    truffle_jars=['truffle:TruffleJSON',
+        'truffle:TRUFFLE_JSON',
+    ],
+    support_distributions=['truffle:TRUFFLE_JSON_GRAALVM_SUPPORT'],
+    installable=False,
     standalone=False,
     stability="supported",
 ))

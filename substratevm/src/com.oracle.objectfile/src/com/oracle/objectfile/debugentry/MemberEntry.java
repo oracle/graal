@@ -82,7 +82,12 @@ public abstract class MemberEntry {
     }
 
     public int getFileIdx() {
-        return fileEntry.getIdx();
+        if (ownerType instanceof ClassEntry) {
+            return ((ClassEntry) ownerType).getFileIdx(fileEntry);
+        }
+        // should not be asking for a file for header fields
+        assert false : "not expecting a file lookup for header fields";
+        return 1;
     }
 
     public int getLine() {

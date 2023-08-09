@@ -3,7 +3,7 @@ layout: docs
 toc_group: optimizations-and-performance
 link_title: Class Initialization
 permalink: /reference-manual/native-image/optimizations-and-performance/ClassInitialization/
-redirect_from: /$version/reference-manual/native-image/ClassInitialization/
+redirect_from: /reference-manual/native-image/ClassInitialization/
 ---
 
 # Class Initialization in Native Image

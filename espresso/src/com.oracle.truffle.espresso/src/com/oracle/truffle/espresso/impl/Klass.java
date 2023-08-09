@@ -108,6 +108,15 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
     private static final String COMPONENT = "component";
     private static final String SUPER = "super";
 
+    public static final byte UN_INITIALIZED = -1;
+    public static final byte NOT_MAPPED = 0;
+    public static final byte TYPE_MAPPED = 1;
+    public static final byte INTERNAL_MAPPED = 2;
+    public static final byte INTERFACE_MAPPED = 3;
+    public static final byte INTERNAL_COLLECTION_MAPPED = 4;
+
+    @CompilationFinal public byte typeConversionState = UN_INITIALIZED;
+
     @ExportMessage
     boolean isMemberReadable(String member,
                     @Shared("lookupField") @Cached LookupFieldNode lookupField,
@@ -255,7 +264,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
             }
             throw UnknownIdentifierException.create(member);
         } catch (EspressoException e) {
-            if (e.getGuestException().getKlass() == getMeta().polyglot.ForeignException) {
+            if (getMeta().polyglot != null && e.getGuestException().getKlass() == getMeta().polyglot.ForeignException) {
                 // rethrow the original foreign exception when leaving espresso interop
                 throw (AbstractTruffleException) getMeta().java_lang_Throwable_backtrace.getObject(e.getGuestException()).rawForeignObject(getLanguage());
             }
@@ -1590,6 +1599,44 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
         } else {
             return this.getRuntimePackage().equals(other.getRuntimePackage());
         }
+    }
+
+    public final boolean isTypeMapped() {
+        if (typeConversionState == UN_INITIALIZED) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            computeTypeConversionState();
+        }
+        return typeConversionState == TYPE_MAPPED;
+    }
+
+    private void computeTypeConversionState() {
+        CompilerAsserts.neverPartOfCompilation();
+        assert typeConversionState == UN_INITIALIZED;
+        if (getContext().getPolyglotTypeMappings().mapTypeConversion(this) != null) {
+            typeConversionState = TYPE_MAPPED;
+        } else if (getContext().getPolyglotTypeMappings().mapInternalTypeConversion(this) != null) {
+            typeConversionState = INTERNAL_MAPPED;
+        } else if (getContext().getPolyglotTypeMappings().mapEspressoForeignCollection(this) != null) {
+            typeConversionState = INTERNAL_COLLECTION_MAPPED;
+        } else {
+            typeConversionState = NOT_MAPPED;
+        }
+    }
+
+    public final boolean isInternalTypeMapped() {
+        if (typeConversionState == UN_INITIALIZED) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            computeTypeConversionState();
+        }
+        return typeConversionState == INTERNAL_MAPPED;
+    }
+
+    public final boolean isInternalCollectionTypeMapped() {
+        if (typeConversionState == UN_INITIALIZED) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            computeTypeConversionState();
+        }
+        return typeConversionState == INTERNAL_COLLECTION_MAPPED;
     }
 
     // region jdwp-specific

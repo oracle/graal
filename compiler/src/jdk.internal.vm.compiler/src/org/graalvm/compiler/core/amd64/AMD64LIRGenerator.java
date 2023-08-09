@@ -109,13 +109,19 @@ import org.graalvm.compiler.lir.amd64.AMD64ControlFlow.TestConstBranchOp;
 import org.graalvm.compiler.lir.amd64.AMD64CounterModeAESCryptOp;
 import org.graalvm.compiler.lir.amd64.AMD64EncodeArrayOp;
 import org.graalvm.compiler.lir.amd64.AMD64GHASHProcessBlocksOp;
+import org.graalvm.compiler.lir.amd64.AMD64HaltOp;
 import org.graalvm.compiler.lir.amd64.AMD64HasNegativesOp;
 import org.graalvm.compiler.lir.amd64.AMD64LFenceOp;
+import org.graalvm.compiler.lir.amd64.AMD64MD5Op;
 import org.graalvm.compiler.lir.amd64.AMD64Move;
 import org.graalvm.compiler.lir.amd64.AMD64Move.CompareAndSwapOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.MembarOp;
 import org.graalvm.compiler.lir.amd64.AMD64Move.StackLeaOp;
 import org.graalvm.compiler.lir.amd64.AMD64PauseOp;
+import org.graalvm.compiler.lir.amd64.AMD64SHA1Op;
+import org.graalvm.compiler.lir.amd64.AMD64SHA256AVX2Op;
+import org.graalvm.compiler.lir.amd64.AMD64SHA256Op;
+import org.graalvm.compiler.lir.amd64.AMD64SHA512Op;
 import org.graalvm.compiler.lir.amd64.AMD64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.amd64.AMD64StringUTF16CompressOp;
 import org.graalvm.compiler.lir.amd64.AMD64VectorizedHashCodeOp;
@@ -656,7 +662,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public Variable emitVectorizedHashCode(EnumSet<?> runtimeCheckedCPUFeatures, Value arrayStart, Value length, Value initialValue, JavaKind arrayKind) {
         Variable result = newVariable(LIRKind.value(AMD64Kind.DWORD));
-        append(new AMD64VectorizedHashCodeOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, result, arrayStart, length, initialValue, arrayKind));
+        append(new AMD64VectorizedHashCodeOp(this, (EnumSet<CPUFeature>) runtimeCheckedCPUFeatures, result, asAllocatable(arrayStart), asAllocatable(length), asAllocatable(initialValue), arrayKind));
         return result;
     }
 
@@ -896,6 +902,42 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
         append(new AMD64BigIntegerSquareToLenOp(rX, rLen, rZ, rZlen, getHeapBaseRegister()));
     }
 
+    @Override
+    public void emitSha1ImplCompress(Value buf, Value state) {
+        append(new AMD64SHA1Op(this, asAllocatable(buf), asAllocatable(state)));
+    }
+
+    @Override
+    public void emitSha256ImplCompress(Value buf, Value state) {
+        if (supportsCPUFeature(CPUFeature.SHA)) {
+            append(new AMD64SHA256Op(this, asAllocatable(buf), asAllocatable(state)));
+        } else {
+            RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+            RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+
+            emitMove(rBuf, buf);
+            emitMove(rState, state);
+
+            append(new AMD64SHA256AVX2Op(rBuf, rState));
+        }
+    }
+
+    @Override
+    public void emitSha512ImplCompress(Value buf, Value state) {
+        RegisterValue rBuf = AMD64.rdi.asValue(buf.getValueKind());
+        RegisterValue rState = AMD64.rsi.asValue(state.getValueKind());
+
+        emitMove(rBuf, buf);
+        emitMove(rState, state);
+
+        append(new AMD64SHA512Op(rBuf, rState));
+    }
+
+    @Override
+    public void emitMD5ImplCompress(Value buf, Value state) {
+        append(new AMD64MD5Op(this, asAllocatable(buf), asAllocatable(state)));
+    }
+
     @SuppressWarnings("unchecked")
     protected boolean supports(EnumSet<?> runtimeCheckedCPUFeatures, CPUFeature feature) {
         assert runtimeCheckedCPUFeatures == null || runtimeCheckedCPUFeatures.isEmpty() || runtimeCheckedCPUFeatures.iterator().next() instanceof CPUFeature;
@@ -997,6 +1039,16 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new AMD64PauseOp());
+    }
+
+    @Override
+    public void emitSpinWait() {
+        append(new AMD64PauseOp());
+    }
+
+    @Override
+    public void emitHalt() {
+        append(new AMD64HaltOp());
     }
 
     @Override

@@ -33,7 +33,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "5c14b23b92ab7b90bf6f376e820894293e5210b9",
+                "version": "8fc75fc8815df51149075be69b96f608959e3b05",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -42,14 +42,14 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "5c14b23b92ab7b90bf6f376e820894293e5210b9",
+                "version": "8fc75fc8815df51149075be69b96f608959e3b05",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
             },
             {
                 "name": "truffleruby",
-                "version": "f403dd5341bdf29bad2fd8b59a2b1a6490a58506",
+                "version": "82d3a4a5217bd1e97be37e993f0d2a54536265c2",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "707e74473450537accb1c3795a1d5814c433c412",
+                "version": "aacb5b9fa77de952764c71986113fcd8434a0e68",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -65,7 +65,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "0d561b80643794e370c81fb62464fde2d43ca534",
+                "version": "94ea8d981045f9aafcba09599294eaec5268856e",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -91,7 +91,7 @@ suite = {
             "checkstyleVersion" : "10.7.0",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
             ],
             "requires" : ["java.logging"],
         },
@@ -198,9 +198,7 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
-            ],
-            "exclude" : [
-                "truffle:TruffleJSON"
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : False,
         },

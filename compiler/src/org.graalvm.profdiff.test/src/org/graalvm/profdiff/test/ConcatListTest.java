@@ -25,6 +25,7 @@
 package org.graalvm.profdiff.test;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -50,6 +51,7 @@ public class ConcatListTest {
         ConcatList<Integer> bar = new ConcatList<>();
         bar.append(1);
         bar.append(2);
+        assertFalse(bar.isEmpty());
         foo.transferFrom(bar);
         assertEquals(List.of(1, 2), foo.toList());
         assertTrue(bar.isEmpty());

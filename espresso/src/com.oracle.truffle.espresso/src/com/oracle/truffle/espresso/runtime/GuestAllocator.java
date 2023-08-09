@@ -287,8 +287,9 @@ public final class GuestAllocator implements LanguageAccess {
             try {
                 if (interopLibrary.hasExceptionStackTrace(foreignObject)) {
                     Object exceptionStackTrace = interopLibrary.getExceptionStackTrace(foreignObject);
-                    if (interopLibrary.hasArrayElements(exceptionStackTrace)) {
-                        int depth = (int) interopLibrary.getArraySize(exceptionStackTrace);
+                    InteropLibrary uncached = InteropLibrary.getUncached(exceptionStackTrace);
+                    if (uncached.hasArrayElements(exceptionStackTrace)) {
+                        int depth = (int) uncached.getArraySize(exceptionStackTrace);
                         meta.java_lang_Throwable_depth.setInt(foreignException, depth);
                     }
                 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package org.graalvm.wasm.utils.cases;
 
 import java.io.IOException;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -57,13 +58,13 @@ public class WasmMultiCase extends WasmCase {
     }
 
     @Override
-    public Map<String, byte[]> createBinaries() throws IOException, InterruptedException {
+    public Map<String, byte[]> createBinaries(EnumSet<WasmBinaryTools.WabtOption> wabtOptions) throws IOException, InterruptedException {
         HashMap<String, byte[]> binaries = new LinkedHashMap<>();
         for (Map.Entry<String, Object> entry : fileContents.entrySet()) {
             String filename = entry.getKey();
             Object content = entry.getValue();
             if (content instanceof String) {
-                binaries.put(filename, WasmBinaryTools.compileWat(name() + "-" + filename, (String) content));
+                binaries.put(filename, WasmBinaryTools.compileWat(name() + "-" + filename, (String) content, wabtOptions));
             } else if (content instanceof byte[]) {
                 binaries.put(filename, (byte[]) content);
             } else {

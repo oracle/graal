@@ -25,10 +25,11 @@
 package org.graalvm.compiler.hotspot.test;
 
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
-import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.LibGraalScope;
 import org.junit.Assume;
 import org.junit.Test;
+
+import com.oracle.truffle.runtime.hotspot.libgraal.LibGraal;
+import com.oracle.truffle.runtime.hotspot.libgraal.LibGraalScope;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 

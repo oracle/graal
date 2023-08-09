@@ -81,10 +81,16 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CounterModeAESCryptOp;
 import org.graalvm.compiler.lir.aarch64.AArch64EncodeArrayOp;
 import org.graalvm.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
+import org.graalvm.compiler.lir.aarch64.AArch64HaltOp;
 import org.graalvm.compiler.lir.aarch64.AArch64HasNegativesOp;
+import org.graalvm.compiler.lir.aarch64.AArch64MD5Op;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
 import org.graalvm.compiler.lir.aarch64.AArch64PauseOp;
+import org.graalvm.compiler.lir.aarch64.AArch64SHA1Op;
+import org.graalvm.compiler.lir.aarch64.AArch64SHA256Op;
+import org.graalvm.compiler.lir.aarch64.AArch64SHA3Op;
+import org.graalvm.compiler.lir.aarch64.AArch64SHA512Op;
 import org.graalvm.compiler.lir.aarch64.AArch64SpeculativeBarrier;
 import org.graalvm.compiler.lir.aarch64.AArch64StringLatin1InflateOp;
 import org.graalvm.compiler.lir.aarch64.AArch64StringUTF16CompressOp;
@@ -738,6 +744,31 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
+    public void emitSha1ImplCompress(Value buf, Value state) {
+        append(new AArch64SHA1Op(this, asAllocatable(buf), asAllocatable(state)));
+    }
+
+    @Override
+    public void emitSha256ImplCompress(Value buf, Value state) {
+        append(new AArch64SHA256Op(this, asAllocatable(buf), asAllocatable(state)));
+    }
+
+    @Override
+    public void emitSha3ImplCompress(Value buf, Value state, Value blockSize) {
+        append(new AArch64SHA3Op(this, asAllocatable(buf), asAllocatable(state), asAllocatable(blockSize)));
+    }
+
+    @Override
+    public void emitSha512ImplCompress(Value buf, Value state) {
+        append(new AArch64SHA512Op(this, asAllocatable(buf), asAllocatable(state)));
+    }
+
+    @Override
+    public void emitMD5ImplCompress(Value buf, Value state) {
+        append(new AArch64MD5Op(this, asAllocatable(buf), asAllocatable(state)));
+    }
+
+    @Override
     public Variable emitCalcStringAttributes(CalcStringAttributesEncoding encoding, EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value offset, Value length, boolean assumeValid) {
         Variable result = newVariable(LIRKind.value(encoding == CalcStringAttributesEncoding.UTF_8 || encoding == CalcStringAttributesEncoding.UTF_16 ? AArch64Kind.QWORD : AArch64Kind.DWORD));
         append(new AArch64CalcStringAttributesOp(this, encoding, emitConvertNullToZero(array), asAllocatable(offset), asAllocatable(length), result, assumeValid));
@@ -794,6 +825,11 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     @Override
     public void emitPause() {
         append(new AArch64PauseOp());
+    }
+
+    @Override
+    public void emitHalt() {
+        append(new AArch64HaltOp());
     }
 
     @Override

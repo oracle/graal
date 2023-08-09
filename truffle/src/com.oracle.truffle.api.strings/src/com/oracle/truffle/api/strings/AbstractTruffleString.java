@@ -638,6 +638,16 @@ public abstract class AbstractTruffleString {
     }
 
     /**
+     * Shorthand for calling the uncached version of {@link TruffleString.MaterializeNode}.
+     *
+     * @since 23.1
+     */
+    @TruffleBoundary
+    public void materializeUncached(AbstractTruffleString a, Encoding expectedEncoding) {
+        TruffleString.MaterializeNode.getUncached().execute(a, expectedEncoding);
+    }
+
+    /**
      * Shorthand for calling the uncached version of {@link TruffleString.GetCodeRangeNode}.
      *
      * @since 22.1
@@ -1215,6 +1225,16 @@ public abstract class AbstractTruffleString {
     @TruffleBoundary
     public final TruffleString switchEncodingUncached(TruffleString.Encoding targetEncoding) {
         return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding);
+    }
+
+    /**
+     * Shorthand for calling the uncached version of {@link TruffleString.SwitchEncodingNode}.
+     *
+     * @since 23.1
+     */
+    @TruffleBoundary
+    public final TruffleString switchEncodingUncached(TruffleString.Encoding targetEncoding, TranscodingErrorHandler errorHandler) {
+        return TruffleString.SwitchEncodingNode.getUncached().execute(this, targetEncoding, errorHandler);
     }
 
     /**

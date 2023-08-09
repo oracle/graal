@@ -67,6 +67,7 @@ public class FrameStateAssignmentPhase extends Phase {
         @Override
         protected FrameState processNode(FixedNode node, FrameState previousState) {
             FrameState currentState = previousState;
+
             if (node instanceof DeoptimizingNode.DeoptBefore) {
                 DeoptimizingNode.DeoptBefore deopt = (DeoptimizingNode.DeoptBefore) node;
                 if (deopt.canDeoptimize() && deopt.stateBefore() == null) {

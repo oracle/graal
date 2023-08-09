@@ -3,7 +3,7 @@ layout: docs
 toc_group: contributing
 link_title: Code Style
 permalink: /reference-manual/native-image/contributing/CodeStyle/
-redirect_from: /$version/reference-manual/native-image/CodeStyle/
+redirect_from: /reference-manual/native-image/CodeStyle/
 ---
 
 # Native Image Code Style

@@ -36,7 +36,6 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -48,6 +47,7 @@ import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class MaterializedFrameTest extends PartialEvaluationTest {
     private static RootNode createRootNode() {

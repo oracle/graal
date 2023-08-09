@@ -198,7 +198,7 @@ public class CompilationUnit {
      * example:
      *
      * <pre>
-     * Compilation unit 15614 consumed 27.77% of Graal execution, 1.37% of total in experiment 1
+     * Compilation unit 15614 consumed 27.77% of Graal execution,  1.37% of total in experiment 1
      * </pre>
      *
      * @return a header identifying this compilation unit
@@ -206,7 +206,7 @@ public class CompilationUnit {
     @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
-        sb.append("Compilation ").append(getCompilationKind()).append(' ').append(getCompilationId());
+        sb.append("Compilation ").append(getCompilationKind()).append(' ').append(String.format("%5s", getCompilationId()));
         if (multiMethodKey != null) {
             sb.append(" of multi-method ").append(multiMethodKey);
         }
@@ -226,16 +226,16 @@ public class CompilationUnit {
      * Example of a returned string:
      *
      * <pre>
-     * 10.05% of Graal execution, 4.71% of total
+     * 10.05% of Graal execution,  4.71% of total
      * </pre>
      *
      * @return a summary of the relative execution time
      */
     public String createExecutionSummary() {
         assert method.getExperiment().isProfileAvailable();
-        String graalPercent = String.format("%.2f", (double) period / method.getExperiment().getGraalPeriod() * 100);
-        String totalPercent = String.format("%.2f", (double) period / method.getExperiment().getTotalPeriod() * 100);
-        return graalPercent + "% of Graal execution, " + totalPercent + "% of total";
+        double graalPercent = (double) period / method.getExperiment().getGraalPeriod() * 100;
+        double totalPercent = (double) period / method.getExperiment().getTotalPeriod() * 100;
+        return String.format("%5.2f%% of Graal execution, %5.2f%% of total", graalPercent, totalPercent);
     }
 
     /**

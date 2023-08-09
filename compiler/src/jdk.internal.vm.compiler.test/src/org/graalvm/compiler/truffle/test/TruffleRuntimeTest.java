@@ -61,7 +61,7 @@ public class TruffleRuntimeTest {
         TruffleRuntime runtime = Truffle.getRuntime();
         TVMCI tvmci = runtime.getCapability(TVMCI.class);
         assertNotNull("Truffle Virtual Machine Compiler Interface not found", tvmci);
-        assertEquals("GraalTVMCI", tvmci.getClass().getSimpleName());
+        assertEquals("OptimizedTVMCI", tvmci.getClass().getSimpleName());
 
         abstract class TVMCISubclass extends TVMCI {
         }

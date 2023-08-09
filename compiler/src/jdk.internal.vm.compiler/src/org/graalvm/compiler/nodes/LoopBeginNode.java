@@ -209,6 +209,10 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
         return canNeverOverflow;
     }
 
+    public boolean canOverflow() {
+        return !canNeverOverflow();
+    }
+
     public boolean isRotated() {
         return rotated;
     }
@@ -591,4 +595,5 @@ public final class LoopBeginNode extends AbstractMergeNode implements IterableNo
             checkDisableCountedBySpeculation(x.bci, graph());
         }
     }
+
 }

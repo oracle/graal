@@ -1,29 +1,29 @@
 # Introduction to profdiff
 
-The `mx profdiff` tool can display and compare optimization and inlining decisions performed in a compilation of a Java
+`mx profdiff` can display and compare optimization and inlining decisions performed in a compilation of a Java
 application. The output can be augmented with an application profile captured
 by [proftool](https://github.com/graalvm/mx/blob/master/README-proftool.md). Proftool data enables the tool to identify
 the hottest compilation units.
 
-The tool can compare optimization decisions between 2 runs of one application. It finds differences between the hottest
-compilations by utilizing tree diffing algorithms. A compilation unit consists of an inlining tree and optimization
-tree. Read `OptimizationLog.md` first to understand the meaning of the trees. It is possible to compare 2 JIT
-compilation or a JIT compilation with an AOT compilation.
+The tool can compare optimization decisions between two runs of one application. It finds differences between the
+hottest compilations by utilizing tree-diffing algorithms. A compilation unit consists of an inlining tree and
+optimization tree. Read `OptimizationLog.md` first to understand the trees. It is possible to compare two JIT
+compilations, a JIT compilation with an AOT compilation, or two AOT compilations.
 
-The tool reads the data produced by the optimization log. The optimization log is enabled by
-the `-Dgraal.OptimizationLog` flag (`-H:OptimizationLog` for Native Image). Read `OptimizationLog.md` to learn more.
+The tool reads data from the optimization log, which is enabled using the flag `-Dgraal.OptimizationLog`
+(`-H:OptimizationLog` for Native Image). Read `OptimizationLog.md` to learn more.
 
 ## Usage
 
-There are 3 general use cases:
+There is a separate command for each use cae:
 
-- display the optimization log of one experiment, optionally providing proftool data,
-- compare 2 JIT experiments including proftool data,
-- compare a JIT experiment (including proftool data) with an AOT experiment.
+- `mx profdiff report`: display the optimization log of a single JIT or AOT experiment (optionally providing a profile),
+- `mx profdiff jit-vs-jit`: compare two profiled JIT experiments,
+- `mx profdiff jit-vs-aot`: compare a profiled JIT experiment with an (optionally profiled) AOT experiment,
+- `mx profdiff aot-vs-aot`: compare two profiled AOT experiments,
+- `mx profdiff aot-vs-aot-jit-profile`: compare two AOT experiments using an external profile from a JIT experiment.
 
-These use cases are implemented as the commands `mx profdiff report`, `mx profdiff jit-vs-jit`,
-and `mx profdiff jit-vs-aot` respectively. Run `mx profdiff help` to show the general help or `mx profdiff help COMMAND`
-to show help for a command.
+Run `mx profdiff help` to show the general help or `mx profdiff help COMMAND` to show help for a command.
 
 ## Example: benchmark without a profile
 
@@ -48,12 +48,13 @@ method names and the inlining and optimization trees are printed for each compil
 ## Example: benchmark with a profile
 
 To focus only on the most important compilation units, i.e. the most frequently executed compilations, it is possible to
-make use of a profile collected by proftool.
+collect a profile using proftool.
 
 Note that the directory with the optimization logs must be cleared before the experiment (`rm -rf scrabble_log`),
-otherwise the logs will get merged together.
+otherwise the logs get merged together.
 
 ```sh
+rm -rf proftool_scrabble_*
 mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
   -Dgraal.OptimizationLogPath=$PWD/scrabble_log
 ```
@@ -61,11 +62,10 @@ mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.
 If the application subject to experiment is not a benchmark supported by `mx benchmark`, use `mx profrecord` as per
 the [proftool documentation](https://github.com/graalvm/mx/blob/master/README-proftool.md).
 
-Proftool creates a directory named like `proftool_scrabble_2022-10-14_143325`. The generated proftool data must be
-now converted to JSON.
+Convert the proftool data to a JSON file:
 
 ```sh
-mx profjson -E proftool_scrabble_2022-10-14_143325 -o scrabble_prof.json
+mx profjson -E proftool_scrabble_* -o scrabble_prof.json
 ```
 
 Finally, use profdiff to view the results:
@@ -74,30 +74,32 @@ Finally, use profdiff to view the results:
 mx profdiff report scrabble_log scrabble_prof.json
 ```
 
-## Example: compare 2 JIT benchmarks
+## Example: compare two JIT benchmarks
 
-Run a benchmark with the optimization log, node source positions and proftool. After that, convert the proftool data to
-JSON.
+Run a benchmark with the optimization log, node source positions, and proftool. After that, convert the proftool data to
+a JSON file.
 
 ```sh
+rm -rf proftool_scrabble_*
 mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
   -Dgraal.OptimizationLogPath=$PWD/scrabble_log
-mx profjson -E proftool_scrabble_2022-07-05_140847 -o scrabble_prof.json
+mx profjson -E proftool_scrabble_* -o scrabble_prof.json
 ```
 
-Now, we could run the experiment again with a different compiler revision. It is however sufficient to run the same
+Now, we could rerun the experiment with a different compiler revision. It is, however, sufficient to run the same
 experiment again and get a slightly different result, which is caused by the inherent nondeterminism of a JIT compiler.
 
 ```sh
+rm -rf proftool_scrabble_*
 mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
-  -Dgraal.OptimizationLogPath=$PWD/scrabble_log2
-mx profjson -E proftool_scrabble_2022-07-05_141855 -o scrabble_prof2.json
+  -Dgraal.OptimizationLogPath=$PWD/scrabble_log_2
+mx profjson -E proftool_scrabble_* -o scrabble_prof_2.json
 ```
 
 Use the tool to diff the experiments:
 
 ```sh
-mx profdiff jit-vs-jit scrabble_prof.json scrabble_log scrabble_prof2.json scrabble_log2
+mx profdiff jit-vs-jit scrabble_log scrabble_prof.json scrabble_log_2 scrabble_prof_2.json
 ```
 
 ## Example: compare JIT and AOT
@@ -105,26 +107,62 @@ mx profdiff jit-vs-jit scrabble_prof.json scrabble_log scrabble_prof2.json scrab
 Start with a profiled JIT benchmark and convert the proftool data:
 
 ```sh
+rm -rf proftool_scrabble_*
 mx benchmark renaissance:scrabble --tracker none -- --profiler proftool -Dgraal.OptimizationLog=Directory \
   -Dgraal.OptimizationLogPath=$PWD/jit_scrabble_log
-mx profjson -E proftool_scrabble_2022-07-05_140847 -o scrabble_prof.json
+mx profjson -E proftool_scrabble_* -o jit_scrabble_prof.json
 ```
 
-Run the AOT version of the benchmark from the `vm` directory:
+Run the AOT version of the benchmark:
 
 ```sh
-cd ../vm
-mx --env ni-ce build
-mx --env ni-ce benchmark renaissance-native-image:scrabble -- --jvm=native-image --jvm-config=default-ce \
+mx -p ../vm --env ni-ce benchmark renaissance-native-image:scrabble -- --jvm=native-image --jvm-config=default-ce \
   -Dnative-image.benchmark.extra-image-build-argument=-H:+TrackNodeSourcePosition \
   -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLog=Directory \
   -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLogPath=$PWD/aot_scrabble_log
 ```
 
-Finally, compare the logs. The profiles from the JIT run determine hot methods in AOT.
+Finally, compare the experiments. The profiles from the JIT run determine hot methods in AOT.
 
 ```sh
-mx profdiff jit-vs-aot ../compiler/jit_scrabble_log ../compiler/scrabble_prof.json aot_scrabble_log
+mx profdiff jit-vs-aot jit_scrabble_log jit_scrabble_prof.json aot_scrabble_log
+```
+
+### Adding an AOT profile
+
+It is possible to build the image with debug symbols and run it with proftool:
+
+```sh
+rm -rf proftool_scrabble_* aot_scrabble_log
+mx -p ../vm --env ni-ce benchmark renaissance-native-image:scrabble --tracker none -- \
+  --profiler proftool --jvm=native-image --jvm-config=default-ce \
+  -Dnative-image.benchmark.extra-image-build-argument=-H:+TrackNodeSourcePosition \
+  -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLog=Directory \
+  -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLogPath=$PWD/aot_scrabble_log
+```
+
+Now, convert the profile and pass it to profdiff:
+
+```sh
+mx profjson -E proftool_scrabble_* -o aot_scrabble_prof.json
+mx profdiff jit-vs-aot jit_scrabble_log jit_scrabble_prof.json aot_scrabble_log aot_scrabble_prof.json
+```
+
+# Example: compare two AOT experiments
+
+It is possible to execute and compare two AOT experiments with profiles:
+
+```sh
+for i in 1 2; do
+    rm -rf proftool_scrabble_*
+    mx -p ../vm --env ni-ce benchmark renaissance-native-image:scrabble --tracker none -- \
+        --profiler proftool --jvm=native-image --jvm-config=default-ce \
+        -Dnative-image.benchmark.extra-image-build-argument=-H:+TrackNodeSourcePosition \
+        -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLog=Directory \
+        -Dnative-image.benchmark.extra-image-build-argument=-H:OptimizationLogPath=$PWD/scrabble_log_$i
+    mx profjson -E proftool_scrabble_* -o scrabble_prof_$i.json
+done
+mx profdiff aot-vs-aot scrabble_log_1 scrabble_prof_1.json scrabble_log_2 scrabble_prof_2.json
 ```
 
 # Profdiff documentation
@@ -162,7 +200,7 @@ sorted. The goal is to establish a fixed order of optimization phases across com
 superfluous differences found by the tree diffing algorithm. This is enabled by default.
 
 Selected optimization phases are removed from the optimization tree when `--remove-detailed-phases` is enabled. These
-include the canonicalizer, dead code elimination, and inlining phases. This is enabled by default.
+include the canonicalizer and dead code elimination. This is enabled by default.
 
 If `--prune-identities` is enabled, only the differences with context between two
 optimization/inlining/optimization-context trees are displayed, i.e., the identities are pruned. This is enabled by
@@ -175,18 +213,20 @@ If `--inliner-reasoning` is enabled, reasons for all inlining decisions are prin
 
 ## Hot compilation units
 
-Proftool samples the number of cycles spent executing each compilation unit. The tool marks some of the compilation
-units with the highest timeshare as *hot*. This is a different term than "hot" in the context of HotSpot. More
-precisely, the tool marks some *compilations units* as hot, whereas all the available methods (rather than their
-compilations) are considered hot in HotSpot's terminology.
+Proftool samples the number of cycles spent executing each native method. Profdiff reports two numbers for each
+compilation unit, e.g., `20.00% of Graal execution, 10.00% of total`. This means that proftool sampled 10% of all cycles
+in this compilation unit, and relative to only Graal-compiled compilation units, 20% of cycles were sampled in this
+compilation unit. For compilation fragments, profdiff reports the statistics of the compilation unit from which the
+fragment originates.
 
-The algorithm to mark hot methods works as follows:
+Profdiff marks some of the compilation units with the highest timeshare as *hot*. Note that this is a different term
+than "hot" in the context of HotSpot. The algorithm to mark hot compilation units works as follows:
 
 - for each experiment separately
-  - sort all graal-compiled compilation units by their execution period (highest first)
+  - sort all Graal-compiled compilation units by their sampled execution period (highest first)
   - mark the first compilation as hot (the number can be adjusted by the `--hot-min-limit` parameter)
-  - keep marking the compilations as hot while the total timeshare of hot compilations is less than
-    90% (`--hot-percentile`) of total graal-compiled method execution and the number of hot compilations is less than
+  - keep marking the compilations as hot while the total timeshare of hot compilation units is less than
+    90% (`--hot-percentile`) of total Graal-compiled method execution and the number of hot compilations is less than
     10 (`--hot-max-limit`)
 
 ## Node source positions
@@ -356,14 +396,14 @@ Method java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Sp
     In experiment 1
         3 compilations (1 of which are hot)
         Compilations
-            9068 (19.74% of Graal execution, 11.64% of total) *hot*
-            7878 (0.00% of Graal execution, 0.00% of total)
-            9003 (0.00% of Graal execution, 0.00% of total)
+             9068 consumed 19.74% of Graal execution, 11.64% of total *hot*
+             7878 consumed  0.00% of Graal execution,  0.00% of total
+             9003 consumed  0.00% of Graal execution,  0.00% of total
     In experiment 2
         2 compilations (1 of which are hot)
         Compilations
-            12622 (16.24% of Graal execution, 9.74% of total) *hot*
-            9215 (0.06% of Graal execution, 0.04% of total)
+            12622 consumed 16.24% of Graal execution,  9.74% of total *hot*
+             9215 consumed  0.06% of Graal execution,  0.04% of total
 ```
 
 We can see that the root method `java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Spliterator)`
@@ -392,8 +432,8 @@ Consider the following example:
 ```
 Method java.util.stream.ReduceOps$ReduceOp.evaluateSequential(PipelineHelper, Spliterator)
     ...
-    Compilation 9068 (19.74% of Graal execution, 11.64% of total) in experiment 1 vs compilation 12622 (16.24% of Graal
-    execution, 9.74% of total) in experiment 2
+    Compilation unit  9068 consumed 19.74% of Graal execution, 11.64% of total in experiment 1 vs
+    Compilation unit 12622 consumed 16.24% of Graal execution,  9.74% of total in experiment 2
         . RootPhase
             . Parsing
                 . GraphBuilderPhase

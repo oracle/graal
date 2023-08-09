@@ -193,15 +193,10 @@ public class NativeImageGeneratorRunner {
                         "java.base",
                         "java.management",
                         "jdk.management",
-                        "jdk.management.agent", // READ-BY org.graalvm.nativeimage.builder
-                        "java.management.rmi", // READ-BY jdk.management.agent
-                        "java.rmi",
-                        "java.logging", // READ-BY java.rmi READ-BY java.management.rmi
-                        "java.naming",
-                        "java.security.sasl", // READ-BY java.naming READ-BY java.management.rmi
                         "java.compiler",
-                        "jdk.management.jfr",
-                        "jdk.jfr");
+                        "jdk.jfr",
+                        "jdk.zipfs",
+                        "jdk.management.jfr");
 
         Set<String> unexpectedBuilderDependencies = modulesBuilderDependsOn.stream().map(Module::getName).collect(Collectors.toSet());
         unexpectedBuilderDependencies.removeAll(expectedBuilderDependencies);
@@ -229,6 +224,8 @@ public class NativeImageGeneratorRunner {
                                 potentialNeedModule.getName().startsWith("org.graalvm.") ||
                                 /* enterprise graal */
                                 potentialNeedModule.getName().startsWith("com.oracle.graal.") ||
+                                /* exclude all truffle modules */
+                                potentialNeedModule.getName().startsWith("com.oracle.truffle.") ||
                                 /* llvm-backend optional dependencies */
                                 potentialNeedModule.getName().startsWith("com.oracle.svm.shadowed.")) {
                     continue;
@@ -738,6 +735,9 @@ public class NativeImageGeneratorRunner {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.reflect.annotation");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.security.jca");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.jdeps", "com.sun.tools.classfile");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle.runtime");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle.compiler");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "com.oracle.truffle.enterprise");
         }
     }
 }

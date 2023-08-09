@@ -38,7 +38,7 @@ import org.graalvm.compiler.asm.amd64.AVXKind;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -50,11 +50,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp",
-          lineStart = 907,
-          lineEnd   = 999,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
-          sha1      = "beab5f4817b620d98201e17dc1e07f680177b147")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/d7b941640638b35f9ac1ef11cd6bf6ccb795c29a/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L917-L1009",
+          sha1 = "beab5f4817b620d98201e17dc1e07f680177b147")
 // @formatter:on
 public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -140,13 +140,17 @@ public abstract class BuiltinModule {
     }
 
     protected void defineExternalMemory(WasmInstance instance, String memoryName, WasmMemory externalMemory) {
-        instance.symbolTable().allocateExternalMemory(externalMemory);
-        instance.symbolTable().exportMemory(memoryName);
+        final boolean multiMemory = instance.context().getContextOptions().supportMultiMemory();
+        int index = instance.symbolTable().memoryCount();
+        instance.symbolTable().allocateExternalMemory(index, externalMemory, multiMemory);
+        instance.symbolTable().exportMemory(index, memoryName);
     }
 
-    protected void defineMemory(WasmInstance instance, String memoryName, int initSize, int maxSize, boolean is64Bit) {
-        instance.symbolTable().allocateMemory(initSize, maxSize, is64Bit);
-        instance.symbolTable().exportMemory(memoryName);
+    protected void defineMemory(WasmInstance instance, String memoryName, int initSize, int maxSize, boolean is64Bit, boolean isShared) {
+        int index = instance.symbolTable().memoryCount();
+        // set multiMemory flag to true, since spectest module has multiple memories
+        instance.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, isShared, true);
+        instance.symbolTable().exportMemory(index, memoryName);
     }
 
     protected void importFunction(WasmInstance instance, String importModuleName, String importFunctionName, byte[] paramTypes, byte[] retTypes, String exportName) {
@@ -155,8 +159,10 @@ public abstract class BuiltinModule {
         instance.symbolTable().exportFunction(function.index(), exportName);
     }
 
-    protected void importMemory(WasmInstance instance, String importModuleName, String memoryName, int initSize, long maxSize, boolean is64Bit) {
-        instance.symbolTable().importMemory(importModuleName, memoryName, initSize, maxSize, is64Bit);
+    protected void importMemory(WasmInstance instance, String importModuleName, String memoryName, int initSize, long maxSize, boolean is64Bit, boolean isShared) {
+        final boolean multiMemory = instance.context().getContextOptions().supportMultiMemory();
+        int index = instance.symbolTable().memoryCount();
+        instance.symbolTable().importMemory(importModuleName, memoryName, index, initSize, maxSize, is64Bit, isShared, multiMemory);
     }
 
     protected byte[] types(byte... args) {

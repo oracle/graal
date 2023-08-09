@@ -28,7 +28,6 @@ import java.util.Iterator;
 
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -36,6 +35,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class TruffleBoundaryInliningTest extends PartialEvaluationTest {
 

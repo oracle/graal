@@ -47,6 +47,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.invoke.MethodHandles.Lookup;
 import java.lang.reflect.Constructor;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
@@ -61,6 +62,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.locks.Lock;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -68,7 +70,7 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
-import com.oracle.truffle.api.provider.TruffleLanguageProvider;
+import com.oracle.truffle.api.InternalResource;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
@@ -124,6 +126,7 @@ import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.api.source.SourceSection;
@@ -311,6 +314,9 @@ public abstract class Accessor {
 
         public abstract Node inlineToHostNode(Object target);
 
+        public abstract boolean bigIntegerFitsInFloat(BigInteger b);
+
+        public abstract boolean bigIntegerFitsInDouble(BigInteger b);
     }
 
     public abstract static class EngineSupport extends Support {
@@ -569,6 +575,8 @@ public abstract class Accessor {
 
         public abstract String getRelativePathInLanguageHome(TruffleFile truffleFile);
 
+        public abstract TruffleFile relativizeToInternalResourceCache(TruffleFile truffleFile);
+
         public abstract void onSourceCreated(Source source);
 
         public abstract void registerOnDispose(Object engineObject, Closeable closeable);
@@ -749,6 +757,10 @@ public abstract class Accessor {
         public abstract SandboxPolicy getEngineSandboxPolicy(Object polyglotInstrument);
 
         public abstract void ensureInstrumentCreated(Object polyglotContextImpl, String instrumentId);
+
+        public abstract TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException;
+
+        public abstract TruffleFile getInternalResource(Object owner, String resourceId) throws IOException;
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -811,6 +823,8 @@ public abstract class Accessor {
 
         public abstract void initializeMultiThreading(Env env);
 
+        public abstract void finalizeThread(Env env, Thread thread);
+
         public abstract void disposeThread(Env env, Thread thread);
 
         public abstract void finalizeContext(Env localEnv);
@@ -851,11 +865,11 @@ public abstract class Accessor {
 
         public abstract TruffleFile getTruffleFile(String path, Object fileSystemContext);
 
+        public abstract TruffleFile getTruffleFile(Path path, Object fileSystemContext);
+
+        public abstract TruffleFile getTruffleFile(URI uri, Object fileSystemContext);
+
         public abstract boolean isSocketIOAllowed(Object fileSystemContext);
-
-        public abstract TruffleFile getTruffleFile(Object context, String path);
-
-        public abstract TruffleFile getTruffleFile(Object context, URI uri);
 
         public abstract FileSystem getFileSystem(TruffleFile truffleFile);
 
@@ -884,6 +898,8 @@ public abstract class Accessor {
         public abstract void performTLAction(ThreadLocalAction action, ThreadLocalAction.Access access);
 
         public abstract OptionDescriptors createOptionDescriptorsUnion(OptionDescriptors... descriptors);
+
+        public abstract InternalResource.Env createInternalResourceEnv(InternalResource resource, BooleanSupplier contextPreinitializationCheck);
 
     }
 
@@ -1222,6 +1238,11 @@ public abstract class Accessor {
         }
 
         public abstract boolean isLegacyCompilerOption(String key);
+
+        public abstract <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination);
+
+        public abstract Collection<InternalResource> getInternalResources();
+
     }
 
     public abstract static class LanguageProviderSupport extends Support {
@@ -1240,6 +1261,10 @@ public abstract class Accessor {
 
         public abstract List<FileTypeDetector> createFileTypeDetectors(TruffleLanguageProvider provider);
 
+        public abstract List<String> getInternalResourceIds(TruffleLanguageProvider provider);
+
+        public abstract InternalResource createInternalResource(TruffleLanguageProvider provider, String resourceId);
+
     }
 
     public abstract static class InstrumentProviderSupport extends Support {
@@ -1255,6 +1280,10 @@ public abstract class Accessor {
         public abstract Object create(Object truffleInstrumentProvider);
 
         public abstract Collection<String> getServicesClassNames(Object truffleInstrumentProvider);
+
+        public abstract List<String> getInternalResourceIds(Object truffleInstrumentProvider);
+
+        public abstract InternalResource createInternalResource(Object truffleInstrumentProvider, String resourceId);
     }
 
     public abstract static class DynamicObjectSupport extends Support {
@@ -1349,7 +1378,7 @@ public abstract class Accessor {
                         "com.oracle.truffle.api.test.TestAPIAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.TVMCIAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.DefaultRuntimeAccessor".equals(thisClassName) ||
-                        "org.graalvm.compiler.truffle.runtime.GraalRuntimeAccessor".equals(thisClassName) ||
+                        "com.oracle.truffle.runtime.OptimizedRuntimeAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.dsl.DSLAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.impl.ImplAccessor".equals(thisClassName) ||
                         "com.oracle.truffle.api.memory.MemoryFenceAccessor".equals(thisClassName) ||

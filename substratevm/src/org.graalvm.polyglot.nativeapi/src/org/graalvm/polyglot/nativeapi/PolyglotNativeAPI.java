@@ -36,23 +36,22 @@ import java.nio.ByteBuffer;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map.Entry;
 import java.util.Objects;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.SynchronousQueue;
-import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Threading;
+import org.graalvm.nativeimage.Threading.RecurringCallback;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.VMRuntime;
 import org.graalvm.nativeimage.c.CHeader;
@@ -73,6 +72,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Language;
 import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
@@ -117,11 +117,13 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.handles.ObjectHandlesImpl;
-import com.oracle.svm.core.handles.ThreadLocalHandles;
+import com.oracle.svm.core.headers.LibC;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jvmstat.PerfDataSupport;
 import com.oracle.svm.core.thread.ThreadingSupportImpl;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
+import com.oracle.svm.core.util.UnsignedUtils;
 
 // Checkstyle: stop method name check
 
@@ -137,7 +139,6 @@ public final class PolyglotNativeAPI {
     private static final UnsignedWord POLY_AUTO_LENGTH = WordFactory.unsigned(0xFFFFFFFFFFFFFFFFL);
     private static final int DEFAULT_FRAME_CAPACITY = 16;
 
-    private static final ThreadLocal<CallbackException> exceptionsTL = new ThreadLocal<>();
     private static final FastThreadLocalObject<ThreadLocalState> threadLocals = FastThreadLocalFactory.createObject(ThreadLocalState.class, "PolyglotNativeAPI.threadLocals");
 
     private static ThreadLocalState ensureLocalsInitialized() {
@@ -149,19 +150,19 @@ public final class PolyglotNativeAPI {
         return state;
     }
 
-    private static ThreadLocalHandles<PolyglotNativeAPITypes.PolyglotHandle> getHandles() {
+    private static PolyglotThreadLocalHandles<PolyglotNativeAPITypes.PolyglotHandle> getHandles() {
         ThreadLocalState locals = ensureLocalsInitialized();
         if (locals.handles == null) {
-            locals.handles = new ThreadLocalHandles<>(DEFAULT_FRAME_CAPACITY);
+            locals.handles = new PolyglotThreadLocalHandles<>(DEFAULT_FRAME_CAPACITY);
         }
         return locals.handles;
     }
 
     private static final ObjectHandlesImpl objectHandles = new ObjectHandlesImpl(
-                    WordFactory.signed(Long.MIN_VALUE), ThreadLocalHandles.nullHandle().subtract(1), ThreadLocalHandles.nullHandle());
+                    WordFactory.signed(Long.MIN_VALUE), PolyglotThreadLocalHandles.nullHandle().subtract(1), PolyglotThreadLocalHandles.nullHandle());
 
     private static final class ThreadLocalState {
-        ThreadLocalHandles<PolyglotNativeAPITypes.PolyglotHandle> handles;
+        PolyglotThreadLocalHandles<PolyglotNativeAPITypes.PolyglotHandle> handles;
 
         Throwable lastException;
         PolyglotExtendedErrorInfo lastExceptionUnmanagedInfo;
@@ -169,6 +170,8 @@ public final class PolyglotNativeAPI {
         PolyglotException polyglotException;
 
         PolyglotStatus lastErrorCode = poly_ok;
+
+        CallbackException callbackException = null;
     }
 
     private static void nullCheck(PointerBase ptr, String fieldName) {
@@ -177,18 +180,68 @@ public final class PolyglotNativeAPI {
         }
     }
 
-    private static final ExecutorService closeContextExecutor = new ThreadPoolExecutor(0, Integer.MAX_VALUE, 5L, TimeUnit.SECONDS, new SynchronousQueue<>());
+    private static final AtomicReference<Context> contextToClose = new AtomicReference<>(null);
+
+    /**
+     * This thread is used to periodically close requested contexts. Note only one context closure
+     * request can be pending at any time.
+     */
+    private static final ContextCloserThread contextCloserThread = new ContextCloserThread();
+
+    private static class ContextCloserThread extends Thread {
+        ContextCloserThread() {
+            setDaemon(true);
+        }
+
+        @Override
+        public void run() {
+            try {
+                while (true) {
+                    Thread.sleep(200);
+                    Context context = contextToClose.getAndSet(null);
+                    if (context != null) {
+                        try {
+                            context.close(true);
+                        } catch (Exception t) {
+                            // unable to close context, but should continue execution.
+                        }
+                    }
+                }
+            } catch (InterruptedException e) {
+                // The normal way how this thread exits
+            }
+        }
+    }
+
+    static RuntimeSupport.Hook startupHook = (isFirstIsolate) -> contextCloserThread.start();
+
+    private static String[] getPermittedLanguages(CCharPointerPointer permitted_languages, UnsignedWord length) {
+        if (length.aboveThan(0)) {
+            nullCheck(permitted_languages, "permitted_languages");
+        }
+        if (length.aboveThan(Integer.MAX_VALUE - 8)) {
+            throw new IllegalArgumentException("permitted language array length is too large");
+        }
+        int intLength = UnsignedUtils.safeToInt(length);
+        String[] jPermittedLangs = new String[intLength];
+        for (int i = 0; i < intLength; i++) {
+            jPermittedLangs[i] = CTypeConversion.toJavaString(permitted_languages.read(i));
+        }
+        return jPermittedLangs;
+    }
 
     @CEntryPoint(name = "poly_create_engine_builder", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Creates a new context builder that allows to configure an engine instance.",
                     "",
+                    "@param permittedLanguages array of 0 terminated language identifiers in UTF-8 that are permitted.",
+                    "@param length of the array of language identifiers.",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.html#newBuilder--",
-                    "@since 19.0",
+                    "@since 23.1",
     })
-    public static PolyglotStatus poly_create_engine_builder(PolyglotIsolateThread thread, PolyglotEngineBuilderPointer result) {
+    public static PolyglotStatus poly_create_engine_builder(PolyglotIsolateThread thread, @CConst CCharPointerPointer permitted_languages, UnsignedWord length, PolyglotEngineBuilderPointer result) {
         resetErrorState();
         nullCheck(result, "result");
-        ObjectHandle handle = createHandle(Engine.newBuilder());
+        ObjectHandle handle = createHandle(Engine.newBuilder(getPermittedLanguages(permitted_languages, length)));
         result.write(handle);
         return poly_ok;
     }
@@ -229,6 +282,50 @@ public final class PolyglotNativeAPI {
         nullCheck(value_utf8, "value_utf8");
         Engine.Builder eb = fetchHandle(engine_builder);
         eb.option(CTypeConversion.utf8ToJavaString(key_utf8), CTypeConversion.utf8ToJavaString(value_utf8));
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_engine_builder_output", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Sets output handlers for a <code>poly_engine_builder</code>.",
+                    "",
+                    "@param engine_builder that is modified.",
+                    "@param stdout_handler callback used for engine_builder output stream. Not used if NULL.",
+                    "@param stderr_handler callback used for engine_builder error stream. Not used if NULL.",
+                    "@param data user-defined data to be passed to stdout_handler and stderr_handler callbacks.",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#out-java.io.OutputStream-",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#err-java.io.OutputStream-",
+                    "@since 23.1",
+    })
+    public static PolyglotStatus poly_engine_builder_output(PolyglotIsolateThread thread, PolyglotEngineBuilder engine_builder, PolyglotOutputHandler stdout_handler,
+                    PolyglotOutputHandler stderr_handler, VoidPointer data) {
+        resetErrorState();
+        nullCheck(engine_builder, "engine_builder");
+        Engine.Builder eb = fetchHandle(engine_builder);
+        if (stdout_handler.isNonNull()) {
+            eb.out(newOutputStreamFor(stdout_handler, data));
+        }
+        if (stderr_handler.isNonNull()) {
+            eb.err(newOutputStreamFor(stderr_handler, data));
+        }
+        return poly_ok;
+    }
+
+    @CEntryPoint(name = "poly_engine_builder_set_constrained_sandbox_policy", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Sets the engine's sandbox policy to CONSTRAINED.",
+                    "",
+                    "@param engine_builder that is modified.",
+                    "@return poly_ok if successful; otherwise an error occurred.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Engine.Builder.html#sandbox-org.graalvm.polyglot.SandboxPolicy-",
+                    "@since 23.1",
+    })
+    public static PolyglotStatus poly_engine_builder_set_constrained_sandbox_policy(PolyglotIsolateThread thread, PolyglotEngineBuilder engine_builder) {
+        resetErrorState();
+        nullCheck(engine_builder, "engine_builder");
+        Engine.Builder engineBuilder = fetchHandle(engine_builder);
+        engineBuilder.sandbox(SandboxPolicy.CONSTRAINED);
         return poly_ok;
     }
 
@@ -353,15 +450,8 @@ public final class PolyglotNativeAPI {
     })
     public static PolyglotStatus poly_create_context_builder(PolyglotIsolateThread thread, @CConst CCharPointerPointer permitted_languages, UnsignedWord length, PolyglotContextBuilderPointer result) {
         resetErrorState();
-        if (length.aboveThan(0)) {
-            nullCheck(permitted_languages, "permitted_languages");
-        }
         nullCheck(result, "result");
-        List<String> jPermittedLangs = new ArrayList<>();
-        for (int i = 0; length.aboveThan(i); i++) {
-            jPermittedLangs.add(CTypeConversion.toJavaString(permitted_languages.read(i)));
-        }
-        Context.Builder c = Context.newBuilder(jPermittedLangs.toArray(new String[jPermittedLangs.size()]));
+        Context.Builder c = Context.newBuilder(getPermittedLanguages(permitted_languages, length));
         result.write(createHandle(c));
         return poly_ok;
     }
@@ -562,6 +652,23 @@ public final class PolyglotNativeAPI {
         return poly_ok;
     }
 
+    @CEntryPoint(name = "poly_context_builder_set_constrained_sandbox_policy", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Sets the context's sandbox policy to CONSTRAINED.",
+                    "",
+                    "@param context_builder that is modified.",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#sandbox-org.graalvm.polyglot.SandboxPolicy-",
+                    "@since 23.1",
+    })
+    public static PolyglotStatus poly_context_builder_set_constrained_sandbox_policy(PolyglotIsolateThread thread, PolyglotContextBuilder context_builder) {
+        resetErrorState();
+        nullCheck(context_builder, "context_builder");
+        Context.Builder contextBuilder = fetchHandle(context_builder);
+        contextBuilder.sandbox(SandboxPolicy.CONSTRAINED);
+        return poly_ok;
+    }
+
     @CEntryPoint(name = "poly_context_builder_build", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Builds a <code>context</code> from a <code>context_builder</code>. The same builder can be used to ",
                     "produce multiple <code>poly_context</code> instances.",
@@ -598,20 +705,8 @@ public final class PolyglotNativeAPI {
     })
     public static PolyglotStatus poly_create_context(PolyglotIsolateThread thread, @CConst CCharPointerPointer permitted_languages, UnsignedWord length, PolyglotContextPointer result) {
         resetErrorState();
-        if (length.aboveThan(0) && permitted_languages.isNull()) {
-            throw new IllegalArgumentException("Permitted_languages should not be null when length is not zero.");
-        }
         nullCheck(result, "result");
-        Context c;
-        if (permitted_languages.isNull()) {
-            c = Context.create();
-        } else {
-            List<String> jPermittedLangs = new ArrayList<>();
-            for (int i = 0; length.aboveThan(i); i++) {
-                jPermittedLangs.add(CTypeConversion.toJavaString(permitted_languages.read(i)));
-            }
-            c = Context.create(jPermittedLangs.toArray(new String[jPermittedLangs.size()]));
-        }
+        Context c = Context.create(getPermittedLanguages(permitted_languages, length));
         result.write(createHandle(c));
         return poly_ok;
     }
@@ -645,23 +740,26 @@ public final class PolyglotNativeAPI {
         return poly_ok;
     }
 
-    @CEntryPoint(name = "poly_context_close_async", exceptionHandler = ExceptionHandler.class, documentation = {
+    @CEntryPoint(name = "poly_context_request_close_async", exceptionHandler = ExceptionHandler.class, documentation = {
                     "Request for this context to be closed asynchronously.",
                     "An attempt to closed this context will later be made via a background thread.",
-                    "Note this call will attempt to close a context; however, it is not guaranteed the closure will be successful.",
+                    "Note this call will attempt to close a context; however, it is not guaranteed the closure will be successful. ",
+                    "In addition, if another context request has already been made but hasn't been processed, then this call will not succeed.",
                     "",
                     "@param context to be closed.",
                     "@return poly_ok if closure request submitted, poly_generic_error if there is a failure.",
                     "",
                     "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.html#close-boolean-",
-                    "@since 22.3",
+                    "@since 23.1",
     })
-    public static PolyglotStatus poly_context_close_async(PolyglotIsolateThread thread, PolyglotContext context) {
+    public static PolyglotStatus poly_context_request_close_async(PolyglotIsolateThread thread, PolyglotContext context) {
         resetErrorState();
-        nullCheck(context, "context");
-        Context jContext = fetchHandle(context);
-        closeContextExecutor.execute(() -> jContext.close(true));
-        return poly_ok;
+        Context jContext = fetchHandleOrNull(context);
+        if (jContext != null && contextToClose.compareAndSet(null, jContext)) {
+            return poly_ok;
+        } else {
+            return poly_generic_failure;
+        }
     }
 
     @CEntryPoint(name = "poly_context_eval", exceptionHandler = ExceptionHandler.class, documentation = {
@@ -1860,6 +1958,7 @@ public final class PolyglotNativeAPI {
     })
     public static PolyglotStatus poly_create_function(PolyglotIsolateThread thread, PolyglotContext context, PolyglotCallback callback, VoidPointer data,
                     PolyglotValuePointer value) {
+        ensureLocalsInitialized();
         resetErrorState();
         nullCheck(context, "context");
         nullCheck(callback, "callback");
@@ -1874,14 +1973,14 @@ public final class PolyglotNativeAPI {
                 }
                 PolyglotCallbackInfo cbInfo = (PolyglotCallbackInfo) createHandle(new PolyglotCallbackInfoInternal(handleArgs, data));
                 PolyglotValue result = callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), cbInfo);
-                CallbackException ce = exceptionsTL.get();
+                CallbackException ce = threadLocals.get().callbackException;
                 if (ce != null) {
-                    exceptionsTL.remove();
                     throw ce;
                 } else {
                     return PolyglotNativeAPI.fetchHandle(result);
                 }
             } finally {
+                threadLocals.get().callbackException = null;
                 getHandles().popFramesIncluding(frame);
             }
         };
@@ -1934,7 +2033,7 @@ public final class PolyglotNativeAPI {
     public static PolyglotStatus poly_throw_exception(PolyglotIsolateThread thread, @CConst CCharPointer message_utf8) {
         resetErrorState();
         nullCheck(message_utf8, "message_utf8");
-        exceptionsTL.set(new CallbackException(CTypeConversion.utf8ToJavaString(message_utf8)));
+        threadLocals.get().callbackException = new CallbackException(CTypeConversion.utf8ToJavaString(message_utf8));
         return poly_ok;
     }
 
@@ -2011,7 +2110,7 @@ public final class PolyglotNativeAPI {
         ThreadLocalState state = threadLocals.get();
         nullCheck(result, "result");
         if (state == null || state.polyglotException == null) {
-            result.write(ThreadLocalHandles.nullHandle());
+            result.write(PolyglotThreadLocalHandles.nullHandle());
         } else {
             result.write(createHandle(state.polyglotException));
             state.polyglotException = null;
@@ -2286,6 +2385,7 @@ public final class PolyglotNativeAPI {
     }
 
     private static PolyglotStatus doRegisterRecurringCallback0(long intervalNanos, PolyglotCallback callback, VoidPointer data) {
+        ensureLocalsInitialized();
         resetErrorState();
         if (!ThreadingSupportImpl.isRecurringCallbackSupported()) {
             return poly_generic_failure;
@@ -2295,20 +2395,25 @@ public final class PolyglotNativeAPI {
             return poly_ok;
         }
         PolyglotCallbackInfoInternal info = new PolyglotCallbackInfoInternal(new ObjectHandle[0], data);
-        Threading.registerRecurringCallback(intervalNanos, TimeUnit.NANOSECONDS, access -> {
-            int frame = getHandles().pushFrame(DEFAULT_FRAME_CAPACITY);
-            try {
-                PolyglotCallbackInfo infoHandle = (PolyglotCallbackInfo) createHandle(info);
-                callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), infoHandle);
-                CallbackException ce = exceptionsTL.get();
-                if (ce != null) {
-                    exceptionsTL.remove();
-                    access.throwException(ce);
+        var infoHandle = (PolyglotCallbackInfo) objectHandles.create(info);
+        var handles = getHandles();
+        RecurringCallback recurringCallback = new RecurringCallback() {
+            @Override
+            public void run(Threading.RecurringCallbackAccess access) {
+                handles.freezeHandleCreation();
+                try {
+                    callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), infoHandle);
+                    CallbackException ce = threadLocals.get().callbackException;
+                    if (ce != null) {
+                        access.throwException(ce);
+                    }
+                } finally {
+                    threadLocals.get().callbackException = null;
+                    handles.unfreezeHandleCreation();
                 }
-            } finally {
-                getHandles().popFramesIncluding(frame);
             }
-        });
+        };
+        Threading.registerRecurringCallback(intervalNanos, TimeUnit.NANOSECONDS, recurringCallback);
         return poly_ok;
     }
 
@@ -2320,6 +2425,36 @@ public final class PolyglotNativeAPI {
             this.arguments = arguments;
             this.data = data;
         }
+    }
+
+    @CEntryPoint(name = "poly_register_log_handler_callbacks", exceptionHandler = ExceptionHandler.class, documentation = {
+                    "Registers callbacks for log functions. Note that this is expected to be called exactly once.",
+                    "The API defined in LogHandler is extended so that an additional data pointer is passed back with each action.",
+                    "",
+                    "@param data Value passed back with each action.",
+                    "@return poly_ok if all works, poly_generic_error if there is a failure.",
+                    "",
+                    "@see https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/LogHandler.html",
+                    "@since 23.1",
+    })
+    public static PolyglotStatus poly_register_log_handler_callbacks(PolyglotIsolateThread thread, PolyglotNativeAPITypes.PolyglotLogCallback logCallback,
+                    PolyglotNativeAPITypes.PolyglotFlushCallback flushCallback,
+                    PolyglotNativeAPITypes.PolyglotFatalErrorCallback fatalErrorCallback, VoidPointer data) {
+        resetErrorState();
+        nullCheck(logCallback, "logCallback");
+        nullCheck(flushCallback, "flushCallback");
+        nullCheck(fatalErrorCallback, "fatalErrorCallback");
+
+        PolyglotNativeLogHandler handler = (PolyglotNativeLogHandler) ImageSingletons.lookup(LogHandler.class);
+        if (handler.log.isNonNull()) {
+            throw reportError("poly_register_log_handler_callbacks called multiple times", poly_generic_failure);
+        }
+        handler.log = logCallback;
+        handler.flush = flushCallback;
+        handler.fatalError = fatalErrorCallback;
+        handler.data = data;
+
+        return poly_ok;
     }
 
     @CEntryPoint(name = "poly_perf_data_get_address_of_int64_t", exceptionHandler = ExceptionHandler.class, documentation = {
@@ -2414,11 +2549,11 @@ public final class PolyglotNativeAPI {
     }
 
     private static <T> T fetchHandle(PolyglotNativeAPITypes.PolyglotHandle object) {
-        if (object.equal(ThreadLocalHandles.nullHandle())) {
+        if (object.equal(PolyglotThreadLocalHandles.nullHandle())) {
             return null;
         }
 
-        if (ThreadLocalHandles.isInRange(object)) {
+        if (PolyglotThreadLocalHandles.isInRange(object)) {
             return getHandles().getObject(object);
         }
 
@@ -2427,6 +2562,22 @@ public final class PolyglotNativeAPI {
         }
 
         throw new RuntimeException("Invalid poly_reference or poly_handle.");
+    }
+
+    private static <T> T fetchHandleOrNull(PolyglotNativeAPITypes.PolyglotHandle object) {
+        if (object.equal(PolyglotThreadLocalHandles.nullHandle())) {
+            return null;
+        }
+
+        if (PolyglotThreadLocalHandles.isInRange(object)) {
+            return getHandles().getObject(object);
+        }
+
+        if (objectHandles.isInRange(object)) {
+            return objectHandles.get(object);
+        }
+
+        return null;
     }
 
     public static class CallbackException extends RuntimeException {
@@ -2486,5 +2637,38 @@ public final class PolyglotNativeAPI {
 
         VMRuntime.shutdown();
         return poly_ok;
+    }
+
+    public static class PolyglotNativeLogHandler implements LogHandler {
+        VoidPointer data;
+        PolyglotNativeAPITypes.PolyglotLogCallback log;
+        PolyglotNativeAPITypes.PolyglotFlushCallback flush;
+        PolyglotNativeAPITypes.PolyglotFatalErrorCallback fatalError;
+
+        @Override
+        public void log(CCharPointer bytes, UnsignedWord length) {
+            if (log.isNonNull()) {
+                log.invoke(bytes, length, data);
+            }
+        }
+
+        @Override
+        public void flush() {
+            if (flush.isNonNull()) {
+                flush.invoke(data);
+            }
+        }
+
+        @Override
+        public void fatalError() {
+            if (fatalError.isNonNull()) {
+                fatalError.invoke(data);
+            }
+
+            /*
+             * If we reach this point, then we must abort since the execution cannot proceed.
+             */
+            LibC.abort();
+        }
     }
 }

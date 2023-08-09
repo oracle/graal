@@ -191,9 +191,6 @@ public class OptimizationContextTreeNode extends TreeNode<OptimizationContextTre
 
     @Override
     public int hashCode() {
-        int result = getName() == null ? 0 : getName().hashCode();
-        result = 31 * result + (originalNode != null ? originalNode.hashCode() : 0);
-        result = 31 * result + getChildren().hashCode();
-        return result;
+        return Objects.hash(getName(), originalNode, getChildren());
     }
 }

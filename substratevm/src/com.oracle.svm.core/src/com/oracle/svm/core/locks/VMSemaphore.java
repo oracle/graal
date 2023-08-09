@@ -28,6 +28,9 @@ package com.oracle.svm.core.locks;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.util.VMError;
 
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+
 /**
  * <p>
  * A semaphore that has minimal requirements on Java code. The implementation does not perform
@@ -51,6 +54,19 @@ import com.oracle.svm.core.util.VMError;
  * </p>
  */
 public class VMSemaphore {
+
+    @Platforms(Platform.HOSTED_ONLY.class) //
+    private final String name;
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public VMSemaphore(String name) {
+        this.name = name;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public String getName() {
+        return name;
+    }
 
     /**
      * The function that initializes the semaphore.

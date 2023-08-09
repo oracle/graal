@@ -50,7 +50,7 @@ import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -58,16 +58,10 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64.cpp",
-          lineStart = 2955,
-          lineEnd   = 3016,
-          commit    = "83d92672d4c2637fc37ddd873533c85a9b083904",
-          sha1      = "a4f29fea55385633aac2f71f50d57f9b378516d9")
-@StubPort(path      = "src/hotspot/cpu/x86/macroAssembler_x86.cpp",
-          lineStart = 6257,
-          lineEnd   = 6714,
-          commit    = "83d92672d4c2637fc37ddd873533c85a9b083904",
-          sha1      = "6aac8a818c14df53d6201ac3df0bc35d3aaac9e4")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/83d92672d4c2637fc37ddd873533c85a9b083904/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L2955-L3016",
+          sha1 = "a4f29fea55385633aac2f71f50d57f9b378516d9")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6244-L6701",
+          sha1 = "6aac8a818c14df53d6201ac3df0bc35d3aaac9e4")
 // @formatter:on
 public final class AMD64BigIntegerMultiplyToLenOp extends AMD64LIRInstruction {
 

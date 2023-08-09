@@ -75,6 +75,9 @@ public class SubstrateGCOptions {
         }
     };
 
+    @Option(help = "Default size in bytes of the address space to reserve.", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Long> ReservedAddressSpaceSize = new RuntimeOptionKey<>(0L);
+
     @Option(help = "Exit on the first occurrence of an out-of-memory error that is thrown because the Java heap is out of memory.", type = OptionType.Expert)//
     public static final RuntimeOptionKey<Boolean> ExitOnOutOfMemoryError = new NotifyGCRuntimeOptionKey<>(false);
 

@@ -176,6 +176,8 @@
     "name": "java.lang.Class",
     "methods": [
       { "name": "getName", "parameterTypes": [] },
+      { "name": "getSuperclass", "parameterTypes": [] },
+      { "name": "getDeclaredField", "parameterTypes": ["java.lang.String"] },
       { "name": "isInstance", "parameterTypes": ["java.lang.Object"] }
     ]
   },
@@ -193,6 +195,32 @@
     "name": "jdk.internal.module.Modules",
     "methods": [
       { "name": "addOpens", "parameterTypes": ["java.lang.Module", "java.lang.String", "java.lang.Module"] }
+    ]
+  },
+  {
+    "name": "org.graalvm.polyglot.Value",
+    "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "org.graalvm.polyglot.AbstractValue",
+    "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.polyglot.PolyglotLanguageContext",
+    "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.polyglot.PolyglotLanguageContext$Lazy",
+    "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.polyglot.PolyglotLanguageInstance",
+    "allDeclaredFields": true, "allPublicFields": true
+  },
+  {
+    "name": "com.oracle.truffle.polyglot.InternalResourceCache",
+    "methods": [
+      { "name": "setTestCacheRoot", "parameterTypes": ["java.nio.file.Path", "boolean"] }
     ]
   }
 ]

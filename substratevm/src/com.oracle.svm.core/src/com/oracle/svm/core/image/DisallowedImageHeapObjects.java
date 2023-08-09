@@ -81,8 +81,8 @@ public final class DisallowedImageHeapObjects {
                 // allowed unless the thread is mounted, in which case it references its carrier
                 // thread and fails
             } else if (asThread.getState() != Thread.State.NEW && asThread.getState() != Thread.State.TERMINATED) {
-                throw reporter.raise("Detected a started Thread in the image heap. " +
-                                "Threads running in the image generator are no longer running at image runtime.",
+                throw reporter.raise("Detected a started Thread in the image heap. Thread name: " + asThread.getName() +
+                                ". Threads running in the image generator are no longer running at image runtime.",
                                 asThread, "Prevent threads from starting during image generation, or a started thread from being included in the image.");
             }
         }

@@ -113,8 +113,8 @@ public class ServiceLoaderFeature implements InternalFeature {
     private static final Set<String> SKIPPED_PROVIDERS = Set.of(
                     /* Graal hotspot-specific service-providers */
                     "org.graalvm.compiler.hotspot.meta.HotSpotDisassemblerProvider",
-                    /* Skip jline console provider until GR-44085 is fixed */
-                    "jdk.internal.org.jline.JdkConsoleProviderImpl");
+                    /* Skip console providers until GR-44085 is fixed */
+                    "jdk.internal.org.jline.JdkConsoleProviderImpl", "jdk.jshell.execution.impl.ConsoleImpl$ConsoleProviderImpl");
 
     private final Set<String> serviceProvidersToSkip = new HashSet<>(SKIPPED_PROVIDERS);
 
@@ -156,6 +156,9 @@ public class ServiceLoaderFeature implements InternalFeature {
             /* Make provider reflectively instantiable */
             Class<?> providerClass = access.findClassByName(provider);
 
+            if (providerClass == null || providerClass.isArray() || providerClass.isPrimitive()) {
+                continue;
+            }
             FeatureImpl.DuringAnalysisAccessImpl accessImpl = (FeatureImpl.DuringAnalysisAccessImpl) access;
             if (!accessImpl.getHostVM().platformSupported(providerClass)) {
                 continue;
@@ -165,19 +168,17 @@ public class ServiceLoaderFeature implements InternalFeature {
                 continue;
             }
 
-            if (providerClass != null && !providerClass.isArray() && !providerClass.isPrimitive()) {
-                Constructor<?> nullaryConstructor;
-                try {
-                    nullaryConstructor = providerClass.getDeclaredConstructor();
-                } catch (NoSuchMethodException | SecurityException | LinkageError e) {
-                    /* Skip providers that do not comply with requirements */
-                    nullaryConstructor = null;
-                }
-                if (nullaryConstructor != null) {
-                    RuntimeReflection.register(providerClass);
-                    RuntimeReflection.register(nullaryConstructor);
-                    registeredProviders.add(provider);
-                }
+            Constructor<?> nullaryConstructor;
+            try {
+                nullaryConstructor = providerClass.getDeclaredConstructor();
+            } catch (NoSuchMethodException | SecurityException | LinkageError e) {
+                /* Skip providers that do not comply with requirements */
+                nullaryConstructor = null;
+            }
+            if (nullaryConstructor != null) {
+                RuntimeReflection.register(providerClass);
+                RuntimeReflection.register(nullaryConstructor);
+                registeredProviders.add(provider);
             }
         }
         if (!registeredProviders.isEmpty()) {

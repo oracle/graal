@@ -44,11 +44,9 @@ import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.NamedLocationIdentity;
 import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.PauseNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.CompressBitsNode;
@@ -103,7 +101,6 @@ import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
@@ -117,7 +114,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
         invocationPlugins.defer(new Runnable() {
             @Override
             public void run() {
-                registerThreadPlugins(invocationPlugins, arch);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Int, arch, replacements);
                 registerIntegerLongPlugins(invocationPlugins, JavaKind.Long, arch, replacements);
                 registerFloatDoublePlugins(invocationPlugins, JavaKind.Float, arch, replacements);
@@ -133,19 +129,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 registerArraysEqualsPlugins(invocationPlugins, replacements);
                 registerStringCodingPlugins(invocationPlugins, replacements);
                 registerArraysSupportPlugins(invocationPlugins, arch, replacements);
-            }
-        });
-    }
-
-    private static void registerThreadPlugins(InvocationPlugins plugins, AMD64 arch) {
-        // Pause instruction introduced with SSE2
-        assert (arch.getFeatures().contains(AMD64.CPUFeature.SSE2));
-        Registration r = new Registration(plugins, Thread.class);
-        r.register(new InvocationPlugin("onSpinWait") {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
-                b.append(new PauseNode());
-                return true;
             }
         });
     }
@@ -600,25 +583,19 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
                             ValueNode da, ValueNode dp, ValueNode len) {
-                MetaAccessProvider metaAccess = b.getMetaAccess();
-                int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
-
-                ValueNode srcOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), new LeftShiftNode(sp, ConstantNode.forInt(2)), NodeView.DEFAULT);
-                ValueNode dstOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), dp, NodeView.DEFAULT);
-
-                ComputeObjectAddressNode src = b.add(new ComputeObjectAddressNode(sa, srcOffset));
-                ComputeObjectAddressNode dst = b.add(new ComputeObjectAddressNode(da, dstOffset));
-
-                b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ISO_8859_1, JavaKind.Byte));
-                return true;
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    int charElementShift = CodeUtil.log2(b.getMetaAccess().getArrayIndexScale(JavaKind.Char));
+                    ValueNode src = helper.arrayElementPointer(sa, JavaKind.Byte, LeftShiftNode.create(sp, ConstantNode.forInt(charElementShift), NodeView.DEFAULT));
+                    ValueNode dst = helper.arrayElementPointer(da, JavaKind.Byte, dp);
+                    b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ISO_8859_1, JavaKind.Byte));
+                    return true;
+                }
             }
         });
         r.register(new InvocationPlugin("hasNegatives", byte[].class, int.class, int.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode ba, ValueNode off, ValueNode len) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
-                    MetaAccessProvider metaAccess = b.getMetaAccess();
-                    int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
                     helper.intrinsicRangeCheck(off, Condition.LT, ConstantNode.forInt(0));
                     helper.intrinsicRangeCheck(len, Condition.LT, ConstantNode.forInt(0));
 
@@ -626,9 +603,7 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     ValueNode limit = b.add(AddNode.create(off, len, NodeView.DEFAULT));
                     helper.intrinsicRangeCheck(arrayLength, Condition.LT, limit);
 
-                    ValueNode arrayOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), off, NodeView.DEFAULT);
-                    ComputeObjectAddressNode array = b.add(new ComputeObjectAddressNode(ba, arrayOffset));
-
+                    ValueNode array = helper.arrayElementPointer(ba, JavaKind.Byte, off);
                     b.addPush(JavaKind.Boolean, new HasNegativesNode(array, len));
                     return true;
                 }
@@ -638,20 +613,12 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode sa, ValueNode sp,
                             ValueNode da, ValueNode dp, ValueNode len) {
-                MetaAccessProvider metaAccess = b.getMetaAccess();
-                int charArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Char);
-                int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
-
-                int charElementShift = CodeUtil.log2(metaAccess.getArrayIndexScale(JavaKind.Char));
-
-                ValueNode srcOffset = AddNode.create(ConstantNode.forInt(charArrayBaseOffset), new LeftShiftNode(sp, ConstantNode.forInt(charElementShift)), NodeView.DEFAULT);
-                ValueNode dstOffset = AddNode.create(ConstantNode.forInt(byteArrayBaseOffset), dp, NodeView.DEFAULT);
-
-                ComputeObjectAddressNode src = b.add(new ComputeObjectAddressNode(sa, srcOffset));
-                ComputeObjectAddressNode dst = b.add(new ComputeObjectAddressNode(da, dstOffset));
-
-                b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ASCII, JavaKind.Char));
-                return true;
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ValueNode src = helper.arrayElementPointer(sa, JavaKind.Char, sp);
+                    ValueNode dst = helper.arrayElementPointer(da, JavaKind.Byte, dp);
+                    b.addPush(JavaKind.Int, new EncodeArrayNode(src, dst, len, ASCII, JavaKind.Char));
+                    return true;
+                }
             }
         });
 

@@ -388,6 +388,14 @@ public abstract class HostVM {
         return (t) -> t;
     }
 
+    public boolean allowConstantFolding(AnalysisMethod method) {
+        /*
+         * Currently constant folding is only enabled for original methods. More work is needed to
+         * support it within deoptimization targets and runtime-compiled methods.
+         */
+        return method.isOriginalMethod();
+    }
+
     public FieldValueComputer createFieldValueComputer(@SuppressWarnings("unused") AnalysisField field) {
         return null;
     }

@@ -102,7 +102,8 @@ public final class JNIRegistrationSupport extends JNIRegistrationUtil implements
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         if (isWindows()) {
-            isSunMSCAPIProviderReachable = access.isReachable(clazz(access, "sun.security.mscapi.SunMSCAPI"));
+            var optSunMSCAPIClass = optionalClazz(access, "sun.security.mscapi.SunMSCAPI");
+            isSunMSCAPIProviderReachable = optSunMSCAPIClass.isPresent() && access.isReachable(optSunMSCAPIClass.get());
         }
     }
 

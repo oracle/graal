@@ -24,8 +24,8 @@
  */
 package com.oracle.truffle.tools.warmup.impl;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 import java.io.PrintStream;
 import java.util.List;

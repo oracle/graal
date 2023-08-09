@@ -84,7 +84,8 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
     private static final short FLAG_IS_RECURSIVE_REFERENCE = 1 << N_FLAGS + 4;
 
     private final int astNodeId;
-    private final int extraId;
+    private final int subtreeId;
+    private final int[] referencedGroupNumbers;
     private final byte kind;
     private final CodePointSet charSet;
 
@@ -92,7 +93,8 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
         super(id, EMPTY_TRANSITIONS);
         this.astNodeId = t.getId();
         this.kind = getKind(t);
-        this.extraId = isSubMatcher() ? t.asSubtreeRootNode().getSubTreeId() : isBackReference() ? t.asBackReference().getGroupNr() : -1;
+        this.subtreeId = isSubMatcher() ? t.asSubtreeRootNode().getSubTreeId() : -1;
+        this.referencedGroupNumbers = isBackReference() ? t.asBackReference().getGroupNumbers() : null;
         this.charSet = isCharacterClass() ? t.asCharacterClass().getCharSet() : null;
         setLookAround(t.isLookAroundAssertion());
         if (t.isLookAroundAssertion()) {
@@ -168,12 +170,12 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
 
     public int getSubtreeId() {
         assert isSubMatcher();
-        return extraId;
+        return subtreeId;
     }
 
-    public int getBackRefNumber() {
+    public int[] getBackRefNumbers() {
         assert isBackReference();
-        return extraId;
+        return referencedGroupNumbers;
     }
 
     public boolean isLookAround() {
@@ -343,7 +345,19 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
             case KIND_SUB_MATCHER:
                 return "?=" + getSubtreeId();
             case KIND_BACK_REFERENCE:
-                return "\\" + getBackRefNumber();
+                if (referencedGroupNumbers.length == 1) {
+                    return "\\" + referencedGroupNumbers[0];
+                } else {
+                    StringBuilder sb = new StringBuilder();
+                    sb.append("\\k<");
+                    sb.append(referencedGroupNumbers[0]);
+                    for (int i = 1; i < referencedGroupNumbers.length; i++) {
+                        sb.append(",");
+                        sb.append(referencedGroupNumbers[i]);
+                    }
+                    sb.append(">");
+                    return sb.toString();
+                }
             case KIND_EMPTY_MATCH:
                 return "EMPTY";
             default:
@@ -358,7 +372,7 @@ public final class PureNFAState extends BasicState<PureNFAState, PureNFATransiti
                         Json.prop("sourceSections", RegexAST.sourceSectionsToJson(ast.getSourceSections(getAstNode(ast)))),
                         Json.prop("matcherBuilder", isCharacterClass() ? Json.val(charSet.toString()) : Json.nullValue()),
                         Json.prop("subMatcher", isSubMatcher() ? Json.val(getSubtreeId()) : Json.nullValue()),
-                        Json.prop("backReference", isBackReference() ? Json.val(getBackRefNumber()) : Json.nullValue()),
+                        Json.prop("backReference", isBackReference() ? Json.array(Arrays.stream(getBackRefNumbers()).mapToObj(x -> Json.val(x))) : Json.nullValue()),
                         Json.prop("anchoredFinalState", isAnchoredFinalState()),
                         Json.prop("unAnchoredFinalState", isUnAnchoredFinalState()),
                         Json.prop("transitions", Arrays.stream(getSuccessors()).map(x -> Json.val(x.getId()))));

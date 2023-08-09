@@ -330,6 +330,14 @@ public final class Meta extends ContextAccessImpl {
             java_lang_ClassLoader_name = null;
         }
 
+        if (getJavaVersion().java19OrLater()) {
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = knownKlass(Type.jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl);
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle = jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl.requireDeclaredField(Name.handle, Type._long);
+        } else {
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl = null;
+            jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle = null;
+        }
+
         java_net_URL = knownKlass(Type.java_net_URL);
 
         java_lang_ClassLoader_getResourceAsStream = java_lang_ClassLoader.requireDeclaredMethod(Name.getResourceAsStream, Signature.InputStream_String);
@@ -386,7 +394,10 @@ public final class Meta extends ContextAccessImpl {
         java_nio_ByteBuffer = knownKlass(Type.java_nio_ByteBuffer);
         java_nio_ByteBuffer_wrap = java_nio_ByteBuffer.requireDeclaredMethod(Name.wrap, Signature.ByteBuffer_byte_array);
         java_nio_DirectByteBuffer = knownKlass(Type.java_nio_DirectByteBuffer);
-        java_nio_DirectByteBuffer_init_long_int = java_nio_DirectByteBuffer.requireDeclaredMethod(Name._init_, Signature._void_long_int);
+        java_nio_DirectByteBuffer_init_long_int = diff() //
+                        .method(lower(20), Name._init_, Signature._void_long_int) //
+                        .method(higher(21), Name._init_, Signature._void_long_long) //
+                        .method(java_nio_DirectByteBuffer);
         java_nio_ByteOrder = knownKlass(Type.java_nio_ByteOrder);
         java_nio_ByteOrder_LITTLE_ENDIAN = java_nio_ByteOrder.requireDeclaredField(Name.LITTLE_ENDIAN, Type.java_nio_ByteOrder);
 
@@ -403,13 +414,17 @@ public final class Meta extends ContextAccessImpl {
         HIDDEN_THREAD_PARK_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PARK_LOCK);
 
         if (context.getEspressoEnv().EnableManagement) {
-            HIDDEN_THREAD_BLOCKED_OBJECT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_OBJECT);
+            HIDDEN_THREAD_PENDING_MONITOR = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PENDING_MONITOR);
+            HIDDEN_THREAD_WAITING_MONITOR = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_WAITING_MONITOR);
             HIDDEN_THREAD_BLOCKED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_BLOCKED_COUNT);
             HIDDEN_THREAD_WAITED_COUNT = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_WAITED_COUNT);
+            HIDDEN_THREAD_DEPTH_FIRST_NUMBER = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_DEPTH_FIRST_NUMBER);
         } else {
-            HIDDEN_THREAD_BLOCKED_OBJECT = null;
+            HIDDEN_THREAD_PENDING_MONITOR = null;
+            HIDDEN_THREAD_WAITING_MONITOR = null;
             HIDDEN_THREAD_BLOCKED_COUNT = null;
             HIDDEN_THREAD_WAITED_COUNT = null;
+            HIDDEN_THREAD_DEPTH_FIRST_NUMBER = null;
         }
 
         if (getJavaVersion().java19OrLater()) {
@@ -849,6 +864,21 @@ public final class Meta extends ContextAccessImpl {
         java_util_Iterator_remove = java_util_Iterator.requireDeclaredMethod(Name.remove, Signature._void);
         assert java_util_Iterator.isInterface();
 
+        java_util_Collection = knownKlass(Type.java_util_Collection);
+
+        java_util_Optional = knownKlass(Type.java_util_Optional);
+        java_util_Optional_EMPTY = java_util_Optional.requireDeclaredField(Name.EMPTY, Type.java_util_Optional);
+        java_util_Optional_value = java_util_Optional.requireDeclaredField(Name.value, Type.java_lang_Object);
+
+        java_math_BigInteger = knownKlass(Type.java_math_BigInteger);
+        java_math_BigInteger_init = java_math_BigInteger.requireDeclaredMethod(Name._init_, Signature._void_byte_array);
+
+        java_math_BigDecimal = knownKlass(Type.java_math_BigDecimal);
+        java_math_BigDecimal_init = java_math_BigDecimal.requireDeclaredMethod(Name._init_, Signature._void_BigInteger_int_MathContext);
+
+        java_math_MathContext = knownKlass(Type.java_math_MathContext);
+        java_math_MathContext_init = java_math_MathContext.requireDeclaredMethod(Name._init_, Signature._void_int);
+
         java_util_NoSuchElementException = knownKlass(Type.java_util_NoSuchElementException);
 
         jdk_internal_misc_UnsafeConstants = diff() //
@@ -892,6 +922,29 @@ public final class Meta extends ContextAccessImpl {
             java_lang_module_ModuleFinder_compose = null;
             jdk_internal_module_Modules = null;
             jdk_internal_module_Modules_defineModule = null;
+        }
+
+        if (getJavaVersion().java20OrLater()) {
+            jdk_internal_foreign_abi_VMStorage = knownKlass(Type.jdk_internal_foreign_abi_VMStorage);
+            jdk_internal_foreign_abi_VMStorage_type = jdk_internal_foreign_abi_VMStorage.requireDeclaredField(Name.type, Type._byte);
+            jdk_internal_foreign_abi_VMStorage_segmentMaskOrSize = jdk_internal_foreign_abi_VMStorage.requireDeclaredField(Name.segmentMaskOrSize, Type._short);
+            jdk_internal_foreign_abi_VMStorage_indexOrOffset = jdk_internal_foreign_abi_VMStorage.requireDeclaredField(Name.indexOrOffset, Type._int);
+            jdk_internal_foreign_abi_NativeEntryPoint = knownKlass(Type.jdk_internal_foreign_abi_NativeEntryPoint);
+            jdk_internal_foreign_abi_NativeEntryPoint_downcallStubAddress = jdk_internal_foreign_abi_NativeEntryPoint.requireDeclaredField(Name.downcallStubAddress, Type._long);
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs = knownKlass(Type.jdk_internal_foreign_abi_UpcallLinker_CallRegs);
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs = jdk_internal_foreign_abi_UpcallLinker_CallRegs.requireDeclaredField(Name.argRegs, Type.jdk_internal_foreign_abi_VMStorage_array);
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs = jdk_internal_foreign_abi_UpcallLinker_CallRegs.requireDeclaredField(Name.retRegs, Type.jdk_internal_foreign_abi_VMStorage_array);
+        } else {
+            // also exists in a different shape in 19 but we don't support that
+            jdk_internal_foreign_abi_VMStorage = null;
+            jdk_internal_foreign_abi_VMStorage_type = null;
+            jdk_internal_foreign_abi_VMStorage_segmentMaskOrSize = null;
+            jdk_internal_foreign_abi_VMStorage_indexOrOffset = null;
+            jdk_internal_foreign_abi_NativeEntryPoint = null;
+            jdk_internal_foreign_abi_NativeEntryPoint_downcallStubAddress = null;
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs = null;
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs = null;
+            jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs = null;
         }
 
         jdk_internal_module_ModuleLoaderMap_Modules = diff() //
@@ -1090,6 +1143,9 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_lang_ClassLoader_getResourceAsStream;
     public final Method java_lang_ClassLoader_loadClass;
 
+    public final ObjectKlass jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl;
+    public final Field jdk_internal_loader_RawNativeLibraries$RawNativeLibraryImpl_handle;
+
     public final ObjectKlass java_net_URL;
 
     public final ObjectKlass sun_launcher_LauncherHelper;
@@ -1286,9 +1342,11 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_THREAD_UNPARK_SIGNALS;
     public final Field HIDDEN_THREAD_PARK_LOCK;
     public final Field HIDDEN_DEPRECATION_SUPPORT;
-    public final Field HIDDEN_THREAD_BLOCKED_OBJECT;
+    public final Field HIDDEN_THREAD_PENDING_MONITOR;
+    public final Field HIDDEN_THREAD_WAITING_MONITOR;
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
+    public final Field HIDDEN_THREAD_DEPTH_FIRST_NUMBER;
 
     public final Field java_lang_Thread_name;
     public final Field java_lang_Thread_priority;
@@ -1503,6 +1561,21 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_util_Iterator_hasNext;
     public final Method java_util_Iterator_remove;
 
+    public final ObjectKlass java_util_Collection;
+
+    public final ObjectKlass java_util_Optional;
+    public final Field java_util_Optional_value;
+    public final Field java_util_Optional_EMPTY;
+
+    public final ObjectKlass java_math_BigInteger;
+    public final Method java_math_BigInteger_init;
+
+    public final ObjectKlass java_math_BigDecimal;
+    public final Method java_math_BigDecimal_init;
+
+    public final ObjectKlass java_math_MathContext;
+    public final Method java_math_MathContext_init;
+
     public final ObjectKlass java_util_NoSuchElementException;
 
     public final ObjectKlass jdk_internal_misc_UnsafeConstants;
@@ -1511,6 +1584,17 @@ public final class Meta extends ContextAccessImpl {
     public final Field jdk_internal_misc_UnsafeConstants_BIG_ENDIAN;
     public final Field jdk_internal_misc_UnsafeConstants_UNALIGNED_ACCESS;
     public final Field jdk_internal_misc_UnsafeConstants_DATA_CACHE_LINE_FLUSH_SIZE;
+
+    // Foreign
+    public final Klass jdk_internal_foreign_abi_VMStorage;
+    public final Field jdk_internal_foreign_abi_VMStorage_type;
+    public final Field jdk_internal_foreign_abi_VMStorage_segmentMaskOrSize;
+    public final Field jdk_internal_foreign_abi_VMStorage_indexOrOffset;
+    public final Klass jdk_internal_foreign_abi_NativeEntryPoint;
+    public final Field jdk_internal_foreign_abi_NativeEntryPoint_downcallStubAddress;
+    public final Klass jdk_internal_foreign_abi_UpcallLinker_CallRegs;
+    public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_argRegs;
+    public final Field jdk_internal_foreign_abi_UpcallLinker_CallRegs_retRegs;
 
     @CompilationFinal public ObjectKlass java_lang_management_MemoryUsage;
     @CompilationFinal public ObjectKlass sun_management_ManagementFactory;
@@ -1575,6 +1659,14 @@ public final class Meta extends ContextAccessImpl {
         public final ObjectKlass VMHelper;
         public final Method VMHelper_getDynamicModuleDescriptor;
 
+        public final ObjectKlass EspressoForeignList;
+        public final Field EspressoForeignList_foreignObject;
+        public final ObjectKlass EspressoForeignCollection;
+        public final ObjectKlass EspressoForeignIterable;
+        public final ObjectKlass EspressoForeignIterator;
+        public final ObjectKlass EspressoForeignMap;
+        public final ObjectKlass EspressoForeignSet;
+
         private PolyglotSupport() {
             boolean polyglotSupport = getContext().getEnv().getOptions().get(EspressoOptions.Polyglot);
             EspressoError.guarantee(polyglotSupport, "--java.Polyglot must be enabled");
@@ -1635,6 +1727,14 @@ public final class Meta extends ContextAccessImpl {
 
             VMHelper = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_VMHelper);
             VMHelper_getDynamicModuleDescriptor = VMHelper.requireDeclaredMethod(Name.getDynamicModuleDescriptor, Signature.ModuleDescriptor_String_String);
+
+            EspressoForeignList = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignList);
+            EspressoForeignList_foreignObject = EspressoForeignList.requireDeclaredField(Name.foreignObject, Type.java_lang_Object);
+            EspressoForeignCollection = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignCollection);
+            EspressoForeignIterable = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterable);
+            EspressoForeignIterator = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignIterator);
+            EspressoForeignMap = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignMap);
+            EspressoForeignSet = knownPlatformKlass(Type.com_oracle_truffle_espresso_polyglot_collections_EspressoForeignSet);
         }
     }
 

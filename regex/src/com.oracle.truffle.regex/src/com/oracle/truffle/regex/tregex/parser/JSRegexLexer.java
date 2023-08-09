@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import java.util.List;
 import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -319,8 +320,8 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected RegexSyntaxException handleGroupRedefinition(String name, int newId, int oldId) {
-        return syntaxError(JsErrorMessages.MULTIPLE_GROUPS_SAME_NAME);
+    protected void handleGroupRedefinition(String name, int newId, int oldId) {
+        // checking for clashing group names is done in JSRegexParser
     }
 
     @Override
@@ -465,12 +466,12 @@ public final class JSRegexLexer extends RegexLexer {
                 String groupName = jsParseGroupName();
                 // backward reference
                 if (namedCaptureGroups != null && namedCaptureGroups.containsKey(groupName)) {
-                    return Token.createBackReference(namedCaptureGroups.get(groupName), false);
+                    return Token.createBackReference(namedCaptureGroups.get(groupName).stream().mapToInt(x -> x).toArray(), false);
                 }
                 // possible forward reference
-                Map<String, Integer> allNamedCaptureGroups = getNamedCaptureGroups();
+                Map<String, List<Integer>> allNamedCaptureGroups = getNamedCaptureGroups();
                 if (allNamedCaptureGroups != null && allNamedCaptureGroups.containsKey(groupName)) {
-                    return Token.createBackReference(allNamedCaptureGroups.get(groupName), false);
+                    return Token.createBackReference(allNamedCaptureGroups.get(groupName).stream().mapToInt(x -> x).toArray(), false);
                 }
                 handleInvalidBackReference(groupName);
             } else {

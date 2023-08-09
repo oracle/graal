@@ -50,7 +50,6 @@ import org.graalvm.compiler.nodes.virtual.MaterializedObjectState;
 import org.graalvm.compiler.nodes.virtual.VirtualBoxingNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectState;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.RegisterValue;
@@ -356,7 +355,7 @@ public class DebugInfoBuilder {
                     VirtualObject vobject = virtualObjects.get(obj);
                     if (vobject == null) {
                         boolean isAutoBox = obj instanceof VirtualBoxingNode;
-                        vobject = GraalServices.createVirtualObject(obj.type(), virtualObjects.size(), isAutoBox);
+                        vobject = VirtualObject.get(obj.type(), virtualObjects.size(), isAutoBox);
                         virtualObjects.put(obj, vobject);
                         pendingVirtualObjects.add(obj);
                     }

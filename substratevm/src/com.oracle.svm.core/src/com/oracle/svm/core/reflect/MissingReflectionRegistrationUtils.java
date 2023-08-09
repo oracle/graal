@@ -29,6 +29,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
@@ -110,10 +112,28 @@ public final class MissingReflectionRegistrationUtils {
         report(exception);
     }
 
+    public static void forProxy(Class<?>... interfaces) {
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access the proxy class inheriting",
+                        Arrays.toString(Arrays.stream(interfaces).map(Class::getTypeName).toArray()),
+                        "The order of interfaces used to create proxies matters.", "dynamic-proxy"),
+                        Proxy.class, null, null, interfaces);
+        report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        throw exception;
+    }
+
     private static String errorMessage(String failedAction, String elementDescriptor) {
+        return errorMessage(failedAction, elementDescriptor, null, "reflection");
+    }
+
+    private static String errorMessage(String failedAction, String elementDescriptor, String note, String helpLink) {
         return "The program tried to reflectively " + failedAction + " " + elementDescriptor +
-                        " without it being registered for runtime reflection. Add it to the reflection metadata to solve this problem. " +
-                        "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#reflection for help.";
+                        " without it being registered for runtime reflection. Add " + elementDescriptor + " to the " + helpLink + " metadata to solve this problem. " +
+                        (note != null ? "Note: " + note + " " : "") +
+                        "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#" + helpLink + " for help.";
     }
 
     private static final int CONTEXT_LINES = 4;
@@ -213,6 +233,7 @@ public final class MissingReflectionRegistrationUtils {
                                     "newInstance"),
                     Method.class.getTypeName(), Set.of("invoke"),
                     Constructor.class.getTypeName(), Set.of("newInstance"),
+                    Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance"),
                     "java.lang.reflect.ReflectAccess", Set.of("newInstance"),
                     "jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"),
                     "sun.misc.Unsafe", Set.of("allocateInstance"),

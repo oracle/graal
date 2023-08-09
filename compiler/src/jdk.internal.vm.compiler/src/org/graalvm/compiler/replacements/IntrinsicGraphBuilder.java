@@ -34,6 +34,7 @@ import org.graalvm.compiler.core.common.type.TypeReference;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.FrameStateBuilder;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -45,6 +46,7 @@ import org.graalvm.compiler.nodes.EndNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.ParameterNode;
 import org.graalvm.compiler.nodes.ReturnNode;
@@ -84,6 +86,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     protected final Bytecode code;
     protected final ResolvedJavaMethod method;
     protected final int invokeBci;
+    protected final JavaKind returnKind;
     protected FixedWithNextNode lastInstr;
     protected ValueNode[] arguments;
     protected ValueNode returnValue;
@@ -132,6 +135,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         Signature sig = method.getSignature();
         int max = sig.getParameterCount(false);
         this.arguments = new ValueNode[max + (method.isStatic() ? 0 : 1)];
+        this.returnKind = method.getSignature().getReturnKind();
 
         int javaIndex = 0;
         int index = 0;
@@ -163,7 +167,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         }
     }
 
-    private <T extends ValueNode> void updateLastInstruction(T v) {
+    private <T extends Node> void updateLastInstruction(T v) {
         if (v instanceof FixedNode) {
             FixedNode fixedNode = (FixedNode) v;
             if (lastInstr != null) {
@@ -222,7 +226,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
-    public <T extends ValueNode> T append(T v) {
+    public <T extends Node> T append(T v) {
         if (v.graph() != null) {
             return v;
         }
@@ -235,7 +239,8 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
 
     @Override
     public void push(JavaKind kind, ValueNode value) {
-        assert kind != JavaKind.Void;
+        GraalError.guarantee(kind == returnKind, "expected to return %s but returning %s", returnKind, kind);
+        GraalError.guarantee(kind != JavaKind.Void, "can't push value for void return");
         GraalError.guarantee(returnValue == null, "can only push one value");
         returnValue = value;
     }
@@ -249,7 +254,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
-    public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
+    public Invokable handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean forceInlineEverything) {
         throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
@@ -357,7 +362,7 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
     }
 
     @Override
-    public FrameState getInvocationPluginReturnState(JavaKind returnKind, ValueNode retVal) {
+    public FrameState getInvocationPluginReturnState(JavaKind kind, ValueNode retVal) {
         return getGraph().add(new FrameState(AFTER_BCI));
     }
 

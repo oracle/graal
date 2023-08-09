@@ -27,9 +27,6 @@ package com.oracle.svm.truffle.api;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
-import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -40,6 +37,9 @@ import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.graal.meta.SubstrateField;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.graal.meta.SubstrateUniverseFactory;
+import com.oracle.truffle.compiler.ConstantFieldInfo;
+import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

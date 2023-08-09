@@ -34,6 +34,8 @@ Arrays.stream(persons)
 
 Follow these steps to build an optimized native executable using PGO.
 
+> Note: Make sure you have installed a GraalVM JDK. The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal). For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
+
 1.  Save [the following code](https://github.com/graalvm/graalvm-demos/blob/master/streams/Streams.java) to the file named _Streams.java_:
 
     ```java

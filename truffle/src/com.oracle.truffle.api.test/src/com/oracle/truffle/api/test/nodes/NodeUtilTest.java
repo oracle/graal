@@ -41,7 +41,10 @@
 package com.oracle.truffle.api.test.nodes;
 
 import static com.oracle.truffle.api.test.OSUtils.toUnixString;
+import static com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest.assertFails;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -55,6 +58,54 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class NodeUtilTest {
+
+    @Test
+    public void testAssertAdoptedSuccess() {
+        TestRootNode rootNode = new TestRootNode();
+        TestNode replacedNode = new TestNode();
+        replacedNode.child0 = new TestNode();
+        rootNode.child0 = rootNode.insert(replacedNode);
+        assertTrue(NodeUtil.assertAdopted(replacedNode));
+        assertTrue(NodeUtil.assertAdopted(rootNode));
+        assertNotNull(replacedNode.child0.getParent());
+    }
+
+    @Test
+    public void testAssertNotAdopted() {
+        TestRootNode rootNode = new TestRootNode();
+        TestNode replacedNode = new TestNode();
+        rootNode.child0 = rootNode.insert(replacedNode);
+        replacedNode.child0 = new TestNode();
+        assertFails(() -> NodeUtil.assertAdopted(replacedNode.child0), AssertionError.class);
+        replacedNode.insert(replacedNode.child0);
+
+        TestNode disconnectedNode = new TestNode();
+        assertFails(() -> disconnectedNode.insert(replacedNode.child0), AssertionError.class, (e) -> {
+            assertTrue(e.getMessage(), e.getMessage().startsWith("Old parent was adopted, but new insertion parent is not adopted."));
+            assertEquals("Invalid node usage. Node must be adopted. Path to null parent: NodeUtilTest.TestNode.parent -> null", e.getCause().getMessage());
+        });
+    }
+
+    private static class NotAdoptableNode extends Node {
+        @Override
+        public boolean isAdoptable() {
+            return false;
+        }
+    }
+
+    @Test
+    public void testAssertAdoptedNotAdoptable() {
+        TestRootNode rootNode = new TestRootNode();
+        NotAdoptableNode replacedNode = new NotAdoptableNode();
+        rootNode.child0 = rootNode.insert(replacedNode);
+
+        assertFails(() -> NodeUtil.assertAdopted(replacedNode), AssertionError.class);
+    }
+
+    @Test
+    public void testAssertAdoptedNull() {
+        assertFails(() -> NodeUtil.assertAdopted(null), NullPointerException.class);
+    }
 
     @BeforeClass
     public static void runWithWeakEncapsulationOnly() {

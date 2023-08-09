@@ -46,7 +46,8 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
-import com.ibm.icu.lang.UCharacter;
+import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
@@ -535,8 +536,8 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected RegexSyntaxException handleGroupRedefinition(String name, int newId, int oldId) {
-        return syntaxErrorAtRel(PyErrorMessages.redefinitionOfGroupName(name, newId, oldId), name.length() + 1);
+    protected void handleGroupRedefinition(String name, int newId, int oldId) {
+        throw syntaxErrorAtRel(PyErrorMessages.redefinitionOfGroupName(name, newId, oldId), name.length() + 1);
     }
 
     @Override
@@ -805,7 +806,8 @@ public final class PythonRegexLexer extends RegexLexer {
             case valid:
                 // group referenced by name
                 if (namedCaptureGroups != null && namedCaptureGroups.containsKey(result.groupName)) {
-                    groupNumber = namedCaptureGroups.get(result.groupName);
+                    assert namedCaptureGroups.get(result.groupName).size() == 1;
+                    groupNumber = namedCaptureGroups.get(result.groupName).get(0);
                     namedReference = true;
                 } else {
                     throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName), result.groupName.length() + 1);
@@ -940,7 +942,8 @@ public final class PythonRegexLexer extends RegexLexer {
                 throw handleBadCharacterInGroupName(result);
             case valid:
                 if (namedCaptureGroups != null && namedCaptureGroups.containsKey(result.groupName)) {
-                    return Token.createBackReference(namedCaptureGroups.get(result.groupName), true);
+                    assert namedCaptureGroups.get(result.groupName).size() == 1;
+                    return Token.createBackReference(namedCaptureGroups.get(result.groupName).get(0), true);
                 } else {
                     throw syntaxErrorAtRel(PyErrorMessages.unknownGroupName(result.groupName), result.groupName.length() + 1);
                 }

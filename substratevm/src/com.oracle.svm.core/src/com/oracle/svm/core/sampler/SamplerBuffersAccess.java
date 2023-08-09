@@ -257,7 +257,7 @@ public final class SamplerBuffersAccess {
     @Uninterruptible(reason = "Prevent JFR recording and epoch change.")
     private static int visitFrame(JfrNativeEventWriterData data, CodeInfo codeInfo, CodePointer ip) {
         int numStackTraceElements = 0;
-        FRAME_INFO_CURSOR.initialize(codeInfo, ip);
+        FRAME_INFO_CURSOR.initialize(codeInfo, ip, false);
         while (FRAME_INFO_CURSOR.advance()) {
             if (data.isNonNull()) {
                 FrameInfoQueryResult frame = FRAME_INFO_CURSOR.get();

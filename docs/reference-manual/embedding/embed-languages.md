@@ -21,6 +21,7 @@ permalink: /reference-manual/embed-languages/
 * [Step Through with Execution Listeners](#step-through-with-execution-listeners)
 * [Setting the Heap Size](#setting-the-heap-size)
 * [Dependency Setup](#dependency-setup)
+* [Compatibility with JSR-223 ScriptEngine](#compatibility-with-jsr-223-scriptengine)
 
 The GraalVM Polyglot API lets you embed and run code from guest languages in JVM-based host applications.
 
@@ -639,7 +640,7 @@ In this code:
 ## Polyglot Isolates
 
 On Oracle GraalVM, a Polyglot engine can be configured to run in a dedicated `native-image` isolate.
-This experimental feature is enabled with the `--engine.SpawnIsolate` option.
+This feature is enabled with the `--engine.SpawnIsolate` option.
 An engine running in this mode executes within a VM-level fault domain with its own garbage collector and JIT compiler.
 The fact that an engine runs within an isolate is completely transparent with respect to the Polyglot API and interoperability:
 
@@ -650,7 +651,6 @@ public class PolyglotIsolate {
   public static void main(String[] args) {
     Context context = Context.newBuilder("js")
       .allowHostAccess(HostAccess.SCOPED)
-      .allowExperimentalOptions(true)
       .option("engine.SpawnIsolate", "true").build();
     Value function = context.eval("js", "x => x+1")
     assert function.canExecute();
@@ -669,7 +669,6 @@ Multiple contexts can be spawned in the same isolated engine by [sharing engines
 public class PolyglotIsolateMultipleContexts {
     public static void main(String[] args) {
         try (Engine engine = Engine.newBuilder()
-                .allowExperimentalOptions(true)
                 .option("engine.SpawnIsolate", "js").build()) {
             Source source = Source.create("js", "21 + 21");
             try (Context context = Context.newBuilder()
@@ -689,7 +688,7 @@ public class PolyglotIsolateMultipleContexts {
 }
 ```
 
-Note how we need to specify the language for the isolated engine as a parameter to `--engine.SpawnIsolate` in this case.
+Note how you need to specify the language for the isolated engine as a parameter to `--engine.SpawnIsolate` in this case.
 The reason is that an isolated engine needs to know which set of languages should be available.
 Behind the scenes, GraalVM will then locate the corresponding Native Image language library.
 If only a single language is selected, then the library for the language will be loaded.
@@ -714,7 +713,6 @@ public class PolyglotIsolateMaxHeap {
     try {
       Context context = Context.newBuilder("js")
         .allowHostAccess(HostAccess.SCOPED)
-        .allowExperimentalOptions(true)
         .option("engine.SpawnIsolate", "true")
         .option("engine.IsolateOption.MaxHeapSize", "64m").build()
       context.eval("js", "var a = [];while (true) {a.push('foobar');}");
@@ -730,21 +728,21 @@ Exceeding the maximum heap size will automatically close the context and raise a
 
 ### Ensuring Host Callback Stack Headroom
 
-With Polyglot Isolates, the experimental `--engine.HostCallStackHeadRoom` option can require a minimum stack size that is guaranteed when performing a host callback.
+With Polyglot Isolates, the `--engine.HostCallStackHeadRoom` option can require a minimum stack size that is guaranteed when performing a host callback.
 If the available stack size drops below the specified threshold, the host callback fails.
 
 ### Memory Protection
 
-In Linux environments that support Memory Protection Keys, the experimental `--engine.MemoryProtection=true` option can be used to isolate the heaps of Polyglot Isolates at the hardware level.
+In Linux environments that support Memory Protection Keys, the `--engine.MemoryProtection=true` option can be used to isolate the heaps of Polyglot Isolates at the hardware level.
 If an engine is created with this option, a dedicated protection key will be allocated for the isolated engine's heap.
 GraalVM will only enable access to the engine's heap when executing code of the Polyglot Isolate.
 
 ## Dependency Setup
 
-To best make use of the embedding API of GraalVM (i.e. `org.graalvm.polyglot.*`) your project should use a GraalVM as `JAVA_HOME`.
+To best make use of the GraalVM Embedding API (i.e. `org.graalvm.polyglot.*`), your project should use a GraalVM as `JAVA_HOME`.
 In addition to that, you should specify the `graal-sdk.jar` (which is included in GraalVM) as a provided dependency to your projects.
 This is mainly to provide IDEs and other tools with the information that the project uses this API.
-An example of this for Maven means adding the following to the `pom.xml` file.
+For example, add the following to the `pom.xml` file of your Maven project:
 
 ```xml
 <dependency>
@@ -763,3 +761,597 @@ module com.mycompany.app {
 
 }
 ```
+
+## Compatibility with JSR-223 ScriptEngine
+
+<!--
+
+IMPORTANT!!
+
+Whenever you change ANYTHING here, check if you need to reflect the changes
+back into our integration tests at tests/python/PythonEngineFactory.java!
+
+-->
+
+The Truffle language implementation framework does not provide a JSR-223 ScriptEngine implementation.
+The Polyglot API provides more fine-grained control over Truffle features and we strongly encourage users to use the `org.graalvm.polyglot.Context` interface in order to control many of the settings directly and benefit from finer-grained security settings in GraalVM.
+
+However, to easily evaluate a Truffle language as a replacement for other scripting languages that are integrated using the ScriptEngine API, we provide a single file script engine below.
+This file can be dropped into a source tree and used directly to evaluate a Truffle language via the ScriptEngine APIs.
+There are only two lines to adapt to your project:
+
+```java
+public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
+    private static final String LANGUAGE_ID = "<<INSERT LANGUAGE ID HERE>>";
+```
+
+Rename the class as desired and change the `LANGUAGE_ID` to the desired Truffle language (e.g. "python" for GraalPy or "ruby" for TruffleRuby). 
+To use it, include a `META-INF/services/javax.script.ScriptEngineFactory` file in your resources with the chosen class name.
+This will allow the default `javax.script.ScriptEngineManager` to discover the language automatically.
+Alternatively, the factory can be registerd via `javax.script.ScriptEngineManager#registerEngineName` or instantiated and used directly.
+
+Note that [Graal.js](../js/) provides [a ScriptEngine implementation](../js/ScriptEngine/) for users migrating from the Nashorn JavaScript engine that was deprecated in JDK 11, so this method here is not needed.
+
+<details>
+<summary>A ScriptEngineFactory for Truffle languages in a single file</summary>
+
+```java
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.io.Reader;
+import java.io.Writer;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
+import java.util.Set;
+
+import javax.script.Bindings;
+import javax.script.Compilable;
+import javax.script.CompiledScript;
+import javax.script.ScriptContext;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineFactory;
+import javax.script.ScriptException;
+
+import org.graalvm.home.Version;
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.PolyglotException;
+import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
+
+public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
+    private static final String LANGUAGE_ID = "<<INSERT LANGUAGE ID HERE>>";
+
+    /***********************************************************/
+    /* Everything below is generic and does not need to change */
+    /***********************************************************/
+
+    private final Engine polyglotEngine = Engine.newBuilder().build();
+    private final Language language = polyglotEngine.getLanguages().get(LANGUAGE_ID);
+
+    @Override
+    public String getEngineName() {
+        return language.getImplementationName();
+    }
+
+    @Override
+    public String getEngineVersion() {
+        return Version.getCurrent().toString();
+    }
+
+    @Override
+    public List<String> getExtensions() {
+        return List.of(LANGUAGE_ID);
+    }
+
+    @Override
+    public List<String> getMimeTypes() {
+        return List.copyOf(language.getMimeTypes());
+    }
+
+    @Override
+    public List<String> getNames() {
+        return List.of(language.getName(), LANGUAGE_ID, language.getImplementationName());
+    }
+
+    @Override
+    public String getLanguageName() {
+        return language.getName();
+    }
+
+    @Override
+    public String getLanguageVersion() {
+        return language.getVersion();
+    }
+
+    @Override
+    public Object getParameter(final String key) {
+        switch (key) {
+            case ScriptEngine.ENGINE:
+                return getEngineName();
+            case ScriptEngine.ENGINE_VERSION:
+                return getEngineVersion();
+            case ScriptEngine.LANGUAGE:
+                return getLanguageName();
+            case ScriptEngine.LANGUAGE_VERSION:
+                return getLanguageVersion();
+            case ScriptEngine.NAME:
+                return LANGUAGE_ID;
+        }
+        return null;
+    }
+
+    @Override
+    public String getMethodCallSyntax(final String obj, final String m, final String... args) {
+        throw new UnsupportedOperationException("Unimplemented method 'getMethodCallSyntax'");
+    }
+
+    @Override
+    public String getOutputStatement(final String toDisplay) {
+        throw new UnsupportedOperationException("Unimplemented method 'getOutputStatement'");
+    }
+
+    @Override
+    public String getProgram(final String... statements) {
+        throw new UnsupportedOperationException("Unimplemented method 'getProgram'");
+    }
+
+    @Override
+    public ScriptEngine getScriptEngine() {
+        return new PolyglotEngine(this);
+    }
+
+    private static final class PolyglotEngine implements ScriptEngine, Compilable {
+        private final ScriptEngineFactory factory;
+        private PolyglotContext defaultContext;
+
+        PolyglotEngine(ScriptEngineFactory factory) {
+            this.factory = factory;
+            this.defaultContext = new PolyglotContext(factory);
+        }
+
+        @Override
+        public CompiledScript compile(String script) throws ScriptException {
+            Source src = Source.create(LANGUAGE_ID, script);
+            try {
+                defaultContext.getContext().parse(src); // only for the side-effect of validating the source
+            } catch (PolyglotException e) {
+                throw new ScriptException(e);
+            }
+            return new PolyglotCompiledScript(src, this);
+        }
+
+        @Override
+        public CompiledScript compile(Reader script) throws ScriptException {
+            Source src;
+            try {
+                src = Source.newBuilder(LANGUAGE_ID, script, "sourcefromreader").build();
+                defaultContext.getContext().parse(src); // only for the side-effect of validating the source
+            } catch (PolyglotException | IOException e) {
+                throw new ScriptException(e);
+            }
+            return new PolyglotCompiledScript(src, this);
+        }
+
+        @Override
+        public Object eval(String script, ScriptContext context) throws ScriptException {
+            if (context instanceof PolyglotContext) {
+                PolyglotContext c = (PolyglotContext) context;
+                try {
+                    return c.getContext().eval(LANGUAGE_ID, script).as(Object.class);
+                } catch (PolyglotException e) {
+                    throw new ScriptException(e);
+                }
+            } else {
+                throw new ClassCastException("invalid context");
+            }
+        }
+
+        @Override
+        public Object eval(Reader reader, ScriptContext context) throws ScriptException {
+            Source src;
+            try {
+                src = Source.newBuilder(LANGUAGE_ID, reader, "sourcefromreader").build();
+            } catch (IOException e) {
+                throw new ScriptException(e);
+            }
+            if (context instanceof PolyglotContext) {
+                PolyglotContext c = (PolyglotContext) context;
+                try {
+                    return c.getContext().eval(src);
+                } catch (PolyglotException e) {
+                    throw new ScriptException(e);
+                }
+            } else {
+                throw new ScriptException("invalid context");
+            }
+        }
+
+        @Override
+        public Object eval(String script) throws ScriptException {
+            return eval(script, defaultContext);
+        }
+
+        @Override
+        public Object eval(Reader reader) throws ScriptException {
+            return eval(reader, defaultContext);
+        }
+
+        @Override
+        public Object eval(String script, Bindings n) throws ScriptException {
+            throw new UnsupportedOperationException("Bindings for Polyglot language cannot be created explicitly");
+        }
+
+        @Override
+        public Object eval(Reader reader, Bindings n) throws ScriptException {
+            throw new UnsupportedOperationException("Bindings for Polyglot language cannot be created explicitly");
+        }
+
+        @Override
+        public void put(String key, Object value) {
+            defaultContext.getBindings(ScriptContext.ENGINE_SCOPE).put(key, value);
+        }
+
+        @Override
+        public Object get(String key) {
+            return defaultContext.getBindings(ScriptContext.ENGINE_SCOPE).get(key);
+        }
+
+        @Override
+        public Bindings getBindings(int scope) {
+            return defaultContext.getBindings(scope);
+        }
+
+        @Override
+        public void setBindings(Bindings bindings, int scope) {
+            defaultContext.setBindings(bindings, scope);
+        }
+
+        @Override
+        public Bindings createBindings() {
+            throw new UnsupportedOperationException("Bindings for Polyglot language cannot be created explicitly");
+        }
+
+        @Override
+        public ScriptContext getContext() {
+            return defaultContext;
+        }
+
+        @Override
+        public void setContext(ScriptContext context) {
+            throw new UnsupportedOperationException("The context of a Polyglot ScriptEngine cannot be modified.");
+        }
+
+        @Override
+        public ScriptEngineFactory getFactory() {
+            return factory;
+        }
+    }
+
+    private static final class PolyglotContext implements ScriptContext {
+        private Context context;
+        private final ScriptEngineFactory factory;
+        private final PolyglotReader in;
+        private final PolyglotWriter out;
+        private final PolyglotWriter err;
+        private Bindings globalBindings;
+
+        PolyglotContext(ScriptEngineFactory factory) {
+            this.factory = factory;
+            this.in = new PolyglotReader(new InputStreamReader(System.in));
+            this.out = new PolyglotWriter(new OutputStreamWriter(System.out));
+            this.err = new PolyglotWriter(new OutputStreamWriter(System.err));
+        }
+
+        Context getContext() {
+            if (context == null) {
+                Context.Builder builder = Context.newBuilder(LANGUAGE_ID)
+                    .in(this.in)
+                    .out(this.out)
+                    .err(this.err)
+                    .allowAllAccess(true);
+                for (Entry<String, Object> entry : getBindings(ScriptContext.GLOBAL_SCOPE).entrySet()) {
+                    Object value = entry.getValue();
+                    if (value instanceof String) {
+                        builder.option(entry.getKey(), (String) value);
+                    }
+                }
+                context = builder.build();
+            }
+            return context;
+        }
+
+        @Override
+        public void setBindings(Bindings bindings, int scope) {
+            if (scope == ScriptContext.GLOBAL_SCOPE) {
+                if (context == null) {
+                    globalBindings = bindings;
+                } else {
+                    throw new UnsupportedOperationException("Global bindings for Polyglot language can only be set before the context is initialized.");
+                }
+            } else {
+                throw new UnsupportedOperationException("Bindings objects for Polyglot language is final.");
+            }
+        }
+
+        @Override
+        public Bindings getBindings(int scope) {
+            if (scope == ScriptContext.ENGINE_SCOPE) {
+                return new PolyglotBindings(getContext().getBindings(LANGUAGE_ID));
+            } else if (scope == ScriptContext.GLOBAL_SCOPE) {
+                return globalBindings;
+            } else {
+                return null;
+            }
+        }
+
+        @Override
+        public void setAttribute(String name, Object value, int scope) {
+            if (scope == ScriptContext.ENGINE_SCOPE) {
+                getBindings(scope).put(name, value);
+            } else if (scope == ScriptContext.GLOBAL_SCOPE) {
+                if (context == null) {
+                    globalBindings.put(name, value);
+                } else {
+                    throw new IllegalStateException("Cannot modify global bindings after context creation.");
+                }
+            }
+        }
+
+        @Override
+        public Object getAttribute(String name, int scope) {
+            if (scope == ScriptContext.ENGINE_SCOPE) {
+                return getBindings(scope).get(name);
+            } else if (scope == ScriptContext.GLOBAL_SCOPE) {
+                return globalBindings.get(name);
+            }
+            return null;
+        }
+
+        @Override
+        public Object removeAttribute(String name, int scope) {
+            Object prev = getAttribute(name, scope);
+            if (prev != null) {
+                if (scope == ScriptContext.ENGINE_SCOPE) {
+                    getBindings(scope).remove(name);
+                } else if (scope == ScriptContext.GLOBAL_SCOPE) {
+                    if (context == null) {
+                        globalBindings.remove(name);
+                    } else {
+                        throw new IllegalStateException("Cannot modify global bindings after context creation.");
+                    }
+                }
+            }
+            return prev;
+        }
+
+        @Override
+        public Object getAttribute(String name) {
+            return getAttribute(name, ScriptContext.ENGINE_SCOPE);
+        }
+
+        @Override
+        public int getAttributesScope(String name) {
+            if (getAttribute(name, ScriptContext.ENGINE_SCOPE) != null) {
+                return ScriptContext.ENGINE_SCOPE;
+            } else if (getAttribute(name, ScriptContext.GLOBAL_SCOPE) != null) {
+                return ScriptContext.GLOBAL_SCOPE;
+            }
+            return -1;
+        }
+
+        @Override
+        public Writer getWriter() {
+            return this.out.writer;
+        }
+
+        @Override
+        public Writer getErrorWriter() {
+            return this.err.writer;
+        }
+
+        @Override
+        public void setWriter(Writer writer) {
+            this.out.writer = writer;
+        }
+
+        @Override
+        public void setErrorWriter(Writer writer) {
+            this.err.writer = writer;
+        }
+
+        @Override
+        public Reader getReader() {
+            return this.in.reader;
+        }
+
+        @Override
+        public void setReader(Reader reader) {
+            this.in.reader = reader;
+        }
+
+        @Override
+        public List<Integer> getScopes() {
+            return List.of(ScriptContext.ENGINE_SCOPE, ScriptContext.GLOBAL_SCOPE);
+        }
+
+        private static final class PolyglotReader extends InputStream {
+            private volatile Reader reader;
+
+            public PolyglotReader(InputStreamReader inputStreamReader) {
+                this.reader = inputStreamReader;
+            }
+
+            @Override
+            public int read() throws IOException {
+                return reader.read();
+            }
+        }
+
+        private static final class PolyglotWriter extends OutputStream {
+            private volatile Writer writer;
+
+            public PolyglotWriter(OutputStreamWriter outputStreamWriter) {
+                this.writer = outputStreamWriter;
+            }
+
+            @Override
+            public void write(int b) throws IOException {
+                writer.write(b);
+            }
+        }
+    }
+
+    private static final class PolyglotCompiledScript extends CompiledScript {
+        private final Source source;
+        private final ScriptEngine engine;
+
+        public PolyglotCompiledScript(Source src, ScriptEngine engine) {
+            this.source = src;
+            this.engine = engine;
+        }
+
+        @Override
+        public Object eval(ScriptContext context) throws ScriptException {
+            if (context instanceof PolyglotContext) {
+                return ((PolyglotContext) context).getContext().eval(source);
+            }
+            throw new UnsupportedOperationException("Polyglot CompiledScript instances can only be evaluated in Polyglot.");
+        }
+
+        @Override
+        public ScriptEngine getEngine() {
+            return engine;
+        }
+    }
+
+    private static final class PolyglotBindings implements Bindings {
+        private Value languageBindings;
+
+        PolyglotBindings(Value languageBindings) {
+            this.languageBindings = languageBindings;
+        }
+
+        @Override
+        public int size() {
+            return keySet().size();
+        }
+
+        @Override
+        public boolean isEmpty() {
+            return size() == 0;
+        }
+
+        @Override
+        public boolean containsValue(Object value) {
+            for (String s : keySet()) {
+                if (get(s) == value) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        @Override
+        public void clear() {
+            for (String s : keySet()) {
+                remove(s);
+            }
+        }
+
+        @Override
+        public Set<String> keySet() {
+            return languageBindings.getMemberKeys();
+        }
+
+        @Override
+        public Collection<Object> values() {
+            List<Object> values = new ArrayList<>();
+            for (String s : keySet()) {
+                values.add(get(s));
+            }
+            return values;
+        }
+
+        @Override
+        public Set<Entry<String, Object>> entrySet() {
+            Set<Entry<String, Object>> values = new HashSet<>();
+            for (String s : keySet()) {
+                values.add(new Entry<String, Object>() {
+                    @Override
+                    public String getKey() {
+                        return s;
+                    }
+
+                    @Override
+                    public Object getValue() {
+                        return get(s);
+                    }
+
+                    @Override
+                    public Object setValue(Object value) {
+                        return put(s, value);
+                    }
+                });
+            }
+            return values;
+        }
+
+        @Override
+        public Object put(String name, Object value) {
+            Object previous = get(name);
+            languageBindings.putMember(name, value);
+            return previous;
+        }
+
+        @Override
+        public void putAll(Map<? extends String, ? extends Object> toMerge) {
+            for (Entry<? extends String, ? extends Object> e : toMerge.entrySet()) {
+                put(e.getKey(), e.getValue());
+            }
+        }
+
+        @Override
+        public boolean containsKey(Object key) {
+            if (key instanceof String) {
+                return languageBindings.hasMember((String) key);
+            } else {
+                return false;
+            }
+        }
+
+        @Override
+        public Object get(Object key) {
+            if (key instanceof String) {
+                Value value = languageBindings.getMember((String) key);
+                if (value != null) {
+                    return value.as(Object.class);
+                }
+            }
+            return null;
+        }
+
+        @Override
+        public Object remove(Object key) {
+            Object prev = get(key);
+            if (prev != null) {
+                languageBindings.removeMember((String) key);
+                return prev;
+            } else {
+                return null;
+            }
+        }
+    }
+}
+```
+
+</details>

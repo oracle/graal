@@ -84,6 +84,7 @@ import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 /**
  * Utility for producing a {@code javap}-like disassembly of bytecode.
@@ -224,9 +225,11 @@ public class BytecodeDisassembler {
             case LDC_W          :
             case LDC2_W         : {
                 int cpi = stream.readCPI();
-                Object constant = cp.lookupConstant(cpi);
+                Object constant = GraalServices.lookupConstant(cp, cpi, false);
                 String desc = null;
-                if (constant instanceof JavaConstant) {
+                if (constant == null) {
+                    desc = "<unresolved>";
+                } else if (constant instanceof JavaConstant) {
                     JavaConstant c = ((JavaConstant) constant);
                     desc = c.toValueString();
                 } else {

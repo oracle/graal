@@ -458,8 +458,17 @@ public final class Target_sun_misc_Unsafe {
      */
     @Substitution(hasReceiver = true, nameProvider = SharedUnsafeAppend0.class)
     public static void setMemory(@SuppressWarnings("unused") @JavaType(Unsafe.class) StaticObject self, @JavaType(Object.class) StaticObject o, long offset, long bytes, byte value,
-                    @Inject Meta meta) {
-        UnsafeAccess.getIfAllowed(meta).setMemory(StaticObject.isNull(o) ? null : o, offset, bytes, value);
+                    @Inject Meta meta, @Inject EspressoLanguage language) {
+        Object hostObject;
+        if (StaticObject.isNull(o)) {
+            hostObject = null;
+        } else if (o.getKlass().isArray()) {
+            hostObject = o.unwrap(language);
+        } else {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere();
+        }
+        UnsafeAccess.getIfAllowed(meta).setMemory(hostObject, offset, bytes, value);
     }
 
     /**
@@ -555,7 +564,7 @@ public final class Target_sun_misc_Unsafe {
         }
 
         EspressoContext context = meta.getContext();
-        StaticObject thread = context.getCurrentThread();
+        StaticObject thread = context.getCurrentPlatformThread();
 
         // Check return condition beforehand
         if (parkReturnCondition(thread, meta)) {

@@ -92,8 +92,7 @@ jobs:
               PRIMARY: "substratevm"
           # /sulong
           - env:
-              # See note for compiler style checks above.
-              JDK_VERSION: "20"
+              JDK_VERSION: "21"
               GATE_TAGS: "style,fullbuild,sulongBasic"
               PRIMARY: "sulong"
           # /truffle

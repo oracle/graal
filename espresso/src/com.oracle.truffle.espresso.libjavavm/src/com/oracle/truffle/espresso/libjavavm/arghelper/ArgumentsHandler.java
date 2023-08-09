@@ -24,8 +24,11 @@
 package com.oracle.truffle.espresso.libjavavm.arghelper;
 
 import static com.oracle.truffle.espresso.libjavavm.Arguments.abort;
+import static com.oracle.truffle.espresso.libjavavm.Arguments.warn;
 
 import java.io.PrintStream;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -57,7 +60,10 @@ public class ArgumentsHandler {
     private final PolyglotArgs polyglotAccess;
     private final ModulePropertyCounter modulePropertyCounter;
 
-    private final boolean experimental;
+    private final Set<String> ignoredXXOptions;
+    private final Map<String, String> mappedXXOptions;
+
+    private boolean experimental;
 
     private boolean helpVM = false;
     private boolean helpTools = false;
@@ -67,7 +73,11 @@ public class ArgumentsHandler {
     private boolean helpExpert = false;
     private boolean helpInternal = false;
 
-    public ArgumentsHandler(Context.Builder builder, JNIJavaVMInitArgs args) {
+    @SuppressWarnings("this-escape")
+    public ArgumentsHandler(Context.Builder builder, Set<String> ignoredXXOptions, Map<String, String> mappedXXOptions, JNIJavaVMInitArgs args) {
+        assert mappedXXOptions.values().stream().allMatch(s -> s.contains("."));
+        this.ignoredXXOptions = ignoredXXOptions;
+        this.mappedXXOptions = mappedXXOptions;
         this.nativeAccess = new Native(this);
         this.modulePropertyCounter = new ModulePropertyCounter(builder);
         this.polyglotAccess = new PolyglotArgs(builder, this);
@@ -114,6 +124,14 @@ public class ArgumentsHandler {
         modulePropertyCounter.addReads(option);
     }
 
+    public void enableNativeAccess(String option) {
+        modulePropertyCounter.enableNativeAccess(option);
+    }
+
+    public void setExperimental(boolean experimental) {
+        this.experimental = experimental;
+    }
+
     /**
      * <code>-XX:</code> arguments are handled specially: If there is an espresso option with the
      * same name as the option passed, it will set it for the guest VM. Otherwise, it is forwarded
@@ -134,19 +152,41 @@ public class ArgumentsHandler {
      * </ul>
      */
     public void handleXXArg(String optionString) {
-        String toPolyglot = optionString.substring("-XX:".length());
-        if (toPolyglot.length() >= 1 && (toPolyglot.charAt(0) == '+' || toPolyglot.charAt(0) == '-')) {
-            String value = Boolean.toString(toPolyglot.charAt(0) == '+');
-            toPolyglot = "--java." + toPolyglot.substring(1) + "=" + value;
+        String arg = optionString.substring("-XX:".length());
+        String group = "java";
+        String name;
+        String value;
+        if (arg.length() >= 1 && (arg.charAt(0) == '+' || arg.charAt(0) == '-')) {
+            name = arg.substring(1);
+            value = Boolean.toString(arg.charAt(0) == '+');
         } else {
-            toPolyglot = "--java." + toPolyglot;
+            int idx = arg.indexOf('=');
+            if (idx < 0) {
+                name = arg;
+                value = "";
+            } else {
+                name = arg.substring(0, idx);
+                value = arg.substring(idx + 1);
+            }
+        }
+        if (ignoredXXOptions.contains(name)) {
+            // ignore
+            warn("Ignoring option: " + optionString);
+            return;
+        }
+        String mapped = mappedXXOptions.get(name);
+        if (mapped != null) {
+            int idx = mapped.indexOf('.');
+            assert idx > 0;
+            group = mapped.substring(0, idx);
+            name = mapped;
         }
         try {
-            parsePolyglotOption(toPolyglot);
+            parsePolyglotOption(group, name, value, optionString);
             return;
         } catch (Arguments.ArgumentException e) {
             if (e.isExperimental()) {
-                throw abort(e.getMessage().replace(toPolyglot, optionString));
+                throw abort(e.getMessage().replace(arg, optionString));
             }
             /* Ignore, and try to pass it as a vm arg */
         }
@@ -157,6 +197,10 @@ public class ArgumentsHandler {
 
     public void parsePolyglotOption(String optionString) {
         polyglotAccess.parsePolyglotOption(optionString, experimental);
+    }
+
+    public void parsePolyglotOption(String group, String key, String value, String arg) {
+        polyglotAccess.parsePolyglotOption(group, key, value, arg, experimental);
     }
 
     public void handleVMOption(String optionString) {

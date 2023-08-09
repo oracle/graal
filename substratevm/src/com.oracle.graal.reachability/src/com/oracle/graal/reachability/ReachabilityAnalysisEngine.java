@@ -51,6 +51,7 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.common.meta.MultiMethod;
 
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -106,8 +107,8 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial) {
-        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial);
+    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, reason, otherRoots);
     }
 
     @SuppressWarnings("try")
@@ -145,24 +146,28 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     }
 
     @Override
-    public AnalysisMethod addRootMethod(AnalysisMethod m, boolean invokeSpecial) {
+    public AnalysisMethod addRootMethod(AnalysisMethod m, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+        assert otherRoots.length == 0;
         ReachabilityAnalysisMethod method = (ReachabilityAnalysisMethod) m;
         if (m.isStatic()) {
-            if (!method.registerAsDirectRootMethod()) {
-                return method;
-            }
-            markMethodImplementationInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsDirectRootMethod(reason)) {
+                    markMethodImplementationInvoked(method, reason);
+                }
+            });
         } else if (invokeSpecial) {
             AnalysisError.guarantee(!method.isAbstract(), "Abstract methods cannot be registered as special invoke entry point.");
-            if (!method.registerAsDirectRootMethod()) {
-                return method;
-            }
-            markMethodImplementationInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsDirectRootMethod(reason)) {
+                    markMethodImplementationInvoked(method, reason);
+                }
+            });
         } else {
-            if (!method.registerAsVirtualRootMethod()) {
-                return method;
-            }
-            markMethodInvoked(method, "root method");
+            postTask(() -> {
+                if (method.registerAsVirtualRootMethod(reason)) {
+                    markMethodInvoked(method, reason);
+                }
+            });
         }
         return method;
     }

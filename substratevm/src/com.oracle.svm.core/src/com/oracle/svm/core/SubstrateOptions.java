@@ -31,7 +31,6 @@ import static org.graalvm.compiler.core.common.SpectrePHTMitigations.Options.Spe
 import static org.graalvm.compiler.options.OptionType.Expert;
 import static org.graalvm.compiler.options.OptionType.User;
 
-import java.nio.file.Files;
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -188,18 +187,53 @@ public class SubstrateOptions {
      * for a description of the levels.
      */
     public enum OptimizationLevel {
-        O0,
-        O1,
-        O2,
-        BUILD_TIME
+        O0("No optimizations", "0"),
+        O1("Basic optimizations", "1"),
+        O2("Advanced optimizations", "2"),
+        O3("All optimizations for best performance", "3"),
+        BUILD_TIME("Optimize for fastest build time", "b");
+
+        private final String description;
+        private final String optionSwitch;
+
+        OptimizationLevel(String description, String optionSwitch) {
+            this.description = description;
+            this.optionSwitch = optionSwitch;
+        }
+
+        public String getDescription() {
+            return description;
+        }
+
+        public String getOptionSwitch() {
+            return optionSwitch;
+        }
+
+        /**
+         * Determine if this level is one of the given ones.
+         */
+        public boolean isOneOf(OptimizationLevel... levels) {
+            if (levels != null) {
+                for (OptimizationLevel level : levels) {
+                    if (level.equals(this)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+
     }
 
     @APIOption(name = "-O", valueSeparator = APIOption.NO_SEPARATOR)//
-    @Option(help = "Control code optimizations: b - quick build mode for development, 0 - no optimizations, 1 - basic optimizations, 2 - aggressive optimizations (default).", type = OptionType.User)//
+    @Option(help = "Control code optimizations: b - optimize for fastest build time, " +
+                    "0 - no optimizations, 1 - basic optimizations, 2 - advanced optimizations, 3 - all optimizations for best performance.", type = OptionType.User)//
     public static final HostedOptionKey<String> Optimize = new HostedOptionKey<>("2") {
+
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, String oldValue, String newValue) {
             OptimizationLevel newLevel = parseOptimizationLevel(newValue);
+
             // `-g -O0` is recommended for a better debugging experience
             GraalOptions.TrackNodeSourcePosition.update(values, newLevel == OptimizationLevel.O0);
             SubstrateOptions.IncludeNodeSourcePositions.update(values, newLevel == OptimizationLevel.O0);
@@ -208,6 +242,7 @@ public class SubstrateOptions {
             if (optimizeValueUpdateHandler != null) {
                 optimizeValueUpdateHandler.onValueUpdate(values, newLevel);
             }
+
         }
     };
 
@@ -230,11 +265,11 @@ public class SubstrateOptions {
             return OptimizationLevel.O0;
         } else if (intLevel == 1) {
             return OptimizationLevel.O1;
-        } else if (intLevel >= 2) {
-            /*
-             * We allow all positive numbers, and treat that as our current highest supported level.
-             */
+        } else if (intLevel == 2) {
             return OptimizationLevel.O2;
+        } else if (intLevel > 2) {
+            // We allow all positive numbers, and treat that as our current highest supported level.
+            return OptimizationLevel.O3;
         } else {
             throw UserError.abort("Invalid value '%s' provided for option Optimize (expected 'b' or numeric value >= 0)", value);
         }
@@ -252,6 +287,11 @@ public class SubstrateOptions {
     @Fold
     public static boolean useEconomyCompilerConfig() {
         return useEconomyCompilerConfig(HostedOptionValues.singleton());
+    }
+
+    @Fold
+    public static boolean isMaximumOptimizationLevel() {
+        return optimizationLevel() == OptimizationLevel.O3;
     }
 
     public interface ValueUpdateHandler<T> {
@@ -432,7 +472,7 @@ public class SubstrateOptions {
     @BundleMember(role = BundleMember.Role.Output)//
     @Option(help = "Print build output statistics as JSON to the specified file. " +
                     "The output conforms to the JSON schema located at: " +
-                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.1.json", type = OptionType.User)//
+                    "docs/reference-manual/native-image/assets/build-output-schema-v0.9.2.json", type = OptionType.User)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> BuildOutputJSONFile = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.build());
 
     /*
@@ -784,21 +824,14 @@ public class SubstrateOptions {
         }
     };
 
+    @Option(help = "Dump heap to file (see HeapDumpPath) when the executable throws a java.lang.OutOfMemoryError because it ran out of Java heap.")//
+    public static final RuntimeOptionKey<Boolean> HeapDumpOnOutOfMemoryError = new RuntimeOptionKey<>(false);
+
     @Option(help = "The path (filename or directory) where heap dumps are created (defaults to the working directory).")//
     public static final RuntimeOptionKey<String> HeapDumpPath = new RuntimeOptionKey<>("", Immutable);
 
-    /* Utility method that follows the `-XX:HeapDumpPath` behavior of the JVM. */
-    public static String getHeapDumpPath(String defaultFilename) {
-        String heapDumpFilenameOrDirectory = HeapDumpPath.getValue();
-        if (heapDumpFilenameOrDirectory.isEmpty()) {
-            return defaultFilename;
-        }
-        var targetPath = Paths.get(heapDumpFilenameOrDirectory);
-        if (Files.isDirectory(targetPath)) {
-            targetPath = targetPath.resolve(defaultFilename);
-        }
-        return targetPath.toFile().getAbsolutePath();
-    }
+    @Option(help = "A prefix that is used for heap dump filenames if no heap dump filename was specified explicitly.")//
+    public static final HostedOptionKey<String> HeapDumpDefaultFilenamePrefix = new HostedOptionKey<>("svm-heapdump-");
 
     @Option(help = "Create a heap dump and exit.")//
     public static final RuntimeOptionKey<Boolean> DumpHeapAndExit = new RuntimeOptionKey<>(false, Immutable);
@@ -899,4 +932,7 @@ public class SubstrateOptions {
 
     @Option(help = "Allows the addresses of pinned objects to be passed to other code.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> PinnedObjectAddressing = new HostedOptionKey<>(true);
+
+    @Option(help = "Emit indirect branch target marker instructions.", type = OptionType.Expert) //
+    public static final HostedOptionKey<Boolean> IndirectBranchTargetMarker = new HostedOptionKey<>(false);
 }

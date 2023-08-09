@@ -1283,7 +1283,7 @@ public class LoggingTest {
     private static boolean hasInterpreterOnlyWarning(Iterable<Map.Entry<Level, String>> log) {
         for (Map.Entry<Level, String> record : log) {
             String message = record.getValue();
-            if (message.startsWith("The polyglot context is using an implementation that does not support runtime compilation.")) {
+            if (message.startsWith("The polyglot context uses a fallback Truffle implementation that does not support runtime optimization.")) {
                 return true;
             }
         }

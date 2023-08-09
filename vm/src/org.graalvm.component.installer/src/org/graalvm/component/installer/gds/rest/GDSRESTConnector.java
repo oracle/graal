@@ -24,14 +24,15 @@
  */
 package org.graalvm.component.installer.gds.rest;
 
-import com.oracle.truffle.tools.utils.json.JSONException;
-import com.oracle.truffle.tools.utils.json.JSONObject;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
 import org.graalvm.component.installer.remote.FileDownloader;
 import org.graalvm.component.installer.URLConnectionFactory;
 import org.graalvm.component.installer.Version;
 import org.graalvm.component.installer.remote.ProxyConnectionFactory;
+import org.graalvm.shadowed.org.json.JSONException;
+import org.graalvm.shadowed.org.json.JSONObject;
+
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;

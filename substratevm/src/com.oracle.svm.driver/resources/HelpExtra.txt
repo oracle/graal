@@ -1,5 +1,10 @@
 Non-standard options help:
 
+    --exclude-config      exclude configuration for a comma-separated pair of classpath/modulepath
+                          pattern and resource pattern. For example:
+                          '--exclude-config foo.jar,META-INF\/native-image\/.*.properties'
+                          ignores all .properties files in 'META-INF/native-image' in all
+                          JARs named 'foo.jar'.
     --expert-options      lists image build options for experts
     --expert-options-all  lists all image build options for experts (use at your own risk).
                           Options marked with [Extra help available] contain help that can be

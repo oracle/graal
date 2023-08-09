@@ -2288,7 +2288,7 @@ public final class DebugContext implements AutoCloseable {
     private void printMetricsCSV(PrintStream out, Object compilable, Integer identity, int compilationNr, String compilationId) {
         String compilableName = compilable instanceof JavaMethod ? ((JavaMethod) compilable).format("%H.%n(%p)%R") : String.valueOf(compilable);
         String csvFormat = CSVUtil.buildFormatString("%s", "%s", "%d", "%s");
-        String format = String.format(csvFormat, CSVUtil.Escape.escapeArgs(compilableName, identity, compilationNr, compilationId));
+        String format = String.format(csvFormat, CSVUtil.Escape.escapeArgsFormatString(compilableName, identity, compilationNr, compilationId));
         char sep = CSVUtil.SEPARATOR;
         format += sep + "%s" + sep + "%s" + sep + "%s";
         for (MetricKey key : KeyRegistry.getKeys()) {

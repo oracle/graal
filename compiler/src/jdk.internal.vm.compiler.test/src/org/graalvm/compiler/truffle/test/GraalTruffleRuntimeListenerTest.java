@@ -39,11 +39,12 @@ import java.util.Comparator;
 import java.util.List;
 
 import com.oracle.truffle.api.test.SubprocessTestUtils;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
-import org.graalvm.compiler.truffle.runtime.AbstractCompilationTask;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
+import com.oracle.truffle.runtime.AbstractCompilationTask;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
@@ -65,7 +66,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
     @Test
     public void testCompilationSuccess() {
         setupContext("engine.CompileImmediately", "true", "engine.BackgroundCompilation", "false");
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         OptimizedCallTarget compilable = (OptimizedCallTarget) RootNode.createConstantNode(true).getCallTarget();
         TestListener listener = new TestListener(compilable);
         try {
@@ -90,7 +91,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
             builder.option("engine.CompileImmediately", "true");
             builder.option("engine.BackgroundCompilation", "false");
             setupContext(builder);
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
             OptimizedCallTarget compilable = (OptimizedCallTarget) createFailureNode().getCallTarget();
             TestListener listener = new TestListener(compilable);
             try {
@@ -115,7 +116,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
                 public void write(int b) throws IOException {
                 }
             }).allowExperimentalOptions(true).option("engine.CompileImmediately", "true").option("engine.BackgroundCompilation", "false").option("engine.CompilationFailureAction", "Diagnose"));
-            GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+            OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
             OptimizedCallTarget compilable = (OptimizedCallTarget) createFailureNode().getCallTarget();
             TestListener listener = new TestListener(compilable);
             try {
@@ -139,7 +140,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         setupContext("engine.CompileImmediately", "true",
                         "engine.BackgroundCompilation", "false",
                         "engine.PartialBlockCompilationSize", "1");
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         OptimizedCallTarget compilable = (OptimizedCallTarget) createBlocks().getCallTarget();
         compilable.computeBlockCompilations();
         TestListener listener = new TestListener(compilable);
@@ -177,7 +178,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
                         "engine.BackgroundCompilation", "false",
                         "engine.PartialBlockCompilationSize", "1",
                         "engine.PartialBlockMaximumSize", "0");
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         OptimizedCallTarget compilable = (OptimizedCallTarget) createBlocks().getCallTarget();
         compilable.computeBlockCompilations();
         TestListener listener = new TestListener(compilable);
@@ -211,7 +212,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
                         "engine.BackgroundCompilation", "false",
                         "engine.PartialBlockCompilationSize", String.valueOf(blockSize),
                         "compiler.MaximumGraalGraphSize", "20000");
-        GraalTruffleRuntime runtime = GraalTruffleRuntime.getRuntime();
+        OptimizedTruffleRuntime runtime = OptimizedTruffleRuntime.getRuntime();
         AbstractTestNode[] children = new AbstractTestNode[nodeCount];
         for (int i = 0; i < children.length; i++) {
             children[i] = new ExpensiveTestNode();
@@ -360,7 +361,7 @@ public final class GraalTruffleRuntimeListenerTest extends TestWithPolyglotOptio
         DEQUEUED,
     }
 
-    private static final class TestListener implements GraalTruffleRuntimeListener {
+    private static final class TestListener implements OptimizedTruffleRuntimeListener {
 
         private static final long TIMEOUT = 10_000;
 

@@ -34,8 +34,8 @@ import com.oracle.truffle.api.debug.DebugValue;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.tools.chromeinspector.types.TypeInfo.SUBTYPE;
 import com.oracle.truffle.tools.chromeinspector.types.TypeInfo.TYPE;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 final class ObjectPreview {
 

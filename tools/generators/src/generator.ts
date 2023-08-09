@@ -241,7 +241,7 @@ function generateJavaSourceFile(name: string, content: string): void {
 }
 
 function getJSONBaseText() {
-    let text = 'import com.oracle.truffle.tools.utils.json.JSONObject;\n\n';
+    let text = 'import org.graalvm.shadowed.org.json.JSONObject;\n\n';
     text += 'public abstract class JSONBase {\n\n';
 
     // jsonData field
@@ -371,7 +371,7 @@ function getClassText(declNode: DeclarationStatement, moduleNode: ModuleDeclarat
         if (!isAbstract) {
             imports.push('java.util.ArrayList');
             imports.push('java.util.Collections');
-            imports.push('com.oracle.truffle.tools.utils.json.JSONArray');
+            imports.push('org.graalvm.shadowed.org.json.JSONArray');
         }
     }
     if (toImport.hasMap) {
@@ -381,7 +381,7 @@ function getClassText(declNode: DeclarationStatement, moduleNode: ModuleDeclarat
         }
     }
     if (!isAbstract) {
-        imports.push('com.oracle.truffle.tools.utils.json.JSONObject');
+        imports.push('org.graalvm.shadowed.org.json.JSONObject');
         if (toImport.hasObjects) {
             imports.push('java.util.Objects');
         }

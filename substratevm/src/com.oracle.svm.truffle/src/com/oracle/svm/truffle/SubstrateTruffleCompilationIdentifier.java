@@ -25,11 +25,11 @@
 package com.oracle.svm.truffle;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
 
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 public final class SubstrateTruffleCompilationIdentifier extends SubstrateCompilationIdentifier implements TruffleCompilationIdentifier {
 

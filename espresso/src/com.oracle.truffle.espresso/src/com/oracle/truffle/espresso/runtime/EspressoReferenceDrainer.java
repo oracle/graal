@@ -230,7 +230,7 @@ final class EspressoReferenceDrainer extends ContextAccessImpl {
                     drain(meta, lock, true);
                 }
             } finally {
-                getContext().getThreadAccess().terminate(getContext().getCurrentThread());
+                getContext().getThreadAccess().terminate(getContext().getCurrentPlatformThread());
                 if (getContext().isClosing()) {
                     // Ignore exceptions that arise during closing.
                     return;

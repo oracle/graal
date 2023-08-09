@@ -45,9 +45,9 @@ import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.AES_BLOCK_SIZE;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.asXMMRegister;
+import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
 import static org.graalvm.compiler.lir.amd64.AMD64CounterModeAESCryptOp.newLabels;
 import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
@@ -61,7 +61,7 @@ import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -70,11 +70,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp",
-          lineStart = 1245,
-          lineEnd   = 1501,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
-          sha1      = "e3481678a0bdb4d66c9b3641ba44a3559979aff5")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/d7b941640638b35f9ac1ef11cd6bf6ccb795c29a/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L1255-L1511",
+          sha1 = "e3481678a0bdb4d66c9b3641ba44a3559979aff5")
 // @formatter:on
 public final class AMD64CipherBlockChainingAESDecryptOp extends AMD64LIRInstruction {
 

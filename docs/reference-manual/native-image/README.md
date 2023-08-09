@@ -1,11 +1,11 @@
 ---
 layout: docs
 toc_group: native-image
-link_title: Native Image
+link_title: Getting Started with Native Image
 permalink: /reference-manual/native-image/
 ---
 
-# Getting Started with Native Image
+# Native Image
 
 Native Image is a technology to compile Java code ahead-of-time to a binary -- a **native executable**. 
 A native executable includes only the code required at run time, that is the application classes, standard-library classes, the language runtime, and statically-linked native code from the JDK. 
@@ -180,7 +180,7 @@ REM Open an info dialog box with text
 native-image.exe -jar App.jar & msg "%username%" GraalVM Native Image build completed
 ```
 
-## Build Overview
+## Build Configuration
 
 There many options you can pass to the `native-image` builder to configure the build process. Run `native-image --help` to see the full list.
 The options passed to `native-image` are evaluated left-to-right.
@@ -189,7 +189,7 @@ For different build tweaks and to learn more about build time configuration, see
 
 Native Image will output the progress and various statistics during the build. To learn more about the output and the different build phases, see [Build Output](BuildOutput.md).
 
-## Configuring Native Image with Third-Party Libraries
+## Native Image and Third-Party Libraries
 
 For more complex applications that use external libraries, you must provide the `native-image` builder with metadata.
 

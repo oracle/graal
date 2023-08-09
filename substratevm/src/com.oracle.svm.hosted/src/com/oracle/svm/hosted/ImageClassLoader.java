@@ -425,10 +425,10 @@ public final class ImageClassLoader {
 
     public String getMainClassNotFoundErrorMessage(String className) {
         List<Path> classPath = applicationClassPath();
-        String classPathString = classPath.isEmpty() ? "" : String.format("%nclasspath: '%s'", pathsToString(classPath));
+        String classPathString = classPath.isEmpty() ? "empty classpath" : "classpath: '%s'".formatted(pathsToString(classPath));
         List<Path> modulePath = applicationModulePath();
-        String modulePathString = modulePath.isEmpty() ? "" : String.format("%nmodulepath: '%s'", pathsToString(modulePath));
-        return String.format("Main entry point class '%s' neither found on the classpath nor on the modulepath.%s%s", className, classPathString, modulePathString);
+        String modulePathString = modulePath.isEmpty() ? "empty modulepath" : "modulepath: '%s'".formatted(pathsToString(modulePath));
+        return String.format("Main entry point class '%s' neither found on %n%s nor%n%s.", className, classPathString, modulePathString);
     }
 
     private static String pathsToString(List<Path> paths) {

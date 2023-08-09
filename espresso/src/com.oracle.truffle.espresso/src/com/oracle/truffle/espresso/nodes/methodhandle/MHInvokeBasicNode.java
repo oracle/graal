@@ -73,7 +73,7 @@ public abstract class MHInvokeBasicNode extends MethodHandleIntrinsicNode {
 
     public MHInvokeBasicNode(Method method) {
         super(method);
-        Meta meta = getMeta();
+        Meta meta = method.getMeta();
         this.form = meta.java_lang_invoke_MethodHandle_form;
         this.vmentry = meta.java_lang_invoke_LambdaForm_vmentry;
         this.hiddenVmtarget = meta.HIDDEN_VMTARGET;

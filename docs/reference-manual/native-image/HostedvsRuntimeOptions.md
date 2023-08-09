@@ -3,7 +3,7 @@ layout: docs
 toc_group: contributing
 link_title: Hosted and Runtime Options
 permalink: /reference-manual/native-image/overview/HostedvsRuntimeOptions/
-redirect_from: /$version/reference-manual/native-image/HostedvsRuntimeOptions/
+redirect_from: /reference-manual/native-image/HostedvsRuntimeOptions/
 ---
 
 # Native Image Hosted and Runtime Options

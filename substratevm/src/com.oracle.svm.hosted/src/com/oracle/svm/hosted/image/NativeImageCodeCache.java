@@ -67,6 +67,7 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
@@ -79,7 +80,6 @@ import com.oracle.svm.core.code.FrameInfoDecoder;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.code.FrameInfoQueryResult;
 import com.oracle.svm.core.code.ImageCodeInfo.HostedImageCodeInfo;
-import com.oracle.svm.core.code.InstantReferenceAdjuster;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
@@ -252,7 +252,7 @@ public abstract class NativeImageCodeCache {
         return ConfigurationValues.getObjectLayout().alignUp(getConstantsSize());
     }
 
-    public void buildRuntimeMetadata(CFunctionPointer firstMethod, UnsignedWord codeSize) {
+    public void buildRuntimeMetadata(SnippetReflectionProvider snippetReflection, ForkJoinPool threadPool, CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
@@ -390,7 +390,7 @@ public abstract class NativeImageCodeCache {
             System.out.println("encoded during call entry points           ; " + frameInfoCustomization.numDuringCallEntryPoints);
         }
 
-        HostedImageCodeInfo imageCodeInfo = installCodeInfo(firstMethod, codeSize, codeInfoEncoder, reflectionMetadataEncoder);
+        HostedImageCodeInfo imageCodeInfo = installCodeInfo(snippetReflection, firstMethod, codeSize, codeInfoEncoder, reflectionMetadataEncoder);
 
         if (CodeInfoEncoder.Options.CodeInfoEncoderCounters.getValue()) {
             System.out.println("****Start Code Info Encoder Counters****");
@@ -408,12 +408,13 @@ public abstract class NativeImageCodeCache {
             verifyDeoptEntries(imageCodeInfo);
         }
 
-        assert verifyMethods(codeInfoEncoder, imageCodeInfo);
+        assert verifyMethods(hUniverse, threadPool, codeInfoEncoder, imageCodeInfo);
     }
 
-    protected HostedImageCodeInfo installCodeInfo(CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder, ReflectionMetadataEncoder reflectionMetadataEncoder) {
+    protected HostedImageCodeInfo installCodeInfo(SnippetReflectionProvider snippetReflection, CFunctionPointer firstMethod, UnsignedWord codeSize, CodeInfoEncoder codeInfoEncoder,
+                    ReflectionMetadataEncoder reflectionMetadataEncoder) {
         HostedImageCodeInfo imageCodeInfo = CodeInfoTable.getImageCodeCache().getHostedImageCodeInfo();
-        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new InstantReferenceAdjuster());
+        codeInfoEncoder.encodeAllAndInstall(imageCodeInfo, new HostedInstantReferenceAdjuster(snippetReflection));
         reflectionMetadataEncoder.encodeAllAndInstall();
         imageCodeInfo.setCodeStart(firstMethod);
         imageCodeInfo.setCodeSize(codeSize);
@@ -550,10 +551,22 @@ public abstract class NativeImageCodeCache {
         return true;
     }
 
-    protected boolean verifyMethods(CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
-        for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
-            HostedMethod method = pair.getLeft();
-            CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo);
+    protected boolean verifyMethods(HostedUniverse hUniverse, ForkJoinPool threadPool, CodeInfoEncoder codeInfoEncoder, CodeInfo codeInfo) {
+        /*
+         * Run method verification in parallel to reduce computation time.
+         */
+        BigBang bb = hUniverse.getBigBang();
+        CompletionExecutor executor = new CompletionExecutor(bb, threadPool, bb.getHeartbeatCallback());
+        try {
+            executor.init();
+            executor.start();
+            for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
+                HostedMethod method = pair.getLeft();
+                executor.execute(ignore -> CodeInfoEncoder.verifyMethod(method, pair.getRight(), method.getCodeAddressOffset(), codeSizeFor(method), codeInfo));
+            }
+            executor.complete();
+        } catch (InterruptedException e) {
+            throw VMError.shouldNotReachHere("Failed to verify methods");
         }
         codeInfoEncoder.verifyFrameInfo(codeInfo);
         return true;

@@ -3,7 +3,7 @@ layout: docs
 toc_group: build-overview
 link_title: Build Options
 permalink: /reference-manual/native-image/overview/BuildOptions/
-redirect_from: /$version/reference-manual/native-image/Options/
+redirect_from: /reference-manual/native-image/Options/
 ---
 
 #  Native Image Build Options
@@ -17,6 +17,7 @@ Depending on the GraalVM version, the options to the `native-image` builder may 
 * `-J<flag>`: pass an option directly to the JVM running the `native-image` builder
 * `--diagnostics-mode`: enable diagnostics output which includes class initialization, substitutions, etc.
 * `--enable-preview`: allow classes to depend on preview features of this release
+* `--enable-native-access <module name>[,<module name>...]` modules that are permitted to perform restricted native operations. `<module name>` can also be `ALL-UNNAMED`.
 * `--verbose`: enable verbose output
 * `--version`: print the product version and exit
 * `--help`: print this help message
@@ -80,6 +81,7 @@ The `--language:js` `--language:nodejs`, `--language:python`, `--language:ruby`,
 
 Run `native-image --help-extra` for non-standard options help.
 
+* `--exclude-config`: exclude configuration for a comma-separated pair of classpath/modulepath pattern and resource pattern. For example: '--exclude-config foo.jar,META-INF\/native-image\/.*.properties' ignores all .properties files in 'META-INF/native-image' in all JARs named 'foo.jar'.
 * `--expert-options`: list image build options for experts
 * `--expert-options-all `: list all image build options for experts (use at your own risk). Options marked with _Extra help available_ contain help that can be shown with `--expert-options-detail`
 * `--expert-options-detail`: display all available help for a comma-separated list of option names. Pass `*` to show extra help for all options that contain it.

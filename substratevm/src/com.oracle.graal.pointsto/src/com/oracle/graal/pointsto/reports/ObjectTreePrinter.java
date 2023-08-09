@@ -246,10 +246,10 @@ public final class ObjectTreePrinter extends ObjectScanner {
         }
     }
 
-    static class SimpleMatcher {
+    public static final class SimpleMatcher {
         private final String[] patterns;
 
-        SimpleMatcher(String[] patterns) {
+        public SimpleMatcher(String[] patterns) {
             this.patterns = patterns;
         }
 

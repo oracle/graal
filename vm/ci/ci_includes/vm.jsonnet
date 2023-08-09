@@ -8,12 +8,10 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
 {
   vm_java_17:: graal_common.labsjdk17 + vm_common.vm_env_mixin('17'),
-  vm_java_20:: graal_common.labsjdk20 + vm_common.vm_env_mixin('20'),
   vm_java_21:: graal_common.labsjdk21 + vm_common.vm_env_mixin('21'),
   vm_java_22:: graal_common.oraclejdk22 + vm_common.vm_env_mixin('22'),
 
   vm_java_17_llvm:: self.vm_java_17 + graal_common['labsjdk-ce-17-llvm'],
-  vm_java_20_llvm:: self.vm_java_20 + graal_common['labsjdk-ce-20-llvm'],
   vm_java_21_llvm:: self.vm_java_21 + graal_common['labsjdk-ce-21-llvm'],
 
   binaries_repository: 'lafo',
@@ -44,19 +42,19 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     ],
   },
 
-  maven_17_20:: {
+  maven_17_21:: {
     downloads+: {
       JAVA_HOME: graal_common.jdks_data['labsjdk-ce-17'],
-      EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-ce-20'],
+      EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-ce-21'],
     },
     mx_cmd_base:: ['mx', '--dynamicimports', '/tools,/compiler,/graal-js,/espresso,/substratevm', '--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
     build:: self.mx_cmd_base + ['build'],
-    deploy(repo, dry_run=false):: self.mx_cmd_base + ['--suite', 'compiler', '--suite', 'truffle', '--suite', 'sdk', '--suite', 'tools', '--suite', 'regex', '--suite', 'graal-js', '--suite', 'espresso', '--suite', 'substratevm', 'maven-deploy', '--tags=default', '--all-distribution-types', '--validate', 'full', '--licenses', 'GPLv2-CPE,UPL,MIT'] +
+    deploy(repo, dry_run=false):: self.mx_cmd_base + ['--suite', 'compiler', '--suite', 'truffle', '--suite', 'sdk', '--suite', 'tools', '--suite', 'regex', '--suite', 'graal-js', '--suite', 'espresso', '--suite', 'substratevm', 'maven-deploy', '--tags=default', '--all-distribution-types', '--validate', 'full', '--licenses', 'GPLv2-CPE,GPLv2,UPL,MIT,ICU'] +
         (if dry_run then ['--dry-run'] else []) +
         (if repo == null then [] else [repo]),
   },
 
-  maven_17_20_only_native:: self.maven_17_20 + {
+  maven_17_21_only_native:: self.maven_17_21 + {
     native_distributions:: 'TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE',
     mx_cmd_base:: ['mx', '--dynamicimports', '/substratevm', '--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
     build:: self.mx_cmd_base + ['build', '--dependencies', self.native_distributions],
@@ -75,28 +73,17 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
         ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_releaser_service,
     ],
     requireArtifacts: [
-      {name: 'post-merge-deploy-vm-java17-linux-amd64'},
-      {name: 'post-merge-deploy-vm-java20-linux-amd64'},
-      {name: 'daily-deploy-vm-java17-linux-aarch64'},
-      {name: 'daily-deploy-vm-java20-linux-aarch64'},
-      {name: 'daily-deploy-vm-base-java17-darwin-amd64'},
-      {name: 'daily-deploy-vm-base-java20-darwin-amd64'},
-      {name: 'daily-deploy-vm-installable-java17-darwin-amd64'},
-      {name: 'daily-deploy-vm-installable-java20-darwin-amd64'},
-      {name: 'daily-deploy-vm-base-java17-darwin-aarch64'},
-      {name: 'daily-deploy-vm-base-java20-darwin-aarch64'},
-      {name: 'daily-deploy-vm-installable-java17-darwin-aarch64'},
-      {name: 'daily-deploy-vm-installable-java20-darwin-aarch64'},
-      {name: 'daily-deploy-vm-base-java17-windows-amd64'},
-      {name: 'daily-deploy-vm-base-java20-windows-amd64'},
-      {name: 'daily-deploy-vm-installable-java17-windows-amd64'},
-      {name: 'daily-deploy-vm-installable-java20-windows-amd64'},
-      {name: 'daily-deploy-vm-ruby-java17-linux-amd64'},
-      {name: 'daily-deploy-vm-ruby-java20-linux-amd64'},
-      {name: 'daily-deploy-vm-ruby-java17-darwin-amd64'},
-      {name: 'daily-deploy-vm-ruby-java20-darwin-amd64'},
-      {name: 'daily-deploy-vm-ruby-java17-darwin-aarch64'},
-      {name: 'daily-deploy-vm-ruby-java20-darwin-aarch64'},
+      {name: 'post-merge-deploy-vm-java21-linux-amd64'},
+      {name: 'daily-deploy-vm-java21-linux-aarch64'},
+      {name: 'daily-deploy-vm-base-java21-darwin-amd64'},
+      {name: 'daily-deploy-vm-installable-java21-darwin-amd64'},
+      {name: 'daily-deploy-vm-base-java21-darwin-aarch64'},
+      {name: 'daily-deploy-vm-installable-java21-darwin-aarch64'},
+      {name: 'daily-deploy-vm-base-java21-windows-amd64'},
+      {name: 'daily-deploy-vm-installable-java21-windows-amd64'},
+      {name: 'daily-deploy-vm-ruby-java21-linux-amd64'},
+      {name: 'daily-deploy-vm-ruby-java21-darwin-amd64'},
+      {name: 'daily-deploy-vm-ruby-java21-darwin-aarch64'},
     ],
     targets+: ['daily'],
     notify_groups:: ['deploy'],
@@ -113,25 +100,25 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
   diskspace_required: {
     java17_linux_amd64: "30GB",
-    java20_linux_amd64: "30GB",
+    java21_linux_amd64: "30GB",
   },
 
   local builds = [
-    utils.add_gate_predicate(self.vm_java_20 + vm_common.gate_vm_linux_amd64 + {
+    utils.add_gate_predicate(self.vm_java_21 + vm_common.gate_vm_linux_amd64 + {
      run: [
        ['mx', 'build'],
        ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-linux-amd64',
     }, ['sdk', 'truffle', 'vm']),
-    utils.add_gate_predicate(self.vm_java_20 + graal_common.devkits['windows-jdk20'] + vm_common.gate_vm_windows_amd64 + {
+    utils.add_gate_predicate(self.vm_java_21 + graal_common.devkits['windows-jdk21'] + vm_common.gate_vm_windows_amd64 + {
      run: [
          ['mx', 'build'],
          ['mx', 'unittest', '--suite', 'vm'],
      ],
      name: 'gate-vm-unittest-windows-amd64',
     }, ["sdk", "truffle", "vm"]),
-    self.vm_java_20 + vm_common.gate_vm_linux_amd64 + vm_common.sulong_linux + {
+    self.vm_java_21 + vm_common.gate_vm_linux_amd64 + vm_common.sulong_linux + {
      environment+: {
        DYNAMIC_IMPORTS: '/tools,/substratevm,/sulong',
        NATIVE_IMAGES: 'polyglot',
@@ -142,49 +129,49 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
      ],
      name: 'gate-vm-build-without-vcs-linux-amd64',
     },
-    vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_17_20 + vm_common.sulong_linux + {
-     run: [ $.maven_17_20.build, $.maven_17_20.deploy(repo='lafo-maven', dry_run=true)],
+    vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_17_21 + vm_common.sulong_linux + {
+     run: [ $.maven_17_21.build, $.maven_17_21.deploy(repo='lafo-maven', dry_run=true)],
      name: 'gate-vm-maven-dry-run-linux-amd64',
     },
-    vm_common.linux_deploy + vm_common.deploy_vm_linux_amd64 + self.maven_17_20 + vm_common.sulong_linux + {
-     run: [ $.maven_17_20.build, $.maven_17_20.deploy(repo='lafo-maven')],
+    vm_common.linux_deploy + vm_common.deploy_vm_linux_amd64 + self.maven_17_21 + vm_common.sulong_linux + {
+     run: [ $.maven_17_21.build, $.maven_17_21.deploy(repo='lafo-maven')],
      name: 'post-merge-deploy-vm-maven-linux-amd64',
      timelimit: '45:00',
      notify_groups:: ['deploy'],
     },
-    vm_common.linux_deploy + vm_common.gate_vm_linux_aarch64 + self.maven_17_20_only_native + {
-     run: [ $.maven_17_20_only_native.build, $.maven_17_20_only_native.deploy(repo='lafo-maven', dry_run=true)],
+    vm_common.linux_deploy + vm_common.gate_vm_linux_aarch64 + self.maven_17_21_only_native + {
+     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
      name: 'gate-vm-maven-dry-run-linux-aarch64',
     },
-    vm_common.linux_deploy + vm_common.deploy_vm_linux_aarch64 + self.maven_17_20_only_native + {
-     run: [ $.maven_17_20_only_native.build, $.maven_17_20_only_native.deploy(repo='lafo-maven')],
+    vm_common.linux_deploy + vm_common.deploy_vm_linux_aarch64 + self.maven_17_21_only_native + {
+     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven')],
      name: 'post-merge-deploy-vm-maven-linux-aarch64',
      notify_groups:: ['deploy'],
     },
-    vm_common.darwin_deploy + vm_common.gate_vm_darwin_amd64 + self.maven_17_20_only_native + {
-     run: [ $.maven_17_20_only_native.build, $.maven_17_20_only_native.deploy(repo='lafo-maven', dry_run=true)],
+    vm_common.darwin_deploy + vm_common.gate_vm_darwin_amd64 + self.maven_17_21_only_native + {
+     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
      name: 'gate-vm-maven-dry-run-darwin-amd64',
     },
-    vm_common.darwin_deploy + vm_common.gate_vm_darwin_aarch64 + self.maven_17_20_only_native + {
-     run: [ $.maven_17_20_only_native.build, $.maven_17_20_only_native.deploy(repo='lafo-maven', dry_run=true)],
+    vm_common.darwin_deploy + vm_common.gate_vm_darwin_aarch64 + self.maven_17_21_only_native + {
+     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
      name: 'gate-vm-maven-dry-run-darwin-aarch64',
     },
-    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_amd64 + self.maven_17_20_only_native + {
-     run: [ $.maven_17_20_only_native.build, $.maven_17_20_only_native.deploy(repo='lafo-maven')],
+    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_amd64 + self.maven_17_21_only_native + {
+     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven')],
      name: 'daily-deploy-vm-maven-darwin-amd64',
      notify_groups:: ['deploy'],
     },
-    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + self.maven_17_20_only_native + {
-     run: [ $.maven_17_20_only_native.build, $.maven_17_20_only_native.deploy(repo='lafo-maven')],
+    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + self.maven_17_21_only_native + {
+     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven')],
      name: 'daily-deploy-vm-maven-darwin-aarch64',
      notify_groups:: ['deploy'],
     },
-    vm_common.svm_common_windows_amd64("17") + vm_common.gate_vm_windows_amd64 + self.maven_17_20_only_native + {
-     run: [ $.maven_17_20_only_native.build, $.maven_17_20_only_native.deploy(repo='lafo-maven', dry_run=true)],
+    vm_common.svm_common_windows_amd64("17") + vm_common.gate_vm_windows_amd64 + self.maven_17_21_only_native + {
+     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
      name: 'gate-vm-maven-dry-run-windows-amd64',
     },
-    vm_common.svm_common_windows_amd64("17") + vm_common.deploy_daily_vm_windows + self.maven_17_20_only_native + {
-     run: [ $.maven_17_20_only_native.build, $.maven_17_20_only_native.deploy(repo='lafo-maven')],
+    vm_common.svm_common_windows_amd64("17") + vm_common.deploy_daily_vm_windows + self.maven_17_21_only_native + {
+     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven')],
      name: 'daily-deploy-vm-maven-windows-amd64',
      notify_groups:: ['deploy'],
     },
@@ -207,40 +194,29 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     #
 
     # Linux/AMD64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java17_linux_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java20_linux_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java21_linux_amd64),
 
     # Linux/AARCH64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java17_linux_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java20_linux_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java21_linux_aarch64),
 
     # Darwin/AMD64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java20_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java20_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_darwin_amd64),
 
     # Darwin/AARCH64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_darwin_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_darwin_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java20_darwin_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java20_darwin_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_darwin_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_darwin_aarch64),
 
     # Windows/AMD64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java17_windows_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java17_windows_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java20_windows_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java20_windows_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_windows_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_windows_amd64),
 
     #
     # Deploy the GraalVM Ruby image (GraalVM Base + ruby )
     #
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_linux_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java20_linux_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java20_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java17_darwin_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java20_darwin_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_linux_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_darwin_aarch64),
 
     # Trigger the releaser service
     self.notify_releaser_build,

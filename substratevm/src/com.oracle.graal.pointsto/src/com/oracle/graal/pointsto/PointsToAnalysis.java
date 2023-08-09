@@ -41,12 +41,12 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
+import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.word.WordTypes;
@@ -80,6 +80,7 @@ import com.oracle.graal.pointsto.util.CompletionExecutor.DebugContextRunnable;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
@@ -289,20 +290,20 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     }
 
     @Override
-    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial) {
-        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial);
+    public AnalysisMethod addRootMethod(Executable method, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
+        return addRootMethod(metaAccess.lookupJavaMethod(method), invokeSpecial, reason, otherRoots);
     }
 
     @Override
     @SuppressWarnings("try")
-    public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial) {
-        assert aMethod.isOriginalMethod();
+    public AnalysisMethod addRootMethod(AnalysisMethod aMethod, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
         assert !universe.sealed() : "Cannot register root methods after analysis universe is sealed.";
+        AnalysisError.guarantee(aMethod.isOriginalMethod());
         AnalysisType declaringClass = aMethod.getDeclaringClass();
         boolean isStatic = aMethod.isStatic();
         WrappedSignature signature = aMethod.getSignature();
         int paramCount = signature.getParameterCount(!isStatic);
-        PointsToAnalysisMethod pointsToMethod = assertPointsToAnalysisMethod(aMethod);
+        PointsToAnalysisMethod originalPTAMethod = assertPointsToAnalysisMethod(aMethod);
 
         if (isStatic) {
             /*
@@ -310,21 +311,29 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * and return the method flows graph. Then the method parameter type flows are
              * initialized with the corresponding parameter declared type.
              */
-            postTask(() -> {
-                pointsToMethod.registerAsDirectRootMethod();
-                pointsToMethod.registerAsImplementationInvoked("root method");
-                MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
-                for (int idx = 0; idx < paramCount; idx++) {
-                    AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);
-                    FormalParamTypeFlow parameter = flowInfo.getParameter(idx);
-                    if (declaredParamType.getJavaKind() == JavaKind.Object && parameter != null) {
-                        TypeFlow<?> initialParameterFlow = declaredParamType.getTypeFlow(this, true);
-                        initialParameterFlow.addUse(this, parameter);
+            Consumer<PointsToAnalysisMethod> triggerStaticMethodFlow = (pointsToMethod) -> {
+                postTask(() -> {
+                    pointsToMethod.registerAsDirectRootMethod(reason);
+                    pointsToMethod.registerAsImplementationInvoked(reason.toString());
+                    MethodFlowsGraphInfo flowInfo = analysisPolicy.staticRootMethodGraph(this, pointsToMethod);
+                    for (int idx = 0; idx < paramCount; idx++) {
+                        AnalysisType declaredParamType = (AnalysisType) signature.getParameterType(idx, declaringClass);
+                        FormalParamTypeFlow parameter = flowInfo.getParameter(idx);
+                        if (declaredParamType.getJavaKind() == JavaKind.Object && parameter != null) {
+                            TypeFlow<?> initialParameterFlow = declaredParamType.getTypeFlow(this, true);
+                            initialParameterFlow.addUse(this, parameter);
+                        }
                     }
-                }
-            });
+                });
+            };
+            triggerStaticMethodFlow.accept(originalPTAMethod);
+            for (MultiMethod.MultiMethodKey key : otherRoots) {
+                assert key != MultiMethod.ORIGINAL_METHOD;
+                PointsToAnalysisMethod ptaMethod = assertPointsToAnalysisMethod(originalPTAMethod.getMultiMethod(key));
+                triggerStaticMethodFlow.accept(ptaMethod);
+            }
         } else {
-            if (invokeSpecial && pointsToMethod.isAbstract()) {
+            if (invokeSpecial && originalPTAMethod.isAbstract()) {
                 throw AnalysisError.userError("Abstract methods cannot be registered as special invoke entry point.");
             }
             /*
@@ -341,14 +350,20 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * corresponding declared type state. When a callee is resolved the method is parsed and
              * the actual parameter type state is propagated to the formal parameters. Then the
              * callee is linked and registered as implementation-invoked.
+             *
+             * Note for virtual and special methods no action is needed when there are otherRoots.
+             * This is due to two factors: First, the callee methods are only resolved once types
+             * flow into the context insensitive invoke typeflow. Second, otherRoots is only
+             * (currently) used for runtime compilation; in this use case, all necessary linking
+             * will be done during callee resolution.
              */
             postTask(() -> {
                 if (invokeSpecial) {
-                    pointsToMethod.registerAsDirectRootMethod();
+                    originalPTAMethod.registerAsDirectRootMethod(reason);
                 } else {
-                    pointsToMethod.registerAsVirtualRootMethod();
+                    originalPTAMethod.registerAsVirtualRootMethod(reason);
                 }
-                InvokeTypeFlow invoke = pointsToMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial, pointsToMethod.getMultiMethodKey());
+                InvokeTypeFlow invoke = originalPTAMethod.initAndGetContextInsensitiveInvoke(PointsToAnalysis.this, null, invokeSpecial, MultiMethod.ORIGINAL_METHOD);
                 /*
                  * Initialize the type flow of the invoke's actual parameters with the corresponding
                  * parameter declared type. Thus, when the invoke links callees it will propagate
@@ -477,7 +492,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
             @Override
             public String toString() {
-                return "Operation: " + operation.toString();
+                return "Operation: " + operation;
             }
 
             @Override
@@ -485,22 +500,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
                 return operation;
             }
         });
-    }
-
-    public void postTask(final Runnable task) {
-        executor.execute(new DebugContextRunnable() {
-            @Override
-            public void run(DebugContext ignore) {
-                task.run();
-            }
-
-            @Override
-            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
-                assert opts == getOptions();
-                return DebugContext.disabled(opts);
-            }
-        });
-
     }
 
     /**

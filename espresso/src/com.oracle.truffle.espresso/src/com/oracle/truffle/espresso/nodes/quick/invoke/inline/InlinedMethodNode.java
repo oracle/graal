@@ -127,15 +127,11 @@ public class InlinedMethodNode extends InvokeQuickNode implements InlinedFrameAc
         return null;
     }
 
-    public InlinedMethodNode(Method inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body) {
-        this(inlinedMethod.getMethodVersion(), top, opcode, callerBCI, statementIndex, body);
-    }
-
     public InlinedMethodNode(Method.MethodVersion inlinedMethod, int top, int opcode, int callerBCI, int statementIndex, BodyNode body) {
         super(inlinedMethod, top, callerBCI);
         this.opcode = opcode;
         this.statementIndex = statementIndex;
-        this.body = insert(body);
+        this.body = body;
     }
 
     @Override

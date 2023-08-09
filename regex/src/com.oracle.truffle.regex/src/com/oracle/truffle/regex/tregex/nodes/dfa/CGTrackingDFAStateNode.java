@@ -192,4 +192,20 @@ public class CGTrackingDFAStateNode extends DFAStateNode {
         }
         locals.setResultInt(0);
     }
+
+    public int getCGTrackingCost() {
+        int cost = getCost(preAnchoredFinalStateTransition) + getCost(preUnAnchoredFinalStateTransition) + getCost(anchoredFinalStateTransition) + getCost(unAnchoredFinalStateTransition);
+        for (DFACaptureGroupLazyTransition t : lazyTransitions) {
+            cost += t.getCost();
+        }
+        return cost;
+    }
+
+    private static int getCost(DFACaptureGroupLazyTransition t) {
+        return t == null ? 0 : t.getCost();
+    }
+
+    private static int getCost(DFACaptureGroupPartialTransition t) {
+        return t == null ? 0 : t.getCost();
+    }
 }

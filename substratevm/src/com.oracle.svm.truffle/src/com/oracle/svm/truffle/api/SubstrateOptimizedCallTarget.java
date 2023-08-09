@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.runtime.EngineData;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -34,6 +32,8 @@ import com.oracle.svm.core.deopt.SubstrateSpeculationLog;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.truffle.TruffleSupport;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.EngineData;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.SpeculationLog;
