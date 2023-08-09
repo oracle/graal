@@ -84,7 +84,7 @@ public class ForeignFunctionsRuntime {
         }
 
         private static String generateMessage(NativeEntryPointInfo nep) {
-            return "Cannot perform downcall with leaf type " + nep.nativeMethodType() + " as it was not registered at compilation time.";
+            return "Cannot perform downcall with leaf type " + nep.methodType() + " as it was not registered at compilation time.";
         }
     }
 

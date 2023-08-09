@@ -32,7 +32,9 @@ import jdk.vm.ci.code.Register;
  * Represent a register or a stack offset.
  */
 public final class AssignedLocation {
+
     private static final int NONE = -1;
+    private static final AssignedLocation PLACEHOLDER = new AssignedLocation();
 
     private static boolean isValidOffset(int i) {
         return i >= 0 || i == NONE;
@@ -42,18 +44,27 @@ public final class AssignedLocation {
         if (!isValidOffset(this.stackOffset)) {
             throw new IllegalStateException("Stack offset cannot be < 0 (and not NONE).");
         }
-        if ((this.register == null) == (this.stackOffset == NONE)) {
-            throw new IllegalStateException("Must assign to either a register or stack (but not both).");
+        if (assignsToStack() != assignsToRegister()) {
+            throw new IllegalStateException("Cannot assign to both register and stack.");
         }
     }
 
     private final Register register;
     private final int stackOffset;
 
+    private AssignedLocation() {
+        this.register = null;
+        this.stackOffset = NONE;
+    }
+
     private AssignedLocation(Register register, int stackOffset) {
         this.register = register;
         this.stackOffset = stackOffset;
         checkClassInvariant();
+    }
+
+    public static AssignedLocation placeholder() {
+        return PLACEHOLDER;
     }
 
     public static AssignedLocation forRegister(Register register) {
@@ -67,6 +78,10 @@ public final class AssignedLocation {
         return new AssignedLocation(null, offset);
     }
 
+    public boolean isPlaceholder() {
+        return !assignsToRegister() && !assignsToStack();
+    }
+
     public boolean assignsToRegister() {
         return register != null;
     }
@@ -77,14 +92,14 @@ public final class AssignedLocation {
 
     public Register register() {
         if (register == null) {
-            throw new IllegalStateException("Cannot get register index of a stack location.");
+            throw new IllegalStateException("Not a register assignment.");
         }
         return register;
     }
 
     public int stackOffset() {
         if (stackOffset == NONE) {
-            throw new IllegalStateException("Cannot get stack offset of a register location.");
+            throw new IllegalStateException("Not a stack assignment.");
         }
         return stackOffset;
     }

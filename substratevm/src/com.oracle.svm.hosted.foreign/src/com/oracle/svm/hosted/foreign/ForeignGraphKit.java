@@ -33,8 +33,6 @@ import org.graalvm.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.svm.core.foreign.AbiUtils;
-import com.oracle.svm.core.foreign.NativeEntryPointInfo;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -45,44 +43,18 @@ class ForeignGraphKit extends HostedGraphKit {
         super(debug, providers, method, purpose);
     }
 
-    public MethodType adaptMethodType(NativeEntryPointInfo nep, AbiUtils.Adaptation[] adaptations) {
-        MethodType mt = nep.linkMethodType();
-
-        Class<?>[] parameters = new Class<?>[mt.parameterCount()];
-        for (int i = 0; i < mt.parameterCount(); ++i) {
-            Class<?> parameterType = mt.parameterType(i);
-            assert parameterType.isPrimitive() : parameterType;
-
-            AbiUtils.Adaptation adaptation = adaptations[i];
-            if (adaptation != null) {
-                parameterType = adaptation.apply(parameterType);
-            }
-
-            parameters[i] = parameterType;
-        }
-
-        return MethodType.methodType(mt.returnType(), parameters);
-    }
-
     public Pair<List<ValueNode>, ValueNode> unpackArgumentsAndExtractNEP(ValueNode argumentsArray, MethodType methodType) {
         List<ValueNode> args = loadArrayElements(argumentsArray, JavaKind.Object, methodType.parameterCount() + 1);
         ValueNode nep = args.remove(args.size() - 1);
         return Pair.create(args, nep);
     }
 
-    public ValueNode unboxAndAdapt(ValueNode argument, Class<?> type, AbiUtils.Adaptation adaptation) {
-        argument = createUnboxing(argument, JavaKind.fromJavaClass(type));
-        if (adaptation != null) {
-            argument = adaptation.apply(argument);
-        }
-        return argument;
-    }
-
-    public List<ValueNode> unboxAndAdaptAll(List<ValueNode> args, MethodType methodType, AbiUtils.Adaptation[] adaptations) {
-        assert adaptations.length == methodType.parameterCount() : adaptations.length + " " + methodType.parameterCount();
+    public List<ValueNode> unboxArguments(List<ValueNode> args, MethodType methodType) {
         assert args.size() == methodType.parameterCount() : args.size() + " " + methodType.parameterCount();
         for (int i = 0; i < args.size(); ++i) {
-            args.set(i, unboxAndAdapt(args.get(i), methodType.parameterType(i), adaptations[i]));
+            ValueNode argument = args.get(i);
+            argument = createUnboxing(argument, JavaKind.fromJavaClass(methodType.parameterType(i)));
+            args.set(i, argument);
         }
         return args;
     }

@@ -26,10 +26,7 @@ package com.oracle.svm.hosted.foreign;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -101,8 +98,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
     private boolean sealed = false;
     private final RuntimeForeignAccessSupportImpl accessSupport = new RuntimeForeignAccessSupportImpl();
 
-    private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredDowncalls = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    private final Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> downcallsMapping = new HashMap<>();
+    private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredDowncalls = ConcurrentHashMap.newKeySet();
+    private int downcallCount = 0;
 
     @Fold
     public static ForeignFunctionsFeature singleton() {
@@ -154,24 +151,23 @@ public class ForeignFunctionsFeature implements InternalFeature {
                         ConfigurationFiles.Options.ForeignConfigurationFiles, ConfigurationFiles.Options.ForeignResources, ConfigurationFile.FOREIGN.getFileName());
     }
 
-    private int createDowncallStubs(FeatureImpl.BeforeAnalysisAccessImpl access) {
-        this.downcallsMapping.putAll(createStubs(
+    private void createDowncallStubs(FeatureImpl.BeforeAnalysisAccessImpl access) {
+        this.downcallCount = createStubs(
                         registeredDowncalls,
                         access,
                         AbiUtils.singleton()::makeNativeEntrypoint,
                         n -> new DowncallStub(n, access.getMetaAccess().getWrapped()),
-                        ForeignFunctionsRuntime.singleton()::addDowncallStubPointer));
-        return downcallsMapping.size();
+                        ForeignFunctionsRuntime.singleton()::addDowncallStubPointer);
     }
 
-    private <S> Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> createStubs(
+    private <S> int createStubs(
                     Set<Pair<FunctionDescriptor, Linker.Option[]>> source,
                     FeatureImpl.BeforeAnalysisAccessImpl access,
                     BiFunction<FunctionDescriptor, Linker.Option[], S> stubGenerator,
                     Function<S, ResolvedJavaMethod> wrapper,
                     BiConsumer<S, CFunctionPointer> register) {
+
         Map<S, ResolvedJavaMethod> created = new HashMap<>();
-        Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> mapping = new HashMap<>();
 
         for (Pair<FunctionDescriptor, Linker.Option[]> fdOptionsPair : source) {
             S nepi = stubGenerator.apply(fdOptionsPair.getLeft(), fdOptionsPair.getRight());
@@ -182,17 +178,11 @@ public class ForeignFunctionsFeature implements InternalFeature {
                 access.getBigBang().addRootMethod(analysisStub, false, "Foreign stub, registered in " + ForeignFunctionsFeature.class);
                 created.put(nepi, analysisStub);
                 register.accept(nepi, new MethodPointer(analysisStub));
-                mapping.put(analysisStub.getName(), new ArrayList<>());
             }
-
-            String stubName = created.get(nepi).getName();
-            mapping.get(stubName).add(fdOptionsPair);
-
-            assert created.size() == mapping.size();
         }
         source.clear();
 
-        return mapping;
+        return created.size();
     }
 
     @Override
@@ -215,8 +205,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
         access.registerAsRoot(ReflectionUtil.lookupMethod(ForeignFunctionsRuntime.class, "captureCallState", int.class, CIntPointer.class), false,
                         "Runtime support, registered in " + ForeignFunctionsFeature.class);
 
-        int downcallStubsCount = createDowncallStubs(access);
-        ProgressReporter.singleton().setForeignFunctionsInfo(downcallStubsCount);
+        createDowncallStubs(access);
+        ProgressReporter.singleton().setForeignFunctionsInfo(getCreatedDowncallStubsCount());
     }
 
     @Override
@@ -226,13 +216,8 @@ public class ForeignFunctionsFeature implements InternalFeature {
 
     /* Testing interface */
 
-    public int getCreatedStubsCount() {
+    public int getCreatedDowncallStubsCount() {
         assert sealed;
-        return downcallsMapping.size();
-    }
-
-    public Map<String, List<Pair<FunctionDescriptor, Linker.Option[]>>> getCreatedStubsMap() {
-        assert sealed;
-        return downcallsMapping;
+        return this.downcallCount;
     }
 }

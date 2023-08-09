@@ -346,8 +346,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         } else {
             final int baseStackOffset = currentStackOffset;
             Set<Register> usedRegisters = new HashSet<>();
-            VMError.guarantee(parameterTypes.length == type.fixedParameterAssignment.length + firstActualArgument,
-                            "Parameters/assignments size mismatch.");
+            VMError.guarantee(parameterTypes.length == type.fixedParameterAssignment.length, "Parameters/assignments size mismatch.");
 
             for (int i = firstActualArgument; i < parameterTypes.length; i++) {
                 JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
@@ -355,8 +354,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
 
                 ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
 
-                int actualArgumentIndex = i - firstActualArgument;
-                AssignedLocation storage = type.fixedParameterAssignment[actualArgumentIndex];
+                AssignedLocation storage = type.fixedParameterAssignment[i];
                 if (storage.assignsToRegister()) {
                     if (!kind.isNumericInteger() && !kind.isNumericFloat()) {
                         throw unsupportedFeature("Unsupported storage/kind pair - Storage: " + storage + " ; Kind: " + kind);
@@ -366,7 +364,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                     locations[i] = reg.asValue(paramValueKind);
                     VMError.guarantee(!usedRegisters.contains(reg), "Register was already used.");
                     usedRegisters.add(reg);
-                } else {
+                } else if (storage.assignsToStack()) {
                     /*
                      * There should be no "empty spaces" between arguments on the stack. This
                      * assertion checks so, but assumes that stack arguments are encountered
@@ -376,13 +374,14 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                     VMError.guarantee(currentStackOffset == baseStackOffset + storage.stackOffset(), "Potential stack ``completeness'' violation.");
                     locations[i] = StackSlot.get(paramValueKind, currentStackOffset, !type.outgoing);
                     currentStackOffset += Math.max(paramValueKind.getPlatformKind().getSizeInBytes(), target.wordSize);
+                } else {
+                    VMError.shouldNotReachHere("Placeholder assignment.");
                 }
             }
         }
 
         if (type.usesReturnBuffer()) {
-            // TODO change assertion
-            assert type.fixedParameterAssignment == null || type.fixedParameterAssignment.length + 1 == locations.length;
+            assert type.fixedParameterAssignment == null || type.fixedParameterAssignment[0].isPlaceholder();
             assert parameterTypes[0].getJavaKind() == JavaKind.Long;
             JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[0], metaAccess, target);
             ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());

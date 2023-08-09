@@ -28,8 +28,6 @@ import java.lang.invoke.MethodType;
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.oracle.svm.core.graal.code.AssignedLocation;
-
 import jdk.internal.foreign.abi.ABIDescriptor;
 import jdk.internal.foreign.abi.VMStorage;
 
@@ -38,7 +36,7 @@ import jdk.internal.foreign.abi.VMStorage;
  * {@link ForeignFunctionsRuntime#getDowncallStubPointer} allows getting the associated function
  * pointer at runtime (if it exists).
  * <p>
- * {@link NativeEntryPointInfo#linkMethodType} is of the form (<>: argument; []: optional argument)
+ * {@link NativeEntryPointInfo#methodType} is of the form (<>: argument; []: optional argument)
  *
  * <pre>
  * {@code
@@ -50,15 +48,19 @@ import jdk.internal.foreign.abi.VMStorage;
  */
 public final class NativeEntryPointInfo {
     private final MethodType methodType;
-    private final AssignedLocation[] parameterAssignments;
-    private final AssignedLocation[] returnBuffering;
+    private final VMStorage[] parameterAssignments;
+    private final VMStorage[] returnBuffering;
+    private final boolean needsReturnBuffer;
     private final boolean capturesState;
     private final boolean needsTransition;
 
-    private NativeEntryPointInfo(MethodType methodType, AssignedLocation[] cc, AssignedLocation[] returnBuffering, boolean capturesState, boolean needsTransition) {
+    private NativeEntryPointInfo(MethodType methodType, VMStorage[] cc, VMStorage[] returnBuffering, boolean needsReturnBuffer, boolean capturesState, boolean needsTransition) {
+        assert methodType.parameterCount() == cc.length;
+        assert needsReturnBuffer == (returnBuffering.length > 1);
         this.methodType = methodType;
         this.parameterAssignments = cc;
         this.returnBuffering = returnBuffering;
+        this.needsReturnBuffer = needsReturnBuffer;
         this.capturesState = capturesState;
         this.needsTransition = needsTransition;
     }
@@ -72,10 +74,7 @@ public final class NativeEntryPointInfo {
         if (returnMoves.length > 1 != needsReturnBuffer) {
             throw new AssertionError("Multiple register return, but needsReturnBuffer was false");
         }
-
-        AssignedLocation[] parametersAssignment = AbiUtils.singleton().toMemoryAssignment(argMoves, false);
-        AssignedLocation[] returnBuffering = AbiUtils.singleton().toMemoryAssignment(returnMoves, true);
-        return new NativeEntryPointInfo(methodType, parametersAssignment, returnBuffering, capturedStateMask != 0, needsTransition);
+        return new NativeEntryPointInfo(methodType, argMoves, returnMoves, needsReturnBuffer, capturedStateMask != 0, needsTransition);
     }
 
     public static Target_jdk_internal_foreign_abi_NativeEntryPoint makeEntryPoint(
@@ -87,7 +86,7 @@ public final class NativeEntryPointInfo {
                     boolean needsTransition) {
         var info = make(argMoves, returnMoves, methodType, needsReturnBuffer, capturedStateMask, needsTransition);
         long addr = ForeignFunctionsRuntime.singleton().getDowncallStubPointer(info).rawValue();
-        return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.linkMethodType(), addr, capturedStateMask);
+        return new Target_jdk_internal_foreign_abi_NativeEntryPoint(info.methodType(), addr, capturedStateMask);
     }
 
     public int callAddressIndex() {
@@ -101,38 +100,23 @@ public final class NativeEntryPointInfo {
         return callAddressIndex() + 1;
     }
 
-    /**
-     * Method type without any of the special arguments.
-     */
-    public MethodType nativeMethodType() {
-        if (capturesCallState()) {
-            return this.methodType.dropParameterTypes(0, captureAddressIndex() + 1);
-        } else {
-            return this.methodType.dropParameterTypes(0, callAddressIndex() + 1);
-        }
-    }
-
-    /**
-     * Method type with all special arguments.
-     */
-    public MethodType linkMethodType() {
+    public MethodType methodType() {
         return this.methodType;
     }
 
     public boolean needsReturnBuffer() {
-        return this.returnBuffering.length >= 2;
+        return needsReturnBuffer;
     }
 
     public boolean capturesCallState() {
         return capturesState;
     }
 
-    public AssignedLocation[] parametersAssignment() {
-        assert parameterAssignments.length == this.nativeMethodType().parameterCount() : Arrays.toString(parameterAssignments) + " ; " + nativeMethodType();
+    public VMStorage[] parametersAssignment() {
         return parameterAssignments;
     }
 
-    public AssignedLocation[] returnsAssignment() {
+    public VMStorage[] returnsAssignment() {
         return returnBuffering;
     }
 
@@ -149,12 +133,12 @@ public final class NativeEntryPointInfo {
             return false;
         }
         NativeEntryPointInfo that = (NativeEntryPointInfo) o;
-        return capturesState == that.capturesState && needsTransition == that.needsTransition && Objects.equals(methodType, that.methodType) &&
+        return capturesState == that.capturesState && needsTransition == that.needsTransition && needsReturnBuffer == that.needsReturnBuffer && Objects.equals(methodType, that.methodType) &&
                         Arrays.equals(parameterAssignments, that.parameterAssignments) && Arrays.equals(returnBuffering, that.returnBuffering);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(methodType, capturesState, needsTransition, Arrays.hashCode(parameterAssignments), Arrays.hashCode(returnBuffering));
+        return Objects.hash(methodType, needsReturnBuffer, capturesState, needsTransition, Arrays.hashCode(parameterAssignments), Arrays.hashCode(returnBuffering));
     }
 }

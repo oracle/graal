@@ -31,8 +31,13 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodType;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.replacements.Fold;
@@ -43,7 +48,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.SubstrateTargetDescription;
-import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.headers.LibC;
 import com.oracle.svm.core.headers.WindowsAPIs;
@@ -67,28 +71,203 @@ import jdk.vm.ci.meta.PlatformKind;
 public abstract class AbiUtils {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public abstract static class Adaptation {
-        public abstract Class<?> apply(Class<?> parameter);
-
-        public abstract ValueNode apply(ValueNode parameter);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static final class Reinterpret extends Adaptation {
-        public final JavaKind to;
-
-        public Reinterpret(JavaKind to) {
-            this.to = to;
+    public static class Adapter {
+        private static boolean allEqual(int reference, int... values) {
+            return Arrays.stream(values).allMatch(v -> v == reference);
         }
 
-        @Override
-        public Class<?> apply(Class<?> parameter) {
-            return to.toJavaClass();
+        private Adapter() {
         }
 
-        @Override
-        public ValueNode apply(ValueNode parameter) {
-            return ReinterpretNode.reinterpret(to, parameter);
+        public enum Extracted {
+            CallTarget,
+            CaptureBufferAddress
+        }
+
+        public record AdaptationResult(
+                        Map<Extracted, ValueNode> extractedArguments,
+                        ValueNode callTarget,
+                        ValueNode captureBufferAddress,
+                        List<ValueNode> arguments,
+                        List<AssignedLocation> parametersAssignment,
+                        List<AssignedLocation> returnsAssignment,
+                        MethodType callType) {
+            public ValueNode getArgument(Extracted id) {
+                return extractedArguments.get(id);
+            }
+        }
+
+        public static AdaptationResult adapt(AbiUtils self, List<Adaptation> adaptations, List<ValueNode> originalArguments, NativeEntryPointInfo nep) {
+            AssignedLocation[] originalAssignment = self.toMemoryAssignment(nep.parametersAssignment(), false);
+            VMError.guarantee(allEqual(adaptations.size(), originalArguments.size(), nep.methodType().parameterCount(), originalAssignment.length));
+
+            Map<Extracted, ValueNode> extractedArguments = new HashMap<>();
+            List<ValueNode> arguments = new ArrayList<>();
+            List<AssignedLocation> assignment = new ArrayList<>();
+            List<Class<?>> argumentTypes = new ArrayList<>();
+
+            for (int i = 0; i < adaptations.size(); ++i) {
+                Adaptation adaptation = adaptations.get(i);
+                if (adaptation == null) {
+                    adaptation = NOOP;
+                }
+
+                arguments.addAll(adaptation.apply(originalArguments.get(i), extractedArguments));
+                assignment.addAll(adaptation.apply(originalAssignment[i]));
+                argumentTypes.addAll(adaptation.apply(nep.methodType().parameterType(i)));
+
+                VMError.guarantee(allEqual(arguments.size(), assignment.size(), argumentTypes.size()));
+            }
+
+            // Sanity checks
+            VMError.guarantee(extractedArguments.containsKey(Extracted.CallTarget));
+            VMError.guarantee(!nep.capturesCallState() || extractedArguments.containsKey(Extracted.CaptureBufferAddress));
+            for (int i = 0; i < arguments.size(); ++i) {
+                VMError.guarantee(arguments.get(i) != null);
+                VMError.guarantee(!assignment.get(i).isPlaceholder() || (i == 0 && nep.needsReturnBuffer()));
+            }
+
+            return new AdaptationResult(extractedArguments, arguments, assignment, Arrays.stream(self.toMemoryAssignment(nep.returnsAssignment(), true)).toList(),
+                            MethodType.methodType(nep.methodType().returnType(), argumentTypes));
+        }
+
+        /**
+         * Allow to define (and later apply) a transformation on a coordinate in arrays of parameter
+         * types, parameter assignments and concrete arguments at the same time.
+         *
+         * E.g. given call with parameter types {@code [long, long, long]}, assignments
+         * {@code [%rdi, %rsi, %rdx]} and concrete arguments {@code [ 0, 1, 2 ]}, one could define
+         * the following adaptions {@code [ NOOP, drop(), check(long.class) ]}, which after
+         * application would yield parameter types {@code [long, long]}, assignments
+         * {@code [%rdi, %rdx]} and concrete arguments {@code [ 0, 2 ]}.
+         *
+         * No real restrictions are set on the actual transformations. The only invariant the
+         * current implementation expects to hold is that all three methods of one object return the
+         * same number of elements.
+         */
+        public abstract static class Adaptation {
+            public abstract List<Class<?>> apply(Class<?> parameter);
+
+            public abstract List<AssignedLocation> apply(AssignedLocation parameter);
+
+            public abstract List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments);
+        }
+
+        private static final Adaptation NOOP = new Adaptation() {
+            @Override
+            public List<Class<?>> apply(Class<?> parameter) {
+                return List.of(parameter);
+            }
+
+            @Override
+            public List<AssignedLocation> apply(AssignedLocation parameter) {
+                return List.of(parameter);
+            }
+
+            @Override
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments) {
+                return List.of(parameter);
+            }
+        };
+
+        public static Adaptation check(Class<?> type) {
+            return new CheckType(Objects.requireNonNull(type));
+        }
+
+        public static Adaptation extract(Extracted as, Class<?> type) {
+            return new Extract(Objects.requireNonNull(as), Objects.requireNonNull(type));
+        }
+
+        public static Adaptation drop() {
+            return Extract.DROP;
+        }
+
+        public static Adaptation reinterpret(JavaKind to) {
+            return new Reinterpret(to);
+        }
+
+        private static final class CheckType extends Adaptation {
+            private final Class<?> expected;
+
+            private CheckType(Class<?> expected) {
+                this.expected = expected;
+            }
+
+            @Override
+            public List<Class<?>> apply(Class<?> parameter) {
+                if (parameter != expected) {
+                    throw new IllegalArgumentException("Expected type " + expected + ", got " + parameter);
+                }
+                return List.of(parameter);
+            }
+
+            @Override
+            public List<AssignedLocation> apply(AssignedLocation parameter) {
+                return List.of(parameter);
+            }
+
+            @Override
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments) {
+                return List.of(parameter);
+            }
+        }
+
+        private static final class Reinterpret extends Adaptation {
+            public final JavaKind to;
+
+            public Reinterpret(JavaKind to) {
+                this.to = to;
+            }
+
+            @Override
+            public List<Class<?>> apply(Class<?> parameter) {
+                return List.of(to.toJavaClass());
+            }
+
+            @Override
+            public List<AssignedLocation> apply(AssignedLocation parameter) {
+                return List.of(parameter);
+            }
+
+            @Override
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments) {
+                return List.of(ReinterpretNode.reinterpret(to, parameter));
+            }
+        }
+
+        private static final class Extract extends Adaptation {
+            private static Extract DROP = new Extract(null, null);
+            private final Extracted as;
+            private final Class<?> type;
+
+            private Extract(Extracted as, Class<?> type) {
+                this.as = as;
+                this.type = type;
+            }
+
+            @Override
+            public List<Class<?>> apply(Class<?> parameter) {
+                if (type != null && parameter != type) {
+                    throw new IllegalArgumentException("Expected type " + type + ", got " + parameter);
+                }
+                return List.of();
+            }
+
+            @Override
+            public List<AssignedLocation> apply(AssignedLocation parameter) {
+                return List.of();
+            }
+
+            @Override
+            public List<ValueNode> apply(ValueNode parameter, Map<Extracted, ValueNode> extractedArguments) {
+                if (as != null) {
+                    if (extractedArguments.containsKey(as)) {
+                        throw new IllegalStateException("%s was already extracted (%s).".formatted(as, extractedArguments.get(as)));
+                    }
+                    extractedArguments.put(as, parameter);
+                }
+                return List.of();
+            }
         }
     }
 
@@ -106,9 +285,6 @@ public abstract class AbiUtils {
         return ImageSingletons.lookup(AbiUtils.class);
     }
 
-    public abstract void methodTypeMatchAssignment(int savedValueMask, MethodType methodType, AssignedLocation[] assignments, AssignedLocation[] returnAssignment, FunctionDescriptor fd,
-                    Linker.Option... options);
-
     /**
      * This method re-implements a part of the logic from the JDK so that we can get the callee-type
      * (i.e. the ABI low-level type) of a function from its descriptor.
@@ -121,19 +297,30 @@ public abstract class AbiUtils {
     public abstract AssignedLocation[] toMemoryAssignment(VMStorage[] moves, boolean forReturn);
 
     /**
-     * Generate additional argument adaptations which are not done by HotSpot. Note that, unlike
-     * {@link AbiUtils#toMemoryAssignment}, this information is not part of
-     * {@link NativeEntryPointInfo}. The reason for that being that this information is not relevant
-     * at runtime, so we don't want ot include it in {@link NativeEntryPointInfo}, which lives at
-     * runtime. This information is only useful when generating the
-     * {@link com.oracle.svm.hosted.foreign.DowncallStub}.
-     * <p>
-     * For convenience, there is an adaptation for every argument (except the NEP itself) to the
-     * entrypoint, i.e. including the special prefix arguments (call address, return buffer, call
-     * state buffer), even though these should most likely never be adapted.
+     * Apply some ABI-specific transformations to an entrypoint (info) and arguments intended to be
+     * used to call said entrypoint.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public abstract Adaptation[] adaptArguments(NativeEntryPointInfo nep);
+    public final Adapter.AdaptationResult adapt(List<ValueNode> arguments, NativeEntryPointInfo nep) {
+        return Adapter.adapt(this, generateAdaptations(nep), arguments, nep);
+    }
+
+    /**
+     * Generate additional argument adaptations which are not done by HotSpot.
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
+        List<Adapter.Adaptation> adaptations = new ArrayList<>(Collections.nCopies(nep.methodType().parameterCount(), null));
+        int current = 0;
+        if (nep.needsReturnBuffer()) {
+            adaptations.set(current++, Adapter.check(long.class));
+        }
+        adaptations.set(current++, Adapter.extract(Adapter.Extracted.CallTarget, long.class));
+        if (nep.capturesCallState()) {
+            adaptations.set(current++, Adapter.extract(Adapter.Extracted.CaptureBufferAddress, long.class));
+        }
+        return adaptations;
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public abstract void checkLibrarySupport();
@@ -163,12 +350,6 @@ class ABIs {
         }
 
         @Override
-        public void methodTypeMatchAssignment(int savedValueMask, MethodType methodType, AssignedLocation[] assignments, AssignedLocation[] returnAssignment, FunctionDescriptor fd,
-                        Linker.Option... options) {
-            fail();
-        }
-
-        @Override
         public NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, Linker.Option... options) {
             return fail();
         }
@@ -179,7 +360,7 @@ class ABIs {
         }
 
         @Override
-        public Adaptation[] adaptArguments(NativeEntryPointInfo nep) {
+        protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
             return fail();
         }
 
@@ -219,56 +400,6 @@ class ABIs {
 
         protected abstract CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options);
 
-        protected boolean typeMatchRegister(AMD64 target, Class<?> type, Register register, boolean isVararg) {
-            Register.RegisterCategory rc = register.getRegisterCategory();
-            PlatformKind kind = target.getPlatformKind(JavaKind.fromJavaClass(type));
-            return target.canStoreValue(rc, kind);
-        }
-
-        @Override
-        public void methodTypeMatchAssignment(int savedValueMask, MethodType methodType, AssignedLocation[] assignments, AssignedLocation[] returnAssignment, FunctionDescriptor fd,
-                        Linker.Option... options) {
-            if (!SubstrateUtil.assertionsEnabled()) {
-                return;
-            }
-
-            int firstActualArgument = 0;
-            if (methodType.parameterType(firstActualArgument++) != long.class) {
-                throw new AssertionError("Address expected as first param: " + methodType);
-            }
-            if (returnAssignment != null && methodType.parameterType(firstActualArgument++) != long.class) {
-                throw new AssertionError("Return buffer address expected: " + methodType);
-            }
-            if (savedValueMask != 0 && methodType.parameterType(firstActualArgument++) != long.class) {
-                throw new AssertionError("Capture buffer address expected: " + methodType);
-            }
-
-            /*
-             * This assertion can fail if, the entrypoint is supposed to capture the call state, but
-             * the provided mask is 0, i.e. a capture call state option is provided but with an
-             * empty capture list.
-             */
-            /*
-             * TODO: check for capture more uniformly; either always rely on the presence of the
-             * option (even if empty), or on the non-zeroness of the mask. Note that part of this
-             * mismatch might also be coming from JDK code, in which case we cannot do much.
-             */
-            assert firstActualArgument + assignments.length == methodType.parameterCount() : assignments.length + " " + methodType.parameterCount();
-            AMD64 target = (AMD64) ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
-            LinkerOptions optionsSet = LinkerOptions.forDowncall(fd, options);
-
-            for (int i = 0; i < assignments.length; ++i) {
-                var type = methodType.parameterType(firstActualArgument + i);
-                var assignment = assignments[i];
-                assert !assignment.assignsToRegister() ||
-                                typeMatchRegister(target, type, assignment.register(),
-                                                optionsSet.isVarargsIndex(i)) : "Cannot put %s in %s.\nDescriptor & options: %s %s\nAssignment: %s\nMethod type (placeholders: %d): %s"
-                                                                .formatted(type, assignment.register(), fd, Arrays.toString(options), Arrays.toString(assignments), firstActualArgument, methodType);
-            }
-
-            assert returnAssignment == null || methodType.returnType().equals(void.class);
-        }
-
         @Override
         public NativeEntryPointInfo makeNativeEntrypoint(FunctionDescriptor desc, Linker.Option... options) {
             // Linker.downcallHandle implemented in
@@ -293,60 +424,61 @@ class ABIs {
             var needsReturnBuffer = callingSequence.needsReturnBuffer();
 
             // NativeEntrypoint.make
-            var parametersAssignment = toMemoryAssignment(argMoves, false);
-            var returnBuffering = needsReturnBuffer ? toMemoryAssignment(returnMoves, true) : null;
-            AbiUtils.singleton().methodTypeMatchAssignment(callingSequence.capturedStateMask(), boundaryType, parametersAssignment, returnBuffering, desc, options);
             return NativeEntryPointInfo.make(argMoves, returnMoves, boundaryType, needsReturnBuffer, callingSequence.capturedStateMask(), callingSequence.needsTransition());
         }
 
         @Override
         public AssignedLocation[] toMemoryAssignment(VMStorage[] argMoves, boolean forReturn) {
-            int size = 0;
             for (VMStorage move : argMoves) {
-                if (move.type() != X86_64Architecture.StorageType.PLACEHOLDER) {
-                    // Placeholders are ignored; they will be handled further down the line
-                    ++size;
-                } else {
-                    // Placeholders are expected to be prefix arguments
-                    assert size == 0 : "Placeholders are expected to be prefix arguments";
-                }
-
-                if (move.type() == X86_64Architecture.StorageType.X87) {
-                    throw unsupportedFeature("Unsupported register kind: X87");
-                } else if (move.type() == X86_64Architecture.StorageType.STACK && forReturn) {
-                    throw unsupportedFeature("Unsupported register kind for return: STACK");
+                switch (move.type()) {
+                    case X86_64Architecture.StorageType.X87 ->
+                        throw unsupportedFeature("Unsupported register kind: X87");
+                    case X86_64Architecture.StorageType.STACK -> {
+                        if (forReturn) {
+                            throw unsupportedFeature("Unsupported register kind for return: STACK");
+                        }
+                    }
+                    default -> {
+                    }
                 }
             }
 
-            AssignedLocation[] storages = new AssignedLocation[size];
+            AssignedLocation[] storages = new AssignedLocation[argMoves.length];
             int i = 0;
             for (VMStorage move : argMoves) {
-                if (move.type() != X86_64Architecture.StorageType.PLACEHOLDER) {
-                    storages[i++] = switch (move.type()) {
-                        case X86_64Architecture.StorageType.INTEGER -> {
-                            Register reg = AMD64.cpuRegisters[move.indexOrOffset()];
-                            assert reg.name.equals(move.debugName());
-                            assert reg.getRegisterCategory().equals(AMD64.CPU);
-                            yield AssignedLocation.forRegister(reg);
-                        }
-                        case X86_64Architecture.StorageType.VECTOR -> {
-                            /*
-                             * Only the first four xmm registers should ever be used; in particular,
-                             * this means we never need to index in xmmRegistersAVX512
-                             */
-                            Register reg = AMD64.xmmRegistersSSE[move.indexOrOffset()];
-                            assert reg.name.equals(move.debugName());
-                            assert reg.getRegisterCategory().equals(AMD64.XMM);
-                            yield AssignedLocation.forRegister(reg);
-                        }
-                        case X86_64Architecture.StorageType.STACK -> AssignedLocation.forStack(move.indexOrOffset());
-                        default -> throw unsupportedFeature("Unhandled VMStorage: " + move);
-                    };
-                }
+                storages[i++] = switch (move.type()) {
+                    case X86_64Architecture.StorageType.PLACEHOLDER -> AssignedLocation.placeholder();
+                    case X86_64Architecture.StorageType.INTEGER -> {
+                        Register reg = AMD64.cpuRegisters[move.indexOrOffset()];
+                        assert reg.name.equals(move.debugName());
+                        assert reg.getRegisterCategory().equals(AMD64.CPU);
+                        yield AssignedLocation.forRegister(reg);
+                    }
+                    case X86_64Architecture.StorageType.VECTOR -> {
+                        /*
+                         * Only the first four xmm registers should ever be used; in particular,
+                         * this means we never need to index in xmmRegistersAVX512
+                         */
+                        Register reg = AMD64.xmmRegistersSSE[move.indexOrOffset()];
+                        assert reg.name.equals(move.debugName());
+                        assert reg.getRegisterCategory().equals(AMD64.XMM);
+                        yield AssignedLocation.forRegister(reg);
+                    }
+                    case X86_64Architecture.StorageType.STACK -> AssignedLocation.forStack(move.indexOrOffset());
+                    default -> throw unsupportedFeature("Unhandled VMStorage: " + move);
+                };
             }
             assert i == storages.length;
 
             return storages;
+        }
+
+        @Override
+        protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
+            var adaptations = super.generateAdaptations(nep);
+            /* Drop the rax parametersAssignment */
+            adaptations.set(adaptations.size() - 1, Adapter.drop());
+            return adaptations;
         }
 
         protected static Map<String, MemoryLayout> canonicalLayouts(ValueLayout longLayout, ValueLayout sizetLayout, ValueLayout wchartLayout) {
@@ -388,13 +520,6 @@ class ABIs {
 
         @Override
         @Platforms(Platform.HOSTED_ONLY.class)
-        public Adaptation[] adaptArguments(NativeEntryPointInfo nep) {
-            // No adaptations needed
-            return new Adaptation[nep.linkMethodType().parameterCount()];
-        }
-
-        @Override
-        @Platforms(Platform.HOSTED_ONLY.class)
         public void checkLibrarySupport() {
             String name = "SystemV (Linux AMD64)";
             VMError.guarantee(LibC.isSupported(), "Foreign functions feature requires LibC support on " + name);
@@ -412,15 +537,6 @@ class ABIs {
             return jdk.internal.foreign.abi.x64.windows.CallArranger.getBindings(type, desc, forUpcall, options).callingSequence();
         }
 
-        @Override
-        protected boolean typeMatchRegister(AMD64 target, Class<?> type, Register register, boolean isVararg) {
-            Register.RegisterCategory rc = register.getRegisterCategory();
-            JavaKind kind = JavaKind.fromJavaClass(type);
-            PlatformKind platformKind = target.getPlatformKind(kind);
-            return target.canStoreValue(rc, platformKind) || (isVararg &&
-                            register.getRegisterCategory().equals(AMD64.CPU) && (kind.equals(JavaKind.Float) || kind.equals(JavaKind.Double)));
-        }
-
         /**
          * The Win64 ABI allows one mismatch between register and value type: When a variadic
          * floating-point argument is among the first four parameters of the function, the argument
@@ -432,41 +548,22 @@ class ABIs {
          * assignments of float/double parameters to a cpu register.
          */
         @Override
-        @Platforms(Platform.HOSTED_ONLY.class)
-        public Adaptation[] adaptArguments(NativeEntryPointInfo nep) {
-            /*
-             * This method also performs some sanity checks about the generated entrypoint.
-             */
-            MethodType methodType = nep.linkMethodType();
-            AssignedLocation[] assignments = nep.parametersAssignment();
+        protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
+            List<Adapter.Adaptation> adaptations = super.generateAdaptations(nep);
 
-            int firstActualArgument = 0;
-            // Note that the following ifs do increment firstActualArgument !
-            if (methodType.parameterType(firstActualArgument++) != long.class && SubstrateUtil.assertionsEnabled()) {
-                throw new AssertionError("Address expected as first param: " + methodType);
-            }
-            if (nep.needsReturnBuffer() && methodType.parameterType(firstActualArgument++) != long.class && SubstrateUtil.assertionsEnabled()) {
-                throw new AssertionError("Return buffer address expected: " + methodType);
-            }
-            if (nep.capturesCallState() && methodType.parameterType(firstActualArgument++) != long.class && SubstrateUtil.assertionsEnabled()) {
-                throw new AssertionError("Capture buffer address expected: " + methodType);
-            }
-
-            assert firstActualArgument + assignments.length == methodType.parameterCount() : firstActualArgument + " " + assignments.length + " " + methodType.parameterCount();
             AMD64 target = (AMD64) ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
-            Adaptation[] adaptations = new Adaptation[methodType.parameterCount()];
-
-            for (int i = firstActualArgument; i < adaptations.length; ++i) {
-                Class<?> type = methodType.parameterType(i);
-                AssignedLocation assignment = assignments[i - firstActualArgument];
-
-                if (assignment.assignsToRegister()) {
-                    Register.RegisterCategory rc = assignment.register().getRegisterCategory();
-                    PlatformKind kind = target.getPlatformKind(JavaKind.fromJavaClass(type));
-                    if (!(target.canStoreValue(rc, kind))) {
-                        assert rc.equals(AMD64.CPU) && (kind.equals(target.getPlatformKind(JavaKind.Float)) || kind.equals(target.getPlatformKind(JavaKind.Double)));
-                        adaptations[i] = new Reinterpret(JavaKind.Long);
-                    }
+            boolean previousMatched = false;
+            PlatformKind previousKind = null;
+            for (int i = 0; i < adaptations.size() - 1; ++i) {
+                PlatformKind kind = target.getPlatformKind(JavaKind.fromJavaClass(nep.methodType().parameterType(i)));
+                if ((kind.equals(target.getPlatformKind(JavaKind.Float)) || kind.equals(target.getPlatformKind(JavaKind.Double))) &&
+                                nep.parametersAssignment()[i].type() == X86_64Architecture.StorageType.INTEGER) {
+                    assert adaptations.get(i) == null;
+                    assert previousKind.equals(kind) && previousMatched;
+                    adaptations.set(i, Adapter.reinterpret(JavaKind.Long));
+                    previousMatched = false;
+                } else {
+                    previousMatched = true;
                 }
             }
 
