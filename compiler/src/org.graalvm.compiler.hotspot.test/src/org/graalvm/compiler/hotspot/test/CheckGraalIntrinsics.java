@@ -183,6 +183,7 @@ public class CheckGraalIntrinsics extends GraalTest {
         add(ignore,
                         "java/lang/Math.atan2(DD)D",
                         "jdk/internal/misc/Unsafe.park(ZJ)V",
+                        "jdk/internal/misc/Unsafe.storeStoreFence()V",
                         "jdk/internal/misc/Unsafe.unpark(Ljava/lang/Object;)V",
                         "sun/misc/Unsafe.park(ZJ)V",
                         "sun/misc/Unsafe.prefetchRead(Ljava/lang/Object;J)V",
