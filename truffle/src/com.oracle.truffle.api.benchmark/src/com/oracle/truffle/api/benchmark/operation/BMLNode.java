@@ -214,7 +214,7 @@ class IfNode extends BMLNode {
         if (condition.execute(frame) == Boolean.TRUE) {
             thenBranch.execute(frame);
         } else {
-            thenBranch.execute(frame);
+            elseBranch.execute(frame);
         }
         return VOID;
     }
