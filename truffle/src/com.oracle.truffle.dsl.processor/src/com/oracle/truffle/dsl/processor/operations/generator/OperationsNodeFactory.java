@@ -3322,7 +3322,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("exHandlers[exHandlerCount + idx] = context.handlerExHandlers[idx] + offsetBci");
             b.statement("exHandlers[exHandlerCount + idx + 1] = context.handlerExHandlers[idx + 1] + offsetBci");
             b.statement("exHandlers[exHandlerCount + idx + 2] = context.handlerExHandlers[idx + 2] + offsetBci");
-            b.statement("exHandlers[exHandlerCount + idx + 3] = context.handlerExHandlers[idx + 3]");
+            b.statement("exHandlers[exHandlerCount + idx + 3] = context.handlerExHandlers[idx + 3] + curStack");
             b.statement("exHandlers[exHandlerCount + idx + 4] = context.handlerExHandlers[idx + 4]");
             b.end();
 
