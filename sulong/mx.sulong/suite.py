@@ -1613,13 +1613,25 @@ suite = {
       "noMavenJavadoc": True,
     },
 
-    "SULONG_COMMUNITY": {
+    "SULONG_NATIVE_COMMUNITY": {
       "type": "pom",
       "runtimeDependencies": [
         "SULONG_CORE",
         "SULONG_NATIVE",
         "SULONG_NFI",
         "truffle:TRUFFLE_RUNTIME",
+      ],
+      "maven": {
+        "artifactId": "llvm-native-community",
+      },
+      "description": "Graal native LLVM engine.",
+      "license": "BSD-new",
+    },
+
+    "SULONG_COMMUNITY": {
+      "type": "pom",
+      "runtimeDependencies": [
+        "SULONG_NATIVE_COMMUNITY",
       ],
       "maven": {
         "artifactId": "llvm-community",
@@ -1665,7 +1677,7 @@ suite = {
         "truffle:TRUFFLE_NFI_LIBFFI",
       ],
       "maven" : {
-        "artifactId" : "llvm-native",
+        "artifactId" : "llvm-language-native",
       },
       "license" : "BSD-new",
     },
@@ -1678,7 +1690,7 @@ suite = {
       "dependencies" : ["com.oracle.truffle.llvm.nfi"],
       "distDependencies" : ["truffle:TRUFFLE_NFI"],
       "maven" : {
-        "artifactId" : "llvm-nfi",
+        "artifactId" : "llvm-language-nfi",
       },
       "license" : "BSD-new",
     },

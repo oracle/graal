@@ -235,6 +235,7 @@ _community_languages_meta_distributions = [
     'espresso:ESPRESSO_COMMUNITY',
     'graal-js:GRAALJS_COMMUNITY',
     'graalpyton:GRAALPYTHON_COMMUNITY',
+    'sulong:SULONG_NATIVE_COMMUNITY',
     'sulong:SULONG_COMMUNITY',
     'truffleruby:TRUFFLERUBY_COMMUNITY',
     'wasm:WASM_COMMUNITY',
