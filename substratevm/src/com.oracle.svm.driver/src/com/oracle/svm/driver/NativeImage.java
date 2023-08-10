@@ -1171,7 +1171,9 @@ public class NativeImage {
             updateArgumentEntryValue(imageBuilderArgs, imageNameEntry, imageName);
             updateArgumentEntryValue(imageBuilderArgs, imagePathEntry, imagePath.toString());
         }
+        String imageBuildID;
         if (useBundle()) {
+            imageBuildID = bundleSupport.getImageBuildID();
             /*
              * In creation-mode, we are at the point where we know the final imagePath and imageName
              * that we can now use to derive a bundle name in case none was set so far.
@@ -1183,7 +1185,12 @@ public class NativeImage {
             imagePath = bundleSupport.substituteImagePath(imagePath);
             /* and we need to adjust the argument that passes the imagePath to the builder */
             updateArgumentEntryValue(imageBuilderArgs, imagePathEntry, imagePath.toString());
+        } else {
+            String argsDigest = SubstrateUtil.digest(getNativeImageArgs().toString());
+            assert argsDigest.matches("[0-9a-f]+") && argsDigest.length() >= 32 : "Expecting a hex string";
+            imageBuildID = SubstrateUtil.getUUIDFromString(argsDigest).toString();
         }
+        addPlainImageBuilderArg(oH(SubstrateOptions.ImageBuildID) + imageBuildID);
 
         if (!leftoverArgs.isEmpty()) {
             showError("Unrecognized option(s): " + StringUtil.joinSingleQuoted(leftoverArgs));

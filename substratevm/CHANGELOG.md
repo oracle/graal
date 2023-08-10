@@ -14,6 +14,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-47365) Throw `MissingReflectionRegistrationError` when attempting to create a proxy class without having it registered at build-time, instead of a `VMError`.
 * (GR-46064) Add option `-H:±IndirectBranchTargetMarker` to mark indirect branch targets on AMD64 with an endbranch instruction. This is a prerequisite for future Intel CET support.
 * (GR-46740) Add support for foreign downcalls (part of "Project Panama") on the AMD64 platform.
+* (GR-27034) Add `-H:ImageBuildID` option to generate Image Build ID, which is a 128-bit UUID string generated randomly, once per bundle or digest of input args when bundles are not used.
 
 ## GraalVM for JDK 17 and GraalVM for JDK 20 (Internal Version 23.0.0)
 * (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, `-H:+AllowDeprecatedBuilderClassesOnImageClasspath` allows turning the error into a warning.

@@ -28,7 +28,9 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
+import java.math.BigInteger;
 import java.util.List;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -425,5 +427,11 @@ public class SubstrateUtil {
     public static String stripPackage(String qualifiedClassName) {
         /* Anonymous classes can contain a '/' which can lead to an invalid binary name. */
         return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1).replace("/", "");
+    }
+
+    public static UUID getUUIDFromString(String digest) {
+        long mostSigBits = new BigInteger(digest.substring(0, 16), 16).longValue();
+        long leastSigBits = new BigInteger(digest.substring(16), 16).longValue();
+        return new UUID(mostSigBits, leastSigBits);
     }
 }

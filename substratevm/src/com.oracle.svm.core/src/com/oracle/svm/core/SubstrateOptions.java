@@ -35,6 +35,7 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
@@ -82,6 +83,9 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> SourceLevelDebugFilter = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
+
+    @Option(help = "Image Build ID is a 128-bit UUID string generated randomly, once per bundle or digest of input args when bundles are not used.")//
+    public static final HostedOptionKey<String> ImageBuildID = new HostedOptionKey<>("");
 
     public static boolean parseOnce() {
         /*
@@ -165,6 +169,11 @@ public class SubstrateOptions {
     @Fold
     public static Predicate<String> getSourceLevelDebugFilter() {
         return makeFilter(SourceLevelDebugFilter.getValue().values());
+    }
+
+    @Fold
+    public static UUID getImageBuildID() {
+        return UUID.fromString(SubstrateOptions.ImageBuildID.getValue());
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

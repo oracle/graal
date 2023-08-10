@@ -224,6 +224,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
         ImageSingletons.add(SecurityProvidersFilter.class, this);
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
+                        "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
     }
 
     @Override
@@ -275,6 +277,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
         optionalClazz(access, "sun.security.krb5.Confounder").ifPresent(clazz -> rci.rerunInitialization(clazz, "for substitutions"));
+        optionalClazz(access, "sun.security.krb5.Config").ifPresent(clazz -> rci.rerunInitialization(clazz, "Reset the value of lazily initialized field sun.security.krb5.Config#singleton"));
 
         rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
 
