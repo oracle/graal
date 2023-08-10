@@ -55,6 +55,7 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -460,10 +461,12 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
 
         ResolvedJavaMethod annotated = metaAccess.lookupJavaMethod(annotatedMethod);
         ResolvedJavaMethod original = findOriginalMethod(annotatedMethod, originalClass);
-
         if (original == null) {
             /* Optional target that is not present, so nothing to do. */
-        } else if (deleteAnnotation != null) {
+            return;
+        }
+
+        if (deleteAnnotation != null) {
             if (SubstrateOptions.VerifyNamingConventions.getValue()) {
                 int modifiers = original.getModifiers();
                 if (Modifier.isProtected(modifiers) || Modifier.isPublic(modifiers)) {
@@ -476,17 +479,29 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             }
             registerAsDeleted(annotated, original, deleteAnnotation);
         } else if (substituteAnnotation != null) {
+            if (AnnotationAccess.isAnnotationPresent(annotated, Uninterruptible.class) && !isEffectivelyFinal(original)) {
+                throw UserError.abort("@Uninterruptible may only be combined with @Substitute if the original method is effectively final: %s", annotatedMethod);
+            }
+
             SubstitutionMethod substitution = new SubstitutionMethod(original, annotated, false, true);
             if (substituteAnnotation.polymorphicSignature()) {
                 register(polymorphicMethodSubstitutions, annotated, original, substitution);
             }
             register(methodSubstitutions, annotated, original, substitution);
         } else if (annotateOriginalAnnotation != null) {
+            if (AnnotationAccess.isAnnotationPresent(annotated, Uninterruptible.class) && !isEffectivelyFinal(original)) {
+                throw UserError.abort("@Uninterruptible may only be combined with @AnnotateOriginal if the original method is effectively final: %s", annotatedMethod);
+            }
+
             AnnotatedMethod substitution = new AnnotatedMethod(original, annotated);
             register(methodSubstitutions, annotated, original, substitution);
         } else if (aliasAnnotation != null) {
             register(methodSubstitutions, annotated, original, original);
         }
+    }
+
+    private static boolean isEffectivelyFinal(ResolvedJavaMethod original) {
+        return original.isPrivate() || original.isStatic() || original.isFinalFlagSet() || original.getDeclaringClass().isFinalFlagSet();
     }
 
     private boolean skipExcludedPlatform(AnnotatedElement annotatedMethod) {

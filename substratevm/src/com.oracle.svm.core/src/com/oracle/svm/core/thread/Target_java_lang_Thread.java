@@ -59,6 +59,11 @@ import com.oracle.svm.core.jdk.JDK17OrLater;
 import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK20OrLater;
+<<<<<<< HEAD
+=======
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
+import com.oracle.svm.core.jdk.JDK21OrLater;
+>>>>>>> dbc87425f59 (Don't use @Uninterruptible for overridable JDK methods.)
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -271,7 +276,6 @@ public final class Target_java_lang_Thread {
         contextClassLoader = ClassLoader.getSystemClassLoader();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     public long getId() {
@@ -281,10 +285,6 @@ public final class Target_java_lang_Thread {
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public native String getName();
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public native ThreadGroup getThreadGroup();
 
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -771,7 +771,6 @@ public final class Target_java_lang_Thread {
      */
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isTerminated() {
         return (holder.threadStatus & JVMTI_THREAD_STATE_TERMINATED) != 0;
     }
