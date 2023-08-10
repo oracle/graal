@@ -1198,8 +1198,6 @@ class SvmSupport(object):
     def get_debug_flags(self, image_config):
         assert self.is_debug_supported()
         flags = ['-g']
-        if self.generate_separate_debug_info(image_config):
-            flags += svm_experimental_options(['-H:+StripDebugInfo'])
         return flags
 
 
