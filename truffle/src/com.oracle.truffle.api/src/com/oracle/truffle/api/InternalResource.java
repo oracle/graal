@@ -50,13 +50,19 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
+import java.security.CodeSource;
 import java.util.ArrayList;
+import java.util.Enumeration;
 import java.util.List;
 import java.util.Objects;
 import java.util.Properties;
@@ -68,7 +74,7 @@ import java.util.function.BooleanSupplier;
  * directory.
  * <p>
  * A typical implementation of an {@code InternalResource} for a platform-specific library stored in
- * the {@code META-INF/resources/<os>/<arch>} looks like this:
+ * the {@code META-INF/resources/<language-id>/<resource-id>/<os>/<arch>} looks like this:
  *
  * <pre>
  * &#64;InternalResource.Id("resource-id")
@@ -76,14 +82,16 @@ import java.util.function.BooleanSupplier;
  *
  *     &#64;Override
  *     public void unpackFiles(Env env, Path targetDirectory) throws IOException {
- *         Path base = Path.of("META-INF", "resources", env.getOS().toString(), env.getCPUArchitecture().toString());
+ *         Path base = Path.of("META-INF", "resources", "mylanguage", "resource-id",
+ *                         env.getOS().toString(), env.getCPUArchitecture().toString());
  *         env.unpackResourceFiles(base.resolve("file-list"), targetDirectory, base);
  *     }
  *
  *     &#64;Override
  *     public String versionHash(Env env) {
  *         try {
- *             Path hashResource = Path.of("META-INF", "resources", env.getOS().toString(), env.getCPUArchitecture().toString(), "sha256");
+ *             Path hashResource = Path.of("META-INF", "resources", "mylanguage", "resource-id",
+ *                             env.getOS().toString(), env.getCPUArchitecture().toString(), "sha256");
  *             return env.readResourceLines(hashResource).get(0);
  *         } catch (IOException ioe) {
  *             throw CompilerDirectives.shouldNotReachHere(ioe);
@@ -92,10 +100,13 @@ import java.util.function.BooleanSupplier;
  * }
  * </pre>
  *
- * The resource files are listed in the {@code META-INF/resources/<os>/<arch>/file-list} file. For
- * the file list format, refer to {@link InternalResource.Env#unpackFiles(Env, Path)}. Additionally,
- * the {@code META-INF/resources/<os>/<arch>/sha256} file contains an SHA-256 hash of the resource
- * files.
+ * The resource files are listed in the
+ * {@code META-INF/resources/<language-id>/<resource-id>/<os>/<arch>/file-list} file. For the file
+ * list format, refer to {@link InternalResource.Env#unpackFiles(Env, Path)}. Additionally, the
+ * {@code META-INF/resources/<language-id>/<resource-id>/<os>/<arch>/sha256} file contains an
+ * SHA-256 hash of the resource files. It is recommended to use non-encapsulated resource paths that
+ * include the component ID and resource ID, as this helps prevent ambiguity when the language or
+ * instrument is used in an unnamed module.
  *
  * @since 23.1
  */
@@ -140,11 +151,13 @@ public interface InternalResource {
      */
     final class Env {
 
+        private final Class<? extends InternalResource> resourceClass;
         private final Module owner;
         private final BooleanSupplier contextPreinitializationCheck;
 
         Env(InternalResource resource, BooleanSupplier contextPreinitializationCheck) {
-            this.owner = resource.getClass().getModule();
+            this.resourceClass = resource.getClass();
+            this.owner = resourceClass.getModule();
             this.contextPreinitializationCheck = Objects.requireNonNull(contextPreinitializationCheck, "ContextPreinitializationCheck  must be non-null.");
         }
 
@@ -197,12 +210,16 @@ public interface InternalResource {
          * enclosing package to the {@code org.graalvm.truffle} module. It is recommended to use
          * non-encapsulated resource paths.
          *
-         * @param location path that identifies the resource in the module.
+         * @param location relative path that identifies the resource in the module. The relative
+         *            path gets resolved into an absolute path using the archive root.
          * @return the lines from the resource as a {@link List}
          * @throws IOException in case of IO error
          * @since 23.1
          */
         public List<String> readResourceLines(Path location) throws IOException {
+            if (location.isAbsolute()) {
+                throw new IllegalArgumentException("Location must be a relative path, but the absolute path " + location + " was given.");
+            }
             try (BufferedReader in = new BufferedReader(new InputStreamReader(findResource(location), StandardCharsets.UTF_8))) {
                 List<String> content = new ArrayList<>();
                 for (String line = in.readLine(); line != null; line = in.readLine()) {
@@ -233,7 +250,8 @@ public interface InternalResource {
          * META-INF/resources/common/include/trufflenfi.h = rw-r--r--
          * </pre>
          *
-         * @param source the path that identifies the file list resource in the module.
+         * @param source the relative path that identifies the file list resource in the module. The
+         *            relative path gets resolved into an absolute path using the archive root.
          * @param target the folder to extract resources to
          * @param relativizeTo the path used to relativize the file list entries in the
          *            {@code target} folder. In other words, the file list entries are resolved
@@ -245,6 +263,9 @@ public interface InternalResource {
          * @since 23.1
          */
         public void unpackResourceFiles(Path source, Path target, Path relativizeTo) throws IOException {
+            if (source.isAbsolute()) {
+                throw new IllegalArgumentException("Source must be a relative path, but the absolute path " + source + " was given.");
+            }
             if (relativizeTo.isAbsolute()) {
                 throw new IllegalArgumentException("RelativizeTo must be a relative path, but the absolute path " + relativizeTo + " was given.");
             }
@@ -282,11 +303,71 @@ public interface InternalResource {
 
         private InputStream findResource(Path path) throws IOException {
             String resourceName = path.toString().replace(File.separatorChar, '/');
-            InputStream stream = owner.getResourceAsStream(resourceName);
+            InputStream stream;
+            if (owner.isNamed()) {
+                stream = owner.getResourceAsStream(resourceName);
+            } else {
+                Enumeration<URL> resources = resourceClass.getClassLoader().getResources(resourceName);
+                URL resource = preferredResource(resources);
+                stream = resource != null ? resource.openStream() : null;
+            }
             if (stream == null) {
                 throw new NoSuchFileException(resourceName);
             }
             return stream;
+        }
+
+        private URL preferredResource(Enumeration<URL> candidates) {
+            if (!candidates.hasMoreElements()) {
+                return null;    // No resource found
+            }
+            URL preferred = candidates.nextElement();
+            if (!candidates.hasMoreElements()) {
+                return preferred;   // Single resource
+            }
+            CodeSource codeSource = resourceClass.getProtectionDomain().getCodeSource();
+            URL location = codeSource != null ? codeSource.getLocation() : null;
+            if (location == null) {
+                return preferred;  // Classloader does not provide code source location, return the
+                                   // first resource
+            }
+            Path classOwner = fileURL(location);
+            if (classOwner == null) {
+                return preferred; // Code source is not a file, return the first resource
+            }
+            if (!isInClassSourceLocation(preferred, classOwner)) {
+                while (candidates.hasMoreElements()) {
+                    URL candidate = candidates.nextElement();
+                    if (isInClassSourceLocation(candidate, classOwner)) {
+                        preferred = candidate;
+                        break;
+                    }
+                }
+            }
+            return preferred;
+        }
+
+        private static boolean isInClassSourceLocation(URL resource, Path classSourceLocation) {
+            Path resourceOwner = fileURL(resource);
+            return resourceOwner != null && resourceOwner.startsWith(classSourceLocation);
+        }
+
+        private static Path fileURL(URL url) {
+            try {
+                URI useURI = url.toURI();
+                if ("jar".equals(url.getProtocol())) {
+                    String path = useURI.getRawSchemeSpecificPart();
+                    int index = path.indexOf("!/");
+                    String jarPath = index >= 0 ? path.substring(0, index) : null;
+                    useURI = jarPath != null ? new URI(jarPath) : null;
+                }
+                if (useURI != null && "file".equals(useURI.getScheme())) {
+                    return Paths.get(useURI);
+                }
+                return null;
+            } catch (URISyntaxException e) {
+                return null;
+            }
         }
 
         private void copyResource(Path source, Path target, Set<PosixFilePermission> attrs) throws IOException {

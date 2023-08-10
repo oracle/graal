@@ -1393,8 +1393,8 @@ suite = {
     "TRUFFLE_RUNTIME_ATTACH_RESOURCES" : {
       "type" : "dir",
       "platformDependent" : True,
-      "hashEntry" :  "META-INF/resources/<os>/<arch>/sha256",
-      "fileListEntry" : "META-INF/resources/<os>/<arch>/files",
+      "hashEntry" :  "META-INF/resources/engine/libtruffleattach/<os>/<arch>/sha256",
+      "fileListEntry" : "META-INF/resources/engine/libtruffleattach/<os>/<arch>/files",
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
@@ -1404,7 +1404,7 @@ suite = {
           "windows-aarch64",
       ],
       "layout" : {
-        "META-INF/resources/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.runtime.attach",
+        "META-INF/resources/engine/libtruffleattach/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.runtime.attach",
       },
       "description" : "Contains a library to provide access for the Truffle runtime to JVMCI.",
       "maven": False,
@@ -1480,8 +1480,8 @@ suite = {
     "TRUFFLE_NFI_RESOURCES" : {
       "type" : "dir",
       "platformDependent" : True,
-      "hashEntry" :  "META-INF/resources/<os>/<arch>/sha256",
-      "fileListEntry" : "META-INF/resources/<os>/<arch>/files",
+      "hashEntry" :  "META-INF/resources/nfi-native/libnfi/<os>/<arch>/sha256",
+      "fileListEntry" : "META-INF/resources/nfi-native/libnfi/<os>/<arch>/files",
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
@@ -1491,7 +1491,7 @@ suite = {
           "windows-aarch64",
       ],
       "layout" : {
-        "META-INF/resources/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native",
+        "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native",
       },
       "description" : "Contains the native library needed by the libffi NFI backend.",
       "maven": False,
