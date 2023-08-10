@@ -217,7 +217,7 @@ class ManualUnsafeBytecodeNode extends BaseBytecodeNode {
                 }
                 // ( -- i)
                 case OP_CONST: {
-                    UFA.setInt(frame, sp, (UFA.shortArrayRead(localBc, bci + 2) << 16) | (UFA.shortArrayRead(localBc, bci + 1) & 0xffff));
+                    UFA.setInt(frame, sp, (UFA.shortArrayRead(localBc, bci + 1) << 16) | (UFA.shortArrayRead(localBc, bci + 2) & 0xffff));
                     sp += 1;
                     bci += 3;
                     continue loop;

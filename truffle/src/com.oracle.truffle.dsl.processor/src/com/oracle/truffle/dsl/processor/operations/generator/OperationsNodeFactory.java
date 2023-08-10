@@ -3753,6 +3753,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeTypeElement create() {
             CodeTypeElement interpreterType = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, tier.interpreterClassName());
             interpreterType.addAll(createContinueAt());
+            interpreterType.add(createLoadConstantCompiled());
             return interpreterType;
         }
 
@@ -3898,7 +3899,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("sp += 1");
                         break;
                     case LOAD_CONSTANT:
+                        b.startIf().startStaticCall(types.CompilerDirectives, "inCompiledCode").end(2).startBlock();
+                        b.statement("loadConstantCompiled(frame, bc, bci, sp, constants)");
+                        b.end().startElseBlock();
                         b.statement(setFrameObject("sp", readConst(readBc("bci + 1"))));
+                        b.end();
                         b.statement("sp += 1");
                         break;
                     case LOAD_LOCAL:
@@ -4063,6 +4068,41 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             return results;
+        }
+
+        /**
+         * We use this method to load constants on the compiled code path.
+         *
+         * The compiler can often detect and remove redundant box-unbox sequences, but when we load
+         * primitives from the constants array that are already boxed, there is no initial "box"
+         * operation. By extracting and re-boxing primitive values here, we create a fresh "box"
+         * operation with which the compiler can match and eliminate subsequent "unbox" operations.
+         */
+        private CodeExecutableElement createLoadConstantCompiled() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(void.class), "loadConstantCompiled");
+            ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
+            ex.addParameter(new CodeVariableElement(context.getType(short[].class), "bc"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "bci"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "sp"));
+            ex.addParameter(new CodeVariableElement(arrayOf(context.getDeclaredType(Object.class)), "constants"));
+
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(context.getDeclaredType(Object.class), "constant", readConst(readBc("bci + 1")));
+            Class<?>[] boxedTypes = new Class<?>[]{Boolean.class, Byte.class, Character.class, Float.class, Integer.class, Long.class, Short.class, Double.class};
+            String[] getterMethods = new String[]{"booleanValue", "byteValue", "charValue", "floatValue", "intValue", "longValue", "shortValue", "doubleValue"};
+            for (int i = 0; i < boxedTypes.length; i++) {
+                b.startIf(i != 0);
+                String className = boxedTypes[i].getSimpleName();
+                char boundVariable = className.toLowerCase().charAt(0);
+                b.string("constant instanceof " + className + " " + boundVariable);
+                b.end().startBlock();
+                b.statement(setFrameObject("sp", boundVariable + "." + getterMethods[i] + "()"));
+                b.statement("return");
+                b.end();
+            }
+            b.statement(setFrameObject("sp", "constant"));
+
+            return ex;
         }
 
         private void emitReportLoopCount(CodeTreeBuilder b, CodeTree condition, boolean clear) {
