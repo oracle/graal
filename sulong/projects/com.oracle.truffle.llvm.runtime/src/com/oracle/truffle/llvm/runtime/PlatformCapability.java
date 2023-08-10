@@ -35,6 +35,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InternalResource.CPUArchitecture;
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.inlineasm.InlineAssemblyParserBase;
@@ -205,13 +207,9 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
 
     public abstract InlineAssemblyParserBase getInlineAssemblyParser();
 
-    public enum OS {
-        Linux,
-        Windows,
-        Darwin;
-    }
-
     public abstract OS getOS();
+
+    public abstract CPUArchitecture getArch();
 
     public abstract int getDoubleLongSize();
 

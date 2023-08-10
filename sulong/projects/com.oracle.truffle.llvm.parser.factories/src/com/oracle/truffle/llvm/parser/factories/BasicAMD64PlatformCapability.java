@@ -29,11 +29,17 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.oracle.truffle.api.InternalResource.CPUArchitecture;
 import com.oracle.truffle.llvm.parser.factories.inlineasm.AMD64InlineAssemblyParser;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 
 public abstract class BasicAMD64PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends BasicPlatformCapability<S> {
     protected BasicAMD64PlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
         super(cls, loadCxxLibraries, new AMD64InlineAssemblyParser());
+    }
+
+    @Override
+    public CPUArchitecture getArch() {
+        return CPUArchitecture.AMD64;
     }
 }

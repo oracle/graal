@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.PlatformCapability.OS;
 import com.oracle.truffle.llvm.runtime.memory.LLVMMemory;
 
 import org.graalvm.polyglot.PolyglotException;
@@ -52,6 +51,7 @@ import static org.junit.Assume.assumeFalse;
 
 import java.util.concurrent.CountDownLatch;
 import java.util.function.Consumer;
+import com.oracle.truffle.api.InternalResource.OS;
 
 public abstract class AbstractExitTest {
 
@@ -132,7 +132,7 @@ public abstract class AbstractExitTest {
 
     @Before
     public void prepareTest() {
-        assumeFalse("Truffle exit tests are not supported on Windows", InteropTestBase.getOS() == OS.Windows);
+        assumeFalse("Truffle exit tests are not supported on Windows", InteropTestBase.getOS() == OS.WINDOWS);
         testModule = InteropTestBase.loadTestBitcodeValue("truffleExitTest.c");
 
         installExitHook = testModule.getMember("installExitHook");
