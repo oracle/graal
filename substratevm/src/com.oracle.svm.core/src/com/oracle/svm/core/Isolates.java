@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,6 +26,7 @@ package com.oracle.svm.core;
 
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.Isolate;
+import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
@@ -87,16 +88,27 @@ public class Isolates {
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     public static int create(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
-        int result = CommittedMemoryProvider.get().initialize(isolatePointer, parameters);
+        WordPointer heapBasePointer = StackValue.get(WordPointer.class);
+        int result = CommittedMemoryProvider.get().initialize(heapBasePointer, parameters);
         if (result != CEntryPointErrors.NO_ERROR) {
             return result;
         }
 
-        result = checkIsolate(isolatePointer.read());
+        Isolate isolate;
+        if (!SubstrateOptions.SpawnIsolates.getValue()) {
+            isolate = (Isolate) CEntryPointSetup.SINGLE_ISOLATE_SENTINEL;
+            VMError.guarantee(IMAGE_HEAP_BEGIN.get().equal(heapBasePointer.read()));
+        } else {
+            isolate = heapBasePointer.read();
+        }
+
+        result = checkIsolate(isolate);
         if (result != CEntryPointErrors.NO_ERROR) {
             isolatePointer.write(WordFactory.nullPointer());
             return result;
         }
+
+        isolatePointer.write(isolate);
 
         return CEntryPointErrors.NO_ERROR;
     }
