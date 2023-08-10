@@ -35,10 +35,8 @@ import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -46,7 +44,6 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
@@ -132,7 +129,7 @@ public class NativeImageClassLoaderSupport {
 
         imagecp = Arrays.stream(classpath)
                         .map(Path::of)
-                        .map(Util::toRealPath)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         String builderClassPathString = System.getProperty("java.class.path");
@@ -144,19 +141,19 @@ public class NativeImageClassLoaderSupport {
         }
         buildcp = Arrays.stream(builderClassPathEntries)
                         .map(Path::of)
-                        .map(Util::toRealPath)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
         buildcp.stream().map(Path::toUri).forEach(builderURILocations::add);
 
         imagemp = Arrays.stream(modulePath)
                         .map(Path::of)
-                        .map(Util::toRealPath)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         buildmp = Optional.ofNullable(System.getProperty("jdk.module.path")).stream()
                         .flatMap(s -> Arrays.stream(s.split(File.pathSeparator)))
                         .map(Path::of)
-                        .map(Util::toRealPath)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         upgradeAndSystemModuleFinder = createUpgradeAndSystemModuleFinder();
@@ -188,6 +185,14 @@ public class NativeImageClassLoaderSupport {
         modulepathModuleFinder = ModuleFinder.of(modulepath().toArray(Path[]::new));
 
         annotationExtractor = new SubstrateAnnotationExtractor();
+    }
+
+    private static Stream<Path> toRealPath(Path p) {
+        try {
+            return Stream.of(p.toRealPath());
+        } catch (IOException e) {
+            return Stream.empty();
+        }
     }
 
     List<Path> classpath() {
@@ -238,46 +243,6 @@ public class NativeImageClassLoaderSupport {
 
     public boolean noEntryForURI(EconomicSet<String> set) {
         return set == emptySet;
-    }
-
-    protected static class Util {
-
-        static URL[] verifyClassPathAndConvertToURLs(String[] classpath) {
-            Stream<Path> pathStream = new LinkedHashSet<>(Arrays.asList(classpath)).stream().map(Path::of).filter(Util::verifyClassPathEntry);
-            return pathStream.map(v -> {
-                try {
-                    return toRealPath(v).toUri().toURL();
-                } catch (MalformedURLException e) {
-                    throw UserError.abort("Invalid classpath element '%s'. Make sure that all paths provided with '%s' are correct.", v, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
-                }
-            }).toArray(URL[]::new);
-        }
-
-        static Path toRealPath(Path p) {
-            try {
-                return p.toRealPath();
-            } catch (IOException e) {
-                throw UserError.abort("Path entry '%s' does not map to a real path.", p);
-            }
-        }
-
-        private static boolean verifyClassPathEntry(Path cpEntry) {
-            if (ClasspathUtils.isJar(cpEntry)) {
-                return true;
-            }
-            if (Files.isDirectory(cpEntry) && Files.isReadable(cpEntry)) {
-                return true;
-            }
-            return false;
-        }
-
-        static Path urlToPath(URL url) {
-            try {
-                return Paths.get(url.toURI());
-            } catch (URISyntaxException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        }
     }
 
     /**
