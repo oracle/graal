@@ -641,10 +641,6 @@ final class NativeImageClassLoader extends SecureClassLoader {
             }
 
             if (c == null) {
-                c = findClassViaClassPath(cn);
-            }
-
-            if (c == null) {
                 LoadedModule loadedModule = findLoadedModule(cn);
 
                 if (loadedModule != null) {
@@ -653,6 +649,10 @@ final class NativeImageClassLoader extends SecureClassLoader {
                     c = findClassInModuleOrNull(loadedModule, cn);
 
                 } else {
+                    if (c == null) {
+                        c = findClassViaClassPath(cn);
+                    }
+
                     if (c == null) {
                         // type in another module or visible via the parent loader
                         String pn = packageName(cn);
