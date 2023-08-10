@@ -322,7 +322,8 @@ public class WebAssembly extends Dictionary {
             final Integer memoryIndex = module.exportedMemories().get(name);
 
             if (memoryIndex != null) {
-                list.add(new ModuleExportDescriptor(name, ImportExportKind.memory.name(), null));
+                String shared = module.memoryIsShared(memoryIndex) ? "shared" : "single";
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.memory.name(), shared));
             } else if (tableIndex != null) {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.table.name(), TableKind.toString(module.tableElementType(tableIndex))));
             } else if (f != null) {
@@ -656,10 +657,20 @@ public class WebAssembly extends Dictionary {
         } else {
             maximumSize = -1;
         }
-        return memAlloc(initialSize, maximumSize);
+        final boolean shared;
+        if (args.length > 2) {
+            try {
+                shared = lib.asBoolean(args[2]);
+            } catch (UnsupportedMessageException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Shared flag must be convertible to boolean");
+            }
+        } else {
+            shared = false;
+        }
+        return memAlloc(initialSize, maximumSize, shared);
     }
 
-    public static WasmMemory memAlloc(int initial, int maximum) {
+    public static WasmMemory memAlloc(int initial, int maximum, boolean shared) {
         if (compareUnsigned(initial, maximum) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds max memory size");
         } else if (Long.compareUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
@@ -667,7 +678,7 @@ public class WebAssembly extends Dictionary {
         }
         final long maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
         final WasmContext context = WasmContext.get(null);
-        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, false, context.getContextOptions().useUnsafeMemory());
+        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, shared, context.getContextOptions().useUnsafeMemory());
     }
 
     private static Object memGrow(Object[] args) {

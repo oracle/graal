@@ -193,7 +193,7 @@ public class MultiInstantiationSuite {
             final WasmTable t = wasm.tableAlloc(2, 2, TableKind.anyfunc, tableFun);
             a.addMember("t", t);
 
-            final WasmMemory m = WebAssembly.memAlloc(1, 1);
+            final WasmMemory m = WebAssembly.memAlloc(1, 1, false);
             m.store_i32_8(null, 0, (byte) 5);
             a.addMember("m", m);
 
