@@ -330,6 +330,7 @@ suite = {
             },
             "maven" : {
                 "artifactId" : "espresso-language",
+                "tag": ["default", "public"],
             },
             "noMavenJavadoc": True,
         },
@@ -343,6 +344,7 @@ suite = {
             "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "maven": {
                 "artifactId": "espresso-community",
+                "tag": ["default", "public"],
             },
         },
 
@@ -468,6 +470,7 @@ suite = {
             },
             "maven": {
                 "artifactId": "polyglot",
+                "tag": ["default", "public"],
             }
         },
 
@@ -484,7 +487,10 @@ suite = {
                 "exports" : [
                     "com.oracle.truffle.espresso.hotswap",
                 ]
-            }
+            },
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "DACAPO_SCALA_WARMUP": {

@@ -273,6 +273,7 @@ def _register_all_tools_distribution(register_distribution):
             'maven': {
                 'groupId': 'org.graalvm.polyglot',
                 'artifactId': 'tools-community',
+                'tag': ['default', 'public'],
             },
             'description': 'Graalvm community tools.',
         }
@@ -299,6 +300,7 @@ def _register_all_languages_distribution(register_distribution):
             'maven': {
                 'groupId': 'org.graalvm.polyglot',
                 'artifactId': 'languages-community',
+                'tag': ['default', 'public'],
             },
             'description': 'Graalvm community languages.',
         }

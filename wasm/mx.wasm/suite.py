@@ -250,6 +250,7 @@ suite = {
       "license" : "UPL",
       "maven" : {
         "artifactId" : "wasm-language",
+        "tag": ["default", "public"],
       },
       "noMavenJavadoc": True,
     },
@@ -262,6 +263,7 @@ suite = {
       ],
       "maven": {
         "artifactId": "wasm-community",
+        "tag": ["default", "public"],
       },
       "description": "Graal WASM engine.",
       "license": "UPL",

@@ -1441,6 +1441,9 @@ suite = {
                 },
             },
             "noMavenJavadoc": True,
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "JVMTI_AGENT_BASE": {
@@ -1480,6 +1483,9 @@ suite = {
                     "* to org.graalvm.nativeimage.builder",
                 ],
             },
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "JUNIT_SUPPORT": {
@@ -1504,6 +1510,9 @@ suite = {
                     "static junit",
                     "static hamcrest",
                 ]
+            },
+            "maven": {
+                "tag": ["default", "public"],
             },
         },
 
@@ -1532,6 +1541,9 @@ suite = {
                   "jdk.internal.ref",
                 ],
               }
+            },
+            "maven": {
+                "tag": ["default", "public"],
             },
         },
 
@@ -1597,6 +1609,9 @@ suite = {
                 },
             },
             "noMavenJavadoc": True,
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "TRUFFLE_GRAALVM_SUPPORT" : {
@@ -1802,7 +1817,10 @@ suite = {
                     "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,org.graalvm.extraimage.builder,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                     "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                 ],
-            }
+            },
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "POINTSTO": {
@@ -1855,6 +1873,9 @@ suite = {
                 ],
               }
             },
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "STANDALONE_POINTSTO": {
@@ -1893,6 +1914,9 @@ suite = {
                         "org.graalvm.compiler.options"
                     ]
                 }
+            },
+            "maven": {
+                "tag": ["default", "public"],
             },
         },
 
@@ -2100,7 +2124,9 @@ suite = {
             "description" : "Truffle TCK",
             "dependencies" : ["com.oracle.svm.truffle.tck"],
             "distDependencies" : ["SVM", "truffle:TRUFFLE_RUNTIME"],
-            "maven" : True,
+            "maven" : {
+                "tag": ["default", "public"],
+            },
         },
     },
 }

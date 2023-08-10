@@ -373,6 +373,7 @@ suite = {
             ],
             "maven" : {
               "artifactId" : "chromeinspector-tool",
+              "tag": ["default", "public"],
             },
             "description" : "The core module of the polyglot debugging backend for chrome inspector.",
         },
@@ -384,6 +385,7 @@ suite = {
             ],
             "maven": {
               "artifactId": "chromeinspector-community",
+              "tag": ["default", "public"],
             },
             "description": "The polyglot debugging backend for chrome inspector.",
         },
@@ -400,6 +402,7 @@ suite = {
               "mx:HAMCREST",
               "mx:JUNIT",
             ],
+            "maven": False,
         },
         "CHROMEINSPECTOR_GRAALVM_SUPPORT" : {
             "native" : True,
@@ -426,6 +429,7 @@ suite = {
             ],
             "maven" : {
               "artifactId" : "insight-tool",
+              "tag": ["default", "public"],
             },
             "description" : "The core module of the Insights Gathering Platform",
         },
@@ -437,6 +441,7 @@ suite = {
             ],
             "maven": {
               "artifactId": "insight-community",
+              "tag": ["default", "public"],
             },
             "description": "The Ultimate Insights Gathering Platform",
         },
@@ -455,6 +460,7 @@ suite = {
             ],
             "maven" : {
               "artifactId" : "insight-heap-tool",
+              "tag": ["default", "public"],
             },
             "description" : "The core module of Heap Dump for Insight",
         },
@@ -466,6 +472,7 @@ suite = {
             ],
             "maven": {
               "artifactId": "insight-heap-community",
+              "tag": ["default", "public"],
             },
             "description": "The Heap Dump for the Insights Gathering Platform",
         },
@@ -515,6 +522,7 @@ suite = {
             ],
             "maven" : {
               "artifactId" : "profiler-tool",
+              "tag": ["default", "public"],
             },
             "javadocType" : "api",
             "description" : "The core module of the Truffle profiler"
@@ -527,6 +535,7 @@ suite = {
             ],
             "maven": {
               "artifactId": "profiler-community",
+              "tag": ["default", "public"],
             },
             "description": "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
         },
@@ -564,6 +573,7 @@ suite = {
             ],
             "maven" : {
               "artifactId" : "coverage-tool",
+              "tag": ["default", "public"],
             },
             "description" : "Core module of the Truffle code coverage tool",
             "javadocType" : "api",
@@ -576,6 +586,7 @@ suite = {
             ],
             "maven": {
               "artifactId": "coverage-community",
+              "tag": ["default", "public"],
             },
             "description": "The Truffle code coverage tool"
         },
@@ -613,6 +624,7 @@ suite = {
             ],
             "maven" : {
               "artifactId" : "dap-tool",
+              "tag": ["default", "public"],
             },
             "description" : "Core module of the polyglot debugging backend for the Debug Adapter Protocol",
         },
@@ -624,6 +636,7 @@ suite = {
             ],
             "maven": {
               "artifactId": "dap-community",
+              "tag": ["default", "public"],
             },
             "description": "The polyglot debugging backend for the Debug Adapter Protocol"
         },
@@ -668,6 +681,7 @@ suite = {
             ],
             "maven" : {
               "artifactId" : "lsp_api",
+              "tag": ["default", "public"],
             },
             "description" : "Truffle Language Server backend API.",
             "javadocType" : "api",
@@ -688,6 +702,7 @@ suite = {
             ],
             "maven" : {
               "artifactId" : "lsp-tool",
+              "tag": ["default", "public"],
             },
             "description" : "Core module of the polyglot Language Server backend",
         },
@@ -699,6 +714,7 @@ suite = {
             ],
             "maven": {
               "artifactId": "lsp-community",
+              "tag": ["default", "public"],
             },
             "description": "The polyglot Language Server backend"
         },
@@ -709,6 +725,7 @@ suite = {
                 "truffle:TRUFFLE_SL",
             ],
             "description" : "Tests for the Truffle Language Server backend.",
+            "maven": False,
         },
         "LSP_GRAALVM_SUPPORT" : {
             "native" : True,

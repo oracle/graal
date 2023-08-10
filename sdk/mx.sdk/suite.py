@@ -577,7 +577,9 @@ suite = {
         ],
       },
       "description" : "Shared library",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "NATIVEIMAGE" : {
@@ -617,7 +619,9 @@ suite = {
         "opens" : [],
       },
       "description" : "A framework that allows to customize native image generation.",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "POLYGLOT" : {
@@ -657,6 +661,7 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.polyglot",
         "artifactId" : "polyglot",
+        "tag": ["default", "public"],
       }
     },
 
@@ -677,7 +682,9 @@ suite = {
         "opens" : [],
       },
       "description" : "A collections framework for GraalVM components.",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "WORD" : {
@@ -698,7 +705,9 @@ suite = {
         "opens" : [],
       },
       "description" : "A low-level framework for machine-word-sized values in Java.",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "SDK_TEST" : {
@@ -750,6 +759,7 @@ suite = {
       "maven": {
         "groupId": "org.graalvm.shadowed",
         "artifactId": "jline",
+        "tag": ["default", "public"],
       },
     },
     "LAUNCHER_COMMON" : {
@@ -769,6 +779,9 @@ suite = {
       ],
       "description" : "Common infrastructure to create language launchers using the Polyglot API.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
     "POLYGLOT_TCK" : {
       "subDir" : "src",
@@ -786,6 +799,9 @@ suite = {
       ],
       "javadocType": "api",
       "description" : """GraalVM TCK SPI""",
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
     "JNIUTILS" : {
       "moduleInfo" : {
@@ -799,6 +815,9 @@ suite = {
       "distDependencies" : ["COLLECTIONS", "NATIVEIMAGE"],
       "description" : "Utilities for JNI calls from within native-image.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
     "NATIVEBRIDGE" : {
       "moduleInfo" : {
@@ -812,6 +831,9 @@ suite = {
       "distDependencies" : ["JNIUTILS"],
       "description" : "API and utility classes for nativebridge.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
     "NATIVEBRIDGE_PROCESSOR" : {
       "subDir" : "src",

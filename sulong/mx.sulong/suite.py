@@ -1608,6 +1608,7 @@ suite = {
       },
       "maven": {
         "artifactId": "llvm-language",
+        "tag": ["default", "public"],
       },
       "license": "BSD-new",
       "noMavenJavadoc": True,
@@ -1623,6 +1624,7 @@ suite = {
       ],
       "maven": {
         "artifactId": "llvm-native-community",
+        "tag": ["default", "public"],
       },
       "description": "Graal native LLVM engine.",
       "license": "BSD-new",
@@ -1635,6 +1637,7 @@ suite = {
       ],
       "maven": {
         "artifactId": "llvm-community",
+        "tag": ["default", "public"],
       },
       "description": "Graal LLVM engine.",
       "license": "BSD-new",
@@ -1657,6 +1660,7 @@ suite = {
       "description" : "Graal LLVM API.",
       "maven" : {
         "artifactId" : "llvm-api",
+        "tag": ["default", "public"],
       },
       "license" : "BSD-new",
       "allowsJavadocWarnings": True,  # GR-47782
@@ -1678,6 +1682,7 @@ suite = {
       ],
       "maven" : {
         "artifactId" : "llvm-language-native",
+        "tag": ["default", "public"],
       },
       "license" : "BSD-new",
     },
@@ -1691,6 +1696,7 @@ suite = {
       "distDependencies" : ["truffle:TRUFFLE_NFI"],
       "maven" : {
         "artifactId" : "llvm-language-nfi",
+        "tag": ["default", "public"],
       },
       "license" : "BSD-new",
     },
