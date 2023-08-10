@@ -271,6 +271,15 @@ def _truffle_gate_runner(args, tasks):
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
+    if jdk.javaCompliance >= '21':
+        with Task('Truffle NFI tests with Panama Backend', tasks) as t:
+            if t:
+                testPath = mx.distribution('TRUFFLE_TEST_NATIVE').output
+                args = ['-Dnative.test.backend=panama', '-Dnative.test.path.panama=' + testPath]
+                # testlibArg = mx_subst.path_substitutions.substitute('-Dnative.test.path.panama=<path:TRUFFLE_TEST_NATIVE>')
+                if mx.project('com.oracle.truffle.nfi.backend.panama').javaPreviewNeeded:
+                    args += ['--enable-preview']
+                unittest(args + ['com.oracle.truffle.nfi.test', '--enable-timing', '--verbose'])
     with Task('TruffleString UnitTests without Java String Compaction', tasks) as t:
         if t: unittest(list(['-XX:-CompactStrings', '--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25', 'com.oracle.truffle.api.strings.test']))
     if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':
@@ -1110,7 +1119,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle NFI'],
-    truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI'],
+    truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI', 'truffle:TRUFFLE_NFI_PANAMA'],
     installable=False,
     stability="supported",
 ))

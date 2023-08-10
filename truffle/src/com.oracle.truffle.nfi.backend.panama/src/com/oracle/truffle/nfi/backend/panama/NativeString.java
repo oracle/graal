@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,65 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.test;
+package com.oracle.truffle.nfi.backend.panama;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tck.TruffleRunner;
-import org.graalvm.polyglot.Context;
-import org.junit.Assume;
-import org.junit.Rule;
-import org.junit.Test;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 
-public class ForbiddenNFITest {
+import java.lang.foreign.MemorySegment;
 
-    @Rule public TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(false));
+@ExportLibrary(InteropLibrary.class)
+class NativeString implements TruffleObject {
 
-    private Object eval(String format, Object... args) {
-        if (NFITest.TEST_BACKEND != null) {
-            switch (NFITest.TEST_BACKEND) {
-                case "native":
-                case "panama":
-                    // these backends need the native permission
-                    break;
-                default:
-                    Assume.assumeTrue("Skipping, non-default backends might actually work without allowNativeAccess.", NFITest.TEST_BACKEND == null);
-                    break;
-            }
-        }
-        Source source = Source.newBuilder("nfi", String.format(format, args), "ForbiddenNFITest").internal(true).build();
-        return runWithPolyglot.getTruffleTestEnv().parseInternal(source).call();
+    final long nativePointer;
+
+    NativeString(long nativePointer) {
+        this.nativePointer = nativePointer;
     }
 
-    @Test(expected = AbstractTruffleException.class)
-    public void loadDefault() {
-        eval("default");
+    @ExportMessage
+    boolean isNull() {
+        return nativePointer == 0;
     }
 
-    @Test(expected = AbstractTruffleException.class)
-    public void loadTestLib() {
-        eval("load '%s'", NFITest.getLibPath("nativetest"));
+    @ExportMessage
+    boolean isString() {
+        return nativePointer != 0;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("preview")
+    String asString() {
+        return MemorySegment.ofAddress(this.nativePointer).getUtf8String(0);
+    }
+
+    @ExportMessage
+    boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    long asPointer() {
+        return nativePointer;
+    }
+
+    @ExportMessage
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return PanamaNFILanguage.class;
+    }
+
+    @ExportMessage
+    @CompilerDirectives.TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "NativeString(" + asString() + ")";
     }
 }

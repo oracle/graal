@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,73 +38,56 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi;
+package com.oracle.truffle.nfi.backend.panama;
 
-import org.graalvm.collections.EconomicMap;
-
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.nfi.backend.spi.NFIBackend;
-import com.oracle.truffle.nfi.backend.spi.NFIBackendFactory;
 
-final class NFIContext {
+import java.lang.foreign.Arena;
 
-    Env env;
-    final EconomicMap<String, API> apiCache = EconomicMap.create();
+class PanamaNFIContext {
 
-    NFIContext(Env env) {
+    final PanamaNFILanguage language;
+    @SuppressWarnings("preview") Arena arena;
+    @CompilationFinal Env env;
+
+    PanamaNFIContext(PanamaNFILanguage language, Env env) {
+        this.language = language;
         this.env = env;
     }
 
-    void patch(Env newEnv) {
-        this.env = newEnv;
-        this.apiCache.clear();
+    @SuppressWarnings("preview")
+    void initialize() {
+        arena = Arena.ofShared();
     }
 
-    NFIBackend getBackend(String id) {
-        return getAPI(id).backend;
+    void patchEnv(Env env) {
+        this.env = env;
+    }
+
+    void dispose() {
+        if (arena != null) {
+            arena.close();
+        }
+    }
+
+    @SuppressWarnings("preview")
+    Arena getContextArena() {
+        return arena;
     }
 
     @TruffleBoundary
-    API getAPI(String backendId) {
-        API ret = apiCache.get(backendId);
-        if (ret != null) {
-            return ret;
-        }
-
-        synchronized (apiCache) {
-            ret = apiCache.get(backendId);
-            if (ret != null) {
-                return ret;
-            }
-
-            for (LanguageInfo language : env.getInternalLanguages().values()) {
-                if ("nfi".equals(language.getId())) {
-                    continue;
-                }
-
-                NFIBackendFactory backendFactory = env.lookup(language, NFIBackendFactory.class);
-                if (backendFactory != null && backendFactory.getBackendId().equals(backendId)) {
-                    // force initialization of the backend language
-                    env.initializeLanguage(language);
-
-                    NFIBackend backend = backendFactory.createBackend();
-                    API api = new API(backendId, backend);
-                    apiCache.put(backendFactory.getBackendId(), api);
-                    return api;
-                }
-            }
-        }
-
-        throw new NFIParserException(String.format("Unknown NFI backend '%s'.", backendId), false);
+    PanamaType lookupEnvType() {
+        // TODO
+        return null;
     }
 
-    private static final ContextReference<NFIContext> REFERENCE = ContextReference.create(NFILanguage.class);
+    private static final ContextReference<PanamaNFIContext> REFERENCE = ContextReference.create(PanamaNFILanguage.class);
 
-    static NFIContext get(Node node) {
+    static PanamaNFIContext get(Node node) {
         return REFERENCE.get(node);
     }
 }

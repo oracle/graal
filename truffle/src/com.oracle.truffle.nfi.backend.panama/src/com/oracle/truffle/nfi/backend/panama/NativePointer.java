@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,68 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.test;
+package com.oracle.truffle.nfi.backend.panama;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tck.TruffleRunner;
-import org.graalvm.polyglot.Context;
-import org.junit.Assume;
-import org.junit.Rule;
-import org.junit.Test;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.nfi.backend.spi.BackendNativePointerLibrary;
 
-public class ForbiddenNFITest {
+@ExportLibrary(value = BackendNativePointerLibrary.class, useForAOT = true, useForAOTPriority = 1)
+@ExportLibrary(InteropLibrary.class)
+final class NativePointer implements TruffleObject {
 
-    @Rule public TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(false));
+    static final NativePointer NULL = new NativePointer(0);
 
-    private Object eval(String format, Object... args) {
-        if (NFITest.TEST_BACKEND != null) {
-            switch (NFITest.TEST_BACKEND) {
-                case "native":
-                case "panama":
-                    // these backends need the native permission
-                    break;
-                default:
-                    Assume.assumeTrue("Skipping, non-default backends might actually work without allowNativeAccess.", NFITest.TEST_BACKEND == null);
-                    break;
-            }
-        }
-        Source source = Source.newBuilder("nfi", String.format(format, args), "ForbiddenNFITest").internal(true).build();
-        return runWithPolyglot.getTruffleTestEnv().parseInternal(source).call();
+    final long nativePointer;
+
+    NativePointer(long nativePointer) {
+        this.nativePointer = nativePointer;
     }
 
-    @Test(expected = AbstractTruffleException.class)
-    public void loadDefault() {
-        eval("default");
+    static Object create(long nativePointer) {
+        return new NativePointer(nativePointer);
     }
 
-    @Test(expected = AbstractTruffleException.class)
-    public void loadTestLib() {
-        eval("load '%s'", NFITest.getLibPath("nativetest"));
+    @Override
+    public String toString() {
+        return String.valueOf(nativePointer);
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean isPointer() {
+        return true;
+    }
+
+    @ExportMessage
+    long asPointer() {
+        return nativePointer;
+    }
+
+    @ExportMessage
+    boolean isNull() {
+        return nativePointer == 0;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasLanguage() {
+        return true;
+    }
+
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Class<? extends TruffleLanguage<?>> getLanguage() {
+        return PanamaNFILanguage.class;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object toDisplayString(@SuppressWarnings("unused") boolean allowSideEffects) {
+        return "NativePointer(" + nativePointer + ")";
     }
 }

@@ -1570,6 +1570,9 @@ def register_graalvm_vms():
     host_vm_names = [default_host_vm_name] + ([short_host_vm_name] if short_host_vm_name != default_host_vm_name else [])
     for host_vm_name in host_vm_names:
         for config_name, java_args, launcher_args, priority in mx_sdk_vm.get_graalvm_hostvm_configs():
+            if config_name.startswith("jvm"):
+                # needed for NFI CLinker benchmarks
+                launcher_args += ['--vm.-enable-preview']
             mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
             for mode, mode_options in _polybench_modes:
                 _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args))

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,43 +38,20 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.nfi.test;
+package com.oracle.truffle.nfi.backend.panama;
 
 import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.tck.TruffleRunner;
-import org.graalvm.polyglot.Context;
-import org.junit.Assume;
-import org.junit.Rule;
-import org.junit.Test;
+import com.oracle.truffle.api.nodes.Node;
 
-public class ForbiddenNFITest {
+@SuppressWarnings("serial")
+final class NFIError extends AbstractTruffleException {
 
-    @Rule public TruffleRunner.RunWithPolyglotRule runWithPolyglot = new TruffleRunner.RunWithPolyglotRule(Context.newBuilder().allowNativeAccess(false));
-
-    private Object eval(String format, Object... args) {
-        if (NFITest.TEST_BACKEND != null) {
-            switch (NFITest.TEST_BACKEND) {
-                case "native":
-                case "panama":
-                    // these backends need the native permission
-                    break;
-                default:
-                    Assume.assumeTrue("Skipping, non-default backends might actually work without allowNativeAccess.", NFITest.TEST_BACKEND == null);
-                    break;
-            }
-        }
-        Source source = Source.newBuilder("nfi", String.format(format, args), "ForbiddenNFITest").internal(true).build();
-        return runWithPolyglot.getTruffleTestEnv().parseInternal(source).call();
+    NFIError(String message) {
+        this(message, null);
     }
 
-    @Test(expected = AbstractTruffleException.class)
-    public void loadDefault() {
-        eval("default");
+    NFIError(String message, Node location) {
+        super(message, location);
     }
 
-    @Test(expected = AbstractTruffleException.class)
-    public void loadTestLib() {
-        eval("load '%s'", NFITest.getLibPath("nativetest"));
-    }
 }

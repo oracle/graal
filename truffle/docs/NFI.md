@@ -189,6 +189,14 @@ The default is called `native`, and will be used if there is no `with` prefix, o
 Depending on the configuration of components you are running, available backends may include:
 * `native`
 * `llvm`, which uses the GraalVM LLVM runtime to run the native code
+* `panama`
+
+### Panama backend
+
+The Panama backend uses the Foreign Function and Memory APIs introduced by [project Panama](https://openjdk.org/projects/panama/). 
+This backend only supports a subset of all the types. Specifically, it does not support `STRING`, `OBJECT`, `ENV`, `FP80` or array types.
+Although less feature-complete, the backend is typically more performant.
+Currently, it is available starting from JDK 21 with the `--enable-preview` tag.
 
 ### Truffle NFI on Native Image
 

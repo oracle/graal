@@ -812,6 +812,19 @@ suite = {
       },
     },
 
+    "com.oracle.truffle.nfi.backend.panama" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaPreviewNeeded" : "21+",
+      "dependencies" : [
+        "com.oracle.truffle.nfi.backend.spi",
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "21+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle",
+    },
+
     "com.oracle.truffle.nfi.backend.spi" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -1457,6 +1470,24 @@ suite = {
       },
       "description" : """Implementation of the Truffle NFI using libffi.""",
       "allowsJavadocWarnings": True,
+    },
+
+    "TRUFFLE_NFI_PANAMA" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.truffle_nfi_panama",
+      },
+      "subDir" : "src",
+      "javaCompliance" : "21+",
+      "dependencies" : [
+        "com.oracle.truffle.nfi.backend.panama",
+      ],
+      "distDependencies" : [
+        "TRUFFLE_NFI",
+      ],
+      "description" : """Implementation of the Truffle NFI using CLinker from project panama.""",
+      "allowsJavadocWarnings": True,
+      "noMavenJavadoc": True,  # the maven deploy job refuses to build javadoc if javaCompliance is higher than 17
     },
 
     "TRUFFLE_NFI_NATIVE" : {
