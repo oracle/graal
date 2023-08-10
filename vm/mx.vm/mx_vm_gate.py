@@ -153,7 +153,7 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
         # Only run this test if JAVA_HOME and ORACLEJDK_JAVA_HOME have
         # the same major Java version. Even then there's a chance of incompatibility
         # if labsjdk is based on a different OracleJDK build.
-        if graalvm_jdk.javaCompliance.value == oraclejdk_confg.javaCompliance.value:
+        if graalvm_jdk.javaCompliance.value >= 22 and graalvm_jdk.javaCompliance.value == oraclejdk_confg.javaCompliance.value:
             libjvmci = libgraal_location
             assert exists(libjvmci), ('missing', libjvmci)
             oraclejdk_libgraal = abspath('oraclejdk_libgraal')

@@ -140,6 +140,7 @@ public final class UnimplementedGraalIntrinsics {
         // [GR-10106] These JFR intrinsics are used for firing socket/file events via Java
         // instrumentation and are of low priority.
         add(ignore,
+                        "jdk/jfr/internal/JVM.commit(J)J",
                         "jdk/jfr/internal/JVM.counterTime()J",
                         "jdk/jfr/internal/JVM.getBufferWriter()Ljava/lang/Object;",
                         "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
