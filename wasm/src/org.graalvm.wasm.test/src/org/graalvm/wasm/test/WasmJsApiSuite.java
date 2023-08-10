@@ -161,7 +161,7 @@ public class WasmJsApiSuite {
     public void testInstantiateWithImportMemory() throws IOException {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmMemory memory = WebAssembly.memAlloc(4, 8);
+            final WasmMemory memory = WebAssembly.memAlloc(4, 8, false);
             final Dictionary importObject = Dictionary.create(new Object[]{
                             "host", Dictionary.create(new Object[]{
                                             "defaultMemory", memory
@@ -1210,7 +1210,7 @@ public class WasmJsApiSuite {
             try {
                 Object[] memories = new Object[5];
                 for (int i = 0; i < memories.length; i++) {
-                    memories[i] = WebAssembly.memAlloc(32767, 32767);
+                    memories[i] = WebAssembly.memAlloc(32767, 32767, false);
                 }
             } catch (AbstractTruffleException ex) {
                 Assert.assertTrue("Should throw interop exception", InteropLibrary.getUncached(ex).isException(ex));
@@ -1324,7 +1324,7 @@ public class WasmJsApiSuite {
     public void testInitialMemorySizeOutOfBounds() throws IOException {
         runTest(context -> {
             try {
-                WebAssembly.memAlloc(32768, 32770);
+                WebAssembly.memAlloc(32768, 32770, false);
                 Assert.fail("Should have failed - initial memory size exceeds implementation limit");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1336,7 +1336,7 @@ public class WasmJsApiSuite {
     public void testMinMemorySizeExceedsMaxSize() throws IOException {
         runTest(context -> {
             try {
-                WebAssembly.memAlloc(2, 1);
+                WebAssembly.memAlloc(2, 1, false);
                 Assert.fail("Should have failed - min memory size bigger than max size");
             } catch (WasmJsApiException e) {
                 Assert.assertEquals("Range error expected", WasmJsApiException.Kind.RangeError, e.kind());
@@ -1348,7 +1348,7 @@ public class WasmJsApiSuite {
     public void testMemoryGrowLimit() throws IOException {
         runTest(context -> {
             try {
-                WasmMemory memory = WebAssembly.memAlloc(1, 1);
+                WasmMemory memory = WebAssembly.memAlloc(1, 1, false);
                 WebAssembly.memGrow(memory, 1);
                 Assert.fail("Should have failed - try to grow memory beyond max size");
             } catch (WasmJsApiException e) {
@@ -1577,7 +1577,7 @@ public class WasmJsApiSuite {
     @Test
     public void testMemoryEmbedderData() throws IOException {
         runTest(context -> {
-            WasmMemory memory = WebAssembly.memAlloc(1, 1);
+            WasmMemory memory = WebAssembly.memAlloc(1, 1, false);
             checkEmbedderData(memory);
         });
     }

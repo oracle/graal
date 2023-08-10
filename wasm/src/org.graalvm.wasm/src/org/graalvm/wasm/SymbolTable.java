@@ -1123,7 +1123,7 @@ public abstract class SymbolTable {
         return memory.indexType64;
     }
 
-    boolean memoryIsShared(int index) {
+    public boolean memoryIsShared(int index) {
         final MemoryInfo memory = memories[index];
         return memory.shared;
     }
