@@ -107,14 +107,19 @@ public class SubstrateGraphKit extends GraphKit {
 
     @SuppressWarnings("this-escape")
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
-                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, trackNodeSourcePosition(forceTrackNodeSourcePosition), false);
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition, boolean recordInlinedMethods) {
+        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, trackNodeSourcePosition(forceTrackNodeSourcePosition), recordInlinedMethods);
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
         frameState.disableStateVerification();
         frameState.initializeForMethodStart(null, true, graphBuilderPlugins);
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
+    }
+
+    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
+        this(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, forceTrackNodeSourcePosition, false);
     }
 
     @Override
