@@ -41,5 +41,7 @@ import com.oracle.truffle.api.InternalResource.OS;
  */
 public interface LLVMResourceProvider {
 
+    String getConfiguration();
+
     String getBasePath(OS os, CPUArchitecture arch);
 }

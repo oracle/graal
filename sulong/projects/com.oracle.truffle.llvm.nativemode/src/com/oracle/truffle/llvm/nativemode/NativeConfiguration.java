@@ -31,7 +31,6 @@ package com.oracle.truffle.llvm.nativemode;
 
 import com.oracle.truffle.llvm.DefaultLoader;
 import com.oracle.truffle.llvm.nativemode.NativeConfigurationFactory.Key;
-import com.oracle.truffle.llvm.nativemode.resources.NativeResourceProvider;
 import com.oracle.truffle.llvm.nativemode.runtime.NFIContextExtension;
 import com.oracle.truffle.llvm.nativemode.runtime.memory.LLVMNativeMemory;
 import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
@@ -64,7 +63,7 @@ public class NativeConfiguration implements Configuration {
         loader = new DefaultLoader();
         intrinsicProvider = new BasicIntrinsicsProvider(language);
         platformCapability = BasicPlatformCapability.create(key.loadCxxLibraries);
-        internalLocator = new InternalLibraryLocator(new NativeResourceProvider(), platformCapability.getOS(), platformCapability.getArch());
+        internalLocator = InternalLibraryLocator.create("native", language, platformCapability.getOS(), platformCapability.getArch());
         this.languageOptions = key;
         if (key.enableNFI) {
             ctxExtRegistry.register(NativeContextExtension.class, new NFIContextExtension.Factory());

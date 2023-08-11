@@ -36,6 +36,11 @@ import com.oracle.truffle.llvm.spi.internal.LLVMResourceProvider;
 public class NativeResourceProvider implements LLVMResourceProvider {
 
     @Override
+    public String getConfiguration() {
+        return "native";
+    }
+
+    @Override
     public String getBasePath(OS os, CPUArchitecture arch) {
         return String.format("/META-INF/resources/llvm/native/%s/%s/lib/", os, arch);
     }

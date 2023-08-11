@@ -30,7 +30,11 @@
 package com.oracle.truffle.llvm.runtime;
 
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ServiceLoader;
 
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.InternalResource.CPUArchitecture;
 import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.api.source.Source;
@@ -39,24 +43,87 @@ import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.spi.internal.LLVMResourceProvider;
 
 /**
- * Locates internal libraries that are embedded as resources.
+ * Locates internal libraries.
  */
-public final class InternalLibraryLocator extends LibraryLocator implements LLVMCapability {
+public abstract class InternalLibraryLocator extends LibraryLocator implements LLVMCapability {
 
-    private final Class<?> resourceLocation;
-    private final String basePath;
+    public static InternalLibraryLocator create(String config, LLVMLanguage language, OS os, CPUArchitecture arch) {
+        InternalLibraryLocator resourceLocator = null;
+        for (LLVMResourceProvider provider : ServiceLoader.load(LLVMResourceProvider.class)) {
+            if (provider.getConfiguration().equals(config)) {
+                resourceLocator = new ResourceInternalLibraryLocator(provider, os, arch);
+                break;
+            }
+        }
 
-    public InternalLibraryLocator(LLVMResourceProvider provider, OS os, CPUArchitecture arch) {
-        this.resourceLocation = provider.getClass();
-        this.basePath = provider.getBasePath(os, arch);
+        String home = language.getLLVMLanguageHome();
+        if (home != null) {
+            Path libPath = Path.of(home, config, "lib");
+            try {
+                if (Files.exists(libPath)) {
+                    // prefer language home, but still keep the resource locator as backup
+                    resourceLocator = new HomeInternalLibraryLocator(config, resourceLocator);
+                }
+            } catch (SecurityException ex) {
+                // ignore, treat "forbidden" the same as "not found"
+            }
+        }
+
+        if (resourceLocator != null) {
+            return resourceLocator;
+        } else {
+            throw new IllegalStateException(String.format("Could not find internal resources for configuration %s.", config));
+        }
     }
 
     @Override
-    protected final SourceBuilder locateLibrary(LLVMContext context, String lib, Object reason) {
-        URL url = resourceLocation.getResource(basePath + lib);
-        if (url == null) {
-            return null;
+    protected abstract SourceBuilder locateLibrary(LLVMContext context, String lib, Object reason);
+
+    private static final class HomeInternalLibraryLocator extends InternalLibraryLocator {
+
+        private final String config;
+        private final InternalLibraryLocator backup;
+
+        private HomeInternalLibraryLocator(String config, InternalLibraryLocator backup) {
+            this.config = config;
+            this.backup = backup;
         }
-        return Source.newBuilder("llvm", url).internal(true);
+
+        @Override
+        protected SourceBuilder locateLibrary(LLVMContext context, String lib, Object reason) {
+            String home = context.getLanguage().getLLVMLanguageHome();
+            if (home != null) {
+                Path libPath = Path.of(home, config, "lib", lib);
+                TruffleFile file = context.getEnv().getInternalTruffleFile(libPath.toString());
+                if (file.exists()) {
+                    return Source.newBuilder("llvm", file).internal(true);
+                }
+            }
+            if (backup != null) {
+                return backup.locateLibrary(context, lib, reason);
+            } else {
+                return null;
+            }
+        }
+    }
+
+    private static final class ResourceInternalLibraryLocator extends InternalLibraryLocator {
+
+        private final Class<?> resourceLocation;
+        private final String basePath;
+
+        private ResourceInternalLibraryLocator(LLVMResourceProvider provider, OS os, CPUArchitecture arch) {
+            this.resourceLocation = provider.getClass();
+            this.basePath = provider.getBasePath(os, arch);
+        }
+
+        @Override
+        protected SourceBuilder locateLibrary(LLVMContext context, String lib, Object reason) {
+            URL url = resourceLocation.getResource(basePath + lib);
+            if (url == null) {
+                return null;
+            }
+            return Source.newBuilder("llvm", url).internal(true);
+        }
     }
 }
