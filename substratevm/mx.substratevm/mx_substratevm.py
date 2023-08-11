@@ -1016,6 +1016,7 @@ driver_build_args = [
     '--features=com.oracle.svm.driver.APIOptionFeature',
     '--initialize-at-build-time=com.oracle.svm.driver',
     '--link-at-build-time=com.oracle.svm.driver,com.oracle.svm.driver.metainf',
+    '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
 ] + svm_experimental_options([
     '-H:-ParseRuntimeOptions',
 ])
@@ -1056,9 +1057,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
             main_class=_native_image_launcher_main_class(),
-            build_args=driver_build_args + [
-                '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
-            ],
+            build_args=driver_build_args,
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
             home_finder=False,
         ),
