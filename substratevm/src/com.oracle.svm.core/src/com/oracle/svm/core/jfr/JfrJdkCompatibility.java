@@ -24,16 +24,24 @@
  */
 package com.oracle.svm.core.jfr;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.time.Duration;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDK22OrLater;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.Recording;
+import jdk.jfr.internal.JVM;
+import jdk.jfr.internal.JVMSupport;
 
 /**
  * Compatibility class to handle incompatible changes between JDK 21 and JDK 22. Once support for
@@ -42,7 +50,7 @@ import jdk.jfr.Recording;
  */
 @SuppressWarnings("unused")
 
-final class JfrJdkCompatibility {
+public final class JfrJdkCompatibility {
     private JfrJdkCompatibility() {
     }
 
@@ -59,6 +67,46 @@ final class JfrJdkCompatibility {
             return Target_jdk_jfr_internal_util_ValueFormatter.formatTimespan(dValue, separation);
         } else {
             return Target_jdk_jfr_internal_Utils.formatTimespan(dValue, separation);
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void createNativeJFR() {
+        try {
+            if (JavaVersionUtil.JAVA_SPEC >= 22) {
+                Method createJFR = ReflectionUtil.lookupMethod(JVMSupport.class, "createJFR");
+                createJFR.invoke(null);
+            } else {
+                Method createNativeJFR = ReflectionUtil.lookupMethod(JVM.class, "createNativeJFR");
+                createNativeJFR.invoke(getJVMOrNull());
+            }
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static void retransformClasses(Class<?>[] classes) {
+        try {
+            // call JVM.retransformClasses(classes)
+            Method retransformClasses = ReflectionUtil.lookupMethod(JVM.class, "retransformClasses", Class[].class);
+            retransformClasses.invoke(getJVMOrNull(), (Object) classes);
+        } catch (ReflectiveOperationException | ClassCastException e) {
+            throw VMError.shouldNotReachHere(e);
+        }
+    }
+
+    /**
+     * Gets a {@link JVM} object or {@code null} in case of JDK 22+, where the methods of
+     * {@link JVM} are static (JDK-8310661).
+     */
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static JVM getJVMOrNull() throws IllegalAccessException, InvocationTargetException {
+        if (JavaVersionUtil.JAVA_SPEC >= 22) {
+            return null;
+        } else {
+            Method getJVM = ReflectionUtil.lookupMethod(JVM.class, "getJVM");
+            return (JVM) getJVM.invoke(null);
         }
     }
 }
