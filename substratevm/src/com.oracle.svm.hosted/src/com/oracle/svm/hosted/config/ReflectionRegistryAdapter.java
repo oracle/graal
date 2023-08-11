@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.config;
 
-import static com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 
 import java.util.List;
 

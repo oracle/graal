@@ -152,6 +152,9 @@ Large numbers can cause significant reflection overheads, slow down the build pr
 #### <a name="glossary-jni-access-registrations"></a>JNI Access Registrations
 The number of types, fields, and methods that are registered for [JNI](JNI.md) access.
 
+#### <a name="glossary-foreign-downcall-registrations"></a>Foreign functions stubs
+The number of downcalls registered for [foreign](ForeignInterface.md) function access.
+
 #### <a name="glossary-runtime-methods"></a>Runtime Compiled Methods
 The number of methods marked for runtime compilation.
 This number is only shown if runtime compilation is built into the executable, for example, when building a [Truffle](https://github.com/oracle/graal/tree/master/truffle) language.
@@ -200,7 +203,8 @@ The total size of all `byte[]` objects that are neither used for `java.lang.Stri
 Therefore, this can also include `byte[]` objects from application code.
 
 ##### <a name="glossary-embedded-resources"></a>Embedded Resources Stored in `byte[]`
-The total size of all `byte[]` objects used for storing resources (for example, files accessed via `Class.getResource()`) within the native binary. The number of resources is shown in the [Heap](#glossary-image-heap) section.
+The total size of all `byte[]` objects used for storing resources (for example, files accessed via `Class.getResource()`) within the native binary.
+The number of resources is shown in the [Heap](#glossary-image-heap) section.
 
 ##### <a name="glossary-code-metadata"></a>Code Metadata Stored in `byte[]`
 The total size of all `byte[]` objects used for metadata for the [code area](#glossary-code-area).
@@ -214,6 +218,11 @@ To reduce the amount of reflection metadata, reduce the number of [elements regi
 The total size of all `byte[]` objects used for graph encodings.
 These encodings are a result of [runtime compiled methods](#glossary-runtime-methods).
 Therefore, reducing the number of such methods also reduces the size of corresponding graph encodings.
+
+##### <a name="glossary-heap-alignment"></a>Heap Alignment
+Additional space reserved to align the heap for the [selected garbage collector](#glossary-gc).
+The heap alignment may also contain GC-specific data structures.
+Its size can therefore only be influenced by switching to a different garbage collector.
 
 #### <a name="glossary-debug-info"></a>Debug Info
 The total size of generated debug information (if enabled).

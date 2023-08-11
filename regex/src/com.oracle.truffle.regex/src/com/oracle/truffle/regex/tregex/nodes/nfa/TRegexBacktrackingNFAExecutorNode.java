@@ -77,6 +77,7 @@ import com.oracle.truffle.regex.tregex.parser.ast.LookBehindAssertion;
 import com.oracle.truffle.regex.tregex.parser.ast.QuantifiableTerm;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexAST;
 import com.oracle.truffle.regex.tregex.parser.ast.RegexASTSubtreeRootNode;
+import org.graalvm.collections.Pair;
 
 /**
  * This regex executor uses a backtracking algorithm on the NFA. It is used for all expressions that
@@ -1010,6 +1011,38 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
         return true;
     }
 
+    private Pair<Integer, Integer> getBackRefBounds(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState backReference) {
+        for (int backRefNumber : backReference.getBackRefNumbers()) {
+            final int start;
+            if (isRecursiveBackreferences() && backReference.isRecursiveReference()) {
+                start = locals.getRecursiveCaptureGroupStart(backRefNumber);
+            } else {
+                start = locals.getCaptureGroupStart(backRefNumber);
+            }
+            int end = locals.getCaptureGroupEnd(backRefNumber);
+            if (start >= 0 && end >= 0) {
+                return Pair.create(start, end);
+            }
+        }
+        return Pair.create(-1, -1);
+    }
+
+    private Pair<Integer, Integer> getBackRefBounds(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState backReference, PureNFATransition transition, int index) {
+        for (int backRefNumber : backReference.getBackRefNumbers()) {
+            final int start;
+            if (isRecursiveBackreferences() && backReference.isRecursiveReference()) {
+                start = locals.getRecursiveCaptureGroupStart(backRefNumber);
+            } else {
+                start = getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexStart(backRefNumber), index);
+            }
+            int end = getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexEnd(backRefNumber), index);
+            if (start >= 0 && end >= 0) {
+                return Pair.create(start, end);
+            }
+        }
+        return Pair.create(-1, -1);
+    }
+
     private int getNewIndex(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState target, int index) {
         CompilerAsserts.partialEvaluationConstant(target.getKind());
         switch (target.getKind()) {
@@ -1019,14 +1052,9 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
                 return locals.getNextIndex();
             case PureNFAState.KIND_BACK_REFERENCE:
                 if (canInlineBackReferenceIntoTransition(target)) {
-                    int backRefNumber = target.getBackRefNumber();
-                    final int start;
-                    if (isRecursiveBackreferences() && target.isRecursiveReference()) {
-                        start = locals.getRecursiveCaptureGroupStart(backRefNumber);
-                    } else {
-                        start = locals.getCaptureGroupStart(backRefNumber);
-                    }
-                    int end = locals.getCaptureGroupEnd(backRefNumber);
+                    Pair<Integer, Integer> backRefBounds = getBackRefBounds(locals, target);
+                    final int start = backRefBounds.getLeft();
+                    final int end = backRefBounds.getRight();
                     if (start < 0 || end < 0) {
                         // only can happen when backrefWithNullTargetSucceeds == true
                         return index;
@@ -1064,14 +1092,9 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     private boolean matchBackReferenceSimple(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState backReference, PureNFATransition transition, int index) {
         assert backReference.isBackReference();
         assert canInlineBackReferenceIntoTransition(backReference);
-        int backRefNumber = backReference.getBackRefNumber();
-        final int backrefStart;
-        if (isRecursiveBackreferences() && backReference.isRecursiveReference()) {
-            backrefStart = locals.getRecursiveCaptureGroupStart(backRefNumber);
-        } else {
-            backrefStart = getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexStart(backRefNumber), index);
-        }
-        int backrefEnd = getBackRefBoundary(locals, transition, Group.groupNumberToBoundaryIndexEnd(backRefNumber), index);
+        Pair<Integer, Integer> backRefBounds = getBackRefBounds(locals, backReference, transition, index);
+        final int backrefStart = backRefBounds.getLeft();
+        final int backrefEnd = backRefBounds.getRight();
         if (backrefStart < 0 || backrefEnd < 0) {
             return !isBackrefWithNullTargetFails();
         }
@@ -1093,14 +1116,9 @@ public final class TRegexBacktrackingNFAExecutorNode extends TRegexBacktrackerSu
     private int matchBackReferenceGeneric(TRegexBacktrackingNFAExecutorLocals locals, PureNFAState backReference, TruffleString.CodeRange codeRange) {
         assert backReference.isBackReference();
         assert !canInlineBackReferenceIntoTransition(backReference);
-        int backRefNumber = backReference.getBackRefNumber();
-        final int backrefStart;
-        if (isRecursiveBackreferences() && backReference.isRecursiveReference()) {
-            backrefStart = locals.getRecursiveCaptureGroupStart(backRefNumber);
-        } else {
-            backrefStart = locals.getCaptureGroupStart(backRefNumber);
-        }
-        final int backrefEnd = locals.getCaptureGroupEnd(backRefNumber);
+        Pair<Integer, Integer> backRefBounds = getBackRefBounds(locals, backReference);
+        final int backrefStart = backRefBounds.getLeft();
+        final int backrefEnd = backRefBounds.getRight();
         if (backrefStart < 0 || backrefEnd < 0) {
             return isBackrefWithNullTargetFails() ? -1 : locals.getIndex();
         }

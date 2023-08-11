@@ -41,7 +41,10 @@
 package com.oracle.truffle.runtime;
 
 import java.lang.module.ModuleDescriptor.Requires;
+import java.lang.reflect.Method;
+import java.nio.file.Path;
 
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.Truffle;
 
 import jdk.internal.module.Modules;
@@ -51,23 +54,23 @@ public final class ModulesSupport {
     private static final boolean ATTACH_AVAILABLE;
 
     static {
-        ATTACH_AVAILABLE = loadModulesSupportLibrary();
+        Module moduleSupportModule = ModulesSupport.class.getModule();
+        // Don't export jdk.internal.module to an unnamed module when ModulesSupport is on the
+        // classpath
+        ATTACH_AVAILABLE = moduleSupportModule.isNamed() && loadModulesSupportLibrary();
 
         if (ATTACH_AVAILABLE) {
             // this is the only access we really need to request natively using JNI.
             // after that we can access through the Modules class
-            addExports0(ModulesSupport.class.getModule().getLayer().findModule("java.base").orElseThrow(), "jdk.internal.module", ModulesSupport.class.getModule());
+            addExports0(moduleSupportModule.getLayer().findModule("java.base").orElseThrow(), "jdk.internal.module", ModulesSupport.class.getModule());
         }
     }
 
     private ModulesSupport() {
     }
 
-    /**
-     * This is invoked reflectively from {@link Truffle}.
-     */
-    public static String exportJVMCI(Class<?> toClass) {
-        ModuleLayer layer = toClass.getModule().getLayer();
+    public static String exportJVMCI(Module module) {
+        ModuleLayer layer = module.getLayer();
         if (layer == null) {
             /*
              * Truffle is running in an unnamed module, so we cannot export jvmci to it.
@@ -92,8 +95,15 @@ public final class ModulesSupport {
             return "The Truffle attach library is not available.";
         }
 
-        addExportsRecursive(jvmciModule, toClass.getModule());
+        addExportsRecursive(jvmciModule, module);
         return null;
+    }
+
+    /**
+     * This is invoked reflectively from {@link Truffle}.
+     */
+    public static String exportJVMCI(Class<?> toClass) {
+        return exportJVMCI(toClass.getModule());
     }
 
     private static void addExportsRecursive(Module jvmciModule, Module runtimeModule) {
@@ -121,17 +131,17 @@ public final class ModulesSupport {
     }
 
     private static boolean loadModulesSupportLibrary() {
-        String attachLib = System.getProperty("truffle.attach.library");
+        String attachLibPath = System.getProperty("truffle.attach.library");
         try {
-            if (attachLib == null) {
-                try {
-                    System.loadLibrary("truffleattach");
-                } catch (UnsatisfiedLinkError invalidLibrary) {
-                    return false;
-                }
-            } else {
-                System.load(attachLib);
+            if (attachLibPath == null) {
+                Class<?> resourceCacheClass = Class.forName("com.oracle.truffle.polyglot.InternalResourceCache", false, ModulesSupport.class.getClassLoader());
+                Method installRuntimeResource = resourceCacheClass.getDeclaredMethod("installRuntimeResource", InternalResource.class);
+                installRuntimeResource.setAccessible(true);
+                Path root = (Path) installRuntimeResource.invoke(null, LibTruffleAttachResource.INSTANCE);
+                Path libAttach = root.resolve("bin").resolve(System.mapLibraryName("truffleattach"));
+                attachLibPath = libAttach.toString();
             }
+            System.load(attachLibPath);
             return true;
         } catch (Throwable throwable) {
             throw new InternalError(throwable);

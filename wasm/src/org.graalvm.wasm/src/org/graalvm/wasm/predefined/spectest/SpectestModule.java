@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,8 @@ public class SpectestModule extends BuiltinModule {
         defineGlobal(module, "global_f32", F32_TYPE, GlobalModifier.CONSTANT, Float.floatToRawIntBits(666.0f));
         defineGlobal(module, "global_f64", F64_TYPE, GlobalModifier.CONSTANT, Double.doubleToRawLongBits(666.0));
         defineTable(module, "table", 10, 20, WasmType.FUNCREF_TYPE);
-        defineMemory(module, "memory", 1, 2, false);
+        defineMemory(module, "memory", 1, 2, false, false);
+        defineMemory(module, "shared_memory", 1, 2, false, true);
         return module;
     }
 }

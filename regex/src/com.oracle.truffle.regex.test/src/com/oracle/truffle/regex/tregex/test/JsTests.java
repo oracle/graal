@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import org.graalvm.polyglot.Value;
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.regex.errors.JsErrorMessages;
@@ -244,5 +246,11 @@ public class JsTests extends RegexTestBase {
         // related smaller test cases
         test("(?:\\w*,*?)*", "", "foo,bar", 0, true, 0, 7);
         test("(?:\\w*(?:,(?!\\s))*?)*", "", "foo,bar", 0, true, 0, 7);
+    }
+
+    @Test
+    public void groupsDeclarationOrder() {
+        Value compiledRegex = compileRegex("(?:(?<x>a)|(?<x>b))(?<foo>foo)(?<bar>bar)", "");
+        Assert.assertArrayEquals(new String[]{"x", "foo", "bar"}, compiledRegex.getMember("groups").getMemberKeys().toArray(new String[0]));
     }
 }

@@ -51,6 +51,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.jar.Attributes;
@@ -190,6 +191,7 @@ final class BundleSupport {
         try {
             rootDir = createBundleRootDir();
             bundleProperties = new BundleProperties();
+            bundleProperties.properties.put(BundleProperties.PROPERTY_KEY_IMAGE_BUILD_ID, UUID.randomUUID().toString());
 
             Path inputDir = rootDir.resolve("input");
             stageDir = Files.createDirectories(inputDir.resolve("stage"));
@@ -220,6 +222,7 @@ final class BundleSupport {
         try {
             rootDir = createBundleRootDir();
             bundleProperties = new BundleProperties();
+            bundleProperties.properties.put(BundleProperties.PROPERTY_KEY_IMAGE_BUILD_ID, UUID.randomUUID().toString());
 
             outputDir = rootDir.resolve("output");
             String originalOutputDirName = outputDir.getFileName().toString() + ORIGINAL_DIR_EXTENSION;
@@ -315,6 +318,10 @@ final class BundleSupport {
 
     public List<String> getNativeImageArgs() {
         return nativeImageArgs;
+    }
+
+    public String getImageBuildID() {
+        return bundleProperties.properties.get(BundleProperties.PROPERTY_KEY_IMAGE_BUILD_ID);
     }
 
     Path recordCanonicalization(Path before, Path after) {
@@ -773,6 +780,7 @@ final class BundleSupport {
         private static final String PROPERTY_KEY_NATIVE_IMAGE_PLATFORM = "NativeImagePlatform";
         private static final String PROPERTY_KEY_NATIVE_IMAGE_VENDOR = "NativeImageVendor";
         private static final String PROPERTY_KEY_NATIVE_IMAGE_VERSION = "NativeImageVersion";
+        private static final String PROPERTY_KEY_IMAGE_BUILD_ID = "ImageBuildID";
 
         private final Path bundlePropertiesFile;
         private final Map<String, String> properties;

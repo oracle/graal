@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,11 +100,14 @@ public abstract class LanguageLauncherBase extends Launcher {
         return title.toString();
     }
 
-    private static List<PrintableOption> filterOptions(OptionDescriptors descriptors, OptionCategory optionCategory) {
+    private static List<PrintableOption> filterOptions(OptionDescriptors descriptors, OptionCategory optionCategory, String optionPrefixDot) {
+        assert optionPrefixDot.endsWith(".");
         List<PrintableOption> options = new ArrayList<>();
         for (OptionDescriptor descriptor : descriptors) {
             if (!descriptor.isDeprecated() && sameCategory(descriptor, optionCategory)) {
-                options.add(asPrintableOption(descriptor));
+                if (optionPrefixDot.equals("all.") || descriptor.getName().startsWith(optionPrefixDot)) {
+                    options.add(asPrintableOption(descriptor));
+                }
             }
         }
         options.sort(PrintableOption::compareTo);
@@ -248,6 +251,7 @@ public abstract class LanguageLauncherBase extends Launcher {
     protected void printDefaultHelp(OptionCategory helpCategory) {
         super.printDefaultHelp(helpCategory);
         launcherOption("--help:engine", "Print engine options.");
+        launcherOption("--help:compiler", "Print engine compiler options.");
         launcherOption("--help:all", "Print all options.");
         launcherOption("--version:graalvm", "Print GraalVM version information and exit.");
         launcherOption("--show-version:graalvm", "Print GraalVM version information and continue execution.");
@@ -303,8 +307,8 @@ public abstract class LanguageLauncherBase extends Launcher {
         if (all || "tools".equals(helpArg)) {
             helpPrinted = printInstrumentOptions(getTempEngine(), null);
         }
-        if (all || "engine".equals(helpArg)) {
-            helpPrinted = printEngineOptions(getTempEngine());
+        if (all || "engine".equals(helpArg) || "compiler".equals(helpArg)) {
+            helpPrinted = printEngineOptions(getTempEngine(), helpArg);
         }
         if (helpPrinted) {
             return;
@@ -336,6 +340,7 @@ public abstract class LanguageLauncherBase extends Launcher {
         OptionDescriptors descriptors = null;
         switch (group) {
             case "engine":
+            case "compiler":
                 descriptors = getTempEngine().getOptions();
                 break;
             default:
@@ -354,8 +359,8 @@ public abstract class LanguageLauncherBase extends Launcher {
 
     }
 
-    private boolean printEngineOptions(Engine engine) {
-        final Map<OptionCategory, List<PrintableOption>> options = getCategories(engine.getOptions());
+    private boolean printEngineOptions(Engine engine, String optionPrefix) {
+        final Map<OptionCategory, List<PrintableOption>> options = getCategories(engine.getOptions(), optionPrefix);
         if (options != null) {
             println(optionsTitle("Engine", null));
             printCategory(options, OptionCategory.USER, "User options:");
@@ -433,9 +438,14 @@ public abstract class LanguageLauncherBase extends Launcher {
     }
 
     private Map<OptionCategory, List<PrintableOption>> getCategories(OptionDescriptors options) {
-        List<PrintableOption> userOptions = filterOptions(options, OptionCategory.USER);
-        List<PrintableOption> expertOptions = filterOptions(options, OptionCategory.EXPERT);
-        List<PrintableOption> internalOptions = helpInternal ? filterOptions(options, OptionCategory.INTERNAL) : Collections.emptyList();
+        return getCategories(options, "all");
+    }
+
+    private Map<OptionCategory, List<PrintableOption>> getCategories(OptionDescriptors options, String optionPrefix) {
+        String optionPrefixDot = optionPrefix + ".";
+        List<PrintableOption> userOptions = filterOptions(options, OptionCategory.USER, optionPrefixDot);
+        List<PrintableOption> expertOptions = filterOptions(options, OptionCategory.EXPERT, optionPrefixDot);
+        List<PrintableOption> internalOptions = helpInternal ? filterOptions(options, OptionCategory.INTERNAL, optionPrefixDot) : Collections.emptyList();
         Map<OptionCategory, List<PrintableOption>> categories = null;
         if (!userOptions.isEmpty() || !expertOptions.isEmpty() || !internalOptions.isEmpty()) {
             categories = new HashMap<>();

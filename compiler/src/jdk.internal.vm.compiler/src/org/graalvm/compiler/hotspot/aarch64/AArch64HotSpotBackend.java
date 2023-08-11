@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -164,7 +164,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         return instruction == masm.getInt(0);
     }
 
-    public static void rawLeave(CompilationResultBuilder crb) {
+    public static void rawLeave(CompilationResultBuilder crb, GraalHotSpotVMConfig config) {
         AArch64MacroAssembler masm = (AArch64MacroAssembler) crb.asm;
         FrameMap frameMap = crb.frameMap;
         final int totalFrameSize = frameMap.totalFrameSize();
@@ -183,12 +183,18 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 masm.add(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
                 masm.ldp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, sp, frameRecordSize));
             }
+            if (config.ropProtection) {
+                masm.autia(lr, fp);
+            }
         }
     }
 
-    public static void rawEnter(CompilationResultBuilder crb, FrameMap frameMap, AArch64MacroAssembler masm, boolean preserveFramePointer) {
+    public static void rawEnter(CompilationResultBuilder crb, FrameMap frameMap, AArch64MacroAssembler masm, GraalHotSpotVMConfig config) {
         // based on HotSpot's macroAssembler_aarch64.cpp MacroAssembler::build_frame
         try (ScratchRegister sc = masm.getScratchRegister()) {
+            if (config.ropProtection) {
+                masm.pacia(lr, fp);
+            }
             final int frameSize = frameMap.frameSize();
             final int totalFrameSize = frameMap.totalFrameSize();
             int wordSize = crb.target.arch.getWordSize();
@@ -199,13 +205,13 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
             if (AArch64Address.isValidImmediateAddress(64, addressingMode, frameSize)) {
                 masm.sub(64, sp, sp, totalFrameSize);
                 masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, addressingMode, sp, frameSize));
-                if (preserveFramePointer) {
+                if (config.preserveFramePointer) {
                     masm.add(64, fp, sp, frameSize);
                 }
             } else {
                 int frameRecordSize = 2 * wordSize;
                 masm.stp(64, fp, lr, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_PAIR_PRE_INDEXED, sp, -frameRecordSize));
-                if (preserveFramePointer) {
+                if (config.preserveFramePointer) {
                     masm.mov(64, fp, sp);
                 }
                 masm.sub(64, sp, sp, totalFrameSize - frameRecordSize, scratch);
@@ -230,7 +236,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
                 emitStackOverflowCheck(crb);
             }
             crb.blockComment("[method prologue]");
-            rawEnter(crb, frameMap, masm, config.preserveFramePointer);
+            rawEnter(crb, frameMap, masm, config);
 
             crb.recordMark(HotSpotMarkId.FRAME_COMPLETE);
             if (!isStub && config.nmethodEntryBarrier != 0) {
@@ -307,7 +313,7 @@ public class AArch64HotSpotBackend extends HotSpotHostBackend implements LIRGene
         @Override
         public void leave(CompilationResultBuilder crb) {
             crb.blockComment("[method epilogue]");
-            rawLeave(crb);
+            rawLeave(crb, config);
         }
 
         @Override

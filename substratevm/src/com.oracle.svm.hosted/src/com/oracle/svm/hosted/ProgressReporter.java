@@ -30,13 +30,10 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.management.GarbageCollectorMXBean;
 import java.lang.management.ManagementFactory;
-import java.lang.reflect.Field;
 import java.nio.file.Path;
-import java.security.CodeSource;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -49,7 +46,6 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -71,14 +67,11 @@ import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
-import com.oracle.svm.core.code.CodeInfoTable;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
-import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
-import com.oracle.svm.core.reflect.ReflectionMetadataDecoder;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.hosted.ProgressReporterFeature.UserRecommendation;
@@ -88,18 +81,11 @@ import com.oracle.svm.hosted.ProgressReporterJsonHelper.ImageDetailKey;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.JsonMetric;
 import com.oracle.svm.hosted.ProgressReporterJsonHelper.ResourceUsageKey;
 import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
-import com.oracle.svm.hosted.code.CompileQueue.CompileTask;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
-import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
-import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
-import com.oracle.svm.util.ReflectionUtil;
-
-import jdk.vm.ci.meta.JavaConstant;
 
 public class ProgressReporter {
     private static final boolean IS_CI = SubstrateUtil.isRunningInCI();
@@ -110,7 +96,6 @@ public class ProgressReporter {
     public static final String DOCS_BASE_URL = "https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/BuildOutput.md";
     private static final double EXCESSIVE_GC_MIN_THRESHOLD_MILLIS = 15_000;
     private static final double EXCESSIVE_GC_RATIO = 0.5;
-    private static final String BREAKDOWN_BYTE_ARRAY_PREFIX = "byte[] for ";
 
     private final NativeImageSystemIOWrappers builderIO;
 
@@ -122,20 +107,17 @@ public class ProgressReporter {
     private final LinkStrategy linkStrategy;
     private final boolean usePrefix;
     private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor();
-    private final Map<String, Long> codeBreakdown = new HashMap<>();
-    private final Map<String, Long> heapBreakdown = new HashMap<>();
 
     private String outputPrefix = "";
     private long lastGCCheckTimeMillis = System.currentTimeMillis();
     private GCStats lastGCStats = GCStats.getCurrent();
     private long numRuntimeCompiledMethods = -1;
-    private long graphEncodingByteLength = -1;
     private int numJNIClasses = -1;
     private int numJNIFields = -1;
     private int numJNIMethods = -1;
+    private int numForeignDowncalls = -1;
     private Timer debugInfoTimer;
     private boolean creationStageEndCompleted = false;
-    private boolean reportStringBytes = true;
 
     /**
      * Build stages displayed as part of the Native Image build output. Changing this enum may
@@ -196,18 +178,14 @@ public class ProgressReporter {
         numRuntimeCompiledMethods = value;
     }
 
-    public void setGraphEncodingByteLength(int value) {
-        graphEncodingByteLength = value;
-    }
-
     public void setJNIInfo(int numClasses, int numFields, int numMethods) {
         numJNIClasses = numClasses;
         numJNIFields = numFields;
         numJNIMethods = numMethods;
     }
 
-    public void disableStringBytesReporting() {
-        reportStringBytes = false;
+    public void setForeignFunctionsInfo(int numDowncalls) {
+        this.numForeignDowncalls = numDowncalls;
     }
 
     public void printStart(String imageName, NativeImageKind imageKind) {
@@ -402,6 +380,11 @@ public class ProgressReporter {
             l().a(typesFieldsMethodFormat, numJNIClasses, numJNIFields, numJNIMethods)
                             .doclink("registered for JNI access", "#glossary-jni-access-registrations").println();
         }
+        recordJsonMetric(AnalysisResults.FOREIGN_DOWNCALLS, (numForeignDowncalls >= 0 ? numForeignDowncalls : UNAVAILABLE_METRIC));
+        if (numForeignDowncalls >= 0) {
+            l().a("%,8d ", numForeignDowncalls)
+                            .doclink("foreign downcalls registered", "#glossary-foreign-downcall-registrations").println();
+        }
         int numLibraries = libraries.size();
         if (numLibraries > 0) {
             TreeSet<String> sortedLibraries = new TreeSet<>(libraries);
@@ -438,9 +421,8 @@ public class ProgressReporter {
         this.debugInfoTimer = timer;
     }
 
-    public void printCreationEnd(int imageFileSize, int numHeapObjects, long imageHeapSize, int codeAreaSize,
-                    int numCompilations, int debugInfoSize) {
-        recordJsonMetric(ImageDetailKey.IMAGE_HEAP_OBJECT_COUNT, numHeapObjects);
+    public void printCreationEnd(int imageFileSize, int heapObjectCount, long imageHeapSize, int codeAreaSize, int numCompilations, int debugInfoSize) {
+        recordJsonMetric(ImageDetailKey.IMAGE_HEAP_OBJECT_COUNT, heapObjectCount);
         Timer imageTimer = getTimer(TimerCollection.Registry.IMAGE);
         Timer writeTimer = getTimer(TimerCollection.Registry.WRITE);
         stagePrinter.end(imageTimer.getTotalTime() + writeTimer.getTotalTime());
@@ -451,7 +433,7 @@ public class ProgressReporter {
         int numResources = Resources.singleton().count();
         recordJsonMetric(ImageDetailKey.IMAGE_HEAP_RESOURCE_COUNT, numResources);
         l().a(format, ByteFormattingUtil.bytesToHuman(imageHeapSize), Utils.toPercentage(imageHeapSize, imageFileSize))
-                        .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", numHeapObjects, numResources).println();
+                        .doclink("image heap", "#glossary-image-heap").a(":%,9d objects and %,d resources", heapObjectCount, numResources).println();
         if (debugInfoSize > 0) {
             recordJsonMetric(ImageDetailKey.DEBUG_INFO_SIZE, debugInfoSize); // Optional metric
             DirectPrinter l = l().a(format, ByteFormattingUtil.bytesToHuman(debugInfoSize), Utils.toPercentage(debugInfoSize, imageFileSize))
@@ -480,122 +462,17 @@ public class ProgressReporter {
         }
     }
 
-    public void createBreakdowns(HostedMetaAccess metaAccess, Collection<CompileTask> compilationTasks, Collection<ObjectInfo> heapObjects) {
-        if (!SubstrateOptions.BuildOutputBreakdowns.getValue()) {
-            return;
-        }
-        calculateCodeBreakdown(compilationTasks);
-        calculateHeapBreakdown(metaAccess, heapObjects);
-    }
-
-    private void calculateCodeBreakdown(Collection<CompileTask> compilationTasks) {
-        for (CompileTask task : compilationTasks) {
-            String key = null;
-            Class<?> javaClass = task.method.getDeclaringClass().getJavaClass();
-            Module module = javaClass.getModule();
-            if (module.isNamed()) {
-                key = module.getName();
-                if ("org.graalvm.nativeimage.builder".equals(key)) {
-                    key = "svm.jar (Native Image)";
-                }
-            } else {
-                key = findJARFile(javaClass);
-                if (key == null) {
-                    key = findPackageOrClassName(task.method);
-                }
-            }
-            codeBreakdown.merge(key, (long) task.result.getTargetCodeSize(), Long::sum);
-        }
-    }
-
-    private static String findJARFile(Class<?> javaClass) {
-        CodeSource codeSource = javaClass.getProtectionDomain().getCodeSource();
-        if (codeSource != null && codeSource.getLocation() != null) {
-            String path = codeSource.getLocation().getPath();
-            if (path.endsWith(".jar")) {
-                // Use String API to determine basename of path to handle both / and \.
-                return path.substring(Math.max(path.lastIndexOf('/') + 1, path.lastIndexOf('\\') + 1));
-            }
-        }
-        return null;
-    }
-
-    private static String findPackageOrClassName(HostedMethod method) {
-        String qualifier = method.format("%H");
-        int lastDotIndex = qualifier.lastIndexOf('.');
-        if (lastDotIndex > 0) {
-            qualifier = qualifier.substring(0, lastDotIndex);
-        }
-        return qualifier;
-    }
-
-    private void calculateHeapBreakdown(HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
-        calculateHeapBreakdown(heapBreakdown, linkStrategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, this::recordJsonMetric);
-    }
-
-    public void calculateHeapBreakdown(Map<String, Long> breakdown, LinkStrategy strategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects) {
-        calculateHeapBreakdown(breakdown, strategy, metaAccess, heapObjects, reportStringBytes, graphEncodingByteLength, (k, v) -> {
-        });
-    }
-
-    public static void calculateHeapBreakdown(Map<String, Long> heapBreakdown, LinkStrategy linkStrategy, HostedMetaAccess metaAccess, Collection<ObjectInfo> heapObjects,
-                    boolean reportStringBytes, long graphEncodingByteLength, BiConsumer<JsonMetric, Object> jsonMetricAction) {
-        long stringByteLength = 0;
-        for (ObjectInfo o : heapObjects) {
-            heapBreakdown.merge(o.getClazz().toJavaName(true), o.getSize(), Long::sum);
-            JavaConstant javaObject = o.getConstant();
-            if (reportStringBytes && metaAccess.isInstanceOf(javaObject, String.class)) {
-                stringByteLength += Utils.getInternalByteArrayLength(metaAccess.getUniverse().getSnippetReflection().asObject(String.class, javaObject));
-            }
-        }
-
-        Long byteArraySize = heapBreakdown.remove("byte[]");
-        if (byteArraySize != null) {
-            long remainingBytes = byteArraySize;
-            if (stringByteLength > 0) {
-                heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + "java.lang.String", stringByteLength);
-                remainingBytes -= stringByteLength;
-            }
-            long codeInfoSize = CodeInfoTable.getImageCodeCache().getTotalByteArraySize();
-            if (codeInfoSize > 0) {
-                heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("code metadata", "#glossary-code-metadata"), codeInfoSize);
-                remainingBytes -= codeInfoSize;
-            }
-            long metadataByteLength = ImageSingletons.lookup(ReflectionMetadataDecoder.class).getMetadataByteLength();
-            if (metadataByteLength > 0) {
-                heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("reflection metadata", "#glossary-reflection-metadata"), metadataByteLength);
-                remainingBytes -= metadataByteLength;
-            }
-            long resourcesByteLength = 0;
-            for (ResourceStorageEntry resourceList : Resources.singleton().resources()) {
-                for (byte[] resource : resourceList.getData()) {
-                    resourcesByteLength += resource.length;
-                }
-            }
-            jsonMetricAction.accept(ImageDetailKey.RESOURCE_SIZE_BYTES, resourcesByteLength);
-            if (resourcesByteLength > 0) {
-                heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("embedded resources", "#glossary-embedded-resources"), resourcesByteLength);
-                remainingBytes -= resourcesByteLength;
-            }
-            if (graphEncodingByteLength >= 0) {
-                jsonMetricAction.accept(ImageDetailKey.GRAPH_ENCODING_SIZE, graphEncodingByteLength);
-                heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("graph encodings", "#glossary-graph-encodings"), graphEncodingByteLength);
-                remainingBytes -= graphEncodingByteLength;
-            }
-            assert remainingBytes >= 0;
-            heapBreakdown.put(BREAKDOWN_BYTE_ARRAY_PREFIX + linkStrategy.asDocLink("general heap data", "#glossary-general-heap-data"), remainingBytes);
-        }
-    }
-
     private void printBreakdowns() {
         if (!SubstrateOptions.BuildOutputBreakdowns.getValue()) {
             return;
         }
         l().printLineSeparator();
+        Map<String, Long> codeBreakdown = CodeBreakdownProvider.get();
         Iterator<Entry<String, Long>> packagesBySize = codeBreakdown.entrySet().stream()
                         .sorted(Entry.comparingByValue(Comparator.reverseOrder())).iterator();
-        Iterator<Entry<String, Long>> typesBySizeInHeap = heapBreakdown.entrySet().stream()
-                        .sorted(Entry.comparingByValue(Comparator.reverseOrder())).iterator();
+
+        HeapBreakdownProvider heapBreakdown = HeapBreakdownProvider.singleton();
+        Iterator<HeapBreakdownProvider.HeapBreakdownEntry> typesBySizeInHeap = heapBreakdown.getSortedBreakdownEntries().iterator();
 
         final TwoColumnPrinter p = new TwoColumnPrinter();
         p.l().yellowBold().a(String.format("Top %d ", MAX_NUM_BREAKDOWN)).doclink("origins", "#glossary-code-area-origins").a(" of code area:")
@@ -618,14 +495,15 @@ public class ProgressReporter {
 
             String heapSizePart = "";
             if (typesBySizeInHeap.hasNext()) {
-                Entry<String, Long> e = typesBySizeInHeap.next();
-                String className = e.getKey();
+                HeapBreakdownProvider.HeapBreakdownEntry e = typesBySizeInHeap.next();
+                String className = e.label.renderToString(linkStrategy);
                 // Do not truncate special breakdown items, they can contain links.
-                if (!className.startsWith(BREAKDOWN_BYTE_ARRAY_PREFIX)) {
+                if (e.label instanceof HeapBreakdownProvider.SimpleHeapObjectKindName) {
                     className = Utils.truncateClassOrPackageName(className);
                 }
-                heapSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(e.getValue()), className);
-                printedHeapBytes += e.getValue();
+                long byteSize = e.byteSize;
+                heapSizePart = String.format("%9s %s", ByteFormattingUtil.bytesToHuman(byteSize), className);
+                printedHeapBytes += byteSize;
                 printedHeapItems++;
             }
             if (codeSizePart.isEmpty() && heapSizePart.isEmpty()) {
@@ -635,13 +513,13 @@ public class ProgressReporter {
         }
 
         int numCodeItems = codeBreakdown.size();
-        int numHeapItems = heapBreakdown.size();
+        int numHeapItems = heapBreakdown.getSortedBreakdownEntries().size();
         long totalCodeBytes = codeBreakdown.values().stream().collect(Collectors.summingLong(Long::longValue));
-        long totalHeapBytes = heapBreakdown.values().stream().collect(Collectors.summingLong(Long::longValue));
 
         p.l().a(String.format("%9s for %s more packages", ByteFormattingUtil.bytesToHuman(totalCodeBytes - printedCodeBytes), numCodeItems - printedCodeItems))
                         .jumpToMiddle()
-                        .a(String.format("%9s for %s more object types", ByteFormattingUtil.bytesToHuman(totalHeapBytes - printedHeapBytes), numHeapItems - printedHeapItems)).flushln();
+                        .a(String.format("%9s for %s more object types", ByteFormattingUtil.bytesToHuman(heapBreakdown.getTotalHeapSize() - printedHeapBytes), numHeapItems - printedHeapItems))
+                        .flushln();
     }
 
     private void printRecommendations() {
@@ -840,7 +718,6 @@ public class ProgressReporter {
     private static class Utils {
         private static final double MILLIS_TO_SECONDS = 1000d;
         private static final double NANOS_TO_SECONDS = 1000d * 1000d * 1000d;
-        private static final Field STRING_VALUE = ReflectionUtil.lookupField(String.class, "value");
 
         private static double millisToSeconds(double millis) {
             return millis / MILLIS_TO_SECONDS;
@@ -848,17 +725,6 @@ public class ProgressReporter {
 
         private static double nanosToSeconds(double nanos) {
             return nanos / NANOS_TO_SECONDS;
-        }
-
-        private static int getInternalByteArrayLength(String string) {
-            if (string == null) {
-                return 0;
-            }
-            try {
-                return ((byte[]) STRING_VALUE.get(string)).length;
-            } catch (ReflectiveOperationException ex) {
-                throw VMError.shouldNotReachHere(ex);
-            }
         }
 
         private static double getUsedMemory() {

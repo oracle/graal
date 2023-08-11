@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.regex.tregex.parser;
 
+import java.util.Arrays;
 import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -145,7 +146,11 @@ public class Token implements JsonConvertible {
     }
 
     public static BackReference createBackReference(int groupNr, boolean namedReference) {
-        return new BackReference(Kind.backReference, groupNr, namedReference);
+        return new BackReference(Kind.backReference, new int[]{groupNr}, namedReference);
+    }
+
+    public static BackReference createBackReference(int[] groupNumbers, boolean namedReference) {
+        return new BackReference(Kind.backReference, groupNumbers, namedReference);
     }
 
     public static Quantifier createQuantifier(int min, int max, boolean greedy) {
@@ -177,7 +182,7 @@ public class Token implements JsonConvertible {
     }
 
     public static Token.BackReference createConditionalBackReference(int groupNr, boolean namedReference) {
-        return new BackReference(Kind.conditionalBackreference, groupNr, namedReference);
+        return new BackReference(Kind.conditionalBackreference, new int[]{groupNr}, namedReference);
     }
 
     public final Kind kind;
@@ -402,24 +407,24 @@ public class Token implements JsonConvertible {
 
     public static final class BackReference extends Token {
 
-        private final int groupNr;
+        private final int[] groupNumbers;
         private final boolean namedReference;
 
-        public BackReference(Token.Kind kind, int groupNr, boolean namedReference) {
+        public BackReference(Token.Kind kind, int[] groupNumbers, boolean namedReference) {
             super(kind);
             assert kind == Kind.backReference || kind == Kind.conditionalBackreference;
-            this.groupNr = groupNr;
+            this.groupNumbers = groupNumbers;
             this.namedReference = namedReference;
         }
 
         @TruffleBoundary
         @Override
         public JsonObject toJson() {
-            return super.toJson().append(Json.prop("groupNr", groupNr));
+            return super.toJson().append(Json.prop("groupNumbers", Arrays.stream(groupNumbers).mapToObj(x -> Json.val(x))));
         }
 
-        public int getGroupNr() {
-            return groupNr;
+        public int[] getGroupNumbers() {
+            return groupNumbers;
         }
 
         public boolean isNamedReference() {

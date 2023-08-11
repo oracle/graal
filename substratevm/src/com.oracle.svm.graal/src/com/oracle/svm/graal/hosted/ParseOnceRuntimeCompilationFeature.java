@@ -44,6 +44,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -109,7 +110,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.RuntimeCompilationSupport;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
@@ -214,9 +215,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
     static final class RuntimeCompiledMethodImpl implements RuntimeCompiledMethod {
         final AnalysisMethod method;
+        final Collection<ResolvedJavaMethod> inlinedMethods;
 
-        private RuntimeCompiledMethodImpl(AnalysisMethod method) {
+        private RuntimeCompiledMethodImpl(AnalysisMethod method, Collection<ResolvedJavaMethod> inlinedMethods) {
             this.method = method;
+            this.inlinedMethods = inlinedMethods;
         }
 
         @Override
@@ -226,10 +229,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         @Override
         public Collection<ResolvedJavaMethod> getInlinedMethods() {
-            /*
-             * Currently no inlining is performed when ParseOnceJIT is enabled.
-             */
-            return List.of();
+            return inlinedMethods;
         }
 
         @Override
@@ -399,10 +399,15 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         for (var method : impl.getUniverse().getMethods()) {
             var rMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
             if (rMethod != null && rMethod.isReachable() && !invalidForRuntimeCompilation.containsKey(rMethod)) {
-                boolean added = runtimeCompilations.add(new RuntimeCompiledMethodImpl(method));
-                if (added) {
-                    assert runtimeCompiledMethodCallTree.containsKey(method);
-                }
+                var runtimeInlinedMethods = rMethod.getAnalyzedGraph().getInlinedMethods();
+                var inlinedMethods = runtimeInlinedMethods.stream().map(inlinedMethod -> {
+                    ResolvedJavaMethod orig = ((AnalysisMethod) inlinedMethod).getMultiMethod(ORIGINAL_METHOD);
+                    assert orig != null;
+                    return orig;
+                }).collect(Collectors.toUnmodifiableSet());
+                boolean added = runtimeCompilations.add(new RuntimeCompiledMethodImpl(method, inlinedMethods));
+                assert added;
+                assert runtimeCompiledMethodCallTree.containsKey(method);
             }
         }
 
@@ -630,7 +635,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             }
         }
 
-        ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
+        HeapBreakdownProvider.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
         GraalSupport.setGraphEncoding(null, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
         objectReplacer.setMethodsImplementations();
@@ -731,7 +736,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
              */
             var deoptMethod = aMethod.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
             SubstrateCompilationDirectives.singleton().registerDeoptTarget(deoptMethod);
-            config.registerAsRoot(aMethod, true, RUNTIME_COMPILED_METHOD, DEOPT_TARGET_METHOD);
+            config.registerAsRoot(aMethod, true, "Runtime compilation, registered in " + ParseOnceRuntimeCompilationFeature.class, RUNTIME_COMPILED_METHOD, DEOPT_TARGET_METHOD);
         }
 
         return sMethod;
@@ -762,6 +767,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         @Override
         public boolean allowAssumptions(AnalysisMethod method) {
+            return method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
+        }
+
+        @Override
+        public boolean recordInlinedMethods(AnalysisMethod method) {
             return method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
         }
 
@@ -813,9 +823,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                 if (parsed) {
                     // enable this logging to get log output in compilation passes
                     try (Indent indent2 = debug.logAndIndent("parse graph phases")) {
-                        RuntimeGraphBuilderPhase
-                                        .createRuntimeGraphBuilderPhase(bb, analysisProviders, graphBuilderConfig, optimisticOpts)
-                                        .apply(graph);
+                        RuntimeGraphBuilderPhase.createRuntimeGraphBuilderPhase(bb, analysisProviders, graphBuilderConfig, optimisticOpts).apply(graph);
                     } catch (PermanentBailoutException ex) {
                         bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
                         recordFailed(method);

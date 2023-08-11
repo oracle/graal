@@ -73,10 +73,12 @@
     name: 'gate-external-mvn-simplelanguage-' + self.jdk_version,
     packages+: {
       maven: "==3.3.9",
-      "00:devtoolset": "==7", # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-      "01:binutils": ">=2.34",
       ruby: ">=2.1.0",
-    },
+    } + (if self.arch == "aarch64" then {
+      "00:devtoolset": "==10", # GCC 10.2.1, make 4.2.1, binutils 2.35, valgrind 3.16.1
+    } else {
+      "00:devtoolset": "==11", # GCC 11.2, make 4.3, binutils 2.36, valgrind 3.17
+    }),
     mx_cmd: ["mx", "-p", "../vm", "--dynamicimports", "/substratevm", "--native-images=none"],
     run+: [
       ["set-export", "ROOT_DIR", ["pwd"]],

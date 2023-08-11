@@ -40,10 +40,12 @@
  */
 package com.oracle.truffle.api.instrumentation.provider;
 
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.ServiceLoader;
 
 /**
@@ -84,4 +86,23 @@ public abstract class TruffleInstrumentProvider {
      * @since 23.1
      */
     protected abstract Collection<String> getServicesClassNames();
+
+    /**
+     * Returns ids of provided internal resources.
+     *
+     * @since 23.1
+     */
+    protected List<String> getInternalResourceIds() {
+        return List.of();
+    }
+
+    /**
+     * Creates an instrument {@link InternalResource} identified by the {@code resourceId}.
+     *
+     * @throws IllegalArgumentException if {@code resourceId} is not supported by this instrument
+     * @since 23.1
+     */
+    protected Object createInternalResource(String resourceId) {
+        throw new IllegalArgumentException(resourceId);
+    }
 }

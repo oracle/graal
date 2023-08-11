@@ -85,7 +85,7 @@ import org.graalvm.compiler.hotspot.replacements.ObjectCloneNode;
 import org.graalvm.compiler.hotspot.replacements.UnsafeCopyMemoryNode;
 import org.graalvm.compiler.hotspot.word.HotSpotWordTypes;
 import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.ComputeObjectAddressNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -160,7 +160,6 @@ import org.graalvm.compiler.replacements.nodes.AESNode.CryptMode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
-import org.graalvm.compiler.replacements.nodes.SHANode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -244,8 +243,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerCRC32Plugins(invocationPlugins, config, replacements);
                 registerCRC32CPlugins(invocationPlugins, config, replacements);
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
-                registerSHAPlugins(invocationPlugins, config, replacements, target.arch);
-                registerMD5Plugins(invocationPlugins, config, replacements);
+                registerSHAPlugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess, replacements);
                 registerUnsafePlugins(invocationPlugins, config, replacements);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
@@ -659,11 +657,8 @@ public class HotSpotGraphBuilderPlugins {
     }
 
     // @formatter:off
-    @StubPort(path      = "src/hotspot/share/opto/library_call.cpp",
-              lineStart = 2861,
-              lineEnd   = 2922,
-              commit    = "1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4",
-              sha1      = "c2d981ab918e2ca607835df010221ba0503a0cb2")
+    @SyncPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/share/opto/library_call.cpp#L2861-L2922",
+              sha1 = "c2d981ab918e2ca607835df010221ba0503a0cb2")
     // @formatter:on
     private static void inlineNativeNotifyJvmtiFunctions(GraalHotSpotVMConfig config, GraphBuilderContext b, ResolvedJavaMethod targetMethod, ForeignCallDescriptor descriptor,
                     ValueNode virtualThread, ValueNode hide) {
@@ -1027,10 +1022,9 @@ public class HotSpotGraphBuilderPlugins {
             }
             return true;
         }
-
     }
 
-    private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements, Architecture arch) {
+    private static void registerSHAPlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
         boolean useMD5 = config.md5ImplCompressMultiBlock != 0L;
         boolean useSha1 = config.useSHA1Intrinsics();
         boolean useSha256 = config.useSHA256Intrinsics();
@@ -1059,21 +1053,6 @@ public class HotSpotGraphBuilderPlugins {
                 return templates.implCompressMultiBlock0;
             }
         });
-
-        // HotSpot runtime sha256_implCompress stub AVX2 variant is not yet ported
-        Registration rSha256 = new Registration(plugins, "sun.security.provider.SHA2", replacements);
-        rSha256.registerConditional(useSha256 && !SHANode.SHA256Node.isSupported(arch), new DigestInvocationPlugin(HotSpotBackend.SHA2_IMPL_COMPRESS));
-
-        Registration rSha512 = new Registration(plugins, "sun.security.provider.SHA5", replacements);
-        rSha512.registerConditional(useSha512, new DigestInvocationPlugin(HotSpotBackend.SHA5_IMPL_COMPRESS));
-
-        Registration rSha3 = new Registration(plugins, "sun.security.provider.SHA3", replacements);
-        rSha3.registerConditional(config.sha3ImplCompress != 0L, new DigestInvocationPlugin(HotSpotBackend.SHA3_IMPL_COMPRESS));
-    }
-
-    private static void registerMD5Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
-        Registration r = new Registration(plugins, "sun.security.provider.MD5", replacements);
-        r.registerConditional(config.md5ImplCompress != 0L, new DigestInvocationPlugin(HotSpotBackend.MD5_IMPL_COMPRESS));
     }
 
     private static void registerBase64Plugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, MetaAccessProvider metaAccess, Replacements replacements) {

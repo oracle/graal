@@ -39,7 +39,10 @@ import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
-import org.graalvm.compiler.replacements.nodes.SHANode;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
@@ -137,6 +140,7 @@ public final class UnimplementedGraalIntrinsics {
         // [GR-10106] These JFR intrinsics are used for firing socket/file events via Java
         // instrumentation and are of low priority.
         add(ignore,
+                        "jdk/jfr/internal/JVM.commit(J)J",
                         "jdk/jfr/internal/JVM.counterTime()J",
                         "jdk/jfr/internal/JVM.getBufferWriter()Ljava/lang/Object;",
                         "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
@@ -274,13 +278,16 @@ public final class UnimplementedGraalIntrinsics {
             add(ignore, "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
         }
         // SHA intrinsics
-        if (!SHANode.SHA1Node.isSupported(arch)) {
+        if (!SHA1Node.isSupported(arch)) {
             add(ignore, "sun/security/provider/SHA.implCompress0([BI)V");
         }
-        if (!SHANode.SHA256Node.isSupported(arch) && !config.useSHA256Intrinsics()) {
+        if (!SHA256Node.isSupported(arch)) {
             add(ignore, "sun/security/provider/SHA2.implCompress0([BI)V");
         }
-        if (!config.useSHA512Intrinsics()) {
+        if (!SHA3Node.isSupported(arch)) {
+            add(ignore, "sun/security/provider/SHA3.implCompress0([BI)V");
+        }
+        if (!SHA512Node.isSupported(arch)) {
             add(ignore, "sun/security/provider/SHA5.implCompress0([BI)V");
         }
         if (config.updateBytesAdler32 == 0L) {
@@ -299,12 +306,6 @@ public final class UnimplementedGraalIntrinsics {
         }
         if (config.electronicCodeBookDecrypt == 0L) {
             add(ignore, "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
-        }
-        if (config.md5ImplCompress == 0L) {
-            add(ignore, "sun/security/provider/MD5.implCompress0([BI)V");
-        }
-        if (config.sha3ImplCompress == 0L) {
-            add(ignore, "sun/security/provider/SHA3.implCompress0([BI)V");
         }
         if (config.poly1305ProcessBlocks == 0L) {
             add(ignore, "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V");
@@ -399,11 +400,6 @@ public final class UnimplementedGraalIntrinsics {
                             "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;"
                             // @formatter:on
             );
-        }
-
-        if (arch instanceof AArch64) {
-            add(toBeInvestigated,
-                            "java/lang/Thread.onSpinWait()V");
         }
 
         if (JAVA_SPEC >= 20) {

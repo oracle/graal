@@ -64,7 +64,6 @@ public abstract class RegexFlavor {
     protected static final int NEEDS_GROUP_START_POSITIONS = 1 << 6;
     protected static final int HAS_CONDITIONAL_BACKREFERENCES = 1 << 7;
     protected static final int SUPPORTS_RECURSIVE_BACKREFERENCES = 1 << 8;
-    protected static final int HAS_SUBEXPRESSION_CALLS = 1 << 9;
 
     private final int traits;
 
@@ -74,7 +73,7 @@ public abstract class RegexFlavor {
 
     public abstract RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer);
 
-    public abstract RegexValidator createValidator(RegexSource source);
+    public abstract RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer);
 
     public abstract BiPredicate<Integer, Integer> getEqualsIgnoreCasePredicate(RegexAST ast);
 
@@ -124,9 +123,5 @@ public abstract class RegexFlavor {
 
     public boolean matchesTransitionsStepByStep() {
         return emptyChecksMonitorCaptureGroups() || hasConditionalBackReferences();
-    }
-
-    public boolean hasSubexpressionCalls() {
-        return hasTrait(HAS_SUBEXPRESSION_CALLS);
     }
 }

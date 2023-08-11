@@ -35,6 +35,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 import org.graalvm.compiler.debug.DebugOptions;
@@ -71,7 +72,18 @@ public class ModuleSupport {
      * Exports and opens all packages in the module named {@code name} to all unnamed modules.
      */
     public static void exportAndOpenAllPackagesToUnnamed(String name) {
-        Module module = ModuleLayer.boot().findModule(name).orElseThrow();
+        exportAndOpenAllPackagesToUnnamed(name, true);
+    }
+
+    /**
+     * Exports and opens all packages in the module named {@code name} to all unnamed modules.
+     */
+    public static void exportAndOpenAllPackagesToUnnamed(String name, boolean required) {
+        Optional<Module> maybeModule = ModuleLayer.boot().findModule(name);
+        Module module = required ? maybeModule.orElseThrow() : maybeModule.orElse(null);
+        if (module == null) {
+            return;
+        }
         Set<String> packages = module.getPackages();
         for (String pkg : packages) {
             Modules.addExportsToAllUnnamed(module, pkg);

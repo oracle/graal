@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
-import static com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CLASSES_FLAG;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
@@ -805,7 +805,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     public InputStream getResourceAsStream(String resourceName) {
         String resolvedName = resolveName(resourceName);
-        return Resources.createInputStream(module, resolvedName);
+        return Resources.singleton().createInputStream(module, resolvedName);
     }
 
     @KeepOriginal

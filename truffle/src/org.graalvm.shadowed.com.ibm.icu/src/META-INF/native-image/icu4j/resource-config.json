@@ -1,15 +1,6 @@
 {
   "resources":[
     {
-      "condition" : { "typeReachable" : "com.ibu.icu.util.UResourceBundle" },
-      "pattern":"com/ibm/icu/impl/data/icudt[^/]*/(?!(cnvalias\\.icu|.*\\.cnv)/?$).*$"
-    },
-    {
-      "condition" : { "typeReachable" : "com.ibu.icu.charset.CharsetICU" },
-      "pattern":"com/ibm/icu/impl/data/icudt[^/]*/(cnvalias\\.icu|.*\\.cnv)$"
-    },
-
-    {
       "condition" : { "typeReachable" : "org.graalvm.shadowed.com.ibm.icu.util.UResourceBundle" },
       "pattern":"org/graalvm/shadowed/com/ibm/icu/impl/data/icudt[^/]*/[^/]*\\.(res|lst)$"
     },

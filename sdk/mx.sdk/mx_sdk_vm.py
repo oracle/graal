@@ -426,6 +426,8 @@ class GraalVmJdkComponent(GraalVmComponent):
 class GraalVmJreComponent(GraalVmComponent):
     pass
 
+class GraalVmTruffleLibrary(GraalVmJreComponent):
+    pass
 
 class GraalVmJvmciComponent(GraalVmJreComponent):
     def __init__(self, suite, name, short_name, license_files, third_party_license_files, jvmci_jars, **kwargs):
@@ -775,10 +777,11 @@ def _get_image_root_modules(root_module_names, module_names, jdk_module_names, u
         else:
             return all_names
 
-def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modules):
+def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modules, default_to_jvmci=False):
     """
     Gets the argument for the jlink ``--add-options`` flag.
 
+    :param bool default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
     :return list: the list of VM options to cook into the image
     """
     vm_options = []
@@ -802,7 +805,7 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
 
         if jdk_supports_enablejvmciproduct(jdk):
             non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
-            if 'jdk.internal.vm.compiler' in non_synthetic_modules:
+            if default_to_jvmci or 'jdk.internal.vm.compiler' in non_synthetic_modules:
                 threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
                 vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
                 if threads is not None and threads != 1:
@@ -870,7 +873,8 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   with_source=lambda x: True,
                   vendor_info=None,
                   dedup_legal_notices=True,
-                  use_upgrade_module_path=False):
+                  use_upgrade_module_path=False,
+                  default_to_jvmci=False):
     """
     Uses jlink from `jdk` to create a new JDK image in `dst_jdk_dir` with `module_dists` and
     their dependencies added to the JDK image, replacing any existing modules of the same name.
@@ -892,6 +896,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
     :param dict vendor_info: values for the jlink vendor options added by JDK-8232080
     :param bool use_upgrade_module_path: if True, then instead of linking `module_dists` into the image, resolve
                      them via --upgrade-module-path at image runtime
+    :param bool default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
     :return bool: False if use_upgrade_module_path == True and the existing image is up to date otherwise True
     """
     assert callable(with_source)
@@ -1052,7 +1057,7 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
             jlink.append('--keep-packaged-modules=' + join(dst_jdk_dir, 'jmods'))
 
             vm_options_path = join(upgrade_dir, 'vm_options')
-            vm_options = _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modules)
+            vm_options = _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modules, default_to_jvmci=default_to_jvmci)
             if vm_options:
                 jlink.append(f'--add-options={" ".join(vm_options)}')
                 jlink_persist.append(f'--add-options="{" ".join(vm_options)}"')

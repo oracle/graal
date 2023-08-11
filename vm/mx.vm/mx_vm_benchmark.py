@@ -181,6 +181,7 @@ class NativeImageVM(GraalVm):
 
             self.base_image_build_args += self.system_properties
             self.bundle_path = self.get_bundle_path_if_present()
+            self.bundle_create_path = self.get_bundle_create_path_if_present()
             if not self.bundle_path:
                 self.base_image_build_args += self.classpath_arguments
                 self.base_image_build_args += self.executable
@@ -189,8 +190,12 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args += ['-H:+PrintAnalysisStatistics']
             self.base_image_build_args += ['-H:+PrintCallEdges']
             self.base_image_build_args += ['-H:+CollectImageBuildStatistics']
+
             self.image_build_reports_directory = os.path.join(self.output_dir, 'reports')
+            if self.bundle_create_path is not None:
+                self.image_build_reports_directory = os.path.join(self.output_dir, self.bundle_create_path)
             self.image_build_stats_file = os.path.join(self.image_build_reports_directory, 'image_build_statistics.json')
+
             if vm.is_quickbuild:
                 self.base_image_build_args += ['-Ob']
             if vm.use_string_inlining:
@@ -232,6 +237,16 @@ class NativeImageVM(GraalVm):
             if len(bundle_arg) == 1:
                 bp = bundle_arg[0][len(bundle_apply_arg):]
                 return bp
+
+            return None
+
+        def get_bundle_create_path_if_present(self):
+            bundle_create_arg = "--bundle-create"
+            bundle_arg_idx = [idx for idx, arg in enumerate(self.extra_image_build_arguments) if arg.startswith(bundle_create_arg)]
+            if len(bundle_arg_idx) == 1:
+                bp = join(self.extra_image_build_arguments[bundle_arg_idx[0] + 1] + ".output", "default", "reports")
+                return bp
+
             return None
 
     def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None, **kwargs):
@@ -955,6 +970,8 @@ class NativeImageVM(GraalVm):
     def _print_binary_size(self, config, out):
         # The image size for benchmarks is tracked by printing on stdout and matching the rule.
         image_path = os.path.join(config.output_dir, config.final_image_name)
+        if config.bundle_create_path is not None:
+            image_path = os.path.join(config.output_dir, config.bundle_create_path[:-len("reports")], config.bundle_create_path.split(".")[0])
         image_size = os.stat(image_path).st_size
         out(f'The executed image size for benchmark {config.benchmark_suite_name}:{config.benchmark_name} is {image_size} B')
 
@@ -1553,6 +1570,9 @@ def register_graalvm_vms():
     host_vm_names = [default_host_vm_name] + ([short_host_vm_name] if short_host_vm_name != default_host_vm_name else [])
     for host_vm_name in host_vm_names:
         for config_name, java_args, launcher_args, priority in mx_sdk_vm.get_graalvm_hostvm_configs():
+            if config_name.startswith("jvm"):
+                # needed for NFI CLinker benchmarks
+                launcher_args += ['--vm.-enable-preview']
             mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
             for mode, mode_options in _polybench_modes:
                 _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args))

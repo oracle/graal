@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.llvm;
 
+import static com.oracle.svm.core.graal.llvm.objectfile.LLVMObjectFile.getLld;
+
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
@@ -132,14 +134,20 @@ public class LLVMToolchainUtils {
 
     public static void nativeLink(DebugContext debug, String outputPath, List<String> inputPaths, Path basePath, Function<String, String> outputPathFormat) {
         List<String> cmd = new ArrayList<>();
-        cmd.add((LLVMOptions.CustomLD.hasBeenSet()) ? LLVMOptions.CustomLD.getValue() : "ld");
+        if (LLVMOptions.CustomLD.hasBeenSet()) {
+            cmd.add(LLVMOptions.CustomLD.getValue());
+        }
         cmd.add("-r");
         cmd.add("-o");
         cmd.add(outputPath);
         cmd.addAll(inputPaths);
 
         try {
-            LLVMToolchain.runCommand(basePath, cmd);
+            if (LLVMOptions.CustomLD.hasBeenSet()) {
+                LLVMToolchain.runCommand(basePath, cmd);
+            } else {
+                LLVMToolchain.runLLVMCommand(getLld(), basePath, cmd);
+            }
         } catch (LLVMToolchain.RunFailureException e) {
             debug.log("%s", e.getOutput());
             throw new GraalError("Native linking failed into " + outputPathFormat.apply(outputPath) + ": " + e.getStatus());

@@ -59,7 +59,7 @@ GraalVM Community Edition is open source and distributed under [version 2 of the
 
 Component(s) | License
 ------------ | -------------
-[Espresso](espresso/LICENSE) | GPL 2
+[Espresso](espresso/LICENSE), [Ideal Graph Visualizer](visualizer/LICENSE) | GPL 2
 [GraalVM Compiler](compiler/LICENSE.md), [SubstrateVM](substratevm/LICENSE), [Tools](tools/LICENSE), [VM](vm/LICENSE_GRAALVM_CE) | GPL 2 with Classpath Exception
 [GraalVM SDK](sdk/LICENSE.md), [GraalWasm](wasm/LICENSE), [Truffle Framework](truffle/LICENSE.md), [TRegex](regex/LICENSE.md) | Universal Permissive License
 [Sulong](sulong/LICENSE) | 3-clause BSD

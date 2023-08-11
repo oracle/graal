@@ -30,6 +30,7 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
+import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -65,7 +66,7 @@ public class ContinuationsFeature implements InternalFeature {
                     RuntimeClassInitialization.initializeAtRunTime("jdk.internal.vm.Continuation");
                 }
             }
-            supportLoom = haveLoom && !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend();
+            supportLoom = haveLoom && !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend() && !SubstrateControlFlowIntegrity.enabled();
         }
 
         /*

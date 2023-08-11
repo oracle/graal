@@ -35,7 +35,6 @@ import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.SubstrateUtil;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -44,6 +43,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -94,22 +94,51 @@ public class LocalizationSupport {
         throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + bundle.getClass());
     }
 
+    @SuppressWarnings("deprecation")
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
-        if (bundle instanceof PropertyResourceBundle) {
-            String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
-            String resultingPattern;
-            if (bundleNameWithModule.length < 2) {
-                resultingPattern = control.toBundleName(bundleName, locale).replace('.', '/');
-            } else {
-                String patternWithLocale = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
-                resultingPattern = bundleNameWithModule[0] + ':' + patternWithLocale;
+        // The bundles are currently added twice to the resources because we transition from Regex
+        // to simpler patterns. The Regex will be removed once the transition will be complete.
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), getBundleName(bundleName, Locale.ROOT) + ".properties");
+        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), getResultingPattern(bundleName, Locale.ROOT) + "\\.properties");
+        if (locale != null) {
+            if (!locale.getLanguage().isEmpty()) {
+                ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), getBundleName(bundleName, new Locale(locale.getLanguage())) + ".properties");
+                ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(),
+                                getResultingPattern(bundleName, new Locale(locale.getLanguage())) + "\\.properties");
+                if (!locale.getCountry().isEmpty()) {
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), getBundleName(bundleName, locale) + ".properties");
+                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), getResultingPattern(bundleName, locale) + "\\.properties");
+                }
             }
-            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), resultingPattern + "\\.properties");
-        } else {
+        }
+        if (!(bundle instanceof PropertyResourceBundle)) {
+            if ((bundle.getLocale() == null || bundle.getLocale().toString().isEmpty()) && locale != null) {
+                if (!locale.getLanguage().isEmpty()) {
+                    RuntimeReflection.registerClassLookup(bundleName + "_" + locale.getLanguage());
+                    if (!locale.getCountry().isEmpty()) {
+                        RuntimeReflection.registerClassLookup(bundleName + "_" + locale.getLanguage() + "_" + locale.getCountry());
+                    }
+                }
+            }
             RuntimeReflection.register(bundle.getClass());
             RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());
             onBundlePrepared(bundle);
+        }
+    }
+
+    public String getResultingPattern(String bundleName, Locale locale) {
+        String fixedBundleName = bundleName.replace("$", "\\$");
+        return getBundleName(fixedBundleName, locale);
+    }
+
+    private String getBundleName(String fixedBundleName, Locale locale) {
+        String[] bundleNameWithModule = SubstrateUtil.split(fixedBundleName, ":", 2);
+        if (bundleNameWithModule.length < 2) {
+            return control.toBundleName(fixedBundleName, locale).replace('.', '/');
+        } else {
+            String patternWithLocale = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
+            return bundleNameWithModule[0] + ':' + patternWithLocale;
         }
     }
 
@@ -134,7 +163,7 @@ public class LocalizationSupport {
     }
 
     @SuppressWarnings("unused")
-    public void prepareNonCompliant(Class<?> clazz) {
+    public void prepareNonCompliant(Class<?> clazz) throws ReflectiveOperationException {
         /*- By default, there is nothing to do */
     }
 

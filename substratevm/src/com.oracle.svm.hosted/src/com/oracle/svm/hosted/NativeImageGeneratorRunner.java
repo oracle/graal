@@ -192,6 +192,12 @@ public class NativeImageGeneratorRunner {
         Set<String> expectedBuilderDependencies = Set.of(
                         "java.base",
                         "java.management",
+                        "java.logging",
+                        // workaround for GR-47773 on the module-path which requires java.sql (like
+                        // truffle) or java.xml
+                        "java.sql",
+                        "java.xml",
+                        "java.transaction.xa",
                         "jdk.management",
                         "java.compiler",
                         "jdk.jfr",
@@ -722,7 +728,10 @@ public class NativeImageGeneratorRunner {
         }
 
         public static void setModuleAccesses() {
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.sdk");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.word");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.nativeimage");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.collections");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.polyglot");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.ci");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.compiler");

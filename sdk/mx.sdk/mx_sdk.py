@@ -55,8 +55,9 @@ from mx_bisect_strategy import BuildStepsGraalVMStrategy
 from mx_gate import Task
 from mx_unittest import unittest
 
-# re-export custom mx project classes so they can be used from suite.py
+# re-export custom mx project classes, so they can be used from suite.py
 from mx_sdk_toolchain import ToolchainTestProject # pylint: disable=unused-import
+from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
 
 _suite = mx.suite('sdk')
 
@@ -106,6 +107,7 @@ def upx(args):
     upx_cmd = [upx_path] + args
     mx.run(upx_cmd, mx.TeeOutputCapture(mx.OutputCapture()), mx.TeeOutputCapture(mx.OutputCapture()))
 
+# SDK modules included if truffle, compiler and native-image is included
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK',
@@ -113,9 +115,37 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     dir_name='graalvm',
     license_files=[],
     third_party_license_files=[],
+    dependencies=['sdkni'],
+    jar_distributions=[],
+    boot_jars=['sdk:POLYGLOT', 'sdk:GRAAL_SDK'],
+    stability="supported",
+))
+
+# SDK modules included the compiler is included
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Graal SDK Compiler',
+    short_name='sdkc',
+    dir_name='graalvm',
+    license_files=[],
+    third_party_license_files=[],
     dependencies=[],
     jar_distributions=[],
-    boot_jars=['sdk:GRAAL_SDK', 'sdk:JNIUTILS', 'sdk:NATIVEBRIDGE'],
+    boot_jars=['sdk:WORD', 'sdk:COLLECTIONS'],
+    stability="supported",
+))
+
+# SDK modules included if the compiler and native-image is included
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+    suite=_suite,
+    name='Graal SDK Native Image',
+    short_name='sdkni',
+    dir_name='graalvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['sdkc'],
+    jar_distributions=[],
+    boot_jars=['sdk:NATIVEIMAGE'],
     stability="supported",
 ))
 
@@ -127,7 +157,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Graal SDK'],
-    jar_distributions=['sdk:LAUNCHER_COMMON'],
+    jar_distributions=['sdk:LAUNCHER_COMMON', 'sdk:JLINE3'],
     boot_jars=[],
     stability="supported",
 ))
@@ -202,10 +232,12 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                   missing_export_target_action='create',
                   with_source=lambda x: True,
                   vendor_info=None,
-                  use_upgrade_module_path=False):
+                  use_upgrade_module_path=False,
+                  default_to_jvmci=False):
     return mx_sdk_vm.jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    root_module_names=root_module_names,
                                    missing_export_target_action=missing_export_target_action,
                                    with_source=with_source,
                                    vendor_info=vendor_info,
-                                   use_upgrade_module_path=use_upgrade_module_path)
+                                   use_upgrade_module_path=use_upgrade_module_path,
+                                   default_to_jvmci=default_to_jvmci)

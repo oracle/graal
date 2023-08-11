@@ -194,7 +194,7 @@ public class TruffleFeature implements InternalFeature {
 
     @Override
     public String getDescription() {
-        return "Enables compilation of Truffle ASTs to machine code";
+        return "Provides support for Truffle runtime compilation";
     }
 
     public static class Options {
@@ -257,13 +257,20 @@ public class TruffleFeature implements InternalFeature {
         return List.of(RuntimeCompilationFeature.getRuntimeCompilationFeature(), TruffleBaseFeature.class);
     }
 
+    /*
+     * Duplicated from SafepointSamplingProfilingFeature. Make sure it is in sync.
+     */
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         return isInConfiguration();
     }
 
     public static boolean isInConfiguration() {
-        return Truffle.getRuntime() instanceof SubstrateTruffleRuntime;
+        String property = System.getProperty("truffle.TruffleRuntime");
+        if (property != null) {
+            return property.equals("com.oracle.svm.truffle.api.SubstrateTruffleRuntime");
+        }
+        return false;
     }
 
     @Override
@@ -347,7 +354,8 @@ public class TruffleFeature implements InternalFeature {
         }
 
         // register thread local foreign poll as compiled otherwise the stub won't work
-        config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true);
+        config.registerAsRoot((AnalysisMethod) SubstrateThreadLocalHandshake.FOREIGN_POLL.findMethod(config.getMetaAccess()), true,
+                        "Truffle thread local foreign poll, registered in " + TruffleFeature.class);
 
         RuntimeCompilationFeature runtimeCompilationFeature = RuntimeCompilationFeature.singleton();
         SnippetReflectionProvider snippetReflection = runtimeCompilationFeature.getHostedProviders().getSnippetReflection();
@@ -357,7 +365,6 @@ public class TruffleFeature implements InternalFeature {
 
         PartialEvaluator partialEvaluator = truffleCompiler.getPartialEvaluator();
         registerKnownTruffleFields(config, partialEvaluator.getTypes());
-        TruffleSupport.singleton().registerInterpreterEntryMethodsAsCompiled(partialEvaluator, access);
 
         GraphBuilderConfiguration graphBuilderConfig = partialEvaluator.getGraphBuilderConfigPrototype();
 
@@ -408,7 +415,7 @@ public class TruffleFeature implements InternalFeature {
              * affects builds where no Truffle language is included, because any real language makes
              * these methods reachable (and therefore compiled).
              */
-            config.registerAsRoot((AnalysisMethod) method, true);
+            config.registerAsRoot((AnalysisMethod) method, true, "Truffle stack frame support, registered in " + TruffleFeature.class);
         }
 
         /*
@@ -417,7 +424,7 @@ public class TruffleFeature implements InternalFeature {
          * adds it as a root and non-static root methods are only compiled if types implementing
          * them or any of their subtypes are allocated.
          */
-        config.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass(), "Concrete subclass of OptimizedCallTarget registered by TruffleFeature.");
+        config.registerAsInHeap(TruffleSupport.singleton().getOptimizedCallTargetClass(), "Concrete subclass of OptimizedCallTarget registered by " + TruffleFeature.class);
 
         /*
          * This effectively initializes the Truffle fallback engine which does all the system

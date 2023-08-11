@@ -46,6 +46,8 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     /* Defunct legacy options that we have to accept to maintain backward compatibility */
     private static final String noServerOption = "--no-server";
 
+    private static final String nativeAccessOption = "--enable-native-access";
+
     DefaultOptionHandler(NativeImage nativeImage) {
         super(nativeImage);
     }
@@ -93,7 +95,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 if (addModulesArgs == null) {
                     NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
                 }
-                nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
                 nativeImage.addAddedModules(addModulesArgs);
                 return true;
             case limitModulesOption:
@@ -127,6 +128,15 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             case "--enable-preview":
                 args.poll();
                 nativeImage.addCustomJavaArgs("--enable-preview");
+                nativeImage.enablePreview();
+                return true;
+            case nativeAccessOption:
+                args.poll();
+                String modules = args.poll();
+                if (modules == null) {
+                    NativeImage.showError(nativeAccessOption + moduleSetModifierOptionErrorMessage);
+                }
+                nativeImage.addCustomJavaArgs(nativeAccessOption + "=" + modules);
                 return true;
         }
 
@@ -189,7 +199,6 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             if (addModulesArgs.isEmpty()) {
                 NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
             }
-            nativeImage.addImageBuilderJavaArgs(addModulesOption, addModulesArgs);
             nativeImage.addAddedModules(addModulesArgs);
             return true;
         }
@@ -200,6 +209,15 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
             }
             nativeImage.addLimitedModules(limitModulesArgs);
+            return true;
+        }
+        if (headArg.startsWith(nativeAccessOption + "=")) {
+            args.poll();
+            String nativeAccessModules = headArg.substring(nativeAccessOption.length() + 1);
+            if (nativeAccessModules.isEmpty()) {
+                NativeImage.showError(headArg + moduleSetModifierOptionErrorMessage);
+            }
+            nativeImage.addCustomJavaArgs(headArg);
             return true;
         }
         return false;

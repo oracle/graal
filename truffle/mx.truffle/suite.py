@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.27.1",
+  "mxversion": "6.39.0",
   "name" : "truffle",
   "version" : "23.1.0",
   "release" : False,
@@ -159,7 +159,6 @@ suite = {
     },
 
     "VISUALVM-LIB-JFLUID-HEAP" : {
-      "moduleName" : "org.graalvm.visualvm.lib.jfluid.heap",
       "digest" : "sha512:6d93cde728f5db242d2ab55090e5b2952e873625e542043d16d859e1486433c91efcf3c713d7255697951ee745cd5f66276b78f38c62c422cd7b1000291612ad",
       "sourceDigest" : "sha512:81377da5f52fae2e412ea084cb6e6e82d37beb96e8d624e47b6e7a2e70f61e237485239dd4b64934bf4758857d0582dc11acdeadc930bccb02a471df4b7e83b2",
       "maven" : {
@@ -200,7 +199,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "requires" : [
         "java.logging",
@@ -242,7 +241,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "com.oracle.truffle.api.instrumentation",
         "com.oracle.truffle.api.exception",
       ],
@@ -261,7 +260,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
         "TRUFFLE_API",
         "TRUFFLE_COMPILER",
       ],
@@ -313,7 +311,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "com.oracle.truffle.api.exception",
         "truffle:TRUFFLE_ASM_9.5",
       ],
@@ -814,6 +812,19 @@ suite = {
       },
     },
 
+    "com.oracle.truffle.nfi.backend.panama" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaPreviewNeeded" : "21+",
+      "dependencies" : [
+        "com.oracle.truffle.nfi.backend.spi",
+      ],
+      "checkstyle" : "com.oracle.truffle.api",
+      "javaCompliance" : "21+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "Truffle",
+    },
+
     "com.oracle.truffle.nfi.backend.spi" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -980,7 +991,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
@@ -1119,18 +1130,18 @@ suite = {
       "os_arch" : {
         "windows" : {
           "<others>" : {
-            "cflags" : ["--std=c++11"]
+            "cflags" : []
           }
         },
         "linux" : {
           "<others>" : {
-            "cflags" : ["--std=c++11", "-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
+            "cflags" : ["-g", "-Wall", "-Werror", "-D_GNU_SOURCE"],
             "ldlibs" : ["-ldl"],
           },
         },
         "<others>" : {
           "<others>" : {
-            "cflags" : ["--std=c++11", "-g", "-Wall", "-Werror"],
+            "cflags" : ["-g", "-Wall", "-Werror"],
             "ldlibs" : ["-ldl"],
           },
         },
@@ -1214,7 +1225,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.internal.vm.compiler, com.oracle.truffle.enterprise, com.oracle.graal.graal_enterprise, org.graalvm.nativeimage.builder",
+          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.internal.vm.compiler, org.graalvm.nativeimage.builder, com.oracle.truffle.enterprise, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
           "com.oracle.truffle.compiler.hotspot to org.graalvm.truffle.runtime, jdk.internal.vm.compiler",
           "com.oracle.truffle.compiler.hotspot.libgraal to org.graalvm.truffle.runtime, jdk.internal.vm.compiler"
         ],
@@ -1250,7 +1261,9 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "* to org.graalvm.truffle, jdk.internal.vm.compiler, com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder",
+          "* to org.graalvm.truffle, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          # necessary to instantiate access truffle compiler from the runtime during host compilation
+          "com.oracle.truffle.runtime.hotspot to jdk.internal.vm.compiler",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
@@ -1275,14 +1288,15 @@ suite = {
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.runtime",
+        "TRUFFLE_RUNTIME_ATTACH_RESOURCES",
       ],
       "distDependencies" : [
-        "sdk:GRAAL_SDK",
         "sdk:JNIUTILS",
         "TRUFFLE_API",
         "TRUFFLE_COMPILER",
       ],
       "description" : "Truffle runtime distribution.",
+      "useModulePath": True,
       "maven": True,
     },
 
@@ -1321,8 +1335,11 @@ suite = {
           "com.oracle.truffle.api.library.provider",
 
           # Qualified exports
-          "com.oracle.truffle.api.impl to jdk.internal.vm.compiler, org.graalvm.locator, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
+          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.object to com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+        ],
+        "opens" : [
+          "com.oracle.truffle.polyglot to org.graalvm.truffle.runtime",
         ],
         "uses" : [
           "com.oracle.truffle.api.TruffleRuntimeAccess",
@@ -1338,19 +1355,19 @@ suite = {
           "com.oracle.truffle.api.instrumentation.TruffleInstrument.Provider", # Deprecated
         ],
       },
+
       "moduleInfo:closed" : {
         # This is the module descriptor for the Truffle API modular jar deployed via maven.
-        # It exports all the Truffle API packages.
+        # It exports all the Truffle API packages to the language that get loaded through Truffle at runtime.
         "exports" : [
           # Unqualified exports
           "com.oracle.truffle.api.provider",
           "com.oracle.truffle.api.instrumentation.provider",
           "com.oracle.truffle.api.library.provider",
           # Qualified exports
-          "com.oracle.truffle.api* to jdk.internal.vm.compiler, jdk.internal.vm.compiler.truffle.jfr, com.oracle.truffle.enterprise, com.oracle.svm.svm_enterprise, org.graalvm.nativeimage.builder, org.graalvm.truffle.runtime",
-          "com.oracle.truffle.api.impl to jdk.internal.vm.compiler,org.graalvm.locator, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.api to org.graalvm.locator, org.graalvm.nativeimage.builder, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
-          "com.oracle.truffle.object to jdk.internal.vm.compiler, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, org.graalvm.nativeimage.builder",
+          "com.oracle.truffle.api* to org.graalvm.locator, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.api.impl to org.graalvm.locator, org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.object to org.graalvm.truffle.runtime, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
         ],
       },
       "subDir" : "src",
@@ -1369,42 +1386,41 @@ suite = {
         "com.oracle.truffle.api.staticobject",
       ],
       "distDependencies" : [
-        "sdk:GRAAL_SDK"
+        "sdk:POLYGLOT"
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
       "maven": True,
-      "graalvm" : {
-        # Deploy the modular jar specified by "moduleInfo.closed"
-        "moduleInfo" : "closed",
-      }
+      "useModulePath": True,
+      # We do no longer deploy a closed module to graalvm because there are known bugs
+      # when a JDK boot module exports itself at runtime to a language at runtime.
+      # with Truffle unchained we want to use truffle always from the module path
+      # and deployement of Truffle the JDK is only there fore legacy support.
+      # See GR-47669
+      #"graalvm" : {
+      # Deploy the modular jar specified by "moduleInfo.closed"
+      #"moduleInfo" : "closed",
+      #}
     },
 
-    "TRUFFLE_RUNTIME_ATTACH" : {
-      "native" : True,
+    "TRUFFLE_RUNTIME_ATTACH_RESOURCES" : {
+      "type" : "dir",
       "platformDependent" : True,
+      "hashEntry" :  "META-INF/resources/engine/libtruffleattach/<os>/<arch>/sha256",
+      "fileListEntry" : "META-INF/resources/engine/libtruffleattach/<os>/<arch>/files",
       "platforms" : [
           "linux-amd64",
           "linux-aarch64",
           "darwin-amd64",
           "darwin-aarch64",
           "windows-amd64",
+          "windows-aarch64",
       ],
       "layout" : {
-        "bin/" : "dependency:com.oracle.truffle.runtime.attach",
+        "META-INF/resources/engine/libtruffleattach/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.runtime.attach",
       },
       "description" : "Contains a library to provide access for the Truffle runtime to JVMCI.",
-      "maven": True,
-    },
-
-    "TRUFFLE_RUNTIME_ATTACH_SUPPORT" : {
-      "native" : True,
-      "platformDependent" : True,
-      "layout" : {
-        "./" : ["dependency:com.oracle.truffle.runtime.attach"],
-      },
-      "description" : "Contains a library to provide access for the Truffle runtime to JVMCI.",
-      "maven" : False,
+      "maven": False,
     },
 
     "TRUFFLE_NFI" : {
@@ -1435,11 +1451,15 @@ suite = {
       # This distribution defines a module.
       "moduleInfo" : {
         "name" : "com.oracle.truffle.truffle_nfi_libffi",
+        "opens" : [
+          "com.oracle.truffle.nfi.backend.libffi to org.graalvm.truffle.runtime.svm",
+        ],
       },
       "subDir" : "src",
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.nfi.backend.libffi",
+        "TRUFFLE_NFI_RESOURCES",
       ],
       "distDependencies" : [
         "TRUFFLE_NFI",
@@ -1450,6 +1470,24 @@ suite = {
       },
       "description" : """Implementation of the Truffle NFI using libffi.""",
       "allowsJavadocWarnings": True,
+    },
+
+    "TRUFFLE_NFI_PANAMA" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.truffle_nfi_panama",
+      },
+      "subDir" : "src",
+      "javaCompliance" : "21+",
+      "dependencies" : [
+        "com.oracle.truffle.nfi.backend.panama",
+      ],
+      "distDependencies" : [
+        "TRUFFLE_NFI",
+      ],
+      "description" : """Implementation of the Truffle NFI using CLinker from project panama.""",
+      "allowsJavadocWarnings": True,
+      "noMavenJavadoc": True,  # the maven deploy job refuses to build javadoc if javaCompliance is higher than 17
     },
 
     "TRUFFLE_NFI_NATIVE" : {
@@ -1468,6 +1506,26 @@ suite = {
       "include_dirs" : ["include"],
       "description" : "Contains the NFI headers, and the native library needed by the libffi NFI backend.",
       "maven": True,
+    },
+
+    "TRUFFLE_NFI_RESOURCES" : {
+      "type" : "dir",
+      "platformDependent" : True,
+      "hashEntry" :  "META-INF/resources/nfi-native/libnfi/<os>/<arch>/sha256",
+      "fileListEntry" : "META-INF/resources/nfi-native/libnfi/<os>/<arch>/files",
+      "platforms" : [
+          "linux-amd64",
+          "linux-aarch64",
+          "darwin-amd64",
+          "darwin-aarch64",
+          "windows-amd64",
+          "windows-aarch64",
+      ],
+      "layout" : {
+        "META-INF/resources/nfi-native/libnfi/<os>/<arch>/bin/" : "dependency:com.oracle.truffle.nfi.native",
+      },
+      "description" : "Contains the native library needed by the libffi NFI backend.",
+      "maven": False,
     },
 
     "TRUFFLE_TCK" : {
@@ -1577,19 +1635,24 @@ suite = {
       "distDependencies" : [
           "TRUFFLE_API",
       ],
+      "useModulePath": True,
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
       "allowsJavadocWarnings": True,
     },
 
     "TRUFFLE_SL_LAUNCHER" : {
       "subDir" : "src",
+      "moduleInfo" : {
+        "name" : "org.graalvm.sl_launcher",
+      },
       "javaCompliance" : "17+",
       "dependencies" : [
         "com.oracle.truffle.sl.launcher",
       ],
       "distDependencies" : [
-          "sdk:GRAAL_SDK",
+          "sdk:POLYGLOT",
       ],
+      "useModulePath": True,
       "description" : "Truffle SL launchers using the polyglot API.",
       "allowsJavadocWarnings": True,
     },
@@ -1711,15 +1774,6 @@ suite = {
       "maven" : False,
      },
 
-    "TRUFFLE_GRAALVM_SUPPORT" : {
-      "native" : True,
-      "description" : "Truffle support distribution for SVM",
-      "layout" : {
-        "native-image.properties" : "file:mx.truffle/macro-truffle.properties",
-      },
-      "maven" : False,
-    },
-
     "TRUFFLE_NFI_GRAALVM_SUPPORT" : {
       "native" : True,
       "description" : "Truffle NFI support distribution for the GraalVM",
@@ -1789,14 +1843,13 @@ suite = {
         "requires" : [
         ],
         "exports" : [
-          # Unqualified exports
-          # [GR-46850] Replace with qualified exports.
-          "org.graalvm.shadowed.com.ibm.icu.lang",
-          "org.graalvm.shadowed.com.ibm.icu.math",
-          "org.graalvm.shadowed.com.ibm.icu.number",
-          "org.graalvm.shadowed.com.ibm.icu.text",
-          "org.graalvm.shadowed.com.ibm.icu.util",
-          "org.graalvm.shadowed.com.ibm.icu.charset",
+          # Qualified exports.
+          "org.graalvm.shadowed.com.ibm.icu.lang to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.math to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.number to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.text to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.util to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.charset to org.graalvm.js, org.graalvm.py",
         ],
       },
       "subDir" : "src",

@@ -81,23 +81,27 @@ import org.graalvm.compiler.replacements.nodes.FloatToHalfFloatNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.HalfFloatToFloatNode;
 import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
     @Override
     public void register(Plugins plugins, Replacements replacements, Architecture arch, boolean registerForeignCallMath, OptionValues options) {
-        register(plugins, replacements, registerForeignCallMath, options);
+        register(plugins, replacements, (AArch64) arch, registerForeignCallMath, options);
     }
 
-    public static void register(Plugins plugins, Replacements replacements, boolean registerForeignCallMath, OptionValues options) {
+    public static void register(Plugins plugins, Replacements replacements, AArch64 arch, boolean registerForeignCallMath, OptionValues options) {
         InvocationPlugins invocationPlugins = plugins.getInvocationPlugins();
         invocationPlugins.defer(new Runnable() {
             @Override
@@ -112,6 +116,7 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                     registerStringUTF16Plugins(invocationPlugins, replacements);
                 }
                 registerStringCodingPlugins(invocationPlugins, replacements);
+                registerSHA3Plugins(invocationPlugins, replacements, arch);
             }
         });
     }
@@ -558,4 +563,27 @@ public class AArch64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
             }
         });
     }
+
+    private static void registerSHA3Plugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
+        Registration rSha3 = new Registration(plugins, "sun.security.provider.SHA3", replacements);
+        rSha3.registerConditional(MessageDigestNode.SHA3Node.isSupported(arch), new InvocationPlugin("implCompress0", InvocationPlugin.Receiver.class, byte[].class, int.class) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode buf, ValueNode ofs) {
+                try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    ResolvedJavaType receiverType = targetMethod.getDeclaringClass();
+                    ResolvedJavaField stateField = helper.getField(receiverType, "state");
+                    ResolvedJavaField blockSizeField = helper.getField(receiverType, "blockSize");
+
+                    ValueNode nonNullReceiver = receiver.get();
+                    ValueNode bufStart = helper.arrayElementPointer(buf, JavaKind.Byte, ofs);
+                    ValueNode state = helper.loadField(nonNullReceiver, stateField);
+                    ValueNode stateStart = helper.arrayStart(state, JavaKind.Byte);
+                    ValueNode blockSize = helper.loadField(nonNullReceiver, blockSizeField);
+                    b.add(new MessageDigestNode.SHA3Node(bufStart, stateStart, blockSize));
+                    return true;
+                }
+            }
+        });
+    }
+
 }

@@ -45,7 +45,6 @@ import java.util.Arrays;
 import java.util.Comparator;
 
 import com.oracle.truffle.regex.charset.ClassSetContents;
-import com.oracle.truffle.regex.tregex.parser.ast.visitors.HasCaptureGroupsVisitor;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
@@ -92,7 +91,6 @@ public final class RegexASTBuilder {
     private final Counter.ThresholdCounter groupCount;
     private final NodeCountVisitor countVisitor;
     private final SetSourceSectionVisitor setSourceSectionVisitor;
-    private final HasCaptureGroupsVisitor hasCaptureGroupsVisitor;
     private final boolean canExplodeUTF16;
     private final CompilationBuffer compilationBuffer;
 
@@ -113,7 +111,6 @@ public final class RegexASTBuilder {
         this.groupCount = ast.getGroupCount();
         this.countVisitor = new NodeCountVisitor();
         this.setSourceSectionVisitor = options.isDumpAutomataWithSourceSections() ? new SetSourceSectionVisitor(ast) : null;
-        this.hasCaptureGroupsVisitor = options.getFlavor().hasSubexpressionCalls() ? new HasCaptureGroupsVisitor() : null;
         this.compilationBuffer = compilationBuffer;
         this.groupStartPositions = source.getOptions().getFlavor().needsGroupStartPositions() ? EconomicMap.create(Equivalence.IDENTITY_WITH_SYSTEM_HASHCODE) : null;
     }
@@ -300,7 +297,8 @@ public final class RegexASTBuilder {
      */
     public void pushConditionalBackReferenceGroup(Token.BackReference token) {
         assert token.kind == Token.Kind.conditionalBackreference;
-        pushGroup(token, ast.createConditionalBackReferenceGroup(token.getGroupNr()), null, true);
+        assert token.getGroupNumbers().length == 1;
+        pushGroup(token, ast.createConditionalBackReferenceGroup(token.getGroupNumbers()[0]), null, true);
     }
 
     public void pushConditionalBackReferenceGroup(int referencedGroupNumber, boolean namedReference) {
@@ -593,14 +591,33 @@ public final class RegexASTBuilder {
      */
     public void addBackReference(Token.BackReference token, boolean ignoreCase) {
         assert token.kind == Token.Kind.backReference;
-        BackReference backReference = ast.createBackReference(token.getGroupNr());
+        BackReference backReference = ast.createBackReference(token.getGroupNumbers());
         ast.addSourceSection(backReference, token);
         addTerm(backReference);
-        if (backReference.getGroupNr() >= groupCount.getCount()) {
+
+        boolean allNestedReferences = true;
+        boolean allForwardReferences = true;
+        boolean allNestedOrForwardReferences = true;
+
+        for (int groupNumber : backReference.getGroupNumbers()) {
+            boolean forwardReference = groupNumber >= groupCount.getCount();
+            boolean nestedReference = !forwardReference && isNestedBackReference(backReference, groupNumber);
+            if (nestedReference) {
+                ast.setGroupRecursivelyReferenced(groupNumber);
+            }
+            allNestedReferences = allNestedReferences && nestedReference;
+            allForwardReferences = allForwardReferences && forwardReference;
+            allNestedOrForwardReferences = allNestedOrForwardReferences && (forwardReference || nestedReference);
+        }
+
+        if (allForwardReferences) {
             backReference.setForwardReference();
-        } else if (isNestedBackReference(backReference)) {
+        }
+        if (allNestedReferences) {
             backReference.setNestedBackReference();
-            ast.setGroupRecursivelyReferenced(backReference.getGroupNr());
+        }
+        if (allNestedOrForwardReferences) {
+            backReference.setNestedOrForwardReference();
         }
         if (ignoreCase) {
             backReference.setIgnoreCaseReference();
@@ -611,10 +628,10 @@ public final class RegexASTBuilder {
         addBackReference(Token.createBackReference(groupNumber, namedReference), ignoreCase);
     }
 
-    private static boolean isNestedBackReference(BackReference backReference) {
+    private static boolean isNestedBackReference(BackReference backReference, int groupNumber) {
         RegexASTNode parent = backReference.getParent().getParent();
         while (true) {
-            if (parent.asGroup().getGroupNumber() == backReference.getGroupNr()) {
+            if (parent.asGroup().getGroupNumber() == groupNumber) {
                 return true;
             }
             parent = parent.getParent();
@@ -679,7 +696,7 @@ public final class RegexASTBuilder {
             replaceCurTermWithDeadNode();
             return;
         }
-        if (quantifier.getMax() == 0 && (!options.getFlavor().hasSubexpressionCalls() || !hasCaptureGroupsVisitor.hasCaptureGroups(curTerm))) {
+        if (quantifier.getMax() == 0) {
             removeCurTerm();
             return;
         }

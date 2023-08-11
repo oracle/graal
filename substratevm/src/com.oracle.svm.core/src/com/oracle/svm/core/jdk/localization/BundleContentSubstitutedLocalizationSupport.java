@@ -47,6 +47,7 @@ import com.oracle.svm.core.jdk.localization.bundles.StoredBundle;
 import com.oracle.svm.core.jdk.localization.compression.GzipBundleCompression;
 import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializationUtils;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 
 import sun.util.resources.OpenListResourceBundle;
 import sun.util.resources.ParallelListResourceBundle;
@@ -91,7 +92,11 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     @Platforms(Platform.HOSTED_ONLY.class)
     protected void onClassBundlePrepared(Class<?> bundleClass) {
         if (isBundleSupported(bundleClass)) {
-            prepareNonCompliant(bundleClass);
+            try {
+                prepareNonCompliant(bundleClass);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
         }
     }
 
@@ -155,7 +160,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Override
-    public void prepareNonCompliant(Class<?> clazz) {
+    public void prepareNonCompliant(Class<?> clazz) throws ReflectiveOperationException {
         storedBundles.put(clazz, new DelayedBundle(clazz));
     }
 }

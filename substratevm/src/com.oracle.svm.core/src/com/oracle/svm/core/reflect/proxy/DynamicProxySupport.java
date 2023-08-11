@@ -38,22 +38,16 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.configure.ConfigurationFiles;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
+import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ReflectionUtil;
 
 public class DynamicProxySupport implements DynamicProxyRegistry {
-
-    private static final String proxyConfigFilesOption = SubstrateOptionsParser.commandArgument(ConfigurationFiles.Options.DynamicProxyConfigurationFiles, "<comma-separated-config-files>");
-    private static final String proxyConfigResourcesOption = SubstrateOptionsParser.commandArgument(ConfigurationFiles.Options.DynamicProxyConfigurationResources,
-                    "<comma-separated-config-resources>");
 
     public static final Pattern PROXY_CLASS_NAME_PATTERN = Pattern.compile(".*\\$Proxy[0-9]+");
 
@@ -179,11 +173,7 @@ public class DynamicProxySupport implements DynamicProxyRegistry {
         ProxyCacheKey key = new ProxyCacheKey(interfaces);
         Object clazzOrError = proxyCache.get(key);
         if (clazzOrError == null) {
-            throw VMError.unsupportedFeature("Proxy class defined by the following sequence of interfaces " + Arrays.toString(interfaces) + " not found. " +
-                            "Proxy classes need to be defined at image build time by specifying the list of interfaces that they implement. " +
-                            "To define proxy classes use " + proxyConfigFilesOption + " and " + proxyConfigResourcesOption + " options. " +
-                            "Note: The order of interfaces used to create proxies matters. " +
-                            "Proxies with the same set of interfaces specified in a different order do not resolve to the same class and thus require individual configuration entries.");
+            MissingReflectionRegistrationUtils.forProxy(interfaces);
         }
         if (clazzOrError instanceof Throwable) {
             throw new GraalError((Throwable) clazzOrError);

@@ -41,6 +41,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.Node.ValueNumberable;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.FrameStateBuilder;
@@ -118,6 +119,7 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
             // Set up a default value that everything constructed by GraphKit will use.
             graph.withNodeSourcePosition(NodeSourcePosition.substitution(stubMethod));
         }
+        graph.recordMethod(stubMethod);
         this.wordTypes = wordTypes;
         this.graphBuilderPlugins = graphBuilderPlugins;
         this.lastFixedNode = graph.start();
@@ -153,9 +155,9 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
         return graph.add(changeToWord(node));
     }
 
-    public <T extends ValueNode> T changeToWord(T node) {
-        if (wordTypes != null && wordTypes.isWord(node)) {
-            node.setStamp(wordTypes.getWordStamp(StampTool.typeOrNull(node)));
+    public <T extends Node> T changeToWord(T node) {
+        if (node instanceof ValueNode valueNode && wordTypes != null && wordTypes.isWord(valueNode)) {
+            valueNode.setStamp(wordTypes.getWordStamp(StampTool.typeOrNull(valueNode)));
         }
         return node;
     }
@@ -170,7 +172,7 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
     }
 
     @Override
-    public <T extends ValueNode> T append(T node) {
+    public <T extends Node> T append(T node) {
         if (node.graph() != null) {
             return node;
         }

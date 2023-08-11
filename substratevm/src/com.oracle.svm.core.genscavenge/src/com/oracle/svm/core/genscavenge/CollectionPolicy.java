@@ -67,8 +67,8 @@ public interface CollectionPolicy {
         switch (name) {
             case "Adaptive":
                 return AdaptiveCollectionPolicy.class;
-            case "AggressiveShrink":
-                return AggressiveShrinkCollectionPolicy.class;
+            case "LibGraal":
+                return LibGraalCollectionPolicy.class;
             case "Proportionate":
                 return ProportionateSpacesPolicy.class;
             case "BySpaceAndTime":

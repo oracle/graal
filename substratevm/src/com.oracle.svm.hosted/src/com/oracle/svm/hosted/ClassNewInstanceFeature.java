@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 
 @AutomaticallyRegisteredFeature
@@ -34,7 +34,7 @@ public class ClassNewInstanceFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
-        access.registerAsRoot(Object.class.getDeclaredConstructors()[0], true);
+        access.registerAsRoot(Object.class.getDeclaredConstructors()[0], true, "Runtime support, registered in " + ClassNewInstanceFeature.class);
     }
 
 }

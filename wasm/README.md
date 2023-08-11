@@ -91,7 +91,7 @@ $ mx --dy /truffle,/compiler --jdk jvmci unittest \
   -Dwasmtest.watToWasmExecutable=$WABT_DIR/wat2wasm \
   -Dwasmtest.testFilter="^.*branch.*\$" \
   WasmTestSuite
-``
+```
 
 This command results in the following output:
 

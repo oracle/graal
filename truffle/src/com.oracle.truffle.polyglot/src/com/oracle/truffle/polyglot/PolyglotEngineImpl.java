@@ -1254,6 +1254,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             contexts.clear();
 
             if (RUNTIME.onEngineClosing(this.runtimeData)) {
+                getAPIAccess().engineClosed(api);
                 return;
             }
             closingThread = currentThread;

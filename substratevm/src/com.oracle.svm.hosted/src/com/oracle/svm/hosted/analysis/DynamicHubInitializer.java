@@ -216,7 +216,7 @@ public class DynamicHubInitializer {
         } catch (VerifyError e) {
             /* Synthesize a VerifyError to be thrown at run time. */
             AnalysisMethod throwVerifyError = metaAccess.lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
-            bb.addRootMethod(throwVerifyError, true);
+            bb.addRootMethod(throwVerifyError, true, "Class initialization error, registered in " + DynamicHubInitializer.class);
             return new ClassInitializationInfo(new MethodPointer(throwVerifyError));
         } catch (Throwable t) {
             /*
@@ -235,7 +235,7 @@ public class DynamicHubInitializer {
         AnalysisMethod classInitializer = type.getClassInitializer();
         if (classInitializer != null) {
             assert classInitializer.getCode() != null;
-            bb.addRootMethod(classInitializer, true);
+            bb.addRootMethod(classInitializer, true, "Class initialization, registered in " + DynamicHubInitializer.class);
             classInitializerFunction = new MethodPointer(classInitializer);
         }
         return new ClassInitializationInfo(classInitializerFunction);

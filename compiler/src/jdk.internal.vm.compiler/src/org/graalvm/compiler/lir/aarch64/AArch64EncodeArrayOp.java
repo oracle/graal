@@ -40,7 +40,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName;
@@ -52,11 +52,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 5541,
-          lineEnd   = 5653,
-          commit    = "1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4",
-          sha1      = "95adbb3a56ad94eca2698b6fd6d8359a15069de7")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L5541-L5653",
+          sha1 = "95adbb3a56ad94eca2698b6fd6d8359a15069de7")
 // @formatter:on
 @Opcode("AArch64_ENCODE_ARRAY")
 public final class AArch64EncodeArrayOp extends AArch64LIRInstruction {

@@ -1289,6 +1289,12 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
             Register scratchRegister = scratch.getRegister();
             if (SubstrateOptions.SpawnIsolates.getValue()) { // method id is offset from heap base
                 asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, threadArg.getRegister(), threadIsolateOffset));
+                /*
+                 * Load the isolate pointer from the JNIEnv argument (same as the isolate thread).
+                 * The isolate pointer is equivalent to the heap base address (which would normally
+                 * be provided via Isolate.getHeapBase which is a no-op), which we then use to
+                 * access the method object and read the entry point.
+                 */
                 asm.add(64, scratchRegister, scratchRegister, methodIdArg.getRegister());
                 asm.ldr(64, scratchRegister, AArch64Address.createImmediateAddress(64, AArch64Address.AddressingMode.IMMEDIATE_UNSIGNED_SCALED, scratchRegister, methodObjEntryPointOffset));
             } else { // method id is address of method object

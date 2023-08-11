@@ -84,7 +84,7 @@ public final class RegexUnifier {
                     dump.append("\\B");
                     break;
                 case backReference:
-                    dump.append("\\").append(((Token.BackReference) token).getGroupNr());
+                    dump.append("\\").append(((Token.BackReference) token).getGroupNumbers()[0]);
                     break;
                 case quantifier:
                     final Token.Quantifier quantifier = (Token.Quantifier) token;

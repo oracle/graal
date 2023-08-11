@@ -37,7 +37,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import jdk.vm.ci.code.site.ImplicitExceptionDispatch;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
@@ -52,6 +51,7 @@ import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.DataSectionReference;
 import jdk.vm.ci.code.site.ExceptionHandler;
+import jdk.vm.ci.code.site.ImplicitExceptionDispatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.code.site.Mark;

@@ -105,6 +105,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return selected;
     }
 
+    public final boolean ropProtection = access.getFieldValue("VM_Version::_rop_protection", Boolean.class, "bool", false);
+
     public final boolean cAssertions = getConstant("ASSERT", Boolean.class);
 
     public final int codeEntryAlignment = getFlag("CodeEntryAlignment", Integer.class);
@@ -137,7 +139,10 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class);
     public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64"));
 
-    public final boolean preserveFramePointer = getFlag("PreserveFramePointer", Boolean.class);
+    public final String onSpinWaitInst = getFlag("OnSpinWaitInst", String.class, "none", osArch.equals("aarch64"));
+    public final int onSpinWaitInstCount = getFlag("OnSpinWaitInstCount", Integer.class, 0, osArch.equals("aarch64"));
+
+    public final boolean preserveFramePointer = getFlag("PreserveFramePointer", Boolean.class) || ropProtection;
 
     public final int diagnoseSyncOnValueBasedClasses = getFlag("DiagnoseSyncOnValueBasedClasses", Integer.class);
 

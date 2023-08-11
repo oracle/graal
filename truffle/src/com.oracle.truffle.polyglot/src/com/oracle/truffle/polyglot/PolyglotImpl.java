@@ -51,9 +51,11 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.Reader;
 import java.lang.reflect.Method;
+import java.math.BigInteger;
 import java.net.URI;
 import java.net.URL;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -115,6 +117,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     private final Map<Class<?>, PolyglotValueDispatch> primitiveValues = new HashMap<>();
     Value hostNull; // effectively final
     private PolyglotValueDispatch disconnectedHostValue;
+    private PolyglotValueDispatch disconnectedBigIntegerHostValue;
     private volatile Object defaultFileSystemContext;
 
     private static volatile AbstractPolyglotImpl abstractImpl;
@@ -164,6 +167,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     protected void initialize() {
         this.hostNull = getAPIAccess().newValue(PolyglotValueDispatch.createHostNull(this), null, EngineAccessor.HOST.getHostNull());
         this.disconnectedHostValue = new PolyglotValueDispatch.HostValue(this);
+        this.disconnectedBigIntegerHostValue = new PolyglotValueDispatch.BigIntegerHostValue(this);
         PolyglotValueDispatch.createDefaultValues(this, null, primitiveValues);
     }
 
@@ -449,7 +453,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
             } else {
                 guestValue = EngineAccessor.HOST.toDisconnectedHostObject(hostValue);
             }
-            return getAPIAccess().newValue(disconnectedHostValue, null, guestValue);
+            return getAPIAccess().newValue(hostValue instanceof BigInteger ? disconnectedBigIntegerHostValue : disconnectedHostValue, null, guestValue);
         }
     }
 
@@ -526,6 +530,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     @Override
     public AbstractHostAccess createHostAccess() {
         return new PolyglotHostAccess(this);
+    }
+
+    @Override
+    public boolean copyResources(Path targetFolder, String... components) throws IOException {
+        return InternalResourceCache.copyResourcesForNativeImage(targetFolder, components);
     }
 
     @Override

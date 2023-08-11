@@ -56,6 +56,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
+import com.oracle.svm.hosted.analysis.ReachabilityTracePrinter;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -718,7 +719,6 @@ public class NativeImageGenerator {
                 }
             }
 
-            ProgressReporter.singleton().createBreakdowns(hMetaAccess, compileQueue.getCompilationTasks(), image.getHeap().getObjects());
             compileQueue.purge();
 
             int numCompilations = codeCache.getOrderedCompilations().size();
@@ -744,8 +744,7 @@ public class NativeImageGenerator {
                 AfterImageWriteAccessImpl afterConfig = new AfterImageWriteAccessImpl(featureHandler, loader, hUniverse, inv, tmpDir, image.getImageKind(), debug);
                 featureHandler.forEachFeature(feature -> feature.afterImageWrite(afterConfig));
             }
-            reporter.printCreationEnd(image.getImageFileSize(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(),
-                            numCompilations, image.getDebugInfoSize());
+            reporter.printCreationEnd(image.getImageFileSize(), heap.getObjectCount(), image.getImageHeapSize(), codeCache.getCodeAreaSize(), numCompilations, image.getDebugInfoSize());
         }
     }
 
@@ -818,11 +817,13 @@ public class NativeImageGenerator {
             OnAnalysisExitAccess onExitConfig = new OnAnalysisExitAccessImpl(featureHandler, loader, bb, debug);
             featureHandler.forEachFeature(feature -> feature.onAnalysisExit(onExitConfig));
 
+            String reportsPath = SubstrateOptions.reportsPath();
             /*
              * Execute analysis reporting here. This code is executed even if unsupported features
              * are reported or the analysis fails due to any other reasons.
              */
-            AnalysisReporter.printAnalysisReports(imageName, options, SubstrateOptions.reportsPath(), bb);
+            AnalysisReporter.printAnalysisReports(imageName, options, reportsPath, bb);
+            ReachabilityTracePrinter.report(imageName, options, reportsPath, bb);
         }
         if (NativeImageOptions.ReturnAfterAnalysis.getValue()) {
             return true;
@@ -1084,16 +1085,17 @@ public class NativeImageGenerator {
             bb.registerTypeAsInHeap(bb.addRootClass(CFunctionPointer[].class, false, false), "root class");
             bb.registerTypeAsInHeap(bb.addRootClass(PointerBase[].class, false, false), "root class");
 
-            bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true);
-            bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true);
+            bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true,
+                            "Runtime support, registered in " + NativeImageGenerator.class);
+            bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, "Runtime support, registered in " + NativeImageGenerator.class);
 
             for (JavaKind kind : JavaKind.values()) {
                 if (kind.isPrimitive() && kind != JavaKind.Void) {
                     bb.addRootClass(kind.toJavaClass(), false, true);
                     bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInHeap("root class");
                     bb.addRootField(kind.toBoxedJavaClass(), "value");
-                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true);
-                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true);
+                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true, "Runtime support, registered in " + NativeImageGenerator.class);
+                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true, "Runtime support, registered in " + NativeImageGenerator.class);
                     /*
                      * Register the cache location as reachable.
                      * BoxingSnippets$Templates#getCacheLocation accesses the cache field.
@@ -1236,7 +1238,7 @@ public class NativeImageGenerator {
     @Platforms(Platform.HOSTED_ONLY.class)
     static class SubstitutionInvocationPlugins extends InvocationPlugins {
 
-        private AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
+        private final AnnotationSubstitutionProcessor annotationSubstitutionProcessor;
         private EconomicMap<String, Integer> missingIntrinsicMetrics;
 
         SubstitutionInvocationPlugins(AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {

@@ -210,7 +210,8 @@
             "total",
             "reachable",
             "reflection",
-            "jni"
+            "jni",
+            "foreign_downcalls"
           ],
           "additionalProperties": false,
           "properties": {
@@ -233,6 +234,11 @@
               "type": "integer",
               "default": -1,
               "title": "The number of methods registered for JNI access (or -1 if unset)"
+            },
+            "foreign_downcalls": {
+              "type": "integer",
+              "default": -1,
+              "title": "The number of registered foreign downcalls (or -1 if unset)"
             }
           }
         }

@@ -80,6 +80,7 @@ import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.allocationprofile.AllocationCounter;
 import com.oracle.svm.core.allocationprofile.AllocationSite;
@@ -307,7 +308,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
         } else if (!hub.isInstanceClass() || LayoutEncoding.isSpecial(hub.getLayoutEncoding())) {
             throw new InstantiationException("Can only allocate instance objects for concrete classes.");
         } else if (!hub.isInstantiated()) {
-            if (MissingReflectionRegistrationUtils.throwMissingRegistrationErrors()) {
+            if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
                 MissingReflectionRegistrationUtils.forClass(hub.getTypeName());
             }
             throw new IllegalArgumentException("Type " + DynamicHub.toClass(hub).getTypeName() + " is instantiated reflectively but was never registered." +
