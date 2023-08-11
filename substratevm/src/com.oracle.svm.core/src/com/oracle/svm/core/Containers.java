@@ -39,6 +39,9 @@ import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.internal.platform.Container;
+import jdk.internal.platform.Metrics;
+
 /**
  * Provides container awareness to the rest of the VM.
  *
@@ -85,10 +88,10 @@ public class Containers {
 
         int limitCount = cpuCount;
         if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
-            ContainerInfo info = new ContainerInfo();
-            if (info.isContainerized()) {
-                long quota = info.getCpuQuota();
-                long period = info.getCpuPeriod();
+            Metrics metrics = Container.metrics();
+            if (metrics != null) {
+                long quota = metrics.getCpuQuota();
+                long period = metrics.getCpuPeriod();
 
                 int quotaCount = 0;
                 if (quota > -1 && period > 0) {
@@ -110,8 +113,7 @@ public class Containers {
      */
     public static boolean isContainerized() {
         if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
-            ContainerInfo info = new ContainerInfo();
-            return info.isContainerized();
+            return Container.metrics() != null;
         }
         return false;
     }
@@ -119,19 +121,16 @@ public class Containers {
     /**
      * Returns the limit of available memory for this process.
      *
-     * @return memory limit in bytes or {@link Containers#UNKNOWN}
+     * @return memory limit in bytes or -1 for unlimited
      */
     public static long memoryLimitInBytes() {
         if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
-            ContainerInfo info = new ContainerInfo();
-            if (info.isContainerized()) {
-                long memoryLimit = info.getMemoryLimit();
-                if (memoryLimit > 0) {
-                    return memoryLimit;
-                }
+            Metrics metrics = Container.metrics();
+            if (metrics != null) {
+                return metrics.getMemoryLimit();
             }
         }
-        return UNKNOWN;
+        return -1;
     }
 }
 
