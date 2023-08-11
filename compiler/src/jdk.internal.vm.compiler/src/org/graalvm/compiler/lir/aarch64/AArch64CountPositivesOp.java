@@ -30,8 +30,15 @@ import static jdk.vm.ci.aarch64.AArch64.r4;
 import static jdk.vm.ci.aarch64.AArch64.r5;
 import static jdk.vm.ci.aarch64.AArch64.r6;
 import static jdk.vm.ci.aarch64.AArch64.r7;
+import static jdk.vm.ci.aarch64.AArch64.v0;
+import static jdk.vm.ci.aarch64.AArch64.v1;
+import static jdk.vm.ci.aarch64.AArch64.v2;
+import static jdk.vm.ci.aarch64.AArch64.v3;
 import static jdk.vm.ci.aarch64.AArch64.zr;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction.LD1_MULTIPLE_4R;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createStructureImmediatePostIndexAddress;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_PAIR_POST_INDEXED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_PAIR_SIGNED_SCALED;
 import static org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode.IMMEDIATE_POST_INDEXED;
@@ -42,6 +49,7 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.ShiftType.LSL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
+import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
@@ -58,8 +66,7 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 /**
- * Returns {@code true} if the given byte array contains any negative bytes, otherwise
- * {@code false}.
+ * Returns the number of positive bytes.
  */
 // @formatter:off
 @SyncPort(from = "https://github.com/openjdk/jdk/blob/bb3aac606397481cb4832cb75ec0a549d079ab13/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L4937-L5006",
@@ -103,6 +110,10 @@ public final class AArch64CountPositivesOp extends AArch64ComplexVectorOp {
                         r7.asValue(),
                         // r8 and r9 are scratch registers
                         r10.asValue(),
+                        v0.asValue(),
+                        v1.asValue(),
+                        v2.asValue(),
+                        v3.asValue(),
         };
     }
 
@@ -208,6 +219,11 @@ public final class AArch64CountPositivesOp extends AArch64ComplexVectorOp {
         Register tmp5 = r7;
         Register tmp6 = r10;
 
+        Register vtmp0 = v0;
+        Register vtmp1 = v1;
+        Register vtmp2 = v2;
+        Register vtmp3 = v3;
+
         masm.compare(32, len, 15);
         masm.branchConditionally(ConditionFlag.GT, labelStubLong);
         // The only case when execution falls into this code is when pointer is near
@@ -276,20 +292,39 @@ public final class AArch64CountPositivesOp extends AArch64ComplexVectorOp {
         // better generate 7 * orr(...) + 1 andr(...) + 1 cbnz(...) which saves 3
         // instructions per cycle and have less branches, but this approach disables
         // early return, thus, all 64 bytes are loaded and checked every time.
-        masm.ldp(64, tmp2, tmp3, AArch64Address.createPairBaseRegisterOnlyAddress(64, ary1));
-        masm.ldp(64, tmp4, tmp5, AArch64Address.createImmediateAddress(64, IMMEDIATE_PAIR_SIGNED_SCALED, ary1, 16));
-        masm.ldp(64, rscratch1, rscratch2, AArch64Address.createImmediateAddress(64, IMMEDIATE_PAIR_SIGNED_SCALED, ary1, 32));
-        masm.ldp(64, tmp6, tmp1, AArch64Address.createImmediateAddress(64, IMMEDIATE_PAIR_SIGNED_SCALED, ary1, 48));
-        masm.add(64, ary1, ary1, LARGE_LOOP_SIZE);
+        // masm.ldp(64, tmp2, tmp3, AArch64Address.createPairBaseRegisterOnlyAddress(64, ary1));
+        // masm.ldp(64, tmp4, tmp5, AArch64Address.createImmediateAddress(64,
+        // IMMEDIATE_PAIR_SIGNED_SCALED, ary1, 16));
+        // masm.ldp(64, rscratch1, rscratch2, AArch64Address.createImmediateAddress(64,
+        // IMMEDIATE_PAIR_SIGNED_SCALED, ary1, 32));
+        // masm.ldp(64, tmp6, tmp1, AArch64Address.createImmediateAddress(64,
+        // IMMEDIATE_PAIR_SIGNED_SCALED, ary1, 48));
+        // masm.add(64, ary1, ary1, LARGE_LOOP_SIZE);
+        // masm.sub(32, len, len, LARGE_LOOP_SIZE);
+        // masm.orr(64, tmp2, tmp2, tmp3);
+        // masm.orr(64, tmp4, tmp4, tmp5);
+        // masm.orr(64, rscratch1, rscratch1, rscratch2);
+        // masm.orr(64, tmp6, tmp6, tmp1);
+        // masm.orr(64, tmp2, tmp2, tmp4);
+        // masm.orr(64, rscratch1, rscratch1, tmp6);
+        // masm.orr(64, tmp2, tmp2, rscratch1);
+        // masm.tst(64, tmp2, UPPER_BIT_MASK);
+
+        // read 4 vectors
+        masm.neon.ld1MultipleVVVV(FullReg, ElementSize.Byte, vtmp0, vtmp1, vtmp2, vtmp3,
+                        createStructureImmediatePostIndexAddress(LD1_MULTIPLE_4R, FullReg, ElementSize.Byte, ary1, LARGE_LOOP_SIZE));
         masm.sub(32, len, len, LARGE_LOOP_SIZE);
-        masm.orr(64, tmp2, tmp2, tmp3);
-        masm.orr(64, tmp4, tmp4, tmp5);
-        masm.orr(64, rscratch1, rscratch1, rscratch2);
-        masm.orr(64, tmp6, tmp6, tmp1);
-        masm.orr(64, tmp2, tmp2, tmp4);
-        masm.orr(64, rscratch1, rscratch1, tmp6);
-        masm.orr(64, tmp2, tmp2, rscratch1);
-        masm.tst(64, tmp2, UPPER_BIT_MASK);
+        // combine all into 1 vector
+        masm.neon.orrVVV(FullReg, vtmp0, vtmp0, vtmp1);
+        masm.neon.orrVVV(FullReg, vtmp2, vtmp2, vtmp3);
+        masm.neon.orrVVV(FullReg, vtmp0, vtmp0, vtmp2);
+        // reduce to 8 bytes with pairwise signed minimum
+        masm.neon.sminpVVV(FullReg, ElementSize.Byte, vtmp0, vtmp0, vtmp2);
+        // right-shift by 7 to get only the sign bits
+        masm.neon.ushrVVI(FullReg, ElementSize.Byte, vtmp0, vtmp0, 7);
+        // check if result is zero
+        masm.fcmpZero(64, vtmp0);
+
         masm.branchConditionally(ConditionFlag.NE, labelRetAdjustLong);
         masm.compare(32, len, LARGE_LOOP_SIZE);
         masm.branchConditionally(ConditionFlag.GE, labelLargeLoop);
