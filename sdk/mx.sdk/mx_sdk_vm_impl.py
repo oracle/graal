@@ -2977,7 +2977,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         self.component = component
         self.jvm_launcher = _skip_libraries(self.language_library_config) or not _get_svm_support().is_supported()
         _dependencies = [] if self.jvm_launcher else [GraalVmNativeImage.project_name(self.language_library_config)]
-        super(NativeLibraryLauncherProject, self).__init__(_suite, NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config), 'src', [], _dependencies, None, _dir, 'executable', deliverable=self.language_library_config.language, use_jdk_headers=True)
+        toolchain = 'mx:DEFAULT_NINJA_TOOLCHAIN' if mx.is_windows() else 'sdk:LLVM_NINJA_TOOLCHAIN'
+        super(NativeLibraryLauncherProject, self).__init__(_suite, NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config), 'src', [],
+            _dependencies, None, _dir, 'executable', deliverable=self.language_library_config.language, use_jdk_headers=True, toolchain=toolchain)
 
     @staticmethod
     def library_launcher_project_name(language_library_config):
@@ -2992,13 +2994,22 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             mx.abort("If multiple launcher targets are specified they need to be in the same directory: {}".format(_exe_dirs))
         _exe_dir = _exe_dirs.pop()
         _dynamic_cflags = [
+            ('/std:c++17' if mx.is_windows() else '-std=c++17'),
             '-DCP_SEP=' + os.pathsep,
             '-DDIR_SEP=' + ('\\\\' if mx.is_windows() else '/'),
+            '-DGRAALVM_VERSION=' + _suite.release_version(),
         ]
         if not mx.is_windows():
-            _dynamic_cflags += ['-pthread']
+            _dynamic_cflags += ['-stdlib=libc++', '-pthread']
         if mx.is_darwin():
             _dynamic_cflags += ['-ObjC++']
+
+        def escaped_relpath(path):
+            relative = relpath(path, start=_exe_dir)
+            if mx.is_windows():
+                return relative.replace('\\', '\\\\')
+            else:
+                return relative
 
         _graalvm_home = _get_graalvm_archive_path("")
 
@@ -3006,23 +3017,46 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _cp = NativePropertiesBuildTask.get_launcher_classpath(_dist, _graalvm_home, self.language_library_config, self.component, exclude_implicit=True)
         _cp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _cp]
         # path from language launcher to jars
-        _cp = [relpath(x, start=_exe_dir) for x in _cp]
-        if mx.is_windows():
-            _cp = [x.replace('\\', '\\\\') for x in _cp]
+        _cp = [escaped_relpath(x) for x in _cp]
+
+        _mp = _cp
+
+        launcher_jars = self.language_library_config.jar_distributions
+        assert len(launcher_jars) > 0, launcher_jars
+        main_class = self.language_library_config.main_class
+        main_class_package = main_class[0:main_class.rindex(".")]
+        main_module_export = main_class_package + " to org.graalvm.launcher"
+        main_module = None
+        for launcher_jar in launcher_jars:
+            dist = mx.distribution(launcher_jar)
+            if hasattr(dist, 'moduleInfo') and main_module_export in dist.moduleInfo.get('exports', []):
+                main_module = dist.moduleInfo['name']
+
+        if not main_module:
+            mx.abort("The distribution with main class {} among {} must have export: {}".format(main_class, launcher_jars, main_module_export))
+
         _dynamic_cflags += [
+            '-DLAUNCHER_MAIN_MODULE=' + main_module,
             '-DLAUNCHER_CLASS=' + self.language_library_config.main_class,
-            '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"',
+            # '-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"',
+            '-DLAUNCHER_MODULE_PATH="{\\"' + '\\", \\"'.join(_mp) + '\\"}"',
         ]
 
         # path to libjvm
         if mx.is_windows():
             _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'bin', 'server', 'jvm.dll')
-            _libjvm_path = relpath(_libjvm_path, start=_exe_dir).replace('\\', '\\\\')
         else:
             _libjvm_path = join(_dist.path_substitutions.substitute('<jre_base>'), 'lib', 'server', mx.add_lib_suffix("libjvm"))
-            _libjvm_path = relpath(_libjvm_path, start=_exe_dir)
+        _libjvm_path = escaped_relpath(_libjvm_path)
         _dynamic_cflags += [
             '-DLIBJVM_RELPATH=' + _libjvm_path,
+        ]
+
+        languages_dir = join(_graalvm_home, "languages")
+        tools_dir = join(_graalvm_home, "tools")
+        _dynamic_cflags += [
+            '-DLANGUAGES_DIR=' + escaped_relpath(languages_dir),
+            '-DTOOLS_DIR=' + escaped_relpath(tools_dir),
         ]
 
         # path to libjli - only needed on osx for AWT
@@ -3031,7 +3065,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             if mx_sdk_vm.base_jdk_version() < 17:
                 _libjli_path = join(_libjli_path, 'jli')
             _libjli_path = join(_libjli_path, mx.add_lib_suffix("libjli"))
-            _libjli_path = relpath(_libjli_path, start=_exe_dir)
+            _libjli_path = escaped_relpath(_libjli_path)
             _dynamic_cflags += [
                 '-DLIBJLI_RELPATH=' + _libjli_path,
             ]
@@ -3042,9 +3076,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             _lib_path = join(_graalvm_home, "languages", self.language_library_config.language, self.default_language_home_relative_libpath())
         else:
             _lib_path = _dist.find_single_source_location('dependency:' + GraalVmLibrary.project_name(self.language_library_config))
-        _liblang_relpath = relpath(_lib_path, start=_exe_dir)
         _dynamic_cflags += [
-            '-DLIBLANG_RELPATH=' + (_liblang_relpath.replace('\\', '\\\\') if mx.is_windows() else _liblang_relpath)
+            '-DLIBLANG_RELPATH=' + escaped_relpath(_lib_path)
         ]
 
         if len(self.language_library_config.option_vars) > 0:
@@ -3066,9 +3099,27 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
     def ldlibs(self):
         _dynamic_ldlibs = []
         if not mx.is_windows():
+            # Link libc++ statically
+            llvm_toolchain = mx.distribution("LLVM_TOOLCHAIN").get_output()
+            libcxx_dir = join(llvm_toolchain, 'lib')
+            libcxx_arch = mx.get_arch().replace('amd64', 'x86_64')
+            if mx.is_linux():
+                libcxx_dir = join(libcxx_dir, libcxx_arch + '-unknown-linux-gnu')
+            _dynamic_ldlibs += [
+                '-stdlib=libc++',
+                '-nostdlib++', # avoids to dynamically link libc++
+                join(libcxx_dir, 'libc++.a'),
+                join(libcxx_dir, 'libc++abi.a'),
+            ]
+
             _dynamic_ldlibs += ['-ldl']
-        if mx.is_darwin():
-            _dynamic_ldlibs += ['-framework', 'Foundation']
+            if mx.is_darwin():
+                _dynamic_ldlibs += ['-framework', 'Foundation']
+
+                default_min_version = {'x86_64': '10.13', 'aarch64': '11.0'}[libcxx_arch]
+                min_version = os.getenv('MACOSX_DEPLOYMENT_TARGET', default_min_version)
+                _dynamic_ldlibs += ['-mmacosx-version-min=' + min_version]
+
         return super(NativeLibraryLauncherProject, self).ldlibs + _dynamic_ldlibs
 
     def default_language_home_relative_libpath(self):
