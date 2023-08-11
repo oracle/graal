@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,22 +24,14 @@
  */
 package com.oracle.svm.core.jdk;
 
-import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
+import java.util.function.Predicate;
 
-import org.graalvm.nativeimage.Platform;
+import com.oracle.svm.util.ReflectionUtil;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-
-@TargetClass(className = "jdk.internal.platform.CgroupMetrics", onlyWith = PlatformHasClass.class)
-final class Target_jdk_internal_platform_CgroupMetrics {
-    @Substitute
-    public static boolean isUseContainerSupport() {
-        /*
-         * It is important that this method can be folded to a constant before the static analysis,
-         * i.e., only relies on hosted options and other conditions that are constant. Inlining
-         * before analysis ensures that the constant is propagated out to call sites.
-         */
-        return UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class);
+/** A predicate to tell whether this platform includes the argument class. */
+final class PlatformHasClass implements Predicate<String> {
+    @Override
+    public boolean test(String className) {
+        return ReflectionUtil.lookupClass(true, className) != null;
     }
 }
