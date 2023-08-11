@@ -144,6 +144,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             for (String resName : foundResources) {
                 Optional<InputStream> content = moduleReader.open(resName);
                 if (content.isEmpty()) {
+                    /* This is to be resilient, but the resources returned by list() should exist */
                     resourceCollector.registerNegativeQuery(info.module, resName);
                     continue;
                 }

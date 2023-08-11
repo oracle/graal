@@ -25,11 +25,11 @@
 
 package com.oracle.svm.core.jdk.resources;
 
-public class ResourceException extends ResourceStorageEntryBase {
+public class ResourceExceptionEntry extends ResourceStorageEntryBase {
 
     private final Exception e;
 
-    public ResourceException(Exception e) {
+    public ResourceExceptionEntry(Exception e) {
         this.e = e;
     }
 
