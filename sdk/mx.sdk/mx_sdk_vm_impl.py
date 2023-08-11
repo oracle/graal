@@ -1357,6 +1357,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if isinstance(image_config, mx_sdk.LanguageLibraryConfig):
                 if image_config.main_class:
                     build_args += ['-Dorg.graalvm.launcher.class=' + image_config.main_class]
+                if has_component('svmee', stage1=True):
+                    build_args += ['--macro:truffle-language-library']
 
             source_type = 'skip' if isinstance(image_config, mx_sdk.LibraryConfig) and _skip_libraries(image_config) else 'dependency'
             # The launcher home is relative to the native image, which only exists in the final distribution.
