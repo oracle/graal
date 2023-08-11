@@ -30,10 +30,12 @@ import java.util.List;
 import java.util.ListResourceBundle;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ForkJoinPool;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
@@ -172,11 +174,11 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Override
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
-        super.prepareBundle(bundleName, bundle, locale);
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule) {
+        super.prepareBundle(bundleName, bundle, null);
         /* Initialize ResourceBundle.keySet eagerly */
         bundle.keySet();
-        this.existingBundles.add(control.toBundleName(bundleName, locale));
+        this.existingBundles.add(control.toBundleName(bundleName, bundle.getLocale()));
     }
 
     @Override
@@ -184,4 +186,5 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         super.prepareClassResourceBundle(basename, bundleClass);
         this.existingBundles.add(bundleClass.getName());
     }
+
 }

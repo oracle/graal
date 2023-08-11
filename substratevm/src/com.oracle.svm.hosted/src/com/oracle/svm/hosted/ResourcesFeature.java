@@ -304,9 +304,9 @@ public final class ResourcesFeature implements InternalFeature {
             }
 
             if (isDirectory) {
-                Resources.registerDirectoryResource(module, resourcePath, content);
+                Resources.singleton().registerDirectoryResource(module, resourcePath, content);
             } else {
-                Resources.registerResource(module, resourcePath, is, fromJar);
+                Resources.singleton().registerResource(module, resourcePath, is, fromJar);
             }
 
             try {
@@ -391,9 +391,11 @@ public final class ResourcesFeature implements InternalFeature {
                             .map(e -> new CompiledConditionalPattern(e.condition(), makeResourcePattern(e.pattern())))
                             .collect(Collectors.toSet());
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                for (ResourcePattern resourcePattern : includePatterns) {
-                    Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern.pattern());
-                }
+                includePatterns.stream()
+                                .map(pattern -> pattern.compiledPattern)
+                                .forEach(resourcePattern -> {
+                                    Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern.pattern());
+                                });
             }
             ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
             DebugContext debugContext = beforeAnalysisAccess.getDebugContext();
@@ -535,7 +537,6 @@ public final class ResourcesFeature implements InternalFeature {
             Resources.singleton().registerNegativeQuery(module, resourceName);
         }
 
-        // TODO if pass all gates - remove
         @Override
         public void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition, String content, boolean fromJar) {
             access.registerReachabilityHandler(e -> registerResourceIfNeeded(true, module, dir, content, fromJar), access.findClassByName(condition.getTypeName()));

@@ -49,7 +49,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.BuildPhaseProvider;
-import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -167,20 +166,25 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    private static void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar) {
-
+    private void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar, boolean isNegativeQuery) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
         Module m = module != null && module.isNamed() ? module : null;
         if (m != null) {
             m = RuntimeModuleSupport.instance().getRuntimeModuleForHostedModule(m);
         }
-        var resources = singleton().resources;
         synchronized (resources) {
             Pair<Module, String> key = createStorageKey(m, resourceName);
             ResourceStorageEntryBase entry = resources.get(key);
+            if (isNegativeQuery) {
+                if (entry == null) {
+                    resources.put(key, NEGATIVE_QUERY_MARKER);
+                }
+                return;
+            }
+
             if (entry == null || entry == NEGATIVE_QUERY_MARKER) {
-                entry = newEntry == null ? new ResourceStorageEntry(isDirectory, fromJar) : newEntry;
                 updateTimeStamp();
+                entry = new ResourceStorageEntry(isDirectory, fromJar);
                 resources.put(key, entry);
             } else {
                 if (key.getLeft() != null) {
@@ -211,12 +215,12 @@ public final class Resources {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerResource(Module module, String resourceName, byte[] resourceContent) {
-        addEntry(module, resourceName, false, resourceContent, true);
+        addEntry(module, resourceName, false, resourceContent, true, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerResource(Module module, String resourceName, InputStream is, boolean fromJar) {
-        addEntry(module, resourceName, false, inputStreamToByteArray(is), fromJar);
+        addEntry(module, resourceName, false, inputStreamToByteArray(is), fromJar, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -241,7 +245,7 @@ public final class Resources {
          * specified directory, separated with new line delimiter and joined into one string which
          * is later converted into a byte array and placed into the resources map.
          */
-        addEntry(module, resourceDirName, true, content.getBytes(), fromJar);
+        addEntry(module, resourceDirName, true, content.getBytes(), fromJar, false);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -272,7 +276,7 @@ public final class Resources {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void registerNegativeQuery(Module module, String resourceName) {
-        addEntry(module, resourceName, NEGATIVE_QUERY_MARKER, false, false);
+        addEntry(module, resourceName, false, null, false, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

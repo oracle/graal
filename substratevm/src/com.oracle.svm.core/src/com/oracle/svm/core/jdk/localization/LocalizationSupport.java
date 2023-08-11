@@ -27,6 +27,7 @@ package com.oracle.svm.core.jdk.localization;
 
 import java.nio.charset.Charset;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.IllformedLocaleException;
 import java.util.Locale;
@@ -112,8 +113,8 @@ public class LocalizationSupport {
                 Map<String, Set<Module>> packageToModules = ImageSingletons.lookup(ClassLoaderSupport.class).getPackageToModules();
                 Set<Module> modules = packageToModules.getOrDefault(packageName(bundleName), Collections.emptySet());
 
-                // there should be only one module but we will check all modules where given package
-                // is found
+                // there should be only one module, but we will check all modules where given
+                // package is found
                 for (Module m : modules) {
                     ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName);
                 }
