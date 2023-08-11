@@ -154,7 +154,7 @@ def test():
         rexp = [r"%s = {"%(wildcard_pattern),
                 r"%s<java.lang.Object> = {"%(spaces_pattern),
                 r"%s<_objhdr> = {"%(spaces_pattern),
-                r"%shub = %s,"%(spaces_pattern, address_pattern),
+                r"%shub = %s"%(spaces_pattern, address_pattern),
                 r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                 r"%s}, <No data fields>}, "%(spaces_pattern),
                 r"%smembers of java\.lang\.String\[\]:"%(spaces_pattern),
@@ -173,7 +173,7 @@ def test():
                     r"%s<java.lang.Class> = {"%(spaces_pattern),
                     r"%s<java.lang.Object> = {"%(spaces_pattern),
                     r"%s<_objhdr> = {"%(spaces_pattern),
-                    r"%shub = %s,"%(spaces_pattern, address_pattern),
+                    r"%shub = %s"%(spaces_pattern, address_pattern),
                     r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                     r"%s}, <No data fields>},"%(spaces_pattern),
                     r"%smembers of java\.lang\.Class:"%(spaces_pattern),
@@ -183,7 +183,7 @@ def test():
             rexp = [r"%s = {"%(wildcard_pattern),
                     r"%s<java.lang.Object> = {"%(spaces_pattern),
                     r"%s<_objhdr> = {"%(spaces_pattern),
-                    r"%shub = %s,"%(spaces_pattern, address_pattern),
+                    r"%shub = %s"%(spaces_pattern, address_pattern),
                     r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                     r"%s}, <No data fields>},"%(spaces_pattern),
                     r"%smembers of java\.lang\.Class:"%(spaces_pattern),
@@ -223,7 +223,7 @@ def test():
         rexp = [r"%s = {"%(wildcard_pattern),
                 r"%s<java.lang.Object> = {"%(spaces_pattern),
                 r"%s<_objhdr> = {"%(spaces_pattern),
-                r"%shub = %s,"%(spaces_pattern, address_pattern),
+                r"%shub = %s"%(spaces_pattern, address_pattern),
                 r"%sidHash = %s"%(spaces_pattern, address_pattern) if fixed_idhash_field else None,
                 r"%s}, <No data fields>},"%(spaces_pattern),
                 r"%smembers of java\.lang\.Class:"%(spaces_pattern),
@@ -236,21 +236,21 @@ def test():
 
         # ensure we can access fields of class constants
         exec_string = execute("print 'java.lang.String[].class'.name->value->data")
-        rexp = r'%s = %s "\[Ljava.lang.String;"'%(wildcard_pattern, address_pattern)
+        rexp = r'%s = %s "\[Ljava.lang.String;'%(wildcard_pattern, address_pattern)
 
         checker = Checker("print 'java.lang.String[].class'.name->value->data", rexp)
 
         checker.check(exec_string)
 
         exec_string = execute("print 'long.class'.name->value->data")
-        rexp = r'%s = %s "long"'%(wildcard_pattern, address_pattern)
+        rexp = r'%s = %s "long'%(wildcard_pattern, address_pattern)
 
         checker = Checker("print 'long.class'.name->value->data", rexp)
 
         checker.check(exec_string)
 
         exec_string = execute("print 'byte[].class'.name->value->data")
-        rexp = r'%s = %s "\[B"'%(wildcard_pattern, address_pattern)
+        rexp = r'%s = %s "\[B'%(wildcard_pattern, address_pattern)
 
         checker = Checker("print 'byte[].class'.name->value->data", rexp)
 
