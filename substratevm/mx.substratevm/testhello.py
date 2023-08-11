@@ -1,3 +1,4 @@
+#
 # Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
 # Copyright (c) 2020, 2020, Red Hat Inc. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
@@ -43,6 +44,7 @@
 # Note that the helper routines defined in gdb_utils.py are loaded
 # using gdb -x rather than being imported. That avoids having to update
 # PYTHON_PATH which gdb needs to use to locate any imported code.
+#
 
 import re
 import sys
