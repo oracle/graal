@@ -80,12 +80,12 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
       dir: '..',
     }],
     run+: if (is_gate) then  [
-      self.bench_cmd + ['polybenchmarks-awfy:*',    '--', '--polybenchmark-vm-config=native', '--gate'],
-      self.bench_cmd + ['polybenchmarks-awfy:*',    '--', '--polybenchmark-vm-config=jvm',    '--gate'],
-      self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm-config=native', '--gate'],
-      self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm-config=jvm',    '--gate'],
+      self.bench_cmd + ['polybenchmarks-awfy:*',    '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=native', '--gate'],
+      self.bench_cmd + ['polybenchmarks-awfy:*',    '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=jvm',    '--gate'],
+      self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=native', '--gate'],
+      self.bench_cmd + ['polybenchmarks-default:*', '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=jvm',    '--gate'],
     ] else [
-      self.bench_cmd + ['polybenchmarks-' + suite, '--', '--polybenchmark-vm-config=' + vm_config],
+      self.bench_cmd + ['polybenchmarks-' + suite, '--', '--polybenchmark-vm=graalvm-${VM_ENV}', '--polybenchmark-vm-config=' + vm_config],
     ],
     notify_emails+: if (is_gate) then [] else [ 'boris.spasojevic@oracle.com' ],
     teardown+:      if (is_gate) then [] else [ $.vm_bench_common.upload ],
