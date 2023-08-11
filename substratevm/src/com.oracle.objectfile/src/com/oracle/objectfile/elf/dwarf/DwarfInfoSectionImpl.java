@@ -181,7 +181,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeCUHeader(buffer, pos);
         assert pos == lengthPos + DIE_HEADER_SIZE;
         AbbrevCode abbrevCode = AbbrevCode.BUILTIN_UNIT;
-        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
         pos = writeAttrLanguage(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
@@ -238,7 +238,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          */
         setIndirectTypeIndex(primitiveTypeEntry, pos);
         AbbrevCode abbrevCode = AbbrevCode.PRIMITIVE_TYPE;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         byte byteSize = (byte) primitiveTypeEntry.getSize();
         log(context, "  [0x%08x]     byte_size  %d", pos, byteSize);
@@ -270,7 +270,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         assert voidOffset == -1 || voidOffset == pos;
         voidOffset = pos;
         AbbrevCode abbrevCode = AbbrevCode.VOID_TYPE;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = primitiveTypeEntry.getTypeName();
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
@@ -290,7 +290,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          */
         setIndirectTypeIndex(headerTypeEntry, pos);
         AbbrevCode abbrevCode = AbbrevCode.OBJECT_HEADER;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
@@ -354,7 +354,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         }
         log(context, "  [0x%08x] struct field", pos);
         AbbrevCode abbrevCode = AbbrevCode.HEADER_FIELD;
-        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fieldName), fieldName);
         pos = writeStrSectionOffset(fieldName, buffer, pos);
@@ -389,7 +389,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeCUHeader(buffer, pos);
         assert pos == lengthPos + DIE_HEADER_SIZE;
         AbbrevCode abbrevCode = (classEntry.hasCompiledEntries() ? AbbrevCode.CLASS_UNIT_2 : AbbrevCode.CLASS_UNIT_1);
-        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
         pos = writeAttrLanguage(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
@@ -475,7 +475,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         assert !id.isEmpty();
         log(context, "  [0x%08x] namespace %s", pos, name);
         AbbrevCode abbrevCode = AbbrevCode.NAMESPACE;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
         pos = writeStrSectionOffset(name, buffer, pos);
@@ -492,7 +492,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         // Write a special static field declaration for the class object
         // we use the abbrev code for a static field with no file or line location
         AbbrevCode abbrevCode = AbbrevCode.CLASS_CONSTANT;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
 
         String name = uniqueDebugString(typeEntry.getTypeName() + ".class");
@@ -534,7 +534,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         if (!dwarfSections.useHeapBase() && dwarfSections.isHubClassEntry(classEntry)) {
             abbrevCode = AbbrevCode.CLASS_LAYOUT_2;
         }
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = classEntry.getTypeName();
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
@@ -580,7 +580,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             setIndirectLayoutIndex(classEntry, pos);
             log(context, "  [0x%08x] indirect class layout", pos);
             abbrevCode = AbbrevCode.INDIRECT_LAYOUT;
-            log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+            log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
             String indirectName = uniqueDebugString(DwarfDebugInfo.INDIRECT_PREFIX + classEntry.getTypeName());
             log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(indirectName), name);
@@ -609,7 +609,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         log(context, "  [0x%08x] super reference", pos);
         AbbrevCode abbrevCode = AbbrevCode.SUPER_REFERENCE;
-        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     type 0x%x (%s)", pos, superTypeOffset, superName);
         pos = writeInfoSectionOffset(superTypeOffset, buffer, pos);
@@ -654,7 +654,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             /* Record the position of the declaration to use when we write the definition. */
             setFieldDeclarationIndex(entry, fieldEntry.fieldName(), pos);
         }
-        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
 
         String name = fieldEntry.fieldName();
@@ -714,7 +714,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         boolean isStatic = Modifier.isStatic(modifiers);
         log(context, "  [0x%08x] method declaration %s::%s", pos, classEntry.getTypeName(), method.methodName());
         AbbrevCode abbrevCode = (isStatic ? AbbrevCode.METHOD_DECLARATION_STATIC : AbbrevCode.METHOD_DECLARATION);
-        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     external  true", pos);
         pos = writeFlag(DwarfFlag.DW_FLAG_true, buffer, pos);
@@ -803,7 +803,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         } else {
             abbrevCode = AbbrevCode.METHOD_PARAMETER_DECLARATION_3;
         }
-        log(context, "  [0x%08x] <%d> Abbrev Number %d", pos, level, abbrevCode);
+        log(context, "  [0x%08x] <%d> Abbrev Number %d", pos, level, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     name %s", pos, paramName);
         pos = writeStrSectionOffset(uniqueDebugString(paramName), buffer, pos);
@@ -850,7 +850,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         } else {
             abbrevCode = AbbrevCode.METHOD_LOCAL_DECLARATION_2;
         }
-        log(context, "  [0x%08x] <%d> Abbrev Number %d", pos, level, abbrevCode);
+        log(context, "  [0x%08x] <%d> Abbrev Number %d", pos, level, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     name %s", pos, paramName);
         pos = writeStrSectionOffset(uniqueDebugString(paramName), buffer, pos);
@@ -874,7 +874,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         setLayoutIndex(interfaceClassEntry, layoutOffset);
         log(context, "  [0x%08x] interface layout", pos);
         AbbrevCode abbrevCode = AbbrevCode.INTERFACE_LAYOUT;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = interfaceClassEntry.getTypeName();
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
@@ -898,7 +898,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             setIndirectLayoutIndex(interfaceClassEntry, pos);
             log(context, "  [0x%08x] indirect class layout", pos);
             abbrevCode = AbbrevCode.INDIRECT_LAYOUT;
-            log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+            log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
             String indirectName = uniqueDebugString(DwarfDebugInfo.INDIRECT_PREFIX + interfaceClassEntry.getTypeName());
             log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(indirectName), name);
@@ -932,7 +932,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         log(context, "  [0x%08x] interface implementor", pos);
         AbbrevCode abbrevCode = AbbrevCode.INTERFACE_IMPLEMENTOR;
-        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = uniqueDebugString("_" + classEntry.getTypeName());
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(name), name);
@@ -998,7 +998,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         log(context, "  [0x%08x] foreign struct type for %s", pos, foreignTypeEntry.getTypeName());
         AbbrevCode abbrevCode = AbbrevCode.FOREIGN_STRUCT;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String typedefName = foreignTypeEntry.getTypedefName();
         if (typedefName == null) {
@@ -1033,7 +1033,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] foreign primitive word type for %s", pos, foreignTypeEntry.getTypeName());
         /* Record the location of this type entry. */
         AbbrevCode abbrevCode = AbbrevCode.PRIMITIVE_TYPE;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         assert size >= 0;
         byte byteSize = (byte) (size > 0 ? size : dwarfSections.pointerSize());
@@ -1056,7 +1056,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] foreign primitive integral type for %s", pos, foreignTypeEntry.getTypeName());
         /* Record the location of this type entry. */
         AbbrevCode abbrevCode = AbbrevCode.PRIMITIVE_TYPE;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         assert size > 0;
         byte byteSize = (byte) size;
@@ -1079,7 +1079,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         log(context, "  [0x%08x] foreign primitive float type for %s", pos, foreignTypeEntry.getTypeName());
         /* Record the location of this type entry. */
         AbbrevCode abbrevCode = AbbrevCode.PRIMITIVE_TYPE;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         assert size > 0;
         byte byteSize = (byte) size;
@@ -1117,7 +1117,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         setTypeIndex(classEntry, typeIdx);
         log(context, "  [0x%08x] class pointer type", pos);
         AbbrevCode abbrevCode = AbbrevCode.CLASS_POINTER;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         int pointerSize = dwarfSections.pointerSize();
         log(context, "  [0x%08x]     byte_size 0x%x", pos, pointerSize);
@@ -1131,7 +1131,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             setIndirectTypeIndex(classEntry, pos);
             log(context, "  [0x%08x] class indirect pointer type", pos);
             abbrevCode = AbbrevCode.INDIRECT_POINTER;
-            log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+            log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
             int oopReferenceSize = dwarfSections.oopReferenceSize();
             log(context, "  [0x%08x]     byte_size 0x%x", pos, oopReferenceSize);
@@ -1154,7 +1154,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         setTypeIndex(interfaceClassEntry, typeIdx);
         log(context, "  [0x%08x] interface pointer type", pos);
         AbbrevCode abbrevCode = AbbrevCode.INTERFACE_POINTER;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         int pointerSize = dwarfSections.pointerSize();
         log(context, "  [0x%08x]     byte_size 0x%x", pos, pointerSize);
@@ -1168,7 +1168,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             setIndirectTypeIndex(interfaceClassEntry, pos);
             log(context, "  [0x%08x] interface indirect pointer type", pos);
             abbrevCode = AbbrevCode.INDIRECT_POINTER;
-            log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+            log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
             int byteSize = dwarfSections.oopReferenceSize();
             log(context, "  [0x%08x]     byte_size 0x%x", pos, byteSize);
@@ -1195,7 +1195,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int refTypeIdx = pos;
         log(context, "  [0x%08x] foreign pointer type", pos);
         AbbrevCode abbrevCode = AbbrevCode.FOREIGN_POINTER;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         int pointerSize = dwarfSections.pointerSize();
         log(context, "  [0x%08x]     byte_size 0x%x", pos, pointerSize);
@@ -1209,7 +1209,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int typedefIdx = pos;
         log(context, "  [0x%08x] foreign typedef", pos);
         abbrevCode = AbbrevCode.FOREIGN_TYPEDEF;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = uniqueDebugString(foreignTypeEntry.getTypeName());
         log(context, "  [0x%08x]     name %s", pos, name);
@@ -1247,7 +1247,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int fieldDefinitionOffset = getFieldDeclarationIndex(classEntry, fieldName);
         log(context, "  [0x%08x] static field location %s.%s", pos, classEntry.getTypeName(), fieldName);
         AbbrevCode abbrevCode = AbbrevCode.STATIC_FIELD_LOCATION;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         // n.b. field definition offset gets written as a Ref4, relative to CU start
         log(context, "  [0x%08x]     specification  0x%x", pos, fieldDefinitionOffset);
@@ -1277,7 +1277,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         pos = writeCUHeader(buffer, pos);
         assert pos == lengthPos + DIE_HEADER_SIZE;
         AbbrevCode abbrevCode = AbbrevCode.CLASS_UNIT_1;
-        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <0> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     language  %s", pos, "DW_LANG_Java");
         pos = writeAttrLanguage(DwarfDebugInfo.LANG_ENCODING, buffer, pos);
@@ -1330,7 +1330,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         log(context, "  [0x%08x] array layout", pos);
         AbbrevCode abbrevCode = AbbrevCode.ARRAY_LAYOUT;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = arrayTypeEntry.getTypeName();
         log(context, "  [0x%08x]     name 0x%x (%s)", pos, debugStringIndex(name), name);
@@ -1371,7 +1371,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
          */
         log(context, "  [0x%08x] indirect class layout", pos);
         AbbrevCode abbrevCode = AbbrevCode.INDIRECT_LAYOUT;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String name = arrayTypeEntry.getTypeName();
         String indirectName = uniqueDebugString(DwarfDebugInfo.INDIRECT_PREFIX + name);
@@ -1394,7 +1394,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         log(context, "  [0x%08x] array element data type", pos);
         AbbrevCode abbrevCode = AbbrevCode.ARRAY_DATA_TYPE_1;
-        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         // Java arrays don't have a fixed byte_size
         String elementTypeName = elementType.getTypeName();
@@ -1409,7 +1409,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         log(context, "  [0x%08x] embedded array element data type", pos);
         AbbrevCode abbrevCode = AbbrevCode.ARRAY_DATA_TYPE_2;
-        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         // Foreign arrays have a fixed byte_size
         int size = arraySize * valueSize;
@@ -1439,7 +1439,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         // write subrange child DIE
         log(context, "  [0x%08x] embedded array element range", pos);
         abbrevCode = AbbrevCode.ARRAY_SUBRANGE;
-        log(context, "  [0x%08x] <3> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <3> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     count 0x%x", pos, arraySize);
         pos = writeAttrData4(arraySize, buffer, pos);
@@ -1453,7 +1453,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         log(context, "  [0x%08x] array element data field", pos);
         AbbrevCode abbrevCode = AbbrevCode.HEADER_FIELD;
-        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <2> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         String fieldName = uniqueDebugString("data");
         log(context, "  [0x%08x]     name  0x%x (%s)", pos, debugStringIndex(fieldName), fieldName);
@@ -1489,7 +1489,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         /* Define a pointer type referring to the underlying layout. */
         log(context, "  [0x%08x] array pointer type", pos);
         AbbrevCode abbrevCode = AbbrevCode.ARRAY_POINTER;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         int pointerSize = dwarfSections.pointerSize();
         log(context, "  [0x%08x]     byte_size  0x%x", pos, pointerSize);
@@ -1502,7 +1502,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             /* Define an indirect pointer type referring to the underlying indirect layout. */
             log(context, "  [0x%08x] array indirect pointer type", pos);
             abbrevCode = AbbrevCode.INDIRECT_POINTER;
-            log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+            log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
             pos = writeAbbrevCode(abbrevCode, buffer, pos);
             int byteSize = dwarfSections.oopReferenceSize();
             log(context, "  [0x%08x]     byte_size  0x%x", pos, byteSize);
@@ -1529,7 +1529,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         Range primary = compiledEntry.getPrimary();
         log(context, "  [0x%08x] method location", pos);
         AbbrevCode abbrevCode = AbbrevCode.METHOD_LOCATION;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     lo_pc  0x%08x", pos, primary.getLo());
         pos = writeAttrAddress(primary.getLo(), buffer, pos);
@@ -1635,7 +1635,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         } else {
             abbrevCode = (isParam ? AbbrevCode.METHOD_PARAMETER_LOCATION_2 : AbbrevCode.METHOD_LOCAL_LOCATION_2);
         }
-        log(context, "  [0x%08x] <%d> Abbrev Number %d", pos, depth, abbrevCode);
+        log(context, "  [0x%08x] <%d> Abbrev Number %d", pos, depth, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     specification  0x%x", pos, refAddr);
         pos = writeAttrRef4(refAddr, buffer, pos);
@@ -1720,7 +1720,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
             }
         }
         final AbbrevCode abbrevCode = AbbrevCode.INLINED_SUBROUTINE_WITH_CHILDREN;
-        log(context, "  [0x%08x] <%d> Abbrev Number  %d", pos, depth, abbrevCode);
+        log(context, "  [0x%08x] <%d> Abbrev Number %d", pos, depth, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     abstract_origin  0x%x", pos, abstractOriginIndex);
         pos = writeAttrRef4(abstractOriginIndex, buffer, pos);
@@ -1782,7 +1782,7 @@ public class DwarfInfoSectionImpl extends DwarfSectionImpl {
         int pos = p;
         log(context, "  [0x%08x] abstract inline method %s::%s", pos, classEntry.getTypeName(), method.methodName());
         AbbrevCode abbrevCode = AbbrevCode.ABSTRACT_INLINE_METHOD;
-        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode);
+        log(context, "  [0x%08x] <1> Abbrev Number %d", pos, abbrevCode.ordinal());
         pos = writeAbbrevCode(abbrevCode, buffer, pos);
         log(context, "  [0x%08x]     inline  0x%x", pos, DwarfInline.DW_INL_inlined.value());
         pos = writeAttrInline(DwarfInline.DW_INL_inlined, buffer, pos);
