@@ -254,7 +254,7 @@ def _distribution_license(dist):
     return license
 
 
-def _register_all_tools_distribution(register_distribution):
+def register_community_tools_distribution(owner_suite, register_distribution):
     """
     Creates a dynamic TOOLS_COMMUNITY meta-POM distribution containing all
     community tool meta POMs.
@@ -277,11 +277,11 @@ def _register_all_tools_distribution(register_distribution):
             },
             'description': 'Graalvm community tools.',
         }
-        tools_community = mx_pomdistribution.POMDistribution(_suite, 'TOOLS_COMMUNITY', [], tools_meta_poms, sorted(list(tools_licenses)), **attrs)
+        tools_community = mx_pomdistribution.POMDistribution(owner_suite, 'TOOLS_COMMUNITY', [], tools_meta_poms, sorted(list(tools_licenses)), **attrs)
         register_distribution(tools_community)
 
 
-def _register_all_languages_distribution(register_distribution):
+def register_community_languages_distribution(owner_suite, register_distribution):
     """
     Creates a dynamic LANGUAGES_COMMUNITY meta-POM distribution containing all
     community language meta POMs.
@@ -304,7 +304,7 @@ def _register_all_languages_distribution(register_distribution):
             },
             'description': 'Graalvm community languages.',
         }
-        languages_community = mx_pomdistribution.POMDistribution(_suite, 'LANGUAGES_COMMUNITY', [], languages_meta_poms, sorted(list(languages_licenses)), **attrs)
+        languages_community = mx_pomdistribution.POMDistribution(owner_suite, 'LANGUAGES_COMMUNITY', [], languages_meta_poms, sorted(list(languages_licenses)), **attrs)
         register_distribution(languages_community)
 
 
@@ -428,9 +428,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     # add jars to the layout of the benchmark distribution
                     _add_project_to_dist(f'./interpreter/{simple_name}.jar', dist_name,
                         source='dependency:{name}/polybench-espresso-' + simple_name.lower() + '.jar')
-    if register_distribution:
-        _register_all_tools_distribution(register_distribution)
-        _register_all_languages_distribution(register_distribution)
+    if register_distribution and _suite.primary:
+        # Only primary suite can register languages and tools distributions.
+        # If the suite is not a primary suite, languages and tools distributions might not have been loaded yet.
+        # In this case the register_community_tools_distribution and register_community_languages_distribution
+        # are called from the primary suite.
+        register_community_tools_distribution(_suite, register_distribution)
+        register_community_languages_distribution(_suite, register_distribution)
 
 
 class GraalVmSymlinks(mx.Project):
