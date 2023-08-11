@@ -669,7 +669,8 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                     ObjectState initialObjState, PartialEscapeBlockState<?> exitState) {
         // Create a value proxy at the loop exit if either:
         // a) the object was virtual at the loop beginning or
-        // b) the materialized value of the object is different at the loop exit than it was at the loop beginning.
+        // b) the materialized value of the object is different at the loop exit than it was at the
+        // loop beginning.
         if (initialObjState == null || initialObjState.isVirtual() || initialObjState.getMaterializedValue() != exitObjState.getMaterializedValue()) {
             ProxyNode proxy = proxies.get(object);
             if (proxy == null) {
