@@ -271,6 +271,7 @@ suite = {
                     "jdk.internal.misc",
                     "jdk.internal.module",
                     "jdk.internal.perf",
+                    "jdk.internal.platform",
                     "jdk.internal.ref",
                     "jdk.internal.reflect",
                     "jdk.internal.vm",

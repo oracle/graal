@@ -90,9 +90,9 @@ public class PhysicalMemory {
                     cachedSize = WordFactory.unsigned(memoryLimit);
                 } else {
                     memoryLimit = Containers.memoryLimitInBytes();
-                    cachedSize = memoryLimit == Containers.UNKNOWN
-                                    ? ImageSingletons.lookup(PhysicalMemorySupport.class).size()
-                                    : WordFactory.unsigned(memoryLimit);
+                    cachedSize = memoryLimit > 0
+                                    ? WordFactory.unsigned(memoryLimit)
+                                    : ImageSingletons.lookup(PhysicalMemorySupport.class).size();
                 }
             } finally {
                 INITIALIZING.decrementAndGet();
