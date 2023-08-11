@@ -195,7 +195,7 @@ final class HostContext {
         try {
             if (getHostClassCache().hasCustomNamedLookup()) {
                 try {
-                    return accessClass(getHostClassCache().getMethodLookup().findClass(className));
+                    return accessClass(getHostClassCache().getMethodLookup(null).findClass(className));
                 } catch (ClassNotFoundException | IllegalAccessException | LinkageError e) {
                     // fallthrough to class loader lookup
                 }
@@ -207,7 +207,7 @@ final class HostContext {
     }
 
     private Class<?> accessClass(Class<?> clazz) {
-        if (HostClassDesc.isClassAccessible(clazz, getHostClassCache())) {
+        if (HostClassDesc.getLookup(clazz, getHostClassCache()) != null) {
             return clazz;
         } else {
             throw throwClassLoadException(clazz.getName());

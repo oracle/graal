@@ -288,7 +288,7 @@ meth public org.graalvm.polyglot.HostAccess$Builder denyAccess(java.lang.Class<?
 meth public org.graalvm.polyglot.HostAccess$Builder disableMethodScoping(java.lang.reflect.Executable)
 meth public org.graalvm.polyglot.HostAccess$Builder disableMethodScopingAnnotatedBy(java.lang.Class<? extends java.lang.annotation.Annotation>)
 meth public org.graalvm.polyglot.HostAccess$Builder methodScoping(boolean)
-meth public org.graalvm.polyglot.HostAccess$Builder useModuleAccess(java.lang.invoke.MethodHandles$Lookup)
+meth public org.graalvm.polyglot.HostAccess$Builder useModuleLookup(java.lang.invoke.MethodHandles$Lookup)
 supr java.lang.Object
 hfds accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,implementableTypes,implementationAnnotations,members,methodLookup,methodScopingDefault,name,targetMappings
 

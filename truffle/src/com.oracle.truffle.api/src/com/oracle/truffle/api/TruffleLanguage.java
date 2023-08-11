@@ -51,7 +51,6 @@ import java.lang.annotation.ElementType;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
-import java.lang.invoke.MethodHandles;
 import java.lang.ref.WeakReference;
 import java.net.URI;
 import java.nio.file.Path;
@@ -2153,9 +2152,7 @@ public abstract class TruffleLanguage<C> {
          * was already added then calling this method again for the same entry has no effect. Given
          * entry must not be <code>null</code>.
          * <p>
-         * Please note that if the embedder specifies a
-         * {@link org.graalvm.polyglot.HostAccess.Builder#useModuleAccess(MethodHandles.Lookup)
-         * custom lookup} from a named module, classes added by this method are not accessible.
+         * Note that classes added by this method are in the unnamed module.
          *
          * @throws SecurityException if the file is not {@link TruffleFile#isReadable() readable}.
          * @since 19.0
@@ -3373,11 +3370,9 @@ public abstract class TruffleLanguage<C> {
          * be used to check if an object is an instance of this adapter class. See usage example
          * below.
          * <p>
-         * Please note that only classes from the unnamed module can be used in <code>types</code>.
-         * The generated host adapter class is also in the unnamed module. Therefore, if the
-         * embedder specifies a
-         * {@link org.graalvm.polyglot.HostAccess.Builder#useModuleAccess(MethodHandles.Lookup)
-         * custom lookup} from a named module, this method is not usable.
+         * Please note that only classes from the unnamed module or classes exported to the unnamed
+         * module can be used in <code>types</code>. The generated host adapter class is also in the
+         * unnamed module.
          * <p>
          * A host class is generated as follows:
          * <p>

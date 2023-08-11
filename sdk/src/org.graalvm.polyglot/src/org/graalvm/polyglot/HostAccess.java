@@ -1333,29 +1333,32 @@ public final class HostAccess {
          * Sets the {@link Lookup lookup} the guest application should use to find and access
          * classes on the host side in {@link Module modularized} host applications. This allows
          * guest applications to find and access public classes that are not directly exported by
-         * the lookup {@link Module module}, or public classes that are exported to the module only
-         * through qualified exports.
+         * the lookup module, or public classes that are exported to the module only through
+         * qualified exports. Access to classes in the unnamed module is not affected by the use of
+         * this method.
          * <p>
-         * Pass `MethodHandles#lookup()` from a named module to export its access privileges to the
-         * guest application.
+         * Pass <code>MethodHandles.lookup()</code> from a named module to export its access
+         * privileges to the guest application.
          * <p>
          * It is requited that the lookup module is a named module, i.e.,
          * <code>lookup.lookupClass().getModule().isNamed()</code> must be <code>true</code>.
          * <p>
-         * By default, {@link MethodHandles#publicLookup()} is used to access host classes which can
-         * only access classes from the unnamed module and classes exported to the unnamed module.
-         * <p>
          * Note that even though the provided lookup may provide access to non-public classes or
          * members, the access will be restricted to classes or members with public visibility.
          * <p>
-         * Also note that when a custom lookup from a named module is used, classes added to
-         * classpath by the guest application cannot be accessed.
+         * By default, {@link MethodHandles#publicLookup()} is used to access host classes which can
+         * only access classes from the unnamed module and classes exported to the unnamed module.
+         * <p>
+         * {@link MethodHandles#publicLookup()} is also used for classes from the unnamed module
+         * even if another lookup is specified by this method. Therefore, the guest application can
+         * still add classes to the classpath and access them even though a custom lookup from a
+         * named module is specified.
          *
          * @param lookup lookup from a named module to be used for host access.
          * @throws IllegalArgumentException if the passed lookup is not from a named module.
          * @since 23.1
          */
-        public Builder useModuleAccess(Lookup lookup) {
+        public Builder useModuleLookup(Lookup lookup) {
             Objects.requireNonNull(lookup);
             if (!lookup.lookupClass().getModule().isNamed()) {
                 throw new IllegalArgumentException("The passed lookup is from an unnamed module. Please specify a lookup from a named module.");

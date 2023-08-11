@@ -69,7 +69,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -89,7 +88,7 @@ public class HostAccessFromModuleTest {
     public void testInAModule() {
         Assert.assertTrue(HostAccessFromModuleTest.class.getModule().isNamed());
         try (Context context = Context.newBuilder().allowHostClassLookup((c) -> true).allowHostClassLoading(true).allowHostAccess(
-                        HostAccess.newBuilder(HostAccess.ALL).useModuleAccess(MethodHandles.lookup()).build()).build()) {
+                        HostAccess.newBuilder(HostAccess.ALL).useModuleLookup(MethodHandles.lookup()).build()).build()) {
             accessHostObject(context, true);
             accessHostObject(context, true, true);
             accessHostObject(context, false);
@@ -166,29 +165,16 @@ public class HostAccessFromModuleTest {
             return new RootNode(this) {
                 @Override
                 public Object execute(VirtualFrame frame) {
-                    boundary((String) frame.getArguments()[0], (String) frame.getArguments()[1]);
+                    boundary((String) frame.getArguments()[0]);
                     return 42;
                 }
 
                 @TruffleBoundary
-                private void boundary(String directory, String lookupType) {
+                private void boundary(String directory) {
                     Env env = REFERENCE.get(this);
                     env.addToHostClassPath(env.getPublicTruffleFile(directory));
-                    try {
-                        Object symbol = env.lookupHostSymbol(TEST_REPLACE_QUALIFIED_CLASS_NAME);
-                        if ("module".equals(lookupType)) {
-                            Assert.fail();
-                        } else if ("public".equals(lookupType)) {
-                            assertHostSymbol(symbol, 42);
-                        } else {
-                            Assert.fail();
-                        }
-                    } catch (AbstractTruffleException e) {
-                        if ("public".equals(lookupType)) {
-                            Assert.fail();
-                        }
-                        Assert.assertEquals("Access to host class " + TEST_REPLACE_QUALIFIED_CLASS_NAME + " is not allowed or does not exist.", e.getMessage());
-                    }
+                    Object symbol = env.lookupHostSymbol(TEST_REPLACE_QUALIFIED_CLASS_NAME);
+                    assertHostSymbol(symbol, 42);
                 }
             }.getCallTarget();
         }
@@ -200,16 +186,16 @@ public class HostAccessFromModuleTest {
         tempDir = setupSimpleClassPath();
 
         try {
-            try (Context context = Context.newBuilder().allowHostAccess(HostAccess.newBuilder(HostAccess.ALL).useModuleAccess(MethodHandles.lookup()).build()).allowHostClassLookup(
+            try (Context context = Context.newBuilder().allowHostAccess(HostAccess.newBuilder(HostAccess.ALL).useModuleLookup(MethodHandles.lookup()).build()).allowHostClassLookup(
                             (c) -> true).allowHostClassLoading(true).allowIO(IOAccess.ALL).build()) {
                 Value mainFunc = context.parse(HostClassLoadingTestLanguage.ID, "");
-                mainFunc.execute(tempDir.toString(), "module");
+                mainFunc.execute(tempDir.toString());
             }
 
             try (Context context = Context.newBuilder().allowHostAccess(HostAccess.newBuilder(HostAccess.ALL).build()).allowHostClassLookup((c) -> true).allowHostClassLoading(true).allowIO(
                             IOAccess.ALL).build()) {
                 Value mainFunc = context.parse(HostClassLoadingTestLanguage.ID, "");
-                mainFunc.execute(tempDir.toString(), "public");
+                mainFunc.execute(tempDir.toString());
             }
         } finally {
             deleteDir(tempDir);
@@ -269,16 +255,10 @@ public class HostAccessFromModuleTest {
             }
         }
         try (Context context = Context.newBuilder().allowHostAccess(
-                        HostAccess.newBuilder(HostAccess.ALL).allowAllImplementations(true).allowAllClassImplementations(true).useModuleAccess(MethodHandles.lookup()).build()).allowHostClassLookup(
+                        HostAccess.newBuilder(HostAccess.ALL).allowAllImplementations(true).allowAllClassImplementations(true).useModuleLookup(MethodHandles.lookup()).build()).allowHostClassLookup(
                                         (c) -> true).allowHostClassLoading(true).build()) {
             Value mainFunc = context.parse(HostAdapterTestLanguage.ID, "");
-            try {
-                mainFunc.execute(ExtensibleExported.class, ProxyObject.fromMap(Collections.singletonMap("abstractMethod", (ProxyExecutable) (args) -> "override")));
-            } catch (PolyglotException pe) {
-                if (!pe.getMessage().contains("No accessible constructor: " + ExtensibleExported.class.getName())) {
-                    throw pe;
-                }
-            }
+            mainFunc.execute(ExtensibleExported.class, ProxyObject.fromMap(Collections.singletonMap("abstractMethod", (ProxyExecutable) (args) -> "override")));
             try {
                 mainFunc.execute(Extensible.class, ProxyObject.fromMap(Collections.singletonMap("abstractMethod", (ProxyExecutable) (args) -> "override")));
                 Assert.fail();

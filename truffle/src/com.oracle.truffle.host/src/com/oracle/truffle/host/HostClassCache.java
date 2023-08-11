@@ -112,8 +112,8 @@ final class HostClassCache {
         this.methodLookup = apiAccess.getMethodLookup(hostAccess);
     }
 
-    Lookup getMethodLookup() {
-        return methodLookup != null ? methodLookup : MethodHandles.publicLookup();
+    Lookup getMethodLookup(Class<?> clazz) {
+        return methodLookup == null || (clazz != null && !clazz.getModule().isNamed()) ? MethodHandles.publicLookup() : methodLookup;
     }
 
     boolean hasCustomNamedLookup() {
