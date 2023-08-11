@@ -82,18 +82,9 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
         for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
             liveInMap.put(block, newLiveValueSet());
         }
-        // This should converge quickly in practice but it's hard to set a firm bound. In normal
-        // operations this reaches a fixed point within 2n iterations. 10n seems like a pretty safe
-        // limit.
-        final int iterationLimit = blocks.length * 10 > 0 ? blocks.length * 10 : Integer.MAX_VALUE;
-        int iterations = 0;
         while (!worklist.isEmpty()) {
             BasicBlock<?> block = worklist.poll();
             processBlock(block, worklist);
-            iterations++;
-            if (iterations > iterationLimit) {
-                throw new GraalError("Too many iterations coming to a fixed point: blocks %d limit %d", blocks.length, iterationLimit);
-            }
         }
     }
 
