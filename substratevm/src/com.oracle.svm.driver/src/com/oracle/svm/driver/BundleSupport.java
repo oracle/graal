@@ -786,7 +786,7 @@ final class BundleSupport {
                     createDockerfile(dockerfilePath);
                 }
             } else if (!dockerfilePath.equals(containerSupport.dockerfile)) {
-                Files.copy(containerSupport.dockerfile, dockerfilePath);
+                Files.copy(containerSupport.dockerfile, dockerfilePath, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (IOException e) {
             throw NativeImage.showError("Failed to write bundle-file " + dockerfilePath, e);
