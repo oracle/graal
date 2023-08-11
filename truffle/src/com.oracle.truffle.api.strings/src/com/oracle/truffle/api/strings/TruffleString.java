@@ -6158,9 +6158,9 @@ public final class TruffleString extends AbstractTruffleString {
      *
      * @since 23.1
      */
-    public abstract static class ToWellFormedStringNode extends AbstractPublicNode {
+    public abstract static class ToValidStringNode extends AbstractPublicNode {
 
-        ToWellFormedStringNode() {
+        ToValidStringNode() {
         }
 
         /**
@@ -6175,11 +6175,11 @@ public final class TruffleString extends AbstractTruffleString {
         public abstract TruffleString execute(AbstractTruffleString a, Encoding expectedEncoding);
 
         @Specialization
-        final TruffleString toWellFormed(AbstractTruffleString a, Encoding encoding,
+        final TruffleString toValid(AbstractTruffleString a, Encoding encoding,
                         @Cached InlinedConditionProfile isValidProfile,
                         @Cached TStringInternalNodes.GetValidOrBrokenCodeRangeNode getCodeRangeNode,
                         @Cached InternalAsTruffleStringNode asTruffleStringNode,
-                        @Cached TStringInternalNodes.ToWellFormedStringNode internalNode,
+                        @Cached TStringInternalNodes.ToValidStringNode internalNode,
                         @Cached ToIndexableNode toIndexableNode) {
             a.checkEncoding(encoding);
             int codeRangeA = getCodeRangeNode.execute(this, a, encoding);
@@ -6195,8 +6195,8 @@ public final class TruffleString extends AbstractTruffleString {
          * @since 23.1
          */
         @NeverDefault
-        public static ToWellFormedStringNode create() {
-            return TruffleStringFactory.ToWellFormedStringNodeGen.create();
+        public static ToValidStringNode create() {
+            return TruffleStringFactory.ToValidStringNodeGen.create();
         }
 
         /**
@@ -6204,19 +6204,9 @@ public final class TruffleString extends AbstractTruffleString {
          *
          * @since 23.1
          */
-        public static ToWellFormedStringNode getUncached() {
-            return TruffleStringFactory.ToWellFormedStringNodeGen.getUncached();
+        public static ToValidStringNode getUncached() {
+            return TruffleStringFactory.ToValidStringNodeGen.getUncached();
         }
-    }
-
-    /**
-     * Shorthand for calling the uncached version of {@link TruffleString.ToWellFormedStringNode}.
-     *
-     * @since 23.1
-     */
-    @TruffleBoundary
-    public TruffleString toWellFormedStringUncached(Encoding expectedEncoding) {
-        return ToWellFormedStringNode.getUncached().execute(this, expectedEncoding);
     }
 
     /**

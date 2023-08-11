@@ -62,13 +62,13 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.test.TStringTestBase;
 
 @RunWith(Parameterized.class)
-public class TStringToWellFormedStringTest extends TStringTestBase {
+public class TStringToValidStringTest extends TStringTestBase {
 
-    @Parameter public TruffleString.ToWellFormedStringNode node;
+    @Parameter public TruffleString.ToValidStringNode node;
 
     @Parameters(name = "{0}")
-    public static Iterable<TruffleString.ToWellFormedStringNode> data() {
-        return Arrays.asList(TruffleString.ToWellFormedStringNode.create(), TruffleString.ToWellFormedStringNode.getUncached());
+    public static Iterable<TruffleString.ToValidStringNode> data() {
+        return Arrays.asList(TruffleString.ToValidStringNode.create(), TruffleString.ToValidStringNode.getUncached());
     }
 
     @Test

@@ -1607,7 +1607,7 @@ final class TStringInternalNodes {
         }
     }
 
-    abstract static class ToWellFormedStringNode extends AbstractInternalNode {
+    abstract static class ToValidStringNode extends AbstractInternalNode {
 
         private static final int[] UTF_32_ASTRAL_RANGE = {0x10000, 0x10ffff};
         private static final int[] UTF_32_INVALID_RANGES = {Character.MIN_SURROGATE, Character.MAX_SURROGATE, 0x11_0000, 0xffff_ffff};

@@ -1212,6 +1212,16 @@ public abstract class AbstractTruffleString {
     }
 
     /**
+     * Shorthand for calling the uncached version of {@link TruffleString.ToValidStringNode}.
+     *
+     * @since 23.1
+     */
+    @TruffleBoundary
+    public TruffleString toValidStringUncached(Encoding expectedEncoding) {
+        return TruffleString.ToValidStringNode.getUncached().execute(this, expectedEncoding);
+    }
+
+    /**
      * Shorthand for calling the uncached version of {@link TruffleString.ToJavaStringNode}.
      *
      * @since 22.1
