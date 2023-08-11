@@ -47,6 +47,7 @@ import com.oracle.svm.core.invoke.MethodHandleIntrinsic;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
 import sun.invoke.util.ValueConversions;
@@ -101,6 +102,8 @@ public class MethodHandleFeature implements InternalFeature {
     private Object runtimeMethodTypeInternTable;
     private Method concurrentWeakInternSetAdd;
 
+    private MethodHandleInvokerRenamingSubstitutionProcessor substitutionProcessor;
+
     @Override
     public void duringSetup(DuringSetupAccess access) {
         Class<?> memberNameClass = access.findClassByName("java.lang.invoke.MemberName");
@@ -121,6 +124,10 @@ public class MethodHandleFeature implements InternalFeature {
         Class<?> concurrentWeakInternSetClass = access.findClassByName("java.lang.invoke.MethodType$ConcurrentWeakInternSet");
         runtimeMethodTypeInternTable = ReflectionUtil.newInstance(concurrentWeakInternSetClass);
         concurrentWeakInternSetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
+
+        var accessImpl = (DuringSetupAccessImpl) access;
+        substitutionProcessor = new MethodHandleInvokerRenamingSubstitutionProcessor(accessImpl.getBigBang());
+        accessImpl.registerSubstitutionProcessor(substitutionProcessor);
     }
 
     @Override
@@ -380,5 +387,10 @@ public class MethodHandleFeature implements InternalFeature {
         if (!access.getBigBang().executorIsStarted()) {
             access.requireAnalysisIteration();
         }
+    }
+
+    @Override
+    public void afterAnalysis(AfterAnalysisAccess access) {
+        assert substitutionProcessor.checkAllTypeNames();
     }
 }

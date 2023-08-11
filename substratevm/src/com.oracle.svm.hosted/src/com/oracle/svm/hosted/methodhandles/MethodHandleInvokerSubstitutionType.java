@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,23 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.lambda;
+package com.oracle.svm.hosted.methodhandles;
 
-import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
-import com.oracle.svm.hosted.annotation.AnnotationValue;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
-import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
 
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-/**
- * Simply changes the name of Lambdas from a random ID into a stable name.
- */
-public class LambdaSubstitutionType extends CustomSubstitutionType {
+class MethodHandleInvokerSubstitutionType extends CustomSubstitutionType {
     private final String stableName;
 
-    @SuppressWarnings("try")
-    LambdaSubstitutionType(ResolvedJavaType original, String stableName) {
+    MethodHandleInvokerSubstitutionType(ResolvedJavaType original, String stableName) {
         super(original);
         this.stableName = stableName;
     }
@@ -46,12 +39,5 @@ public class LambdaSubstitutionType extends CustomSubstitutionType {
     @Override
     public String getName() {
         return stableName;
-    }
-
-    private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(LambdaFormHiddenMethod.Holder.INSTANCE);
-
-    @Override
-    public AnnotationValue[] getInjectedAnnotations() {
-        return INJECTED_ANNOTATIONS;
     }
 }

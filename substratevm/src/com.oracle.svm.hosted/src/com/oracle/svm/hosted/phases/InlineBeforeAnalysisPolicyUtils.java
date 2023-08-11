@@ -70,6 +70,7 @@ import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ReachabilityRegistrationNode;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.methodhandles.MethodHandleInvokerRenamingSubstitutionProcessor;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -486,9 +487,11 @@ public class InlineBeforeAnalysisPolicyUtils {
     }
 
     /**
-     * Discard information on inlined calls to generated classes of LambdaForms, which are not
-     * assigned names that are stable between executions and would cause mismatches in collected
+     * Discard information on inlined calls to generated classes of LambdaForms, not all of which
+     * are assigned names that are stable between executions and would cause mismatches in collected
      * profile-guided optimization data which prevent optimizations.
+     *
+     * @see MethodHandleInvokerRenamingSubstitutionProcessor
      */
     protected boolean shouldOmitIntermediateMethodInState(ResolvedJavaMethod method) {
         return method.isAnnotationPresent(COMPILED_LAMBDA_FORM_ANNOTATION);

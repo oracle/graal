@@ -1694,7 +1694,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     /**
      * Determines whether to omit an intermediate method (a method other than the root method or a
-     * leaf callee) from {@link FrameState} or {@link NodeSourcePosition} information. When used to
+     * leaf caller) from {@link FrameState} or {@link NodeSourcePosition} information. When used to
      * discard intermediate methods of generated code with non-deterministic names, for example,
      * this can improve matching of profile-guided optimization information between executions.
      */

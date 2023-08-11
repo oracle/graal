@@ -124,7 +124,7 @@ def test():
     # expect "#1  0x[0-9a-f]+ in com.oracle.svm.core.code.IsolateEnterStub.JavaMainWrapper_run_.* at [a-z/]+/JavaMainWrapper.java:[0-9]+"
     exec_string = execute("backtrace")
     stacktraceRegex = [r"#0%shello\.Hello::main%s %s at hello/Hello\.java:%d"%(spaces_pattern, param_types_pattern, arg_values_pattern, main_start),
-                       r"#1%s(%s in )?java\.lang\.invoke\.LambdaForm\$DMH/0x%s::invokeStatic(Init)?%s %s( at java/lang/invoke/%s:[0-9]+)?"%(spaces_pattern, address_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern, package_file_pattern),
+                       r"#1%s(%s in )?java\.lang\.invoke\.LambdaForm\$DMH/s%s::invokeStatic(Init)?%s %s( at java/lang/invoke/%s:[0-9]+)?"%(spaces_pattern, address_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern, package_file_pattern),
                        r"#2%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#3%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#4%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
@@ -370,7 +370,7 @@ def test():
     exec_string = execute("backtrace")
     stacktraceRegex = [r"#0%shello\.Hello\$Greeter::greeter%s %s at hello/Hello\.java:38"%(spaces_pattern, param_types_pattern, arg_values_pattern),
                        r"#1%s%s in hello\.Hello::main%s %s at hello/Hello\.java:%d"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, main_start),
-                       r"#2%s(%s in )?java\.lang\.invoke\.LambdaForm\$DMH/0x%s::invokeStatic(Init)?%s %s( at java/lang/invoke/%s:[0-9]+)?"%(spaces_pattern, address_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern, package_file_pattern),
+                       r"#2%s(%s in )?java\.lang\.invoke\.LambdaForm\$DMH/s%s::invokeStatic(Init)?%s %s( at java/lang/invoke/%s:[0-9]+)?"%(spaces_pattern, address_pattern, hex_digits_pattern, param_types_pattern, arg_values_pattern, package_file_pattern),
                        r"#3%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::invokeMain%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, param_types_pattern, arg_values_pattern, package_pattern),
                        r"#4%s(%s in )?com\.oracle\.svm\.core\.JavaMainWrapper::runCore0%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
                        r"#5%s%s in com\.oracle\.svm\.core\.JavaMainWrapper::runCore%s %s at %sJavaMainWrapper\.java:[0-9]+"%(spaces_pattern, address_pattern, no_param_types_pattern, no_arg_values_pattern, package_pattern),
