@@ -28,8 +28,8 @@ import jdk.vm.ci.meta.ValueKind;
 
 /**
  * This represents the type of a value which has been cast to a different {@link ValueKind}. In some
- * cases it's important to recover the original real type of the underyling value in particiular if
- * it's larger than the apparent type.
+ * cases it's important to recover the original type of the underlying value in particular if it's
+ * larger than the cast type.
  */
 public final class LIRKindWithCast extends LIRKind {
 
@@ -68,6 +68,6 @@ public final class LIRKindWithCast extends LIRKind {
 
     @Override
     public String toString() {
-        return "reinterpret: " + actualKind + " as: " + super.toString();
+        return super.toString() + "(" + actualKind + ")";
     }
 }

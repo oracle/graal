@@ -30,7 +30,6 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.LIRKindWithCast;
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
@@ -50,7 +49,6 @@ import org.graalvm.compiler.lir.util.ValueSet;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.PlatformKind;
 import jdk.vm.ci.meta.Value;
-import jdk.vm.ci.meta.ValueKind;
 
 public abstract class LocationMarker<S extends ValueSet<S>> {
 
@@ -174,12 +172,8 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
         public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
             if (shouldProcessValue(operand)) {
                 // no need to insert values and derived reference
-                Value value = operand;
                 // Remove any cast so the uses and defs are in agreement about the type
-                if (value.getValueKind() instanceof LIRKindWithCast) {
-                    ValueKind<LIRKind> actualKind = ((LIRKindWithCast) value.getValueKind()).getActualKind();
-                    value = LIRValueUtil.changeValueKind(operand, actualKind, false);
-                }
+                Value value = LIRValueUtil.uncast(operand);
                 DebugContext debug = lir.getDebug();
                 if (debug.isLogEnabled()) {
                     if (!value.equals(operand)) {
