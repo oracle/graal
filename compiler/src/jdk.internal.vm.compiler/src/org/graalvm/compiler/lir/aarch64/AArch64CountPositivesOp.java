@@ -145,7 +145,7 @@ public final class AArch64CountPositivesOp extends AArch64ComplexVectorOp {
                 GraalError.guarantee(CodeUtil.isPowerOf2(vmPageSize), "vmPageSize is not power of 2: %d", vmPageSize);
                 int shift = 64 - CodeUtil.log2(vmPageSize);
                 masm.lsl(64, rscratch1, ary1, shift);
-                masm.mov(rscratch2, (4 * wordSize) << shift);
+                masm.mov(rscratch2, (4L * wordSize) << shift);
                 masm.adds(64, rscratch2, rscratch1, rscratch2);
                 // at the end of page then go to stub
                 masm.branchConditionally(ConditionFlag.HS, labelStub);
