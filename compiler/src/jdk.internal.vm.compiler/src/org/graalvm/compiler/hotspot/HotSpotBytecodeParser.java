@@ -27,7 +27,10 @@ package org.graalvm.compiler.hotspot;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
+import org.graalvm.compiler.nodes.FixedGuardNode;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
@@ -58,4 +61,17 @@ public class HotSpotBytecodeParser extends BytecodeParser {
         }
     }
 
+    @Override
+    public GuardingNode intrinsicRangeCheck(LogicNode condition, boolean negated) {
+        /*
+         * On HotSpot it's simplest to always deoptimize. We could dispatch to the fallback code
+         * instead but that will greatly expand what's emitted for the intrinsic since it will have
+         * both the fast and slow versions inline. Actually deoptimizing here is unlikely as the
+         * most common uses of this method are in plugins for JDK internal methods. Those methods
+         * are generally unlikely to have arguments that lead to exceptions. The deopt action of
+         * None also keeps this guard from turning into a floating so it will stay fixed in the
+         * control flow.
+         */
+        return add(new FixedGuardNode(condition, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.None, !negated));
+    }
 }
