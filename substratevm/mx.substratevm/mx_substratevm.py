@@ -33,7 +33,6 @@ import re
 import tempfile
 from glob import glob
 from contextlib import contextmanager
-from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
 from os.path import join, exists, dirname
 import pipes
 from argparse import ArgumentParser
@@ -561,7 +560,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
 
     run_args = run_args or ['--verbose']
     junit_native_dir = join(svmbuild_dir(), platform_name(), 'junit')
-    mkpath(junit_native_dir)
+    mx.ensure_dir_exists(junit_native_dir)
     junit_test_dir = junit_native_dir if preserve_image else tempfile.mkdtemp(dir=junit_native_dir)
     try:
         unittest_deps = []
@@ -588,7 +587,7 @@ def _native_junit(native_image, unittest_args, build_args=None, run_args=None, b
         mx.run([unittest_image] + run_args)
     finally:
         if not preserve_image:
-            remove_tree(junit_test_dir)
+            mx.rmtree(junit_test_dir)
 
 _mask_str = '#'
 
@@ -714,8 +713,8 @@ def _cinterfacetutorial(native_image, args=None):
 
     # clean / create output directory
     if exists(build_dir):
-        remove_tree(build_dir)
-    mkpath(build_dir)
+        mx.rmtree(build_dir)
+    mx.ensure_dir_exists(build_dir)
 
     # Build the shared library from Java code
     native_image(['--shared', '-H:Path=' + build_dir, '-H:Name=libcinterfacetutorial', '-Dcom.oracle.svm.tutorial.headerfile=' + join(c_source_dir, 'mydata.h'),
@@ -779,7 +778,7 @@ void main() {
 
 
 def _helloworld(native_image, javac_command, path, build_only, args, variant=list(_helloworld_variants.keys())[0]):
-    mkpath(path)
+    mx.ensure_dir_exists(path)
     hello_file = os.path.join(path, 'HelloWorld.java')
     envkey = 'HELLO_WORLD_MESSAGE'
     output = 'Hello from native-image!'
@@ -874,7 +873,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
 
     def build_debug_test(variant_name, image_name, extra_args):
         per_build_path = join(path, variant_name)
-        mkpath(per_build_path)
+        mx.ensure_dir_exists(per_build_path)
         build_args = native_image_args + extra_args + [
             '-o', join(per_build_path, image_name)
         ]
@@ -908,7 +907,7 @@ def _debuginfotest(native_image, path, build_only, with_isolates_only, args):
 
 def _javac_image(native_image, path, args=None):
     args = [] if args is None else args
-    mkpath(path)
+    mx.ensure_dir_exists(path)
 
     # Build an image for the javac compiler, so that we test and gate-check javac all the time.
     # Dynamic class loading code is reachable (used by the annotation processor), so -H:+ReportUnsupportedElementsAtRuntime is a necessary option
@@ -1486,8 +1485,8 @@ def clinittest(args):
 
         # clean / create output directory
         if exists(build_dir):
-            remove_tree(build_dir)
-        mkpath(build_dir)
+            mx.rmtree(build_dir)
+        mx.ensure_dir_exists(build_dir)
 
         if new_class_init_policy:
             policy_args = ['-H:-UseDeprecatedOldClassInitialization', '-H:+SimulateClassInitializer', '-H:Features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
@@ -1759,7 +1758,7 @@ JNIEXPORT void JNICALL {0}() {{
     def clean(self, forBuild=False):
         gen_src_dir = dirname(self.jvm_fallbacks_path)
         if exists(gen_src_dir):
-            remove_tree(gen_src_dir)
+            mx.rmtree(gen_src_dir)
 
     def __str__(self):
         return 'JvmFuncsFallbacksBuildTask {}'.format(self.subject)
