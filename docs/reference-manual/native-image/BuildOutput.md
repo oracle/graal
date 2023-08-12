@@ -231,6 +231,23 @@ The total size of generated debug information (if enabled).
 The amount of data in the binary that is neither in the [code area](#glossary-code-area), nor in the [heap](#glossary-image-heap), nor [debug info](#glossary-debug-info).
 This data typically contains internal information for Native Image and should not be dominating.
 
+## Security Report
+
+*This section is not available in GraalVM Community Edition.*
+
+#### <a name="glossary-deserialization"></a>Deserialization
+This shows whether Java deserialization is included in the native executable or not.
+If not included, the attack surface of the executable is reduced as the executable cannot be exploited with attacks based on Java deserialization.
+
+#### <a name="glossary-embedded-sbom"></a>Embedded SBOM
+Number of components and the size of the embedded Software Bill of Materials (SBOM).
+Use `--enable-sbom` to include an SBOM in the native executable.
+For more information, see [Inspection Tool](InspectTool.md)
+
+#### <a name="glossary-backwards-edge-cfi"></a>Backwards-Edge Control-Flow Integrity (CFI)
+Control-Flow Integrity (CFI) can be enforced with the experimental `-H:+EnableCFI` option.
+This feature is currently only available for Linux AArch64 and leverages pointer authentication codes (PAC) to ensure integrity of a function's return address.
+
 ## Recommendations
 
 The build output may contain one or more of the following recommendations that help you get the best out of Native Image.

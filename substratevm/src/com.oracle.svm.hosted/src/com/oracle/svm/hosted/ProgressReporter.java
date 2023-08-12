@@ -453,6 +453,7 @@ public class ProgressReporter {
                         .doclink("other data", "#glossary-other-data").println();
         l().a("%9s in total", ByteFormattingUtil.bytesToHuman(imageFileSize)).println();
         printBreakdowns();
+        ImageSingletons.lookup(ProgressReporterFeature.class).afterBreakdowns();
         printRecommendations();
     }
 
@@ -659,9 +660,9 @@ public class ProgressReporter {
         double totalProcessTimeSeconds = Utils.millisToSeconds(System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime());
         GCStats gcStats = GCStats.getCurrent();
         double gcSeconds = Utils.millisToSeconds(gcStats.totalTimeMillis);
-        CenteredTextPrinter p = new CenteredTextPrinter();
         recordJsonMetric(ResourceUsageKey.GC_COUNT, gcStats.totalCount);
         recordJsonMetric(ResourceUsageKey.GC_SECS, gcSeconds);
+        CenteredTextPrinter p = centered();
         p.a("%.1fs (%.1f%% of total time) in %d ", gcSeconds, gcSeconds / totalProcessTimeSeconds * 100, gcStats.totalCount)
                         .doclink("GCs", "#glossary-garbage-collections");
         long peakRSS = ProgressReporterCHelper.getPeakRSS();
@@ -836,65 +837,74 @@ public class ProgressReporter {
 
         public abstract T a(String text);
 
-        final T a(String text, Object... args) {
+        public final T a(String text, Object... args) {
             return a(String.format(text, args));
         }
 
-        final T a(int i) {
+        public final T a(int i) {
             return a(String.valueOf(i));
         }
 
-        final T a(long i) {
+        public final T a(long i) {
             return a(String.valueOf(i));
         }
 
-        final T bold() {
+        public final T bold() {
             colorStrategy.bold(this);
             return getThis();
         }
 
-        final T blue() {
+        public final T blue() {
             colorStrategy.blue(this);
             return getThis();
         }
 
-        final T blueBold() {
+        public final T blueBold() {
             colorStrategy.blueBold(this);
             return getThis();
         }
 
-        final T magentaBold() {
+        public final T magentaBold() {
             colorStrategy.magentaBold(this);
             return getThis();
         }
 
-        final T redBold() {
+        public final T red() {
+            colorStrategy.red(this);
+            return getThis();
+        }
+
+        public final T redBold() {
             colorStrategy.redBold(this);
             return getThis();
         }
 
-        final T yellowBold() {
+        public final T yellowBold() {
             colorStrategy.yellowBold(this);
             return getThis();
         }
 
-        final T dim() {
+        public final T dim() {
             colorStrategy.dim(this);
             return getThis();
         }
 
-        final T reset() {
+        public final T reset() {
             colorStrategy.reset(this);
             return getThis();
         }
 
-        final T link(String text, String url) {
+        public final T link(String text, String url) {
             linkStrategy.link(this, text, url);
             return getThis();
         }
 
-        final T link(Path path) {
-            linkStrategy.link(this, path);
+        public final T link(Path path) {
+            return link(path, false);
+        }
+
+        public final T link(Path path, boolean filenameOnly) {
+            linkStrategy.link(this, path, filenameOnly);
             return getThis();
         }
 
@@ -907,8 +917,12 @@ public class ProgressReporter {
     /**
      * Start printing a new line.
      */
-    private DirectPrinter l() {
+    public DirectPrinter l() {
         return linePrinter.a(outputPrefix);
+    }
+
+    public CenteredTextPrinter centered() {
+        return new CenteredTextPrinter();
     }
 
     public final class DirectPrinter extends AbstractPrinter<DirectPrinter> {
@@ -923,7 +937,7 @@ public class ProgressReporter {
             return this;
         }
 
-        void println() {
+        public void println() {
             ProgressReporter.this.println();
         }
 
@@ -931,12 +945,12 @@ public class ProgressReporter {
             dim().a(HEADLINE_SEPARATOR).reset().println();
         }
 
-        void printLineSeparator() {
+        public void printLineSeparator() {
             dim().a(LINE_SEPARATOR).reset().println();
         }
     }
 
-    abstract class LinePrinter<T extends LinePrinter<T>> extends AbstractPrinter<T> {
+    public abstract class LinePrinter<T extends LinePrinter<T>> extends AbstractPrinter<T> {
         protected final List<String> lineParts = new ArrayList<>();
 
         @Override
@@ -1180,14 +1194,14 @@ public class ProgressReporter {
         }
     }
 
-    final class CenteredTextPrinter extends LinePrinter<CenteredTextPrinter> {
+    public final class CenteredTextPrinter extends LinePrinter<CenteredTextPrinter> {
         @Override
         CenteredTextPrinter getThis() {
             return this;
         }
 
         @Override
-        void flushln() {
+        public void flushln() {
             print(outputPrefix);
             String padding = Utils.stringFilledWith((Math.max(0, CHARACTERS_PER_LINE - getCurrentTextLength())) / 2, " ");
             print(padding);
@@ -1207,6 +1221,9 @@ public class ProgressReporter {
         }
 
         default void magentaBold(AbstractPrinter<?> printer) {
+        }
+
+        default void red(AbstractPrinter<?> printer) {
         }
 
         default void redBold(AbstractPrinter<?> printer) {
@@ -1250,6 +1267,11 @@ public class ProgressReporter {
         }
 
         @Override
+        public void red(AbstractPrinter<?> printer) {
+            printer.a(ANSI.RED);
+        }
+
+        @Override
         public void redBold(AbstractPrinter<?> printer) {
             printer.a(ANSI.RED_BOLD);
         }
@@ -1284,9 +1306,20 @@ public class ProgressReporter {
 
         String asDocLink(String text, String htmlAnchor);
 
-        default void link(AbstractPrinter<?> printer, Path path) {
+        default void link(AbstractPrinter<?> printer, Path path, boolean filenameOnly) {
             Path normalized = path.normalize();
-            link(printer, normalized.toString(), normalized.toUri().toString());
+            String name;
+            if (filenameOnly) {
+                Path filename = normalized.getFileName();
+                if (filename != null) {
+                    name = normalized.toString();
+                } else {
+                    throw VMError.shouldNotReachHere("filename should never be null, illegal path: " + path);
+                }
+            } else {
+                name = normalized.toString();
+            }
+            link(printer, name, normalized.toUri().toString());
         }
 
         default void doclink(AbstractPrinter<?> printer, String text, String htmlAnchor) {
@@ -1339,6 +1372,7 @@ public class ProgressReporter {
         static final String LINK_FORMAT = LINK_START + "%s" + LINK_TEXT + "%s" + LINK_END;
         static final String STRIP_LINKS = "\033]8;;https://\\S+\033\\\\([^\033]*)\033]8;;\033\\\\";
 
+        static final String RED = ESCAPE + "[0;31m";
         static final String BLUE = ESCAPE + "[0;34m";
 
         static final String RED_BOLD = ESCAPE + "[1;31m";

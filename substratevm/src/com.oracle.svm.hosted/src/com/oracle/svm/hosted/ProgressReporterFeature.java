@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.oracle.svm.util.LogUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.BuildArtifacts;
@@ -75,6 +76,13 @@ public class ProgressReporterFeature implements InternalFeature {
     }
 
     protected void appendGraalSuffix(@SuppressWarnings("unused") DirectPrinter graalLine) {
+    }
+
+    public void afterBreakdowns() {
+        String userWarning = ImageSingletons.lookup(Log4ShellFeature.class).getUserWarning();
+        if (userWarning != null) {
+            LogUtils.warning(userWarning);
+        }
     }
 
     public void createAdditionalArtifacts(@SuppressWarnings("unused") BuildArtifacts artifacts) {
