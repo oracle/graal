@@ -78,7 +78,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
     @Option(help = "When true, each compiler graph version (DeoptTarget, AOT, JIT) needed for runtime compilation will be separately analyzed during static analysis." +
                     "When false, only one version of the compiler graph (AOT) will be used in static analysis, and then three new versions will be parsed for compilation.")//
-    public static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
