@@ -68,8 +68,11 @@ import java.nio.charset.CodingErrorAction;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Pair;
 import org.graalvm.wasm.collection.ByteArrayList;
+import org.graalvm.wasm.collection.LongArrayList;
 import org.graalvm.wasm.constants.Bytecode;
 import org.graalvm.wasm.constants.ExportIdentifier;
 import org.graalvm.wasm.constants.GlobalModifier;
@@ -1972,52 +1975,156 @@ public class BinaryParser extends BinaryStreamParser {
         result[1] = memoryOffset;
     }
 
-    private void readOffsetExpression(int[] result) {
+    private Pair<Integer, byte[]> readOffsetExpression() {
         // Table offset expression must be a constant expression with result type i32.
         // https://webassembly.github.io/spec/core/syntax/modules.html#element-segments
         // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-
-        // Read the offset expression.
-        byte instruction = read1();
-
-        // Read the offset expression.
-        int offsetAddress = -1;
-        int offsetGlobalIndex = -1;
-        switch (instruction) {
-            case Instructions.I32_CONST:
-                offsetAddress = readSignedInt32();
-                break;
-            case Instructions.GLOBAL_GET:
-                offsetGlobalIndex = readGlobalIndex();
-                assertIntEqual(module.globalMutability(offsetGlobalIndex), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
-                assertByteEqual(module.globalValueType(offsetGlobalIndex), I32_TYPE, Failure.TYPE_MISMATCH);
-                break;
-            default:
-                throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid instruction for offset expression: 0x%02X", instruction);
+        Pair<Long, byte[]> result = readConstantExpression(I32_TYPE, false);
+        if (result.getRight() == null) {
+            return Pair.create((int) (long) result.getLeft(), null);
+        } else {
+            return Pair.create(-1, result.getRight());
         }
-        result[0] = offsetAddress;
-        result[1] = offsetGlobalIndex;
-        readEnd();
     }
 
-    private void readLongOffsetExpression(long[] result) {
-        byte instruction = read1();
-        long offsetAddress = -1L;
-        int offsetGlobalIndex = -1;
-        switch (instruction) {
-            case Instructions.I64_CONST:
-                offsetAddress = readSignedInt64();
-                break;
-            case Instructions.GLOBAL_GET:
-                offsetGlobalIndex = readGlobalIndex();
-                assertIntEqual(module.globalMutability(offsetGlobalIndex), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
-                assertByteEqual(module.globalValueType(offsetGlobalIndex), I64_TYPE, Failure.TYPE_MISMATCH);
-                break;
-            default:
-                throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid instruction for offset expression: 0x%02X", instruction);
+    private Pair<Long, byte[]> readLongOffsetExpression() {
+        return readConstantExpression(I64_TYPE, false);
+    }
+
+    private Pair<Long, byte[]> readConstantExpression(byte resultType, boolean onlyImportedGlobals) {
+        // Read the constant expression.
+        // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
+        final RuntimeBytecodeGen bytecode = new RuntimeBytecodeGen();
+        final ParserState state = new ParserState(bytecode);
+
+        final LongArrayList stack = new LongArrayList();
+        boolean calculable = true;
+
+        state.enterFunction(new byte[]{resultType});
+        int opcode;
+        while ((opcode = read1() & 0xFF) != Instructions.END) {
+            switch (opcode) {
+                case Instructions.I32_CONST: {
+                    final int value = readSignedInt32();
+                    state.push(I32_TYPE);
+                    state.addSignedInstruction(Bytecode.I32_CONST_I8, value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
+                    break;
+                }
+                case Instructions.I64_CONST: {
+                    final long value = readSignedInt64();
+                    state.push(I64_TYPE);
+                    state.addSignedInstruction(Bytecode.I64_CONST_I8, value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
+                    break;
+                }
+                case Instructions.F32_CONST: {
+                    final int value = readFloatAsInt32();
+                    state.push(F32_TYPE);
+                    state.addInstruction(Bytecode.F32_CONST, value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
+                    break;
+                }
+                case Instructions.F64_CONST: {
+                    final long value = readFloatAsInt64();
+                    state.push(F64_TYPE);
+                    state.addInstruction(Bytecode.F64_CONST, value);
+                    if (calculable) {
+                        stack.add(value);
+                    }
+                    break;
+                }
+                case Instructions.REF_NULL:
+                    checkBulkMemoryAndRefTypesSupport(opcode);
+                    final byte type = readRefType();
+                    state.push(type);
+                    state.addInstruction(Bytecode.REF_NULL);
+                    if (calculable) {
+                        stack.add(0);
+                    }
+                    break;
+                case Instructions.REF_FUNC:
+                    checkBulkMemoryAndRefTypesSupport(opcode);
+                    final int functionIndex = readDeclaredFunctionIndex();
+                    module.addFunctionReference(functionIndex);
+                    state.push(FUNCREF_TYPE);
+                    state.addInstruction(Bytecode.REF_FUNC, functionIndex);
+                    calculable = false;
+                    break;
+                case Instructions.GLOBAL_GET: {
+                    final int index = readGlobalIndex();
+                    if (onlyImportedGlobals) {
+                        // The current WebAssembly spec says constant expressions can only refer to
+                        // imported globals. We can easily remove this restriction in the future.
+                        assertUnsignedIntLess(index, module.symbolTable().importedGlobals().size(), Failure.UNSPECIFIED_MALFORMED,
+                                        "The initializer for global " + index + " in module '" + module.name() + "' refers to a non-imported global.");
+                    }
+                    assertIntEqual(module.globalMutability(index), GlobalModifier.CONSTANT, Failure.CONSTANT_EXPRESSION_REQUIRED);
+                    state.push(module.symbolTable().globalValueType(index));
+                    state.addUnsignedInstruction(Bytecode.GLOBAL_GET_U8, index);
+                    calculable = false;
+                    break;
+                }
+                case Instructions.I32_ADD:
+                case Instructions.I32_SUB:
+                case Instructions.I32_MUL:
+                    if (!wasmContext.getContextOptions().supportExtendedConstExpressions()) {
+                        fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                    }
+                    state.popChecked(I32_TYPE);
+                    state.popChecked(I32_TYPE);
+                    state.push(I32_TYPE);
+                    state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
+                    if (calculable) {
+                        int x = (int) stack.popBack();
+                        int y = (int) stack.popBack();
+                        stack.add(switch (opcode) {
+                            case Instructions.I32_ADD -> y + x;
+                            case Instructions.I32_SUB -> y - x;
+                            case Instructions.I32_MUL -> y * x;
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        });
+                    }
+                    break;
+                case Instructions.I64_ADD:
+                case Instructions.I64_SUB:
+                case Instructions.I64_MUL:
+                    if (!wasmContext.getContextOptions().supportExtendedConstExpressions()) {
+                        fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                    }
+                    state.popChecked(I64_TYPE);
+                    state.popChecked(I64_TYPE);
+                    state.push(I64_TYPE);
+                    state.addInstruction(opcode + Bytecode.COMMON_BYTECODE_OFFSET);
+                    if (calculable) {
+                        long x = stack.popBack();
+                        long y = stack.popBack();
+                        stack.add(switch (opcode) {
+                            case Instructions.I64_ADD -> y + x;
+                            case Instructions.I64_SUB -> y - x;
+                            case Instructions.I64_MUL -> y * x;
+                            default -> throw CompilerDirectives.shouldNotReachHere();
+                        });
+                    }
+                    break;
+                default:
+                    fail(Failure.TYPE_MISMATCH, "Invalid instruction for constant expression: 0x%02X", opcode);
+                    break;
+            }
         }
-        result[0] = offsetAddress;
-        result[1] = offsetGlobalIndex;
+        assertIntEqual(state.valueStackSize(), 1, "Multiple results on stack at constant expression end", Failure.TYPE_MISMATCH);
+        state.exit(multiValue);
+        if (calculable) {
+            return Pair.create(stack.popBack(), null);
+        } else {
+            return Pair.create(-1L, bytecode.toArray());
+        }
     }
 
     private long[] readFunctionIndices() {
@@ -2051,6 +2158,17 @@ public class BinaryParser extends BinaryStreamParser {
                 case Instructions.F32_CONST:
                 case Instructions.F64_CONST:
                     throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
+                case Instructions.I32_ADD:
+                case Instructions.I32_SUB:
+                case Instructions.I32_MUL:
+                case Instructions.I64_ADD:
+                case Instructions.I64_SUB:
+                case Instructions.I64_MUL:
+                    if (wasmContext.getContextOptions().supportExtendedConstExpressions()) {
+                        throw WasmException.format(Failure.TYPE_MISMATCH, "Invalid constant expression for table elem expression: 0x%02X", opcode);
+                    } else {
+                        throw WasmException.format(Failure.ILLEGAL_OPCODE, "Illegal opcode for constant expression: 0x%02X", opcode);
+                    }
                 case Instructions.REF_NULL:
                     final byte type = readRefType();
                     if (bulkMemoryAndRefTypes && type != elemType) {
@@ -2088,7 +2206,7 @@ public class BinaryParser extends BinaryStreamParser {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             int mode;
             final int currentOffsetAddress;
-            final int currentOffsetGlobalIndex;
+            final byte[] currentOffsetBytecode;
             final long[] elements;
             final int tableIndex;
             final byte elemType;
@@ -2104,14 +2222,14 @@ public class BinaryParser extends BinaryStreamParser {
                     } else {
                         tableIndex = 0;
                     }
-                    readOffsetExpression(multiResult);
-                    currentOffsetAddress = multiResult[0];
-                    currentOffsetGlobalIndex = multiResult[1];
+                    Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                    currentOffsetAddress = offsetExpression.getLeft();
+                    currentOffsetBytecode = offsetExpression.getRight();
                 } else {
                     mode = useTableIndex ? SegmentMode.DECLARATIVE : SegmentMode.PASSIVE;
                     tableIndex = 0;
                     currentOffsetAddress = -1;
-                    currentOffsetGlobalIndex = -1;
+                    currentOffsetBytecode = null;
                 }
                 if (useExpressions) {
                     if (useType) {
@@ -2130,9 +2248,9 @@ public class BinaryParser extends BinaryStreamParser {
             } else {
                 mode = SegmentMode.ACTIVE;
                 tableIndex = readTableIndex();
-                readOffsetExpression(multiResult);
-                currentOffsetAddress = multiResult[0];
-                currentOffsetGlobalIndex = multiResult[1];
+                Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                currentOffsetAddress = offsetExpression.getLeft();
+                currentOffsetBytecode = offsetExpression.getRight();
                 elements = readFunctionIndices();
                 elemType = FUNCREF_TYPE;
             }
@@ -2141,12 +2259,12 @@ public class BinaryParser extends BinaryStreamParser {
             final int currentElemSegmentId = elemSegmentIndex;
             final int elementCount = elements.length;
             final int headerOffset = bytecode.location();
-            final int bytecodeOffset = bytecode.addElemHeader(mode, elementCount, elemType, tableIndex, currentOffsetGlobalIndex, currentOffsetAddress);
+            final int bytecodeOffset = bytecode.addElemHeader(mode, elementCount, elemType, tableIndex, currentOffsetBytecode, currentOffsetAddress);
             module.setElemInstance(currentElemSegmentId, headerOffset, elemType);
             if (mode == SegmentMode.ACTIVE) {
                 assertTrue(module.checkTableIndex(tableIndex), Failure.UNKNOWN_TABLE);
                 module.addLinkAction(((context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, currentElemSegmentId, currentOffsetAddress,
-                                currentOffsetGlobalIndex, bytecodeOffset, elementCount)));
+                                currentOffsetBytecode, bytecodeOffset, elementCount)));
             } else if (mode == SegmentMode.PASSIVE) {
                 module.addLinkAction(((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, currentElemSegmentId, bytecodeOffset, elementCount)));
             }
@@ -2225,96 +2343,29 @@ public class BinaryParser extends BinaryStreamParser {
             final byte type = readValueType(bulkMemoryAndRefTypes);
             // 0x00 means const, 0x01 means var
             final byte mutability = readMutability();
-            long value = 0;
-            int existingIndex = -1;
-            final int instruction = read1() & 0xFF;
-            boolean isInitialized;
-            final boolean isFunctionOrNull;
             // Global initialization expressions must be constant expressions:
             // https://webassembly.github.io/spec/core/valid/instructions.html#constant-expressions
-            switch (instruction) {
-                case Instructions.I32_CONST:
-                    assertByteEqual(type, I32_TYPE, Failure.TYPE_MISMATCH);
-                    value = readSignedInt32();
-                    isInitialized = true;
-                    isFunctionOrNull = false;
-                    break;
-                case Instructions.I64_CONST:
-                    assertByteEqual(type, I64_TYPE, Failure.TYPE_MISMATCH);
-                    value = readSignedInt64();
-                    isInitialized = true;
-                    isFunctionOrNull = false;
-                    break;
-                case Instructions.F32_CONST:
-                    assertByteEqual(type, F32_TYPE, Failure.TYPE_MISMATCH);
-                    value = readFloatAsInt32();
-                    isInitialized = true;
-                    isFunctionOrNull = false;
-                    break;
-                case Instructions.F64_CONST:
-                    assertByteEqual(type, F64_TYPE, Failure.TYPE_MISMATCH);
-                    value = readFloatAsInt64();
-                    isInitialized = true;
-                    isFunctionOrNull = false;
-                    break;
-                case Instructions.REF_NULL:
-                    checkBulkMemoryAndRefTypesSupport(instruction);
-                    assertByteEqual(type, readRefType(), Failure.TYPE_MISMATCH);
-                    assertTrue(WasmType.isReferenceType(type), Failure.TYPE_MISMATCH);
-                    isInitialized = true;
-                    isFunctionOrNull = true;
-                    break;
-                case Instructions.REF_FUNC:
-                    checkBulkMemoryAndRefTypesSupport(instruction);
-                    assertByteEqual(type, FUNCREF_TYPE, Failure.TYPE_MISMATCH);
-                    final int functionIndex = readDeclaredFunctionIndex();
-                    module.addFunctionReference(functionIndex);
-                    value = functionIndex;
-                    isInitialized = false;
-                    isFunctionOrNull = true;
-                    break;
-                case Instructions.GLOBAL_GET:
-                    existingIndex = readGlobalIndex();
-                    assertUnsignedIntLess(existingIndex, module.symbolTable().importedGlobals().size(), Failure.UNKNOWN_GLOBAL);
-                    assertByteEqual(type, module.symbolTable().globalValueType(existingIndex), Failure.TYPE_MISMATCH);
-                    assertByteEqual(GlobalModifier.CONSTANT, module.globalMutability(existingIndex), Failure.CONSTANT_EXPRESSION_REQUIRED);
-                    isInitialized = false;
-                    isFunctionOrNull = false;
-                    break;
-                default:
-                    throw WasmException.create(Failure.TYPE_MISMATCH);
-            }
-            readEnd();
+            Pair<Long, byte[]> initExpression = readConstantExpression(type, true);
+            final long value = initExpression.getLeft();
+            final byte[] initBytecode = initExpression.getRight();
+            final boolean isInitialized = initBytecode == null;
+            final boolean isReference = WasmType.isReferenceType(type);
 
-            module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, isFunctionOrNull, existingIndex, value);
+            module.symbolTable().declareGlobal(globalIndex, type, mutability, isInitialized, isReference, initBytecode, value);
             final int currentGlobalIndex = globalIndex;
-            final int currentExistingIndex = existingIndex;
-            final long currentValue = value;
-            final int currentFunctionIndex = (int) value;
             module.addLinkAction((context, instance) -> {
                 final GlobalRegistry globals = context.globals();
                 final int address = instance.globalAddress(currentGlobalIndex);
                 if (isInitialized) {
-                    if (isFunctionOrNull) {
+                    if (isReference) {
                         // Only null is possible
                         globals.storeReference(address, WasmConstant.NULL);
                     } else {
-                        globals.storeLong(address, currentValue);
+                        globals.storeLong(address, value);
                     }
                     context.linker().resolveGlobalInitialization(instance, currentGlobalIndex);
                 } else {
-                    if (currentExistingIndex != -1 && !instance.symbolTable().importedGlobals().containsKey(currentExistingIndex)) {
-                        // The current WebAssembly spec says constant expressions can only refer to
-                        // imported globals. We can easily remove this restriction in the future.
-                        fail(Failure.UNSPECIFIED_MALFORMED, "The initializer for global " + currentGlobalIndex + " in module '" + instance.name() +
-                                        "' refers to a non-imported global.");
-                    }
-                    if (isFunctionOrNull) {
-                        // Has to be a function reference
-                        context.linker().resolveGlobalFunctionInitialization(context, instance, currentGlobalIndex, currentFunctionIndex);
-                    } else {
-                        context.linker().resolveGlobalInitialization(context, instance, currentGlobalIndex, currentExistingIndex);
-                    }
+                    context.linker().resolveGlobalInitialization(context, instance, currentGlobalIndex, initBytecode);
                 }
             });
         }
@@ -2341,7 +2392,7 @@ public class BinaryParser extends BinaryStreamParser {
             assertTrue(!isEOF(), Failure.LENGTH_OUT_OF_BOUNDS);
             final int mode;
             long offsetAddress;
-            final int offsetGlobalIndex;
+            final byte[] offsetBytecode;
             final int memoryIndex;
             if (bulkMemoryAndRefTypes) {
                 final int sectionType = readUnsignedInt32();
@@ -2358,17 +2409,17 @@ public class BinaryParser extends BinaryStreamParser {
                 if (mode == SegmentMode.ACTIVE) {
                     checkMemoryIndex(memoryIndex);
                     if (module.memoryHasIndexType64(memoryIndex)) {
-                        readLongOffsetExpression(longMultiResult);
-                        offsetAddress = longMultiResult[0];
-                        offsetGlobalIndex = (int) longMultiResult[1];
+                        Pair<Long, byte[]> offsetExpression = readLongOffsetExpression();
+                        offsetAddress = offsetExpression.getLeft();
+                        offsetBytecode = offsetExpression.getRight();
                     } else {
-                        readOffsetExpression(multiResult);
-                        offsetAddress = multiResult[0];
-                        offsetGlobalIndex = multiResult[1];
+                        Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                        offsetAddress = offsetExpression.getLeft();
+                        offsetBytecode = offsetExpression.getRight();
                     }
                 } else {
                     offsetAddress = 0;
-                    offsetGlobalIndex = 0;
+                    offsetBytecode = null;
                 }
             } else {
                 mode = SegmentMode.ACTIVE;
@@ -2379,13 +2430,13 @@ public class BinaryParser extends BinaryStreamParser {
                     memoryIndex = 0;
                 }
                 if (module.memoryHasIndexType64(memoryIndex)) {
-                    readLongOffsetExpression(longMultiResult);
-                    offsetAddress = longMultiResult[0];
-                    offsetGlobalIndex = (int) longMultiResult[1];
+                    Pair<Long, byte[]> offsetExpression = readLongOffsetExpression();
+                    offsetAddress = offsetExpression.getLeft();
+                    offsetBytecode = offsetExpression.getRight();
                 } else {
-                    readOffsetExpression(multiResult);
-                    offsetAddress = multiResult[0];
-                    offsetGlobalIndex = multiResult[1];
+                    Pair<Integer, byte[]> offsetExpression = readOffsetExpression();
+                    offsetAddress = offsetExpression.getLeft();
+                    offsetBytecode = offsetExpression.getRight();
                 }
             }
 
@@ -2396,11 +2447,11 @@ public class BinaryParser extends BinaryStreamParser {
             if (mode == SegmentMode.ACTIVE) {
                 checkMemoryIndex(memoryIndex);
                 final long currentOffsetAddress = offsetAddress;
-                bytecode.addDataHeader(byteLength, offsetGlobalIndex, currentOffsetAddress, memoryIndex);
+                bytecode.addDataHeader(byteLength, offsetBytecode, currentOffsetAddress, memoryIndex);
                 final int bytecodeOffset = bytecode.location();
                 module.setDataInstance(currentDataSegmentId, headerOffset);
                 module.addLinkAction(
-                                (context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetGlobalIndex, byteLength,
+                                (context, instance) -> context.linker().resolveDataSegment(context, instance, currentDataSegmentId, memoryIndex, currentOffsetAddress, offsetBytecode, byteLength,
                                                 bytecodeOffset, droppedDataInstanceOffset));
             } else {
                 bytecode.addDataHeader(mode, byteLength);
