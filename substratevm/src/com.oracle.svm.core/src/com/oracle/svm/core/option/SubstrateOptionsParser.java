@@ -234,6 +234,27 @@ public class SubstrateOptionsParser {
         }
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String commandArgument(OptionKey<?> option, String value, String apiOptionName, boolean escape, boolean newLine) {
+        return formatCommandArgument(commandArgument(option, value, apiOptionName), escape, newLine);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public static String commandArgument(OptionKey<?> option, String value, boolean escape, boolean newLine) {
+        return formatCommandArgument(commandArgument(option, value), escape, newLine);
+    }
+
+    private static String formatCommandArgument(String optionMessage, boolean escape, boolean newLine) {
+        var message = optionMessage;
+        if (escape) {
+            message = "'" + message + "'";
+        }
+        if (newLine) {
+            message = System.lineSeparator() + System.lineSeparator() + "    " + message + System.lineSeparator() + System.lineSeparator();
+        }
+        return message;
+    }
+
     private static String selectVariant(APIOption apiOption, String apiOptionName) {
         VMError.guarantee(apiOption.name().length > 0, "APIOption requires at least one name");
         if (apiOptionName == null) {
