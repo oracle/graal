@@ -783,7 +783,15 @@ public class LinearScanLifetimeAnalysisPhase extends LinearScanAllocationPhase {
                 if (LinearScan.isVariableOrRegister(operand)) {
                     int opId = op.id();
                     int blockFrom = allocator.getFirstLirInstructionId((allocator.blockForId(opId)));
-                    addUse((AllocatableValue) operand, blockFrom, opId + 1, RegisterPriority.None, operand.getValueKind(), detailedAsserts);
+                    RegisterPriority priority = RegisterPriority.None;
+                    if (operand.getPlatformKind().getVectorLength() > 1) {
+                        /*
+                         * Setting priority of vectors in states to ShouldHaveRegister to avoid
+                         * rematerialization (see #getMaterializedValue).
+                         */
+                        priority = RegisterPriority.ShouldHaveRegister;
+                    }
+                    addUse((AllocatableValue) operand, blockFrom, opId + 1, priority, operand.getValueKind(), detailedAsserts);
                 }
             };
             InstructionValueConsumer basePointerStateProc = (op, operand, mode, flags) -> {

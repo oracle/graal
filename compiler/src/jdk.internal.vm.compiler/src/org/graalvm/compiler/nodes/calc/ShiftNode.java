@@ -28,10 +28,13 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 import static org.graalvm.compiler.nodes.calc.BinaryArithmeticNode.getArithmeticOpTable;
 
+import java.util.Set;
+
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.ShiftOp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
@@ -96,6 +99,21 @@ public abstract class ShiftNode<OP> extends BinaryNode implements ArithmeticOper
             JavaConstant amount = forY.asJavaConstant();
             assert amount.getJavaKind() == JavaKind.Int;
             return ConstantNode.forPrimitive(stamp, op.foldConstant(forX.asConstant(), amount.asInt()));
+        }
+        return null;
+    }
+
+    public static ValueNode shiftOp(ValueNode x, ValueNode y, NodeView view, ShiftOp<?> op) {
+        if (IntegerStamp.OPS.getShl().equals(op)) {
+            return LeftShiftNode.create(x, y, view);
+        } else if (IntegerStamp.OPS.getShr().equals(op)) {
+            return RightShiftNode.create(x, y, view);
+        } else if (IntegerStamp.OPS.getUShr().equals(op)) {
+            return UnsignedRightShiftNode.create(x, y, view);
+        } else if (Set.of(IntegerStamp.OPS.getShiftOps()).contains(op)) {
+            GraalError.unimplemented(String.format("creating %s via ShiftNode#shiftOp is not implemented yet", op));
+        } else {
+            GraalError.shouldNotReachHere(String.format("%s is not a shift operation!", op));
         }
         return null;
     }

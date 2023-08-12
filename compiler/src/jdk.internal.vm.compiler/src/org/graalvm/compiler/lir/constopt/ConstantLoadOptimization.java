@@ -166,7 +166,9 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
 
                 @Override
                 public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
-                    assert !operand.equals(var) : "constant usage through variable in frame state " + var;
+                    if (operand.getPlatformKind().getVectorLength() == 1) {
+                        assert !operand.equals(var) : "constant usage through variable in frame state " + var;
+                    }
                 }
             };
             for (BasicBlock<?> block : lir.getControlFlowGraph().getBlocks()) {
@@ -252,6 +254,13 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                     }
                 };
 
+                InstructionValueConsumer stateVectorUseConsumer = (instruction, value, mode, flags) -> {
+                    /* States may use vector constants directly via variables. */
+                    if (value.getPlatformKind().getVectorLength() > 1) {
+                        useConsumer.visitValue(instruction, value, mode, flags);
+                    }
+                };
+
                 int opId = 0;
                 for (LIRInstruction inst : lir.getLIRforBlock(block)) {
                     // set instruction id to the index in the lir instruction list
@@ -259,7 +268,7 @@ public final class ConstantLoadOptimization extends PreAllocationOptimizationPha
                     inst.visitEachOutput(loadConsumer);
                     inst.visitEachInput(useConsumer);
                     inst.visitEachAlive(useConsumer);
-
+                    inst.visitEachState(stateVectorUseConsumer);
                 }
             }
         }

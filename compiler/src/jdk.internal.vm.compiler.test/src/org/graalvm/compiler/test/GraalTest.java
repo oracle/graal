@@ -225,9 +225,9 @@ public class GraalTest {
                 } else {
                     Assert.fail((message == null ? "" : message) + "non-array value encountered: " + expected);
                 }
-            } else if (expectedClass.equals(double.class) && actualClass.equals(double.class)) {
+            } else if (expectedClass.equals(Double.class) && actualClass.equals(Double.class)) {
                 Assert.assertEquals((double) expected, (double) actual, delta);
-            } else if (expectedClass.equals(float.class) && actualClass.equals(float.class)) {
+            } else if (expectedClass.equals(Float.class) && actualClass.equals(Float.class)) {
                 Assert.assertEquals((float) expected, (float) actual, delta);
             } else {
                 Assert.assertEquals(message, expected, actual);

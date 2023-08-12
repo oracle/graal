@@ -58,8 +58,11 @@ public final class IntegerEqualsNode extends CompareNode implements BinaryCommut
 
     public IntegerEqualsNode(ValueNode x, ValueNode y) {
         super(TYPE, CanonicalCondition.EQ, false, x, y);
-        assert !x.getStackKind().isNumericFloat() && x.getStackKind() != JavaKind.Object;
-        assert !y.getStackKind().isNumericFloat() && y.getStackKind() != JavaKind.Object;
+        Stamp xStamp = x.stamp(NodeView.DEFAULT);
+        Stamp yStamp = y.stamp(NodeView.DEFAULT);
+        assert xStamp.isIntegerStamp() : "expected integer x value: " + x;
+        assert yStamp.isIntegerStamp() : "expected integer y value: " + y;
+        assert xStamp.isCompatible(yStamp) : "expected compatible stamps: " + xStamp + " / " + yStamp;
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, NodeView view) {
