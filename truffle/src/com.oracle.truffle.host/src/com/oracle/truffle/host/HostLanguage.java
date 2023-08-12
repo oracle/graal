@@ -118,13 +118,13 @@ final class HostLanguage extends TruffleLanguage<HostContext> {
         return o;
     }
 
-    void initializeHostAccess(HostAccess policy, ClassLoader cl) {
+    void initializeHostAccess(HostAccess policy) {
         if (policy == null) {
             // should only happen during context preinitialization
             return;
         }
 
-        HostClassCache cache = HostClassCache.findOrInitialize(access, api, policy, cl);
+        HostClassCache cache = HostClassCache.findOrInitialize(access, api, policy);
         if (this.hostClassCache != null) {
             if (this.hostClassCache.hostAccess.equals(cache.hostAccess)) {
                 /*

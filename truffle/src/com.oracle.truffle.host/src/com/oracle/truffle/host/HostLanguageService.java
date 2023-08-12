@@ -84,7 +84,7 @@ public class HostLanguageService extends AbstractHostLanguageService {
         if (useCl == null) {
             useCl = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
         }
-        language.initializeHostAccess(hostAccess, useCl);
+        language.initializeHostAccess(hostAccess);
         context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed, hostAccess != null ? api.getMutableTargetMappings(hostAccess) : new MutableTargetMapping[0]);
     }
 

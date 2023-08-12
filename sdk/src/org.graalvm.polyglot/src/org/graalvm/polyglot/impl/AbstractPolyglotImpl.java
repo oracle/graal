@@ -47,6 +47,7 @@ import java.io.OutputStream;
 import java.io.PrintStream;
 import java.io.PrintWriter;
 import java.io.Reader;
+import java.lang.invoke.MethodHandles;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
@@ -248,6 +249,8 @@ public abstract class AbstractPolyglotImpl {
         public abstract boolean allowsAccessInheritance(HostAccess hostAccess);
 
         public abstract Object getHostAccessImpl(HostAccess conf);
+
+        public abstract MethodHandles.Lookup getMethodLookup(HostAccess hostAccess);
 
         public abstract void setHostAccessImpl(HostAccess conf, Object impl);
 

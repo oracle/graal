@@ -2151,6 +2151,8 @@ public abstract class TruffleLanguage<C> {
          * {@link #lookupHostSymbol(String)} will lookup classes with this new entry. If the entry
          * was already added then calling this method again for the same entry has no effect. Given
          * entry must not be <code>null</code>.
+         * <p>
+         * Note that classes added by this method are in the unnamed module.
          *
          * @throws SecurityException if the file is not {@link TruffleFile#isReadable() readable}.
          * @since 19.0
@@ -3367,6 +3369,10 @@ public abstract class TruffleLanguage<C> {
          * {@link com.oracle.truffle.api.interop.InteropLibrary#isMetaInstance isMetaInstance} can
          * be used to check if an object is an instance of this adapter class. See usage example
          * below.
+         * <p>
+         * Please note that only classes from the unnamed module or classes exported to the unnamed
+         * module can be used in <code>types</code>. The generated host adapter class is also in the
+         * unnamed module.
          * <p>
          * A host class is generated as follows:
          * <p>
