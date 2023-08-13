@@ -2936,13 +2936,13 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             # Add jars of components required to run thin launchers.
             for thin_launcher_component in GraalVmStandaloneComponent.thin_launcher_components():
                 for jd in thin_launcher_component.jar_distributions:
-                    layout.setdefault(default_jvm_jars_dir, []).append({
+                    layout.setdefault(default_jvm_modules_dir, []).append({
                         'source_type': 'dependency',
                         'dependency': jd,
                         'exclude': [],
                         'path': None,
                     })
-                    self.jvm_jars.append(jd)
+                    self.jvm_modules.append(jd)
 
             # Add LibGraal.
             lg_component = _get_libgraal_component()
