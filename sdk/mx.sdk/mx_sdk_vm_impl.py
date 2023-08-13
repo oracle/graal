@@ -2857,13 +2857,13 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                             })
                         if is_main:
                             for jar_distribution in library_config.jar_distributions:
-                                layout.setdefault(default_jvm_jars_dir, []).append({
+                                layout.setdefault(default_jvm_modules_dir, []).append({
                                     'source_type': 'dependency',
                                     'dependency': jar_distribution,
                                     'exclude': [],
                                     'path': None,
                                 })
-                                self.jvm_jars.append(jar_distribution)
+                                self.jvm_modules.append(jar_distribution)
                         for language, path_from_root in home_paths.items():
                             destination = path_prefix + library_config.destination
                             relative_path_from_launcher_dir = relpath(path_from_root, dirname(destination))
