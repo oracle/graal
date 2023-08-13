@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.ameta;
+package com.oracle.svm.hosted.methodhandles;
 
-import jdk.vm.ci.meta.Constant;
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
-import jdk.vm.ci.meta.MemoryAccessProvider;
+import com.oracle.svm.hosted.annotation.CustomSubstitutionType;
 
-public final class EmptyMemoryAcessProvider implements MemoryAccessProvider {
+import jdk.vm.ci.meta.ResolvedJavaType;
 
-    public static final MemoryAccessProvider SINGLETON = new EmptyMemoryAcessProvider();
+class MethodHandleInvokerSubstitutionType extends CustomSubstitutionType {
+    private final String stableName;
 
-    private EmptyMemoryAcessProvider() {
+    MethodHandleInvokerSubstitutionType(ResolvedJavaType original, String stableName) {
+        super(original);
+        this.stableName = stableName;
     }
 
     @Override
-    public JavaConstant readPrimitiveConstant(JavaKind kind, Constant base, long displacement, int bits) {
-        return null;
-    }
-
-    @Override
-    public JavaConstant readObjectConstant(Constant base, long displacement) {
-        return null;
+    public String getName() {
+        return stableName;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,19 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.methodhandles;
+package com.oracle.svm.hosted.ameta;
 
-import java.lang.invoke.MethodType;
+import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MemoryAccessProvider;
 
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
-import com.oracle.svm.core.annotate.TargetClass;
+public final class EmptyMemoryAccessProvider implements MemoryAccessProvider {
 
-@TargetClass(className = "java.lang.invoke.VarHandle", innerClass = "AccessDescriptor")
-final class Target_java_lang_invoke_VarHandle_AccessDescriptor {
-    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
-    MethodType symbolicMethodTypeInvoker;
+    public static final MemoryAccessProvider SINGLETON = new EmptyMemoryAccessProvider();
 
-    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
-    int mode;
+    private EmptyMemoryAccessProvider() {
+    }
+
+    @Override
+    public JavaConstant readPrimitiveConstant(JavaKind kind, Constant base, long displacement, int bits) {
+        return null;
+    }
+
+    @Override
+    public JavaConstant readObjectConstant(Constant base, long displacement) {
+        return null;
+    }
 }

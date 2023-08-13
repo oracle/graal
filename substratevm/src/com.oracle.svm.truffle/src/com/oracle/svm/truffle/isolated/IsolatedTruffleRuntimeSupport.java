@@ -74,16 +74,19 @@ public final class IsolatedTruffleRuntimeSupport {
         if (consumerHandle.equal(IsolatedHandles.nullHandle())) {
             return null;
         }
-        return codeInstallBridge -> {
-            ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle = IsolatedHandles.nullHandle();
-            if (codeInstallBridge != null) {
-                installedCodeHandle = ((IsolatedCodeInstallBridge) codeInstallBridge).getSubstrateInstalledCodeHandle();
+        return new Consumer<>() {
+            @Override
+            public void accept(OptimizedAssumptionDependency codeInstallBridge) {
+                ClientHandle<? extends SubstrateInstalledCode> installedCodeHandle = IsolatedHandles.nullHandle();
+                if (codeInstallBridge != null) {
+                    installedCodeHandle = ((IsolatedCodeInstallBridge) codeInstallBridge).getSubstrateInstalledCodeHandle();
+                }
+
+                @SuppressWarnings("unchecked")
+                ClientHandle<? extends OptimizedAssumptionDependency> dependencyAccessHandle = (ClientHandle<? extends OptimizedAssumptionDependency>) installedCodeHandle;
+
+                notifyAssumption0(IsolatedCompileContext.get().getClient(), consumerHandle, dependencyAccessHandle);
             }
-
-            @SuppressWarnings("unchecked")
-            ClientHandle<? extends OptimizedAssumptionDependency> dependencyAccessHandle = (ClientHandle<? extends OptimizedAssumptionDependency>) installedCodeHandle;
-
-            notifyAssumption0(IsolatedCompileContext.get().getClient(), consumerHandle, dependencyAccessHandle);
         };
     }
 
@@ -172,9 +175,12 @@ public final class IsolatedTruffleRuntimeSupport {
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = CEntryPoint.Publish.NotPublished)
     private static boolean isSuppressedFailure0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> ast,
                     CompilerHandle<Supplier<String>> serializedExceptionHandle) {
-        Supplier<String> serializedException = () -> {
-            ClientHandle<String> resultHandle = getReasonAndStackTrace0(IsolatedCompileClient.get().getCompiler(), serializedExceptionHandle);
-            return IsolatedCompileClient.get().unhand(resultHandle);
+        Supplier<String> serializedException = new Supplier<>() {
+            @Override
+            public String get() {
+                ClientHandle<String> resultHandle = getReasonAndStackTrace0(IsolatedCompileClient.get().getCompiler(), serializedExceptionHandle);
+                return IsolatedCompileClient.get().unhand(resultHandle);
+            }
         };
         SubstrateTruffleRuntime runtime = (SubstrateTruffleRuntime) SubstrateTruffleRuntime.getRuntime();
         return runtime.isSuppressedFailure(IsolatedCompileClient.get().unhand(ast), serializedException);

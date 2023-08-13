@@ -598,7 +598,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 if (isWordTypeExpected && !isWordValue) {
                     throw UserError.abort("Expected Word but got Object for %s in %s", reason, method.asStackTraceElement(bci()));
                 } else if (!isWordTypeExpected && isWordValue) {
-                    throw UserError.abort("Expected Object but got Word for %s in %s", reason, method.asStackTraceElement(bci()));
+                    throw UserError.abort("Expected Object but got Word for %s in %s. One possible cause for this error is when word values are passed into lambdas as parameters " +
+                                    "or from variables in an enclosing scope, which is not supported, but can be solved by instead using explicit classes (including anonymous classes).",
+                                    reason, method.asStackTraceElement(bci()));
                 }
             }
         }

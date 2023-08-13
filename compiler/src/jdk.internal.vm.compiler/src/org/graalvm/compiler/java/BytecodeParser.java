@@ -1338,6 +1338,16 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         deopt.updateNodeSourcePosition(() -> createBytecodePosition());
     }
 
+    protected FrameStateBuilder createFrameStateForExceptionHandling(@SuppressWarnings("unused") int bci) {
+        FrameStateBuilder dispatchState = frameState.copy();
+        dispatchState.clearStack();
+        return dispatchState;
+    }
+
+    protected void clearNonLiveLocals(FrameStateBuilder state, BciBlock block, boolean liveIn) {
+        state.clearNonLiveLocals(block, liveness, liveIn);
+    }
+
     /**
      * @return the entry point to exception dispatch
      */
@@ -1346,8 +1356,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         assert bci == BytecodeFrame.BEFORE_BCI || bci == bci() : "invalid bci";
         debug.log("Creating exception dispatch edges at %d, exception object=%s, exception seen=%s", bci, exceptionObject, (profilingInfo == null ? "" : profilingInfo.getExceptionSeen(bci)));
 
-        FrameStateBuilder dispatchState = frameState.copy();
-        dispatchState.clearStack();
+        FrameStateBuilder dispatchState = createFrameStateForExceptionHandling(bci);
 
         AbstractBeginNode dispatchBegin;
         if (exceptionObject == null) {
@@ -1374,13 +1383,20 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         return dispatchBegin;
     }
 
-    protected void createHandleExceptionTarget(FixedWithNextNode afterExceptionLoaded, int bci, FrameStateBuilder dispatchState) {
+    private void createHandleExceptionTarget(FixedWithNextNode afterExceptionLoaded, int bci, FrameStateBuilder dispatchState) {
         FixedWithNextNode afterInstrumentation = afterExceptionLoaded;
         for (NodePlugin plugin : graphBuilderConfig.getPlugins().getNodePlugins()) {
             afterInstrumentation = plugin.instrumentExceptionDispatch(graph, afterInstrumentation, () -> dispatchState.create(bci, getNonIntrinsicAncestor(), false, null, null));
             assert afterInstrumentation.next() == null : "exception dispatch instrumentation will be linked to dispatch block";
         }
 
+        BciBlock dispatchBlock = getDispatchBlock(bci);
+
+        FixedNode target = createTarget(dispatchBlock, dispatchState);
+        afterInstrumentation.setNext(target);
+    }
+
+    protected BciBlock getDispatchBlock(int bci) {
         BciBlock dispatchBlock = currentBlock.exceptionDispatchBlock();
         /*
          * The exception dispatch block is always for the last bytecode of a block, so if we are not
@@ -1391,8 +1407,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             dispatchBlock = blockMap.getUnwindBlock();
         }
 
-        FixedNode target = createTarget(dispatchBlock, dispatchState);
-        afterInstrumentation.setNext(target);
+        return dispatchBlock;
     }
 
     protected ValueNode genLoadIndexed(ValueNode array, ValueNode index, GuardingNode boundsCheck, JavaKind kind) {

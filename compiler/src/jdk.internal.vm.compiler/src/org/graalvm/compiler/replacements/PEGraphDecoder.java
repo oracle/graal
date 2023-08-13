@@ -269,6 +269,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 if (invokePosition == null) {
                     return null;
                 }
+                if (invokePosition.getCaller() != null && shouldOmitIntermediateMethodInStates(invokePosition.getMethod())) {
+                    invokePosition = invokePosition.getCaller();
+                }
                 callerBytecodePosition = invokePosition;
             }
             return callerBytecodePosition;
@@ -975,20 +978,22 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     @Override
     protected LoopScope handleInvoke(MethodScope s, LoopScope loopScope, InvokeData invokeData) {
-        PEMethodScope methodScope = (PEMethodScope) s;
         /*
          * Decode the call target, but do not add it to the graph yet. This avoids adding usages for
          * all the arguments, which are expensive to remove again when we can inline the method.
          */
         assert invokeData.invoke.callTarget() == null : "callTarget edge is ignored during decoding of Invoke";
-        CallTargetNode callTarget = (CallTargetNode) decodeFloatingNode(methodScope, loopScope, invokeData.callTargetOrderId);
-        invokeData.callTarget = callTarget;
-        if (callTarget instanceof MethodCallTargetNode) {
-            MethodCallTargetNode methodCall = (MethodCallTargetNode) callTarget;
+        invokeData.callTarget = (CallTargetNode) decodeFloatingNode(s, loopScope, invokeData.callTargetOrderId);
+        return handleInvokeWithCallTarget((PEMethodScope) s, loopScope, invokeData);
+    }
+
+    protected LoopScope handleInvokeWithCallTarget(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
+        CallTargetNode callTarget = invokeData.callTarget;
+        if (callTarget instanceof MethodCallTargetNode methodCall) {
             if (methodCall.invokeKind().hasReceiver()) {
                 invokeData.constantReceiver = methodCall.arguments().get(0).asJavaConstant();
             }
-            callTarget = trySimplifyCallTarget(methodScope, invokeData, (MethodCallTargetNode) callTarget);
+            callTarget = trySimplifyCallTarget(methodScope, invokeData, methodCall);
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             if (forceLink && targetMethod.hasBytecodes() && targetMethod.getCode() == null && !targetMethod.getDeclaringClass().isLinked()) {
                 targetMethod.getDeclaringClass().link();
@@ -1008,7 +1013,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         /* We know that we need an invoke, so now we can add the call target to the graph. */
         graph.add(callTarget);
-        registerNode(loopScope, invokeData.callTargetOrderId, callTarget, false, false);
+        if (invokeData.callTargetOrderId > 0) {
+            registerNode(loopScope, invokeData.callTargetOrderId, callTarget, false, false);
+        }
         appendInvoke(methodScope, loopScope, invokeData, callTarget);
     }
 
@@ -1131,7 +1138,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                                     BytecodeFrame.isPlaceholderBci(((DeoptBciSupplier) graphBuilderContext.lastInstr).bci())) {
                         ((DeoptBciSupplier) graphBuilderContext.lastInstr).setBci(invokeData.invoke.bci());
                     }
-                    registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
+                    registerNode(loopScope, invokeData.orderId, graphBuilderContext.pushedNode, true, true);
                     invoke.asNode().replaceAtUsages(graphBuilderContext.pushedNode);
                     BeginNode begin = graphBuilderContext.lastInstr instanceof BeginNode ? (BeginNode) graphBuilderContext.lastInstr : null;
                     FixedNode afterInvoke = nodeAfterInvoke(methodScope, loopScope, invokeData, begin);
@@ -1393,7 +1400,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          * Use the handles that we have on the return value and the exception to update the
          * orderId->Node table.
          */
-        registerNode(loopScope, invokeData.invokeOrderId, returnValue, true, true);
+        registerNode(loopScope, invokeData.orderId, returnValue, true, true);
         if (invoke instanceof InvokeWithExceptionNode) {
             registerNode(loopScope, invokeData.exceptionOrderId, exceptionValue, true, true);
         }
@@ -1678,8 +1685,21 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 ensureOuterStateDecoded(methodScope.caller);
                 outerState.setOuterFrameState(methodScope.caller.outerState);
             }
+            if (outerState.outerFrameState() != null && shouldOmitIntermediateMethodInStates(outerState.getMethod())) {
+                outerState = outerState.outerFrameState();
+            }
             methodScope.outerState = outerState;
         }
+    }
+
+    /**
+     * Determines whether to omit an intermediate method (a method other than the root method or a
+     * leaf caller) from {@link FrameState} or {@link NodeSourcePosition} information. When used to
+     * discard intermediate methods of generated code with non-deterministic names, for example,
+     * this can improve matching of profile-guided optimization information between executions.
+     */
+    protected boolean shouldOmitIntermediateMethodInStates(@SuppressWarnings("unused") ResolvedJavaMethod method) {
+        return false;
     }
 
     protected void ensureStateAfterDecoded(PEMethodScope methodScope) {
