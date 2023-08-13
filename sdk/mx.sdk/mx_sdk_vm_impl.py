@@ -3247,9 +3247,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             _cp = []
             # launcher classpath for launching via jvm
             _mp = NativePropertiesBuildTask.get_launcher_classpath(_dist, _graalvm_home, self.language_library_config, self.component, exclude_implicit=True)
-            _mp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _cp]
+            _mp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _mp]
             # path from language launcher to jars
-            _mp = [escaped_relpath(x) for x in _cp]
+            _mp = [escaped_relpath(x) for x in _mp]
             _lp = []
 
         launcher_jars = self.language_library_config.jar_distributions
