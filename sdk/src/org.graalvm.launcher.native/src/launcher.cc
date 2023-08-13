@@ -506,7 +506,6 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         vmArgs.push_back("-Djdk.module.main=" LAUNCHER_MAIN_MODULE_STR);
         vmArgs.push_back("-Dgraalvm.locatorDisabled=true");
 #endif
-        vmArgs.push_back(libraryPath.str());
     }
 
     vmInitArgs->options = new JavaVMOption[vmArgs.size()];
