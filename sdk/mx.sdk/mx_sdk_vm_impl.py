@@ -3521,7 +3521,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
     if needs_java_standalone_jimage:
         java_standalone_jimage_jars = set()
-        for component in GraalVmStandaloneComponent.jdk_components():
+        for component in GraalVmLayoutDistribution._add_dependencies(GraalVmStandaloneComponent.jdk_components()):
             java_standalone_jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
             if isinstance(component, mx_sdk.GraalVmJvmciComponent):
                 java_standalone_jimage_jars.update(component.jvmci_jars)
