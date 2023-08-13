@@ -676,6 +676,7 @@ public abstract class AArch64ASIMDAssembler {
         SSHL(0b01000 << 11),
         SMAX(0b01100 << 11),
         SMIN(0b01101 << 11),
+        SMINP(0b10101 << 11),
         ADD(0b10000 << 11),
         CMTST(0b10001 << 11),
         MLA(0b10010 << 11),
@@ -3000,6 +3001,31 @@ public abstract class AArch64ASIMDAssembler {
         assert eSize != ElementSize.DoubleWord : "Invalid lane width for smin";
 
         threeSameEncoding(ASIMDInstruction.SMIN, size, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.272 Signed minimum pairwise.<br>
+     *
+     * <code>
+     *     concat = src2:src1
+     *     for i in 0..n-1 do dst[i] = int_min(concat[2 * i], concat[2 * i + 1])
+     * </code>
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sminpVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert usesMultipleLanes(size, eSize);
+
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert eSize != ElementSize.DoubleWord : "Invalid lane width for sminp";
+
+        threeSameEncoding(ASIMDInstruction.SMINP, size, elemSizeXX(eSize), dst, src1, src2);
     }
 
     /**

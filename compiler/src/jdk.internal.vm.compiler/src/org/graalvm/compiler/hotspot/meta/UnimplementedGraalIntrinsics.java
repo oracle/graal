@@ -403,10 +403,6 @@ public final class UnimplementedGraalIntrinsics {
         }
 
         if (JAVA_SPEC >= 20) {
-            // This reuses the intrinsic for java/lang/StringCoding.hasNegatives with minor changes
-            add(toBeInvestigated,
-                            "java/lang/StringCoding.countPositives([BII)I");
-
             // JDK-8223347: Integration of Vector API (Incubator)
             add(toBeInvestigated, // @formatter:off
                             "jdk/internal/vm/vector/VectorSupport.compressExpandOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$CompressExpandOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",

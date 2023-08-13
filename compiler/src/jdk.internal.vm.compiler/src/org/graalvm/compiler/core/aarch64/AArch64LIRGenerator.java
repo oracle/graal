@@ -78,11 +78,11 @@ import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.CondSetOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.HashTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.RangeTableSwitchOp;
 import org.graalvm.compiler.lir.aarch64.AArch64ControlFlow.StrategySwitchOp;
+import org.graalvm.compiler.lir.aarch64.AArch64CountPositivesOp;
 import org.graalvm.compiler.lir.aarch64.AArch64CounterModeAESCryptOp;
 import org.graalvm.compiler.lir.aarch64.AArch64EncodeArrayOp;
 import org.graalvm.compiler.lir.aarch64.AArch64GHASHProcessBlocksOp;
 import org.graalvm.compiler.lir.aarch64.AArch64HaltOp;
-import org.graalvm.compiler.lir.aarch64.AArch64HasNegativesOp;
 import org.graalvm.compiler.lir.aarch64.AArch64MD5Op;
 import org.graalvm.compiler.lir.aarch64.AArch64Move;
 import org.graalvm.compiler.lir.aarch64.AArch64Move.MembarOp;
@@ -661,10 +661,16 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         return result;
     }
 
+    protected abstract int getVMPageSize();
+
+    protected int getSoftwarePrefetchHintDistance() {
+        return -1;
+    }
+
     @Override
-    public Variable emitHasNegatives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
+    public Variable emitCountPositives(EnumSet<?> runtimeCheckedCPUFeatures, Value array, Value length) {
         Variable result = newVariable(LIRKind.value(AArch64Kind.DWORD));
-        append(new AArch64HasNegativesOp(this, result, asAllocatable(array), asAllocatable(length)));
+        append(new AArch64CountPositivesOp(this, result, asAllocatable(array), asAllocatable(length), getVMPageSize(), getSoftwarePrefetchHintDistance()));
         return result;
     }
 
