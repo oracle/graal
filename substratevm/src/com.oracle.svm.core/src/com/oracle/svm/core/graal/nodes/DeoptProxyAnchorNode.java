@@ -41,16 +41,22 @@ import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 public class DeoptProxyAnchorNode extends AbstractStateSplit implements DeoptEntrySupport {
     public static final NodeClass<DeoptProxyAnchorNode> TYPE = NodeClass.create(DeoptProxyAnchorNode.class);
 
-    public DeoptProxyAnchorNode() {
-        this(TYPE);
-    }
+    private final int proxifiedInvokeBci;
 
-    protected DeoptProxyAnchorNode(NodeClass<? extends DeoptProxyAnchorNode> c) {
-        super(c, StampFactory.forVoid());
+    public DeoptProxyAnchorNode(int proxifiedInvokeBci) {
+        super(TYPE, StampFactory.forVoid());
+        assert proxifiedInvokeBci >= 0 : "DeoptProxyAnchorNode should be proxing an invoke";
+
+        this.proxifiedInvokeBci = proxifiedInvokeBci;
     }
 
     @Override
     public void generate(NodeLIRBuilderTool gen) {
         /* No-op */
+    }
+
+    @Override
+    public int getProxifiedInvokeBci() {
+        return proxifiedInvokeBci;
     }
 }

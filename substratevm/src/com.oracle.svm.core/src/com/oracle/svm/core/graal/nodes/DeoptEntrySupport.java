@@ -30,4 +30,12 @@ import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 
 public interface DeoptEntrySupport extends LIRLowerable, ControlFlowAnchored, FixedNodeInterface, StateSplit {
+
+    /**
+     * Returns the invoke bci this deopt is serving as a proxy anchor for or
+     * {@link jdk.vm.ci.code.BytecodeFrame#UNKNOWN_BCI} if it is not serving as a proxy anchor for
+     * an invoke. Note this will be different than the entry's stateafter bci since this node will
+     * be after the invoke it is "proxifying".
+     */
+    int getProxifiedInvokeBci();
 }
