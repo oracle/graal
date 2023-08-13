@@ -1020,6 +1020,24 @@ driver_build_args = [
     '-H:-ParseRuntimeOptions',
 ])
 
+additional_ni_dependencies = []
+
+if mx.get_jdk(tag='default').javaCompliance >= '21':
+    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+        suite=suite,
+        name='SubstrateVM Foreign API Preview Feature',
+        short_name='svmforeign',
+        dir_name='svm-preview',
+        installable_id='native-image',
+        license_files=[],
+        third_party_license_files=[],
+        dependencies=['SubstrateVM'],
+        builder_jar_distributions=['substratevm:SVM_FOREIGN'],
+        installable=False,
+        jlink=False,
+    ))
+    additional_ni_dependencies += ['svmforeign']
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
     name='Native Image',
@@ -1028,7 +1046,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     installable_id='native-image',
     license_files=[],
     third_party_license_files=[],
-    dependencies=['SubstrateVM', 'nil'],
+    dependencies=['SubstrateVM', 'nil'] + additional_ni_dependencies,
     provided_executables=['bin/<cmd:rebuild-images>'],
     support_distributions=['substratevm:TRUFFLE_REBUILD_IMAGES_GRAALVM_SUPPORT'],
     launcher_configs=[
@@ -1167,21 +1185,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     stability="supported",
     jlink=False,
 ))
-
-if mx.get_jdk(tag='default').javaCompliance >= '21':
-    mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
-        suite=suite,
-        name='SubstrateVM Foreign API Preview Feature',
-        short_name='panama',
-        dir_name='svm-preview',
-        installable_id='native-image',
-        license_files=[],
-        third_party_license_files=[],
-        dependencies=['SubstrateVM'],
-        builder_jar_distributions=['substratevm:SVM_FOREIGN'],
-        installable=False,
-        jlink=False,
-    ))
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=suite,
