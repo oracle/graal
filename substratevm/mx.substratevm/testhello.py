@@ -569,7 +569,7 @@ def test():
 
     execute("delete breakpoints")
     exec_string = execute("break Hello.java:135")
-    rexp = r"Breakpoint %s at %s: file hello/Hello\.java, line 135\."%(digits_pattern, address_pattern)
+    rexp = r"Breakpoint %s at %s: (Hello\.java:135\. \(2 locations\)|file hello/Hello\.java, line 135\.)"%(digits_pattern, address_pattern)
     checker = Checker('break Hello.java:135', rexp)
     checker.check(exec_string)
 
