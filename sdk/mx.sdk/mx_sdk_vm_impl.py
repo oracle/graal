@@ -3285,12 +3285,13 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             '-DLIBJVM_RELPATH=' + _libjvm_path,
         ]
 
-        languages_dir = join(_graalvm_home, "languages")
-        tools_dir = join(_graalvm_home, "tools")
-        _dynamic_cflags += [
-            '-DLANGUAGES_DIR=' + escaped_relpath(languages_dir),
-            '-DTOOLS_DIR=' + escaped_relpath(tools_dir),
-        ]
+        if not self.jvm_standalone:
+            languages_dir = join(_graalvm_home, "languages")
+            tools_dir = join(_graalvm_home, "tools")
+            _dynamic_cflags += [
+                '-DLANGUAGES_DIR=' + escaped_relpath(languages_dir),
+                '-DTOOLS_DIR=' + escaped_relpath(tools_dir),
+            ]
 
         # path to libjli - only needed on osx for AWT
         if mx.is_darwin():
