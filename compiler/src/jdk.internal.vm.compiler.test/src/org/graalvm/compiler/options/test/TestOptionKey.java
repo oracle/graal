@@ -115,6 +115,7 @@ public class TestOptionKey {
             /*declaringClass*/ Options.class,
             /*fieldName*/ "MyDeprecatedOption",
             /*option*/ MyDeprecatedOption,
+            /*stability*/ OptionStability.EXPERIMENTAL,
             /*deprecated*/ true,
             /*deprecationMessage*/ "Some deprecation message"));
         // @formatter:on

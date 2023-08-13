@@ -1180,7 +1180,7 @@ public class ValueHostConversionTest extends AbstractPolyglotTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     private interface TestExceptionFrames3 {
 

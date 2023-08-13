@@ -212,7 +212,7 @@ public class HostStackTraceTest extends AbstractPolyglotTest {
     }
 
     /*
-     * Referenced in reflection.json
+     * Referenced in reflect-config.json
      */
     public void v0() {
         throw new RuntimeException();

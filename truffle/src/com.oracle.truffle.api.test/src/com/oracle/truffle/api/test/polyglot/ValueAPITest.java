@@ -1774,7 +1774,7 @@ public class ValueAPITest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     public interface OtherInterface0 {
@@ -1784,7 +1784,7 @@ public class ValueAPITest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     public interface OtherInterface1 {
@@ -1794,7 +1794,7 @@ public class ValueAPITest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     public interface OtherInterface2 {
@@ -2036,7 +2036,7 @@ public class ValueAPITest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @Implementable
     public interface EmptyInterface {
@@ -2048,7 +2048,7 @@ public class ValueAPITest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     public interface EmptyFunctionalInterface {

@@ -377,7 +377,6 @@ suite = {
                 "linux": {
                     "<others>": {
                         "layout": {
-                            "./": ["file:mx.espresso/reflectconfig.json"],
                             "./native-image.properties": ["file:mx.espresso/native-image-preinit.properties"],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
@@ -394,10 +393,7 @@ suite = {
                 "linux-musl": {
                     "<others>": {
                         "layout": {
-                            "./": [
-                                "file:mx.espresso/reflectconfig.json",
-                                "file:mx.espresso/native-image.properties",
-                            ],
+                            "./": ["file:mx.espresso/native-image.properties"],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
                                 "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
@@ -412,10 +408,7 @@ suite = {
                 "<others>": {
                     "<others>": {
                         "layout": {
-                            "./": [
-                                "file:mx.espresso/native-image.properties",
-                                "file:mx.espresso/reflectconfig.json",
-                            ],
+                            "./": ["file:mx.espresso/native-image.properties"],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
                                 "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",

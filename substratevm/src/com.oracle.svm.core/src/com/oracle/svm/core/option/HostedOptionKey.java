@@ -41,6 +41,7 @@ import java.util.function.Consumer;
  */
 public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionKey<T> {
     private final Consumer<HostedOptionKey<T>> validation;
+    private OptionOrigin lastOrigin;
 
     public HostedOptionKey(T defaultValue) {
         this(defaultValue, null);
@@ -94,6 +95,8 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
             value.valueUpdate(boxedValue);
             super.update(values, value);
         } else {
+            /* store origin, last option update wins. */
+            lastOrigin = OptionOrigin.from(LocatableOption.valueOrigin(boxedValue), false);
             super.update(values, LocatableOption.rawValue(boxedValue));
         }
     }
@@ -103,5 +106,9 @@ public class HostedOptionKey<T> extends OptionKey<T> implements SubstrateOptionK
         if (validation != null) {
             validation.accept(this);
         }
+    }
+
+    public OptionOrigin getLastOrigin() {
+        return lastOrigin;
     }
 }

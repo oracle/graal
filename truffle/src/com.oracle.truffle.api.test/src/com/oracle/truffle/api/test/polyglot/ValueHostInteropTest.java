@@ -466,7 +466,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     public interface FunctionalWithDefaults {
@@ -485,7 +485,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     @FunctionalInterface
     public interface FunctionalWithObjectMethodOverrides {
@@ -874,7 +874,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     }
 
     /*
-     * Referenced in proxys.json
+     * Referenced in proxy-config.json
      */
     public interface XYPlus {
         List<String> arr();

@@ -193,12 +193,13 @@ espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
     language='java',
     jar_distributions=['espresso:LIB_JAVAVM'],
     build_args=[
-        '-H:-JNIExportSymbols',
         '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
-        '-H:+DumpThreadStacksOnSignal',
         '--features=com.oracle.truffle.espresso.ref.FinalizationFeature',
-    ],
+    ] + mx_sdk_vm_impl.svm_experimental_options([
+        '-H:-JNIExportSymbols',
+        '-H:+DumpThreadStacksOnSignal',
+    ]),
 )
 
 if mx_sdk_vm.base_jdk_version() not in (17,):

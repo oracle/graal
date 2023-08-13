@@ -184,11 +184,6 @@ public class SubstrateOptionsParser {
 
         APIOption[] apiOptions = field.getAnnotationsByType(APIOption.class);
 
-        for (APIOption apiOption : apiOptions) {
-            String selected = selectVariant(apiOption, apiOptionName);
-            assert selected == null || apiOption.deprecated().equals("") : "Using the deprecated option in a description: " + apiOption;
-        }
-
         if (option.getDescriptor().getOptionValueType() == Boolean.class) {
             VMError.guarantee(value.equals("+") || value.equals("-"), "Boolean option value can be only + or -");
             for (APIOption apiOption : apiOptions) {
@@ -257,6 +252,9 @@ public class SubstrateOptionsParser {
 
     private static String selectVariant(APIOption apiOption, String apiOptionName) {
         VMError.guarantee(apiOption.name().length > 0, "APIOption requires at least one name");
+        if (!apiOption.deprecated().equals("")) {
+            return null; /* Never select deprecated API options. */
+        }
         if (apiOptionName == null) {
             return apiOption.name()[0];
         }

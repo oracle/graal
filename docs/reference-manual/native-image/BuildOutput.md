@@ -122,6 +122,12 @@ Use the `-R:MaxHeapSize` option when building with Native Image to pre-configure
 All [`Features`](https://www.graalvm.org/sdk/javadoc/org/graalvm/nativeimage/hosted/Feature.html) that are either provided or specifically enabled by the user, or implicitly registered for the user, for example, by a framework.
 GraalVM Native Image deploys a number of internal features, which are excluded from this list.
 
+#### <a name="glossary-experimental-options"></a>Experimental Options
+A list of all active experimental options, including their origin and possible API option alternatives if available.
+
+Using experimental options should be avoided in production and can change in any release.
+If you rely on experimental features and would like an option to be considered stable, please file an issue.
+
 #### <a name="glossary-build-resources"></a>Build Resources
 The memory limit and number of threads used by the build process.
 

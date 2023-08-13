@@ -111,6 +111,11 @@ default_components = []
 
 mx.add_argument('--base-dist-name', help='Sets the name of the GraalVM base image ( for complete, ruby ... images), default to "base"', default='base')
 
+
+def svm_experimental_options(experimental_options):
+    return ['-H:+UnlockExperimentalVMOptions'] + experimental_options + ['-H:-UnlockExperimentalVMOptions']
+
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Polyglot Launcher',
@@ -123,10 +128,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         jar_distributions=['sdk:LAUNCHER_COMMON'],
         main_class='org.graalvm.launcher.PolyglotLauncher',
         build_args=[
-            '-H:-ParseRuntimeOptions',
-            '-H:Features=org.graalvm.launcher.PolyglotLauncherFeature',
+            '--features=org.graalvm.launcher.PolyglotLauncherFeature',
             '--tool:all',
-        ],
+        ] + svm_experimental_options(['-H:-ParseRuntimeOptions']),
         is_main_launcher=True,
         default_symlinks=True,
         is_sdk_launcher=True,
@@ -1174,9 +1178,9 @@ class SvmSupport(object):
         native_image_bin = join(stage1.output, stage1.find_single_source_location('dependency:' + native_image_project_name))
         native_image_command = [native_image_bin] + build_args
         output_directory = dirname(output_file)
-        native_image_command += [
+        native_image_command += svm_experimental_options([
             '-H:Path=' + output_directory or ".",
-        ]
+        ])
         return mx.run(native_image_command, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
     def is_debug_supported(self):
@@ -1194,8 +1198,6 @@ class SvmSupport(object):
     def get_debug_flags(self, image_config):
         assert self.is_debug_supported()
         flags = ['-g']
-        if self.generate_separate_debug_info(image_config):
-            flags += ['-H:+StripDebugInfo']
         return flags
 
 
@@ -1320,12 +1322,13 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             build_args = [
                 '--no-fallback',
                 '-march=compatibility',  # Target maximum portability of all GraalVM images.
+                '-Dorg.graalvm.version={}'.format(_suite.release_version()),
+            ] + svm_experimental_options([
                 '-H:+AssertInitializationSpecifiedForAllClasses',
                 '-H:+EnforceMaxRuntimeCompileMethods',
-                '-Dorg.graalvm.version={}'.format(_suite.release_version()),
-            ]
+            ])
             if _debug_images():
-                build_args += ['-ea', '-O0', '-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols']
+                build_args += ['-ea', '-O0',] + svm_experimental_options(['-H:+PreserveFramePointer', '-H:-DeleteLocalSymbols'])
             if _get_svm_support().generate_debug_info(image_config):
                 build_args += _get_svm_support().get_debug_flags(image_config)
             if getattr(image_config, 'link_at_build_time', True):
@@ -1338,7 +1341,7 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 suffix = _lib_suffix
                 if _get_svm_support().is_pgo_supported():
                     # If pgo is supported, we should dump on exit also for library launchers
-                    build_args.append('-H:+ProfilingEnableProfileDumpHooks')
+                    build_args += svm_experimental_options(['-H:+ProfilingEnableProfileDumpHooks'])
                 build_args.append('--shared')
                 project_name_f = GraalVmNativeImage.project_name
             elif isinstance(image_config, mx_sdk.LauncherConfig):
@@ -1370,16 +1373,17 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
                 build_args += [
                     '--install-exit-handlers',
                     '--enable-monitoring=jvmstat,heapdump,jfr',
+                ] + svm_experimental_options([
                     '-H:+DumpRuntimeCompilationOnSignal',
                     '-H:+ReportExceptionStackTraces',
-                ]
+                ])
 
             if isinstance(image_config, (mx_sdk.LauncherConfig, mx_sdk.LanguageLibraryConfig)):
                 if image_config.is_sdk_launcher:
                     launcher_classpath = NativePropertiesBuildTask.get_launcher_classpath(self._graalvm_dist, graalvm_home, image_config, self.subject.component, exclude_implicit=True)
                     build_args += ['-Dorg.graalvm.launcher.classpath=' + os.pathsep.join(launcher_classpath)]
                     if isinstance(image_config, mx_sdk.LauncherConfig):
-                        build_args += ['-H:-ParseRuntimeOptions']
+                        build_args += svm_experimental_options(['-H:-ParseRuntimeOptions'])
 
                 if has_component('svmee', stage1=True):
                     build_args += [
@@ -2332,9 +2336,11 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
     def get_build_args(self):
         build_args = [
             '--parallelism=' + str(self.parallelism),
+        ] + svm_experimental_options([
             '-H:+BuildOutputPrefix',
             '-H:+GenerateBuildArtifactsFile',  # generate 'build-artifacts.json'
-            '--macro:' + GraalVmNativeProperties.macro_name(self.subject.native_image_config),
+        ]) + [
+            '--macro:' + GraalVmNativeProperties.macro_name(self.subject.native_image_config), # last to allow overrides
         ]
         if self.subject.native_image_config.is_polyglot:
             build_args += ["--macro:truffle", "--language:all"]
