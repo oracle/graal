@@ -3272,7 +3272,7 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             _dynamic_cflags.append('-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"') # TODO: remove
         if _mp:
             _dynamic_cflags.append('-DLAUNCHER_MODULE_PATH="{\\"' + '\\", \\"'.join(_mp) + '\\"}"')
-        if _mp:
+        if _lp:
             _dynamic_cflags.append('-DLAUNCHER_LIBRARY_PATH="{\\"' + '\\", \\"'.join(_lp) + '\\"}"')
 
         # path to libjvm
