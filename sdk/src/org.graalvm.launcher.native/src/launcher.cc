@@ -435,7 +435,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
             vmArgs.push_back(ss.str());
         }
     }
-    #endif defined(LAUNCHER_LANG_HOME_NAMES) && defined(LAUNCHER_LANG_HOME_PATHS)
+    #endif
 
     /* Handle launcher default vm arguments. We apply these first, so they can
        be overridden by explicit arguments on the commandline. */
