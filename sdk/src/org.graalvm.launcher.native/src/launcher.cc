@@ -418,6 +418,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
                 libraryPath << CP_SEP_STR;
             }
         }
+        /* TODO: this overrides -Djava.library.path=, but it should accept a CLI --vm.Djava.library.path= */
         vmArgs.push_back(libraryPath.str());
     }
     #endif
