@@ -435,7 +435,12 @@
     ]
   ],
 
-  local style_builds = [self.make_build("21", "linux-amd64", "style").build],
+  local style_builds = [self.make_build("21", "linux-amd64", "style").build + {
+    environment+: {
+      # Run the strict JVMCI version check, i.e., that JVMCIVersionCheck.JVMCI_MIN_VERSION matches the versions in common.json.
+      JVMCI_VERSION_CHECK: "strict",
+    }
+  }],
 
   # Builds run on only on linux-amd64-jdk21Debug
   local linux_amd64_jdk21Debug_builds = [self.make_build("21Debug", "linux-amd64", task).build
