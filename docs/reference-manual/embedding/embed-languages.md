@@ -967,7 +967,7 @@ Note that [Graal.js](../js/) provides [a ScriptEngine implementation](../js/Scri
 <details>
 <summary>Expand to see the <code>ScriptEngineFactory</code> implementation for Truffle languages in a single file.</summary>
 
-<pre class="language-shell">
+<pre class="language-java"><code>
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -1564,5 +1564,5 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         }
     }
 }
-</pre>
+</code></pre>
 </details>
