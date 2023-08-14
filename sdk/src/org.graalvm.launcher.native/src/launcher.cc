@@ -387,23 +387,6 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         #endif
     }
 
-    #ifdef LAUNCHER_MODULE_PATH
-    if (jvmMode) {
-        /* construct module path - only needed for jvm mode */
-        std::stringstream modulePath;
-        modulePath << "--module-path=";
-        /* add the launcher module path */
-        const char *launcherModulePathEntries[] = LAUNCHER_MODULE_PATH;
-        int launcherModulePathCnt = sizeof(launcherModulePathEntries) / sizeof(*launcherModulePathEntries);
-        for (int i = 0; i < launcherModulePathCnt; i++) {
-            modulePath << exeDir << DIR_SEP_STR << launcherModulePathEntries[i];
-            if (i < launcherModulePathCnt-1) {
-                modulePath << CP_SEP_STR;
-            }
-        }
-    }
-    #endif
-
     #ifdef LAUNCHER_LIBRARY_PATH
     if (jvmMode) {
         /* construct java.library.path - only needed for jvm mode */
