@@ -1112,28 +1112,30 @@ def _check_latest_jvmci_version():
         with open(common_path) as common_file:
             common_cfg = json.load(common_file)
 
-        latest = None
+        latest = 'not found'
         for distribution in common_cfg['jdks']:
             version = common_cfg['jdks'][distribution].get('version', None)
             if version and '-jvmci-' in version:
                 current = tuple(int(n) for n in jvmci_re.match(version).group(1, 2, 3, 4))
                 if current[0] == _jdk_jvmci_version[0]:
                     # only compare the same major versions
-                    if latest is None:
+                    if isinstance(latest, str):
                         latest = current
                     elif latest != current:
                         # All JVMCI JDKs in common.json with the same major version
                         # are expected to have the same JVMCI version.
                         # If they don't then the repo is in some transitionary state
                         # (e.g. making a JVMCI release) so skip the check.
-                        return None
-        return latest
+                        return False, distribution
+        return not isinstance(latest, str), latest
 
     def jvmci_version_str(version):
         jdk_major, major, minor, build = version
         return f'labsjdk-(ce|ee)-{jdk_major}-jvmci-{major}.{minor}-b{build:02d}'
 
     version_check_setting = os.environ.get('JVMCI_VERSION_CHECK', None)
+
+    success, latest = get_latest_jvmci_version()
 
     if version_check_setting == 'strict' and _jdk_jvmci_version != _jdk_min_jvmci_version:
         msg = f'JVMCI_MIN_VERSION specified in JVMCIVersionCheck.java is older than in {common_path}:'
@@ -1143,8 +1145,18 @@ def _check_latest_jvmci_version():
         msg += ' suppress this error.'
         mx.abort(msg)
 
-    latest = get_latest_jvmci_version()
-    if latest is not None and _jdk_jvmci_version < latest:
+    if version_check_setting == 'strict' and not success:
+        if latest == 'not found':
+            msg = f'No JVMCI JDK found in {common_path} that matches {jvmci_version_str(_jdk_jvmci_version)}.'
+            msg += os.linesep + f'Check that {latest} matches the versions of the other JVMCI JDKs.'
+        else:
+            msg = f'Version mismatch in {common_path}:'
+            msg += os.linesep + f'Check that {latest} matches the versions of the other JVMCI JDKs.'
+        msg += os.linesep + 'Set the JVMCI_VERSION_CHECK environment variable to something else then "strict" to'
+        msg += ' suppress this error.'
+        mx.abort(msg)
+
+    if success and _jdk_jvmci_version < latest:
         common_path = os.path.normpath(common_path)
         msg = f'JVMCI version of JAVA_HOME is older than in {common_path}: {jvmci_version_str(_jdk_jvmci_version)} < {jvmci_version_str(latest)} '
         msg += os.linesep + 'This poses the risk of hitting JVMCI bugs that have already been fixed.'
