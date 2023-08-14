@@ -65,6 +65,8 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     private final Map<Class<?>, StoredBundle> storedBundles = new ConcurrentHashMap<>();
 
+    private final Set<String> existingBundles = ConcurrentHashMap.newKeySet();
+
     public BundleContentSubstitutedLocalizationSupport(Locale defaultLocale, Set<Locale> locales, Charset defaultCharset, List<String> requestedPatterns, ForkJoinPool pool) {
         super(defaultLocale, locales, defaultCharset);
         this.pool = pool;
@@ -162,5 +164,24 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     @Override
     public void prepareNonCompliant(Class<?> clazz) throws ReflectiveOperationException {
         storedBundles.put(clazz, new DelayedBundle(clazz));
+    }
+
+    @Override
+    public boolean isNotIncluded(String bundleName) {
+        return !existingBundles.contains(bundleName);
+    }
+
+    @Override
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
+        super.prepareBundle(bundleName, bundle, locale);
+        /* Initialize ResourceBundle.keySet eagerly */
+        bundle.keySet();
+        this.existingBundles.add(control.toBundleName(bundleName, locale));
+    }
+
+    @Override
+    public void prepareClassResourceBundle(String basename, Class<?> bundleClass) {
+        super.prepareClassResourceBundle(basename, bundleClass);
+        this.existingBundles.add(bundleClass.getName());
     }
 }

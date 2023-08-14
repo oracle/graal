@@ -56,8 +56,10 @@ public final class MissingReflectionRegistrationUtils {
 
     public static void forMethod(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
         StringJoiner paramTypeNames = new StringJoiner(", ", "(", ")");
-        for (Class<?> paramType : paramTypes) {
-            paramTypeNames.add(paramType.getTypeName());
+        if (paramTypes != null) {
+            for (Class<?> paramType : paramTypes) {
+                paramTypeNames.add(paramType.getTypeName());
+            }
         }
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access method",
                         declaringClass.getTypeName() + "#" + methodName + paramTypeNames),

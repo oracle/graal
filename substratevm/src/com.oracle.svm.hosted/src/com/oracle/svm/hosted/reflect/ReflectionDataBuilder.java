@@ -225,7 +225,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void registerClassLookup(ConfigurationCondition condition, String typeName) {
         checkNotSealed();
         try {
-            register(condition, Class.forName(typeName, false, null));
+            register(condition, Class.forName(typeName, false, ClassLoader.getSystemClassLoader()));
         } catch (ClassNotFoundException e) {
             registerConditionalConfiguration(condition, () -> ClassForNameSupport.registerNegativeQuery(typeName));
         } catch (Throwable t) {
