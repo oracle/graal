@@ -52,6 +52,7 @@ import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.StubPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
+import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
@@ -76,6 +77,8 @@ import jdk.vm.ci.meta.Value;
 public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
 
     public static final LIRInstructionClass<AMD64BigIntegerMulAddOp> TYPE = LIRInstructionClass.create(AMD64BigIntegerMulAddOp.class);
+
+    @Def({REG}) private Value result;
 
     @Use({REG}) private Value outValue;
     @Use({REG}) private Value inValue;
@@ -108,6 +111,7 @@ public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {
         this.offsetValue = offsetValue;
         this.lenValue = lenValue;
         this.kValue = kValue;
+        this.result = AMD64.rax.asValue(lenValue.getValueKind());
 
         this.tmp1Value = r12.equals(heapBaseRegister) ? r14.asValue() : r12.asValue();
 
