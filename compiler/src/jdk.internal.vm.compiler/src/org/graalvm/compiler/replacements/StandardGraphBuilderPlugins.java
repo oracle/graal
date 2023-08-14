@@ -190,6 +190,7 @@ import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
+import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
 import org.graalvm.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
@@ -815,6 +816,13 @@ public class StandardGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode x, ValueNode y) {
                 b.addPush(JavaKind.Int, IntegerNormalizeCompareNode.create(x, y, true, JavaKind.Int, b.getConstantReflection()));
+                return true;
+            }
+        });
+        r.register(new InvocationPlugin("reverse", type) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.addPush(kind, new ReverseBitsNode(arg).canonical(null));
                 return true;
             }
         });

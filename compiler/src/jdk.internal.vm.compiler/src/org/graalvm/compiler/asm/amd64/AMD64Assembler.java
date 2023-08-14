@@ -3778,6 +3778,15 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitModRM(dst, src);
     }
 
+    public final void pextrb(AMD64Address dst, Register src, int imm8) {
+        assert supports(CPUFeature.SSE4_1);
+        assert inRC(XMM, src);
+        simdPrefix(src, Register.None, dst, PD, P_0F3A, false);
+        emitByte(0x14);
+        emitOperandHelper(src, dst, 0);
+        emitByte(imm8);
+    }
+
     public final void pextrw(Register dst, Register src, int imm8) {
         assert inRC(CPU, dst) && inRC(XMM, src);
         simdPrefix(dst, Register.None, src, PD, P_0F, false);
@@ -3786,7 +3795,17 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(imm8);
     }
 
+    public final void pextrw(AMD64Address dst, Register src, int imm8) {
+        assert supports(CPUFeature.SSE4_1);
+        assert inRC(XMM, src);
+        simdPrefix(src, Register.None, dst, PD, P_0F3A, false);
+        emitByte(0x15);
+        emitOperandHelper(src, dst, 0);
+        emitByte(imm8);
+    }
+
     public final void pextrd(AMD64Address dst, Register src, int imm8) {
+        assert supports(CPUFeature.SSE4_1);
         assert inRC(XMM, src);
         simdPrefix(src, Register.None, dst, PD, P_0F3A, false);
         emitByte(0x16);
@@ -3794,7 +3813,35 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(imm8);
     }
 
+    public final void pextrq(Register dst, Register src, int imm8) {
+        assert supports(CPUFeature.SSE4_1);
+        assert inRC(CPU, dst) && inRC(XMM, src);
+        simdPrefix(src, Register.None, dst, PD, P_0F3A, true);
+        emitByte(0x16);
+        emitModRM(src, dst);
+        emitByte(imm8);
+    }
+
+    public final void pextrq(AMD64Address dst, Register src, int imm8) {
+        assert supports(CPUFeature.SSE4_1);
+        assert inRC(XMM, src);
+        simdPrefix(src, Register.None, dst, PD, P_0F3A, true);
+        emitByte(0x16);
+        emitOperandHelper(src, dst, 0);
+        emitByte(imm8);
+    }
+
+    public final void pinsrb(Register dst, AMD64Address src, int imm8) {
+        assert supports(CPUFeature.SSE4_1);
+        assert inRC(XMM, dst);
+        simdPrefix(dst, dst, src, PD, P_0F3A, false);
+        emitByte(0x20);
+        emitOperandHelper(dst, src, 0);
+        emitByte(imm8);
+    }
+
     public final void pinsrw(Register dst, Register src, int imm8) {
+        assert supports(CPUFeature.SSE2);
         assert inRC(XMM, dst) && inRC(CPU, src);
         simdPrefix(dst, dst, src, PD, P_0F, false);
         emitByte(0xC4);
@@ -3802,9 +3849,36 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         emitByte(imm8);
     }
 
+    public final void pinsrw(Register dst, AMD64Address src, int imm8) {
+        assert inRC(XMM, dst);
+        simdPrefix(dst, dst, src, PD, P_0F, false);
+        emitByte(0xC4);
+        emitOperandHelper(dst, src, 0);
+        emitByte(imm8);
+    }
+
     public final void pinsrd(Register dst, AMD64Address src, int imm8) {
+        assert supports(CPUFeature.SSE4_1);
         assert inRC(XMM, dst);
         simdPrefix(dst, dst, src, PD, P_0F3A, false);
+        emitByte(0x22);
+        emitOperandHelper(dst, src, 0);
+        emitByte(imm8);
+    }
+
+    public final void pinsrq(Register dst, Register src, int imm8) {
+        assert supports(CPUFeature.SSE4_1);
+        assert inRC(XMM, dst) && inRC(CPU, src);
+        simdPrefix(dst, dst, src, PD, P_0F3A, true);
+        emitByte(0x22);
+        emitModRM(dst, src);
+        emitByte(imm8);
+    }
+
+    public final void pinsrq(Register dst, AMD64Address src, int imm8) {
+        assert supports(CPUFeature.SSE4_1);
+        assert inRC(XMM, dst);
+        simdPrefix(dst, dst, src, PD, P_0F3A, true);
         emitByte(0x22);
         emitOperandHelper(dst, src, 0);
         emitByte(imm8);
@@ -5222,23 +5296,35 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void aesenc(Register dst, Register src) {
+        assert supports(CPUFeature.AES);
         assert inRC(XMM, dst) && inRC(XMM, src);
-        VexAESOp.VAESENC.emit(this, AVXSize.XMM, dst, dst, src);
+        simdPrefix(dst, dst, src, PD, P_0F38, false);
+        emitByte(0xDC);
+        emitModRM(dst, src);
     }
 
     public final void aesenclast(Register dst, Register src) {
+        assert supports(CPUFeature.AES);
         assert inRC(XMM, dst) && inRC(XMM, src);
-        VexAESOp.VAESENCLAST.emit(this, AVXSize.XMM, dst, dst, src);
+        simdPrefix(dst, dst, src, PD, P_0F38, false);
+        emitByte(0xDD);
+        emitModRM(dst, src);
     }
 
     public final void aesdec(Register dst, Register src) {
+        assert supports(CPUFeature.AES);
         assert inRC(XMM, dst) && inRC(XMM, src);
-        VexAESOp.VAESDEC.emit(this, AVXSize.XMM, dst, dst, src);
+        simdPrefix(dst, dst, src, PD, P_0F38, false);
+        emitByte(0xDE);
+        emitModRM(dst, src);
     }
 
     public final void aesdeclast(Register dst, Register src) {
+        assert supports(CPUFeature.AES);
         assert inRC(XMM, dst) && inRC(XMM, src);
-        VexAESOp.VAESDECLAST.emit(this, AVXSize.XMM, dst, dst, src);
+        simdPrefix(dst, dst, src, PD, P_0F38, false);
+        emitByte(0xDF);
+        emitModRM(dst, src);
     }
 
     // Insn: KORTESTD k1, k2

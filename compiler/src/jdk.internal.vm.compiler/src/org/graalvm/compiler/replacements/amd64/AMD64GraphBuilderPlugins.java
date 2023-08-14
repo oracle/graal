@@ -85,7 +85,6 @@ import org.graalvm.compiler.replacements.nodes.CountTrailingZerosNode;
 import org.graalvm.compiler.replacements.nodes.FloatToHalfFloatNode;
 import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
 import org.graalvm.compiler.replacements.nodes.HalfFloatToFloatNode;
-import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.compiler.replacements.nodes.VectorizedHashCodeNode;
@@ -169,14 +168,6 @@ public class AMD64GraphBuilderPlugins implements TargetGraphBuilderPlugins {
                 }
             });
         }
-
-        r.registerConditional(supportsFeature(arch, "GFNI"), new InvocationPlugin("reverse", type) {
-            @Override
-            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
-                b.addPush(kind, new ReverseBitsNode(arg).canonical(null));
-                return true;
-            }
-        });
     }
 
     private static boolean supportsFeature(AMD64 arch, String feature) {

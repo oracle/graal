@@ -877,4 +877,11 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY.isAvailable() && VMINTRINSIC_FIRST_MH_SIG_POLY != -1 && VMINTRINSIC_LAST_MH_SIG_POLY != -1 && VMINTRINSIC_INVOKE_GENERIC != -1 &&
                         VMINTRINSIC_COMPILED_LAMBDA_FORM != -1;
     }
+
+    /**
+     * Returns true if results of vmIntrinsics::is_intrinsic_available are exported to Graal.
+     */
+    public boolean isIntrinsicAvailableExported() {
+        return JDK >= 22 || (JDK == 21 && jvmciGE(JVMCI_23_1_b13));
+    }
 }

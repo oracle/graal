@@ -169,7 +169,6 @@ import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -204,7 +203,7 @@ public class HotSpotGraphBuilderPlugins {
                     OptionValues options,
                     TargetDescription target,
                     BarrierSet barrierSet) {
-        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration, target, options);
+        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration, options);
 
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendNodePlugin(new HotSpotExceptionDispatchPlugin(config, wordTypes.getWordKind()));
@@ -784,17 +783,6 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    public static boolean isIntrinsicName(GraalHotSpotVMConfig config, String className, String name) {
-        for (VMIntrinsicMethod intrinsic : config.getStore().getIntrinsics()) {
-            if (className.equals(intrinsic.declaringClass)) {
-                if (name.equals(intrinsic.name)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     private static ResolvedJavaType resolveTypeAESCrypt(ResolvedJavaType context) {
         return UnresolvedJavaType.create("Lcom/sun/crypto/provider/AESCrypt;").resolve(context);
     }
@@ -1047,7 +1035,7 @@ public class HotSpotGraphBuilderPlugins {
         boolean useSha512 = config.useSHA512Intrinsics();
         boolean useSha3 = config.sha3ImplCompressMultiBlock != 0L;
 
-        boolean implCompressMultiBlock0Enabled = isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") && (useMD5 || useSha1 || useSha256 || useSha512 || useSha3);
+        boolean implCompressMultiBlock0Enabled = useMD5 || useSha1 || useSha256 || useSha512 || useSha3;
         Registration r = new Registration(plugins, "sun.security.provider.DigestBase", replacements);
         r.registerConditional(implCompressMultiBlock0Enabled, new SnippetSubstitutionInvocationPlugin<>(DigestBaseSnippets.Templates.class,
                         "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class) {
