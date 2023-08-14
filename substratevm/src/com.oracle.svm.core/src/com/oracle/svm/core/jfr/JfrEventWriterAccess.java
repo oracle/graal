@@ -83,10 +83,8 @@ public final class JfrEventWriterAccess {
         if (JavaVersionUtil.JAVA_SPEC >= 19 && JavaVersionUtil.JAVA_SPEC < 21) {
             return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, addressOfCommittedPos, jfrThreadId, true, isCurrentThreadExcluded);
         } else if (JavaVersionUtil.JAVA_SPEC >= 21) {
-            System.out.println("LOGGING___________21!!");
             return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, jfrThreadId, true, isCurrentThreadExcluded);
         } else {
-            System.out.println("LOGGING___________17!!");
             return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, addressOfCommittedPos, jfrThreadId, true);
         }
     }
