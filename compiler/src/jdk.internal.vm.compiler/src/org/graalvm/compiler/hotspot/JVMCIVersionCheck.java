@@ -51,7 +51,7 @@ public final class JVMCIVersionCheck {
     /**
      * Minimum Java release supported by Graal.
      */
-    private static final int JAVA_MIN_RELEASE = 17;
+    private static final int JAVA_MIN_RELEASE = 21;
 
     public static class Version {
         private final int major;

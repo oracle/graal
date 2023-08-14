@@ -82,8 +82,8 @@ jdk = mx.get_jdk(tag='default')
 _jdk_jvmci_version = None
 _jdk_min_jvmci_version = None
 
-if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '17':
-    mx.abort('Graal requires JDK17 or later, got ' + str(jdk) +
+if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '21':
+    mx.abort('Graal requires JDK21 or later, got ' + str(jdk) +
              '. This check can be bypassed by setting env var JDK_VERSION_CHECK=ignore')
 
 def _check_jvmci_version(jdk):
