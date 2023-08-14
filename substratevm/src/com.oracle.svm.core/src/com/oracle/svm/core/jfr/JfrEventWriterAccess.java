@@ -46,9 +46,17 @@ public final class JfrEventWriterAccess {
      * the committed position and not to the start of the buffer.
      */
     private static final Field COMMITTED_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "startPosition");
+    private static final Field COMMITTED_POSITION_ADDRESS_FIELD;
     private static final Field CURRENT_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "currentPosition");
     private static final Field MAX_POSITION_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "maxPosition");
     private static final Field VALID_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "valid");
+    static {
+        if (JavaVersionUtil.JAVA_SPEC < 21) {
+            COMMITTED_POSITION_ADDRESS_FIELD = ReflectionUtil.lookupField(getEventWriterClass(), "startPositionAddress");
+        } else {
+            COMMITTED_POSITION_ADDRESS_FIELD = null;
+        }
+    }
 
     @Platforms(Platform.HOSTED_ONLY.class)
     private JfrEventWriterAccess() {
@@ -70,11 +78,15 @@ public final class JfrEventWriterAccess {
 
         long committedPos = buffer.getCommittedPos().rawValue();
         long maxPos = JfrBufferAccess.getDataEnd(buffer).rawValue();
+        long addressOfCommittedPos = JfrBufferAccess.getAddressOfCommittedPos(buffer).rawValue();
         long jfrThreadId = SubstrateJVM.getCurrentThreadId();
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+        if (JavaVersionUtil.JAVA_SPEC >= 19 && JavaVersionUtil.JAVA_SPEC < 21) {
+            return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, addressOfCommittedPos, jfrThreadId, true, isCurrentThreadExcluded);
+        } else if (JavaVersionUtil.JAVA_SPEC >= 21) {
+            System.out.println("LOGGING___________21!!");
             return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, jfrThreadId, true, isCurrentThreadExcluded);
         } else {
-            long addressOfCommittedPos = JfrBufferAccess.getAddressOfCommittedPos(buffer).rawValue();
+            System.out.println("LOGGING___________17!!");
             return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, addressOfCommittedPos, jfrThreadId, true);
         }
     }
@@ -86,10 +98,14 @@ public final class JfrEventWriterAccess {
         assert JfrBufferAccess.verify(buffer);
 
         Pointer committedPos = buffer.getCommittedPos();
+        Pointer addressOfCommittedPos = JfrBufferAccess.getAddressOfCommittedPos(buffer);
         Pointer currentPos = committedPos.add(uncommittedSize);
         Pointer maxPos = JfrBufferAccess.getDataEnd(buffer);
 
         U.putLong(writer, U.objectFieldOffset(COMMITTED_POSITION_FIELD), committedPos.rawValue());
+        if (JavaVersionUtil.JAVA_SPEC < 21) {
+            U.putLong(writer, U.objectFieldOffset(COMMITTED_POSITION_ADDRESS_FIELD), addressOfCommittedPos.rawValue());
+        }
         U.putLong(writer, U.objectFieldOffset(CURRENT_POSITION_FIELD), currentPos.rawValue());
         U.putLong(writer, U.objectFieldOffset(MAX_POSITION_FIELD), maxPos.rawValue());
         if (!valid) {

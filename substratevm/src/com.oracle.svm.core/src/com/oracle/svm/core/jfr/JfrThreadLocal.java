@@ -26,6 +26,7 @@ package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
@@ -362,7 +363,13 @@ public class JfrThreadLocal implements ThreadListener {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void notifyEventWriter(IsolateThread thread) {
-        notified.set(thread, 1);
+        if (JavaVersionUtil.JAVA_SPEC >= 21) {
+            notified.set(1);
+            return;
+        }
+        if (javaEventWriter.get(thread) != null) {
+            javaEventWriter.get(thread).notified = true;
+        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
