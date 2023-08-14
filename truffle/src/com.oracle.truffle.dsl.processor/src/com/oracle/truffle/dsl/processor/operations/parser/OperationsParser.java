@@ -266,7 +266,9 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
                         ElementUtils.findMethod(types.OperationRootNode, "setBaselineInterpreterThreshold"),
                         ElementUtils.findMethod(types.OperationRootNode, "materializeInstrumentTree"),
                         ElementUtils.findMethod(types.OperationRootNode, "getSourceSectionAtBci"),
-                        ElementUtils.findMethod(types.OperationRootNode, "findBciOfOperationNode"));
+                        ElementUtils.findMethod(types.OperationRootNode, "findBciOfOperationNode"),
+                        ElementUtils.findMethod(types.OperationRootNode, "readBciFromFrame"),
+                        ElementUtils.findMethod(types.OperationRootNode, "getLocals"));
 
         for (ExecutableElement override : overrides) {
             ExecutableElement declared = ElementUtils.findMethod(typeElement, override.getSimpleName().toString());
