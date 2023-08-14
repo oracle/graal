@@ -576,17 +576,27 @@ public class NativeImage {
         }
 
         private List<Path> createTruffleBuilderModulePath() {
-            List<Path> jars = getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-api", "truffle-runtime", "truffle-enterprise");
+            Path libTruffleDir = rootDir.resolve(Paths.get("lib", "truffle"));
+            List<Path> jars = getJars(libTruffleDir, "truffle-api", "truffle-runtime", "truffle-enterprise");
             if (!jars.isEmpty()) {
                 /*
                  * If Truffle is installed as part of the JDK we always add the builder modules of
                  * Truffle to the builder module path. This is legacy support and should in the
                  * future no longer be needed.
                  */
-                jars.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-compiler"));
+                jars.addAll(getJars(libTruffleDir, "truffle-compiler"));
                 Path builderPath = rootDir.resolve(Paths.get("lib", "truffle", "builder"));
                 if (Files.exists(builderPath)) {
                     jars.addAll(getJars(builderPath, "truffle-runtime-svm", "truffle-enterprise-svm"));
+                    if (libJvmciDir != null) {
+                        // truffle-runtime-svm depends on polyglot, which is not part of non-jlinked
+                        // JDKs
+                        jars.addAll(getJars(libJvmciDir, "polyglot"));
+                    }
+                }
+                if (libJvmciDir != null) {
+                    // truffle-runtime depends on polyglot, which is not part of non-jlinked JDKs
+                    jars.addAll(getJars(libTruffleDir, "jniutils"));
                 }
             }
             /*
@@ -594,7 +604,7 @@ public class NativeImage {
              * image builder still needs it
              */
             if (libJvmciDir != null) {
-                jars.addAll(getJars(rootDir.resolve(Paths.get("lib", "truffle")), "truffle-compiler"));
+                jars.addAll(getJars(libTruffleDir, "truffle-compiler"));
             }
 
             return jars;
