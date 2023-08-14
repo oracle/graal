@@ -31,6 +31,7 @@ import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.platform.Container;
 import jdk.internal.platform.Metrics;
@@ -115,7 +116,12 @@ public class Containers {
      */
     public static long memoryLimitInBytes() {
         if (UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class)) {
-            Metrics metrics = Container.metrics();
+            Metrics metrics;
+            try {
+                metrics = Container.metrics();
+            } catch (StackOverflowError e) {
+                throw VMError.shouldNotReachHere("Could not get container metrics, likely due to using NIO in the container code of the JDK (JDK-8309191).", e);
+            }
             if (metrics != null) {
                 return metrics.getMemoryLimit();
             }
