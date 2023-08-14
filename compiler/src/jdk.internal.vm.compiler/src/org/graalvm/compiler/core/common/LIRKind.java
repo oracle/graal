@@ -66,7 +66,7 @@ import jdk.vm.ci.meta.ValueKind;
  * can not track, {@link LIRKind#unknownReference} can be used. In most cases,
  * {@link LIRKind#combine} should be used instead, since it is able to detect this automatically.
  */
-public final class LIRKind extends ValueKind<LIRKind> {
+public class LIRKind extends ValueKind<LIRKind> {
 
     /**
      * The location of object references in the value. If the value is a vector type, each bit
@@ -77,13 +77,13 @@ public final class LIRKind extends ValueKind<LIRKind> {
     /** Mask with 1-bits indicating which references in {@link #referenceMask} are compressed. */
     private final int referenceCompressionMask;
 
-    private AllocatableValue derivedReferenceBase;
+    private final AllocatableValue derivedReferenceBase;
 
     private static final int UNKNOWN_REFERENCE = -1;
 
     public static final LIRKind Illegal = unknownReference(ValueKind.Illegal.getPlatformKind());
 
-    private LIRKind(PlatformKind platformKind, int referenceMask, int referenceCompressionMask, AllocatableValue derivedReferenceBase) {
+    protected LIRKind(PlatformKind platformKind, int referenceMask, int referenceCompressionMask, AllocatableValue derivedReferenceBase) {
         super(platformKind);
         this.referenceMask = referenceMask;
         this.referenceCompressionMask = referenceCompressionMask;
@@ -385,14 +385,6 @@ public final class LIRKind extends ValueKind<LIRKind> {
     }
 
     /**
-     * Change the base value of a derived reference. This must be called on derived references only.
-     */
-    public void setDerivedReferenceBase(AllocatableValue derivedReferenceBase) {
-        assert isDerivedReference();
-        this.derivedReferenceBase = derivedReferenceBase;
-    }
-
-    /**
      * Check whether this value is derived from a reference in a non-linear way. If this returns
      * {@code true}, this value must not be live at safepoints.
      */
@@ -471,7 +463,14 @@ public final class LIRKind extends ValueKind<LIRKind> {
             ret.append('[');
             for (int i = 0; i < getPlatformKind().getVectorLength(); i++) {
                 if (isReference(i)) {
-                    ret.append('.');
+                    if (isCompressedReference(i)) {
+                        ret.append('_');
+                    } else {
+                        ret.append('.');
+                    }
+                    if (isDerivedReference()) {
+                        ret.append('+');
+                    }
                 } else {
                     ret.append(' ');
                 }
@@ -497,7 +496,7 @@ public final class LIRKind extends ValueKind<LIRKind> {
         if (this == obj) {
             return true;
         }
-        if (!(obj instanceof LIRKind)) {
+        if (obj == null || obj.getClass() != LIRKind.class) {
             return false;
         }
 
