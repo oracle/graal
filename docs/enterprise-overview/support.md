@@ -48,7 +48,7 @@ The following table lists supported and experimental features in Oracle GraalVM 
 | Ruby            | experimental  | experimental  | experimental  | experimental  | not available |
 | WebAssembly     | experimental  | experimental  | experimental  | experimental  | experimental  |
 
-**(1)** This functionality is deprecated and will no longer be supported as part of Oracle GraalVM for JDK 23. Note that this functionality will still be available and remain community-supported beyond Oracle GraalVM for JDK 23.
+**(1)** This functionality is deprecated and will be removed in Oracle GraalVM for JDK 23.
 
 ## Licensing and Support
 
