@@ -3534,7 +3534,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             workingSets=None,
             defaultBuild=False,
             missing_export_target_action='warn',
-            default_to_jvmci='lib' if mx.suite('substratevm', fatalIfMissing=False) else False,
+            default_to_jvmci='lib' if _get_libgraal_component() is not None else False,
         )
         register_project(java_standalone_jimage)
 
