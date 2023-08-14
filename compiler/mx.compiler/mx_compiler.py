@@ -80,6 +80,7 @@ jdk = mx.get_jdk(tag='default')
 
 #: 3-tuple (major, minor, build) of JVMCI version, if any, denoted by `jdk`
 _jdk_jvmci_version = None
+_jdk_min_jvmci_version = None
 
 if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '17':
     mx.abort('Graal requires JDK17 or later, got ' + str(jdk) +
@@ -101,6 +102,8 @@ def _check_jvmci_version(jdk):
 
     global _jdk_jvmci_version
     _jdk_jvmci_version = _capture_jvmci_version()
+    global _jdk_min_jvmci_version
+    _jdk_min_jvmci_version = _capture_jvmci_version(['--min-version'])
 
 
 
@@ -1131,6 +1134,14 @@ def _check_latest_jvmci_version():
         return f'labsjdk-(ce|ee)-{jdk_major}-jvmci-{major}.{minor}-b{build:02d}'
 
     version_check_setting = os.environ.get('JVMCI_VERSION_CHECK', None)
+
+    if version_check_setting == 'strict' and _jdk_jvmci_version != _jdk_min_jvmci_version:
+        msg = f'JVMCI_MIN_VERSION specified in JVMCIVersionCheck.java is older than in {common_path}:'
+        msg += os.linesep + f'{jvmci_version_str(_jdk_min_jvmci_version)} < {jvmci_version_str(_jdk_jvmci_version)} '
+        msg += os.linesep + f'Did you forget to update JVMCI_MIN_VERSION after updating {common_path}?'
+        msg += os.linesep + 'Set the JVMCI_VERSION_CHECK environment variable to something else then "strict" to'
+        msg += ' suppress this error.'
+        mx.abort(msg)
 
     latest = get_latest_jvmci_version()
     if latest is not None and _jdk_jvmci_version < latest:

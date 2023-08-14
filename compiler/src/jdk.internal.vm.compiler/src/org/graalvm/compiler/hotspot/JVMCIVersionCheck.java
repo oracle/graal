@@ -223,13 +223,21 @@ public final class JVMCIVersionCheck {
             props.put(name, sprops.getProperty(name));
         }
         String format = "%d,%d,%d";
+        boolean minVersion = false;
         for (String arg : args) {
             if (arg.equals("--as-tag")) {
                 format = Version.AS_TAG_FORMAT;
+            } else if (arg.equals("--min-version")) {
+                minVersion = true;
             } else {
                 throw new IllegalArgumentException("Unknown argument: " + arg);
             }
         }
-        check(props, true, format);
+        if (minVersion) {
+            Version v = JVMCI_MIN_VERSION;
+            System.out.printf(format + "%n", v.major, v.minor, v.build);
+        } else {
+            check(props, true, format);
+        }
     }
 }
