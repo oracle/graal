@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,41 +24,36 @@
  */
 package org.graalvm.compiler.nodes.extended;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
-
-import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
+
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public abstract class OpaqueNode extends FloatingNode implements NodeWithIdentity {
-    public static final NodeClass<OpaqueNode> TYPE = NodeClass.create(OpaqueNode.class);
+public final class OpaqueGuardNode extends OpaqueNode implements NodeWithIdentity, GuardingNode {
+    public static final NodeClass<OpaqueGuardNode> TYPE = NodeClass.create(OpaqueGuardNode.class);
 
-    @OptionalInput(InputType.Anchor) protected AnchoringNode anchor;
+    @Input(InputType.Guard) private ValueNode value;
 
-    protected OpaqueNode(NodeClass<? extends OpaqueNode> c, Stamp stamp) {
-        super(c, stamp);
+    public OpaqueGuardNode(ValueNode value) {
+        super(TYPE, StampFactory.forVoid());
+        this.value = value;
     }
 
-    public abstract ValueNode getValue();
-
-    public abstract void setValue(ValueNode value);
-
-    public void remove() {
-        replaceAndDelete(getValue());
+    @Override
+    public ValueNode getValue() {
+        return value;
     }
 
-    public AnchoringNode getAnchor() {
-        return anchor;
+    @Override
+    public void setValue(ValueNode value) {
+        this.updateUsages(this.value, value);
+        this.value = value;
     }
 
-    public void setAnchor(AnchoringNode x) {
-        updateUsagesInterface(this.anchor, x);
-        this.anchor = x;
-    }
 }

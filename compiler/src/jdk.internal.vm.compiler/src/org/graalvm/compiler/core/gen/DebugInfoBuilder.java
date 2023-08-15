@@ -95,6 +95,7 @@ public class DebugInfoBuilder {
         do {
             if (current.virtualObjectMappingCount() > 0) {
                 for (EscapeObjectState state : current.virtualObjectMappings()) {
+                    GraalError.guarantee(state.object() != null, "Object must be non-null %s %s", state, current);
                     if (!objectStates.containsKey(state.object())) {
                         if (!(state instanceof MaterializedObjectState) || ((MaterializedObjectState) state).materializedValue() != state.object()) {
                             objectStates.put(state.object(), state);

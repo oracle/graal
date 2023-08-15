@@ -144,6 +144,7 @@ public class LoopFullUnrollPhase extends LoopPhase<LoopPolicies> {
                     final LoopsData dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
                     dataCounted.detectCountedLoops();
                     List<LoopEx> countedLoops = dataCounted.countedLoops();
+                    graph.getDebug().log(DebugContext.INFO_LEVEL, "Detected %d counted loops", countedLoops.size());
                     countedLoops.sort(LOOP_COMPARATOR);
                     for (LoopEx loop : countedLoops) {
                         if (getPolicies().shouldFullUnroll(loop)) {

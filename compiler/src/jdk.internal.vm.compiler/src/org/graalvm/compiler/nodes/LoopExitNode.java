@@ -120,6 +120,9 @@ public final class LoopExitNode extends BeginStateSplitNode implements IterableN
             // this node is soon to be killed because it's missing a predecessor
             graph().replaceFixedWithFixed(this, graph().add(new BeginNode()));
         }
+        if (this.isAlive()) {
+            this.setLoopBegin(null);
+        }
         if (loopStateAfter != null) {
             GraphUtil.tryKillUnused(loopStateAfter);
         }

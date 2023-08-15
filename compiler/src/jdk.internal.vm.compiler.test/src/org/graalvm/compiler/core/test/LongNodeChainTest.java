@@ -31,6 +31,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.extended.OpaqueValueNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
@@ -60,7 +61,7 @@ public class LongNodeChainTest extends GraalCompilerTest {
         ValueNode value = null;
         if (reverse) {
             // Make sure the constant's stamp is not used to infer the add node's stamp.
-            OpaqueNode opaque = graph.unique(new OpaqueNode(constant));
+            OpaqueNode opaque = graph.unique(new OpaqueValueNode(constant));
             constant = opaque;
             AddNode addNode = graph.unique(new AddNode(constant, constant));
             value = addNode;

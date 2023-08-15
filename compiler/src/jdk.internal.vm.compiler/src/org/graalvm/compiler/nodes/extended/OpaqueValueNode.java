@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,41 +24,42 @@
  */
 package org.graalvm.compiler.nodes.extended;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
-
-import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
+import org.graalvm.compiler.nodes.spi.LIRLowerable;
+import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+
+import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public abstract class OpaqueNode extends FloatingNode implements NodeWithIdentity {
-    public static final NodeClass<OpaqueNode> TYPE = NodeClass.create(OpaqueNode.class);
+public final class OpaqueValueNode extends OpaqueNode implements NodeWithIdentity, LIRLowerable, GuardingNode {
+    public static final NodeClass<OpaqueValueNode> TYPE = NodeClass.create(OpaqueValueNode.class);
 
-    @OptionalInput(InputType.Anchor) protected AnchoringNode anchor;
+    @Input(InputType.Value) private ValueNode value;
 
-    protected OpaqueNode(NodeClass<? extends OpaqueNode> c, Stamp stamp) {
-        super(c, stamp);
+    public OpaqueValueNode(ValueNode value) {
+        super(TYPE, value.stamp(NodeView.DEFAULT).unrestricted());
+        this.value = value;
     }
 
-    public abstract ValueNode getValue();
-
-    public abstract void setValue(ValueNode value);
-
-    public void remove() {
-        replaceAndDelete(getValue());
+    @Override
+    public ValueNode getValue() {
+        return value;
     }
 
-    public AnchoringNode getAnchor() {
-        return anchor;
+    @Override
+    public void setValue(ValueNode value) {
+        this.updateUsages(this.value, value);
+        this.value = value;
     }
 
-    public void setAnchor(AnchoringNode x) {
-        updateUsagesInterface(this.anchor, x);
-        this.anchor = x;
+    @Override
+    public void generate(NodeLIRBuilderTool gen) {
+        gen.setResult(this, gen.operand(getValue()));
     }
 }

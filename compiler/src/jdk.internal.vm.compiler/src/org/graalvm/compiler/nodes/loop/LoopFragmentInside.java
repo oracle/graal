@@ -77,6 +77,7 @@ import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.extended.OpaqueValueNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.memory.MemoryKill;
 import org.graalvm.compiler.nodes.memory.MemoryPhiNode;
@@ -222,7 +223,7 @@ public class LoopFragmentInside extends LoopFragment {
             ValueNode counterStride = counted.getLimitCheckedIV().strideNode();
             if (opaque == null || opaque.isDeleted()) {
                 ValueNode limit = counted.getLimit();
-                opaque = new OpaqueNode(AddNode.add(counterStride, counterStride, NodeView.DEFAULT));
+                opaque = new OpaqueValueNode(AddNode.add(counterStride, counterStride, NodeView.DEFAULT));
                 ValueNode newLimit = partialUnrollOverflowCheck(opaque, limit, counted);
                 GraalError.guarantee(condition.hasExactlyOneUsage(),
                                 "Unrolling loop %s with condition %s, which has multiple usages. Usages other than the loop exit check would get an incorrect condition.", loop.loopBegin(), condition);
