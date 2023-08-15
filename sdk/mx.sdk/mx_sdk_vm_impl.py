@@ -1357,7 +1357,8 @@ class NativePropertiesBuildTask(mx.ProjectBuildTask):
             if isinstance(image_config, mx_sdk.LanguageLibraryConfig):
                 if image_config.main_class:
                     build_args += ['-Dorg.graalvm.launcher.class=' + image_config.main_class]
-                if has_component('svmee', stage1=True):
+                # GR-47952: Espresso relies on graal_isolate_ prefix in headers
+                if has_component('svmee', stage1=True) and self.subject.component.name != 'Java on Truffle':
                     build_args += ['--macro:truffle-language-library']
 
             source_type = 'skip' if isinstance(image_config, mx_sdk.LibraryConfig) and _skip_libraries(image_config) else 'dependency'
