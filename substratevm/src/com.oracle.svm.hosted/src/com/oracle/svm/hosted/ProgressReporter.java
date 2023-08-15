@@ -174,7 +174,8 @@ public class ProgressReporter {
         }
         jsonHelper = new ProgressReporterJsonHelper();
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
-        boolean enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
+
+        boolean enableColors = SubstrateOptions.hasColorsEnabled(options);
         colorStrategy = enableColors ? new ColorfulStrategy() : new ColorlessStrategy();
         stagePrinter = SubstrateOptions.BuildOutputProgress.getValue(options) ? new CharacterwiseStagePrinter() : new LinewiseStagePrinter();
         linkStrategy = SubstrateOptions.BuildOutputLinks.getValue(options) ? new LinkyStrategy() : new LinklessStrategy();
