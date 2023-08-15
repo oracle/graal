@@ -31,6 +31,7 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.spi.Lowerable;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -40,7 +41,7 @@ import jdk.vm.ci.meta.JavaKind;
  * moved next to any uses to avoid creating a derived pointer that is live across a safepoint.
  */
 @NodeInfo(cycles = CYCLES_1, size = NodeSize.SIZE_1)
-public final class ComputeObjectAddressNode extends FixedWithNextNode implements Lowerable {
+public final class ComputeObjectAddressNode extends FixedWithNextNode implements Lowerable, ControlFlowAnchored {
     public static final NodeClass<ComputeObjectAddressNode> TYPE = NodeClass.create(ComputeObjectAddressNode.class);
 
     @Input ValueNode object;
