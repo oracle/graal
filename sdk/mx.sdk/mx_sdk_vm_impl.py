@@ -2935,14 +2935,14 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
             # Add jars of components required to run thin launchers.
             for thin_launcher_component in GraalVmStandaloneComponent.thin_launcher_components():
-                for jd in thin_launcher_component.jar_distributions:
+                for dist in thin_launcher_component.jar_distributions + thin_launcher_component.boot_jars:
                     layout.setdefault(default_jvm_modules_dir, []).append({
                         'source_type': 'dependency',
-                        'dependency': jd,
+                        'dependency': dist,
                         'exclude': [],
                         'path': None,
                     })
-                    self.jvm_modules.append(jd)
+                    self.jvm_modules.append(dist)
 
             # Add LibGraal.
             lg_component = _get_libgraal_component()
@@ -3007,15 +3007,19 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         Components that, for now, must be included in the JDK.
         @rtype list[mx_sdk_vm.GraalVmComponent]
         """
-        return [mx_sdk.graal_sdk_component]
+        return [mx_sdk.graal_sdk_compiler_component]
 
     @staticmethod
     def thin_launcher_components():
         """
-        Components that define jars that must be in the class path for thin launchers to work.
+        Components that define jars that must be in the module path for thin launchers to work.
         @rtype list[mx_sdk_vm.GraalVmComponent]
         """
-        return [mx_sdk.graalvm_launcher_common_component]
+        return [
+            mx_sdk.graalvm_launcher_common_component,
+            mx_sdk.graalvm_sdk_component,
+            mx_sdk.graalvm_sdk_native_image_component
+        ]
 
     def get_artifact_metadata(self):
         return {'type': 'standalone', 'edition': get_graalvm_edition(), 'project': _project_name}

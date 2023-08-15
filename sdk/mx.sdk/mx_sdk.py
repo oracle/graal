@@ -109,7 +109,7 @@ def upx(args):
 
 
 # SDK modules included if truffle, compiler and native-image is included
-graal_sdk_component = mx_sdk_vm.GraalVmJreComponent(
+graalvm_sdk_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK',
     short_name='sdk',
@@ -121,9 +121,10 @@ graal_sdk_component = mx_sdk_vm.GraalVmJreComponent(
     boot_jars=['sdk:POLYGLOT', 'sdk:GRAAL_SDK'],
     stability="supported",
 )
+mx_sdk_vm.register_graalvm_component(graalvm_sdk_component)
 
 # SDK modules included the compiler is included
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+graal_sdk_compiler_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK Compiler',
     short_name='sdkc',
@@ -134,10 +135,11 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=[],
     boot_jars=['sdk:WORD', 'sdk:COLLECTIONS'],
     stability="supported",
-))
+)
+mx_sdk_vm.register_graalvm_component(graal_sdk_compiler_component)
 
 # SDK modules included if the compiler and native-image is included
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+graalvm_sdk_native_image_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK Native Image',
     short_name='sdkni',
@@ -148,8 +150,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=[],
     boot_jars=['sdk:NATIVEIMAGE'],
     stability="supported",
-))
-mx_sdk_vm.register_graalvm_component(graal_sdk_component)
+)
+mx_sdk_vm.register_graalvm_component(graalvm_sdk_native_image_component)
 
 graalvm_launcher_common_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
