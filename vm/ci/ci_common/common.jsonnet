@@ -503,8 +503,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_linux_amd64(java_version): vm.check_structure + {
     run: $.patch_env('linux', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
-      $.mx_vm_installables + ['build', '--dependencies', 'GRAALVM_STANDALONES'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -523,8 +522,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_linux_aarch64(java_version): vm.check_structure + {
     run: $.patch_env('linux', 'aarch64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
-      $.mx_vm_installables + ['build', '--dependencies', 'GRAALVM_STANDALONES'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -551,8 +549,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_installables_darwin_amd64(java_version): vm.check_structure + {
     run: $.patch_env('darwin', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
-      $.mx_vm_installables + ['build', '--dependencies', 'GRAALVM_STANDALONES'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
@@ -574,8 +571,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_installables_darwin_aarch64(java_version): vm.check_structure + {
     run: $.patch_env('darwin', 'aarch64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
-      $.mx_vm_installables + ['build', '--dependencies', 'GRAALVM_STANDALONES'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
@@ -597,8 +593,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_installables_windows_amd64(java_version): vm.check_structure + {
     run: $.patch_env('windows', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
-      $.mx_vm_installables + ['build', '--dependencies', 'GRAALVM_STANDALONES'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
