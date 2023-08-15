@@ -546,7 +546,7 @@ public class LocalizationFeature implements InternalFeature {
         Class<?> bundleClass = findClassByName.apply(className);
         UserError.guarantee(ResourceBundle.class.isAssignableFrom(bundleClass), "%s is not a subclass of ResourceBundle", bundleClass.getName());
         trace("Adding class based resource bundle: " + className + " " + bundleClass);
-        support.registerRequiredReflectionForBundle(basename, Set.of());
+        support.registerRequiredReflectionAndResourcesForBundle(basename, Set.of());
         support.prepareClassResourceBundle(basename, bundleClass);
     }
 

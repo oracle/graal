@@ -46,6 +46,7 @@ import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -109,7 +110,7 @@ public class LocalizationSupport {
             }
             ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), resultingPattern + "\\.properties");
         } else {
-            registerRequiredReflectionForBundle(bundleName, Set.of(locale));
+            registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale));
             RuntimeReflection.register(bundle.getClass());
             RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());
             onBundlePrepared(bundle);
@@ -131,7 +132,7 @@ public class LocalizationSupport {
         }
     }
 
-    public void registerRequiredReflectionForBundle(String baseName, Collection<Locale> wantedLocales) {
+    public void registerRequiredReflectionAndResourcesForBundle(String baseName, Collection<Locale> wantedLocales) {
         int i = baseName.lastIndexOf('.');
         if (i > 0) {
             String name = baseName.substring(i + 1) + "Provider";
@@ -142,14 +143,15 @@ public class LocalizationSupport {
         ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), baseName);
 
         for (Locale locale : wantedLocales) {
-            registerRequiredReflectionForBundleAndLocale(baseName, locale);
+            registerRequiredReflectionAndResourcesForBundleAndLocale(baseName, locale);
         }
     }
 
-    private void registerRequiredReflectionForBundleAndLocale(String baseName, Locale baseLocale) {
+    private void registerRequiredReflectionAndResourcesForBundleAndLocale(String baseName, Locale baseLocale) {
         for (Locale locale : control.getCandidateLocales(baseName, baseLocale)) {
             String bundleWithLocale = control.toBundleName(baseName, locale);
             RuntimeReflection.registerClassLookup(bundleWithLocale);
+            Resources.singleton().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
         }
     }
 
