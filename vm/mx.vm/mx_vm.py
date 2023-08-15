@@ -248,10 +248,10 @@ def _distribution_license(dist):
     :return: list of licenses
     :rtype: list[str]
     """
-    license = dist.theLicense
-    if not license:
-        license = dist.suite.defaultLicense
-    return license
+    _license = dist.theLicense
+    if not _license:
+        _license = dist.suite.defaultLicense
+    return _license
 
 
 def register_community_tools_distribution(owner_suite, register_distribution):
