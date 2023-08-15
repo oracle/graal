@@ -154,7 +154,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     private final CodeTypeElement loopCounter = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "LoopCounter");
 
     // Root node and ContinuationLocal classes to support yield.
-    private final CodeTypeElement continuationRoot;
+    private final CodeTypeElement continuationRootNodeImpl;
     private final CodeTypeElement continuationLocationImpl;
 
     // Singleton field for an empty array.
@@ -171,10 +171,10 @@ public class OperationsNodeFactory implements ElementHelpers {
         fastAccess.setInit(createFastAccessFieldInitializer());
 
         if (model.enableYield) {
-            continuationRoot = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationRoot");
+            continuationRootNodeImpl = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationRootNodeImpl");
             continuationLocationImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "ContinuationLocationImpl");
         } else {
-            continuationRoot = null;
+            continuationRootNodeImpl = null;
             continuationLocationImpl = null;
         }
     }
@@ -211,7 +211,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // Define the classes that implement continuations (yield).
         if (model.enableYield) {
-            operationNodeGen.add(new ContinuationRootFactory().create());
+            operationNodeGen.add(new ContinuationRootNodeImplFactory().create());
             operationNodeGen.add(new ContinuationLocationImplFactory().create());
         }
 
@@ -295,6 +295,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         if (model.enableBaselineInterpreter) {
             operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bciSlot")));
             operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "baselineExecuteCount")).createInitBuilder().string("16");
+        }
+        if (model.enableYield) {
+            operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "localFrameSlot")));
         }
         if (model.enableTracing) {
             operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary")));
@@ -424,7 +427,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.declaration(operationNodeGen.asType(), "clone", castNodeGen("this.copy()"));
+        b.declaration(operationNodeGen.asType(), "clone", cast(operationNodeGen.asType(), "this.copy()"));
 
         // The base copy method performs a shallow copy of all fields.
         // Some fields should be manually reinitialized to default values.
@@ -567,6 +570,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(context.getType(int.class), "buildIndex")));
         if (model.enableBaselineInterpreter) {
             params.add(new CodeVariableElement(context.getType(int.class), "bciSlot"));
+        }
+        if (model.enableYield) {
+            params.add(new CodeVariableElement(context.getType(int.class), "localFrameSlot"));
         }
         if (model.enableTracing) {
             params.add(new CodeVariableElement(context.getType(int[].class), "basicBlockBoundary"));
@@ -2491,7 +2497,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.startIf().string("entry.operation != id").end().startBlock(); // {
             b.startThrow().startNew(context.getType(IllegalStateException.class));
-            b.string("\"Unexpected operation end, expected end\" + OPERATION_NAMES[entry.operation] + \", but got end \" + OPERATION_NAMES[id]").end();
+            b.string("\"Unexpected operation end, expected end\" + OPERATION_NAMES[entry.operation] + \", but got end\" + OPERATION_NAMES[id]").end();
             b.end(2);
             b.end(); // }
 
@@ -2682,6 +2688,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (model.enableBaselineInterpreter) {
                 b.declaration(context.getType(int.class), "bciSlot", "numLocals++");
             }
+            if (model.enableYield) {
+                b.declaration(context.getType(int.class), "localFrameSlot", "numLocals++");
+            }
 
             CodeTree newBuilderCall = CodeTreeBuilder.createBuilder().startStaticCall(types.FrameDescriptor, "newBuilder").string("numLocals + maxStack").end().build();
             b.declaration(types.FrameDescriptor_Builder, "fdb", newBuilderCall);
@@ -2712,6 +2721,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (model.enableBaselineInterpreter) {
                 b.string("bciSlot");
             }
+            if (model.enableYield) {
+                b.string("localFrameSlot");
+            }
             if (model.enableTracing) {
                 b.string("Arrays.copyOf(basicBlockBoundary, bci)");
             }
@@ -2721,7 +2733,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (model.enableYield) {
                 b.startFor().string("ContinuationLocation location : continuationLocations").end().startBlock();
                 b.statement("ContinuationLocationImpl locationImpl = (ContinuationLocationImpl) location");
-                b.statement("locationImpl.rootNode = new ContinuationRoot(language, result.getFrameDescriptor(), result, (locationImpl.sp << 16) | locationImpl.bci)");
+                b.statement("locationImpl.rootNode = new ContinuationRootNodeImpl(language, result.getFrameDescriptor(), result, (locationImpl.sp << 16) | locationImpl.bci)");
                 b.end();
             }
 
@@ -4479,23 +4491,25 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
     }
 
-    class ContinuationRootFactory {
+    class ContinuationRootNodeImplFactory {
         private CodeTypeElement create() {
-            continuationRoot.setEnclosingElement(operationNodeGen);
-            continuationRoot.setSuperClass(types.RootNode);
+            continuationRootNodeImpl.setEnclosingElement(operationNodeGen);
+            continuationRootNodeImpl.setSuperClass(types.RootNode);
+            continuationRootNodeImpl.getImplements().add(types.ContinuationRootNode);
 
-            continuationRoot.add(new CodeVariableElement(Set.of(FINAL), operationNodeGen.asType(), "root"));
-            continuationRoot.add(new CodeVariableElement(Set.of(FINAL), context.getType(int.class), "target"));
-            continuationRoot.add(GeneratorUtils.createConstructorUsingFields(
-                            Set.of(), continuationRoot,
+            continuationRootNodeImpl.add(new CodeVariableElement(Set.of(FINAL), operationNodeGen.asType(), "root"));
+            continuationRootNodeImpl.add(new CodeVariableElement(Set.of(FINAL), context.getType(int.class), "target"));
+            continuationRootNodeImpl.add(GeneratorUtils.createConstructorUsingFields(
+                            Set.of(), continuationRootNodeImpl,
                             ElementFilter.constructorsIn(((TypeElement) types.RootNode.asElement()).getEnclosedElements()).stream().filter(x -> x.getParameters().size() == 2).findFirst().get()));
 
-            continuationRoot.add(createExecute());
-            continuationRoot.add(createGetOperationRootNode());
+            continuationRootNodeImpl.add(createExecute());
+            continuationRootNodeImpl.add(createGetOperationRootNode());
+            continuationRootNodeImpl.add(createGetLocals());
 
-            continuationRoot.add(createToString());
+            continuationRootNodeImpl.add(createToString());
 
-            return continuationRoot;
+            return continuationRootNodeImpl;
         }
 
         private CodeExecutableElement createExecute() {
@@ -4517,7 +4531,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
 
             b.declaration("int", "sp", "((target >> 16) & 0xffff) + root.numLocals");
+            b.lineComment("Copy any existing stack values (from numLocals to sp - 1) to the current frame, which will be used for stack accesses.");
             b.statement(copyFrameTo("parentFrame", "root.numLocals", "frame", "root.numLocals", "sp - 1 - root.numLocals"));
+            b.statement(setFrameObject("root.localFrameSlot", "parentFrame"));
             b.statement(setFrameObject("sp - 1", "inputValue"));
 
             b.statement("return root.continueAt(frame, parentFrame, (sp << 16) | (target & 0xffff))");
@@ -4526,9 +4542,17 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createGetOperationRootNode() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), operationNodeGen.asType(), "getOperationRootNode");
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationRootNode, "getOperationRootNode");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().string("root").end();
+            return ex;
+        }
+
+        private CodeExecutableElement createGetLocals() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationRootNode, "getLocals");
+            CodeTreeBuilder b = ex.createBuilder();
+            b.declaration(types.Frame, "localFrame", cast(types.Frame, getFrameObject("root.localFrameSlot")));
+            b.startReturn().startCall("root", "getLocals").string("localFrame").end(2);
             return ex;
         }
 
@@ -4771,9 +4795,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         return b.build();
     }
 
-    private CodeTree castNodeGen(String value) {
+    private static CodeTree cast(TypeMirror type, String value) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
-        b.cast(operationNodeGen.asType());
+        b.cast(type);
         b.string(value);
         return b.build();
     }

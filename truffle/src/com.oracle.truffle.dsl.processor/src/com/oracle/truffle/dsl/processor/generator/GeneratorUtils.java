@@ -416,7 +416,7 @@ public class GeneratorUtils {
 
     public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName) {
         TypeElement typeElement = (TypeElement) type.asElement();
-        ExecutableElement method = ElementUtils.findMethod(typeElement, methodName);
+        ExecutableElement method = ElementUtils.findInstanceMethod(typeElement, methodName);
         if (method == null) {
             return null;
         }

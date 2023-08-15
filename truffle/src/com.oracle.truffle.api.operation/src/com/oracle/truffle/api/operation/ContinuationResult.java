@@ -52,7 +52,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public final class ContinuationResult {
 
-    final ContinuationLocation location;
+    public final ContinuationLocation location;
     public final MaterializedFrame frame;
     private final Object result;
 

@@ -1,6 +1,9 @@
 package com.oracle.truffle.api.operation.test;
 
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -11,6 +14,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
@@ -18,17 +22,20 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.operation.ContinuationResult;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationParser;
+import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.Variadic;
 
@@ -45,8 +52,13 @@ public class OperationGetLocalsTest {
 
     @Test
     public void testSimple() {
-        /*
-         * foo = 42 bar = arg0 return getLocals()
+        /* @formatter:off
+         *
+         * foo = 42
+         * bar = arg0
+         * return getLocals()
+         *
+         * @formatter:on
          */
         List<String> names = new ArrayList<>();
 
@@ -164,9 +176,287 @@ public class OperationGetLocalsTest {
         assertEquals(Map.of("foo", 42, "bar", 123), root.getCallTarget().call(true));
         assertEquals(Map.of("baz", 1337, "qux", 4321), root.getCallTarget().call(false));
     }
+
+    @Test
+    public void testContinuation() {
+        /* @formatter:off
+         *
+         * def bar() {
+         *   y = yield 0
+         *   if (y) {
+         *     x = 42
+         *   } else {
+         *     x = 123
+         *   }
+         *   getLocals()
+         * }
+         *
+         * def foo(arg0) {
+         *   c = bar()
+         *   continue(c, arg0)
+         * }
+         *
+         * @formatter:on
+         */
+        List<String> names = new ArrayList<>();
+
+        OperationNodeWithLocalIntrospection bar = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginBlock();
+            OperationLocal x = makeLocal(names, b, "x");
+            OperationLocal y = makeLocal(names, b, "y");
+
+            b.beginStoreLocal(y);
+            b.beginYield();
+            b.emitLoadConstant(0);
+            b.endYield();
+            b.endStoreLocal();
+
+            b.beginIfThenElse();
+
+            b.emitLoadLocal(y);
+
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(123);
+            b.endStoreLocal();
+
+            b.endIfThenElse();
+
+            b.beginReturn();
+            b.emitGetLocals();
+            b.endReturn();
+
+            b.endBlock();
+            b.endRoot();
+        });
+        bar.setLocalNames(names.toArray(String[]::new));
+
+        OperationNodeWithLocalIntrospection foo = parseNode(b -> {
+            b.beginRoot(null);
+            b.beginBlock();
+            OperationLocal c = b.createLocal();
+
+            b.beginStoreLocal(c);
+            b.beginInvoke();
+            b.emitLoadConstant(bar);
+            b.endInvoke();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginContinue();
+            b.emitLoadLocal(c);
+            b.emitLoadArgument(0);
+            b.endContinue();
+            b.endReturn();
+
+            b.endBlock();
+            b.endRoot();
+        });
+
+        assertEquals(Map.of("x", 42, "y", true), foo.getCallTarget().call(true));
+        assertEquals(Map.of("x", 123, "y", false), foo.getCallTarget().call(false));
+    }
+
+    @Test
+    public void testSimpleStacktrace() {
+        /* @formatter:off
+         *
+         * def bar() {
+         *   y = 42
+         *   <trace>
+         * }
+         *
+         * def foo() {
+         *   x = 123
+         * }
+         *
+         * @formatter:on
+         */
+        CallTarget collectFrames = new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                List<FrameInstance> frames = new ArrayList<>();
+                Truffle.getRuntime().iterateFrames(f -> {
+                    frames.add(f);
+                    return null;
+                });
+                return frames;
+            }
+        }.getCallTarget();
+
+        List<String> barNames = new ArrayList<>();
+        OperationNodeWithLocalIntrospection bar = parseNode(b -> {
+            b.beginRoot(null);
+
+            b.beginBlock();
+            OperationLocal y = makeLocal(barNames, b, "y");
+
+            b.beginStoreLocal(y);
+            b.emitLoadConstant(42);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginInvoke();
+            b.emitLoadConstant(collectFrames);
+            b.endInvoke();
+            b.endReturn();
+
+            b.endBlock();
+
+            b.endRoot();
+        });
+        bar.setLocalNames(barNames.toArray(String[]::new));
+
+        List<String> fooNames = new ArrayList<>();
+        OperationNodeWithLocalIntrospection foo = parseNode(b -> {
+            b.beginRoot(null);
+
+            b.beginBlock();
+            OperationLocal x = makeLocal(fooNames, b, "x");
+
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(123);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginInvoke();
+            b.emitLoadConstant(bar);
+            b.endInvoke();
+            b.endReturn();
+
+            b.endBlock();
+
+            b.endRoot();
+        });
+        foo.setLocalNames(fooNames.toArray(String[]::new));
+
+        Object result = foo.getCallTarget().call();
+        assertTrue(result instanceof List<?>);
+
+        @SuppressWarnings("unchecked")
+        List<FrameInstance> frames = (List<FrameInstance>) result;
+        assertEquals(3, frames.size());
+
+        // <anon>
+        assertNull(OperationRootNode.getLocals(frames.get(0)));
+
+        // bar
+        Object[] barLocals = OperationRootNode.getLocals(frames.get(1));
+        assertArrayEquals(new Object[]{42}, barLocals);
+
+        // foo
+        Object[] fooLocals = OperationRootNode.getLocals(frames.get(2));
+        assertArrayEquals(new Object[]{123}, fooLocals);
+    }
+
+    @Test
+    public void testContinuationStacktrace() {
+        /* @formatter:off
+         *
+         * def bar() {
+         *   y = yield 0
+         *   <trace>
+         * }
+         *
+         * def foo() {
+         *   x = 123
+         *   continue(bar(), 42)
+         * }
+         *
+         * @formatter:on
+         */
+        CallTarget collectFrames = new RootNode(null) {
+            @Override
+            public Object execute(VirtualFrame frame) {
+                List<FrameInstance> frames = new ArrayList<>();
+                Truffle.getRuntime().iterateFrames(f -> {
+                    frames.add(f);
+                    return null;
+                });
+                return frames;
+            }
+        }.getCallTarget();
+
+        List<String> barNames = new ArrayList<>();
+        OperationNodeWithLocalIntrospection bar = parseNode(b -> {
+            b.beginRoot(null);
+
+            b.beginBlock();
+            OperationLocal y = makeLocal(barNames, b, "y");
+
+            b.beginStoreLocal(y);
+            b.beginYield();
+            b.emitLoadConstant(0);
+            b.endYield();
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginInvoke();
+            b.emitLoadConstant(collectFrames);
+            b.endInvoke();
+            b.endReturn();
+
+            b.endBlock();
+
+            b.endRoot();
+        });
+        bar.setLocalNames(barNames.toArray(String[]::new));
+
+        List<String> fooNames = new ArrayList<>();
+        OperationNodeWithLocalIntrospection foo = parseNode(b -> {
+            b.beginRoot(null);
+
+            b.beginBlock();
+            OperationLocal x = makeLocal(fooNames, b, "x");
+
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(123);
+            b.endStoreLocal();
+
+            b.beginReturn();
+            b.beginContinue();
+
+            b.beginInvoke();
+            b.emitLoadConstant(bar);
+            b.endInvoke();
+
+            b.emitLoadConstant(42);
+
+            b.endContinue();
+            b.endReturn();
+
+            b.endBlock();
+
+            b.endRoot();
+        });
+        foo.setLocalNames(fooNames.toArray(String[]::new));
+
+        Object result = foo.getCallTarget().call();
+        assertTrue(result instanceof List<?>);
+
+        @SuppressWarnings("unchecked")
+        List<FrameInstance> frames = (List<FrameInstance>) result;
+        assertEquals(3, frames.size());
+
+        // <anon>
+        assertNull(OperationRootNode.getLocals(frames.get(0)));
+
+        // bar
+        Object[] barLocals = OperationRootNode.getLocals(frames.get(1));
+        assertArrayEquals(new Object[]{42}, barLocals);
+
+        // foo
+        Object[] fooLocals = OperationRootNode.getLocals(frames.get(2));
+        assertArrayEquals(new Object[]{123}, fooLocals);
+    }
 }
 
-@GenerateOperations(languageClass = TestOperationsLanguage.class)
+@GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true)
+@OperationProxy(value = ContinuationResult.ContinueNode.class, operationName = "Continue")
 abstract class OperationNodeWithLocalIntrospection extends RootNode implements OperationRootNode {
     @CompilationFinal(dimensions = 1) String[] localNames;
 
@@ -210,6 +500,16 @@ abstract class OperationNodeWithLocalIntrospection extends RootNode implements O
         @Specialization(replaces = {"doCached"})
         public static Object doUncached(OperationNodeWithLocalIntrospection root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
             return callNode.call(root.getCallTarget(), args);
+        }
+
+        @Specialization(guards = {"callTargetMatches(callTarget, callNode.getCallTarget())"}, limit = "1")
+        public static Object doCallTarget(@SuppressWarnings("unused") CallTarget callTarget, @Variadic Object[] args, @Cached("create(callTarget)") DirectCallNode callNode) {
+            return callNode.call(args);
+        }
+
+        @Specialization(replaces = {"doCallTarget"})
+        public static Object doCallTargetUncached(CallTarget callTarget, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+            return callNode.call(callTarget, args);
         }
 
         protected static boolean callTargetMatches(CallTarget left, CallTarget right) {

@@ -172,7 +172,7 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
      * Gets the {@code bci} associated with a particular
      * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
      *
-     * @param callNode the call node
+     * @param frameInstance the frame instance
      * @return the corresponding bytecode index, or -1 if the index could not be found
      */
     static int findBci(FrameInstance frameInstance) {
@@ -231,6 +231,27 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
     @SuppressWarnings("unused")
     default int readBciFromFrame(Frame frame) {
         throw new AbstractMethodError();
+    }
+
+    /**
+     * Returns a new array containing the current value of each local in the
+     * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
+     *
+     * @see {@link #getLocals(Frame)}
+     * @param frameInstance the frame instance
+     * @return a new array of local values, or null if the frame instance does not correspond to an
+     *         {@link OperationRootNode}
+     */
+    static Object[] getLocals(FrameInstance frameInstance) {
+        if (!(frameInstance.getCallTarget() instanceof RootCallTarget rootCallTarget)) {
+            return null;
+        }
+        if (rootCallTarget.getRootNode() instanceof OperationRootNode operationRootNode) {
+            return operationRootNode.getLocals(frameInstance.getFrame(FrameAccess.READ_ONLY));
+        } else if (rootCallTarget.getRootNode() instanceof ContinuationRootNode continuationRootNode) {
+            return continuationRootNode.getLocals(frameInstance.getFrame(FrameAccess.READ_ONLY));
+        }
+        return null;
     }
 
     /**
