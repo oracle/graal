@@ -3399,6 +3399,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     _final_graalvm_distribution = get_final_graalvm_distribution()
     register_distribution(_final_graalvm_distribution)
     with_debuginfo.append(_final_graalvm_distribution)
+    other_graalvm_artifact_names = []
 
     # Add the macros if SubstrateVM is in stage1, as images could be created later with an installable Native Image
     with_svm = has_component('svm', stage1=True)
@@ -3568,20 +3569,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         defaultBuild=False,
     ))
 
-    # Trivial distribution to trigger the build of the final GraalVM distribution and of all standalones
-    register_distribution(mx.LayoutDirDistribution(
-        suite=_suite,
-        name="ALL_GRAALVM_ARTIFACTS",
-        deps=["GRAALVM", "GRAALVM_STANDALONES"] + installable_names,
-        layout={
-            "./deps": "string:GRAALVM,GRAALVM_STANDALONES," + ",".join(installable_names),
-        },
-        path=None,
-        platformDependent=False,
-        theLicense=None,
-        defaultBuild=False,
-    ))
-
     if needs_stage1:
         if register_project:
             for component in registered_graalvm_components(stage1=True):
@@ -3631,7 +3618,24 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     if _debuginfo_dists():
         if _get_svm_support().is_debug_supported() or mx.get_opts().strip_jars or with_non_rebuildable_configs:
             for d in with_debuginfo:
-                register_distribution(DebuginfoDistribution(d))
+                debuginfo_dist = DebuginfoDistribution(d)
+                register_distribution(debuginfo_dist)
+                other_graalvm_artifact_names.append(debuginfo_dist.name)
+
+    # Trivial distribution to trigger the build of the final GraalVM distribution and of all standalones
+    all_artifacts_deps = ["GRAALVM", "GRAALVM_STANDALONES"] + installable_names + other_graalvm_artifact_names
+    register_distribution(mx.LayoutDirDistribution(
+        suite=_suite,
+        name="ALL_GRAALVM_ARTIFACTS",
+        deps=all_artifacts_deps,
+        layout={
+            "./deps": "string:" + ",".join(all_artifacts_deps),
+        },
+        path=None,
+        platformDependent=False,
+        theLicense=None,
+        defaultBuild=False,
+    ))
 
 
 def _needs_stage1_jimage(stage1_dist, final_dist):
