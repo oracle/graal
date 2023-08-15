@@ -190,7 +190,10 @@ public class NativeImageOptions {
      */
     @APIOption(name = "parallelism")//
     @Option(help = "The maximum number of threads to use concurrently during native image generation.")//
-    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.min(Runtime.getRuntime().availableProcessors(), 32));
+    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.max(2, Math.min(Runtime.getRuntime().availableProcessors(), 32)), key -> {
+        int numberOfThreads = key.getValue();
+        VMError.guarantee(numberOfThreads >= 2, "Number of threads must be at least 2. Validation should have happened in driver.");
+    });
 
     /*
      * Analysis scales well up to 12 cores and gives slight improvements until 18 cores. We set the
@@ -267,23 +270,19 @@ public class NativeImageOptions {
         }
     };
 
-    public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
-        int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);
-        VMError.guarantee(maxNumberOfThreads > 0, "Number of threads must be greater than zero. Validation should have happened in driver.");
-        return maxNumberOfThreads;
-    }
-
-    public static int getMaximumNumberOfAnalysisThreads(OptionValues optionValues) {
-        int optionValue = NativeImageOptions.NumberOfAnalysisThreads.getValue(optionValues);
-        int analysisThreads = NumberOfAnalysisThreads.hasBeenSet(optionValues) ? optionValue : Math.min(getMaximumNumberOfConcurrentThreads(optionValues), DEFAULT_MAX_ANALYSIS_SCALING);
-        if (analysisThreads <= 0) {
-            throw UserError.abort("Number of analysis threads was set to '" + analysisThreads + "'. Please set the NumberOfAnalysisThreads flag to a number greater than 0.");
+    public static int getNumberOfAnalysisThreads(int maxNumberOfThreads, OptionValues optionValues) {
+        int analysisThreads;
+        if (NumberOfAnalysisThreads.hasBeenSet(optionValues)) {
+            analysisThreads = NumberOfAnalysisThreads.getValue(optionValues);
+        } else {
+            analysisThreads = Math.min(maxNumberOfThreads, DEFAULT_MAX_ANALYSIS_SCALING);
         }
-
-        Integer maxNumberOfThreads = NumberOfThreads.getValue(optionValues);
+        if (analysisThreads < 2) {
+            throw UserError.abort("Number of analysis threads was set to " + analysisThreads + ". Please set the '-H:NumberOfAnalysisThreads' option to at least 2.");
+        }
         if (analysisThreads > maxNumberOfThreads) {
             throw UserError.abort(
-                            "NumberOfAnalysisThreads is not allowed to be larger than the number of threads set with the --parallelism option. Please set the NumberOfAnalysisThreads flag to a value between 0 and " +
+                            "NumberOfAnalysisThreads is not allowed to be larger than the number of threads set with the '--parallelism' option. Please set the '-H:NumberOfAnalysisThreads' option to a value between 1 and " +
                                             (maxNumberOfThreads + 1) + ".");
         }
         return analysisThreads;
