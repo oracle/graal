@@ -1312,8 +1312,8 @@ public class NativeImage {
         if (numberOfThreadsValue != null) {
             try {
                 int maxNumberOfThreads = Integer.parseInt(numberOfThreadsValue);
-                if (maxNumberOfThreads <= 0) {
-                    throw showError("The number of threads was set to '" + maxNumberOfThreads + "'. Please set the --parallelism option to a number greater than 0.");
+                if (maxNumberOfThreads < 2) {
+                    throw showError("The number of threads was set to '" + maxNumberOfThreads + "'. Please set the --parallelism option to a number greater or equal to 2.");
                 }
             } catch (NumberFormatException e) {
                 /* Validated already by CommonOptionParser. */

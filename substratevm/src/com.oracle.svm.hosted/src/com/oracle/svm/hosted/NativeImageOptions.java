@@ -269,15 +269,15 @@ public class NativeImageOptions {
 
     public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
         int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);
-        VMError.guarantee(maxNumberOfThreads > 0, "Number of threads must be greater than zero. Validation should have happened in driver.");
-        return maxNumberOfThreads;
+        VMError.guarantee(maxNumberOfThreads >= 2, "Number of threads must be greater or equal to two. Validation should have happened in driver.");
+        return maxNumberOfThreads - 1; // minus main thread
     }
 
     public static int getMaximumNumberOfAnalysisThreads(OptionValues optionValues) {
         int optionValue = NativeImageOptions.NumberOfAnalysisThreads.getValue(optionValues);
         int analysisThreads = NumberOfAnalysisThreads.hasBeenSet(optionValues) ? optionValue : Math.min(getMaximumNumberOfConcurrentThreads(optionValues), DEFAULT_MAX_ANALYSIS_SCALING);
-        if (analysisThreads <= 0) {
-            throw UserError.abort("Number of analysis threads was set to '" + analysisThreads + "'. Please set the NumberOfAnalysisThreads flag to a number greater than 0.");
+        if (analysisThreads < 2) {
+            throw UserError.abort("Number of analysis threads was set to '" + analysisThreads + "'. Please set the NumberOfAnalysisThreads flag to a number greater or equal to 2.");
         }
 
         Integer maxNumberOfThreads = NumberOfThreads.getValue(optionValues);
@@ -286,6 +286,6 @@ public class NativeImageOptions {
                             "NumberOfAnalysisThreads is not allowed to be larger than the number of threads set with the --parallelism option. Please set the NumberOfAnalysisThreads flag to a value between 0 and " +
                                             (maxNumberOfThreads + 1) + ".");
         }
-        return analysisThreads;
+        return analysisThreads - 1; // minus main thread
     }
 }
