@@ -3,6 +3,7 @@ layout: ni-docs
 toc_group: how-to-guides
 link_title: Use System Properties
 permalink: /reference-manual/native-image/guides/use-system-properties/
+redirect_from: /reference-manual/native-image/Properties/
 ---
 
 # Use System Properties in a Native Executable
