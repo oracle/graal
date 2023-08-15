@@ -134,6 +134,7 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
                        '--machine-name', self.machine_name_prefix + machine_name,
                        '--',
                        '--metric=' + metric,
+                       '--polybench-vm=graalvm-${VM_ENV}',
                        '--polybench-vm-config=' + polybench_vm_config],
       self.upload_and_wait_for_indexing + ['||', 'echo', 'Result upload failed!'],
     ],
