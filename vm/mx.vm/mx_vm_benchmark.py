@@ -177,7 +177,7 @@ class NativeImageVM(GraalVm):
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
             self.base_image_build_args += ['--no-fallback', '-g']
             self.base_image_build_args += svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode']) if vm.is_gate else []
-            self.base_image_build_args += svm_experimental_options(['-H:+ReportExceptionStackTraces'])
+            self.base_image_build_args += ['-H:+ReportExceptionStackTraces']
             self.base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
 
             self.base_image_build_args += self.system_properties

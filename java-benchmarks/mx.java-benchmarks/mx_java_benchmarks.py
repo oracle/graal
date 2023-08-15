@@ -369,10 +369,10 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '--initialize-at-run-time=io.netty.internal.tcnative.SSL,io.netty.handler.codec.compression.ZstdOptions',
                 '-H:NativeLinkerOption=-no-pie',
                 '-H:+AddAllCharsets',
+                '-H:+ReportExceptionStackTraces',
         ] + mx_sdk_vm_impl.svm_experimental_options([
                 '-H:-ParseOnce',
                 '-H:+AllowFoldMethods',
-                '-H:+ReportExceptionStackTraces',
                 '-H:-UseServiceLoaderFeature',
                 '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed
         ]) + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
@@ -540,9 +540,9 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.B
                 'io\.netty\.netty-handler',
                 '/META-INF/native-image/io\.netty/netty-handler/generated/handlers/reflect-config\.json',
                 '-H:-AddAllCharsets',
+                '-H:+ReportExceptionStackTraces',
             ] + mx_sdk_vm_impl.svm_experimental_options([
                 '-H:+AllowFoldMethods',
-                '-H:+ReportExceptionStackTraces',
                 '-H:-UseServiceLoaderFeature',
             ]) + super(BaseQuarkusBenchmarkSuite,self).extra_image_build_argument(benchmark, args)
 

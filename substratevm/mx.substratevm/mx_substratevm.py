@@ -229,9 +229,9 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
     common_args = [] if common_args is None else common_args
     base_args = [
         '--no-fallback',
+        '-H:+ReportExceptionStackTraces',
     ] + svm_experimental_options([
         '-H:+EnforceMaxRuntimeCompileMethods',
-        '-H:+ReportExceptionStackTraces',
         '-H:Path=' + svmbuild_dir(),
     ])
     if mx.get_opts().verbose:
@@ -1280,10 +1280,11 @@ libgraal_build_args = [
     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
 
     '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
+
+    '-H:+ReportExceptionStackTraces',
 ] + svm_experimental_options([
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
-    '-H:+ReportExceptionStackTraces',
     '-Djdk.vm.ci.services.aot=true',
     '-Dtruffle.TruffleRuntime=',
     '-H:InitialCollectionPolicy=LibGraal',
@@ -1517,10 +1518,10 @@ def clinittest(args):
                 '-J--add-exports=java.base/jdk.internal.misc=ALL-UNNAMED',
                 '-J-ea', '-J-esa',
                 '-o', binary_path,
+                '-H:+ReportExceptionStackTraces',
             ] + svm_experimental_options([
                 '-H:Class=com.oracle.svm.test.clinit.TestClassInitialization',
                 '-H:+PrintClassInitialization',
-                '-H:+ReportExceptionStackTraces',
             ]) + policy_args + args)
         mx.run([binary_path])
 
