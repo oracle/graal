@@ -107,8 +107,9 @@ def upx(args):
     upx_cmd = [upx_path] + args
     mx.run(upx_cmd, mx.TeeOutputCapture(mx.OutputCapture()), mx.TeeOutputCapture(mx.OutputCapture()))
 
+
 # SDK modules included if truffle, compiler and native-image is included
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+graal_sdk_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK',
     short_name='sdk',
@@ -119,7 +120,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=[],
     boot_jars=['sdk:POLYGLOT', 'sdk:GRAAL_SDK'],
     stability="supported",
-))
+)
 
 # SDK modules included the compiler is included
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
@@ -148,8 +149,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     boot_jars=['sdk:NATIVEIMAGE'],
     stability="supported",
 ))
+mx_sdk_vm.register_graalvm_component(graal_sdk_component)
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+graalvm_launcher_common_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='GraalVM Launcher Common',
     short_name='sdkl',
@@ -160,7 +162,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=['sdk:LAUNCHER_COMMON', 'sdk:JLINE3'],
     boot_jars=[],
     stability="supported",
-))
+)
+mx_sdk_vm.register_graalvm_component(graalvm_launcher_common_component)
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,

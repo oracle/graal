@@ -781,7 +781,8 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
     """
     Gets the argument for the jlink ``--add-options`` flag.
 
-    :param bool default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
+    :param bool | str default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
+                    When set to 'lib' ensure the JVMCI compiler library is used.
     :return list: the list of VM options to cook into the image
     """
     vm_options = []
@@ -810,6 +811,8 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
                 vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
                 if threads is not None and threads != 1:
                     vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
+                if default_to_jvmci == 'lib':
+                    vm_options.append('-XX:+UseJVMCINativeLibrary')
                 vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
@@ -891,12 +894,14 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                      The choices are:
                        "create" - an empty module is created
                         "error" - raise an error
+                         "warn" - raise a warning
                            None - do nothing
     :param lambda with_source: returns True if the sources of a module distribution must be included in the new JDK
     :param dict vendor_info: values for the jlink vendor options added by JDK-8232080
     :param bool use_upgrade_module_path: if True, then instead of linking `module_dists` into the image, resolve
                      them via --upgrade-module-path at image runtime
-    :param bool default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
+    :param bool | str default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules.
+                     When set to 'lib' ensure the JVMCI compiler library is used.
     :return bool: False if use_upgrade_module_path == True and the existing image is up to date otherwise True
     """
     assert callable(with_source)
@@ -942,9 +947,9 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                     if target not in all_module_names and target not in ignore_module_names and target not in hashes:
                         target_requires.setdefault(target, set()).add(jmd.name)
         if target_requires and missing_export_target_action is not None:
-            if missing_export_target_action == 'error':
-                mx.abort('Target(s) of qualified exports cannot be resolved: ' + '.'.join(target_requires.keys()))
-            assert missing_export_target_action == 'create', 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
+            if missing_export_target_action in ('error', 'warn'):
+                mx.abort_or_warn('Target(s) of qualified exports cannot be resolved:\n* ' + '\n* '.join(f"{k} required by {v}" for k, v in target_requires.items()), missing_export_target_action == 'abort')
+            assert missing_export_target_action in ('create', 'warn'), 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
 
             for name, requires in sorted(target_requires.items()):
                 module_jar = join(build_dir, name + '.jar')

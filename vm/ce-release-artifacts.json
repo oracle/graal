@@ -27,7 +27,7 @@
         ]
     },
     {
-        "name": "js-standalone-svm-java21",
+        "name": "js-native-standalone-svm-java21",
         "core": true,
         "jdk": "jdk_21",
         "override_name":"graaljs",
@@ -60,7 +60,40 @@
         ]
     },
     {
-        "name": "ruby-standalone-svm-java21",
+        "name": "nodejs-native-standalone-svm-java21",
+        "core": false,
+        "jdk": "jdk_21",
+        "override_name":"graalnodejs",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-macos-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64",
+                "name_template": "{name}-community-{version}-macos-{arch}"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64",
+                "name_template": "{name}-community-{version}-{os}-{arch}"
+            }
+        ]
+    },
+    {
+        "name": "ruby-native-standalone-svm-java21",
         "core": true,
         "jdk": "jdk_21",
         "override_name":"truffleruby",
@@ -88,7 +121,7 @@
         ]
     },
     {
-        "name": "python-standalone-svm-java21",
+        "name": "python-native-standalone-svm-java21",
         "core": true,
         "jdk": "jdk_21",
         "override_name":"graalpy",

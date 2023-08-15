@@ -205,14 +205,14 @@ public class FileSystemsTest {
 
         // No IO under language home - public file
         ctx = Context.newBuilder().allowIO(IOAccess.NONE).build();
-        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
+        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(),
                         fullIO);
         setCwd(ctx, privateDir, privateDir);
         cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE, new Configuration(NO_IO_UNDER_LANGUAGE_HOME_PUBLIC_FILE, ctx, privateDir, fullIO, true, false, false, false));
 
         // No IO under language home - internal file
         ctx = Context.newBuilder().allowIO(IOAccess.NONE).build();
-        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()),
+        privateDir = createContent(Files.createTempDirectory(FileSystemsTest.class.getSimpleName()).toRealPath(),
                         fullIO);
         setCwd(ctx, privateDir, privateDir);
         cfgs.put(NO_IO_UNDER_LANGUAGE_HOME_INTERNAL_FILE,

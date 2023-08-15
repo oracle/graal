@@ -504,6 +504,7 @@ local devkits = graal_common.devkits;
     run: $.patch_env('linux', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'GRAALVM_STANDALONES'],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -523,6 +524,7 @@ local devkits = graal_common.devkits;
     run: $.patch_env('linux', 'aarch64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'GRAALVM_STANDALONES'],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -550,6 +552,7 @@ local devkits = graal_common.devkits;
     run: $.patch_env('darwin', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'GRAALVM_STANDALONES'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
@@ -572,6 +575,7 @@ local devkits = graal_common.devkits;
     run: $.patch_env('darwin', 'aarch64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'GRAALVM_STANDALONES'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
@@ -594,6 +598,7 @@ local devkits = graal_common.devkits;
     run: $.patch_env('windows', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'GRAALVM_STANDALONES'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
