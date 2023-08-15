@@ -59,11 +59,13 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.AbstractOperationsTruffleException;
+import com.oracle.truffle.api.operation.ContinuationResult;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.GenerateOperationsTestVariants;
 import com.oracle.truffle.api.operation.LocalSetter;
 import com.oracle.truffle.api.operation.LocalSetterRange;
 import com.oracle.truffle.api.operation.Operation;
+import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
@@ -81,6 +83,7 @@ import com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant;
 @GenerateAOT
 @ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScAnd", continueWhen = true)
 @ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScOr", continueWhen = false)
+@OperationProxy(value = ContinuationResult.ContinueNode.class, operationName = "Continue")
 public abstract class TestOperations extends RootNode implements OperationRootNode {
 
     protected TestOperations(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
@@ -157,10 +160,9 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     static final class ThrowOperation {
         @Specialization
         public static Object perform(long value,
-                        // TODO: decide how/whether to handle $bci
                         @Bind("$bci") int bci,
                         @Bind("$root") Node node) {
-            throw new TestException("fail", node, -1, value);
+            throw new TestException("fail", node, bci, value);
         }
     }
 

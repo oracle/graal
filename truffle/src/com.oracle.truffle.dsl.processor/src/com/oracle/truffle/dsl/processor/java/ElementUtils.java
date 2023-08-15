@@ -113,6 +113,15 @@ public class ElementUtils {
         return null;
     }
 
+    public static ExecutableElement findInstanceMethod(TypeElement typeElement, String methodName) {
+        for (ExecutableElement method : ElementFilter.methodsIn(typeElement.getEnclosedElements())) {
+            if (method.getSimpleName().toString().equals(methodName) && !method.getModifiers().contains(Modifier.STATIC)) {
+                return method;
+            }
+        }
+        return null;
+    }
+
     public static List<ExecutableElement> findAllPublicMethods(DeclaredType type, String methodName) {
         ProcessorContext context = ProcessorContext.getInstance();
         List<ExecutableElement> methods = new ArrayList<>();

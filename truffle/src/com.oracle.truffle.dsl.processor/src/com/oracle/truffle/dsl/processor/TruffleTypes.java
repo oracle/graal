@@ -337,6 +337,7 @@ public class TruffleTypes {
     // Operation DSL API
     public static final String ContinuationLocation_Name = "com.oracle.truffle.api.operation.ContinuationLocation";
     public static final String ContinuationResult_Name = "com.oracle.truffle.api.operation.ContinuationResult";
+    public static final String ContinuationRootNode_Name = "com.oracle.truffle.api.operation.ContinuationRootNode";
     public static final String GenerateOperations_Name = "com.oracle.truffle.api.operation.GenerateOperations";
     public static final String LocalSetter_Name = "com.oracle.truffle.api.operation.LocalSetter";
     public static final String LocalSetterRange_Name = "com.oracle.truffle.api.operation.LocalSetterRange";
@@ -370,6 +371,7 @@ public class TruffleTypes {
 
     public final DeclaredType ContinuationLocation = c.getDeclaredTypeOptional(ContinuationLocation_Name);
     public final DeclaredType ContinuationResult = c.getDeclaredTypeOptional(ContinuationResult_Name);
+    public final DeclaredType ContinuationRootNode = c.getDeclaredTypeOptional(ContinuationRootNode_Name);
     public final DeclaredType GenerateOperations = c.getDeclaredTypeOptional(GenerateOperations_Name);
     public final DeclaredType LocalSetter = c.getDeclaredTypeOptional(LocalSetter_Name);
     public final DeclaredType LocalSetterRange = c.getDeclaredTypeOptional(LocalSetterRange_Name);
