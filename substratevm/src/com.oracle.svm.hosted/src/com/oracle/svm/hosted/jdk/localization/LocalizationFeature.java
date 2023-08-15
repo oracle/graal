@@ -176,7 +176,7 @@ public class LocalizationFeature implements InternalFeature {
         @Option(help = "Default charset of the image, by the default it is the same as the default charset of the image builder.", type = OptionType.User)//
         public static final HostedOptionKey<String> DefaultCharset = new HostedOptionKey<>(Charset.defaultCharset().name());
 
-        @Option(help = "Comma separated list of locales to be included into the image. The default locale is included in the list automatically if not present.", type = OptionType.User)//
+        @Option(help = "Comma separated list of locales to be included into the image. The default locale is included in the list automatically if not present.", type = OptionType.User, stability = OptionStability.STABLE)//
         public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeLocales = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
         @Option(help = "Make all hosted locales available at run time.", type = OptionType.User)//
