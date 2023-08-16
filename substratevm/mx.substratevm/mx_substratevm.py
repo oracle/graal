@@ -28,7 +28,7 @@ import re
 import tempfile
 from glob import glob
 from contextlib import contextmanager
-from distutils.dir_util import mkpath, remove_tree  # pylint: disable=no-name-in-module
+from distutils.dir_util import mkpath  # pylint: disable=no-name-in-module
 from os.path import join, exists, dirname
 import pipes
 from argparse import ArgumentParser
