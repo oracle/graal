@@ -334,7 +334,7 @@ public class ProgressReporter {
             l().a(" ").a(optionToOriginEntry.getKey()).println();
             ExperimentalOptionDetails details = optionToOriginEntry.getValue();
             l().a("   Origin: ").a(details.origin).println();
-            if (details.alternatives != null) {
+            if (details.alternatives != null && !details.alternatives.isEmpty()) {
                 l().a("   Alternative API option(s): " + details.alternatives).println();
             }
         }
