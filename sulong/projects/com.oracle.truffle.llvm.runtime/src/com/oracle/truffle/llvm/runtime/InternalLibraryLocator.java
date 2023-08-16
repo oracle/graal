@@ -32,13 +32,13 @@ package com.oracle.truffle.llvm.runtime;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ServiceLoader;
 
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.InternalResource.CPUArchitecture;
 import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
+import com.oracle.truffle.llvm.runtime.config.Configurations;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.spi.internal.LLVMResourceProvider;
 
@@ -49,7 +49,7 @@ public abstract class InternalLibraryLocator extends LibraryLocator implements L
 
     public static InternalLibraryLocator create(String config, LLVMLanguage language, OS os, CPUArchitecture arch) {
         InternalLibraryLocator resourceLocator = null;
-        for (LLVMResourceProvider provider : ServiceLoader.load(LLVMResourceProvider.class)) {
+        for (LLVMResourceProvider provider : Configurations.getService(LLVMResourceProvider.class)) {
             if (provider.getConfiguration().equals(config)) {
                 resourceLocator = new ResourceInternalLibraryLocator(provider, os, arch);
                 break;
