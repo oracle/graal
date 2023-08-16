@@ -43,6 +43,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.JavaMainWrapper;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 
 import sun.management.Util;
@@ -50,6 +51,7 @@ import sun.management.Util;
 public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     private final String managementSpecVersion;
+    // TEMP (chaeubl): we should probably move this to a separate class to avoid the dependencies.
     private long startMillis;
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -156,6 +158,7 @@ public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getStartTime() {
         assert startMillis > 0 : "SubstrateRuntimeMXBean.getStartTime: Should have set SubstrateRuntimeMXBean.startMillis.";
         return startMillis;
