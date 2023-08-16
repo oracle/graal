@@ -456,7 +456,7 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
         while (cursor.advance()) {
             SaveRegistersOp save = cursor.getValue();
             save.remove(destroyedRegisters);
-            if (cursor.getKey() != LIRFrameState.NO_CALLEE_SAVE_INFO) {
+            if (cursor.getKey().hasDebugInfo()) {
                 cursor.getKey().debugInfo().setCalleeSaveInfo(save.getRegisterSaveLayout(frameMap));
             }
         }

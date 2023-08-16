@@ -52,7 +52,9 @@ import jdk.vm.ci.meta.Value;
 public class LIRFrameState {
 
     // A special marker denoting no callee save info.
-    public static final LIRFrameState NO_CALLEE_SAVE_INFO = new LIRFrameState(null, null, null, false);
+    public static LIRFrameState noCalleeSaveInfo() {
+        return new LIRFrameState(null, null, null, false);
+    }
 
     public final BytecodeFrame topFrame;
     private final VirtualObject[] virtualObjects;
