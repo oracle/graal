@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.Value;
  */
 public class LIRFrameState {
 
-    // A special marker denoting no callee save info.
+    // This is a sentinel value that's only suitable for use as a key.
     public static LIRFrameState noCalleeSaveInfo() {
         return new LIRFrameState(null, null, null, false);
     }
