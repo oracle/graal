@@ -568,9 +568,13 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void exit(int exitCode) {
-        // TODO - implement proper system exit for Espresso
-        // tracked here: /browse/GR-20496
-        System.exit(exitCode);
+        Object previous = null;
+        try {
+            previous = controller.enterTruffleContext();
+            context.truffleExit(null, exitCode);
+        } finally {
+            controller.leaveTruffleContext(previous);
+        }
     }
 
     @Override
