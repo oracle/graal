@@ -190,7 +190,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         return String.join(System.lineSeparator(), dirContent);
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector, boolean includeAll) throws IOException {
+    private static void scanDirectory(Path root, ResourceCollector collector, boolean includeAll) {
         List<ConditionalResource> matchedDirectoryResources = new ArrayList<>();
         Set<String> allEntries = new HashSet<>();
 

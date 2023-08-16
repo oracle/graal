@@ -186,5 +186,4 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
         super.prepareClassResourceBundle(basename, bundleClass);
         this.existingBundles.add(bundleClass.getName());
     }
-
 }
