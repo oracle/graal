@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.nodes.loop;
 
-import static org.graalvm.compiler.phases.common.util.LoopUtility.isNumericInteger;
-
 import java.util.Collection;
 import java.util.LinkedList;
 import java.util.Queue;
@@ -37,6 +35,7 @@ import org.graalvm.compiler.core.common.calc.Condition;
 import org.graalvm.compiler.core.common.cfg.Loop;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -78,7 +77,6 @@ import org.graalvm.compiler.nodes.debug.NeverWriteSinkNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.loop.InductionVariable.Direction;
 import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 
 public class LoopEx {
     protected final Loop<HIRBlock> loop;
@@ -596,7 +594,7 @@ public class LoopEx {
      * </pre>
      *
      * While one might assume that these patterns would be transformed into their canonical form by
-     * {@link CanonicalizerPhase} it is never guaranteed that a full canonicalizer has been run
+     * {@code CanonicalizerPhase} it is never guaranteed that a full canonicalizer has been run
      * before loop detection is done. Thus, we have to handle all patterns here.
      *
      * Note that while addition is commutative and thus can handle both inputs mirrored, the same is
@@ -681,6 +679,11 @@ public class LoopEx {
             }
         }
         return null;
+    }
+
+    private static boolean isNumericInteger(ValueNode v) {
+        Stamp s = v.stamp(NodeView.DEFAULT);
+        return s instanceof IntegerStamp;
     }
 
     /**
