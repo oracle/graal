@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.runtime.dispatch.messages;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
 
@@ -60,6 +61,7 @@ public final class InteropMessageFactories {
         }
     }
 
+    @TruffleBoundary
     public static CallTarget createInteropMessageTarget(EspressoLanguage lang, int id, InteropMessage.Message message) {
         int index = getIndex(id, message);
         InteropMessageFactory factory = messages[index];
