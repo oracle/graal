@@ -89,6 +89,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -356,6 +357,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         /* Adjust stack overflow boundary of main thread. */
         StackOverflowCheck.singleton().updateStackOverflowBoundary();
+
+        /* Initialize the physical memory size. */
+        PhysicalMemory.size();
 
         assert !isolateInitialized;
         isolateInitialized = true;

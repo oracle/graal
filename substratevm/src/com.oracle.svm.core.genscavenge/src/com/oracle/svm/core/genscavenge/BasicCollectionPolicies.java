@@ -78,12 +78,6 @@ final class BasicCollectionPolicies {
 
         @Override
         public void updateSizeParameters() {
-            // Sample the physical memory size, before the first GC but after some allocation.
-            UnsignedWord allocationBeforeUpdate = WordFactory.unsigned(SerialAndEpsilonGCOptions.AllocationBeforePhysicalMemorySize.getValue());
-            if (GCImpl.getGCImpl().getCollectionEpoch().equal(WordFactory.zero()) &&
-                            HeapImpl.getHeapImpl().getAccounting().getYoungUsedBytes().aboveOrEqual(allocationBeforeUpdate)) {
-                PhysicalMemory.tryInitialize();
-            }
             // Size parameters are recomputed from current values whenever they are queried
         }
 
