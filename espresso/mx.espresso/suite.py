@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.27.1",
+    "mxversion": "6.41.0",
     "name": "espresso",
     "version" : "23.1.0",
     "release" : False,
@@ -335,7 +335,7 @@ suite = {
             "noMavenJavadoc": True,
         },
 
-        "ESPRESSO_COMMUNITY": {
+        "JAVA_COMMUNITY": {
             "type": "pom",
             "runtimeDependencies": [
                 "ESPRESSO",
@@ -343,7 +343,8 @@ suite = {
             ],
             "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "maven": {
-                "artifactId": "espresso-community",
+                "groupId" : "org.graalvm.polyglot",
+                "artifactId": "java-community",
                 "tag": ["default", "public"],
             },
         },

@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.37.0",
+  "mxversion": "6.41.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
   "groupId": "org.graalvm.llvm",
@@ -1614,7 +1614,7 @@ suite = {
       "noMavenJavadoc": True,
     },
 
-    "SULONG_NATIVE_COMMUNITY": {
+    "LLVM_NATIVE_COMMUNITY": {
       "type": "pom",
       "runtimeDependencies": [
         "SULONG_CORE",
@@ -1623,6 +1623,7 @@ suite = {
         "truffle:TRUFFLE_RUNTIME",
       ],
       "maven": {
+        "groupId": "org.graalvm.polyglot",
         "artifactId": "llvm-native-community",
         "tag": ["default", "public"],
       },
@@ -1630,12 +1631,13 @@ suite = {
       "license": "BSD-new",
     },
 
-    "SULONG_COMMUNITY": {
+    "LLVM_COMMUNITY": {
       "type": "pom",
       "runtimeDependencies": [
-        "SULONG_NATIVE_COMMUNITY",
+        "LLVM_NATIVE_COMMUNITY",
       ],
       "maven": {
+        "groupId": "org.graalvm.polyglot",
         "artifactId": "llvm-community",
         "tag": ["default", "public"],
       },

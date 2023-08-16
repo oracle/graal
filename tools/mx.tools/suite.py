@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.37.0",
+    "mxversion": "6.41.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
@@ -377,14 +377,15 @@ suite = {
             },
             "description" : "The core module of the polyglot debugging backend for chrome inspector.",
         },
-        "CHROMEINSPECTOR_COMMUNITY": {
+        "INSPECT_COMMUNITY": {
             "type": "pom",
             "runtimeDependencies": [
                 "CHROMEINSPECTOR",
                 "truffle:TRUFFLE_RUNTIME",
             ],
             "maven": {
-              "artifactId": "chromeinspector-community",
+              "groupId" : "org.graalvm.polyglot",
+              "artifactId": "inspect-community",
               "tag": ["default", "public"],
             },
             "description": "The polyglot debugging backend for chrome inspector.",
@@ -440,6 +441,7 @@ suite = {
                 "truffle:TRUFFLE_RUNTIME",
             ],
             "maven": {
+              "groupId" : "org.graalvm.polyglot",
               "artifactId": "insight-community",
               "tag": ["default", "public"],
             },
@@ -464,14 +466,15 @@ suite = {
             },
             "description" : "The core module of Heap Dump for Insight",
         },
-        "INSIGHT_HEAP_COMMUNITY": {
+        "HEAP_COMMUNITY": {
             "type": "pom",
             "runtimeDependencies": [
                 "INSIGHT_HEAP",
                 "truffle:TRUFFLE_RUNTIME",
             ],
             "maven": {
-              "artifactId": "insight-heap-community",
+              "groupId" : "org.graalvm.polyglot",
+              "artifactId": "heap-community",
               "tag": ["default", "public"],
             },
             "description": "The Heap Dump for the Insights Gathering Platform",
@@ -527,13 +530,14 @@ suite = {
             "javadocType" : "api",
             "description" : "The core module of the Truffle profiler"
         },
-        "TRUFFLE_PROFILER_COMMUNITY": {
+        "PROFILER_COMMUNITY": {
             "type": "pom",
             "runtimeDependencies": [
                 "TRUFFLE_PROFILER",
                 "truffle:TRUFFLE_RUNTIME",
             ],
             "maven": {
+              "groupId" : "org.graalvm.polyglot",
               "artifactId": "profiler-community",
               "tag": ["default", "public"],
             },
@@ -578,13 +582,14 @@ suite = {
             "description" : "Core module of the Truffle code coverage tool",
             "javadocType" : "api",
         },
-        "TRUFFLE_COVERAGE_COMMUNITY": {
+        "COVERAGE_COMMUNITY": {
             "type": "pom",
             "runtimeDependencies": [
                 "TRUFFLE_COVERAGE",
                 "truffle:TRUFFLE_RUNTIME",
             ],
             "maven": {
+              "groupId" : "org.graalvm.polyglot",
               "artifactId": "coverage-community",
               "tag": ["default", "public"],
             },
@@ -635,6 +640,7 @@ suite = {
                 "truffle:TRUFFLE_RUNTIME",
             ],
             "maven": {
+              "groupId" : "org.graalvm.polyglot",
               "artifactId": "dap-community",
               "tag": ["default", "public"],
             },
@@ -713,6 +719,7 @@ suite = {
                 "truffle:TRUFFLE_RUNTIME",
             ],
             "maven": {
+              "groupId" : "org.graalvm.polyglot",
               "artifactId": "lsp-community",
               "tag": ["default", "public"],
             },

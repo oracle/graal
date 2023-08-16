@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.37.0",
+  "mxversion": "6.41.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "23.1.0",
@@ -262,6 +262,7 @@ suite = {
         "truffle:TRUFFLE_RUNTIME",
       ],
       "maven": {
+        "groupId": "org.graalvm.polyglot",
         "artifactId": "wasm-community",
         "tag": ["default", "public"],
       },

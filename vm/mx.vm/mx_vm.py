@@ -220,24 +220,24 @@ def mx_post_parse_cmd_line(args):
 # When this list is changed, the _enterprise_tools_meta_distributions
 # in the mx_vm_enterprise.py must also be updated.
 _community_tools_meta_distributions = [
-    "tools:CHROMEINSPECTOR_COMMUNITY",
-    "tools:TRUFFLE_COVERAGE_COMMUNITY",
-    "tools:DAP_COMMUNITY",
-    "tools:INSIGHT_COMMUNITY",
-    "tools:INSIGHT_HEAP_COMMUNITY",
-    "tools:LSP_COMMUNITY",
-    "tools:TRUFFLE_PROFILER_COMMUNITY",
+    'tools:COVERAGE_COMMUNITY',
+    'tools:DAP_COMMUNITY',
+    'tools:HEAP_COMMUNITY',
+    'tools:INSPECT_COMMUNITY',
+    'tools:INSIGHT_COMMUNITY',
+    'tools:LSP_COMMUNITY',
+    'tools:PROFILER_COMMUNITY',
 ]
 
 # When this list is changed, the _enterprise_languages_meta_distributions
 # in the mx_vm_enterprise.py must also be updated.
 _community_languages_meta_distributions = [
-    'espresso:ESPRESSO_COMMUNITY',
-    'graal-js:GRAALJS_COMMUNITY',
-    'graalpyton:GRAALPYTHON_COMMUNITY',
-    'sulong:SULONG_NATIVE_COMMUNITY',
-    'sulong:SULONG_COMMUNITY',
-    'truffleruby:TRUFFLERUBY_COMMUNITY',
+    'espresso:JAVA_COMMUNITY',
+    'graal-js:JS_COMMUNITY',
+    'graalpython:PYTHON_COMMUNITY',
+    'sulong:LLVM_NATIVE_COMMUNITY',
+    'sulong:LLVM_COMMUNITY',
+    'truffleruby:RUBY_COMMUNITY',
     'wasm:WASM_COMMUNITY',
 ]
 
