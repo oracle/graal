@@ -58,6 +58,7 @@ import com.oracle.truffle.llvm.parser.model.functions.FunctionSymbol;
 import com.oracle.truffle.llvm.parser.model.symbols.globals.GlobalVariable;
 import com.oracle.truffle.llvm.parser.nodes.LLVMSymbolReadResolver;
 import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+import com.oracle.truffle.llvm.runtime.CmdlineLibraryLocator;
 import com.oracle.truffle.llvm.runtime.CommonNodeFactory;
 import com.oracle.truffle.llvm.runtime.DefaultLibraryLocator;
 import com.oracle.truffle.llvm.runtime.GetStackSpaceFactory;
@@ -201,7 +202,7 @@ final class ParserDriver {
         for (String externalLibraryName : externals) {
             // Look into the library cache in the language for the call target.
             if (!currentLib.equals(externalLibraryName)) {
-                libraryDependencies.add(LoadDependencyNode.create(externalLibraryName, DefaultLibraryLocator.INSTANCE, "<command-line library>"));
+                libraryDependencies.add(LoadDependencyNode.create(externalLibraryName, CmdlineLibraryLocator.INSTANCE, "<command-line library>"));
             }
         }
     }
