@@ -92,6 +92,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.CounterSupport;
+import com.oracle.svm.core.util.TimeUtils;
 
 public class SubstrateDiagnostics {
     private static final int MAX_THREADS_TO_PRINT = 100_000;
@@ -813,7 +814,7 @@ public class SubstrateDiagnostics {
             log.string(", ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
 
             log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
-            log.string("VM uptime: ").signed(ImageSingletons.lookup(SubstrateRuntimeMXBean.class).getUptime()).string(" ms").newline();
+            log.string("VM uptime: ").rational(ImageSingletons.lookup(SubstrateRuntimeMXBean.class).getUptime(), TimeUtils.millisPerSecond, 3).string("s").newline();
 
             CodeInfo info = CodeInfoTable.getImageCodeInfo();
             Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);

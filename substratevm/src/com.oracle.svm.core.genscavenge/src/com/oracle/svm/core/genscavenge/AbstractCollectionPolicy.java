@@ -91,7 +91,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
         if (sizes == null) {
             return false; // updateSizeParameters() has never been called
         }
-        UnsignedWord edenUsed = HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes();
+        UnsignedWord edenUsed = HeapImpl.getAccounting().getEdenUsedBytes();
         return edenUsed.aboveOrEqual(edenSize);
     }
 
@@ -301,7 +301,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
     public void onCollectionBegin(boolean completeCollection, long requestingNanoTime) {
         // Capture the fraction of bytes in aligned chunks at the start to include all allocated
         // (also dead) objects, because we use it to reserve aligned chunks for future allocations
-        UnsignedWord youngChunkBytes = GCImpl.getGCImpl().getAccounting().getYoungChunkBytesBefore();
+        UnsignedWord youngChunkBytes = GCImpl.getAccounting().getYoungChunkBytesBefore();
         if (youngChunkBytes.notEqual(0)) {
             UnsignedWord youngAlignedChunkBytes = HeapImpl.getHeapImpl().getYoungGeneration().getAlignedChunkBytes();
             avgYoungGenAlignedChunkFraction.sample(UnsignedUtils.toDouble(youngAlignedChunkBytes) / UnsignedUtils.toDouble(youngChunkBytes));
