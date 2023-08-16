@@ -61,7 +61,6 @@ import java.util.jar.JarEntry;
 import java.util.jar.JarFile;
 import java.util.jar.JarOutputStream;
 import java.util.jar.Manifest;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import com.oracle.svm.core.OS;
@@ -116,6 +115,9 @@ final class BundleSupport {
     private final BundleProperties bundleProperties;
 
     static final String BUNDLE_OPTION = "--bundle";
+    private static final String DRY_RUN_OPTION = "dry-run";
+    private static final String CONTAINER_OPTION = "container";
+    private static final String DOCKERFILE_OPTION = "dockerfile";
     static final String BUNDLE_FILE_EXTENSION = ".nib";
 
     ContainerSupport containerSupport;
@@ -134,21 +136,6 @@ final class BundleSupport {
 
         String optionName() {
             return BUNDLE_OPTION + "-" + this;
-        }
-    }
-
-    enum ExtendedBundleOptions {
-        dry_run,
-        container,
-        dockerfile;
-
-        static ExtendedBundleOptions get(String name) {
-            return ExtendedBundleOptions.valueOf(name.replace('-', '_'));
-        }
-
-        @Override
-        public String toString() {
-            return name().replace('_', '-');
         }
     }
 
@@ -265,9 +252,9 @@ final class BundleSupport {
             optionValue = null;
         }
 
-        switch (ExtendedBundleOptions.get(optionKey)) {
-            case dry_run -> nativeImage.setDryRun(true);
-            case container -> {
+        switch (optionKey) {
+            case DRY_RUN_OPTION -> nativeImage.setDryRun(true);
+            case CONTAINER_OPTION -> {
                 if (containerSupport != null) {
                     throw NativeImage.showError(String.format("native-image bundle allows option %s to be specified only once.", optionKey));
                 }
@@ -280,9 +267,9 @@ final class BundleSupport {
                     containerSupport.tool = optionValue;
                 }
             }
-            case dockerfile -> {
+            case DOCKERFILE_OPTION -> {
                 if (containerSupport == null) {
-                    throw NativeImage.showError(String.format("native-image bundle option %s is only allowed to be used after option %s.", optionKey, ExtendedBundleOptions.container));
+                    throw NativeImage.showError(String.format("native-image bundle option %s is only allowed to be used after option %s.", optionKey, CONTAINER_OPTION));
                 }
                 if (optionValue != null) {
                     containerSupport.dockerfile = Path.of(optionValue);
@@ -293,12 +280,7 @@ final class BundleSupport {
                     throw NativeImage.showError(String.format("native-image option %s requires a dockerfile argument. E.g. %s=path/to/Dockerfile.", optionKey, optionKey));
                 }
             }
-            default -> {
-                String suggestedOptions = Arrays.stream(ExtendedBundleOptions.values())
-                                .map(Enum::toString)
-                                .collect(Collectors.joining(", "));
-                throw NativeImage.showError(String.format("Unknown option %s. Valid options are: %s.", optionKey, suggestedOptions));
-            }
+            default -> throw NativeImage.showError(String.format("Unknown option %s. Use --help-extra for usage instructions.", optionKey));
         }
     }
 
