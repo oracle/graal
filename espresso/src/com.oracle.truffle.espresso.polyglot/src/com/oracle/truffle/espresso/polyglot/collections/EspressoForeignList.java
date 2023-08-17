@@ -120,7 +120,7 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
                 // shift elements to the right if any
                 long cur = size;
                 while (cur > index) {
-                    Object o =  Polyglot.cast(Object.class, Interop.readArrayElement(foreignObject, cur - 1));
+                    Object o = Polyglot.cast(Object.class, Interop.readArrayElement(foreignObject, cur - 1));
                     Interop.writeArrayElement(foreignObject, cur, o);
                     cur--;
                 }
