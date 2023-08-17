@@ -2728,8 +2728,9 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         for dependency_name, details in dependencies.items():
             dependency_path = details[0]
             comp = get_component(dependency_name, fatalIfMissing=True)
-            if comp.installable_id != '.':
-                # Ignore components without a valid installable id.
+            if comp.has_relative_home:
+                # Some components (e.g., those that add license files) might be added at arbitrary locations and should
+                # not define the home path of a language.
                 home_paths[comp.installable_id] = base_dir + dependency_path
 
         def add_jars_from_component(comp, force_modules_as_jars=False):

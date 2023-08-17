@@ -253,7 +253,8 @@ class GraalVmComponent(object):
                  supported=None,
                  early_adopter=False,
                  stability=None,
-                 extra_installable_qualifiers=None):
+                 extra_installable_qualifiers=None,
+                 has_relative_home=True):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -287,6 +288,7 @@ class GraalVmComponent(object):
         :type post_install_msg: str
         :type stability: str | None
         :type extra_installable_qualifiers: list[str] | None
+        :type has_relative_home: bool
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -322,6 +324,7 @@ class GraalVmComponent(object):
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
         self.extra_installable_qualifiers = extra_installable_qualifiers or []
+        self.has_relative_home = has_relative_home
 
         if supported is not None or early_adopter:
             if stability is not None:

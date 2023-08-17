@@ -493,8 +493,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name='LLVM Runtime License Files',
     short_name='llrlf',
     dir_name='llvm',
-    license_files=['sulong:SULONG_GRAALVM_LICENSES/LICENSE_SULONG.txt'],
-    third_party_license_files=['sulong:SULONG_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_SULONG.txt'],
+    license_files=['LICENSE_SULONG.txt'],
+    third_party_license_files=['THIRD_PARTY_LICENSE_SULONG.txt'],
     dependencies=[],
     truffle_jars=[],
     support_distributions=[
@@ -502,6 +502,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     ],
     installable=True,
     standalone=False,
+    has_relative_home=False,
     stability='experimental' if mx.get_os() == 'windows' else 'supported',
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
