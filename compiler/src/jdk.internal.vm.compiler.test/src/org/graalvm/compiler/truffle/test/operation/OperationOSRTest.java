@@ -3,7 +3,6 @@ package org.graalvm.compiler.truffle.test.operation;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.compiler.test.GraalTest;
-import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
 import org.graalvm.compiler.truffle.test.TestWithSynchronousCompiling;
 import org.junit.Assert;
 import org.junit.Before;
@@ -22,6 +21,7 @@ import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.operation.OperationRootNode;
+import com.oracle.truffle.runtime.BytecodeOSRMetadata;
 
 public class OperationOSRTest extends TestWithSynchronousCompiling {
     private static final OperationOSRTestLanguage LANGUAGE = null;
