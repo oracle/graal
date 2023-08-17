@@ -2929,7 +2929,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             layout.setdefault(base_dir + 'jvm/', []).append({
                 'source_type': 'dependency',
                 'dependency': 'java-standalone-jimage',
-                'exclude': [],
+                'exclude': ['jmods'],
                 'path': '*',
             })
 
