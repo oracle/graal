@@ -3359,8 +3359,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
-                        @Cached BranchProfile exceptionProfile,
-                        @Bind("getMeta()") Meta meta) {
+                        @Cached BranchProfile exceptionProfile) {
             try {
                 Object element = interop.getIteratorNextElement(InteropUtils.unwrapForeign(getLanguage(), receiver));
                 return InteropUtils.maybeWrapAsObject(element, valueInterop, getContext());
