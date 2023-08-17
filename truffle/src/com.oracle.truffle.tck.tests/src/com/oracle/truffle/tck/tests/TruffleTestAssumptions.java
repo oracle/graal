@@ -40,21 +40,52 @@
  */
 package com.oracle.truffle.tck.tests;
 
+import org.graalvm.polyglot.Engine;
 import org.junit.Assume;
 
 public class TruffleTestAssumptions {
     private static final boolean spawnIsolate = Boolean.getBoolean("polyglot.engine.SpawnIsolate");
     private static final boolean aot = Boolean.getBoolean("com.oracle.graalvm.isaot");
+    private static final boolean isolationDisabled = Boolean.getBoolean("polyglotimpl.DisableClassPathIsolation");
 
     public static void assumeWeakEncapsulation() {
+        assumeNoIsolateEncapsulation();
+        assumeNoClassLoaderEncapsulation();
+    }
+
+    public static void assumeNoIsolateEncapsulation() {
         Assume.assumeFalse(spawnIsolate);
     }
 
-    public static boolean isWeakEncapsulation() {
+    public static void assumeNoClassLoaderEncapsulation() {
+        Assume.assumeFalse(isClassLoaderEncapsulation());
+    }
+
+    /**
+     * Indicates that no Truffle classes can be passed from the test into a truffle langauge as
+     * Truffle in a polyglot context is running in an isolated classloader.
+     */
+    public static boolean isClassLoaderEncapsulation() {
+        return !Engine.class.getModule().isNamed() && !isolationDisabled;
+    }
+
+    public static boolean isNoClassLoaderEncapsulation() {
+        return !isClassLoaderEncapsulation();
+    }
+
+    public static boolean isNoIsolateEncapsulation() {
         return !spawnIsolate;
     }
 
+    public static boolean isWeakEncapsulation() {
+        return !isIsolateEncapsulation() && !isClassLoaderEncapsulation();
+    }
+
     public static boolean isStrongEncapsulation() {
+        return isIsolateEncapsulation() || isClassLoaderEncapsulation();
+    }
+
+    public static boolean isIsolateEncapsulation() {
         return spawnIsolate;
     }
 

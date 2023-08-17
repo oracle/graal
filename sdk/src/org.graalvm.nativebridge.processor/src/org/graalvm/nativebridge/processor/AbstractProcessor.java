@@ -64,9 +64,11 @@ import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.PackageElement;
 import javax.lang.model.element.TypeElement;
+import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
+import javax.lang.model.util.Types;
 import javax.tools.Diagnostic.Kind;
 import javax.tools.FileObject;
 import javax.tools.JavaFileObject;
@@ -107,6 +109,14 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
      */
     public TypeMirror getType(String className) {
         return getTypeElement(className).asType();
+    }
+
+    public DeclaredType getDeclaredType(String className) {
+        return (DeclaredType) getType(className);
+    }
+
+    public DeclaredType getDeclaredTypeOrNull(String className) {
+        return (DeclaredType) getTypeOrNull(className);
     }
 
     public TypeMirror getType(Class<?> element) {
@@ -368,5 +378,9 @@ public abstract class AbstractProcessor extends javax.annotation.processing.Abst
             }
         }
         return t.getCause() != null && isBug367599(t.getCause());
+    }
+
+    public Types typeUtils() {
+        return env().getTypeUtils();
     }
 }

@@ -188,6 +188,7 @@ public interface ProxyArray extends ProxyIterable {
             }
         };
     }
+
 }
 
 final class DefaultProxyArrayIterator implements ProxyIterator {

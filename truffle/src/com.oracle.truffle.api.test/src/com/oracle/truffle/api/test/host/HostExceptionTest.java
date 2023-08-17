@@ -146,7 +146,7 @@ public class HostExceptionTest {
             after();
         }
         context = Context.newBuilder().allowHostAccess(hostAccess).out(outStream).build();
-        if (TruffleTestAssumptions.isWeakEncapsulation()) {
+        if (TruffleTestAssumptions.isNoIsolateEncapsulation()) {
             ProxyLanguage.setDelegate(new ProxyLanguage() {
                 @Override
                 protected LanguageContext createContext(Env contextEnv) {

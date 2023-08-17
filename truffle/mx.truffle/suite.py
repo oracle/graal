@@ -302,7 +302,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:POLYGLOT",
         "com.oracle.truffle.api.exception",
         "truffle:TRUFFLE_ASM_9.5",
       ],
@@ -322,7 +321,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.modularized.test.separate.module.test",
         "TRUFFLE_API",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
@@ -1244,7 +1243,7 @@ suite = {
         "com.oracle.truffle.api.modularized.test",
       ],
       "distDependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "TRUFFLE_API",
         "TRUFFLE_RUNTIME",
         "TRUFFLE_SL",

@@ -62,9 +62,7 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.IOAccessor;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -400,7 +398,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value eval(Source source) {
-        return dispatch.eval(receiver, source.getLanguage(), source);
+        return (Value) dispatch.eval(receiver, source.getLanguage(), source);
     }
 
     /**
@@ -481,7 +479,7 @@ public final class Context implements AutoCloseable {
      * @since 20.2
      */
     public Value parse(Source source) throws PolyglotException {
-        return dispatch.parse(receiver, source.getLanguage(), source);
+        return (Value) dispatch.parse(receiver, source.getLanguage(), source);
     }
 
     /**
@@ -544,7 +542,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getPolyglotBindings() {
-        return dispatch.getPolyglotBindings(receiver);
+        return (Value) dispatch.getPolyglotBindings(receiver);
     }
 
     /**
@@ -561,7 +559,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value getBindings(String languageId) {
-        return dispatch.getBindings(receiver, languageId);
+        return (Value) dispatch.getBindings(receiver, languageId);
     }
 
     /**
@@ -736,7 +734,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public Value asValue(Object hostValue) {
-        return dispatch.asValue(receiver, hostValue);
+        return (Value) dispatch.asValue(receiver, hostValue);
     }
 
     /**
@@ -961,7 +959,7 @@ public final class Context implements AutoCloseable {
      * @since 19.0
      */
     public static Context getCurrent() {
-        Context context = Engine.getImpl().getCurrentContext();
+        Context context = (Context) Engine.getImpl().getCurrentContext();
         if (context.currentAPI == null) {
             return context;
         } else {
@@ -1933,9 +1931,9 @@ public final class Context implements AutoCloseable {
                 contextErr = err;
                 contextIn = in;
             }
-            LogHandler logHandler = customLogHandler != null ? Engine.getImpl().newLogHandler(customLogHandler) : null;
+            Object logHandler = customLogHandler != null ? Engine.getImpl().newLogHandler(customLogHandler) : null;
             String tmpDir = Engine.getImpl().getIO().hasHostFileAccess(useIOAccess) ? System.getProperty("java.io.tmpdir") : null;
-            ctx = engine.dispatch.createContext(engine.receiver, useSandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
+            ctx = (Context) engine.dispatch.createContext(engine.receiver, useSandboxPolicy, contextOut, contextErr, contextIn, hostClassLookupEnabled,
                             hostAccess, polyglotAccess, nativeAccess, createThread, hostClassLoading, innerContextOptions,
                             experimentalOptions, localHostLookupFilter, contextOptions, arguments == null ? Collections.emptyMap() : arguments,
                             permittedLanguages, useIOAccess, logHandler, createProcess, processHandler, useEnvironmentAccess, environment, zone, limits,
@@ -2018,30 +2016,6 @@ public final class Context implements AutoCloseable {
                 if (Engine.isSystemStream(err)) {
                     throw Engine.Builder.throwSandboxException(useSandboxPolicy, "Builder uses the standard error stream, but the error output must be redirected.",
                                     "set Builder.err(OutputStream)");
-                }
-                FileSystem fileSystem;
-                if (ioAccess != null) {
-                    IOAccessor ioAccessor = Engine.getImpl().getIO();
-                    if (ioAccessor.hasHostFileAccess(ioAccess)) {
-                        throw Engine.Builder.throwSandboxException(useSandboxPolicy,
-                                        "Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to the host file system, but access to the host file system must be disabled.",
-                                        "disable filesystem access using Builder.allowIO(IOAccess.NONE) or install a custom filesystem using Builder.allowIO(IOAccess.newBuilder().fileSystem(customFs))");
-                    }
-                    if (ioAccessor.hasHostSocketAccess(ioAccess)) {
-                        throw Engine.Builder.throwSandboxException(useSandboxPolicy,
-                                        "Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to host sockets, but access to host sockets must be disabled.",
-                                        "do not set IOAccess.Builder.allowHostSocketAccess(boolean)");
-                    }
-                    assert customFileSystem == null;
-                    fileSystem = ioAccessor.getFileSystem(ioAccess);
-                } else {
-                    fileSystem = customFileSystem;
-                }
-                if (fileSystem != null && Engine.getImpl().isHostFileSystem(fileSystem)) {
-                    throw Engine.Builder.throwSandboxException(useSandboxPolicy,
-                                    "Builder.allowIO(IOAccess) is set to an IOAccess, which has a custom file system that allows access to the host file system, but access to the host file system must be disabled.",
-                                    "disable filesystem access using Builder.allowIO(IOAccess.NONE) or install a non-host custom filesystem using Builder.allowIO(IOAccess.newBuilder().fileSystem(customFs))");
-
                 }
                 if (Boolean.TRUE.equals(allowIO)) {
                     throw Engine.Builder.throwSandboxException(useSandboxPolicy, "Builder.allowIO(boolean) is set to true, but must not be set to true.",

@@ -731,6 +731,7 @@ meth public java.util.Map<java.lang.String,java.lang.String> getEnvironment()
 meth public org.graalvm.polyglot.io.ProcessHandler$Redirect getErrorRedirect()
 meth public org.graalvm.polyglot.io.ProcessHandler$Redirect getInputRedirect()
 meth public org.graalvm.polyglot.io.ProcessHandler$Redirect getOutputRedirect()
+meth public static org.graalvm.polyglot.io.ProcessHandler$ProcessCommand create(java.util.List<java.lang.String>,java.lang.String,java.util.Map<java.lang.String,java.lang.String>,boolean,org.graalvm.polyglot.io.ProcessHandler$Redirect,org.graalvm.polyglot.io.ProcessHandler$Redirect,org.graalvm.polyglot.io.ProcessHandler$Redirect)
 supr java.lang.Object
 hfds cmd,cwd,environment,errorRedirect,inputRedirect,outputRedirect,redirectErrorStream
 
@@ -740,7 +741,9 @@ fld public final static org.graalvm.polyglot.io.ProcessHandler$Redirect INHERIT
 fld public final static org.graalvm.polyglot.io.ProcessHandler$Redirect PIPE
 meth public boolean equals(java.lang.Object)
 meth public int hashCode()
+meth public java.io.OutputStream getOutputStream()
 meth public java.lang.String toString()
+meth public static org.graalvm.polyglot.io.ProcessHandler$Redirect createRedirectToStream(java.io.OutputStream)
 supr java.lang.Object
 hfds stream,type
 hcls Type

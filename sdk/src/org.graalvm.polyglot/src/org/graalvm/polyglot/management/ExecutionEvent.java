@@ -45,7 +45,6 @@ import java.util.List;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.Value;
-
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionEventDispatch;
 
 /**
@@ -73,7 +72,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public SourceSection getLocation() {
-        return dispatch.getExecutionEventLocation(receiver);
+        return (SourceSection) dispatch.getExecutionEventLocation(receiver);
     }
 
     /**
@@ -99,8 +98,9 @@ public final class ExecutionEvent {
      *
      * @since 19.0
      */
+    @SuppressWarnings("unchecked")
     public List<Value> getInputValues() {
-        return dispatch.getExecutionEventInputValues(receiver);
+        return (List<Value>) (List<?>) dispatch.getExecutionEventInputValues(receiver);
     }
 
     /**
@@ -114,7 +114,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public Value getReturnValue() {
-        return dispatch.getExecutionEventReturnValue(receiver);
+        return (Value) dispatch.getExecutionEventReturnValue(receiver);
     }
 
     /**
@@ -128,7 +128,7 @@ public final class ExecutionEvent {
      * @since 19.0
      */
     public PolyglotException getException() {
-        return dispatch.getExecutionEventException(receiver);
+        return (PolyglotException) dispatch.getExecutionEventException(receiver);
     }
 
     /**

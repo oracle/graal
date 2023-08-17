@@ -176,10 +176,21 @@ public abstract class ThreadLocalAction {
         /**
          * Constructor for framework use only.
          *
+         * @since 23.1
+         */
+        protected Access(Object secret) {
+            if (!LanguageAccessor.ENGINE.isPolyglotSecret(secret)) {
+                throw new AssertionError("Constructor for framework use only.");
+            }
+        }
+
+        /**
+         * Constructor for framework use only.
+         *
          * @since 21.1
          */
-        protected Access(AbstractPolyglotImpl impl) {
-            if (impl == null) {
+        protected Access(AbstractPolyglotImpl secret) {
+            if (!LanguageAccessor.ENGINE.isPolyglotSecret(secret)) {
                 throw new AssertionError("Constructor for framework use only.");
             }
         }

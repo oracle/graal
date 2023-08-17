@@ -2118,7 +2118,7 @@ public class ContextPreInitializationTest {
     }
 
     private void triggerPreinitialization(Engine engine) throws ReflectiveOperationException {
-        TestAPIAccessor.engineAccess().preinitializeContext(findImpl().getAPIAccess().getReceiver(engine));
+        TestAPIAccessor.engineAccess().preinitializeContext(findImpl().getAPIAccess().getEngineReceiver(engine));
     }
 
     AbstractPolyglotImpl findImpl() throws ReflectiveOperationException {

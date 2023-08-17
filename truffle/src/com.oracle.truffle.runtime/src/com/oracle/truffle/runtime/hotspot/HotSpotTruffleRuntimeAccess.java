@@ -90,6 +90,17 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
             // compilation disabled in host VM -> fallback to default runtime
             return new DefaultTruffleRuntime("JVMCI compilation was disabled on this JVM. JVMCI may be enabled using -XX:+EnableJVMCI.");
         }
+        /*
+         * This seems to be necessary with polyglot class isolation enabled. I do not understand why
+         * that is. It works if the both modules are in the same layer
+         */
+        Module truffleCompilerModule = HotSpotTruffleRuntimeAccess.class.getModule().getLayer().findModule("org.graalvm.truffle.compiler").orElse(null);
+        if (truffleCompilerModule == null) {
+            return new DefaultTruffleRuntime("Truffle compiler module is missing. This is likely an installation error.");
+        }
+        for (String pack : truffleCompilerModule.getPackages()) {
+            Modules.addExports(truffleCompilerModule, pack, HotSpotTruffleRuntimeAccess.class.getModule());
+        }
         TruffleCompilationSupport compilationSupport;
         if (LibGraal.isAvailable()) {
             // try LibGraal
@@ -104,7 +115,8 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                                     "Libgraal compilation is not available on this JVM. Alternatively, the compiler module jdk.internal.vm.compiler was not found on the --upgrade-module-path.");
                 }
                 Modules.addExports(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot", HotSpotTruffleRuntimeAccess.class.getModule());
-                Class<?> hotspotCompilationSupport = Class.forName("org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");
+
+                Class<?> hotspotCompilationSupport = Class.forName(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");
                 compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
             } catch (ReflectiveOperationException e) {
                 throw new InternalError(e);

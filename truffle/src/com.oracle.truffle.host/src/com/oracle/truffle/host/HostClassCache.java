@@ -55,7 +55,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
@@ -67,8 +66,8 @@ final class HostClassCache {
 
     static final HostTargetMapping[] EMPTY_MAPPINGS = new HostTargetMapping[0];
 
-    private final APIAccess apiAccess;
-    final HostAccess hostAccess;
+    final APIAccess apiAccess;
+    final Object hostAccess;
     final AbstractHostAccess polyglotHostAccess;
     private final boolean arrayAccess;
     private final boolean listAccess;
@@ -95,9 +94,9 @@ final class HostClassCache {
         }
     };
 
-    private HostClassCache(AbstractHostAccess polyglotAccess, APIAccess apiAccess, HostAccess conf) {
+    private HostClassCache(AbstractHostAccess polyglotAccess, APIAccess apiAccess, Object hostAccess) {
         this.polyglotHostAccess = polyglotAccess;
-        this.hostAccess = conf;
+        this.hostAccess = hostAccess;
         this.apiAccess = apiAccess;
         this.arrayAccess = apiAccess.isArrayAccessible(hostAccess);
         this.listAccess = apiAccess.isListAccessible(hostAccess);
@@ -108,7 +107,7 @@ final class HostClassCache {
         this.bigIntegerNumberAccess = apiAccess.isBigIntegerAccessibleAsNumber(hostAccess);
         this.allowsPublicAccess = apiAccess.allowsPublicAccess(hostAccess);
         this.allowsAccessInheritance = apiAccess.allowsAccessInheritance(hostAccess);
-        this.targetMappings = groupMappings(apiAccess, conf);
+        this.targetMappings = groupMappings(apiAccess, hostAccess);
         this.methodLookup = apiAccess.getMethodLookup(hostAccess);
     }
 
@@ -164,8 +163,8 @@ final class HostClassCache {
     }
 
     @SuppressWarnings("unchecked")
-    private static Map<Class<?>, Object> groupMappings(AbstractPolyglotImpl.APIAccess apiAccess, HostAccess conf) {
-        List<Object> mappings = apiAccess.getTargetMappings(conf);
+    private static Map<Class<?>, Object> groupMappings(AbstractPolyglotImpl.APIAccess apiAccess, Object hostAccess) {
+        List<Object> mappings = apiAccess.getTargetMappings(hostAccess);
         if (mappings == null) {
             return null;
         }
@@ -188,21 +187,21 @@ final class HostClassCache {
         return localMappings;
     }
 
-    public static HostClassCache findOrInitialize(AbstractHostAccess hostLanguage, APIAccess apiAccess, HostAccess conf) {
-        HostClassCache cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
+    public static HostClassCache findOrInitialize(AbstractHostAccess hostLanguage, APIAccess apiAccess, Object hostAccess) {
+        HostClassCache cache = (HostClassCache) apiAccess.getHostAccessImpl(hostAccess);
         if (cache == null) {
-            cache = initializeHostCache(hostLanguage, apiAccess, conf);
+            cache = initializeHostCache(hostLanguage, apiAccess, hostAccess);
         }
         return cache;
     }
 
-    private static HostClassCache initializeHostCache(AbstractHostAccess polyglotAccess, APIAccess apiAccess, HostAccess conf) {
+    private static HostClassCache initializeHostCache(AbstractHostAccess polyglotAccess, APIAccess apiAccess, Object hostAccess) {
         HostClassCache cache;
-        synchronized (conf) {
-            cache = (HostClassCache) apiAccess.getHostAccessImpl(conf);
+        synchronized (hostAccess) {
+            cache = (HostClassCache) apiAccess.getHostAccessImpl(hostAccess);
             if (cache == null) {
-                cache = new HostClassCache(polyglotAccess, apiAccess, conf);
-                apiAccess.setHostAccessImpl(conf, cache);
+                cache = new HostClassCache(polyglotAccess, apiAccess, hostAccess);
+                apiAccess.setHostAccessImpl(hostAccess, cache);
             }
         }
         return cache;

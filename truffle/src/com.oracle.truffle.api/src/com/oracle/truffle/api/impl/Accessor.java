@@ -70,18 +70,13 @@ import java.util.function.Supplier;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
-import com.oracle.truffle.api.InternalResource;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionValues;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.SandboxPolicy;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
@@ -89,7 +84,6 @@ import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
 import org.graalvm.polyglot.io.ProcessHandler;
-import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CallTarget;
@@ -97,6 +91,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.ContextLocal;
 import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
@@ -227,8 +222,8 @@ public abstract class Accessor {
 
         public abstract Source copySource(Source source);
 
-        public abstract org.graalvm.polyglot.Source getOrCreatePolyglotSource(Source source,
-                        Function<Source, org.graalvm.polyglot.Source> createSource);
+        public abstract Object getOrCreatePolyglotSource(Source source,
+                        Function<Source, Object> createSource);
 
         public abstract String findMimeType(URL url, Object fileSystemContext) throws IOException;
 
@@ -300,7 +295,7 @@ public abstract class Accessor {
 
         public abstract Object toDisconnectedHostObject(Object hostValue);
 
-        public abstract Object toDisconnectedHostProxy(Proxy hostValue);
+        public abstract Object toDisconnectedHostProxy(Object hostValue);
 
         public abstract <S, T> Object newTargetTypeMapping(Class<S> sourceType, Class<T> targetType, Predicate<S> acceptsValue, Function<S, T> convertValue, TargetMappingPrecedence precedence);
 
@@ -334,8 +329,6 @@ public abstract class Accessor {
         public abstract Object getInstrumentationHandler(RootNode rootNode);
 
         public abstract void exportSymbol(Object polyglotLanguageContext, String symbolName, Object value);
-
-        public abstract Map<String, ? extends Object> getExportedSymbols();
 
         public abstract Object getPolyglotBindingsObject();
 
@@ -377,7 +370,7 @@ public abstract class Accessor {
 
         public abstract Map<String, InstrumentInfo> getInstruments(Object polyglotObject);
 
-        public abstract org.graalvm.polyglot.SourceSection createSourceSection(Object polyglotObject, org.graalvm.polyglot.Source source, SourceSection sectionImpl);
+        public abstract Object createPolyglotSourceSection(Object polyglotObject, Object source, SourceSection sectionImpl);
 
         public abstract <T> T lookup(InstrumentInfo info, Class<T> serviceClass);
 
@@ -470,9 +463,9 @@ public abstract class Accessor {
 
         public abstract Object getCurrentHostContext();
 
-        public abstract PolyglotException wrapGuestException(Object polyglotObject, Throwable e);
+        public abstract RuntimeException wrapGuestException(Object polyglotObject, Throwable e);
 
-        public abstract PolyglotException wrapGuestException(String languageId, Throwable exception);
+        public abstract RuntimeException wrapGuestException(String languageId, Throwable exception);
 
         public abstract <T> T getOrCreateRuntimeData(Object polyglotEngine);
 
@@ -555,8 +548,6 @@ public abstract class Accessor {
 
         public abstract boolean hasDefaultProcessHandler(Object polyglotLanguageContext);
 
-        public abstract ProcessHandler.Redirect createRedirectToOutputStream(Object polyglotLanguageContext, OutputStream stream);
-
         public abstract boolean isIOAllowed(Object polyglotLanguageContext, Env env);
 
         public abstract boolean isIOSupported();
@@ -609,7 +600,7 @@ public abstract class Accessor {
 
         public abstract AssertionError invalidSharingError(Node node, Object previousSharingLayer, Object newSharingLayer) throws AssertionError;
 
-        public abstract boolean isPolyglotObject(Object polyglotObject);
+        public abstract boolean isPolyglotSecret(Object polyglotObject);
 
         public abstract void initializeLanguageContextLocal(List<? extends ContextLocal<?>> local, Object polyglotLanguageInstance);
 
@@ -674,7 +665,7 @@ public abstract class Accessor {
 
         public abstract Object getHostContext(Object valueContext);
 
-        public abstract Value asValue(Object polyglotContextImpl, Object guestValue);
+        public abstract Object asValue(Object polyglotContextImpl, Object guestValue);
 
         public abstract Object enterLanguageFromRuntime(TruffleLanguage<?> language);
 
@@ -740,9 +731,9 @@ public abstract class Accessor {
 
         public abstract AutoCloseable createPolyglotThreadScope();
 
-        public abstract Engine getPolyglotEngineAPI(Object polyglotEngineImpl);
+        public abstract Object getPolyglotEngineAPI(Object polyglotEngineImpl);
 
-        public abstract Context getPolyglotContextAPI(Object polyglotContextImpl);
+        public abstract Object getPolyglotContextAPI(Object polyglotContextImpl);
 
         public abstract EncapsulatingNodeReference getEncapsulatingNodeReference(boolean invalidateOnNull);
 
@@ -986,7 +977,7 @@ public abstract class Accessor {
 
         public abstract void notifyThreadFinished(Object engine, TruffleContext context, Thread thread);
 
-        public abstract org.graalvm.polyglot.SourceSection createSourceSection(Object instrumentEnv, org.graalvm.polyglot.Source source, com.oracle.truffle.api.source.SourceSection ss);
+        public abstract Object createPolyglotSourceSection(Object instrumentEnv, Object polyglotSource, SourceSection ss);
 
         public abstract void patchInstrumentationHandler(Object instrumentationHandler, DispatchOutputStream out, DispatchOutputStream err, InputStream in);
 

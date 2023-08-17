@@ -748,6 +748,16 @@ def gate_svm_truffle_tck_python(tasks):
 
 def gate_truffle_unchained(tasks):
     truffle_suite = mx.suite('truffle')
+    with Task('Truffle Unchained Truffle ModulePath Unit Tests', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.truffle_jvm_module_path_unit_tests_gate()
+    with Task('Truffle Unchained Truffle ClassPath Unit Tests', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.truffle_jvm_class_path_unit_tests_gate()
     with Task('Truffle Unchained SL JVM', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
         if t:
             if not truffle_suite:

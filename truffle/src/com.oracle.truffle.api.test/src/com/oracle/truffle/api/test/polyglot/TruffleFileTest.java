@@ -133,6 +133,7 @@ import com.oracle.truffle.api.test.OSUtils;
 import com.oracle.truffle.api.test.polyglot.FileSystemsTest.ForwardingFileSystem;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage1.Language1Detector;
 import com.oracle.truffle.api.test.polyglot.TruffleFileTest.DuplicateMimeTypeLanguage2.Language2Detector;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 public class TruffleFileTest {
 
@@ -478,6 +479,8 @@ public class TruffleFileTest {
 
     @Test
     public void testRelativePathToLanguageHome() throws IOException {
+        // reflection access
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         Path cwdPath = new File("").toPath().toRealPath();
         Assume.assumeTrue(cwdPath.getNameCount() > 1);
         String langHomePath = cwdPath.getParent().resolve("home").toString();
@@ -719,6 +722,7 @@ public class TruffleFileTest {
 
     @Test
     public void testGetTruffleFileInternalAllowedIO() {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         try (Context ctx = Context.newBuilder().allowIO(IOAccess.ALL).build()) {
             AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
                             languageHome.toAbsolutePath().toString(), languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),
@@ -729,6 +733,8 @@ public class TruffleFileTest {
 
     @Test
     public void testGetTruffleFileInternalCustomFileSystem() {
+        // reflection access
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         IOAccess ioAccess = IOAccess.newBuilder().fileSystem(new ForwardingFileSystem(FileSystem.newDefaultFileSystem())).build();
         try (Context ctx = Context.newBuilder().allowIO(ioAccess).build()) {
             AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalAllowedIOLanguage.class, "",
@@ -778,6 +784,7 @@ public class TruffleFileTest {
 
     @Test
     public void testGetTruffleFileInternalDeniedIO() {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         try (Context ctx = Context.create()) {
             AbstractExecutableTestLanguage.evalTestLanguage(ctx, TestGetTruffleFileInternalDeniedIOLanguage.class, "",
                             languageHome.toAbsolutePath().toString(), languageHomeFile.toAbsolutePath().toString(), languageHomeFile.toUri().toString(),

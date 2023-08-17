@@ -229,26 +229,30 @@ def resolve_sl_dist_names(use_optimized_runtime=True, use_enterprise=True):
 def sl(args):
     """run an SL program"""
     vm_args, sl_args = mx.extract_VM_args(args)
-    return mx.run(_sl_command(vm_args, sl_args))
+    return mx.run(_sl_command(vm_args, sl_args, force_cp=False))
 
-def _sl_command(vm_args, sl_args, use_optimized_runtime=True, use_enterprise=True):
+def _sl_command(vm_args, sl_args, use_optimized_runtime=True, use_enterprise=True, force_cp=False):
     graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
     java_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('java'))
     dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
-    return [java_path] + vm_args + mx.get_runtime_jvm_args(names=dist_names) + ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"] + sl_args
+    if force_cp:
+        main_class = ["com.oracle.truffle.sl.launcher.SLMain"]
+    else:
+        main_class = ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"]
+    return [java_path] + vm_args + mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp) + main_class + sl_args
 
 def slnative(args):
     """build a native image of an SL program"""
     vm_args, sl_args = mx.extract_VM_args(args)
     target_dir = tempfile.mkdtemp()
-    image = _native_image_sl(vm_args, target_dir, use_optimized_runtime=True)
+    image = _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, force_cp=False)
     if not image:
         mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(mx_sdk_vm.graalvm_home(fatalIfMissing=True)))
     mx.log("Image build completed. Running {}".format(" ".join([image] + sl_args)))
     result = mx.run([image] + sl_args)
     return result
 
-def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True):
+def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, force_cp=False):
     graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
     native_image_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('native-image'))
     if not exists(native_image_path):
@@ -258,7 +262,7 @@ def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterp
             return None
     target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
     mx.run([native_image_path] + vm_args + ['-p', mx.classpath('TRUFFLE_NFI_LIBFFI')]
-           + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise))
+           + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise, force_cp=force_cp))
            + ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain", target_path])
     return target_path
 
@@ -291,7 +295,23 @@ def _truffle_gate_runner(args, tasks):
     with Task('Validate parsers', tasks) as t:
         if t: validate_parsers()
 
-# invoked by vm gate runner in ce-unchained configuration
+# invoked by vm gate runner in unchained configuration
+def truffle_jvm_module_path_unit_tests_gate():
+    unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
+
+# invoked by vm gate runner in unchained configuration
+def truffle_jvm_class_path_unit_tests_gate():
+    # unfortunately with class-path isolation we cannot run all the unit tests
+    # as many of the truffle unit tests expect no class loader isolation between polyglot and truffle
+    # as a starting point we list the tests we run in this mode
+    test_classes = [
+            "com.oracle.truffle.api.test.polyglot",
+            "com.oracle.truffle.api.test.examples",
+            "com.oracle.truffle.tck.tests",
+        ]
+    unittest(list(['--suite', 'truffle', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25'] + test_classes))
+
+# invoked by vm gate runner in unchained configuration
 def sl_jvm_gate_tests():
     def run_jvm_fallback(test_file):
         return _sl_command([], [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false'], use_optimized_runtime=False)

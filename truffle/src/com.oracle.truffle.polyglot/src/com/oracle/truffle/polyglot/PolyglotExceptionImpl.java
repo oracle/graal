@@ -54,12 +54,6 @@ import java.util.ListIterator;
 import java.util.NoSuchElementException;
 import java.util.function.Function;
 
-import org.graalvm.polyglot.Engine;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.PolyglotException.StackFrame;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.SourceSection;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -78,7 +72,7 @@ final class PolyglotExceptionImpl {
 
     private static final boolean TRACE_STACK_TRACE_WALKING = false;
 
-    private Object api;
+    private RuntimeException api;
 
     final PolyglotImpl polyglot;
     final PolyglotEngineImpl engine;
@@ -90,9 +84,9 @@ final class PolyglotExceptionImpl {
     private final List<TruffleStackTraceElement> guestFrames;
 
     private StackTraceElement[] javaStackTrace;
-    private List<StackFrame> materializedFrames;
+    private List<Object> materializedFrames;
 
-    private final SourceSection sourceLocation;
+    private final Object sourceLocation;
     private final boolean internal;
     private final boolean cancelled;
     private final boolean exit;
@@ -101,7 +95,7 @@ final class PolyglotExceptionImpl {
     private final boolean resourceExhausted;
     private final boolean interrupted;
     private final int exitStatus;
-    private final Value guestObject;
+    private final Object guestObject;
     private final String message;
 
     PolyglotExceptionImpl(PolyglotEngineImpl engine, PolyglotContextImpl.State polyglotContextState, boolean polyglotContextResourceExhausted, int exitCode, Throwable original) {
@@ -241,9 +235,9 @@ final class PolyglotExceptionImpl {
         return null;
     }
 
-    private SourceSection newSourceSection(com.oracle.truffle.api.source.SourceSection section) {
+    private Object newSourceSection(com.oracle.truffle.api.source.SourceSection section) {
         com.oracle.truffle.api.source.Source truffleSource = section.getSource();
-        Source source = polyglot.getAPIAccess().newSource(polyglot.getSourceDispatch(), truffleSource);
+        Object source = polyglot.getAPIAccess().newSource(polyglot.getSourceDispatch(), truffleSource);
         return polyglot.getAPIAccess().newSourceSection(source, polyglot.getSourceSectionDispatch(), section);
     }
 
@@ -260,11 +254,11 @@ final class PolyglotExceptionImpl {
         return exception.hashCode();
     }
 
-    public org.graalvm.polyglot.SourceSection getSourceLocation() {
+    public Object getSourceLocation() {
         return sourceLocation;
     }
 
-    public void onCreate(PolyglotException instance) {
+    public void onCreate(RuntimeException instance) {
         this.api = instance;
     }
 
@@ -283,9 +277,7 @@ final class PolyglotExceptionImpl {
     public Throwable asHostException() {
         if (!isHostException()) {
             throw PolyglotEngineException.unsupported(
-                            String.format("Unsupported operation %s.%s. You can ensure that the operation is supported using %s.%s.",
-                                            PolyglotException.class.getSimpleName(), "asHostException()",
-                                            PolyglotException.class.getSimpleName(), "isHostException()"));
+                            String.format("Unsupported operation PolyglotException.asHostException(). You can ensure that the operation is supported using PolyglotException.isHostException()"));
         }
         return engine.host.unboxHostException(exception);
     }
@@ -316,14 +308,15 @@ final class PolyglotExceptionImpl {
 
             materialize();
             int languageIdLength = 0; // java
-            for (StackFrame traceElement : getPolyglotStackTrace()) {
-                if (!traceElement.isHostFrame()) {
-                    languageIdLength = Math.max(languageIdLength, polyglot.getAPIAccess().getDispatch(traceElement).getLanguage().getId().length());
+            for (Object traceElement : getPolyglotStackTrace()) {
+                PolyglotExceptionFrame frame = (PolyglotExceptionFrame) polyglot.getAPIAccess().getStackFrameReceiver(traceElement);
+                if (!frame.isHostFrame()) {
+                    languageIdLength = Math.max(languageIdLength, frame.language.getId().length());
                 }
             }
 
-            for (StackFrame traceElement : getPolyglotStackTrace()) {
-                s.println("\tat " + polyglot.getAPIAccess().getDispatch(traceElement).toStringImpl(languageIdLength));
+            for (Object traceElement : getPolyglotStackTrace()) {
+                s.println("\tat " + polyglot.getAPIAccess().getStackFrameDispatch(traceElement).toStringImpl(languageIdLength));
             }
 
             // Print cause, if any
@@ -350,7 +343,9 @@ final class PolyglotExceptionImpl {
             materialize();
             javaStackTrace = new StackTraceElement[materializedFrames.size()];
             for (int i = 0; i < javaStackTrace.length; i++) {
-                javaStackTrace[i] = materializedFrames.get(i).toHostFrame();
+                Object polyglotFrame = materializedFrames.get(i);
+                PolyglotExceptionFrame frame = (PolyglotExceptionFrame) polyglot.getAPIAccess().getStackFrameDispatch(polyglotFrame);
+                javaStackTrace[i] = frame.toHostFrame();
             }
         }
         return javaStackTrace;
@@ -358,8 +353,8 @@ final class PolyglotExceptionImpl {
 
     private void materialize() {
         if (this.materializedFrames == null) {
-            List<StackFrame> frames = new ArrayList<>();
-            for (StackFrame frame : getPolyglotStackTrace()) {
+            List<Object> frames = new ArrayList<>();
+            for (Object frame : getPolyglotStackTrace()) {
                 frames.add(frame);
             }
             this.materializedFrames = Collections.unmodifiableList(frames);
@@ -374,12 +369,12 @@ final class PolyglotExceptionImpl {
         return internal;
     }
 
-    public Iterable<StackFrame> getPolyglotStackTrace() {
+    public Iterable<Object> getPolyglotStackTrace() {
         if (materializedFrames != null) {
             return materializedFrames;
         } else {
             return new Iterable<>() {
-                public Iterator<StackFrame> iterator() {
+                public Iterator<Object> iterator() {
                     return createStackFrameIterator(PolyglotExceptionImpl.this);
                 }
             };
@@ -406,14 +401,14 @@ final class PolyglotExceptionImpl {
         return syntaxError;
     }
 
-    public Value getGuestObject() {
+    public Object getGuestObject() {
         return guestObject;
     }
 
     static String printStackToString(PolyglotLanguageContext context, Node node) {
         StackTraceException stack = new StackTraceException(node);
         TruffleStackTrace.fillIn(stack);
-        PolyglotException e = PolyglotImpl.guestToHostException(context, stack, true);
+        RuntimeException e = PolyglotImpl.guestToHostException(context, stack, true);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         e.printStackTrace(new PrintStream(out));
         return new String(out.toByteArray());
@@ -525,7 +520,7 @@ final class PolyglotExceptionImpl {
         }
     }
 
-    static Iterator<StackFrame> createStackFrameIterator(PolyglotExceptionImpl impl) {
+    static Iterator<Object> createStackFrameIterator(PolyglotExceptionImpl impl) {
         APIAccess apiAccess = impl.polyglot.getAPIAccess();
 
         StackTraceElement[] hostStack = null;
@@ -555,17 +550,17 @@ final class PolyglotExceptionImpl {
             PrintStream out = System.out;
             out.println();
         }
-        return new MergedHostGuestIterator<>(impl.engine, hostStack, guestFrames, inHostLanguage, true, new Function<StackTraceElement, StackFrame>() {
+        return new MergedHostGuestIterator<>(impl.engine, hostStack, guestFrames, inHostLanguage, true, new Function<StackTraceElement, Object>() {
             @Override
-            public StackFrame apply(StackTraceElement element) {
+            public Object apply(StackTraceElement element) {
                 return apiAccess.newPolyglotStackTraceElement(PolyglotExceptionFrame.createHost(impl, element), impl.api);
             }
-        }, new Function<TruffleStackTraceElement, StackFrame>() {
+        }, new Function<TruffleStackTraceElement, Object>() {
 
             private boolean firstGuestFrame = true;
 
             @Override
-            public StackFrame apply(TruffleStackTraceElement guestFrame) {
+            public Object apply(TruffleStackTraceElement guestFrame) {
                 boolean first = this.firstGuestFrame;
                 this.firstGuestFrame = false;
                 PolyglotExceptionFrame guest = PolyglotExceptionFrame.createGuest(impl, guestFrame, first);
@@ -587,7 +582,7 @@ final class PolyglotExceptionImpl {
 
     static class MergedHostGuestIterator<T, G> implements Iterator<T> {
 
-        private static final String POLYGLOT_PACKAGE = Engine.class.getName().substring(0, Engine.class.getName().lastIndexOf('.') + 1);
+        private static final String POLYGLOT_PACKAGE = "org.graalvm.polyglot.";
         private static final String HOST_INTEROP_PACKAGE = "com.oracle.truffle.polyglot.";
         private static final String[] JAVA_INTEROP_HOST_TO_GUEST = {
                         HOST_INTEROP_PACKAGE + "PolyglotMap",
@@ -725,7 +720,7 @@ final class PolyglotExceptionImpl {
                 return false;
             }
             if (element.getClassName().startsWith(POLYGLOT_PACKAGE) && element.getClassName().indexOf('.', POLYGLOT_PACKAGE.length()) < 0) {
-                return true;
+                return !element.getClassName().equals("org.graalvm.polyglot.Engine$APIAccessImpl");
             } else if (element.getClassName().startsWith(HOST_INTEROP_PACKAGE)) {
                 for (String hostToGuestClassName : JAVA_INTEROP_HOST_TO_GUEST) {
                     if (element.getClassName().equals(hostToGuestClassName)) {
