@@ -46,7 +46,8 @@ public final class JVMCIVersionCheck {
     /**
      * Minimum JVMCI version supported by Graal.
      */
-    private static final Version JVMCI_MIN_VERSION = new Version(23, 1, 15);
+    private static final Map<String, Version> JVMCI_MIN_VERSIONS = Map.of(
+                    "21", new Version(23, 1, 15));
 
     /**
      * Minimum Java release supported by Graal.
@@ -162,8 +163,9 @@ public final class JVMCIVersionCheck {
     }
 
     static void check(Map<String, String> props, boolean exitOnFailure, String format) {
-        JVMCIVersionCheck checker = new JVMCIVersionCheck(props, props.get("java.specification.version"), props.get("java.vm.version"));
-        checker.run(exitOnFailure, JVMCI_MIN_VERSION, format);
+        String javaSpecVersion = props.get("java.specification.version");
+        JVMCIVersionCheck checker = new JVMCIVersionCheck(props, javaSpecVersion, props.get("java.vm.version"));
+        checker.run(exitOnFailure, JVMCI_MIN_VERSIONS.get(javaSpecVersion), format);
     }
 
     /**
@@ -180,6 +182,8 @@ public final class JVMCIVersionCheck {
     private void run(boolean exitOnFailure, Version minVersion, String format) {
         if (javaSpecVersion.compareTo(Integer.toString(JAVA_MIN_RELEASE)) < 0) {
             failVersionCheck(exitOnFailure, "Graal requires JDK " + JAVA_MIN_RELEASE + " or later.%n");
+        } else if (minVersion == null) {
+            failVersionCheck(exitOnFailure, "No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
         } else {
             if (vmVersion.contains("SNAPSHOT")) {
                 return;
@@ -234,8 +238,13 @@ public final class JVMCIVersionCheck {
             }
         }
         if (minVersion) {
-            Version v = JVMCI_MIN_VERSION;
-            System.out.printf(format + "%n", v.major, v.minor, v.build);
+            String javaSpecVersion = props.get("java.specification.version");
+            Version v = JVMCI_MIN_VERSIONS.get(javaSpecVersion);
+            if (v == null) {
+                System.out.printf("No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
+            } else {
+                System.out.printf(format + "%n", v.major, v.minor, v.build);
+            }
         } else {
             check(props, true, format);
         }
