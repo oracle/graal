@@ -160,9 +160,11 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     static final class ThrowOperation {
         @Specialization
         public static Object perform(long value,
-                        @Bind("$bci") int bci,
+                        // TODO: passing the actual bci breaks compiler tests because of how we
+                        // instantiate a location node from the bci
+                        @SuppressWarnings("unused") @Bind("$bci") int bci,
                         @Bind("$root") Node node) {
-            throw new TestException("fail", node, bci, value);
+            throw new TestException("fail", node, -1, value);
         }
     }
 
