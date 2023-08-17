@@ -2911,15 +2911,15 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             # Add files from the GraalVM dependencies of the main standalone component.
             #
             # From this list we exclude:
-            # - `jdk_components()`, since they are already part of the JDK
-            # - `thin_launcher_components()`, since they are added to the `jars` dir later
+            # - `default_jvm_components()`, since they are already part of the JVM
+            # - `default_module_components()`, since they are added to the `modules` dir later
             # (see `excluded_components`)
             #
             # Note that components added in the previous steps (`added_components`) might miss some of their
             # dependencies. Therefore, they are not included in the `excluded_components` list passed to the (poorly
             # named) `_add_dependency()` function that computes the transitive dependencies of the main component, but
             # they are excluded individually later on.
-            excluded_components = GraalVmStandaloneComponent.jdk_components() + GraalVmStandaloneComponent.thin_launcher_components()
+            excluded_components = GraalVmStandaloneComponent.default_jvm_components() + GraalVmStandaloneComponent.default_module_components()
             main_component_dependencies = GraalVmLayoutDistribution._add_dependencies([component], excluded_components)
             for main_component_dependency in main_component_dependencies:
                 if main_component_dependency not in added_components:
@@ -2932,20 +2932,20 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             layout.setdefault(base_dir + 'jvm/', []).append({
                 'source_type': 'dependency',
                 'dependency': 'java-standalone-jimage',
-                'exclude': [],
+                'exclude': ['jmods'],
                 'path': '*',
             })
 
-            # Add jars of components required to run thin launchers.
-            for thin_launcher_component in GraalVmStandaloneComponent.thin_launcher_components():
-                for jd in thin_launcher_component.jar_distributions:
+            # Add jars of components that must be on the module path.
+            for default_module_component in GraalVmStandaloneComponent.default_module_components():
+                for dist in default_module_component.jar_distributions + default_module_component.boot_jars + default_module_component.jvmci_parent_jars:
                     layout.setdefault(default_jvm_modules_dir, []).append({
                         'source_type': 'dependency',
-                        'dependency': jd,
+                        'dependency': dist,
                         'exclude': [],
                         'path': None,
                     })
-                    self.jvm_modules.append(jd)
+                    self.jvm_modules.append(dist)
 
             # Add LibGraal.
             lg_component = _get_libgraal_component()
@@ -2979,8 +2979,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             # `jvmci_parent_jars` and `boot_jars` of these components are added as modules of `java-standalone-jimage`.
             # Here we add `support_libraries_distributions` to the `jvmLibs` directory.
             # For the other component dependencies, this is done as part of `add_files_from_component()`.
-            for jdk_component in GraalVmStandaloneComponent.jdk_components():
-                for lib_dist in jdk_component.support_libraries_distributions:
+            for jvm_component in GraalVmStandaloneComponent.default_jvm_components():
+                for lib_dist in jvm_component.support_libraries_distributions:
                     layout.setdefault(default_jvm_libs_dir, []).append({
                         'source_type': 'extracted-dependency',
                         'dependency': lib_dist,
@@ -3005,20 +3005,31 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             **kw_args)
 
     @staticmethod
-    def jdk_components():
+    def default_jvm_components():
         """
-        Components that, for now, must be included in the JDK.
+        Components that, for now, must be included in the JVM.
         @rtype list[mx_sdk_vm.GraalVmComponent]
         """
-        return [mx_sdk.graal_sdk_component]
+        return [mx_sdk.graal_sdk_compiler_component]
 
     @staticmethod
-    def thin_launcher_components():
+    def default_module_components():
         """
-        Components that define jars that must be in the class path for thin launchers to work.
-        @rtype list[mx_sdk_vm.GraalVmComponent]
+        Components that define jars that must be in the modules directory and therefore on the module path.
+        :rtype list[mx_sdk_vm.GraalVmComponent]
         """
-        return [mx_sdk.graalvm_launcher_common_component]
+        default_components = [
+            mx_sdk.graalvm_launcher_common_component,
+            mx_sdk.graalvm_sdk_component,
+            mx_sdk.graalvm_sdk_native_image_component
+        ]
+
+        if mx.suite('graal-enterprise', fatalIfMissing=False) is not None:
+            import mx_graal_enterprise
+            if has_component(mx_graal_enterprise.truffle_enterprise.name):
+                default_components.append(mx_graal_enterprise.truffle_enterprise)
+
+        return default_components
 
     def get_artifact_metadata(self):
         return {'type': 'standalone', 'edition': get_graalvm_edition(), 'project': _project_name}
@@ -3542,7 +3553,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
     if needs_java_standalone_jimage:
         java_standalone_jimage_jars = set()
-        for component in GraalVmLayoutDistribution._add_dependencies(GraalVmStandaloneComponent.jdk_components()):
+        for component in GraalVmLayoutDistribution._add_dependencies(GraalVmStandaloneComponent.default_jvm_components()):
             java_standalone_jimage_jars.update(component.boot_jars + component.jvmci_parent_jars)
             if isinstance(component, mx_sdk.GraalVmJvmciComponent):
                 java_standalone_jimage_jars.update(component.jvmci_jars)
