@@ -1,4 +1,4 @@
-This native image bundle can be used to launch the bundled application.
+This Native Image Bundle launcher allows running the bundled application.
 
 Usage: java -jar bundle-file [options] [bundle-application-options]
 
