@@ -182,6 +182,8 @@ mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce-da
 mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce-darwin-aarch64')
 mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce')
 mx_sdk_vm.register_vm_config('ruby-community', ce_ruby_components, _suite, env_file='ce-ruby')
+mx_sdk_vm.register_vm_config('espresso-community', ['antlr4', 'ejvm', 'ellvm', 'java', 'lg', 'libpoly', 'llrc', 'llrn', 'nfi', 'nfi-libffi', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'spolyglot', 'tfl', 'tfla', 'tflc'], _suite, env_file='ce-espresso')
+mx_sdk_vm.register_vm_config('espresso-community', ['ejvm', 'java', 'lg', 'libpoly', 'nfi', 'nfi-libffi', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'spolyglot', 'tfl', 'tfla', 'tflc'], _suite, env_file='ce-win-espresso')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'jsl', 'jss', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent'], _suite, dist_name='ce-js', env_file='ce-js')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'jsl', 'jss', 'njs', 'njsl', 'rgx', 'sjsvm'], _suite, dist_name='ce', env_file='ce-nodejs')
 mx_sdk_vm.register_vm_config('ce', ce_components_minimal + ['antlr4', 'llrn', 'llp', 'llrc', 'llrl'], _suite, env_file='ce-llvm')

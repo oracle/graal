@@ -1,0 +1,4 @@
+DYNAMIC_IMPORTS=/espresso,/sdk,/substratevm,/truffle
+COMPONENTS=ejvm,java,lg,nfi,nfi-libffi,sdk,sdkc,sdkl,sdkni,tfl,tfla,tflc
+NATIVE_IMAGES=lib:javavm,lib:jvmcicompiler
+NON_REBUILDABLE_IMAGES=False
