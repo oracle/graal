@@ -71,6 +71,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvo
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.host.InjectImmutableFrameFieldsPhase;
@@ -183,7 +184,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         @Option(help = "Automatically copy the necessary language resources to the resources/languages directory next to the produced image." +
                         "Language resources for each language are specified in the native-image-resources.filelist file located in the language home directory." +
-                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User)//
+                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User, stability = OptionStability.STABLE)//
         public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
 
         @Option(help = "Check that context pre-initialization does not introduce absolute TruffleFiles into the image heap.")//

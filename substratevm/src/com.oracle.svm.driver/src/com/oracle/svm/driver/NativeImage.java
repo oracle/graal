@@ -68,7 +68,6 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.option.OptionOrigin;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
@@ -85,6 +84,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.BundleMember;
+import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.OptionUtils;
 import com.oracle.svm.core.util.ClasspathUtils;
 import com.oracle.svm.core.util.ExitStatus;
@@ -249,7 +249,7 @@ public class NativeImage {
     final String oHName = oH(SubstrateOptions.Name);
     final String oHPath = oH(SubstrateOptions.Path);
     final String oHEnableSharedLibraryFlagPrefix = oHEnabled + SubstrateOptions.SharedLibrary.getName();
-    final String oHEnableBuildOutputColorful = oHEnabledByDriver(SubstrateOptions.BuildOutputColorful);
+    final String oHColor = oH(SubstrateOptions.Color);
     final String oHEnableBuildOutputProgress = oHEnabledByDriver(SubstrateOptions.BuildOutputProgress);
     final String oHEnableBuildOutputLinks = oHEnabledByDriver(SubstrateOptions.BuildOutputLinks);
     final String oHCLibraryPath = oH(SubstrateOptions.CLibraryPath);
@@ -2310,17 +2310,27 @@ public class NativeImage {
 
     private boolean configureBuildOutput() {
         boolean useColorfulOutput = false;
-        Boolean buildOutputColorfulValue = getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputColorful);
-        if (buildOutputColorfulValue != null) {
-            useColorfulOutput = buildOutputColorfulValue; // use value set by user
-        } else if (hasColorSupport()) {
-            useColorfulOutput = true;
-            addPlainImageBuilderArg(oHEnableBuildOutputColorful);
+        String colorValue = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHColor);
+        if (colorValue != null) { // use value set by user
+            if ("always".equals(colorValue)) {
+                useColorfulOutput = true;
+            } else if ("auto".equals(colorValue)) {
+                useColorfulOutput = hasColorSupport();
+                addPlainImageBuilderArg(injectHostedOptionOrigin(oHColor + (useColorfulOutput ? "always" : "never"), OptionOrigin.originDriver));
+            }
+        } else {
+            Boolean buildOutputColorfulValue = getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputColorful);
+            if (buildOutputColorfulValue != null) {
+                useColorfulOutput = buildOutputColorfulValue; // use value set by user
+            } else if (hasColorSupport()) {
+                useColorfulOutput = true;
+                addPlainImageBuilderArg(injectHostedOptionOrigin(oHColor + "always", OptionOrigin.originDriver));
+            }
         }
         if (getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputProgress) == null && hasProgressSupport(imageBuilderArgs)) {
             addPlainImageBuilderArg(oHEnableBuildOutputProgress);
         }
-        if (getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputLinks) == null && buildOutputColorfulValue == null && useColorfulOutput) {
+        if (getHostedOptionFinalBooleanArgumentValue(imageBuilderArgs, SubstrateOptions.BuildOutputLinks) == null && (colorValue == null || "auto".equals(colorValue)) && useColorfulOutput) {
             addPlainImageBuilderArg(oHEnableBuildOutputLinks);
         }
         return useColorfulOutput;

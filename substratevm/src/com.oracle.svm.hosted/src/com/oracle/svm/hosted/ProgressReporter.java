@@ -35,11 +35,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.Executors;
@@ -64,6 +66,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.SubstrateGCOptions;
@@ -90,6 +93,7 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.util.CPUType;
+import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -174,7 +178,8 @@ public class ProgressReporter {
         }
         jsonHelper = new ProgressReporterJsonHelper();
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
-        boolean enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
+
+        boolean enableColors = SubstrateOptions.hasColorsEnabled(options);
         colorStrategy = enableColors ? new ColorfulStrategy() : new ColorlessStrategy();
         stagePrinter = SubstrateOptions.BuildOutputProgress.getValue(options) ? new CharacterwiseStagePrinter() : new LinewiseStagePrinter();
         linkStrategy = SubstrateOptions.BuildOutputLinks.getValue(options) ? new LinkyStrategy() : new LinklessStrategy();
@@ -220,7 +225,7 @@ public class ProgressReporter {
         }
     }
 
-    public void printInitializeEnd(List<Feature> features) {
+    public void printInitializeEnd(List<Feature> features, ImageClassLoader classLoader) {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
         VM vm = ImageSingletons.lookup(VM.class);
         recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
@@ -247,7 +252,7 @@ public class ProgressReporter {
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
 
         printFeatures(features);
-        printExperimentalOptions();
+        printExperimentalOptions(classLoader);
         printResourceInfo();
     }
 
@@ -278,10 +283,38 @@ public class ProgressReporter {
         printer.println();
     }
 
-    record ExperimentalOptionDetails(String origin, String alternatives) {
+    record ExperimentalOptionDetails(String alternatives, String origins) {
+        public String toSuffix() {
+            if (alternatives.isEmpty() && origins.isEmpty()) {
+                return "";
+            }
+            StringBuilder sb = new StringBuilder(" (");
+            if (!alternatives.isEmpty()) {
+                sb.append("alternative API option(s): ").append(alternatives);
+            }
+            if (!origins.isEmpty()) {
+                if (!alternatives.isEmpty()) {
+                    sb.append("; ");
+                }
+                sb.append("origin(s): ").append(origins);
+            }
+            sb.append(")");
+            return sb.toString();
+        }
     }
 
-    private void printExperimentalOptions() {
+    private void printExperimentalOptions(ImageClassLoader classLoader) {
+        String hostedOptionPrefix = CommonOptionParser.HOSTED_OPTION_PREFIX;
+
+        Set<String> rawHostedOptionNamesFromDriver = new HashSet<>();
+        for (String arg : DiagnosticUtils.getBuilderArguments(classLoader)) {
+            if (!arg.startsWith(hostedOptionPrefix)) {
+                continue;
+            }
+            String rawOption = arg.split("=", 2)[0].split("@", 2)[0];
+            rawHostedOptionNamesFromDriver.add(rawOption);
+        }
+
         Map<String, ExperimentalOptionDetails> experimentalOptions = new HashMap<>();
         var hostedOptionValues = HostedOptionValues.singleton().getMap();
 
@@ -290,16 +323,16 @@ public class ProgressReporter {
                 continue;
             }
             if (option instanceof HostedOptionKey<?> hok && option.getDescriptor().getStability() == OptionStability.EXPERIMENTAL) {
-                String optionPrefix = "-H:";
-                String originText;
-                String alternatives = null;
+                String optionPrefix = hostedOptionPrefix;
+                String origins = "";
+                String alternatives = "";
                 Object value = option.getValueOrDefault(hostedOptionValues);
                 if (value instanceof LocatableMultiOptionValue<?> lmov) {
                     if (lmov.getValuesWithOrigins().allMatch(o -> o.getRight().isStable())) {
                         continue;
                     } else {
-                        originText = lmov.getValuesWithOrigins().map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
-                        alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(hok, p.getLeft().toString())).filter(c -> !c.startsWith("-H:"))
+                        origins = lmov.getValuesWithOrigins().map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
+                        alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(hok, p.getLeft().toString())).filter(c -> !c.startsWith(hostedOptionPrefix))
                                         .collect(Collectors.joining(", "));
                     }
                 } else {
@@ -307,7 +340,7 @@ public class ProgressReporter {
                     if (origin == null /* unknown */ || origin.isStable() || origin.isInternal()) {
                         continue;
                     }
-                    originText = origin.toString();
+                    origins = origin.toString();
                     String valueString;
                     if (hok.getDescriptor().getOptionValueType() == Boolean.class) {
                         valueString = Boolean.valueOf(value.toString()) ? "+" : "-";
@@ -315,28 +348,25 @@ public class ProgressReporter {
                     } else {
                         valueString = value.toString();
                     }
-
                     String command = SubstrateOptionsParser.commandArgument(hok, valueString);
-                    if (!command.startsWith("-H:")) {
+                    if (!command.startsWith(hostedOptionPrefix)) {
                         alternatives = command;
                     }
                 }
-
-                experimentalOptions.put(optionPrefix + hok.getName(), new ExperimentalOptionDetails(originText, alternatives));
+                String rawHostedOptionName = optionPrefix + hok.getName();
+                if (rawHostedOptionNamesFromDriver.contains(rawHostedOptionName)) {
+                    experimentalOptions.put(rawHostedOptionName, new ExperimentalOptionDetails(alternatives, origins));
+                }
             }
         }
         if (experimentalOptions.isEmpty()) {
             return;
         }
         l().printLineSeparator();
-        l().yellowBold().a(" ").a(experimentalOptions.size()).a(" ").doclink("Experimental option(s)", "#glossary-experimental-options").a(" in use:").reset().println();
-        for (var optionToOriginEntry : experimentalOptions.entrySet()) {
-            l().a(" ").a(optionToOriginEntry.getKey()).println();
-            ExperimentalOptionDetails details = optionToOriginEntry.getValue();
-            l().a("   Origin: ").a(details.origin).println();
-            if (details.alternatives != null) {
-                l().a("   Alternative API option(s): " + details.alternatives).println();
-            }
+        l().yellowBold().a(" ").a(experimentalOptions.size()).a(" ").doclink("experimental option(s)", "#glossary-experimental-options").a(" unlocked").reset().a(":").println();
+
+        for (var optionAndDetails : experimentalOptions.entrySet()) {
+            l().a(" - '%s'%s", optionAndDetails.getKey(), optionAndDetails.getValue().toSuffix()).println();
         }
     }
 
@@ -368,7 +398,7 @@ public class ProgressReporter {
         }
 
         l().printLineSeparator();
-        l().yellowBold().doclink("Build resources", "#glossary-build-resources").a(":").reset().println();
+        l().doclink("Build resources", "#glossary-build-resources").a(":").println();
         l().a(" - %.2fGB of memory (%.1f%% of %.2fGB system memory, %s)",
                         ByteFormattingUtil.bytesToGiB(maxMemory), Utils.toPercentage(maxMemory, totalMemorySize), ByteFormattingUtil.bytesToGiB(totalMemorySize), maxHeapSuffix).println();
         l().a(" - %s thread(s) (%.1f%% of %s available processor(s), %s)",
