@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.27.1",
+    "mxversion": "6.41.0",
     "name": "espresso",
     "version" : "23.1.0",
     "release" : False,
@@ -316,7 +316,7 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.espresso",
             },
-            "description" : "Java on Truffle (aka Espresso): a Java bytecode interpreter",
+            "description" : "Core module of the Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso",
@@ -328,7 +328,25 @@ suite = {
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
             },
+            "maven" : {
+                "artifactId" : "espresso-language",
+                "tag": ["default", "public"],
+            },
             "noMavenJavadoc": True,
+        },
+
+        "JAVA_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
+                "ESPRESSO",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
+            "maven": {
+                "groupId" : "org.graalvm.polyglot",
+                "artifactId": "java-community",
+                "tag": ["default", "public"],
+            },
         },
 
         "ESPRESSO_LAUNCHER": {
@@ -453,6 +471,7 @@ suite = {
             },
             "maven": {
                 "artifactId": "polyglot",
+                "tag": ["default", "public"],
             }
         },
 
@@ -469,7 +488,10 @@ suite = {
                 "exports" : [
                     "com.oracle.truffle.espresso.hotswap",
                 ]
-            }
+            },
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "DACAPO_SCALA_WARMUP": {

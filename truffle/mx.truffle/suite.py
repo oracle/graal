@@ -1310,7 +1310,9 @@ suite = {
       "distDependencies" : [
       ],
       "description" : "Truffle compiler API.",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_RUNTIME" : {
@@ -1360,7 +1362,10 @@ suite = {
       ],
       "description" : "Truffle runtime distribution.",
       "useModulePath": True,
-      "maven": True,
+      "maven": {
+          "artifactId": "truffle-runtime",
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_API" : {
@@ -1453,7 +1458,9 @@ suite = {
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
       "useModulePath": True,
       # We do no longer deploy a closed module to graalvm because there are known bugs
       # when a JDK boot module exports itself at runtime to a language at runtime.
@@ -1504,10 +1511,12 @@ suite = {
       ],
       "distDependencies" : [
         "TRUFFLE_API",
-        "TRUFFLE_NFI_NATIVE",
       ],
       "description" : """Native function interface for the Truffle framework.""",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_NFI_LIBFFI" : {
@@ -1526,13 +1535,15 @@ suite = {
       ],
       "distDependencies" : [
         "TRUFFLE_NFI",
-        "TRUFFLE_NFI_NATIVE",
       ],
       "javaProperties" : {
           "truffle.nfi.library" : "<path:TRUFFLE_NFI_NATIVE>/bin/<lib:trufflenfi>"
       },
       "description" : """Implementation of the Truffle NFI using libffi.""",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_NFI_PANAMA" : {
@@ -1568,7 +1579,9 @@ suite = {
       },
       "include_dirs" : ["include"],
       "description" : "Contains the NFI headers, and the native library needed by the libffi NFI backend.",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_NFI_RESOURCES" : {
@@ -1604,6 +1617,9 @@ suite = {
       "exclude" : ["mx:JUNIT"],
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_TCK_COMMON" : {
@@ -1617,6 +1633,9 @@ suite = {
       ],
       "description" : "Common types for TCK Tests and Instruments.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_TCK_TESTS" : {
@@ -1633,7 +1652,9 @@ suite = {
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
       "allowsJavadocWarnings": True,
       "testDistribution" : False,
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_TCK_TESTS_LANGUAGE" : {
@@ -1664,6 +1685,9 @@ suite = {
       "exclude" : ["mx:JUNIT"],
       "description" : "Instruments used by the Truffle TCK.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_DSL_PROCESSOR" : {
@@ -1673,6 +1697,9 @@ suite = {
       "distDependencies" : [],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_LIBGRAAL_PROCESSOR" : {
@@ -1681,6 +1708,9 @@ suite = {
       "distDependencies" : [],
       "description" : "The Truffle libgraal processor is shared across Truffle and the compiler to generate code for the compiler bridge.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_SL" : {
@@ -1701,6 +1731,9 @@ suite = {
       "useModulePath": True,
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_SL_LAUNCHER" : {
@@ -1718,6 +1751,9 @@ suite = {
       "useModulePath": True,
       "description" : "Truffle SL launchers using the polyglot API.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_SL_TEST" : {
@@ -1932,6 +1968,7 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.shadowed",
         "artifactId" : "icu4j",
+        "tag": ["default", "public"],
       },
     },
 
@@ -1962,6 +1999,7 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.shadowed",
         "artifactId" : "json",
+        "tag": ["default", "public"],
       },
     },
   },

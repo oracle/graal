@@ -152,6 +152,7 @@ suite = {
       ],
       "maven" : {
         "artifactId" : "regex",
+        "tag": ["default", "public"],
       },
       "description" : "Truffle regular expressions language.",
       "allowsJavadocWarnings": True,

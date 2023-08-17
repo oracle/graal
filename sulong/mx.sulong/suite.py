@@ -1,7 +1,20 @@
 suite = {
-  "mxversion": "6.27.1",
+  "mxversion": "6.41.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
+  "groupId": "org.graalvm.llvm",
+  "url": "http://www.graalvm.org/",
+  "developer": {
+    "name": "GraalVM Development",
+    "email": "graalvm-dev@oss.oracle.com",
+    "organization": "Oracle Corporation",
+    "organizationUrl": "http://www.graalvm.org/",
+  },
+  "scm": {
+    "url": "https://github.com/oracle/graal",
+    "read": "https://github.com/oracle/graal.git",
+    "write": "git@github.com:oracle/graal.git",
+  },
 
   "imports" : {
     "suites" : [
@@ -1593,7 +1606,43 @@ suite = {
       "javaProperties" : {
         "org.graalvm.language.llvm.home": "<sulong_home>",
       },
-      "license" : "BSD-new",
+      "maven": {
+        "artifactId": "llvm-language",
+        "tag": ["default", "public"],
+      },
+      "license": "BSD-new",
+      "noMavenJavadoc": True,
+    },
+
+    "LLVM_NATIVE_COMMUNITY": {
+      "type": "pom",
+      "runtimeDependencies": [
+        "SULONG_CORE",
+        "SULONG_NATIVE",
+        "SULONG_NFI",
+        "truffle:TRUFFLE_RUNTIME",
+      ],
+      "maven": {
+        "groupId": "org.graalvm.polyglot",
+        "artifactId": "llvm-native-community",
+        "tag": ["default", "public"],
+      },
+      "description": "Graal native LLVM engine.",
+      "license": "BSD-new",
+    },
+
+    "LLVM_COMMUNITY": {
+      "type": "pom",
+      "runtimeDependencies": [
+        "LLVM_NATIVE_COMMUNITY",
+      ],
+      "maven": {
+        "groupId": "org.graalvm.polyglot",
+        "artifactId": "llvm-community",
+        "tag": ["default", "public"],
+      },
+      "description": "Graal LLVM engine.",
+      "license": "BSD-new",
     },
 
     "SULONG_API" : {
@@ -1610,7 +1659,13 @@ suite = {
         "com.oracle.truffle.llvm.spi",
       ],
       "distDependencies" : ["truffle:TRUFFLE_API"],
+      "description" : "Graal LLVM API.",
+      "maven" : {
+        "artifactId" : "llvm-api",
+        "tag": ["default", "public"],
+      },
       "license" : "BSD-new",
+      "allowsJavadocWarnings": True,  # GR-47782
     },
     "SULONG_NATIVE" : {
       "description" : "Sulong Native functionality (native memory support, native library support)",
@@ -1627,6 +1682,10 @@ suite = {
         "truffle:TRUFFLE_NFI",
         "truffle:TRUFFLE_NFI_LIBFFI",
       ],
+      "maven" : {
+        "artifactId" : "llvm-language-native",
+        "tag": ["default", "public"],
+      },
       "license" : "BSD-new",
     },
     "SULONG_NFI" : {
@@ -1637,6 +1696,10 @@ suite = {
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.nfi"],
       "distDependencies" : ["truffle:TRUFFLE_NFI"],
+      "maven" : {
+        "artifactId" : "llvm-language-nfi",
+        "tag": ["default", "public"],
+      },
       "license" : "BSD-new",
     },
 
@@ -1652,6 +1715,7 @@ suite = {
       "dependencies" : ["com.oracle.truffle.llvm.launcher"],
       "distDependencies" : ["sdk:LAUNCHER_COMMON"],
       "license" : "BSD-new",
+      "maven" : False,
     },
 
     "SULONG_CMAKE_TOOLCHAIN" : {
@@ -1758,6 +1822,7 @@ suite = {
       "dependencies" : ["com.oracle.truffle.llvm.toolchain.launchers"],
       "distDependencies" : ["sdk:LAUNCHER_COMMON"],
       "license" : "BSD-new",
+      "maven" : False,
     },
 
     "SULONG_BOOTSTRAP_TOOLCHAIN": {
