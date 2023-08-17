@@ -1353,6 +1353,32 @@ final class Target_com_oracle_truffle_polyglot_LanguageCache {
     private String languageHome;
 }
 
+@TargetClass(className = "com.oracle.truffle.polyglot.InternalResourceCache", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_InternalResourceCache {
+
+    /*
+     * The field is also reset explicitly in InternalResourceCache.resetFileSystemNativeImageState.
+     * However, the explicit reset comes too late for the String-must-not-contain-the-home-directory
+     * verification in DisallowedImageHeapObjectFeature, so we also do the implicit reset using a
+     * substitution.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private static volatile Pair<Path, Boolean> cacheRoot;
+}
+
+@TargetClass(className = "com.oracle.truffle.polyglot.InternalResourceCache$ResettableCachedRoot", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_InternalResourceCache_ResettableCachedRoot {
+
+    /*
+     * The field is also reset explicitly in InternalResourceCache.resetFileSystemNativeImageState.
+     * However, the explicit reset comes too late for the String-must-not-contain-the-home-directory
+     * verification in DisallowedImageHeapObjectFeature, so we also do the implicit reset using a
+     * substitution.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private volatile Path resourceCacheRoot;
+}
+
 @TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicObjectFieldLocation", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_object_CoreLocations_DynamicObjectFieldLocation {
     @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
