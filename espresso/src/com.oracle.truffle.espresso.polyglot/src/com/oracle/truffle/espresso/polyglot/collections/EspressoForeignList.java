@@ -49,6 +49,7 @@ import java.util.Objects;
 
 import com.oracle.truffle.espresso.polyglot.Interop;
 import com.oracle.truffle.espresso.polyglot.InteropException;
+import com.oracle.truffle.espresso.polyglot.Polyglot;
 import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
 public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
@@ -85,7 +86,7 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
         Objects.checkIndex(index, size());
         try {
             if (Interop.isArrayElementReadable(foreignObject, index)) {
-                return (T) Interop.readArrayElement(foreignObject, index);
+                return (T) Polyglot.cast(Object.class, Interop.readArrayElement(foreignObject, index));
             } else {
                 throw new UnsupportedOperationException();
             }
@@ -119,7 +120,7 @@ public class EspressoForeignList<T> extends AbstractList<T> implements List<T> {
                 // shift elements to the right if any
                 long cur = size;
                 while (cur > index) {
-                    Object o = Interop.readArrayElement(foreignObject, cur - 1);
+                    Object o =  Polyglot.cast(Object.class, Interop.readArrayElement(foreignObject, cur - 1));
                     Interop.writeArrayElement(foreignObject, cur, o);
                     cur--;
                 }
