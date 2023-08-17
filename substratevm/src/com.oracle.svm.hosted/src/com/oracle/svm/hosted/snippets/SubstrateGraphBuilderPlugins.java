@@ -329,7 +329,7 @@ public class SubstrateGraphBuilderPlugins {
                     if (!negate) {
                         if (className.endsWith(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING)) {
                             try {
-                                String lambdaHolderName = className.split(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN)[0];
+                                String lambdaHolderName = LambdaUtils.capturingClass(className);
                                 RuntimeSerialization.registerLambdaCapturingClass(Class.forName(lambdaHolderName, false, Thread.currentThread().getContextClassLoader()));
                             } catch (ClassNotFoundException e) {
                                 // no class, no registration
@@ -338,13 +338,17 @@ public class SubstrateGraphBuilderPlugins {
                     }
                 }
             } else {
-                final String name = p.substring(poffset);
+                String name = p.substring(poffset);
                 if (name.isEmpty()) {
                     return;
                 }
                 // Pattern is a class name
                 if (!negate) {
                     try {
+                        /* Support arrays of non-primitive types */
+                        if (name.startsWith("[") && name.contains("[L") && !name.endsWith(";")) {
+                            name += ";";
+                        }
                         RuntimeSerialization.register(Class.forName(name, false, Thread.currentThread().getContextClassLoader()));
                     } catch (ClassNotFoundException e) {
                         // no class, no registration

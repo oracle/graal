@@ -38,7 +38,6 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -85,7 +84,6 @@ import com.oracle.svm.hosted.ConditionalConfigurationRegistry;
 import com.oracle.svm.hosted.ConfigurationTypeResolver;
 import com.oracle.svm.hosted.FallbackFeature;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.config.ConfigurationParserUtils;
 import com.oracle.svm.hosted.reflect.RecordUtils;
@@ -198,7 +196,7 @@ public class SerializationFeature implements InternalFeature {
         return lambdaClass.getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING) ? lambdaClass : null;
     }
 
-    private static void registerLambdasFromConstantNodesInGraph(StructuredGraph graph) {
+    private static void registerLambdasFromConstantNodesInGraph(StructuredGraph graph, SerializationBuilder serializationBuilder) {
         NodeIterable<ConstantNode> constantNodes = ConstantNode.getConstantNodes(graph);
 
         for (ConstantNode cNode : constantNodes) {
@@ -207,22 +205,21 @@ public class SerializationFeature implements InternalFeature {
             if (lambdaClass != null && Serializable.class.isAssignableFrom(lambdaClass)) {
                 RuntimeReflection.register(ReflectionUtil.lookupMethod(lambdaClass, "writeReplace"));
                 SerializationBuilder.registerSerializationUIDElements(lambdaClass, false);
+                serializationBuilder.serializationSupport.registerSerializationTargetClass(lambdaClass);
             }
         }
     }
 
     @SuppressWarnings("try")
-    private static void registerLambdasFromMethod(ResolvedJavaMethod method, OptionValues options) {
+    private static void registerLambdasFromMethod(ResolvedJavaMethod method, SerializationBuilder serializationBuilder, OptionValues options) {
         GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig());
         StructuredGraph graph = createMethodGraph(method, lambdaParserPhase, options);
-        registerLambdasFromConstantNodesInGraph(graph);
+        registerLambdasFromConstantNodesInGraph(graph, serializationBuilder);
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
         serializationBuilder.flushConditionalConfiguration(access);
-        /* Ensure SharedSecrets.javaObjectInputStreamAccess is initialized before scanning. */
-        ((BeforeAnalysisAccessImpl) access).ensureInitialized("java.io.ObjectInputStream");
     }
 
     @Override
@@ -242,7 +239,7 @@ public class SerializationFeature implements InternalFeature {
                         .map(metaAccess::lookupJavaType)
                         .flatMap(SerializationFeature::allExecutablesDeclaredInClass)
                         .filter(m -> m.getCode() != null)
-                        .forEach(m -> registerLambdasFromMethod(m, options));
+                        .forEach(m -> registerLambdasFromMethod(m, serializationBuilder, options));
 
         capturingClasses.clear();
     }
@@ -338,7 +335,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     private final Field descField;
     private final Method getDataLayoutMethod;
 
-    private final SerializationSupport serializationSupport;
+    final SerializationSupport serializationSupport;
     private final SerializationDenyRegistry denyRegistry;
     private final ConfigurationTypeResolver typeResolver;
     private final FeatureImpl.DuringSetupAccessImpl access;
@@ -438,20 +435,20 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
             return;
         }
 
-        Class<?> serializationTargetClass = typeResolver.resolveType(lambdaCapturingClassName);
-        if (serializationTargetClass == null || serializationTargetClass.isPrimitive() || serializationTargetClass.isArray()) {
+        Class<?> lambdaCapturingClass = typeResolver.resolveType(lambdaCapturingClassName);
+        if (lambdaCapturingClass == null || lambdaCapturingClass.isPrimitive() || lambdaCapturingClass.isArray()) {
             return;
         }
 
-        if (ReflectionUtil.lookupMethod(true, serializationTargetClass, "$deserializeLambda$", SerializedLambda.class) == null) {
-            LogUtils.warning("Could not register %s for lambda serialization as it does not capture any serializable lambda.", serializationTargetClass);
+        if (ReflectionUtil.lookupMethod(true, lambdaCapturingClass, "$deserializeLambda$", SerializedLambda.class) == null) {
+            LogUtils.warning("Could not register %s for lambda serialization as it does not capture any serializable lambda.", lambdaCapturingClass);
             return;
         }
 
         registerConditionalConfiguration(condition, () -> {
-            ImageSingletons.lookup(SerializationFeature.class).capturingClasses.add(serializationTargetClass);
-            RuntimeReflection.register(serializationTargetClass);
-            RuntimeReflection.register(ReflectionUtil.lookupMethod(serializationTargetClass, "$deserializeLambda$", SerializedLambda.class));
+            ImageSingletons.lookup(SerializationFeature.class).capturingClasses.add(lambdaCapturingClass);
+            RuntimeReflection.register(lambdaCapturingClass);
+            RuntimeReflection.register(ReflectionUtil.lookupMethod(lambdaCapturingClass, "$deserializeLambda$", SerializedLambda.class));
         });
     }
 
@@ -519,12 +516,14 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
                 Optional.ofNullable(addConstructorAccessor(serializationTargetClass, customTargetConstructorClass))
                                 .map(ReflectionUtil::lookupConstructor)
                                 .ifPresent(RuntimeReflection::register);
+
                 Class<?> superclass = serializationTargetClass.getSuperclass();
                 if (superclass != null) {
                     RuntimeReflection.registerAllDeclaredConstructors(superclass);
                     RuntimeReflection.registerMethodLookup(superclass, "writeReplace");
                     RuntimeReflection.registerMethodLookup(superclass, "readResolve");
                 }
+
                 registerForSerialization(serializationTargetClass);
                 registerForDeserialization(serializationTargetClass);
             });
@@ -555,8 +554,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
 
     private void registerForSerialization(Class<?> serializationTargetClass) {
 
-        /* Proxy classes have special treatment so no registration needed */
-        if (Serializable.class.isAssignableFrom(serializationTargetClass) && !Proxy.isProxyClass(serializationTargetClass)) {
+        if (Serializable.class.isAssignableFrom(serializationTargetClass)) {
             /*
              * ObjectStreamClass.computeDefaultSUID is always called at runtime to verify
              * serialization class consistency, so need to register all constructors, methods and
@@ -670,6 +668,7 @@ final class SerializationBuilder extends ConditionalConfigurationRegistry implem
     }
 
     Class<?> addConstructorAccessor(Class<?> serializationTargetClass, Class<?> customTargetConstructorClass) {
+        serializationSupport.registerSerializationTargetClass(serializationTargetClass);
         if (serializationTargetClass.isArray() || Enum.class.isAssignableFrom(serializationTargetClass)) {
             return null;
         }

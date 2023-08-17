@@ -34,6 +34,8 @@ import com.oracle.svm.core.util.ExitStatus;
 
 public final class MissingRegistrationUtils {
 
+    public static final String ERROR_EMPHASIS_INDENT = "   ";
+
     public static boolean throwMissingRegistrationErrors() {
         return SubstrateOptions.ThrowMissingRegistrationErrors.hasBeenSet();
     }
