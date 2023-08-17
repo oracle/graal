@@ -40,12 +40,17 @@
  */
 
 #include <jni.h>
-#include <string.h>
+
 #include <cstdint>
+#include <cstring>
+
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <vector>
+#include <filesystem>
+
+namespace fs = std::filesystem;
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
@@ -54,13 +59,14 @@
     #error launcher class undefined
 #endif
 #define LAUNCHER_CLASS_STR STR(LAUNCHER_CLASS)
-#ifndef LAUNCHER_CLASSPATH
-    #error launcher classpath undefined
-#endif
+#define LANGUAGES_DIR_STR STR(LANGUAGES_DIR)
+#define TOOLS_DIR_STR STR(TOOLS_DIR)
+#define LAUNCHER_MAIN_MODULE_STR STR(LAUNCHER_MAIN_MODULE)
 
-#ifndef LIBLANG_RELPATH
-    #error path to native library undefined
+#ifndef GRAALVM_VERSION
+    #error GRAALVM_VERSION not defined
 #endif
+#define GRAALVM_VERSION_STR STR(GRAALVM_VERSION)
 
 #ifndef LIBJVM_RELPATH
     #error path to jvm library undefined
@@ -74,7 +80,10 @@
     #error class path separator undefined
 #endif
 
+#ifdef LIBLANG_RELPATH
 #define LIBLANG_RELPATH_STR STR(LIBLANG_RELPATH)
+#endif
+
 #define LIBJVM_RELPATH_STR STR(LIBJVM_RELPATH)
 #define DIR_SEP_STR STR(DIR_SEP)
 #define CP_SEP_STR STR(CP_SEP)
@@ -82,12 +91,15 @@
 #define VM_ARG_PREFIX "--vm."
 #define VM_CP_ARG_PREFIX "--vm.cp="
 #define VM_CLASSPATH_ARG_PREFIX "--vm.classpath="
+#define VM_MODULE_PATH_ARG_PREFIX "--vm.-module-path="
 #define VM_ARG_OFFSET (sizeof(VM_ARG_PREFIX)-1)
 #define VM_CP_ARG_OFFSET (sizeof(VM_CP_ARG_PREFIX)-1)
 #define VM_CLASSPATH_ARG_OFFSET (sizeof(VM_CLASSPATH_ARG_PREFIX)-1)
+#define VM_MODULE_PATH_ARG_OFFSET (sizeof(VM_MODULE_PATH_ARG_PREFIX)-1)
 #define IS_VM_ARG(ARG) (ARG.rfind(VM_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_CP_ARG(ARG) (ARG.rfind(VM_CP_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_CLASSPATH_ARG(ARG) (ARG.rfind(VM_CLASSPATH_ARG_PREFIX, 0) != std::string::npos)
+#define IS_VM_MODULE_PATH_ARG(ARG) (ARG.rfind(VM_MODULE_PATH_ARG_PREFIX, 0) != std::string::npos)
 
 #define NMT_ARG_NAME "XX:NativeMemoryTracking"
 #define NMT_ENV_NAME "NMT_LEVEL_"
@@ -251,16 +263,23 @@ std::string vm_path(std::string exeDir, bool jvmMode) {
     if (jvmMode) {
         liblangPath << exeDir << DIR_SEP_STR << LIBJVM_RELPATH_STR;
     } else {
+#ifdef LIBLANG_RELPATH
         liblangPath << exeDir << DIR_SEP_STR << LIBLANG_RELPATH_STR;
+#else
+        std::cerr << "Should not reach here: native mode with no LIBLANG defined" << std::endl;
+        exit(EXIT_FAILURE);
+#endif
     }
     return liblangPath.str();
 }
 
-void parse_vm_option(std::vector<std::string> *vmArgs, std::stringstream *cp, std::string option) {
+void parse_vm_option(std::vector<std::string> *vmArgs, std::stringstream *cp, std::stringstream *modulePath, std::string option) {
     if (IS_VM_CP_ARG(option)) {
         *cp << CP_SEP_STR << option.substr(VM_CP_ARG_OFFSET);
     } else if (IS_VM_CLASSPATH_ARG(option)) {
         *cp << CP_SEP_STR << option.substr(VM_CLASSPATH_ARG_OFFSET);
+    } else if (IS_VM_MODULE_PATH_ARG(option)) {
+        *modulePath << CP_SEP_STR << option.substr(VM_MODULE_PATH_ARG_OFFSET);
     } else if (IS_VM_ARG(option)) {
         std::stringstream opt;
         opt << '-' << option.substr(VM_ARG_OFFSET);
@@ -291,6 +310,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     if (jvmMode) {
         /* this is only needed for jvm mode */
         vmArgs.push_back("-Dorg.graalvm.launcher.class=" LAUNCHER_CLASS_STR);
+        vmArgs.push_back("-Dorg.graalvm.version=" GRAALVM_VERSION_STR);
     }
     std::stringstream executablename;
     executablename << "-Dorg.graalvm.launcher.executablename=";
@@ -309,6 +329,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     /* construct classpath - only needed for jvm mode */
     std::stringstream cp;
     cp << "-Djava.class.path=";
+    #ifdef LAUNCHER_CLASSPATH
     if (jvmMode) {
         /* add the launcher classpath */
         const char *launcherCpEntries[] = LAUNCHER_CLASSPATH;
@@ -320,6 +341,85 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
             }
         }
     }
+    #endif
+
+    /* construct module path - only needed for jvm mode */
+    std::stringstream modulePath;
+    modulePath << "--module-path=";
+    #ifdef LAUNCHER_MODULE_PATH
+    if (jvmMode) {
+        /* add the launcher module path */
+        const char *launcherModulePathEntries[] = LAUNCHER_MODULE_PATH;
+        int launcherModulePathCnt = sizeof(launcherModulePathEntries) / sizeof(*launcherModulePathEntries);
+        for (int i = 0; i < launcherModulePathCnt; i++) {
+            std::stringstream entry;
+            entry << exeDir << DIR_SEP_STR << launcherModulePathEntries[i];
+            modulePath << fs::canonical(entry.str()).string();
+            if (i < launcherModulePathCnt-1) {
+                modulePath << CP_SEP_STR;
+            }
+        }
+    }
+    #endif
+
+
+    if (jvmMode) {
+        #ifdef LANGUAGES_DIR
+        /* Add languages to module path */
+        std::stringstream languagesDir;
+        languagesDir << exeDir << DIR_SEP_STR << LANGUAGES_DIR_STR;
+        fs::path languagesDirPath = fs::canonical(languagesDir.str());
+        for (const auto & entry : fs::directory_iterator(languagesDirPath)) {
+            modulePath << CP_SEP_STR << entry.path().string();
+        }
+        #endif
+
+        #ifdef TOOLS_DIR
+        /* Add tools to module path */
+        std::stringstream toolsDir;
+        toolsDir << exeDir << DIR_SEP_STR << TOOLS_DIR_STR;
+        if (fs::is_directory(toolsDir.str())) {
+            fs::path toolsDirPath = fs::canonical(toolsDir.str());
+            for (const auto & entry : fs::directory_iterator(toolsDirPath)) {
+                modulePath << CP_SEP_STR << entry.path().string();
+            }
+        }
+        #endif
+    }
+
+    #ifdef LAUNCHER_LIBRARY_PATH
+    if (jvmMode) {
+        /* construct java.library.path - only needed for jvm mode */
+        std::stringstream libraryPath;
+        libraryPath << "-Djava.library.path=";
+        /* add the library path */
+        const char *launcherLibraryPathEntries[] = LAUNCHER_LIBRARY_PATH;
+        int launcherLibraryPathCnt = sizeof(launcherLibraryPathEntries) / sizeof(*launcherLibraryPathEntries);
+        for (int i = 0; i < launcherLibraryPathCnt; i++) {
+            libraryPath << exeDir << DIR_SEP_STR << launcherLibraryPathEntries[i];
+            if (i < launcherLibraryPathCnt-1) {
+                libraryPath << CP_SEP_STR;
+            }
+        }
+        /* TODO: this overrides -Djava.library.path=, but it should accept a CLI --vm.Djava.library.path= */
+        vmArgs.push_back(libraryPath.str());
+    }
+    #endif
+
+    #if defined(LAUNCHER_LANG_HOME_NAMES) && defined(LAUNCHER_LANG_HOME_PATHS)
+    if (jvmMode) {
+        const char *launcherLangHomeNames[] = LAUNCHER_LANG_HOME_NAMES;
+        const char *launcherLangHomePaths[] = LAUNCHER_LANG_HOME_PATHS;
+        int launcherLangHomeNamesCnt = sizeof(launcherLangHomeNames) / sizeof(*launcherLangHomeNames);
+        for (int i = 0; i < launcherLangHomeNamesCnt; i++) {
+            std::stringstream ss;
+            std::stringstream relativeHome;
+            relativeHome << exeDir << DIR_SEP_STR << launcherLangHomePaths[i];
+            ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << fs::canonical(relativeHome.str()).c_str();
+            vmArgs.push_back(ss.str());
+        }
+    }
+    #endif
 
     /* Handle launcher default vm arguments. We apply these first, so they can
        be overridden by explicit arguments on the commandline. */
@@ -327,15 +427,15 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     const char *launcherDefaultVmArgs[] = LAUNCHER_DEFAULT_VM_ARGS;
     for (int i = 0; i < sizeof(launcherDefaultVmArgs)/sizeof(char*); i++) {
         if (IS_VM_ARG(std::string(launcherDefaultVmArgs[i]))) {
-            parse_vm_option(&vmArgs, &cp, launcherDefaultVmArgs[i]);
+            parse_vm_option(&vmArgs, &cp, &modulePath, launcherDefaultVmArgs[i]);
         }
     }
-    #endif LAUNCHER_DEFAULT_VM_ARGS
+    #endif
 
     /* handle CLI arguments */
     if (!vmArgInfo) {
         for (int i = 0; i < argc; i++) {
-            parse_vm_option(&vmArgs, &cp, std::string(argv[i]));
+            parse_vm_option(&vmArgs, &cp, &modulePath, std::string(argv[i]));
         }
     }
 
@@ -353,7 +453,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
                 std::cerr << "VM arguments specified: " << vmArgCount << " but argument " << i << "missing" << std::endl;
                 break;
             }
-            parse_vm_option(&vmArgs, &cp, std::string(cur));
+            parse_vm_option(&vmArgs, &cp, &modulePath, std::string(cur));
             /* clean up env variable */
             setenv(envKey, "");
         }
@@ -375,19 +475,24 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         size_t next = 0;
         while ((next = optionLine.find(" ", last)) != std::string::npos) {
             std::string option = optionLine.substr(last, next-last);
-            parse_vm_option(&vmArgs, &cp, option);
+            parse_vm_option(&vmArgs, &cp, &modulePath, option);
             last = next + 1;
         };
-        parse_vm_option(&vmArgs, &cp, optionLine.substr(last));
+        parse_vm_option(&vmArgs, &cp, &modulePath, optionLine.substr(last));
     }
     #endif
 
-    /* set classpath argument - only needed for jvm mode */
+    /* set classpath and module path arguments - only needed for jvm mode */
     if (jvmMode) {
         vmArgs.push_back(cp.str());
+#ifdef LAUNCHER_MODULE_PATH
+        vmArgs.push_back(modulePath.str());
+        vmArgs.push_back("-Djdk.module.main=" LAUNCHER_MAIN_MODULE_STR);
+        vmArgs.push_back("-Dgraalvm.locatorDisabled=true");
+#endif
     }
 
-    vmInitArgs->options = new JavaVMOption[vmArgs.size()];;
+    vmInitArgs->options = new JavaVMOption[vmArgs.size()];
     vmInitArgs->nOptions = vmArgs.size();
     JavaVMOption *curOpt = vmInitArgs->options;
     for(const auto& arg: vmArgs) {
@@ -407,7 +512,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     }
 }
 
-static int jvm_main_thread(int argc, char *argv[], std::string exeDir, char *jvmModeEnv, bool jvmMode, std::string libPath);
+static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmMode, std::string libPath);
 
 #if defined (__APPLE__)
 static void dummyTimer(CFRunLoopTimerRef timer, void *info) {}
@@ -429,7 +534,6 @@ struct MainThreadArgs {
     int argc;
     char **argv;
     std::string exeDir;
-    char *jvmModeEnv;
     bool jvmMode;
     std::string libPath;
 };
@@ -437,7 +541,7 @@ struct MainThreadArgs {
 static void *apple_main (void *arg)
 {
     struct MainThreadArgs *args = (struct MainThreadArgs *) arg;
-    int ret = jvm_main_thread(args->argc, args->argv, args->exeDir, args->jvmModeEnv, args->jvmMode, args->libPath);
+    int ret = jvm_main_thread(args->argc, args->argv, args->exeDir, args->jvmMode, args->libPath);
     exit(ret);
 }
 #endif /* __APPLE__ */
@@ -447,6 +551,13 @@ int main(int argc, char *argv[]) {
     std::string exeDir = exe_directory();
     char* jvmModeEnv = getenv("GRAALVM_LAUNCHER_FORCE_JVM");
     bool jvmMode = (jvmModeEnv && (strcmp(jvmModeEnv, "true") == 0));
+#ifndef LIBLANG_RELPATH
+    if (jvmModeEnv && !jvmMode) {
+        std::cerr << "Cannot run in native mode from jvm-only launcher" << std::endl;
+        return -1;
+    }
+    jvmMode = true;
+#endif
 
     std::string libPath = vm_path(exeDir, jvmMode);
 
@@ -467,7 +578,7 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    struct MainThreadArgs args = { argc, argv, exeDir, jvmModeEnv, jvmMode, libPath};
+    struct MainThreadArgs args = { argc, argv, exeDir, jvmMode, libPath};
 
     /* Inherit stacksize of main thread. Otherwise pthread_create() defaults to
      * 512K on darwin, while the main thread has 8192K.
@@ -499,18 +610,18 @@ int main(int argc, char *argv[]) {
     ParkEventLoop();
     return 0;
 #else
-    return jvm_main_thread(argc, argv, exeDir, jvmModeEnv, jvmMode, libPath);
+    return jvm_main_thread(argc, argv, exeDir, jvmMode, libPath);
 #endif
 }
 
-static int jvm_main_thread(int argc, char *argv[], std::string exeDir, char *jvmModeEnv, bool jvmMode, std::string libPath) {
+static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmMode, std::string libPath) {
     /* parse VM args */
     JavaVM *vm;
     JNIEnv *env;
     JavaVMInitArgs vmInitArgs;
     vmInitArgs.nOptions = 0;
     parse_vm_options(argc, argv, exeDir, &vmInitArgs, jvmMode);
-    vmInitArgs.version = JNI_VERSION_1_8;
+    vmInitArgs.version = JNI_VERSION_9;
     vmInitArgs.ignoreUnrecognized = true;
 
     /* load VM library - after parsing arguments s.t. NMT

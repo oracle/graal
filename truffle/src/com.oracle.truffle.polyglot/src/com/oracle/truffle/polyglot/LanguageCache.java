@@ -48,6 +48,7 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.CodeSource;
@@ -68,6 +69,7 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
@@ -434,12 +436,26 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     private static String getLanguageHomeImpl(String languageId) {
-        String home = System.getProperty("org.graalvm.language." + languageId + ".home");
+        String home = toRealStringPath("org.graalvm.language." + languageId + ".home");
         if (home == null) {
             // check legacy property
-            home = System.getProperty(languageId + ".home");
+            home = toRealStringPath(languageId + ".home");
         }
         return home;
+    }
+
+    private static String toRealStringPath(String propertyName) {
+        String path = System.getProperty(propertyName);
+        if (path != null) {
+            try {
+                path = Path.of(path).toRealPath().toString();
+            } catch (NoSuchFileException nsfe) {
+                return path;
+            } catch (IOException ioe) {
+                throw CompilerDirectives.shouldNotReachHere(ioe);
+            }
+        }
+        return path;
     }
 
     static boolean overridesPathContext(String languageId) {

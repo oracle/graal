@@ -40,9 +40,7 @@
 #
 import os
 import re
-import io
 import shutil
-import sys
 import tempfile
 import difflib
 import zipfile
@@ -50,7 +48,6 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from collections import OrderedDict
 from os.path import exists, isdir, join, abspath
 from urllib.parse import urljoin # pylint: disable=unused-import,no-name-in-module
-from pathlib import PurePath, PurePosixPath
 
 import mx
 import mx_benchmark
@@ -66,6 +63,9 @@ from mx_sigtest import sigtest
 from mx_unittest import unittest
 
 _suite = mx.suite('truffle')
+
+# re-export custom mx project classes, so they can be used from suite.py
+from mx_sdk_shaded import ShadedLibraryProject # pylint: disable=unused-import
 
 class JMHRunnerTruffleBenchmarkSuite(mx_benchmark.JMHRunnerBenchmarkSuite):
 
@@ -91,8 +91,28 @@ mx_benchmark.add_bm_suite(JMHRunnerTruffleBenchmarkSuite())
 def javadoc(args, vm=None):
     """build the Javadoc for all API packages"""
     extraArgs = mx_sdk.build_oracle_compliant_javadoc_args(_suite, 'GraalVM', 'Truffle')
-    mx.javadoc(['--unified', '--exclude-packages',
-                'com.oracle.truffle.tck,com.oracle.truffle.tck.impl'] + extraArgs + args)
+    projects = [
+        'org.graalvm.collections',
+        'org.graalvm.word',
+        'org.graalvm.options',
+        'org.graalvm.nativeimage',
+        'org.graalvm.home',
+        'org.graalvm.polyglot',
+        'com.oracle.svm.core.annotate',
+        'com.oracle.truffle.api',
+        'com.oracle.truffle.api.dsl',
+        'com.oracle.truffle.api.profiles',
+        'com.oracle.truffle.api.utilities',
+        'com.oracle.truffle.api.library',
+        'com.oracle.truffle.api.strings',
+        'com.oracle.truffle.api.interop',
+        'com.oracle.truffle.api.exception',
+        'com.oracle.truffle.api.instrumentation',
+        'com.oracle.truffle.api.debug',
+        'com.oracle.truffle.api.object',
+        'com.oracle.truffle.api.staticobject',
+    ]
+    mx.javadoc(['--unified', '--projects', ','.join(projects)] + extraArgs + args, includeDeps=False)
     javadoc_dir = os.sep.join([_suite.dir, 'javadoc'])
     checkLinks(javadoc_dir)
 
@@ -177,7 +197,7 @@ def _unittest_config_participant(config):
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.compiler/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle.runtime/*=ALL-UNNAMED'])
-    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sdk/*=ALL-UNNAMED'])
+    mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.polyglot/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.sl/*=ALL-UNNAMED'])
     mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/*=org.graalvm.sl'])
 
@@ -215,7 +235,7 @@ def _sl_command(vm_args, sl_args, use_optimized_runtime=True, use_enterprise=Tru
     graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
     java_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('java'))
     dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
-    return [java_path] + vm_args + mx.get_runtime_jvm_args(names=dist_names) + ["com.oracle.truffle.sl.launcher.SLMain"] + sl_args
+    return [java_path] + vm_args + mx.get_runtime_jvm_args(names=dist_names) + ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"] + sl_args
 
 def slnative(args):
     """build a native image of an SL program"""
@@ -237,7 +257,7 @@ def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterp
             mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(graalvm_home))
             return None
     target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
-    mx.run([native_image_path] + vm_args + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)) + ["com.oracle.truffle.sl.launcher.SLMain", target_path])
+    mx.run([native_image_path] + vm_args + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)) + ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain", target_path])
     return target_path
 
 def _truffle_gate_runner(args, tasks):
@@ -251,6 +271,15 @@ def _truffle_gate_runner(args, tasks):
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
+    if jdk.javaCompliance >= '21':
+        with Task('Truffle NFI tests with Panama Backend', tasks) as t:
+            if t:
+                testPath = mx.distribution('TRUFFLE_TEST_NATIVE').output
+                args = ['-Dnative.test.backend=panama', '-Dnative.test.path.panama=' + testPath]
+                # testlibArg = mx_subst.path_substitutions.substitute('-Dnative.test.path.panama=<path:TRUFFLE_TEST_NATIVE>')
+                if mx.project('com.oracle.truffle.nfi.backend.panama').javaPreviewNeeded:
+                    args += ['--enable-preview']
+                unittest(args + ['com.oracle.truffle.nfi.test', '--enable-timing', '--verbose'])
     with Task('TruffleString UnitTests without Java String Compaction', tasks) as t:
         if t: unittest(list(['-XX:-CompactStrings', '--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25', 'com.oracle.truffle.api.strings.test']))
     if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':
@@ -1001,275 +1030,7 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
     def clean(self, forBuild=False):
         mx.rmtree(self.subject.out_dir, ignore_errors=True)
 
-class ShadedLibraryProject(mx.JavaProject):
-    """
-    A special JavaProject for shading third-party libraries.
-    Configuration:
-        shadedDependencies: [
-            # one or more library dependencies
-        ],
-        "shade": {
-            "packages" : {
-                # a list of package name/path prefixes that should be shaded.
-                # only .java/.class files that are in one of these packages are included.
-                # package names must contain at least one '.' (i.e., two package parts).
-                "old.pkg.name": "new.pkg.name",
-            },
-            "include" : [
-                # a list of resource path patterns that should be copied.
-                # by default, only shaded .java/.class files are included.
-                "pkg/name/**",
-            ],
-            "exclude" : [
-                # a list of (re)source path patterns that should be excluded from the generated jar
-                "**/*.html",
-            ],
-            "patch" : [
-                # a list of (re)source path patterns that should be patched with regex substitutions
-                "pkg/name/my.properties" : {
-                    "<pattern>" : "<replacement>",
-                },
-            ],
-        }
-    The build task then runs a Java program to shade the library and generates a .jar file.
-    """
-    def __init__(self, suite, name, deps, workingSets, theLicense, **args):
-        self.shade = args.pop('shade')
-        subDir = args.pop('subDir', 'src')
-        srcDirs = args.pop('sourceDirs', ['src']) # + [source_gen_dir()], added below
-        d = mx.join(suite.dir, subDir, name)
-        shadedLibraries = args.pop('shadedDependencies', [])
-        self.shadedDeps = list(set(mx.dependency(d) for d in shadedLibraries))
-        assert all(dep.isLibrary() for dep in self.shadedDeps), f"shadedDependencies must all be libraries: {self.shadedDeps}"
-        super().__init__(suite, name, subDir=subDir, srcDirs=srcDirs, deps=deps, # javaCompliance
-                        workingSets=workingSets, d=d, theLicense=theLicense, **args)
 
-        # add 'src_gen' dir to srcDirs (self.source_gen_dir() should only be called after Project.__init__)
-        src_gen_dir = self.source_gen_dir()
-        self.srcDirs.append(src_gen_dir)
-        mx.ensure_dir_exists(src_gen_dir)
-
-        self.checkstyleProj = args.get('checkstyle', name)
-        self.checkPackagePrefix = False
-
-    def getBuildTask(self, args):
-        jdk = mx.get_jdk(self.javaCompliance, tag=mx.DEFAULT_JDK_TAG, purpose='building ' + self.name)
-        return ShadedLibraryBuildTask(args, self, jdk)
-
-    def shaded_deps(self):
-        return self.shadedDeps
-
-    def shaded_package_paths(self):
-        result = getattr(self, '_shaded_package_paths', None)
-        if not result:
-            result = {k.replace('.', '/'): v.replace('.', '/') for (k, v) in self.shaded_package_names().items()}
-            self._shaded_package_paths = result
-        return result
-
-    def shaded_package_names(self):
-        return self.shade.get('packages', {})
-
-    def included_paths(self):
-        return self.shade.get('include', [])
-
-    def excluded_paths(self):
-        return self.shade.get('exclude', [])
-
-    def defined_java_packages(self):
-        """Get defined java packages from the dependencies, rename them, and remove any non-shaded packages."""
-        packagesDefinedByDeps = [pkg for dep in self.shaded_deps() for pkg in dep.defined_java_packages()]
-        return set([self.substitute_package_name(pkg) for pkg in packagesDefinedByDeps]).difference(set(packagesDefinedByDeps))
-
-    def substitute_path(self, old_filename, mappings=None, default=None, reverse=False):
-        """renames package path (using '/' as separator)."""
-        assert isinstance(old_filename, str), old_filename
-        if mappings is None:
-            mappings = self.shaded_package_paths()
-        if default is None:
-            default = old_filename
-        for (orig, shad) in mappings.items():
-            if old_filename.startswith(orig):
-                return old_filename.replace(orig, shad) if not reverse else old_filename.replace(shad, orig)
-        return default
-
-    def substitute_package_name(self, old_package_name):
-        """renames java package name (using '.' as separator)."""
-        return self.substitute_path(old_package_name, mappings=self.shaded_package_names())
-
-class ShadedLibraryBuildTask(mx.JavaBuildTask):
-    def __str__(self):
-        return f'Shading {self.subject}'
-
-    def needsBuild(self, newestInput):
-        is_needed, reason = mx.ProjectBuildTask.needsBuild(self, newestInput)
-        if is_needed:
-            return True, reason
-
-        proj = self.subject
-        for outDir in [proj.output_dir(), proj.source_gen_dir()]:
-            if not exists(outDir):
-                return True, f"{outDir} does not exist"
-
-        suite_py_ts = mx.TimeStampFile.newest([self.subject.suite.suite_py(), __file__])
-
-        for dep in proj.shaded_deps():
-            jarFilePath = dep.get_path(False)
-            srcFilePath = dep.get_source_path(False)
-
-            input_ts = mx.TimeStampFile.newest([jarFilePath, srcFilePath])
-            if suite_py_ts.isNewerThan(input_ts):
-                input_ts = suite_py_ts
-
-            for zipFilePath, outDir in [(srcFilePath, proj.source_gen_dir())]:
-                try:
-                    with zipfile.ZipFile(zipFilePath, 'r') as zf:
-                        for zi in zf.infolist():
-                            if zi.is_dir():
-                                continue
-
-                            old_filename = zi.filename
-                            if old_filename.endswith('.java'):
-                                filepath = PurePosixPath(old_filename)
-                                if any(glob_match(filepath, i) for i in proj.excluded_paths()):
-                                    continue
-                                new_filename = proj.substitute_path(old_filename)
-                                if old_filename != new_filename:
-                                    output_file = join(outDir, new_filename)
-                                    output_ts = mx.TimeStampFile(output_file)
-                                    if output_ts.isOlderThan(input_ts):
-                                        return True, f'{output_ts} is older than {input_ts}'
-                except FileNotFoundError:
-                    return True, f"{zipFilePath} does not exist"
-
-        return super().needsBuild(newestInput)
-
-    def prepare(self, daemons):
-        # delay prepare until build
-        self.daemons = daemons
-
-    def build(self):
-        dist = self.subject
-        shadedDeps = dist.shaded_deps()
-        includedPaths = dist.included_paths()
-        patch = dist.shade.get('patch', [])
-        excludedPaths = dist.excluded_paths()
-
-        binDir = dist.output_dir()
-        srcDir = dist.source_gen_dir()
-        mx.ensure_dir_exists(binDir)
-        mx.ensure_dir_exists(srcDir)
-
-        javaSubstitutions = [
-                                sub for orig, shad in dist.shaded_package_names().items() for sub in [
-                                    (re.compile(r'\b' + re.escape(orig) + r'(?=\.[\w]+)?\b'), shad),
-                                ]
-                            ] + [
-                                sub for orig, shad in dist.shaded_package_paths().items() for sub in [
-                                    (re.compile(r'(?<=")' + re.escape(orig) + r'(?=/[\w./]+")'), shad),
-                                    (re.compile(r'(?<="/)' + re.escape(orig) + r'(?=/[\w./]+")'), shad),
-                                ]
-                            ]
-
-        for dep in shadedDeps:
-            jarFilePath = dep.get_path(True)
-            srcFilePath = dep.get_source_path(True)
-
-            for zipFilePath, outDir in [(jarFilePath, binDir), (srcFilePath, srcDir)]:
-                with zipfile.ZipFile(zipFilePath, 'r') as zf:
-                    for zi in zf.infolist():
-                        if zi.is_dir():
-                            continue
-
-                        old_filename = zi.filename
-                        filepath = PurePosixPath(old_filename)
-                        if any(glob_match(filepath, i) for i in excludedPaths):
-                            mx.logv(f'ignoring file {old_filename} (matches {", ".join(i for i in excludedPaths if glob_match(filepath, i))})')
-                            continue
-
-                        if filepath.suffix not in ['.java', '.class'] and not any(glob_match(filepath, i) for i in includedPaths):
-                            mx.warn(f'file {old_filename} is not included (if this is intended, please add the file to the exclude list)')
-                            continue
-
-                        new_filename = dist.substitute_path(old_filename)
-                        applicableSubs = []
-
-                        if filepath.suffix == '.java':
-                            applicableSubs += javaSubstitutions
-                        if filepath.suffix == '.class':
-                            continue
-
-                        mx.logv(f'extracting file {old_filename} to {new_filename}')
-                        extraPatches = [sub for filepattern, subs in patch.items() if glob_match(filepath, filepattern) for sub in subs.items()]
-                        extraSubs = list((re.compile(s, flags=re.MULTILINE), r) for (s, r) in extraPatches)
-                        applicableSubs += extraSubs
-                        if old_filename == new_filename and len(applicableSubs) == 0:
-                            # same file name, no substitutions: just extract
-                            zf.extract(zi, outDir)
-                        else:
-                            output_file = join(outDir, new_filename)
-                            mx.ensure_dir_exists(mx.dirname(output_file))
-                            if len(applicableSubs) == 0:
-                                with zf.open(zi) as src, open(output_file, 'wb') as dst:
-                                    shutil.copyfileobj(src, dst)
-                            else:
-                                assert filepath.suffix != '.class', filepath
-                                with io.TextIOWrapper(zf.open(zi), encoding='utf-8') as src, open(output_file, 'w', encoding='utf-8') as dst:
-                                    contents = src.read()
-
-                                    # remove trailing whitespace and duplicate blank lines.
-                                    contents = re.sub(r'(\n)?\s*(\n|$)', r'\1\2', contents)
-
-                                    # apply substitutions
-                                    for (srch, repl) in applicableSubs:
-                                        contents = re.sub(srch, repl, contents)
-
-                                    # turn off eclipseformat for generated .java files
-                                    if filepath.suffix == '.java':
-                                        dst.write('// @formatter:off\n')
-
-                                    dst.write(contents)
-
-        # After generating (re)sources, run the normal Java build task.
-        if getattr(self, '_javafiles', None) == {}:
-            self._javafiles = None
-        super().prepare(self.daemons)
-        super().build()
-
-def glob_match(path, pattern):
-    """
-    Like PurePath.match(pattern), but adds support for the recursive wildcard '**'.
-    :param path: a PurePath
-    :param pattern: a string or a PurePath representing the glob pattern
-    """
-    assert isinstance(path, PurePath), path
-    if sys.version_info[:2] >= (3, 13):
-        # Since Python 3.13, PurePath.match already supports '**'.
-        return path.match(pattern)
-
-    pathType = type(path)
-    patternParts = pathType(pattern).parts
-    if not '**' in patternParts:
-        if len(path.parts) != len(patternParts):
-            return False
-        return path.match(str(pattern))
-    else:
-        # split pattern at first '**'
-        i = next(i for (i, p) in enumerate(patternParts) if p == '**')
-        lhs = patternParts[:i]
-        if (lhs == () or glob_match(pathType(*path.parts[:len(lhs)]), pathType(*lhs))):
-            rhs = patternParts[i+1:]
-            if rhs == ():
-                return True
-            min_start = len(lhs)
-            max_start = len(path.parts) - len(rhs)
-            if not '**' in rhs:
-                return glob_match(pathType(*path.parts[max_start:]), pathType(*rhs))
-            else:
-                # multiple '**', must recurse
-                for start in range(min_start, max_start + 1):
-                    if glob_match(pathType(*path.parts[start:]), pathType(*rhs)):
-                        return True
-        return False
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
@@ -1359,7 +1120,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle NFI'],
-    truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI'],
+    truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI', 'truffle:TRUFFLE_NFI_PANAMA'],
     installable=False,
     stability="supported",
 ))

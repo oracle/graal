@@ -759,7 +759,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                     UserError.abort("Detected an absolute TruffleFile %s in the image heap. " +
                                     "Files with an absolute path created during the context pre-initialization may not be valid at the image execution time. " +
                                     "This check can be disabled using -H:-TruffleCheckPreinitializedFiles." +
-                                    classInitializationSupport.objectInstantiationTraceMessage(object, ""),
+                                    classInitializationSupport.objectInstantiationTraceMessage(object, "", culprit -> ""),
                                     file.getPath());
                 }
             }
@@ -1416,6 +1416,12 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //
     private long offset;
 
+    /*
+     * These fields are not needed at runtime in a native image. The offset is enough.
+     */
+    @Delete private Class<?> declaringClass;
+    @Delete private String name;
+
     private static class OffsetComputer implements FieldValueTransformerWithAvailability {
         @Override
         public ValueAvailability valueAvailability() {
@@ -1434,4 +1440,5 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
             return Long.valueOf(offset);
         }
     }
+
 }

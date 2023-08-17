@@ -67,6 +67,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
 import org.graalvm.compiler.nodes.GuardNode;
+import org.graalvm.compiler.nodes.GuardProxyNode;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
@@ -87,6 +88,7 @@ import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
+import org.graalvm.compiler.nodes.extended.OpaqueLogicNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
@@ -523,7 +525,16 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
             tryProveGuardCondition(null, node.condition(), (guard, result, guardedValueStamp, newInput) -> {
                 node.setCondition(LogicConstantNode.forBoolean(result, node.graph()));
                 AbstractBeginNode survivingSuccessor = node.getSuccessor(result);
-                survivingSuccessor.replaceAtUsages(guard.asNode(), InputType.Guard);
+                if (survivingSuccessor instanceof LoopExitNode loopExitNode) {
+                    Node replacementForGuardedNodes = graph.unique(new GuardProxyNode(guard, loopExitNode));
+                    survivingSuccessor.replaceAtUsages(replacementForGuardedNodes, InputType.Guard);
+                    if (replacementForGuardedNodes.hasNoUsages()) {
+                        replacementForGuardedNodes.safeDelete();
+                    }
+                } else {
+                    survivingSuccessor.replaceAtUsages(guard.asNode(), InputType.Guard);
+                }
+
                 // Don't kill the other branch immediately, see `processGuard`.
                 graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "IfElimination", node);
                 return true;
@@ -957,6 +968,9 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
         }
 
         protected void registerCondition(LogicNode condition, boolean negated, GuardingNode guard) {
+            if (condition instanceof OpaqueLogicNode) {
+                return;
+            }
             if (condition.hasMoreThanOneUsage()) {
                 registerNewStamp(condition, negated ? StampFactory.contradiction() : StampFactory.tautology(), guard);
             }

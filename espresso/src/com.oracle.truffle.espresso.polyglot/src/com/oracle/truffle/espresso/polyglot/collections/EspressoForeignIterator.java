@@ -44,6 +44,7 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import com.oracle.truffle.espresso.polyglot.Interop;
+import com.oracle.truffle.espresso.polyglot.Polyglot;
 import com.oracle.truffle.espresso.polyglot.StopIterationException;
 import com.oracle.truffle.espresso.polyglot.UnsupportedMessageException;
 
@@ -68,7 +69,7 @@ public class EspressoForeignIterator<E> implements Iterator<E> {
             if (!hasNext()) {
                 throw new NoSuchElementException();
             }
-            return (E) Interop.getIteratorNextElement(this);
+            return (E) Polyglot.cast(Object.class, Interop.getIteratorNextElement(this));
         } catch (UnsupportedMessageException | StopIterationException e) {
             throw new NoSuchElementException();
         }

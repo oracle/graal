@@ -29,9 +29,11 @@ local devkits = graal_common.devkits;
   },
 
   common_vm_linux: self.common_vm + {
-    packages+: {
+    packages+: (if self.arch == "aarch64" then {
+      "00:devtoolset": "==10", # GCC 10.2.1, make 4.2.1, binutils 2.35, valgrind 3.16.1
+    } else {
       "00:devtoolset": "==11", # GCC 11.2, make 4.3, binutils 2.36, valgrind 3.17
-    },
+    }),
   },
 
   common_vm_darwin: self.common_vm + {
@@ -313,7 +315,7 @@ local devkits = graal_common.devkits;
     targets+: ['daily'],
   },
 
-  daily_vm_windows_jdk20: self.vm_windows_jdk20 + {
+  daily_vm_windows_jdk21: self.vm_windows_jdk21 + {
     targets+: ['daily'],
   },
 
@@ -341,7 +343,7 @@ local devkits = graal_common.devkits;
     targets+: ['weekly'],
   },
 
-  weekly_vm_windows_jdk20: self.vm_windows_jdk20 + {
+  weekly_vm_windows_jdk21: self.vm_windows_jdk21 + {
     targets+: ['weekly'],
   },
 
@@ -377,7 +379,7 @@ local devkits = graal_common.devkits;
     targets+: ['ondemand', 'deploy'],
   },
 
-  ondemand_deploy_vm_windows_jdk20: self.vm_windows_jdk20 + {
+  ondemand_deploy_vm_windows_jdk21: self.vm_windows_jdk21 + {
     targets+: ['ondemand', 'deploy'],
   },
 
@@ -501,7 +503,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_linux_amd64(java_version): vm.check_structure + {
     run: $.patch_env('linux', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -520,7 +522,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_linux_aarch64(java_version): vm.check_structure + {
     run: $.patch_env('linux', 'aarch64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -547,7 +549,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_installables_darwin_amd64(java_version): vm.check_structure + {
     run: $.patch_env('darwin', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
@@ -569,7 +571,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_installables_darwin_aarch64(java_version): vm.check_structure + {
     run: $.patch_env('darwin', 'aarch64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
@@ -591,7 +593,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_installables_windows_amd64(java_version): vm.check_structure + {
     run: $.patch_env('windows', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
@@ -646,11 +648,11 @@ local devkits = graal_common.devkits;
     #
     # Gates
     #
-    vm.vm_java_20 + graal_common.deps.eclipse + graal_common.deps.jdt + self.gate_vm_linux_amd64 + {
+    vm.vm_java_21 + graal_common.deps.eclipse + graal_common.deps.jdt + self.gate_vm_linux_amd64 + {
      run: [
        ['mx', 'gate', '-B=--force-deprecation-as-warning', '--tags', 'style,fullbuild'],
      ],
-     name: 'gate-vm-style-jdk20-linux-amd64',
+     name: 'gate-vm-style-jdk21-linux-amd64',
     },
 
     vm.vm_java_21 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {

@@ -138,9 +138,12 @@ import sun.misc.Unsafe;
 public final class CompileTheWorld {
 
     static {
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.ci");
         ModuleSupport.exportAndOpenAllPackagesToUnnamed("jdk.internal.vm.compiler");
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle");
-        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.runtime");
+        // Truffle may not be on the module-path
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle", false);
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.compiler", false);
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("org.graalvm.truffle.runtime", false);
     }
 
     /**

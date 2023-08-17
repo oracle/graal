@@ -1,0 +1,105 @@
+/*
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
+package com.oracle.svm.hosted.foreign;
+
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
+
+import com.oracle.svm.core.configure.ConfigurationParser;
+
+@Platforms(Platform.HOSTED_ONLY.class)
+public class ForeignFunctionsConfigurationParser extends ConfigurationParser {
+    private static final String DOWNCALL_OPTION_CAPTURE_CALL_STATE = "captureCallState";
+    private static final String DOWNCALL_OPTION_FIRST_VARIADIC_ARG = "firstVariadicArg";
+    private static final String DOWNCALL_OPTION_TRIVIAL = "trivial";
+
+    private final RuntimeForeignAccessSupport accessSupport;
+
+    public ForeignFunctionsConfigurationParser(RuntimeForeignAccessSupport access) {
+        super(true);
+        this.accessSupport = access;
+    }
+
+    @Override
+    public void parseAndRegister(Object json, URI origin) {
+        var topLevel = asMap(json, "first level of document must be a map");
+        checkAttributes(topLevel, "foreign methods categories", List.of("downcalls"));
+        for (Object downcall : asList(topLevel.get("downcalls"), "downcalls must be an array of method signatures")) {
+            parseDowncall(downcall);
+        }
+    }
+
+    private void parseDowncall(Object downcall) {
+        var map = asMap(downcall, "a downcall must be a map");
+        checkAttributes(map, "downcall", List.of("descriptor"), List.of("options"));
+        var descriptor = parseDowncallSignatures(map.get("descriptor"));
+        var options = parseOptions(map.get("options", null));
+        accessSupport.registerForDowncall(ConfigurationCondition.alwaysTrue(), descriptor, options.toArray());
+    }
+
+    private FunctionDescriptor parseDowncallSignatures(Object signature) {
+        String input = asString(signature, "downcalls's elements must be function descriptors");
+        return FunctionDescriptorParser.parse(input);
+    }
+
+    private List<Linker.Option> parseOptions(Object options) {
+        if (options == null) {
+            return List.of();
+        }
+
+        ArrayList<Linker.Option> res = new ArrayList<>();
+        var map = asMap(options, "options must be a map");
+        checkAttributes(map, "options", List.of(), List.of(DOWNCALL_OPTION_FIRST_VARIADIC_ARG, DOWNCALL_OPTION_CAPTURE_CALL_STATE, DOWNCALL_OPTION_TRIVIAL));
+
+        if (map.containsKey(DOWNCALL_OPTION_FIRST_VARIADIC_ARG)) {
+            int firstVariadic = (int) asLong(map.get(DOWNCALL_OPTION_FIRST_VARIADIC_ARG), "");
+            res.add(Linker.Option.firstVariadicArg(firstVariadic));
+        }
+        if (map.containsKey(DOWNCALL_OPTION_CAPTURE_CALL_STATE)) {
+            if (asBoolean(map.get(DOWNCALL_OPTION_CAPTURE_CALL_STATE, ""), DOWNCALL_OPTION_CAPTURE_CALL_STATE)) {
+                /*
+                 * Dirty hack: we need the entrypoint to have a captured state, whatever said state
+                 * is, so that the generated stub handles capture.
+                 */
+                res.add(Linker.Option.captureCallState("errno"));
+            }
+        }
+        if (map.containsKey(DOWNCALL_OPTION_TRIVIAL)) {
+            if (asBoolean(map.get(DOWNCALL_OPTION_TRIVIAL, ""), DOWNCALL_OPTION_TRIVIAL)) {
+                res.add(Linker.Option.isTrivial());
+            }
+        }
+
+        return res;
+    }
+}

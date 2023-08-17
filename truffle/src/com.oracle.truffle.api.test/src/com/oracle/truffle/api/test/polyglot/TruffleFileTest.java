@@ -143,13 +143,13 @@ public class TruffleFileTest {
 
     @BeforeClass
     public static void setUpClass() throws Exception {
-        languageHome = Files.createTempDirectory(TruffleFileTest.class.getSimpleName());
+        languageHome = Files.createTempDirectory(TruffleFileTest.class.getSimpleName()).toRealPath();
         languageHomeFile = languageHome.resolve("homeFile");
         Files.write(languageHomeFile, Collections.singleton(languageHomeFile.getFileName().toString()));
         Path stdLib = Files.createDirectory(languageHome.resolve("stdlib"));
         stdLibFile = stdLib.resolve("stdLibFile");
         Files.write(stdLibFile, Collections.singleton(stdLibFile.getFileName().toString()));
-        nonLanguageHomeFile = Files.createTempFile(TruffleFileTest.class.getSimpleName(), "");
+        nonLanguageHomeFile = Files.createTempFile(TruffleFileTest.class.getSimpleName(), "").toRealPath();
         Files.write(nonLanguageHomeFile, Collections.singleton(nonLanguageHomeFile.getFileName().toString()));
     }
 

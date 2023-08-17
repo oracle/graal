@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
+import static com.oracle.svm.core.util.VMError.shouldNotReachHereAtRuntime;
+
 import java.lang.module.Configuration;
 import java.lang.module.FindException;
 import java.lang.module.ModuleDescriptor;
@@ -54,24 +56,26 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.jdk.Resources;
-import jdk.internal.module.DefaultRoots;
-import jdk.internal.module.ModuleBootstrap;
-import jdk.internal.module.SystemModuleFinders;
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.jdk.RuntimeModuleSupport;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.jdk.RuntimeModuleSupport;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+
+import jdk.internal.module.DefaultRoots;
+import jdk.internal.module.ModuleBootstrap;
+import jdk.internal.module.SystemModuleFinders;
 
 /**
  * This feature:
@@ -225,6 +229,7 @@ public final class ModuleLayerFeature implements InternalFeature {
          * the originals.
          */
         replicateVisibilityModifications(runtimeBootLayer, accessImpl.imageClassLoader, runtimeImageNamedModules);
+        replicateNativeAccess(runtimeImageNamedModules);
     }
 
     /**
@@ -484,6 +489,28 @@ public final class ModuleLayerFeature implements InternalFeature {
         }
     }
 
+    private void replicateNativeAccess(Set<Module> analysisReachableNamedModules) {
+        if (JavaVersionUtil.JAVA_SPEC < 19) {
+            return;
+        }
+
+        Map<Module, Module> modulePairs = analysisReachableNamedModules
+                        .stream()
+                        .collect(Collectors.toMap(m -> m, m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));
+
+        Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
+        assert builderModule != null;
+
+        for (Map.Entry<Module, Module> modulesPair : modulePairs.entrySet()) {
+            Module hosted = modulesPair.getKey();
+            Module runtime = modulesPair.getValue();
+            if (moduleLayerFeatureUtils.allowsNativeAccess(hosted)) {
+                moduleLayerFeatureUtils.setNativeAccess(runtime, true);
+            }
+        }
+
+    }
+
     private static List<Module> findApplicationModules(ModuleLayer runtimeBootLayer, List<Path> applicationModulePath) {
         List<Module> applicationModules = new ArrayList<>();
         List<String> applicationModuleNames;
@@ -555,6 +582,7 @@ public final class ModuleLayerFeature implements InternalFeature {
         private final Field moduleReadsField;
         private final Field moduleOpenPackagesField;
         private final Field moduleExportedPackagesField;
+        private final Field moduleEnableNativeAccessField;
         private final Method moduleFindModuleMethod;
         private final Method systemModuleFindersAllSystemModulesMethod;
         private final Method systemModuleFindersOfMethod;
@@ -587,12 +615,17 @@ public final class ModuleLayerFeature implements InternalFeature {
                 moduleReadsField = findFieldByName(moduleClassFields, "reads");
                 moduleOpenPackagesField = findFieldByName(moduleClassFields, "openPackages");
                 moduleExportedPackagesField = findFieldByName(moduleClassFields, "exportedPackages");
+                // Only present on JDK 19+
+                moduleEnableNativeAccessField = findFieldByName(moduleClassFields, "enableNativeAccess", true);
                 moduleDescriptorField.setAccessible(true);
                 moduleLayerField.setAccessible(true);
                 moduleLoaderField.setAccessible(true);
                 moduleReadsField.setAccessible(true);
                 moduleOpenPackagesField.setAccessible(true);
                 moduleExportedPackagesField.setAccessible(true);
+                if (moduleEnableNativeAccessField != null) {
+                    moduleEnableNativeAccessField.setAccessible(true);
+                }
 
                 allUnnamedModuleSet = new HashSet<>(1);
                 allUnnamedModuleSet.add(allUnnamedModule);
@@ -624,8 +657,19 @@ public final class ModuleLayerFeature implements InternalFeature {
          * versions. This method should be removed once {@link ReflectionUtil} becomes immune to
          * reflection filters.
          */
+        private static Field findFieldByName(Field[] fields, String name, boolean optional) {
+            var res = Arrays.stream(fields).filter(f -> f.getName().equals(name)).findAny();
+            if (res.isPresent()) {
+                return res.get();
+            } else if (optional) {
+                return null;
+            } else {
+                throw shouldNotReachHereAtRuntime();
+            }
+        }
+
         private static Field findFieldByName(Field[] fields, String name) {
-            return Arrays.stream(fields).filter(f -> f.getName().equals(name)).findAny().orElseThrow(VMError::shouldNotReachHereAtRuntime);
+            return findFieldByName(fields, name, false);
         }
 
         private static boolean isModuleSynthetic(Module m) {
@@ -1019,6 +1063,29 @@ public final class ModuleLayerFeature implements InternalFeature {
                 return (Set<String>) defaultRootsComputeMethod.invoke(null, finder1, finder2);
             } catch (ReflectiveOperationException e) {
                 throw VMError.shouldNotReachHere("Failed to reflectively invoke DefaultRoots.compute().", e);
+            }
+        }
+
+        /**
+         * In the future, this can be replaced by calling Module#isNativeAccessEnabled(). We
+         * currently do it this way to still be compatible with older JDKs.
+         */
+        boolean allowsNativeAccess(Module module) {
+            assert moduleEnableNativeAccessField != null : "Only available on JDK19+";
+            try {
+                return (boolean) moduleEnableNativeAccessField.get(module);
+            } catch (IllegalAccessException e) {
+                throw VMError.shouldNotReachHere("Failed to reflectively access Module.enableNativeAccess.", e);
+            }
+
+        }
+
+        void setNativeAccess(Module module, boolean value) {
+            assert moduleEnableNativeAccessField != null : "Only available on JDK19+";
+            try {
+                moduleEnableNativeAccessField.set(module, value);
+            } catch (IllegalAccessException e) {
+                throw VMError.shouldNotReachHere("Failed to reflectively set Module.enableNativeAccess.", e);
             }
         }
     }

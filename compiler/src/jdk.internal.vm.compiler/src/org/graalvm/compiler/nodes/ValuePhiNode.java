@@ -32,6 +32,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeFlood;
 import org.graalvm.compiler.graph.NodeInputList;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.util.CollectionsUtil;
@@ -43,7 +44,7 @@ import org.graalvm.util.CollectionsUtil;
 public class ValuePhiNode extends PhiNode {
 
     public static final NodeClass<ValuePhiNode> TYPE = NodeClass.create(ValuePhiNode.class);
-    @Input protected NodeInputList<ValueNode> values;
+    @Input(InputType.Value) protected NodeInputList<ValueNode> values;
 
     public ValuePhiNode(Stamp stamp, AbstractMergeNode merge) {
         this(TYPE, stamp, merge);
@@ -65,6 +66,11 @@ public class ValuePhiNode extends PhiNode {
         super(c, stamp, merge);
         assert stamp != StampFactory.forVoid();
         this.values = new NodeInputList<>(this, values);
+    }
+
+    @Override
+    public InputType valueInputType() {
+        return InputType.Value;
     }
 
     @Override

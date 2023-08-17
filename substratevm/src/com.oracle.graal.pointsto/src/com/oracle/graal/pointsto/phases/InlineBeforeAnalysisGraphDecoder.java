@@ -24,37 +24,55 @@
  */
 package com.oracle.graal.pointsto.phases;
 
+import static com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder.InlineBeforeAnalysisMethodScope.recordInlined;
+
+import java.lang.reflect.Field;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
+import org.graalvm.compiler.nodes.CallTargetNode;
 import org.graalvm.compiler.nodes.ControlSinkNode;
 import org.graalvm.compiler.nodes.ControlSplitNode;
 import org.graalvm.compiler.nodes.EncodedGraph;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.calc.IsNullNode;
+import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.LoopExplosionPlugin;
+import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
+import org.graalvm.compiler.replacements.nodes.MethodHandleWithExceptionNode;
+import org.graalvm.compiler.replacements.nodes.ResolvedMethodHandleCallTargetNode;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.GraalAccess;
+import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
@@ -64,27 +82,49 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
         private boolean inliningAborted;
 
+        /*
+         * We temporarily track all graphs actually encoded (i.e., not aborted) so that all
+         * recording can be performed afterwards.
+         */
+        private final EconomicSet<EncodedGraph> encodedGraphs;
+
         InlineBeforeAnalysisMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method,
                         InvokeData invokeData, int inliningDepth, ValueNode[] arguments) {
             super(targetGraph, caller, callerLoopScope, encodedGraph, method, invokeData, inliningDepth, arguments);
 
             if (caller == null) {
-                /*
-                 * The root method that we are decoding, i.e., inlining into. No policy, because the
-                 * whole method must of course be decoded.
-                 */
+                /* The root method that we are decoding, i.e., inlining into. */
                 policyScope = policy.createRootScope();
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "createRootScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
             } else {
-                policyScope = policy.openCalleeScope(method, (cast(caller)).policyScope);
+                boolean[] constArgsWithReceiver = new boolean[arguments.length];
+                for (int i = 0; i < arguments.length; i++) {
+                    constArgsWithReceiver[i] = arguments[i].isConstant();
+                }
+                policyScope = policy.openCalleeScope(cast(caller).policyScope, bb.getMetaAccess(), method, constArgsWithReceiver, invokeData.intrinsifiedMethodHandle);
                 if (graph.getDebug().isLogEnabled()) {
                     graph.getDebug().logv("  ".repeat(inliningDepth) + "openCalleeScope for " + method.format("%H.%n(%p)") + ": " + policyScope);
                 }
             }
+            encodedGraphs = EconomicSet.create();
+        }
+
+        static void recordInlined(InlineBeforeAnalysisMethodScope callerScope, InlineBeforeAnalysisMethodScope calleeScope) {
+            /*
+             * Update caller's encoded graphs
+             */
+            var callerEncodedGraphs = callerScope.encodedGraphs;
+            callerEncodedGraphs.addAll(calleeScope.encodedGraphs);
+            callerEncodedGraphs.add(calleeScope.encodedGraph);
         }
     }
+
+    private Field dmhStaticAccessorOffsetField;
+    private Field dmhStaticAccessorBaseField;
+    private AnalysisField dmhStaticAccessorOffsetAnalysisField;
+    private AnalysisField dmhStaticAccessorBaseAnalysisField;
 
     protected final BigBang bb;
     protected final InlineBeforeAnalysisPolicy policy;
@@ -112,6 +152,18 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
+    protected void cleanupGraph(MethodScope ms) {
+        super.cleanupGraph(ms);
+
+        // at the very end we record all inlining
+        var methodScope = cast(ms);
+        methodScope.encodedGraphs.add(methodScope.encodedGraph);
+        for (var encodedGraph : methodScope.encodedGraphs) {
+            super.recordGraphElements(encodedGraph);
+        }
+    }
+
+    @Override
     protected PEMethodScope createMethodScope(StructuredGraph targetGraph, PEMethodScope caller, LoopScope callerLoopScope, EncodedGraph encodedGraph, ResolvedJavaMethod method, InvokeData invokeData,
                     int inliningDepth, ValueNode[] arguments) {
         return new InlineBeforeAnalysisMethodScope(targetGraph, caller, callerLoopScope, encodedGraph, method, invokeData, inliningDepth, arguments);
@@ -132,7 +184,11 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
     @Override
     protected final Node canonicalizeFixedNode(MethodScope methodScope, LoopScope loopScope, Node node) {
-        Node canonical = super.canonicalizeFixedNode(methodScope, loopScope, node);
+        Node canonical = node;
+        if (node instanceof UnsafeAccessNode unsafeAccess) {
+            canonical = canonicalizeUnsafeAccess(unsafeAccess);
+        }
+        canonical = super.canonicalizeFixedNode(methodScope, loopScope, canonical);
         canonical = doCanonicalizeFixedNode(cast(methodScope), loopScope, canonical);
         /*
          * When no canonicalization was done, we check the node that was decoded (which is already
@@ -147,9 +203,102 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         return canonical;
     }
 
+    @Override
+    protected boolean shouldOmitIntermediateMethodInStates(ResolvedJavaMethod method) {
+        return policy.shouldOmitIntermediateMethodInState(method);
+    }
+
     @SuppressWarnings("unused")
     protected Node doCanonicalizeFixedNode(InlineBeforeAnalysisMethodScope methodScope, LoopScope loopScope, Node node) {
         return node;
+    }
+
+    /**
+     * Try to replace unsafe field accesses by offset via {@code DirectMethodHandle$StaticAccessor}
+     * with accesses to the actual target fields which can be constant-folded. This enables us to
+     * further simplify and inline through internal usages of {@code StaticAccessor} in method
+     * handle code itself, such as that generated by {@code InnerClassLambdaMetafactory}. A
+     * corresponding substitution recomputes the offsets stored in {@code StaticAccessor} objects to
+     * match those in the image, but it applies only much later.
+     *
+     * @see #canonicalizeIsNull
+     */
+    private Node canonicalizeUnsafeAccess(UnsafeAccessNode node) {
+        if (!(node.isCanonicalizable() && node.offset() instanceof LoadFieldNode offsetLoad && offsetLoad.object() != null && offsetLoad.object().isJavaConstant())) {
+            return node;
+        }
+        ensureDMHStaticAccessorFieldsInitialized();
+        if (!offsetLoad.field().equals(dmhStaticAccessorOffsetAnalysisField)) {
+            return node;
+        }
+        JavaConstant accessorConstant = offsetLoad.object().asJavaConstant();
+        Object accessor = bb.getSnippetReflectionProvider().asObject(Object.class, accessorConstant);
+        long offset;
+        Class<?> clazz; // HotSpot-specific: field holder Class object as Unsafe.staticFieldBase()
+        try {
+            offset = dmhStaticAccessorOffsetField.getLong(accessor);
+            clazz = (Class<?>) dmhStaticAccessorBaseField.get(accessor);
+        } catch (IllegalAccessException e) {
+            throw AnalysisError.shouldNotReachHere(e);
+        }
+        if (clazz == null) {
+            return node;
+        }
+        ResolvedJavaType type = GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(clazz);
+        ResolvedJavaField hostField = UnsafeAccessNode.findStaticFieldWithOffset(type, offset, node.accessKind());
+        if (hostField == null) {
+            return node;
+        }
+        AnalysisField field = bb.getUniverse().lookup(hostField);
+        if (field.isInternal() || field.getJavaKind() != node.accessKind()) {
+            return node;
+        }
+        return node.cloneAsFieldAccess(field);
+    }
+
+    @Override
+    protected Node handleFloatingNodeAfterAdd(MethodScope s, LoopScope loopScope, Node node) {
+        Node canonical = node;
+        if (canonical instanceof IsNullNode isNull) {
+            canonical = canonicalizeIsNull(isNull);
+        }
+        if (canonical != node) {
+            canonical.setNodeSourcePosition(node.getNodeSourcePosition());
+            node.replaceAtUsagesAndDelete(canonical);
+        }
+        return super.handleFloatingNodeAfterAdd(s, loopScope, canonical);
+    }
+
+    /**
+     * Constant-fold null checks of {@code DirectMethodHandle$StaticAccessor.staticBase}. This
+     * enables us to further simplify and inline through internal usages of {@code StaticAccessor}
+     * in method handle code itself, such as that generated by {@code InnerClassLambdaMetafactory}.
+     * A corresponding substitution computes the final value of {@code staticBase} in the image, but
+     * it applies only much later, and we know that it will never be {@code null}.
+     *
+     * @see #canonicalizeUnsafeAccess
+     */
+    private Node canonicalizeIsNull(IsNullNode node) {
+        if (!(node.getValue() instanceof LoadFieldNode fieldLoad && fieldLoad.object() != null && fieldLoad.object().isJavaConstant())) {
+            return node;
+        }
+        ensureDMHStaticAccessorFieldsInitialized();
+        if (!fieldLoad.field().equals(dmhStaticAccessorBaseAnalysisField)) {
+            return node;
+        }
+        // The base is always non-null, which we also assume in our field substitution.
+        return LogicConstantNode.contradiction(node.graph());
+    }
+
+    private void ensureDMHStaticAccessorFieldsInitialized() {
+        if (dmhStaticAccessorOffsetField == null) {
+            assert dmhStaticAccessorBaseField == null && dmhStaticAccessorOffsetAnalysisField == null && dmhStaticAccessorBaseAnalysisField == null;
+            Class<?> staticAccessorClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle$StaticAccessor");
+            dmhStaticAccessorOffsetField = ReflectionUtil.lookupField(staticAccessorClass, "staticOffset");
+            dmhStaticAccessorBaseField = ReflectionUtil.lookupField(staticAccessorClass, "staticBase");
+            dmhStaticAccessorOffsetAnalysisField = bb.getMetaAccess().lookupJavaField(dmhStaticAccessorOffsetField);
+            dmhStaticAccessorBaseAnalysisField = bb.getMetaAccess().lookupJavaField(dmhStaticAccessorBaseField);
+        }
     }
 
     @Override
@@ -196,6 +345,43 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
+    protected LoopScope handleMethodHandle(MethodScope s, LoopScope loopScope, InvokableData<MethodHandleWithExceptionNode> invokableData) {
+        MethodHandleWithExceptionNode node = invokableData.invoke;
+        Node replacement = node.trySimplify(providers.getConstantReflection().getMethodHandleAccess());
+        boolean intrinsifiedMethodHandle = (replacement != node);
+        if (!intrinsifiedMethodHandle) {
+            replacement = node.replaceWithInvoke().asNode();
+        }
+
+        InvokeWithExceptionNode invoke = (InvokeWithExceptionNode) replacement;
+        registerNode(loopScope, invokableData.orderId, invoke, true, false);
+        InvokeData invokeData = new InvokeData(invoke, invokableData.contextType, invokableData.orderId, -1, intrinsifiedMethodHandle, invokableData.stateAfterOrderId,
+                        invokableData.nextOrderId, invokableData.exceptionOrderId, invokableData.exceptionStateOrderId, invokableData.exceptionNextOrderId);
+
+        CallTargetNode callTarget;
+        if (invoke.callTarget() instanceof ResolvedMethodHandleCallTargetNode t) {
+            // This special CallTargetNode lowers itself back to the original target (e.g. linkTo*)
+            // if the invocation hasn't been inlined, which we don't want for Native Image.
+            callTarget = new MethodCallTargetNode(t.invokeKind(), t.targetMethod(), t.arguments().toArray(ValueNode.EMPTY_ARRAY), t.returnStamp(), t.getTypeProfile());
+        } else {
+            callTarget = (CallTargetNode) invoke.callTarget().copyWithInputs(false);
+        }
+        // handleInvoke() expects that CallTargetNode is not eagerly added to the graph
+        invoke.callTarget().replaceAtUsagesAndDelete(null);
+        invokeData.callTarget = callTarget;
+
+        return handleInvokeWithCallTarget((PEMethodScope) s, loopScope, invokeData);
+    }
+
+    @Override
+    protected void recordGraphElements(EncodedGraph encodedGraph) {
+        /*
+         * We temporarily delay recording graph elements, as at this point it is possible inlining
+         * will be aborted.
+         */
+    }
+
+    @Override
     protected void finishInlining(MethodScope is) {
         InlineBeforeAnalysisMethodScope inlineScope = cast(is);
         InlineBeforeAnalysisMethodScope callerScope = cast(inlineScope.caller);
@@ -234,6 +420,8 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         if (callerScope.policyScope != null) {
             callerScope.policyScope.commitCalleeScope(inlineScope.policyScope);
         }
+
+        recordInlined(callerScope, inlineScope);
 
         NodeSourcePosition callerBytecodePosition = callerScope.getCallerNodeSourcePosition();
         Object reason = callerBytecodePosition != null ? callerBytecodePosition : callerScope.method;

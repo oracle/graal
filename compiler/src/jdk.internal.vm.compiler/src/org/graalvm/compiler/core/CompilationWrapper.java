@@ -453,7 +453,7 @@ public abstract class CompilationWrapper<T> {
 
         // Wait for period to expire or some minimum amount of compilations
         // before detecting systemic failure.
-        if (rate > maxRate && (periodExpired && total > MIN_COMPILATIONS_FOR_FAILURE_DETECTION)) {
+        if (rate > maxRate && (periodExpired || total > MIN_COMPILATIONS_FOR_FAILURE_DETECTION)) {
             Formatter msg = new Formatter();
             String option = SystemicCompilationFailureRate.getName();
             msg.format("Warning: Systemic Graal compilation failure detected: %d of %d (%d%%) of compilations failed during last %d ms [max rate set by %s is %d%%]. ",

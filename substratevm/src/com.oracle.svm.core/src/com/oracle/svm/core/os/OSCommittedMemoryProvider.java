@@ -39,7 +39,6 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointCreateIsolateParameters;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
-import com.oracle.svm.core.c.function.CEntryPointSetup;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 
@@ -50,15 +49,15 @@ public class OSCommittedMemoryProvider extends AbstractCommittedMemoryProvider {
 
     @Override
     @Uninterruptible(reason = "Still being initialized.")
-    public int initialize(WordPointer isolatePointer, CEntryPointCreateIsolateParameters parameters) {
+    public int initialize(WordPointer heapBasePointer, CEntryPointCreateIsolateParameters parameters) {
         if (!SubstrateOptions.SpawnIsolates.getValue()) {
             int result = protectSingleIsolateImageHeap();
             if (result == CEntryPointErrors.NO_ERROR) {
-                isolatePointer.write(CEntryPointSetup.SINGLE_ISOLATE_SENTINEL);
+                heapBasePointer.write(Isolates.IMAGE_HEAP_BEGIN.get());
             }
             return result;
         }
-        return ImageHeapProvider.get().initialize(nullPointer(), zero(), isolatePointer, nullPointer());
+        return ImageHeapProvider.get().initialize(nullPointer(), zero(), heapBasePointer, nullPointer());
     }
 
     @Override

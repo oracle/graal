@@ -65,7 +65,7 @@ public class InlineBeforeAnalysis {
 
         StructuredGraph result = new StructuredGraph.Builder(bb.getOptions(), debug, bb.getHostVM().allowAssumptions(method))
                         .method(method)
-                        .recordInlinedMethods(false)
+                        .recordInlinedMethods(bb.getHostVM().recordInlinedMethods(method))
                         .trackNodeSourcePosition(analysisParsedGraph.getEncodedGraph().trackNodeSourcePosition())
                         .build();
 

@@ -119,6 +119,7 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
             // Set up a default value that everything constructed by GraphKit will use.
             graph.withNodeSourcePosition(NodeSourcePosition.substitution(stubMethod));
         }
+        graph.recordMethod(stubMethod);
         this.wordTypes = wordTypes;
         this.graphBuilderPlugins = graphBuilderPlugins;
         this.lastFixedNode = graph.start();

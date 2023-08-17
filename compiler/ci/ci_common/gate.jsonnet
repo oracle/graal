@@ -199,12 +199,13 @@
     "gate-compiler-test-labsjdk-21-linux-aarch64": t("1:50:00"),
     "gate-compiler-test-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
     "gate-compiler-test-labsjdk-21-darwin-aarch64": t("1:00:00"),
+    "gate-compiler-test-labsjdk-21-windows-amd64": t("1:30:00"),
     "gate-compiler-test_zgc-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-test_zgc-labsjdk-21-linux-aarch64": t("1:50:00"),
     "gate-compiler-test_zgc-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
     "gate-compiler-test_zgc-labsjdk-21-darwin-aarch64": t("1:00:00"),
 
-    "gate-compiler-style-labsjdk-20-linux-amd64": t("45:00"),
+    "gate-compiler-style-labsjdk-21-linux-amd64": t("45:00"),
 
     "gate-compiler-ctw-labsjdk-21-linux-amd64": c.mach5_target,
     "gate-compiler-ctw-labsjdk-21-windows-amd64": t("1:50:00"),
@@ -231,8 +232,6 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local dailies = {
-    "daily-compiler-test-labsjdk-21-windows-amd64": {},
-
     "daily-compiler-ctw-labsjdk-21-linux-aarch64": {},
     "daily-compiler-ctw-labsjdk-21-darwin-amd64": {},
     "daily-compiler-ctw-labsjdk-21-darwin-aarch64": {},
@@ -266,10 +265,10 @@
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test_serialgc-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-21-linux-amd64": t("1:30:00") + c.mach5_target,
     "weekly-compiler-test_serialgc-labsjdk-21-linux-aarch64": t("1:50:00"),
-    "weekly-compiler-test_serialgc-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
-    "weekly-compiler-test_serialgc-labsjdk-21-darwin-aarch64": t("1:00:00"),
+    "weekly-compiler-test_serialgc-labsjdk-21-darwin-amd64": t("1:30:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-21-darwin-aarch64": t("1:30:00"),
 
     "weekly-compiler-truffle_xcomp_serialgc-labsjdk-21-linux-amd64": t("1:30:00"),
     "weekly-compiler-truffle_xcomp_serialgc-labsjdk-21-linux-aarch64": t("1:30:00"),
@@ -436,11 +435,7 @@
     ]
   ],
 
-  # Run the style build only on linux-amd64-jdk20 as code quality tools
-  # only need to run on one platform. Furthermore they should be run on
-  # JDK-(latest - 1) as most tools won't support JDK-latest until it has
-  # at least been released.
-  local style_builds = [self.make_build("20", "linux-amd64", "style").build],
+  local style_builds = [self.make_build("21", "linux-amd64", "style").build],
 
   # Builds run on only on linux-amd64-jdk21Debug
   local linux_amd64_jdk21Debug_builds = [self.make_build("21Debug", "linux-amd64", task).build

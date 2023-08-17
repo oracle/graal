@@ -499,4 +499,14 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     public Register getHeapBaseRegister() {
         return getProviders().getRegisters().getHeapBaseRegister();
     }
+
+    @Override
+    protected int getVMPageSize() {
+        return config.vmPageSize;
+    }
+
+    @Override
+    protected int getSoftwarePrefetchHintDistance() {
+        return config.softwarePrefetchHintDistance;
+    }
 }

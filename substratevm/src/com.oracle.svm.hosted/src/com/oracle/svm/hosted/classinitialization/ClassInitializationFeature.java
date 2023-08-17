@@ -29,7 +29,6 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.RERUN;
 import static com.oracle.svm.hosted.classinitialization.InitKind.RUN_TIME;
 
 import java.io.PrintWriter;
-import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -37,6 +36,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.graph.Node;
@@ -126,42 +126,59 @@ public class ClassInitializationFeature implements InternalFeature {
          * means that the user cannot later manually register it as RERUN or RUN_TIME.
          */
         if (obj != null && !classInitializationSupport.maybeInitializeAtBuildTime(obj.getClass())) {
-            StringBuilder msg = new StringBuilder()
-                            .append("No instances of ").append(obj.getClass().getTypeName()).append(" are allowed in the image heap as this class should be initialized at image runtime.");
+            String typeName = obj.getClass().getTypeName();
+            String proxyLambdaInterfaceCSV = null;
+            String proxyLambdaInterfaceList = null;
+            boolean proxyOrLambda = ClassInitializationSupport.isProxyOrLambda(obj);
+            if (proxyOrLambda) {
+                proxyLambdaInterfaceCSV = StreamSupport.stream(ClassInitializationSupport.allInterfaces(obj.getClass()).spliterator(), false)
+                                .map(Class::getTypeName)
+                                .collect(Collectors.joining(","));
+                proxyLambdaInterfaceList = "[" + proxyLambdaInterfaceCSV.replaceAll(",", ", ") + "]";
+            }
 
-            String action = " To fix the issue mark " + obj.getClass().getTypeName() + " for build-time initialization with " +
-                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time") +
-                            " or use the the information from the trace to find the culprit and " +
-                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<culprit>", "initialize-at-run-time") +
-                            " to prevent its instantiation." + System.lineSeparator();
-            msg.append(classInitializationSupport.objectInstantiationTraceMessage(obj, action));
+            String msg = """
+                            An object of type '%s' was found in the image heap. This type, however, is marked for initialization at image run time for the following reason: %s.
+                            This is not allowed for correctness reasons: All objects that are stored in the image heap must be initialized at build time.
+
+                            You now have two options to resolve this:
+
+                            1) If it is intended that objects of type '%s' are persisted in the image heap, add %sto the native-image arguments.\
+                             Note that initializing new types can store additional objects to the heap. It is advised to check the static fields of %s to see if they are safe for build-time initialization,\
+                              and that they do not contain any sensitive data that should not become part of the image.
+
+                            """
+                            .replaceAll("\n", System.lineSeparator()).formatted(
+                                            typeName,
+                                            classInitializationSupport.reasonForClass(obj.getClass()),
+                                            typeName,
+                                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
+                                                            "initialize-at-build-time", true, true),
+                                            proxyOrLambda ? proxyLambdaInterfaceList : "'" + typeName + "'");
+
+            msg += classInitializationSupport.objectInstantiationTraceMessage(obj, "2) ", culprit -> {
+                if (culprit == null) {
+                    return "If if it is not intended that objects of type '" + typeName + "' are persisted in the image heap, examine the stack trace and use " +
+                                    SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<culprit>", "initialize-at-run-time", true, true) +
+                                    "to prevent instantiation of this object." + System.lineSeparator();
+                } else {
+                    return "If if it is not intended that objects of type '" + typeName + "' are persisted in the image heap, examine the stack trace and use " +
+                                    SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, culprit, "initialize-at-run-time", true, true) +
+                                    "to prevent instantiation of the culprit object.";
+                }
+            });
 
             if (!ClassInitializationOptions.UseDeprecatedOldClassInitialization.getValue()) {
-                msg.append(System.lineSeparator())
-                                .append("If you see this error while migrating to a newer GraalVM release, please note that the class initialization strategy has changed in GraalVM for JDK 21.")
-                                .append(" All classes can now be used at image build time. However, only classes explicitly marked as --initialize-at-build-time are allowed to be in the image heap.")
-                                .append(" This rule is now strictly enforced, i.e., the problem might be solvable by registering the reported type as --initialize-at-build-time.");
+                msg += """
+
+                                If you see this error while migrating to a newer GraalVM release, please note that the class initialization strategy has changed in GraalVM for JDK 21.
+                                All classes can now be used at image build time. However, only classes explicitly marked as --initialize-at-build-time are allowed to be in the image heap.
+                                This rule is now strictly enforced, i.e., the problem might be solvable by registering the reported type as --initialize-at-build-time.
+                                """.replaceAll("\n", System.lineSeparator());
             }
 
-            String proxyOrLambda = null;
-            if (Proxy.isProxyClass(obj.getClass())) {
-                proxyOrLambda = "Proxy";
-            } else if (obj.getClass().getName().contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING)) {
-                proxyOrLambda = "Lambda";
-            }
-            if (proxyOrLambda != null) {
-                msg.append(System.lineSeparator())
-                                .append("For ").append(proxyOrLambda).append(" classes, it is also sufficient to register all interfaces that the class implements as --initialize-at-build-time. ")
-                                .append(" The interfaces of this ").append(proxyOrLambda).append(" class are: [");
-                String sep = "";
-                for (var iface : ClassInitializationSupport.allInterfaces(obj.getClass())) {
-                    msg.append(sep).append(iface.getTypeName());
-                    sep = ", ";
-                }
-                msg.append("].");
-            }
-
-            throw new UnsupportedFeatureException(msg.toString());
+            msg += System.lineSeparator() + "The following detailed trace displays from which field in the code the object was reached.";
+            throw new UnsupportedFeatureException(msg);
         }
         return obj;
     }

@@ -125,6 +125,11 @@ public class UninterruptibleUtils {
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public int getAndIncrement() {
+            return UNSAFE.getAndAddInt(this, VALUE_OFFSET, 1);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public boolean compareAndSet(int expected, int update) {
             return UNSAFE.compareAndSetInt(this, VALUE_OFFSET, expected, update);
         }

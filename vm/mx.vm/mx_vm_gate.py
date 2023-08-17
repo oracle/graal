@@ -1,6 +1,6 @@
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -28,7 +28,6 @@ import json
 import shutil
 
 import mx
-import mx_benchmark
 import mx_subst
 import mx_unittest
 import mx_sdk_vm
@@ -46,6 +45,7 @@ from os import environ, listdir, remove, linesep, pathsep
 from os.path import join, exists, dirname, isdir, isfile, getsize, abspath
 from tempfile import NamedTemporaryFile, mkdtemp
 from contextlib import contextmanager
+import mx_truffle
 
 _suite = mx.suite('vm')
 
@@ -84,6 +84,10 @@ def _unittest_config_participant(config):
     return vmArgs, mainClass, mainClassArgs
 
 mx_unittest.add_config_participant(_unittest_config_participant)
+
+def _get_CountUppercase_vmargs():
+    cp = mx.project("jdk.internal.vm.compiler.test").classpath_repr()
+    return ['-cp', cp, 'org.graalvm.compiler.test.CountUppercase']
 
 def _check_compiler_log(compiler_log_file, expectations, extra_check=None, extra_log_files=None):
     """
@@ -125,7 +129,7 @@ def _check_compiler_log(compiler_log_file, expectations, extra_check=None, extra
 
 def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
     """
-    Tests basic libgraal execution by running a DaCapo benchmark, ensuring it has a 0 exit code
+    Tests basic libgraal execution by running CountUppercase, ensuring it has a 0 exit code
     and that the output for -DgraalShowConfiguration=info describes a libgraal execution.
     """
 
@@ -149,7 +153,7 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
         # Only run this test if JAVA_HOME and ORACLEJDK_JAVA_HOME have
         # the same major Java version. Even then there's a chance of incompatibility
         # if labsjdk is based on a different OracleJDK build.
-        if graalvm_jdk.javaCompliance.value == oraclejdk_confg.javaCompliance.value:
+        if graalvm_jdk.javaCompliance.value >= 22 and graalvm_jdk.javaCompliance.value == oraclejdk_confg.javaCompliance.value:
             libjvmci = libgraal_location
             assert exists(libjvmci), ('missing', libjvmci)
             oraclejdk_libgraal = abspath('oraclejdk_libgraal')
@@ -196,8 +200,7 @@ def _test_libgraal_basic(extra_vm_arguments, libgraal_location):
             table = f'  Count    Stub{nl}  ' + f'{nl}  '.join((f'{count:<8d} {stub}') for stub, count in stub_compilations.items())
             mx.abort(f'Following stubs were compiled more than once according to compiler log:{nl}{table}')
 
-    args = check_stub_sharing + ['-Dgraal.ShowConfiguration=verbose',
-            '-jar', mx.library('DACAPO').get_path(True), 'xalan', '-n', '1']
+    args = check_stub_sharing + ['-Dgraal.ShowConfiguration=verbose'] + _get_CountUppercase_vmargs()
 
     # Verify execution via raw java launcher in `mx graalvm-home`.
     for jre_name, jre, jre_args in jres:
@@ -220,12 +223,14 @@ def _test_libgraal_fatal_error_handling():
     """
     Tests that fatal errors in libgraal route back to HotSpot fatal error handling.
     """
+    graalvm_home = mx_sdk_vm_impl.graalvm_home()
     vmargs = ['-XX:+PrintFlagsFinal',
-              '-Dlibgraal.CrashAt=length,hashCode',
+              '-Dlibgraal.CrashAt=*',
               '-Dlibgraal.CrashAtIsFatal=true']
-    cmd = ["dacapo:xalan", "--tracker=none", "--"] + vmargs + ["--", "--preserve"]
+    cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
     out = mx.OutputCapture()
-    exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, out=out, err=out, nonZeroIsFatal=False)
+    scratch_dir = mkdtemp(dir='.')
+    exitcode = mx.run(cmd, nonZeroIsFatal=False, err=out, out=out, cwd=scratch_dir)
     if exitcode == 0:
         if 'CrashAtIsFatal: no fatalError function pointer installed' in out.data:
             # Executing a VM that does not configure fatal errors handling
@@ -234,17 +239,16 @@ def _test_libgraal_fatal_error_handling():
         else:
             mx.abort('Expected benchmark to result in non-zero exit code: ' + ' '.join(cmd) + linesep + out.data)
     else:
-        if len(bench_suite.scratchDirs()) == 0:
+        if not isdir(scratch_dir):
             mx.abort("No scratch dir found despite error being expected!")
-        latest_scratch_dir = bench_suite.scratchDirs()[-1]
         seen_libjvmci_log = False
-        hs_errs = glob.glob(join(latest_scratch_dir, 'hs_err_pid*.log'))
+        hs_errs = glob.glob(join(scratch_dir, 'hs_err_pid*.log'))
         if not hs_errs:
-            mx.abort('Expected a file starting with "hs_err_pid" in test directory. Entries found=' + str(listdir(latest_scratch_dir)))
+            mx.abort('Expected a file starting with "hs_err_pid" in test directory. Entries found=' + str(listdir(scratch_dir)))
 
         for hs_err in hs_errs:
-            mx.log(f"Verifying content of {join(latest_scratch_dir, hs_err)}")
-            with open(join(latest_scratch_dir, hs_err)) as fp:
+            mx.log(f"Verifying content of {hs_err}")
+            with open(hs_err) as fp:
                 contents = fp.read()
             if 'libjvmci' in hs_err:
                 seen_libjvmci_log = True
@@ -259,27 +263,67 @@ def _test_libgraal_fatal_error_handling():
                         mx.abort('Expected "Fatal error in JVMCI" to be in contents of ' + hs_err + ':' + linesep + contents)
 
         if 'JVMCINativeLibraryErrorFile' in out.data and not seen_libjvmci_log:
-            mx.abort('Expected a file matching "hs_err_pid*_libjvmci.log" in test directory. Entries found=' + str(listdir(latest_scratch_dir)))
+            mx.abort('Expected a file matching "hs_err_pid*_libjvmci.log" in test directory. Entries found=' + str(listdir(scratch_dir)))
 
     # Only clean up scratch dir on success
-    for scratch_dir in bench_suite.scratchDirs():
-        mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
-        mx.rmtree(scratch_dir)
+    mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
+    mx.rmtree(scratch_dir)
+
+def _test_libgraal_oome_dumping():
+    """
+    Tests the HeapDumpOnOutOfMemoryError libgraal option.
+    """
+    graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    scratch_dir = mkdtemp(prefix='oome_heap_dumps', dir='.')
+    os.mkdir(join(scratch_dir, 'subdir'))
+    inputs = {
+        '': join(scratch_dir, 'libgraal_pid*.hprof'),
+        'custom.hprof': join(scratch_dir, 'custom.hprof'),
+        'subdir': join(scratch_dir, 'subdir', 'libgraal_pid*.hprof'),
+    }
+    if mx.is_windows():
+        # GR-39501
+        mx.log('-Dlibgraal.HeapDumpOnOutOfMemoryError=true is not supported on Windows')
+        return
+
+    for n, v in inputs.items():
+        vmargs = ['-Dlibgraal.CrashAt=*',
+                  '-Dlibgraal.Xmx128M',
+                  '-Dlibgraal.PrintGC=true',
+                  '-Dlibgraal.HeapDumpOnOutOfMemoryError=true',
+                  f'-Dlibgraal.HeapDumpPath={n}',
+                  '-Dlibgraal.CrashAtThrowsOOME=true']
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
+        mx.run(cmd, cwd=scratch_dir)
+        heap_dumps = glob.glob(v)
+        if not heap_dumps:
+            mx.abort(f'No heap dumps found (glob: {v})')
+        if len(heap_dumps) != 1:
+            mx.abort(f'More than 1 heap dump found (glob: {v}): {heap_dumps}')
+        hd = heap_dumps[0]
+        mx.log(f'Heap dump: {hd} ({getsize(hd):,} bytes)')
+        os.remove(hd)
+
+    # Only clean up scratch dir on success
+    mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
+    mx.rmtree(scratch_dir)
 
 def _test_libgraal_systemic_failure_detection():
     """
     Tests that system compilation failures are detected and cause the VM to exit.
     """
+    graalvm_home = mx_sdk_vm_impl.graalvm_home()
     for rate in (-1, 1):
         vmargs = [
-            '-Dgraal.CrashAt=*e*,*a*',
+            '-Dgraal.CrashAt=*',
             f'-Dgraal.SystemicCompilationFailureRate={rate}',
             '-Dgraal.DumpOnError=false',
             '-Dgraal.CompilationFailureAction=Silent'
         ]
-        cmd = ["dacapo:xalan", "--tracker=none", "--"] + vmargs + ["--", "--preserve", '-n', '20']
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
         out = mx.OutputCapture()
-        exitcode, bench_suite, _ = mx_benchmark.gate_mx_benchmark(cmd, out=out, err=out, nonZeroIsFatal=False)
+        scratch_dir = mkdtemp(dir='.')
+        exitcode = mx.run(cmd, nonZeroIsFatal=False, err=out, out=out, cwd=scratch_dir)
         expect_exitcode_0 = rate >= 0
         if (exitcode == 0) != expect_exitcode_0:
             mx.abort(f'Unexpected benchmark exit code ({exitcode}): ' + ' '.join(cmd) + linesep + out.data)
@@ -289,9 +333,8 @@ def _test_libgraal_systemic_failure_detection():
                 mx.abort(f'Expected "{expect}" in output:{linesep}{out.data}')
 
         # Only clean up scratch dir on success
-        for scratch_dir in bench_suite.scratchDirs():
-            mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
-            mx.rmtree(scratch_dir)
+        mx.log(f"Cleaning up scratch dir after gate task completion: {scratch_dir}")
+        mx.rmtree(scratch_dir)
 
 def _jdk_has_ForceTranslateFailure_jvmci_option(jdk):
     """
@@ -323,7 +366,7 @@ def _test_libgraal_CompilationTimeout_JIT():
                   f'{G}LogFile={compiler_log_file}',
                    '-Ddebug.graal.CompilationWatchDog=true'] # helps debug failure
 
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-jar', mx.library('DACAPO').get_path(True), 'xalan', '-n', '3']
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + _get_CountUppercase_vmargs()
         exit_code = mx.run(cmd, nonZeroIsFatal=False)
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations)
@@ -364,8 +407,8 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
                    '-XX:+UseJVMCINativeLibrary']  # but ensure libgraal is still used by Truffle
 
         delay = abspath(join(dirname(__file__), 'Delay.sl'))
-        cp = mx.classpath(["com.oracle.truffle.sl", "com.oracle.truffle.sl.launcher"])
-        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + ['-cp', cp, 'com.oracle.truffle.sl.launcher.SLMain', delay]
+        cp_args = mx.get_runtime_jvm_args(mx_truffle.resolve_sl_dist_names(use_optimized_runtime=True, use_enterprise=True))
+        cmd = [join(graalvm_home, 'bin', 'java')] + vmargs + cp_args + ['--module', 'org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain', delay]
         err = mx.OutputCapture()
         exit_code = mx.run(cmd, nonZeroIsFatal=False, err=err)
         if err.data:
@@ -479,6 +522,8 @@ def gate_body(args, tasks):
                     if t: _test_libgraal_basic(extra_vm_arguments, libgraal_location)
                 with Task('LibGraal Compiler:FatalErrorHandling', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_fatal_error_handling()
+                with Task('LibGraal Compiler:OOMEDumping', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
+                    if t: _test_libgraal_oome_dumping()
                 with Task('LibGraal Compiler:SystemicFailureDetection', tasks, tags=[VmGateTasks.libgraal], report='compiler') as t:
                     if t: _test_libgraal_systemic_failure_detection()
                 with Task('LibGraal Compiler:CompilationTimeout:JIT', tasks, tags=[VmGateTasks.libgraal]) as t:
@@ -547,11 +592,11 @@ def gate_substratevm(tasks, quickbuild=False):
                 '--macro:truffle',
                 '--language:nfi',
                 '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
-                '--add-exports=org.graalvm.sdk/org.graalvm.polyglot.impl=ALL-UNNAMED',
-                '-H:MaxRuntimeCompileMethods=5000',
+                '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
                 '-R:MaxHeapSize=2g',
                 '--enable-url-protocols=jar',
-                '--enable-url-protocols=http'
+                '--enable-url-protocols=http',
+                '-H:MaxRuntimeCompileMethods=5000',
             ]
             truffle_without_compilation = truffle_with_compilation + [
                 '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime'
@@ -629,19 +674,22 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, langu
         report_file = join(svmbuild, "language_permissions.log")
         options = macro_options + [
             '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
+        ] + mx_sdk_vm_impl.svm_experimental_options([
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
             '-H:-InlineBeforeAnalysis',
             '-H:-ParseOnceJIT', #GR-47163
+            '-H:-VerifyDeoptimizationEntryPoints', #GR-47163
             '-cp',
             cp,
             '-H:-FoldSecurityManagerGetter',
             f'-H:TruffleTCKPermissionsReportFile={report_file}',
             f'-H:Path={svmbuild}',
+        ]) + [
             'com.oracle.svm.truffle.tck.MockMain'
         ]
         if excludes:
-            options.append(f"-H:TruffleTCKPermissionsExcludeFiles={','.join(excludes)}")
+            options += mx_sdk_vm_impl.svm_experimental_options([f"-H:TruffleTCKPermissionsExcludeFiles={','.join(excludes)}"])
         native_image(options)
         if isfile(report_file) and getsize(report_file) > 0:
             message = f"Failed: Language {language_id} performs following privileged calls:\n\n"
@@ -700,9 +748,6 @@ def gate_svm_truffle_tck_python(tasks):
 
 def gate_truffle_unchained(tasks):
     truffle_suite = mx.suite('truffle')
-    if truffle_suite:
-        import mx_truffle
-
     with Task('Truffle Unchained SL JVM', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
         if t:
             if not truffle_suite:
@@ -723,7 +768,7 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
     native_image_context, svm = graalvm_svm()
     with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
         import mx_compiler
-        build_options = ['-H:+GenerateBuildArtifactsFile'] + options
+        build_options = mx_sdk_vm_impl.svm_experimental_options(['-H:+GenerateBuildArtifactsFile']) + options
         if shared_lib:
             build_options = build_options + ['--shared']
         build_deps = []
@@ -774,9 +819,10 @@ def gate_svm_sl_tck(tasks):
                 options = [
                     '--macro:truffle',
                     '--tool:all',
+                ] + mx_sdk_vm_impl.svm_experimental_options([
                     f'-H:Path={svmbuild}',
                     '-H:Class=org.junit.runner.JUnitCore',
-                ]
+                ])
                 tests_image_path, tests_file = build_tests_image(svmbuild, options, ['com.oracle.truffle.tck.tests'], ['truffle:TRUFFLE_SL_TCK', 'truffle:TRUFFLE_TCK_INSTRUMENTATION'])
                 with open(tests_file) as f:
                     test_classes = [l.rstrip() for l in f.readlines()]

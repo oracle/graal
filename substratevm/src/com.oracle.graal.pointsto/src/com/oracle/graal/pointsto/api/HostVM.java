@@ -292,6 +292,14 @@ public abstract class HostVM {
         return StructuredGraph.AllowAssumptions.NO;
     }
 
+    /**
+     * @return Whether which methods were inlined should be recorded.
+     */
+    @SuppressWarnings("unused")
+    public boolean recordInlinedMethods(AnalysisMethod method) {
+        return false;
+    }
+
     public void initializeProviders(HostedProviders newProviders) {
         AnalysisError.guarantee(providers == null, "can only initialize providers once");
         providers = newProviders;

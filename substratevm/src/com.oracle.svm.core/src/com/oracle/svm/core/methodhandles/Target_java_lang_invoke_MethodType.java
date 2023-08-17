@@ -24,9 +24,7 @@
  */
 package com.oracle.svm.core.methodhandles;
 
-import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodType;
-import java.lang.invoke.WrongMethodTypeException;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
@@ -37,16 +35,6 @@ import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
 
 @TargetClass(java.lang.invoke.MethodType.class)
 final class Target_java_lang_invoke_MethodType {
-
-    /**
-     * This map contains MethodType instances that refer to classes of the image generator. Starting
-     * with a new empty set at run time avoids bringing over unnecessary cache entries.
-     *
-     * Since MethodHandle is not supported yet at run time, we could also disable the usage of
-     * MethodType completely. But this recomputation seems less intrusive.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.NewInstance, declClassName = "java.lang.invoke.MethodType$ConcurrentWeakInternSet") //
-    static Target_java_lang_invoke_MethodType_ConcurrentWeakInternSet internTable;
 
     /**
      * This field is lazily initialized. We need a stable value, otherwise the initialization can
@@ -62,48 +50,8 @@ final class Target_java_lang_invoke_MethodType {
     private String methodDescriptor;
 }
 
-@TargetClass(value = java.lang.invoke.MethodType.class, innerClass = "ConcurrentWeakInternSet")
-final class Target_java_lang_invoke_MethodType_ConcurrentWeakInternSet {
-}
-
-/**
- * The substitutions are needed to replace identity comparison ({@code ==}) with
- * {@code MethodType.equal} calls. We do not keep
- * {@link Target_java_lang_invoke_MethodType#internTable}, so we cannot guarantee identity.
- */
 @TargetClass(className = "java.lang.invoke.Invokers")
 final class Target_java_lang_invoke_Invokers {
-    @Substitute
-    static void checkExactType(MethodHandle mh, MethodType expected) {
-        if (!expected.equals(mh.type())) {
-            throw new WrongMethodTypeException("Expected " + expected + " but found " + mh.type());
-        }
-    }
-
-    @Substitute
-    static MethodHandle checkVarHandleGenericType(Target_java_lang_invoke_VarHandle handle, Target_java_lang_invoke_VarHandle_AccessDescriptor ad) {
-        // Test for exact match on invoker types
-        // TODO match with erased types and add cast of return value to lambda form
-        MethodHandle mh = handle.getMethodHandle(ad.mode);
-        if (mh.type().equals(ad.symbolicMethodTypeInvoker)) {
-            return mh;
-        } else {
-            return mh.asType(ad.symbolicMethodTypeInvoker);
-        }
-    }
-
-    @Substitute
-    static MethodHandle checkVarHandleExactType(Target_java_lang_invoke_VarHandle handle, Target_java_lang_invoke_VarHandle_AccessDescriptor ad) {
-        MethodHandle mh = handle.getMethodHandle(ad.mode);
-        MethodType mt = mh.type();
-        if (!mt.equals(ad.symbolicMethodTypeInvoker)) {
-            throw newWrongMethodTypeException(mt, ad.symbolicMethodTypeInvoker);
-        }
-        return mh;
-    }
-
-    @Alias
-    static native WrongMethodTypeException newWrongMethodTypeException(MethodType actual, MethodType expected);
 }
 
 @TargetClass(className = "java.lang.invoke.InvokerBytecodeGenerator")

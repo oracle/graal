@@ -30,12 +30,15 @@ import java.util.Map;
 
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
+import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
@@ -47,6 +50,7 @@ import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;
+import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.LocationIdentity;
 
@@ -58,6 +62,7 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.nodes.VerificationMarkerNode;
 import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;
+import com.oracle.svm.core.nodes.CFunctionCaptureNode;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueDataNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
@@ -93,6 +98,7 @@ import com.oracle.svm.core.util.VMError;
 public final class CFunctionSnippets extends SubstrateTemplates implements Snippets {
 
     private final SnippetInfo prologue;
+    private final SnippetInfo capture;
     private final SnippetInfo epilogue;
 
     /**
@@ -115,6 +121,14 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
          */
 
         return CFunctionPrologueDataNode.cFunctionPrologueData(anchor, newThreadStatus);
+    }
+
+    @Node.NodeIntrinsic(value = ForeignCallNode.class)
+    public static native void callCaptureFunction(@Node.ConstantNodeParameter ForeignCallDescriptor descriptor, int states, CIntPointer captureBuffer);
+
+    @Snippet
+    private static void captureSnippet(@ConstantParameter ForeignCallDescriptor captureFunction, int statesToCapture, CIntPointer captureBuffer) {
+        callCaptureFunction(captureFunction, statesToCapture, captureBuffer);
     }
 
     @Snippet
@@ -143,9 +157,11 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
         super(options, providers);
 
         this.prologue = snippet(providers, CFunctionSnippets.class, "prologueSnippet");
+        this.capture = snippet(providers, CFunctionSnippets.class, "captureSnippet");
         this.epilogue = snippet(providers, CFunctionSnippets.class, "epilogueSnippet");
 
         lowerings.put(CFunctionPrologueNode.class, new CFunctionPrologueLowering());
+        lowerings.put(CFunctionCaptureNode.class, new CFunctionCaptureLowering());
         lowerings.put(CFunctionEpilogueNode.class, new CFunctionEpilogueLowering());
     }
 
@@ -177,8 +193,28 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
         }
     }
 
-    class CFunctionEpilogueLowering implements NodeLoweringProvider<CFunctionEpilogueNode> {
+    class CFunctionCaptureLowering implements NodeLoweringProvider<CFunctionCaptureNode> {
+        @Override
+        public void lower(CFunctionCaptureNode node, LoweringTool tool) {
+            if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+                return;
+            }
 
+            ValueNode statesToCapture = node.getStatesToCapture();
+            ForeignCallDescriptor captureFunction = node.getCaptureFunction();
+            ValueNode buffer = node.getCaptureBuffer();
+            Arguments args = new Arguments(capture, node.graph().getGuardsStage(), tool.getLoweringStage());
+            args.addConst("captureFunction", captureFunction);
+            args.add("statesToCapture", statesToCapture);
+            args.add("captureBuffer", buffer);
+
+            SnippetTemplate template = template(tool, node, args);
+            template.setMayRemoveLocation(true);
+            template.instantiate(tool.getMetaAccess(), node, SnippetTemplate.DEFAULT_REPLACER, args);
+        }
+    }
+
+    class CFunctionEpilogueLowering implements NodeLoweringProvider<CFunctionEpilogueNode> {
         @Override
         public void lower(CFunctionEpilogueNode node, LoweringTool tool) {
             if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
@@ -188,7 +224,6 @@ public final class CFunctionSnippets extends SubstrateTemplates implements Snipp
 
             int oldThreadStatus = node.getOldThreadStatus();
             assert StatusSupport.isValidStatus(oldThreadStatus);
-
             Arguments args = new Arguments(epilogue, node.graph().getGuardsStage(), tool.getLoweringStage());
             args.addConst("oldThreadStatus", oldThreadStatus);
             SnippetTemplate template = template(tool, node, args);

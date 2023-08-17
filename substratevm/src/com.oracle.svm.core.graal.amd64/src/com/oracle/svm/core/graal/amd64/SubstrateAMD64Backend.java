@@ -27,6 +27,8 @@ package com.oracle.svm.core.graal.amd64;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_DECD_RSP;
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
+import static com.oracle.svm.core.util.VMError.unsupportedFeature;
+import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
@@ -145,6 +147,7 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.cpufeature.Stubs;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.RuntimeCompilation;
+import com.oracle.svm.core.graal.code.AssignedLocation;
 import com.oracle.svm.core.graal.code.PatchConsumerFactory;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateBackend;
@@ -894,6 +897,35 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             } else {
                 super.emitInvoke(callTarget, parameters, callState, result);
             }
+
+            var cc = (SubstrateCallingConventionType) callTarget.callType();
+            if (cc.returnSaving != null) {
+                // The pointer to the return buffer is passed as first argument
+                Value baseSaveLocation = parameters[0];
+                // Could be any x86 scratch register
+                RegisterValue scratch = r10.asValue(parameters[0].getValueKind());
+                gen.emitMove(scratch, baseSaveLocation);
+                long offset = 0;
+                for (AssignedLocation ret : cc.returnSaving) {
+                    Value saveLocation = gen.getArithmetic().emitAdd(scratch, gen.emitJavaConstant(JavaConstant.forLong(offset)), false);
+                    if (ret.assignsToStack()) {
+                        throw unsupportedFeature("Return should never happen on stack.");
+                    }
+                    var register = ret.register();
+                    LIRKind kind;
+                    // There might a better/more natural way to check this
+                    if (register.getRegisterCategory().equals(AMD64.CPU)) {
+                        kind = gen.getValueKind(JavaKind.Long);
+                        offset += 8;
+                    } else if (register.getRegisterCategory().equals(AMD64.XMM)) {
+                        kind = gen.getValueKind(JavaKind.Double);
+                        offset += 16;
+                    } else {
+                        throw unsupportedFeature("Cannot use register " + register + " for return.");
+                    }
+                    gen.getArithmetic().emitStore(kind, saveLocation, gen.emitReadRegister(register, kind), callState, MemoryOrderMode.PLAIN);
+                }
+            }
         }
 
         @Override
@@ -1447,6 +1479,12 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         AMD64Assembler asm = new AMD64Assembler(getTarget());
         if (SubstrateOptions.SpawnIsolates.getValue()) { // method id is offset from heap base
             asm.movq(rax, new AMD64Address(threadArg.getRegister(), threadIsolateOffset));
+            /*
+             * Load the isolate pointer from the JNIEnv argument (same as the isolate thread). The
+             * isolate pointer is equivalent to the heap base address (which would normally be
+             * provided via Isolate.getHeapBase which is a no-op), which we then use to access the
+             * method object and read the entry point.
+             */
             asm.addq(rax, methodIdArg.getRegister()); // address of JNIAccessibleMethod
             asm.jmp(new AMD64Address(rax, methodObjEntryPointOffset));
         } else { // methodId is absolute address

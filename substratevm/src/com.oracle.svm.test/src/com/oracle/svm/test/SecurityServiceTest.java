@@ -64,7 +64,7 @@ public class SecurityServiceTest {
             // register the service implementation for reflection explicitly,
             // non-standard services are not processed automatically
             RuntimeReflection.register(NoOpImpl.class);
-            RuntimeReflection.register(NoOpImpl.class.getConstructors());
+            RuntimeReflection.register(NoOpImpl.class.getDeclaredConstructors());
         }
     }
 

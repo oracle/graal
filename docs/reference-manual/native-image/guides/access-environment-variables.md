@@ -3,6 +3,7 @@ layout: ni-docs
 toc_group: how-to-guides
 link_title: Access Environment Variables
 permalink: /reference-manual/native-image/guides/access-environment-variables/
+redirect_from: /reference-manual/native-image/Properties/
 ---
 
 # Access Environment Variables in a Native Executable at Run Time

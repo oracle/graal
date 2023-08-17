@@ -80,7 +80,6 @@ import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Ree
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static org.graalvm.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
-import static org.graalvm.compiler.hotspot.replacements.AssertionSnippets.ASSERTION_VM_MESSAGE_C;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets.DYNAMIC_NEW_INSTANCE;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets.DYNAMIC_NEW_INSTANCE_OR_NULL;
 import static org.graalvm.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets.G1WBPOSTCALL;
@@ -149,10 +148,10 @@ import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CalcStringAttributesForeignCalls;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import org.graalvm.compiler.replacements.nodes.CountPositivesNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
-import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.MessageDigestNode;
 import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
 import org.graalvm.compiler.word.Word;
@@ -463,12 +462,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
         CreateExceptionStub.registerForeignCalls(c, this);
 
-        /*
-         * This message call is registered twice, where the second one must only be used for calls
-         * that do not return, i.e., that exit the VM.
-         */
         registerForeignCall(VM_MESSAGE_C, c.vmMessageAddress, NativeCall);
-        registerForeignCall(ASSERTION_VM_MESSAGE_C, c.vmMessageAddress, NativeCall);
 
         linkForeignCall(options, providers, NEW_INSTANCE, c.newInstanceAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, NEW_ARRAY, c.newArrayAddress, PREPEND_THREAD);
@@ -666,7 +660,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, StringLatin1InflateNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, StringUTF16CompressNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, EncodeArrayNode.STUBS);
-        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, HasNegativesNode.STUB);
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, CountPositivesNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, VectorizedMismatchNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMultiplyToLenNode.STUB);
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, BigIntegerMulAddNode.STUB);

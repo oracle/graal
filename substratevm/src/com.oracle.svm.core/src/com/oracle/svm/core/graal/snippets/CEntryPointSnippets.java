@@ -231,13 +231,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             parameters.setReservedSpaceSize(WordFactory.unsigned(parsedArgs.read(IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize))));
         }
 
-        WordPointer isolate = StackValue.get(WordPointer.class);
-        int error = Isolates.create(isolate, parameters);
+        WordPointer isolatePtr = StackValue.get(WordPointer.class);
+        int error = Isolates.create(isolatePtr, parameters);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
+        Isolate isolate = isolatePtr.read();
         if (SpawnIsolates.getValue()) {
-            setHeapBase(Isolates.getHeapBase(isolate.read()));
+            setHeapBase(Isolates.getHeapBase(isolate));
         }
 
         return createIsolate0(parsedArgs, isolate, vmThreadSize);
@@ -245,9 +246,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @NeverInline(value = "Ensure this code cannot rise above where heap base is set.")
-    private static int createIsolate0(CLongPointer parsedArgs, WordPointer isolate, int vmThreadSize) {
+    private static int createIsolate0(CLongPointer parsedArgs, Isolate isolate, int vmThreadSize) {
+
         IsolateArgumentParser.singleton().persistOptions(parsedArgs);
-        IsolateListenerSupport.singleton().afterCreateIsolate(isolate.read());
+        IsolateListenerSupport.singleton().afterCreateIsolate(isolate);
 
         CodeInfoTable.prepareImageCodeInfo();
         if (MultiThreaded.getValue()) {
@@ -255,7 +257,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
             }
         }
-        int error = attachThread(isolate.read(), false, false, vmThreadSize, true);
+        int error = attachThread(isolate, false, false, vmThreadSize, true);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }

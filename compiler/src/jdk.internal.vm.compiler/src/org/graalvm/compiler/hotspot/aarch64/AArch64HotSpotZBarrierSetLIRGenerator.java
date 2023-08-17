@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -115,7 +115,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64BarrierSetLIRG
                 masm.bind(entryPoint);
 
                 if (frameMap != null) {
-                    AArch64HotSpotBackend.rawEnter(crb, frameMap, masm, config.preserveFramePointer);
+                    AArch64HotSpotBackend.rawEnter(crb, frameMap, masm, config);
                 }
 
                 CallingConvention cc = callTarget.getOutgoingCallingConvention();
@@ -136,7 +136,7 @@ public class AArch64HotSpotZBarrierSetLIRGenerator extends AArch64BarrierSetLIRG
                 masm.ldr(64, resultReg, cArg0);
 
                 if (frameMap != null) {
-                    AArch64HotSpotBackend.rawLeave(crb);
+                    AArch64HotSpotBackend.rawLeave(crb, config);
                 }
 
                 // Return to inline code

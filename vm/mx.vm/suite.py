@@ -33,7 +33,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "8fc75fc8815df51149075be69b96f608959e3b05",
+                "version": "04e31e4d783d1f071896c0433120bada84e93665",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -42,14 +42,14 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "8fc75fc8815df51149075be69b96f608959e3b05",
+                "version": "04e31e4d783d1f071896c0433120bada84e93665",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
             },
             {
                 "name": "truffleruby",
-                "version": "82d3a4a5217bd1e97be37e993f0d2a54536265c2",
+                "version": "c1d8453a44b0d2a8f633fb3f95ad0205e1d9d516",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "aacb5b9fa77de952764c71986113fcd8434a0e68",
+                "version": "4d2fdc9f4b2a5e6e41c1e55283dbeb174d22f626",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -65,7 +65,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "94ea8d981045f9aafcba09599294eaec5268856e",
+                "version": "17c76e4873b2bb4c68a91772501be3005dba39c2",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -73,7 +73,7 @@ suite = {
             },
             {
                 "name": "polybenchmarks",
-                "version": "73b6ff3489f5c5fe173a6748a863ffe1a0842dcd",
+                "version": "9c11e267b9925f44e42b1187fee466b47c2ffcf3",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/polybenchmarks.git", "kind": "git"},
@@ -115,6 +115,7 @@ suite = {
             "checkstyle": "org.graalvm.component.installer",
             "dependencies": [
                 "sdk:LAUNCHER_COMMON",
+                "sdk:POLYGLOT",
                 "truffle:VISUALVM-LIB-JFLUID-HEAP",
             ],
             "requires": [
@@ -241,7 +242,8 @@ suite = {
             ],
             "distDependencies": [
                 "sdk:LAUNCHER_COMMON",
-                 "truffle:VISUALVM-LIB-JFLUID-HEAP",
+                "sdk:POLYGLOT",
+                "truffle:VISUALVM-LIB-JFLUID-HEAP",
             ],
             "maven" : False,
         },

@@ -30,12 +30,18 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.graalvm.compiler.core.common.LIRKindWithCast;
+import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlot;
+import org.graalvm.compiler.lir.framemap.SimpleVirtualStackSlotAlias;
+
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Value;
+import jdk.vm.ci.meta.ValueKind;
 
 public final class LIRValueUtil {
 
@@ -166,5 +172,33 @@ public final class LIRValueUtil {
             }
         }
         return registers;
+    }
+
+    /**
+     * Returns new value with the provided ValueKind.
+     */
+    public static Value changeValueKind(Value value, ValueKind<?> toKind, boolean allowVirtual) {
+        ValueKind<?> castKind = LIRKindWithCast.castToKind(toKind, value.getValueKind());
+        if (isRegister(value)) {
+            return ((RegisterValue) value).getRegister().asValue(castKind);
+        } else if (value instanceof StackSlot) {
+            StackSlot stackSlot = (StackSlot) value;
+            return StackSlot.get(castKind, stackSlot.getRawOffset(), stackSlot.getRawAddFrameSize());
+        } else if (allowVirtual && value instanceof SimpleVirtualStackSlot) {
+            SimpleVirtualStackSlot stackSlot = (SimpleVirtualStackSlot) value;
+            return new SimpleVirtualStackSlotAlias(castKind, stackSlot);
+        } else {
+            throw GraalError.shouldNotReachHereUnexpectedValue(value); // ExcludeFromJacocoGeneratedReport
+        }
+    }
+
+    /**
+     * Returns the value with the underlying {@link ValueKind} if the value is a cast.
+     */
+    public static Value uncast(Value value) {
+        if (value.getValueKind() instanceof LIRKindWithCast) {
+            return changeValueKind(value, ((LIRKindWithCast) value.getValueKind()).getActualKind(), false);
+        }
+        return value;
     }
 }

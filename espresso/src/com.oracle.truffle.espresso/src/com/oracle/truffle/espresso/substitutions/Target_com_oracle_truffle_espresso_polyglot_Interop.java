@@ -982,12 +982,12 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         long index,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached ToReference.ToJavaLangObject toEspresso,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile) {
             try {
                 Object value = interop.readArrayElement(InteropUtils.unwrapForeign(getLanguage(), receiver), index);
-                return toEspresso.execute(value);
+                return InteropUtils.maybeWrapAsObject(value, valueInterop, getContext());
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
@@ -1969,9 +1969,9 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(String.class) StaticObject member,
                         @JavaType(Object[].class) StaticObject arguments,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
                         @Bind("getMeta()") Meta meta,
-                        @Cached ToReference.DynamicToReference toEspressoNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached ToHostArguments toHostArguments,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
@@ -1982,7 +1982,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
             try {
                 Object[] hostArguments = toHostArguments.execute(receiver.isForeignObject(), arguments);
                 Object result = interop.invokeMember(InteropUtils.unwrapForeign(getLanguage(), receiver), hostMember, hostArguments);
-                return toEspressoNode.execute(result, meta.java_lang_Object);
+                return InteropUtils.maybeWrapAsObject(result, valueInterop, getContext());
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
@@ -3355,15 +3355,14 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
         StaticObject doCached(
                         @JavaType(Object.class) StaticObject receiver,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary exceptionInterop,
-                        @Cached ToReference.DynamicToReference toEspressoNode,
                         @Cached LookupTypeConverterNode lookupTypeConverterNode,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
-                        @Cached BranchProfile exceptionProfile,
-                        @Bind("getMeta()") Meta meta) {
+                        @Cached BranchProfile exceptionProfile) {
             try {
                 Object element = interop.getIteratorNextElement(InteropUtils.unwrapForeign(getLanguage(), receiver));
-                return toEspressoNode.execute(element, meta.java_lang_Object);
+                return InteropUtils.maybeWrapAsObject(element, valueInterop, getContext());
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
@@ -3503,7 +3502,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject receiver,
                         @JavaType(Object.class) StaticObject key,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached ToReference.DynamicToReference toEspresso,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
@@ -3515,7 +3514,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                 } else {
                     result = interop.readHashValue(receiver, key);
                 }
-                return toEspresso.execute(result, getMeta().java_lang_Object);
+                return InteropUtils.maybeWrapAsObject(result, valueInterop, getContext());
             } catch (InteropException e) {
                 exceptionProfile.enter();
                 throw throwInteropExceptionAsGuest.execute(e);
@@ -3551,7 +3550,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                         @JavaType(Object.class) StaticObject key,
                         @JavaType(Object.class) StaticObject defaultValue,
                         @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
-                        @Cached ToReference.ToJavaLangObject toEspresso,
+                        @CachedLibrary(limit = "LIMIT") InteropLibrary valueInterop,
                         @Cached ThrowInteropExceptionAsGuest throwInteropExceptionAsGuest,
                         @Cached BranchProfile exceptionProfile,
                         @Cached ConditionProfile isForeignProfile) {
@@ -3564,10 +3563,10 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Interop {
                     if (result == unwrappedDefaultValue) {
                         return defaultValue;
                     }
-                    return toEspresso.execute(result);
+                    return InteropUtils.maybeWrapAsObject(result, valueInterop, getContext());
                 } else {
                     Object result = interop.readHashValueOrDefault(receiver, key, defaultValue);
-                    return toEspresso.execute(result);
+                    return InteropUtils.maybeWrapAsObject(result, valueInterop, getContext());
                 }
             } catch (InteropException e) {
                 exceptionProfile.enter();

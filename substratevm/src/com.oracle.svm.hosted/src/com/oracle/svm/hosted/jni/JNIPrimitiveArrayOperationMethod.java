@@ -197,7 +197,7 @@ public final class JNIPrimitiveArrayOperationMethod extends EntryPointCallStubMe
             case RELEASE_ELEMENTS: {
                 ValueNode address = arguments.get(2);
                 ValueNode mode = arguments.get(3);
-                kit.destroyArrayViewByAddress(address, mode);
+                kit.destroyNewestArrayViewByAddress(address, mode);
                 break;
             }
             case GET_REGION:

@@ -104,6 +104,14 @@ public abstract class TypeFlow<T> {
      */
     private volatile boolean isSaturated;
 
+    /**
+     * A TypeFlow is invalidated when the flowsgraph it belongs to is updated due to
+     * {@link MethodTypeFlow#updateFlowsGraph}. Once a flow is invalided it no longer needs to be
+     * updated and its links can be removed. Note delaying the removal of invalid flows does not
+     * affect correctness, so they can be removed lazily.
+     */
+    private boolean isValid = true;
+
     @SuppressWarnings("rawtypes")//
     private static final AtomicReferenceFieldUpdater<TypeFlow, TypeState> STATE_UPDATER = AtomicReferenceFieldUpdater.newUpdater(TypeFlow.class, TypeState.class, "state");
 
@@ -259,6 +267,20 @@ public abstract class TypeFlow<T> {
     }
 
     /**
+     * Return true is the flow is valid and should be updated.
+     */
+    public boolean isValid() {
+        return isValid;
+    }
+
+    /**
+     * Invalidating the typeflow will cause the flow to be lazily removed in the future.
+     */
+    public void invalidate() {
+        isValid = false;
+    }
+
+    /**
      * Return true if this flow is saturated. When an observer becomes saturated it doesn't
      * immediately remove itself from all its inputs. The inputs lazily remove it on next update.
      */
@@ -392,6 +414,9 @@ public abstract class TypeFlow<T> {
         if (use.equals(this)) {
             return false;
         }
+        if (!use.isValid()) {
+            return false;
+        }
         /* Input is always tracked. */
         registerInput(bb, use);
         if (use.isSaturated()) {
@@ -473,6 +498,10 @@ public abstract class TypeFlow<T> {
         if (observer.equals(this)) {
             return false;
         }
+        if (!observer.isValid()) {
+            return false;
+        }
+
         registerObservee(bb, observer);
         return ConcurrentLightHashSet.addElement(this, OBSERVERS_UPDATER, observer);
     }
@@ -579,7 +608,7 @@ public abstract class TypeFlow<T> {
     public void update(PointsToAnalysis bb) {
         TypeState curState = getState();
         for (TypeFlow<?> use : getUses()) {
-            if (use.isSaturated()) {
+            if (!use.isValid() || use.isSaturated()) {
                 removeUse(use);
             } else {
                 use.addState(bb, curState);
@@ -587,7 +616,11 @@ public abstract class TypeFlow<T> {
         }
 
         for (TypeFlow<?> observer : getObservers()) {
-            observer.onObservedUpdate(bb);
+            if (observer.isValid()) {
+                observer.onObservedUpdate(bb);
+            } else {
+                removeObserver(observer);
+            }
         }
     }
 

@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
@@ -57,6 +58,7 @@ import org.graalvm.compiler.nodes.WithExceptionNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.calc.NarrowNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
+import org.graalvm.compiler.nodes.extended.FixedValueAnchorNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
@@ -76,6 +78,7 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.nodes.CFunctionCaptureNode;
 import com.oracle.svm.core.nodes.CFunctionEpilogueNode;
 import com.oracle.svm.core.nodes.CFunctionPrologueNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;
@@ -83,6 +86,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -103,14 +107,19 @@ public class SubstrateGraphKit extends GraphKit {
 
     @SuppressWarnings("this-escape")
     public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
-                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
-        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, trackNodeSourcePosition(forceTrackNodeSourcePosition), false);
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition, boolean recordInlinedMethods) {
+        super(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, null, trackNodeSourcePosition(forceTrackNodeSourcePosition), recordInlinedMethods);
         assert wordTypes != null : "Support for Word types is mandatory";
         frameState = new FrameStateBuilder(this, stubMethod, graph);
         frameState.disableKindVerification();
         frameState.disableStateVerification();
         frameState.initializeForMethodStart(null, true, graphBuilderPlugins);
         graph.start().setStateAfter(frameState.create(bci(), graph.start()));
+    }
+
+    public SubstrateGraphKit(DebugContext debug, ResolvedJavaMethod stubMethod, Providers providers, WordTypes wordTypes,
+                    GraphBuilderConfiguration.Plugins graphBuilderPlugins, CompilationIdentifier compilationId, boolean forceTrackNodeSourcePosition) {
+        this(debug, stubMethod, providers, wordTypes, graphBuilderPlugins, compilationId, forceTrackNodeSourcePosition, false);
     }
 
     @Override
@@ -157,7 +166,11 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ValueNode createLoadIndexed(ValueNode array, int index, JavaKind kind, GuardingNode boundsCheck) {
-        ValueNode loadIndexed = LoadIndexedNode.create(null, array, ConstantNode.forInt(index, getGraph()), boundsCheck, kind, getMetaAccess(), getConstantReflection());
+        return createLoadIndexed(array, ConstantNode.forInt(index, getGraph()), kind, boundsCheck);
+    }
+
+    public ValueNode createLoadIndexed(ValueNode array, ValueNode index, JavaKind kind, GuardingNode boundsCheck) {
+        ValueNode loadIndexed = LoadIndexedNode.create(null, array, index, boundsCheck, kind, getMetaAccess(), getConstantReflection());
         if (loadIndexed instanceof FixedNode) {
             return append((FixedNode) loadIndexed);
         }
@@ -189,6 +202,20 @@ public class SubstrateGraphKit extends GraphKit {
     }
 
     public ValueNode createCFunctionCall(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget) {
+        return createCFunctionCallWithCapture(targetAddress, arguments, signature, newThreadStatus, emitDeoptTarget, SubstrateCallingConventionKind.Native.toType(true),
+                        null, null, null);
+    }
+
+    public ValueNode createCFunctionCallWithCapture(ValueNode targetAddress, List<ValueNode> arguments, Signature signature, int newThreadStatus, boolean emitDeoptTarget,
+                    CallingConvention.Type convention, ForeignCallDescriptor captureFunction, ValueNode statesToCapture, ValueNode captureBuffer) {
+        assert ((captureFunction == null) && (statesToCapture == null) && (captureBuffer == null)) ||
+                        ((captureFunction != null) && (statesToCapture != null) && (captureBuffer != null));
+
+        var fixedStatesToCapture = statesToCapture;
+        if (fixedStatesToCapture != null) {
+            fixedStatesToCapture = append(new FixedValueAnchorNode(fixedStatesToCapture));
+        }
+
         boolean emitTransition = StatusSupport.isValidStatus(newThreadStatus);
         if (emitTransition) {
             append(new CFunctionPrologueNode(newThreadStatus));
@@ -205,7 +232,11 @@ public class SubstrateGraphKit extends GraphKit {
         JavaKind cReturnKind = javaReturnKind.getStackKind();
         JavaType returnType = signature.getReturnType(null);
         Stamp returnStamp = returnStamp(returnType, cReturnKind);
-        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, cReturnKind, SubstrateCallingConventionKind.Native);
+        InvokeNode invoke = createIndirectCall(targetAddress, arguments, signature.toParameterTypes(null), returnStamp, cReturnKind, convention);
+
+        if (fixedStatesToCapture != null) {
+            append(new CFunctionCaptureNode(captureFunction, fixedStatesToCapture, captureBuffer));
+        }
 
         assert !emitDeoptTarget || !emitTransition : "cannot have transition for deoptimization targets";
         if (emitTransition) {
@@ -218,7 +249,7 @@ public class SubstrateGraphKit extends GraphKit {
              * exception handlers and directly unwind.
              */
             int bci = invoke.stateAfter().bci;
-            appendWithUnwind(new DeoptEntryNode(), bci);
+            appendWithUnwind(DeoptEntryNode.create(invoke.bci()), bci);
         }
 
         ValueNode result = invoke;
@@ -243,12 +274,17 @@ public class SubstrateGraphKit extends GraphKit {
 
     private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
                     SubstrateCallingConventionKind callKind) {
+        return createIndirectCall(targetAddress, arguments, parameterTypes, returnStamp, returnKind, callKind.toType(true));
+    }
+
+    private InvokeNode createIndirectCall(ValueNode targetAddress, List<ValueNode> arguments, JavaType[] parameterTypes, Stamp returnStamp, JavaKind returnKind,
+                    CallingConvention.Type convention) {
         frameState.clearStack();
 
         int bci = bci();
         CallTargetNode callTarget = getGraph().add(
                         new IndirectCallTargetNode(targetAddress, arguments.toArray(new ValueNode[arguments.size()]), StampPair.createSingle(returnStamp), parameterTypes, null,
-                                        callKind.toType(true), InvokeKind.Static));
+                                        convention, InvokeKind.Static));
         InvokeNode invoke = append(new InvokeNode(callTarget, bci));
 
         // Insert framestate.

@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.lir.framemap;
 
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -33,9 +36,12 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.CodeUtil;
+import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterConfig;
+import jdk.vm.ci.code.RegisterSaveLayout;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.TargetDescription;
+import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.ValueKind;
 
 /**
@@ -268,5 +274,51 @@ public abstract class FrameMap {
 
     public ReferenceMapBuilder newReferenceMapBuilder() {
         return referenceMapFactory.newReferenceMapBuilder(totalFrameSize());
+    }
+
+    public RegisterSaveLayout getRegisterSaveLayout(Register[] savedRegisters, AllocatableValue[] slots) {
+        Register[] filteredSavedRegisters = filterSavedRegisters(savedRegisters);
+        int total = 0;
+        for (int i = 0; i < filteredSavedRegisters.length; i++) {
+            if (filteredSavedRegisters[i] != null) {
+                total++;
+            }
+        }
+        Register[] keys = new Register[total];
+        int[] values = new int[total];
+        if (total != 0) {
+            int mapIndex = 0;
+            for (int i = 0; i < filteredSavedRegisters.length; i++) {
+                if (filteredSavedRegisters[i] != null) {
+                    keys[mapIndex] = filteredSavedRegisters[i];
+                    assert isStackSlot(slots[i]) : "not a StackSlot: " + slots[i];
+                    StackSlot slot = asStackSlot(slots[i]);
+                    values[mapIndex] = indexForStackSlot(slot);
+                    mapIndex++;
+                }
+            }
+            assert mapIndex == total;
+        }
+        return new RegisterSaveLayout(keys, values);
+    }
+
+    /**
+     * {@link org.graalvm.compiler.lir.StandardOp.SaveRegistersOp} might save more registers than
+     * {@link RegisterSaveLayout} should know about so permit subclasses to filter the contents.
+     */
+    protected Register[] filterSavedRegisters(Register[] savedRegisters) {
+        return savedRegisters;
+    }
+
+    /**
+     * Computes the index of a stack slot relative to slot 0. This is also the bit index of stack
+     * slots in the reference map.
+     *
+     * @param slot a stack slot
+     * @return the index of the stack slot
+     */
+    private int indexForStackSlot(StackSlot slot) {
+        assert offsetForStackSlot(slot) % getTarget().wordSize == 0;
+        return offsetForStackSlot(slot) / getTarget().wordSize;
     }
 }

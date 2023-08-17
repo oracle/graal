@@ -47,8 +47,8 @@ final class Target_java_lang_Module {
         if (resName.startsWith("/")) {
             resName = resName.substring(1);
         }
-        ResourceStorageEntry res = Resources.get(SubstrateUtil.cast(this, Module.class), resName);
-        return res == null ? null : new ByteArrayInputStream(res.getData().get(0));
+        Object res = Resources.singleton().get(SubstrateUtil.cast(this, Module.class), resName, true);
+        return res == null ? null : new ByteArrayInputStream(((ResourceStorageEntry) res).getData().get(0));
     }
 
     @Substitute

@@ -388,7 +388,6 @@ suite = {
             "exclude": [
               "mx:HAMCREST",
               "mx:JUNIT",
-              "truffle:JLINE",
             ],
         },
         "CHROMEINSPECTOR_GRAALVM_SUPPORT" : {

@@ -52,6 +52,11 @@ public final class GuardPhiNode extends PhiNode implements GuardingNode {
     }
 
     @Override
+    public InputType valueInputType() {
+        return InputType.Guard;
+    }
+
+    @Override
     public NodeInputList<ValueNode> values() {
         return values;
     }

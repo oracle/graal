@@ -58,6 +58,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
+import jdk.vm.ci.meta.MethodHandleAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -66,12 +67,14 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     private final AnalysisUniverse universe;
     private final UniverseMetaAccess metaAccess;
     private final ClassInitializationSupport classInitializationSupport;
+    private final AnalysisMethodHandleAccessProvider methodHandleAccess;
     private SimulateClassInitializerSupport simulateClassInitializerSupport;
 
     public AnalysisConstantReflectionProvider(AnalysisUniverse universe, UniverseMetaAccess metaAccess, ClassInitializationSupport classInitializationSupport) {
         this.universe = universe;
         this.metaAccess = metaAccess;
         this.classInitializationSupport = classInitializationSupport;
+        this.methodHandleAccess = new AnalysisMethodHandleAccessProvider(universe);
     }
 
     @Override
@@ -91,7 +94,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public MemoryAccessProvider getMemoryAccessProvider() {
-        return EmptyMemoryAcessProvider.SINGLETON;
+        return EmptyMemoryAccessProvider.SINGLETON;
     }
 
     private static final Set<Class<?>> BOXING_CLASSES = Set.of(Boolean.class, Byte.class, Short.class, Character.class, Integer.class, Long.class, Float.class, Double.class);
@@ -116,6 +119,11 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             return null;
         }
         return JavaConstant.forBoxedPrimitive(SubstrateObjectConstant.asObject(source));
+    }
+
+    @Override
+    public MethodHandleAccessProvider getMethodHandleAccess() {
+        return methodHandleAccess;
     }
 
     @Override
