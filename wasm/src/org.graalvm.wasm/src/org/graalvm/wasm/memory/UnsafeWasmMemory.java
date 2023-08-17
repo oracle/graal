@@ -879,6 +879,39 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
+    @TruffleBoundary
+    public int atomic_notify(Node node, long address, int count) {
+        validateAddress(node, address, 4);
+        validateAtomicAddress(node, address, 4);
+        if (!this.isShared()) {
+            return 0;
+        }
+        return invokeNotifyCallback(address, count);
+    }
+
+    @Override
+    @TruffleBoundary
+    public int atomic_wait32(Node node, long address, int expected, long timeout) {
+        validateAtomicAddress(node, address, 4);
+        validateAtomicAddress(node, address, 4);
+        if (!this.isShared()) {
+            throw trapUnsharedMemory(node);
+        }
+        return invokeWaitCallback(address, expected, timeout, false);
+    }
+
+    @Override
+    @TruffleBoundary
+    public int atomic_wait64(Node node, long address, long expected, long timeout) {
+        validateAtomicAddress(node, address, 8);
+        validateAtomicAddress(node, address, 8);
+        if (!this.isShared()) {
+            throw trapUnsharedMemory(node);
+        }
+        return invokeWaitCallback(address, expected, timeout, true);
+    }
+
+    @Override
     public void initialize(byte[] source, int sourceOffset, long destinationOffset, int length) {
         for (int i = 0; i < length; i++) {
             unsafe.putByte(startAddress + destinationOffset + i, source[sourceOffset + i]);

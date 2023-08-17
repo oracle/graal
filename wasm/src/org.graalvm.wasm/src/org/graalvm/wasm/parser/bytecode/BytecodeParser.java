@@ -807,6 +807,9 @@ public abstract class BytecodeParser {
                         break;
                     }
                     switch (atomicOpcode) {
+                        case Bytecode.ATOMIC_NOTIFY:
+                        case Bytecode.ATOMIC_WAIT32:
+                        case Bytecode.ATOMIC_WAIT64:
                         case Bytecode.ATOMIC_I32_LOAD:
                         case Bytecode.ATOMIC_I64_LOAD:
                         case Bytecode.ATOMIC_I32_LOAD8_U:

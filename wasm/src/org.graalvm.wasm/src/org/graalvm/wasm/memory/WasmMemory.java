@@ -109,9 +109,19 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     protected final long maxAllowedSize;
 
     /**
-     * Optional grow callback to notify the embedder .
+     * Optional grow callback to notify the embedder.
      */
     private Object growCallback;
+
+    /**
+     * JS callback to implement part of memory.atomic.notify.
+     */
+    private Object notifyCallback;
+
+    /**
+     * JS callback to implement part of memory.atomic.waitN.
+     */
+    private Object waitCallback;
 
     /**
      * @see #hasIndexType64()
@@ -382,6 +392,12 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     public abstract long atomic_rmw_cmpxchg_i64_32u(Node node, long address, int expected, int replacement);
 
     public abstract long atomic_rmw_cmpxchg_i64(Node node, long address, long expected, long replacement);
+
+    public abstract int atomic_notify(Node node, long address, int count);
+
+    public abstract int atomic_wait32(Node node, long address, int expected, long timeout);
+
+    public abstract int atomic_wait64(Node node, long address, long expected, long timeout);
     // Checkstyle: resume
 
     public abstract WasmMemory duplicate();
@@ -444,6 +460,12 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         final String message = String.format("%d-byte atomic memory access at address 0x%016X (%d) is unaligned.",
                         length, address, address);
         return WasmException.create(Failure.UNALIGNED_ATOMIC, node, message);
+    }
+
+    @TruffleBoundary
+    protected WasmException trapUnsharedMemory(Node node) {
+        final String message = "Atomic wait operator can only be used on shared memories.";
+        return WasmException.create(Failure.EXPECTED_SHARED_MEMORY, node, message);
     }
 
     /**
@@ -793,6 +815,30 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         WebAssembly.invokeMemGrowCallback(this);
     }
 
+    public void setNotifyCallback(Object notifyCallback) {
+        this.notifyCallback = notifyCallback;
+    }
+
+    public Object getNotifyCallback() {
+        return notifyCallback;
+    }
+
+    protected int invokeNotifyCallback(long address, int count) {
+        return WebAssembly.invokeMemNotifyCallback(this, address, count);
+    }
+
+    public void setWaitCallback(Object waitCallback) {
+        this.waitCallback = waitCallback;
+    }
+
+    public Object getWaitCallback() {
+        return waitCallback;
+    }
+
+    protected int invokeWaitCallback(long address, long expected, long timeout, boolean is64) {
+        return WebAssembly.invokeMemWaitCallback(this, address, expected, timeout, is64);
+    }
+
     public abstract void close();
 
     public abstract ByteBuffer asByteBuffer();
@@ -802,6 +848,10 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
     }
 
     protected boolean outOfBounds(int offset, int length) {
+        return length < 0 || offset < 0 || offset > getBufferSize() - length;
+    }
+
+    protected boolean outOfBounds(long offset, long length) {
         return length < 0 || offset < 0 || offset > getBufferSize() - length;
     }
 

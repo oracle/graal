@@ -2128,6 +2128,29 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private int executeAtomic(VirtualFrame frame, int stackPointer, int opcode, WasmMemory memory, long memOffset, int indexType64) {
         switch (opcode) {
+            case Bytecode.ATOMIC_NOTIFY: {
+                final long baseAddress;
+                if (indexType64 == 0) {
+                    baseAddress = popInt(frame, stackPointer - 2);
+                } else {
+                    baseAddress = popLong(frame, stackPointer - 2);
+                }
+                final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+                executeAtomicAtAddress(memory, frame, stackPointer - 1, opcode, address);
+                return 1;
+            }
+            case Bytecode.ATOMIC_WAIT32:
+            case Bytecode.ATOMIC_WAIT64: {
+                final long baseAddress;
+                if (indexType64 == 0) {
+                    baseAddress = popInt(frame, stackPointer - 3);
+                } else {
+                    baseAddress = popLong(frame, stackPointer - 3);
+                }
+                final long address = effectiveMemoryAddress64(memOffset, baseAddress);
+                executeAtomicAtAddress(memory, frame, stackPointer - 1, opcode, address);
+                return 2;
+            }
             case Bytecode.ATOMIC_I32_LOAD:
             case Bytecode.ATOMIC_I64_LOAD:
             case Bytecode.ATOMIC_I32_LOAD8_U:
@@ -2238,6 +2261,26 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private void executeAtomicAtAddress(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, long address) {
         switch (opcode) {
+            case Bytecode.ATOMIC_NOTIFY: {
+                final int count = popInt(frame, stackPointer - 1);
+                final int waitersNotified = memory.atomic_notify(this, address, count);
+                pushInt(frame, stackPointer - 1, waitersNotified);
+                break;
+            }
+            case Bytecode.ATOMIC_WAIT32: {
+                final long timeout = popLong(frame, stackPointer);
+                final int expected = popInt(frame, stackPointer - 1);
+                final int status = memory.atomic_wait32(this, address, expected, timeout);
+                pushInt(frame, stackPointer - 2, status);
+                break;
+            }
+            case Bytecode.ATOMIC_WAIT64: {
+                final long timeout = popLong(frame, stackPointer);
+                final long expected = popLong(frame, stackPointer - 1);
+                final int status = memory.atomic_wait64(this, address, expected, timeout);
+                pushInt(frame, stackPointer - 2, status);
+                break;
+            }
             case Bytecode.ATOMIC_I32_LOAD: {
                 final int value = memory.atomic_load_i32(this, address);
                 pushInt(frame, stackPointer, value);

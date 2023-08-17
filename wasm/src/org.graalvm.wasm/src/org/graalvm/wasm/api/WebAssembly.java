@@ -107,6 +107,8 @@ public class WebAssembly extends Dictionary {
         addMember("mem_grow", new Executable(WebAssembly::memGrow));
         addMember("mem_set_grow_callback", new Executable(WebAssembly::memSetGrowCallback));
         addMember("mem_as_byte_buffer", new Executable(WebAssembly::memAsByteBuffer));
+        addMember("mem_set_notify_callback", new Executable(WebAssembly::memSetNotifyCallback));
+        addMember("mem_set_wait_callback", new Executable(WebAssembly::memSetWaitCallback));
 
         addMember("global_alloc", new Executable(this::globalAlloc));
         addMember("global_read", new Executable(WebAssembly::globalRead));
@@ -729,6 +731,66 @@ public class WebAssembly extends Dictionary {
                 throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unable to call memory grow callback", e);
             }
         }
+    }
+
+    private static Object memSetNotifyCallback(Object[] args) {
+        InteropLibrary lib = InteropLibrary.getUncached();
+        if (!(args[0] instanceof WasmMemory)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        }
+        if (!lib.isExecutable(args[1])) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+        }
+        WasmMemory memory = (WasmMemory) args[0];
+        return memSetNotifyCallback(memory, args[1]);
+    }
+
+    private static Object memSetNotifyCallback(WasmMemory memory, Object callback) {
+        memory.setNotifyCallback(callback);
+        return WasmConstant.VOID;
+    }
+
+    public static int invokeMemNotifyCallback(WasmMemory memory, long address, int count) {
+        Object callback = memory.getNotifyCallback();
+        if (callback != null) {
+            InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                return (int) lib.execute(callback, memory, address, count);
+            } catch (InteropException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unable to call memory notify callback", e);
+            }
+        }
+        return -1;
+    }
+
+    private static Object memSetWaitCallback(Object[] args) {
+        InteropLibrary lib = InteropLibrary.getUncached();
+        if (!(args[0] instanceof WasmMemory)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        }
+        if (!lib.isExecutable(args[1])) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+        }
+        WasmMemory memory = (WasmMemory) args[0];
+        return memSetWaitCallback(memory, args[1]);
+    }
+
+    private static Object memSetWaitCallback(WasmMemory memory, Object callback) {
+        memory.setWaitCallback(callback);
+        return WasmConstant.VOID;
+    }
+
+    public static int invokeMemWaitCallback(WasmMemory memory, long address, long expected, long timeout, boolean is64) {
+        Object callback = memory.getWaitCallback();
+        if (callback != null) {
+            InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                return (int) lib.execute(callback, memory, address, expected, timeout, is64);
+            } catch (InteropException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unable to call memory wait callback", e);
+            }
+        }
+        return -1;
     }
 
     private static Object memAsByteBuffer(Object[] args) {

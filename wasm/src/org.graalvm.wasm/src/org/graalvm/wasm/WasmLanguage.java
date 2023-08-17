@@ -125,6 +125,11 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     }
 
     @Override
+    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+        return true;
+    }
+
+    @Override
     protected void initializeMultipleContexts() {
         isMultiContext = true;
     }
