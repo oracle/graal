@@ -580,7 +580,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         for (var illegalOption : illegalExperimentalOptions) {
-            LogUtils.warning("The option '" + illegalOption + "' is experimental and must be enabled via " + ENTER_UNLOCK_SCOPE + " in the future.");
+            LogUtils.warning("The option '" + illegalOption + "' is experimental and must be enabled via '" + ENTER_UNLOCK_SCOPE + "' in the future.");
         }
         LogUtils.warning("Please re-evaluate whether any experimental option is required, and either remove or unlock it. " +
                         "The build output lists all active experimental options, including where they come from and possible alternatives. " +
