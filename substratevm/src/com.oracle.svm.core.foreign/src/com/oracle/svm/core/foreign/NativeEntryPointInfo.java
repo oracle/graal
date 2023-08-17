@@ -71,7 +71,7 @@ public final class NativeEntryPointInfo {
                     boolean needsReturnBuffer,
                     int capturedStateMask,
                     boolean needsTransition) {
-        if (returnMoves.length > 1 != needsReturnBuffer) {
+        if ((returnMoves.length > 1) != needsReturnBuffer) {
             throw new AssertionError("Multiple register return, but needsReturnBuffer was false");
         }
         return new NativeEntryPointInfo(methodType, argMoves, returnMoves, needsReturnBuffer, capturedStateMask != 0, needsTransition);

@@ -60,7 +60,7 @@ public final class DowncallStubsHolder {
         builder.append("_");
         builder.append(JavaKind.fromJavaClass(nep.methodType().returnType()).getTypeChar());
 
-        if (nep.returnsAssignment() != null) {
+        if (nep.needsReturnBuffer()) {
             builder.append("_r");
         }
         if (nep.capturesCallState()) {

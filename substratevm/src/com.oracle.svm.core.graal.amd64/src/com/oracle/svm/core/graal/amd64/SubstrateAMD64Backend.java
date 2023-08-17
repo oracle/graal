@@ -28,11 +28,11 @@ import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PR
 import static com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId.PROLOGUE_END;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
-import static jdk.vm.ci.amd64.AMD64.r10;
 import static jdk.vm.ci.amd64.AMD64.rax;
 import static jdk.vm.ci.amd64.AMD64.rbp;
 import static jdk.vm.ci.amd64.AMD64.rsp;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
+import static jdk.vm.ci.amd64.AMD64Kind.V128_DOUBLE;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -78,6 +78,7 @@ import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstructionClass;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.LabelRef;
 import org.graalvm.compiler.lir.Opcode;
 import org.graalvm.compiler.lir.StandardOp.BlockEndOp;
@@ -855,6 +856,19 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             Value[] values = super.visitInvokeArguments(invokeCc, arguments);
 
             SubstrateCallingConventionType type = (SubstrateCallingConventionType) ((SubstrateCallingConvention) invokeCc).getType();
+            if (type.buffersReturn()) {
+                /*
+                 * We save the return buffer so that it can be accessed after the call. This must be
+                 * done before %al is filled with the number of vector arguments to avoid overriding
+                 * it.
+                 */
+                assert values.length > 0;
+                Value returnBuffer = values[0];
+                Variable saved = gen.newVariable(returnBuffer.getValueKind());
+                gen.append(gen.getSpillMoveFactory().createMove(saved, returnBuffer));
+                values[0] = saved;
+            }
+
             if (type.nativeABI()) {
                 // Native functions might have varargs, in which case we need to set %al to the
                 // number of XMM registers used for passing arguments
@@ -900,30 +914,33 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
             var cc = (SubstrateCallingConventionType) callTarget.callType();
             if (cc.usesReturnBuffer()) {
-                // The pointer to the return buffer is passed as first argument
-                Value baseSaveLocation = parameters[0];
-                // Could be any x86 scratch register
-                RegisterValue scratch = r10.asValue(parameters[0].getValueKind());
-                gen.emitMove(scratch, baseSaveLocation);
+                /*
+                 * The buffer argument was saved in visitInvokeArguments, so that the value was not
+                 * killed by the call.
+                 */
+                Value returnBuffer = parameters[0];
                 long offset = 0;
                 for (AssignedLocation ret : cc.returnSaving) {
-                    Value saveLocation = gen.getArithmetic().emitAdd(scratch, gen.emitJavaConstant(JavaConstant.forLong(offset)), false);
-                    if (ret.assignsToStack()) {
-                        throw unsupportedFeature("Return should never happen on stack.");
-                    }
+                    VMError.guarantee(ret.assignsToRegister(), "Return should happen in registers.");
                     var register = ret.register();
+                    Value saveLocation = gen.getArithmetic().emitAdd(returnBuffer, gen.emitJavaConstant(JavaConstant.forLong(offset)), false);
                     LIRKind kind;
                     // There might a better/more natural way to check this
                     if (register.getRegisterCategory().equals(AMD64.CPU)) {
                         kind = gen.getValueKind(JavaKind.Long);
+                        assert kind.getPlatformKind().getSizeInBytes() == 8;
                         offset += 8;
                     } else if (register.getRegisterCategory().equals(AMD64.XMM)) {
-                        kind = gen.getValueKind(JavaKind.Double);
+                        kind = LIRKind.value(V128_DOUBLE);
+                        assert kind.getPlatformKind().getSizeInBytes() == 16;
                         offset += 16;
                     } else {
                         throw unsupportedFeature("Cannot use register " + register + " for return.");
                     }
-                    gen.getArithmetic().emitStore(kind, saveLocation, gen.emitReadRegister(register, kind), callState, MemoryOrderMode.PLAIN);
+
+                    var bigKind = LIRKind.value(getTarget().arch.getLargestStorableKind(register.getRegisterCategory()));
+                    var element = LIRValueUtil.changeValueKind(register.asValue(bigKind), kind, true);
+                    gen.getArithmetic().emitStore(kind, saveLocation, element, callState, MemoryOrderMode.PLAIN);
                 }
             }
         }

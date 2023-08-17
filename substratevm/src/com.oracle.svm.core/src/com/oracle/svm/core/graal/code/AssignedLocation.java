@@ -44,7 +44,7 @@ public final class AssignedLocation {
         if (!isValidOffset(this.stackOffset)) {
             throw new IllegalStateException("Stack offset cannot be < 0 (and not NONE).");
         }
-        if (assignsToStack() != assignsToRegister()) {
+        if (assignsToStack() == assignsToRegister()) {
             throw new IllegalStateException("Cannot assign to both register and stack.");
         }
     }

@@ -32,6 +32,7 @@ import static jdk.vm.ci.amd64.AMD64.k4;
 import static jdk.vm.ci.amd64.AMD64.k5;
 import static jdk.vm.ci.amd64.AMD64.k6;
 import static jdk.vm.ci.amd64.AMD64.k7;
+import static jdk.vm.ci.amd64.AMD64.r11;
 import static jdk.vm.ci.amd64.AMD64.r12;
 import static jdk.vm.ci.amd64.AMD64.r13;
 import static jdk.vm.ci.amd64.AMD64.r14;
@@ -263,23 +264,30 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
         int currentStackOffset = type.nativeABI() ? nativeParamsStackOffset : target.wordSize;
 
         AllocatableValue[] locations = new AllocatableValue[parameterTypes.length];
-        int firstActualArgument = 0;
-
         JavaKind[] kinds = new JavaKind[locations.length];
 
+        int firstActualArgument = 0;
         if (type.usesReturnBuffer()) {
+            VMError.guarantee(type.fixedParameterAssignment != null);
+            VMError.guarantee(type.fixedParameterAssignment[0].isPlaceholder());
             /*
              * returnSaving implies an additional (prefix) parameter pointing to the buffer to use
-             * for saving. We pretend it is the first stack argument to the function: this means the
-             * function will safely ignore it, but we will be able to access it right after the call
-             * concludes.
+             * for saving. This argument is not actually used by the function, so it will be ignored
+             * in the remainder of this method.
              */
             firstActualArgument = 1;
             /*
-             * The actual allocation is done after allocating all other parameters, as it must be
-             * done last (it needs to be placed first on the stack, and this is done in reverse
-             * order)
+             * Ideally, we would just pretend this argument never existed and would not give it a
+             * location. In practice, it is not so simple, as the generated calling convention is
+             * expected to match the arguments, and not just ignore one of them. It might be
+             * possible to implement this using some kind of "SinkValue" as the location of the
+             * argument. In the meantime, we put it in a scratch register. r10 contains the target,
+             * rax the number of vector args, so r11 is the only scratch register left.
              */
+            JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[0], metaAccess, target);
+            kinds[0] = kind;
+            ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
+            locations[0] = r11.asValue(paramValueKind);
         }
 
         if (type.fixedParameterAssignment == null) {
@@ -348,7 +356,7 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
             Set<Register> usedRegisters = new HashSet<>();
             VMError.guarantee(parameterTypes.length == type.fixedParameterAssignment.length, "Parameters/assignments size mismatch.");
 
-            for (int i = firstActualArgument; i < parameterTypes.length; i++) {
+            for (int i = firstActualArgument; i < locations.length; i++) {
                 JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[i], metaAccess, target);
                 kinds[i] = kind;
 
@@ -378,15 +386,6 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                     VMError.shouldNotReachHere("Placeholder assignment.");
                 }
             }
-        }
-
-        if (type.usesReturnBuffer()) {
-            assert type.fixedParameterAssignment == null || type.fixedParameterAssignment[0].isPlaceholder();
-            assert parameterTypes[0].getJavaKind() == JavaKind.Long;
-            JavaKind kind = ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) parameterTypes[0], metaAccess, target);
-            ValueKind<?> paramValueKind = valueKindFactory.getValueKind(isEntryPoint ? kind : kind.getStackKind());
-            locations[0] = StackSlot.get(paramValueKind, currentStackOffset, !type.outgoing);
-            currentStackOffset += paramValueKind.getPlatformKind().getSizeInBytes();
         }
 
         JavaKind returnKind = returnType == null ? JavaKind.Void : ObjectLayout.getCallSignatureKind(isEntryPoint, (ResolvedJavaType) returnType, metaAccess, target);

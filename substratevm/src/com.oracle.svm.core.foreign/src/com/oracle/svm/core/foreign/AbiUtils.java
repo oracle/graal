@@ -34,7 +34,7 @@ import java.lang.invoke.MethodType;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -86,8 +86,6 @@ public abstract class AbiUtils {
 
         public record AdaptationResult(
                         Map<Extracted, ValueNode> extractedArguments,
-                        ValueNode callTarget,
-                        ValueNode captureBufferAddress,
                         List<ValueNode> arguments,
                         List<AssignedLocation> parametersAssignment,
                         List<AssignedLocation> returnsAssignment,
@@ -101,7 +99,7 @@ public abstract class AbiUtils {
             AssignedLocation[] originalAssignment = self.toMemoryAssignment(nep.parametersAssignment(), false);
             VMError.guarantee(allEqual(adaptations.size(), originalArguments.size(), nep.methodType().parameterCount(), originalAssignment.length));
 
-            Map<Extracted, ValueNode> extractedArguments = new HashMap<>();
+            Map<Extracted, ValueNode> extractedArguments = new EnumMap<>(Extracted.class);
             List<ValueNode> arguments = new ArrayList<>();
             List<AssignedLocation> assignment = new ArrayList<>();
             List<Class<?>> argumentTypes = new ArrayList<>();
