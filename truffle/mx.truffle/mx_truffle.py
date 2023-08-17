@@ -257,7 +257,9 @@ def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterp
             mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(graalvm_home))
             return None
     target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
-    mx.run([native_image_path] + vm_args + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)) + ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain", target_path])
+    mx.run([native_image_path] + vm_args + ['-p', mx.classpath('TRUFFLE_NFI_LIBFFI')]
+           + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise))
+           + ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain", target_path])
     return target_path
 
 def _truffle_gate_runner(args, tasks):
