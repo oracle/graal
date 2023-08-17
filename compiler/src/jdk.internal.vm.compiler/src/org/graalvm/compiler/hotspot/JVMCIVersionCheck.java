@@ -199,13 +199,8 @@ public final class JVMCIVersionCheck {
                     if (format != null) {
                         System.out.printf(format + "%n", v.major, v.minor, v.build);
                     }
-                    Version actualMinVersion = minVersion;
-                    if (javaSpecVersion.equals("19")) {
-                        // Last JVMCI update for JDK 19
-                        actualMinVersion = new Version(23, 0, 5);
-                    }
-                    if (v.isLessThan(actualMinVersion)) {
-                        failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, actualMinVersion);
+                    if (v.isLessThan(minVersion)) {
+                        failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, minVersion);
                     }
                     return;
                 }
