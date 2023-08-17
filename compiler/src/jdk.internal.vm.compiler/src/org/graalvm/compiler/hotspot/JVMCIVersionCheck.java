@@ -182,8 +182,6 @@ public final class JVMCIVersionCheck {
     private void run(boolean exitOnFailure, Version minVersion, String format) {
         if (javaSpecVersion.compareTo(Integer.toString(JAVA_MIN_RELEASE)) < 0) {
             failVersionCheck(exitOnFailure, "Graal requires JDK " + JAVA_MIN_RELEASE + " or later.%n");
-        } else if (minVersion == null) {
-            failVersionCheck(exitOnFailure, "No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
         } else {
             if (vmVersion.contains("SNAPSHOT")) {
                 return;
@@ -194,6 +192,9 @@ public final class JVMCIVersionCheck {
             }
             if (vmVersion.contains("-jvmci-")) {
                 // A "labsjdk"
+                if (minVersion == null) {
+                    failVersionCheck(exitOnFailure, "No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
+                }
                 Version v = Version.parse(vmVersion);
                 if (v != null) {
                     if (format != null) {
