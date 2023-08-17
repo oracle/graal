@@ -2935,7 +2935,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
             # Add jars of components that must be on the module path.
             for default_module_component in GraalVmStandaloneComponent.default_module_components():
-                for dist in default_module_component.jar_distributions + default_module_component.boot_jars:
+                for dist in default_module_component.jar_distributions + default_module_component.boot_jars + default_module_component.jvmci_parent_jars:
                     layout.setdefault(default_jvm_modules_dir, []).append({
                         'source_type': 'dependency',
                         'dependency': dist,
@@ -3013,13 +3013,20 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
     def default_module_components():
         """
         Components that define jars that must be in the modules directory and therefore on the module path.
-        @rtype list[mx_sdk_vm.GraalVmComponent]
+        :rtype list[mx_sdk_vm.GraalVmComponent]
         """
-        return [
+        default_components = [
             mx_sdk.graalvm_launcher_common_component,
             mx_sdk.graalvm_sdk_component,
             mx_sdk.graalvm_sdk_native_image_component
         ]
+
+        if mx.suite('graal-enterprise', fatalIfMissing=False) is not None:
+            import mx_graal_enterprise
+            if has_component(mx_graal_enterprise.truffle_enterprise.name):
+                default_components.append(mx_graal_enterprise.truffle_enterprise)
+
+        return default_components
 
     def get_artifact_metadata(self):
         return {'type': 'standalone', 'edition': get_graalvm_edition(), 'project': _project_name}
