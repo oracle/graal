@@ -269,7 +269,7 @@ public final class ModuleToUnnamedBridge {
         }
 
         static Lookup methodHandleLookup() {
-            return BRIDGE.unnamedLookup;
+            return unnamedLookup();
         }
 
         static ByteSequence fromByteSequence(Object value) {

@@ -1948,6 +1948,7 @@ suite = {
           "org.graalvm.shadowed.com.ibm.icu.text to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.util to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.charset to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.impl to org.graalvm.js, org.graalvm.py",
         ],
       },
       "subDir" : "src",

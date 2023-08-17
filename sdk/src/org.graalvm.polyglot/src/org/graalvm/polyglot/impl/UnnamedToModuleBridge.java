@@ -368,7 +368,7 @@ public final class UnnamedToModuleBridge {
     @GenerateMethodHandleBridge
     abstract static class UnnamedToModuleAccess extends ModuleAccess {
         static Lookup methodHandleLookup() {
-            return UnnamedToModulePolyglotImpl.BRIDGE.moduleLookup;
+            return UnnamedToModulePolyglotImpl.moduleLookup();
         }
 
     }
