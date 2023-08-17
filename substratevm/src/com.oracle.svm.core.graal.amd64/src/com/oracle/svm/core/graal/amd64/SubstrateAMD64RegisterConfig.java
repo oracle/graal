@@ -65,9 +65,11 @@ import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
+import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.ReservedRegisters;
@@ -82,6 +84,7 @@ import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CallingConvention.Type;
 import jdk.vm.ci.code.Register;
@@ -385,6 +388,27 @@ public class SubstrateAMD64RegisterConfig implements SubstrateRegisterConfig {
                 } else {
                     VMError.shouldNotReachHere("Placeholder assignment.");
                 }
+            }
+        }
+
+        /*
+         * Inject a pseudo-argument for rax Its value (which is the number for xmm registers
+         * containing an argument) will be injected in
+         * SubstrateAMD64NodeLIRBuilder.visitInvokeArguments. This information can be useful for
+         * functions taking a variable number of arguments (varargs).
+         */
+        if (type.nativeABI()) {
+            kinds = Arrays.copyOf(kinds, kinds.length + 1);
+            locations = Arrays.copyOf(locations, locations.length + 1);
+            kinds[kinds.length - 1] = JavaKind.Int;
+            locations[locations.length - 1] = AMD64.rax.asValue(LIRKind.value(AMD64Kind.DWORD));
+            if (type.customABI()) {
+                var extendsParametersAssignment = Arrays.copyOf(type.fixedParameterAssignment, type.fixedParameterAssignment.length + 1);
+                extendsParametersAssignment[extendsParametersAssignment.length - 1] = AssignedLocation.forRegister(rax);
+                type = SubstrateCallingConventionType.makeCustom(
+                                type.outgoing,
+                                extendsParametersAssignment,
+                                type.returnSaving);
             }
         }
 

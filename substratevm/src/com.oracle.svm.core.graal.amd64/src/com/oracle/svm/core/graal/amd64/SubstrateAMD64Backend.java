@@ -39,6 +39,7 @@ import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstantValue;
 import static org.graalvm.compiler.lir.LIRValueUtil.differentRegisters;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.List;
@@ -854,13 +855,11 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         @Override
         public Value[] visitInvokeArguments(CallingConvention invokeCc, Collection<ValueNode> arguments) {
             Value[] values = super.visitInvokeArguments(invokeCc, arguments);
-
             SubstrateCallingConventionType type = (SubstrateCallingConventionType) ((SubstrateCallingConvention) invokeCc).getType();
-            if (type.buffersReturn()) {
+
+            if (type.usesReturnBuffer()) {
                 /*
-                 * We save the return buffer so that it can be accessed after the call. This must be
-                 * done before %al is filled with the number of vector arguments to avoid overriding
-                 * it.
+                 * We save the return buffer so that it can be accessed after the call.
                  */
                 assert values.length > 0;
                 Value returnBuffer = values[0];
@@ -870,18 +869,26 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
             }
 
             if (type.nativeABI()) {
+                VMError.guarantee(values.length == invokeCc.getArgumentCount() - 1, "The last argument should be missing.");
+                AllocatableValue raxValue = invokeCc.getArgument(values.length);
+                VMError.guarantee(raxValue instanceof RegisterValue && ((RegisterValue) raxValue).getRegister().equals(rax));
+
+                values = Arrays.copyOf(values, values.length + 1);
+
                 // Native functions might have varargs, in which case we need to set %al to the
                 // number of XMM registers used for passing arguments
                 int xmmCount = 0;
-                for (Value v : values) {
+                for (int i = 0; i < values.length - 1; ++i) {
+                    Value v = values[i];
                     if (isRegister(v) && asRegister(v).getRegisterCategory().equals(AMD64.XMM)) {
                         xmmCount++;
                     }
                 }
                 assert xmmCount <= 8;
-                AllocatableValue xmmCountRegister = AMD64.rax.asValue(LIRKind.value(AMD64Kind.DWORD));
-                gen.emitMoveConstant(xmmCountRegister, JavaConstant.forInt(xmmCount));
+                gen.emitMoveConstant(raxValue, JavaConstant.forInt(xmmCount));
+                values[values.length - 1] = raxValue;
             }
+
             return values;
         }
 
