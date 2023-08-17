@@ -165,8 +165,8 @@ public final class ModuleToUnnamedBridge {
         @Override
         public Object fromByteSequence(Object value) {
             // byte sequences support being created both ways
-            if (value instanceof ModuleToUnnamedByteSequenceGen v) {
-                return v.receiver;
+            if (value instanceof ModuleToUnnamedByteSequenceGen) {
+                return ((ModuleToUnnamedByteSequenceGen) value).receiver;
             } else {
                 return ModuleToUnnamedAPIAccess.BRIDGE.unnamed.toByteSequence(value);
             }

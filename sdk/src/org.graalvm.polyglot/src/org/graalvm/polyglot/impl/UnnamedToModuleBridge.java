@@ -240,8 +240,8 @@ public final class UnnamedToModuleBridge {
 
         @Override
         public Object fromFileSystem(Object value) {
-            if (value instanceof UnnamedToModuleFileSystemGen v) {
-                return v.receiver;
+            if (value instanceof UnnamedToModuleFileSystemGen) {
+                return ((UnnamedToModuleFileSystemGen) value).receiver;
             } else {
                 return UnnamedToModulePolyglotImpl.BRIDGE.moduleAccess.toFileSystem(value);
             }
@@ -430,8 +430,8 @@ public final class UnnamedToModuleBridge {
                 return null;
             }
             Object fs = value;
-            if (value instanceof UnnamedToModuleFileSystemGen v) {
-                fs = v.receiver;
+            if (fs instanceof UnnamedToModuleFileSystemGen) {
+                fs = ((UnnamedToModuleFileSystemGen) fs).receiver;
             }
             return BRIDGE.moduleAccess.toFileSystem(fs);
         }
