@@ -198,7 +198,7 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, **kwargs):
+    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, set_default_relative_home_path=True, **kwargs):
         """
         :param str language
         :param str main_class
@@ -217,8 +217,9 @@ class LanguageLibraryConfig(LibraryConfig):
         self.default_vm_args = [] if default_vm_args is None else default_vm_args
         assert all(arg.startswith("--vm.") for arg in self.default_vm_args)
 
-        # Ensure the language launcher can always find the language home
-        self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
+        if set_default_relative_home_path:
+            # Ensure the language launcher can always find the language home
+            self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
 
 class GraalVmComponent(object):
     def __init__(self,
