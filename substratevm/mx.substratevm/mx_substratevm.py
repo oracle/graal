@@ -1016,8 +1016,8 @@ driver_build_args = [
     '--features=com.oracle.svm.driver.APIOptionFeature',
     '--initialize-at-build-time=com.oracle.svm.driver',
     '--link-at-build-time=com.oracle.svm.driver,com.oracle.svm.driver.metainf',
-    '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
 ] + svm_experimental_options([
+    '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
 ])
 
