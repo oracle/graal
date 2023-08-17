@@ -7,11 +7,9 @@ local vm_native = import 'vm-native.jsonnet';
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
 {
-  vm_java_17:: graal_common.labsjdk17 + vm_common.vm_env_mixin('17'),
   vm_java_21:: graal_common.labsjdk21 + vm_common.vm_env_mixin('21'),
   vm_java_22:: graal_common.oraclejdk22 + vm_common.vm_env_mixin('22'),
 
-  vm_java_17_llvm:: self.vm_java_17 + graal_common['labsjdk-ce-17-llvm'],
   vm_java_21_llvm:: self.vm_java_21 + graal_common['labsjdk-ce-21-llvm'],
 
   binaries_repository: 'lafo',
@@ -42,10 +40,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     ],
   },
 
-  maven_17_21:: {
+  maven_21:: {
     downloads+: {
-      JAVA_HOME: graal_common.jdks_data['labsjdk-ce-17'],
-      EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-ce-21'],
+      JAVA_HOME: graal_common.jdks_data['labsjdk-ce-21'],
     },
     mx_cmd_base:: ['mx', '--dynamicimports', '/tools,/compiler,/graal-js,/espresso,/substratevm', '--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
     build:: self.mx_cmd_base + ['build'],
@@ -54,7 +51,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
         (if repo == null then [] else [repo]),
   },
 
-  maven_17_21_only_native:: self.maven_17_21 + {
+  maven_21_only_native:: self.maven_21 + {
     native_distributions:: 'TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE',
     mx_cmd_base:: ['mx', '--dynamicimports', '/substratevm', '--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
     build:: self.mx_cmd_base + ['build', '--dependencies', self.native_distributions],
@@ -104,7 +101,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   diskspace_required: {
-    java17_linux_amd64: "30GB",
     java21_linux_amd64: "30GB",
   },
 
@@ -134,49 +130,49 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
      ],
      name: 'gate-vm-build-without-vcs-linux-amd64',
     },
-    vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_17_21 + vm_common.sulong_linux + {
-     run: [ $.maven_17_21.build, $.maven_17_21.deploy(repo='lafo-maven', dry_run=true)],
+    vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + self.maven_21 + vm_common.sulong_linux + {
+     run: [ $.maven_21.build, $.maven_21.deploy(repo='lafo-maven', dry_run=true)],
      name: 'gate-vm-maven-dry-run-linux-amd64',
     },
-    vm_common.linux_deploy + vm_common.deploy_vm_linux_amd64 + self.maven_17_21 + vm_common.sulong_linux + {
-     run: [ $.maven_17_21.build, $.maven_17_21.deploy(repo='lafo-maven')],
+    vm_common.linux_deploy + vm_common.deploy_vm_linux_amd64 + self.maven_21 + vm_common.sulong_linux + {
+     run: [ $.maven_21.build, $.maven_21.deploy(repo='lafo-maven')],
      name: 'post-merge-deploy-vm-maven-linux-amd64',
      timelimit: '45:00',
      notify_groups:: ['deploy'],
     },
-    vm_common.linux_deploy + vm_common.gate_vm_linux_aarch64 + self.maven_17_21_only_native + {
-     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
+    vm_common.linux_deploy + vm_common.gate_vm_linux_aarch64 + self.maven_21_only_native + {
+     run: [ $.maven_21_only_native.build, $.maven_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
      name: 'gate-vm-maven-dry-run-linux-aarch64',
     },
-    vm_common.linux_deploy + vm_common.deploy_vm_linux_aarch64 + self.maven_17_21_only_native + {
-     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven')],
+    vm_common.linux_deploy + vm_common.deploy_vm_linux_aarch64 + self.maven_21_only_native + {
+     run: [ $.maven_21_only_native.build, $.maven_21_only_native.deploy(repo='lafo-maven')],
      name: 'post-merge-deploy-vm-maven-linux-aarch64',
      notify_groups:: ['deploy'],
     },
-    vm_common.darwin_deploy + vm_common.gate_vm_darwin_amd64 + self.maven_17_21_only_native + {
-     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
+    vm_common.darwin_deploy + vm_common.gate_vm_darwin_amd64 + self.maven_21_only_native + {
+     run: [ $.maven_21_only_native.build, $.maven_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
      name: 'gate-vm-maven-dry-run-darwin-amd64',
     },
-    vm_common.darwin_deploy + vm_common.gate_vm_darwin_aarch64 + self.maven_17_21_only_native + {
-     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
+    vm_common.darwin_deploy + vm_common.gate_vm_darwin_aarch64 + self.maven_21_only_native + {
+     run: [ $.maven_21_only_native.build, $.maven_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
      name: 'gate-vm-maven-dry-run-darwin-aarch64',
     },
-    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_amd64 + self.maven_17_21_only_native + {
-     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven')],
+    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_amd64 + self.maven_21_only_native + {
+     run: [ $.maven_21_only_native.build, $.maven_21_only_native.deploy(repo='lafo-maven')],
      name: 'daily-deploy-vm-maven-darwin-amd64',
      notify_groups:: ['deploy'],
     },
-    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + self.maven_17_21_only_native + {
-     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven')],
+    vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + self.maven_21_only_native + {
+     run: [ $.maven_21_only_native.build, $.maven_21_only_native.deploy(repo='lafo-maven')],
      name: 'daily-deploy-vm-maven-darwin-aarch64',
      notify_groups:: ['deploy'],
     },
-    vm_common.svm_common_windows_amd64("17") + vm_common.gate_vm_windows_amd64 + self.maven_17_21_only_native + {
-     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
+    vm_common.svm_common_windows_amd64("21") + vm_common.gate_vm_windows_amd64 + self.maven_21_only_native + {
+     run: [ $.maven_21_only_native.build, $.maven_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
      name: 'gate-vm-maven-dry-run-windows-amd64',
     },
-    vm_common.svm_common_windows_amd64("17") + vm_common.deploy_daily_vm_windows + self.maven_17_21_only_native + {
-     run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven')],
+    vm_common.svm_common_windows_amd64("21") + vm_common.deploy_daily_vm_windows + self.maven_21_only_native + {
+     run: [ $.maven_21_only_native.build, $.maven_21_only_native.deploy(repo='lafo-maven')],
      name: 'daily-deploy-vm-maven-windows-amd64',
      notify_groups:: ['deploy'],
     },
