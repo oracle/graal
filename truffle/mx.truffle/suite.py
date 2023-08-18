@@ -1856,6 +1856,7 @@ suite = {
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
+         "TRUFFLE_TCK_INSTRUMENTATION",
       ],
       "maven" : False,
      },

@@ -139,6 +139,7 @@ public class ObjectSizeCalculationBaseMethodsTest {
     @Test
     public void testBaseInstanceSize() {
         TruffleTestAssumptions.assumeOptimizingRuntime();
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
 
         Assert.assertTrue(TestAPIAccessor.runtimeAccess().getBaseInstanceSize(InstanceSizeTest.class) > 16);
         Assert.assertTrue(TestAPIAccessor.runtimeAccess().getBaseInstanceSize(InstanceSizeTest2.class) > 16);
@@ -147,6 +148,7 @@ public class ObjectSizeCalculationBaseMethodsTest {
     @Test
     public void testResolvedFields() {
         TruffleTestAssumptions.assumeOptimizingRuntime();
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
 
         Object ist = new InstanceSizeTest(1, 2, 3, "Jarmil");
         Object ist2 = new InstanceSizeTest2(1, 2, 3, "We", "Are", "Brothers");
@@ -172,6 +174,7 @@ public class ObjectSizeCalculationBaseMethodsTest {
     @Test
     public void testReferenceFields() {
         TruffleTestAssumptions.assumeOptimizingRuntime();
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
 
         String stringReferent = "stringReferent";
         MyWeakReference ref = new MyWeakReference(stringReferent, new ReferenceQueue<>());
