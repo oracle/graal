@@ -675,7 +675,8 @@ def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
         # we do not want to use -server for GraalVM configurations
         mx.run_java(vmArgs + [mainClass] + mainClassArgs, jdk=jdk)
     else:
-        run_vm(vmArgs + [mainClass] + mainClassArgs, jdk=jdk)
+        run_vm(vmArgs + [mainClass] + mainClassArgs)
+
 
 def _remove_redundant_entries(cp):
     """
@@ -746,28 +747,32 @@ def _unittest_config_participant(config):
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
-_jdk_used = None
+_use_graalvm = False
 
 class SwitchToGraalVMJDK(mx_unittest.Action):
     def __init__(self, **kwargs):
-        global _jdk_used
+        global _use_graalvm
         kwargs['required'] = False
         kwargs['nargs'] = 0
         mx_unittest.Action.__init__(self, **kwargs)
-        _jdk_used = None
+        _use_graalvm = False
     def __call__(self, parser, namespace, values, option_string=None):
         global _jdk_used
-        _jdk_used = 'graalvm'
+        _use_graalvm = True
 
 def _get_unittest_jdk():
-    global _jdk_used
-    return mx.get_jdk(tag=_jdk_used)
+    global _use_graalvm
+    if _use_graalvm:
+        return mx.get_jdk(tag='graalvm')
+    else:
+        return jdk
 
 mx_unittest.set_vm_launcher('JDK VM launcher', _unittest_vm_launcher, _get_unittest_jdk)
 # Note this option should probably be implemented in mx_sdk. However there can be only
 # one set_vm_launcher call per configuration, so we we do it here where it is easy to compose
 # with the mx_compiler behavior.
 mx_unittest.add_unittest_argument('--use-graalvm', default=False, help='Use the previously built GraalVM for running the unit test.', action=SwitchToGraalVMJDK)
+
 
 def _record_last_updated_jar(dist, path):
     last_updated_jar = join(dist.suite.get_output_root(), dist.name + '.lastUpdatedJar')
@@ -1064,9 +1069,9 @@ class GraalJDKFactory(mx.JDKFactory):
     def description(self):
         return "JVMCI JDK with Graal"
 
-def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None, jdk=None):
+def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
     """run a Java program by executing the java executable in a JVMCI JDK"""
-    return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout, jdk=jdk)
+    return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
 
 def run_vm_with_jvmci_compiler(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
     """run a Java program by executing the java executable in a JVMCI JDK,
