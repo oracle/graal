@@ -102,12 +102,12 @@ public class LocalizationSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule) {
-        if (bundle instanceof PropertyResourceBundle prb) {
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale) {
+        if (bundle instanceof PropertyResourceBundle) {
             String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
             String resourceName;
             if (bundleNameWithModule.length < 2) {
-                resourceName = control.toBundleName(bundleName, prb.getLocale()).replace('.', '/').concat(".properties");
+                resourceName = control.toBundleName(bundleName, locale).replace('.', '/').concat(".properties");
 
                 // find module based on package name
                 Map<String, Set<Module>> packageToModules = ImageSingletons.lookup(ClassLoaderSupport.class).getPackageToModules();
@@ -124,7 +124,7 @@ public class LocalizationSupport {
                     ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName);
                 }
             } else {
-                resourceName = control.toBundleName(bundleNameWithModule[1], prb.getLocale()).replace('.', '/').concat(".properties");
+                resourceName = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/').concat(".properties");
                 Optional<Module> module = findModule.apply(bundleNameWithModule[0]);
                 String finalResourceName = resourceName;
                 module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName));

@@ -174,11 +174,11 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
     }
 
     @Override
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule) {
-        super.prepareBundle(bundleName, bundle, null);
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale) {
+        super.prepareBundle(bundleName, bundle, null, locale);
         /* Initialize ResourceBundle.keySet eagerly */
         bundle.keySet();
-        this.existingBundles.add(control.toBundleName(bundleName, bundle.getLocale()));
+        this.existingBundles.add(control.toBundleName(bundleName, locale));
     }
 
     @Override

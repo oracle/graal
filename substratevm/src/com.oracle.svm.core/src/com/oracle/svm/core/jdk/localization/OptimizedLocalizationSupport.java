@@ -91,7 +91,7 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
             /*- Set the basename and locale to be consistent with JVM lookup process */
             bundleNameField.set(bundle, basename);
             bundleLocaleField.set(bundle, locale);
-            prepareBundle(basename, bundle, null);
+            prepareBundle(basename, bundle, null, locale);
         } catch (ReflectionUtil.ReflectionUtilError | ReflectiveOperationException e) {
             throw UserError.abort(e, "Failed to instantiated bundle from class %s, reason %s", bundleClass, e.getCause().getMessage());
         }
@@ -108,9 +108,9 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule) {
+    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale) {
         bundle.keySet();
-        this.resourceBundles.put(Pair.create(bundleName, bundle.getLocale()), bundle);
+        this.resourceBundles.put(Pair.create(bundleName, locale), bundle);
     }
 
     @Override
