@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,19 +27,35 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.factories;
+package com.oracle.truffle.llvm.runtime;
 
-import com.oracle.truffle.api.InternalResource.CPUArchitecture;
-import com.oracle.truffle.llvm.parser.factories.inlineasm.Aarch64InlineAssemblyParser;
-import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
-public abstract class BasicAarch64PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends BasicPlatformCapability<S> {
-    protected BasicAarch64PlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
-        super(cls, loadCxxLibraries, new Aarch64InlineAssemblyParser());
+import com.oracle.truffle.api.TruffleFile;
+
+/**
+ * Locate libraries from the commandline.
+ *
+ * In addition to the default locations, libraries specified on the commandline can also be relative
+ * to the current working directory.
+ */
+public final class CmdlineLibraryLocator extends LibraryLocator {
+
+    public static final CmdlineLibraryLocator INSTANCE = new CmdlineLibraryLocator();
+
+    private CmdlineLibraryLocator() {
     }
 
     @Override
-    public CPUArchitecture getArch() {
-        return CPUArchitecture.AARCH64;
+    public Object locateLibrary(LLVMContext context, String lib, Object reason) {
+        Path libPath = Paths.get(lib);
+        if (!libPath.isAbsolute()) {
+            TruffleFile file = context.getEnv().getInternalTruffleFile(libPath.toUri());
+            if (file.exists()) {
+                return file;
+            }
+        }
+        return DefaultLibraryLocator.INSTANCE.locateLibrary(context, lib, reason);
     }
 }

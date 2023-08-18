@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,9 @@
  */
 package com.oracle.truffle.llvm.parser;
 
-import com.oracle.truffle.api.TruffleFile;
+import java.util.List;
+
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
 import com.oracle.truffle.llvm.runtime.LLVMElemPtrSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMFunction;
@@ -40,33 +42,35 @@ import com.oracle.truffle.llvm.runtime.NodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.scope.LLVMSourceFileReference;
 import com.oracle.truffle.llvm.runtime.global.LLVMGlobal;
 
-import java.util.List;
-
 public final class LLVMParserRuntime {
     private final LLVMScope fileScope;
     private final LLVMScope publicFileScope;
     private final NodeFactory nodeFactory;
     private final BitcodeID bitcodeID;
-    private final TruffleFile file;
+    private final Source source;
     private final String libName;
     private final List<LLVMSourceFileReference> sourceFileReferences;
     private final LibraryLocator locator;
 
-    public LLVMParserRuntime(LLVMScope fileScope, LLVMScope publicFileScope, NodeFactory nodeFactory, BitcodeID bitcodeID, TruffleFile file, String libName,
+    public LLVMParserRuntime(LLVMScope fileScope, LLVMScope publicFileScope, NodeFactory nodeFactory, BitcodeID bitcodeID, Source source, String libName,
                     List<LLVMSourceFileReference> sourceFileReferences,
                     LibraryLocator locator) {
         this.fileScope = fileScope;
         this.publicFileScope = publicFileScope;
         this.nodeFactory = nodeFactory;
         this.bitcodeID = bitcodeID;
-        this.file = file;
+        this.source = source;
         this.libName = libName;
         this.sourceFileReferences = sourceFileReferences;
         this.locator = locator;
     }
 
-    public TruffleFile getFile() {
-        return file;
+    public boolean isInternal() {
+        return source.isInternal();
+    }
+
+    public String getPath() {
+        return source.getPath();
     }
 
     public String getLibraryName() {

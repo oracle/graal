@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
+ * Copyright (c) 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -27,19 +27,34 @@
  * NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-package com.oracle.truffle.llvm.parser.factories;
+package com.oracle.truffle.llvm.nativemode.resources;
 
-import com.oracle.truffle.api.InternalResource.CPUArchitecture;
-import com.oracle.truffle.llvm.parser.factories.inlineasm.Aarch64InlineAssemblyParser;
-import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
+import java.io.IOException;
+import java.nio.file.Path;
 
-public abstract class BasicAarch64PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> extends BasicPlatformCapability<S> {
-    protected BasicAarch64PlatformCapability(Class<S> cls, boolean loadCxxLibraries) {
-        super(cls, loadCxxLibraries, new Aarch64InlineAssemblyParser());
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InternalResource;
+
+@InternalResource.Id("libsulong-native")
+public class SulongNativeLibResource implements InternalResource {
+
+    private static Path basePath(Env env) {
+        return Path.of("META-INF", "resources", "llvm", "native-lib", env.getOS().toString(), env.getCPUArchitecture().toString());
     }
 
     @Override
-    public CPUArchitecture getArch() {
-        return CPUArchitecture.AARCH64;
+    public void unpackFiles(Env env, Path targetDirectory) throws IOException {
+        Path base = basePath(env);
+        env.unpackResourceFiles(base.resolve("files"), targetDirectory, base);
+    }
+
+    @Override
+    public String versionHash(Env env) {
+        try {
+            Path hashResource = basePath(env).resolve("sha256");
+            return env.readResourceLines(hashResource).get(0);
+        } catch (IOException ioe) {
+            throw CompilerDirectives.shouldNotReachHere(ioe);
+        }
     }
 }

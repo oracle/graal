@@ -35,7 +35,8 @@ import java.nio.file.Path;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.InternalResource.CPUArchitecture;
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.runtime.inlineasm.InlineAssemblyParserBase;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
@@ -132,10 +133,11 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
      * Inject implicit or modify explicit dependencies for a {@code file}.
      *
      * @param context the {@link LLVMContext}
-     * @param file the {@link TruffleFile}
+     * @param isInternal whether the library is an internal library shipped with Sulong
+     * @param libraryName the name of the library
      * @param dependencies (unmodifiable) list of dependencies specified by the file
      */
-    public List<String> preprocessDependencies(LLVMContext context, TruffleFile file, List<String> dependencies) {
+    public List<String> preprocessDependencies(LLVMContext context, String libraryName, boolean isInternal, List<String> dependencies) {
         return dependencies;
     }
 
@@ -205,13 +207,9 @@ public abstract class PlatformCapability<S extends Enum<S> & LLVMSyscallEntry> i
 
     public abstract InlineAssemblyParserBase getInlineAssemblyParser();
 
-    public enum OS {
-        Linux,
-        Windows,
-        Darwin;
-    }
-
     public abstract OS getOS();
+
+    public abstract CPUArchitecture getArch();
 
     public abstract int getDoubleLongSize();
 
