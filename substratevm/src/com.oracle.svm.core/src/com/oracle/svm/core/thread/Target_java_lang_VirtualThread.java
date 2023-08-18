@@ -119,17 +119,17 @@ public final class Target_java_lang_VirtualThread {
     @Substitute
     boolean getAndClearInterrupt() {
         assert Thread.currentThread() == SubstrateUtil.cast(this, Object.class);
-        Object token = VirtualThreadHelper.acquireInterruptLockMaybeSwitch(this);
-        try {
-            boolean oldValue = interrupted;
-            if (oldValue) {
+        boolean oldValue = interrupted;
+        if (oldValue) {
+            Object token = VirtualThreadHelper.acquireInterruptLockMaybeSwitch(this);
+            try {
                 interrupted = false;
+                asTarget(carrierThread).clearInterrupt();
+            } finally {
+                VirtualThreadHelper.releaseInterruptLockMaybeSwitchBack(this, token);
             }
-            asTarget(carrierThread).clearInterrupt();
-            return oldValue;
-        } finally {
-            VirtualThreadHelper.releaseInterruptLockMaybeSwitchBack(this, token);
         }
+        return oldValue;
     }
 
     @Alias
