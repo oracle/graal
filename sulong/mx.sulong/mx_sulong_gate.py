@@ -161,7 +161,11 @@ def _sulong_gate_runner(args, tasks):
     _unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', description="GCC 5.2 test suite (C++ tests)", testClasses=['GccCppSuite'], tags=['gcc_cpp'])
     _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran'])
     _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic'])
+    _unittest('SulongUnchained', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests with resources instead of language home", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic', 'sulongUnchained'],
+              extraUnittestArgs=['--sulong-test-resources'])
     _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongWinSupport'])
+    _unittest('InteropUnchained', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests with resources instead of language home", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongWinSupport', 'sulongUnchained'],
+              extraUnittestArgs=['--sulong-test-resources'])
     _unittest('SulongNFI', 'SULONG_NFI_TESTS', description="Truffle NFI test suite with the Sulong NFI backend", testClasses=['com.oracle.truffle.nfi.test'], tags=['sulongNFI', 'sulongBasic', 'sulongWinSupport'],
             extraUnittestArgs=['-Dnative.test.backend=llvm', '-Dnative.test.path.llvm=<path:SULONG_NFI_TESTS>'])
     _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.linker.'], tags=['linker', 'sulongBasic'])
