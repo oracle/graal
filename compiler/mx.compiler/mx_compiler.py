@@ -671,7 +671,7 @@ mx_gate.add_gate_argument('--extra-unittest-argument', action=ShellEscapedString
 
 def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
     jdk = _get_unittest_jdk()
-    if jdk.tag is 'graalvm':
+    if jdk.tag == 'graalvm':
         # we do not want to use -server for GraalVM configurations
         mx.run_java(vmArgs + [mainClass] + mainClassArgs, jdk=jdk)
     else:
@@ -704,7 +704,7 @@ def _unittest_config_participant(config):
     cpIndex, cp = mx.find_classpath_arg(vmArgs)
     if cp:
         cp = _remove_redundant_entries(cp)
-        
+
         vmArgs[cpIndex] = cp
         # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
         # for the junit harness which uses reflection to find @Test methods. In addition, the
@@ -746,7 +746,6 @@ def _unittest_config_participant(config):
 
 mx_unittest.add_config_participant(_unittest_config_participant)
 
-global _jdk_used
 _jdk_used = None
 
 class SwitchToGraalVMJDK(mx_unittest.Action):
@@ -754,7 +753,7 @@ class SwitchToGraalVMJDK(mx_unittest.Action):
         global _jdk_used
         kwargs['required'] = False
         kwargs['nargs'] = 0
-        mx_unittest.Action.__init__(self, **kwargs) 
+        mx_unittest.Action.__init__(self, **kwargs)
         _jdk_used = None
     def __call__(self, parser, namespace, values, option_string=None):
         global _jdk_used
