@@ -61,6 +61,14 @@ public class TruffleTestAssumptions {
         Assume.assumeFalse(isClassLoaderEncapsulation());
     }
 
+    public static void assumeOptimizingRuntime() {
+        Assume.assumeTrue(isOptimizingRuntime());
+    }
+
+    public static void assumeFallbackRuntime() {
+        Assume.assumeFalse(isOptimizingRuntime());
+    }
+
     /**
      * Indicates that no Truffle classes can be passed from the test into a truffle langauge as
      * Truffle in a polyglot context is running in an isolated classloader.
@@ -79,7 +87,11 @@ public class TruffleTestAssumptions {
 
     private static Boolean optimizingRuntimeUsed;
 
-    public static boolean isOptimizingRuntimeUsed() {
+    public static boolean isFallbackRuntime() {
+        return !isOptimizingRuntime();
+    }
+
+    public static boolean isOptimizingRuntime() {
         Boolean optimizing = optimizingRuntimeUsed;
         if (optimizing == null) {
             try (Engine e = Engine.create()) {
@@ -116,4 +128,5 @@ public class TruffleTestAssumptions {
     public static boolean isNotAOT() {
         return !aot;
     }
+
 }

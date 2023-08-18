@@ -181,7 +181,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
     @Test
     public void testRetainedSizeWithProxyObject() {
         TruffleTestAssumptions.assumeNotAOT(); // GR-28085
-        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        TruffleTestAssumptions.assumeOptimizingRuntime();
         setupEnv(Context.newBuilder(), new LanguageWithScope());
         context.getBindings(ProxyLanguage.ID).putMember("proxyObject", new ProxyObject() {
             @SuppressWarnings("unused") private final Context ctx = context;
@@ -280,7 +280,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
     @Test
     public void testRetainedSizeWithHostToGuestRootNode() {
         TruffleTestAssumptions.assumeNotAOT(); // GR-28085
-        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        TruffleTestAssumptions.assumeOptimizingRuntime();
         HeapSizeExecutable heapSizeExecutable = new HeapSizeExecutable();
         setupEnv(Context.create(), new ProxyLanguage() {
             private CallTarget target;
@@ -381,7 +381,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
     @Test
     public void testRetainedSizeGuestToHostRootNode() {
         TruffleTestAssumptions.assumeNotAOT(); // GR-28085
-        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        TruffleTestAssumptions.assumeOptimizingRuntime();
         setupEnv(Context.newBuilder().allowHostAccess(HostAccess.ALL).build(), new ProxyLanguage() {
             private CallTarget target;
 
@@ -448,7 +448,7 @@ public class RetainedSizeContextBoundaryTest extends AbstractPolyglotTest {
     @Test
     public void testRetainedSizeWithGuestToHostRootNode() {
         TruffleTestAssumptions.assumeNotAOT(); // GR-28085
-        Assume.assumeFalse(Truffle.getRuntime() instanceof DefaultTruffleRuntime);
+        TruffleTestAssumptions.assumeOptimizingRuntime();
         setupEnv(Context.newBuilder().allowHostClassLookup((s) -> true).allowHostAccess(HostAccess.ALL), new ProxyLanguage() {
             private CallTarget target;
 
