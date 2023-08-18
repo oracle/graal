@@ -6,6 +6,7 @@
 * Support JDK 21.
   Note that virtual threads are implemented as bound thread, not through continuations.
 * Improved Management API implementation.
+* Added support for Language sharing.
 
 ## Version 23.0.0
 ### User-visible changes
