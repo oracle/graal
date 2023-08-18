@@ -510,8 +510,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
-    name='LLVM Runtime Native Support',
-    short_name='llrns',
+    name='LLVM Runtime Native',
+    short_name='llrn',
     dir_name='llvm',
     license_files=[],
     third_party_license_files=[],
@@ -521,22 +521,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'sulong:SULONG_BITCODE_HOME',
         'sulong:SULONG_NATIVE_HOME',
     ],
-    launcher_configs=[],
-    installable=True,
-    standalone=False,
-    priority=1,  # this component is part of the llvm installable but it's not the main one
-))
-
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
-    suite=_suite,
-    name='LLVM Runtime Native',
-    short_name='llrn',
-    dir_name='llvm',
-    license_files=[],
-    third_party_license_files=[],
-    dependencies=['LLVM Runtime Native Support'],
-    truffle_jars=[],
-    support_distributions=[],
     launcher_configs=_suite.toolchain.get_launcher_configs(),
     installable=True,
     standalone=False,
