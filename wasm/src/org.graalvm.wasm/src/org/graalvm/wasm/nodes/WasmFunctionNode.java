@@ -2262,7 +2262,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private void executeAtomicAtAddress(WasmMemory memory, VirtualFrame frame, int stackPointer, int opcode, long address) {
         switch (opcode) {
             case Bytecode.ATOMIC_NOTIFY: {
-                final int count = popInt(frame, stackPointer - 1);
+                final int count = popInt(frame, stackPointer);
                 final int waitersNotified = memory.atomic_notify(this, address, count);
                 pushInt(frame, stackPointer - 1, waitersNotified);
                 break;
