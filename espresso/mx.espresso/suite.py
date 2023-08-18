@@ -21,7 +21,7 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.41.0",
+    "mxversion": "6.44.0",
     "name": "espresso",
     "version" : "24.0.0",
     "release" : False,
@@ -49,6 +49,10 @@ suite = {
         "UPL": {
             "name": "Universal Permissive License, Version 1.0",
             "url": "http://opensource.org/licenses/UPL",
+        },
+        "Oracle Proprietary": {
+            "name": "ORACLE PROPRIETARY/CONFIDENTIAL",
+            "url": "http://www.oracle.com/us/legal/copyright/index.html"
         },
     },
     "defaultLicense": "GPLv2",
@@ -127,10 +131,35 @@ suite = {
                 "jdk.unsupported", # sun.misc.Signal
                 "java.management",
             ],
+            "uses": [
+                "com.oracle.truffle.espresso.ffi.NativeAccess.Provider",
+            ],
             "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR", "ESPRESSO_PROCESSOR"],
             "javaCompliance" : "17+",
             "checkstyle": "com.oracle.truffle.espresso",
             "checkstyleVersion": "10.7.0",
+        },
+
+        "com.oracle.truffle.espresso.resources.libs": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "javaCompliance": "17+",
+            "checkstyle": "com.oracle.truffle.espresso",
+        },
+
+        "com.oracle.truffle.espresso.resources.runtime": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "annotationProcessors": ["truffle:TRUFFLE_DSL_PROCESSOR"],
+            "javaCompliance": "17+",
+            "checkstyle": "com.oracle.truffle.espresso",
         },
 
         "com.oracle.truffle.espresso.processor": {
@@ -332,6 +361,7 @@ suite = {
                 "artifactId" : "espresso-language",
                 "tag": ["default", "public"],
             },
+            "useModulePath": True,
             "noMavenJavadoc": True,
         },
 
@@ -339,6 +369,8 @@ suite = {
             "type": "pom",
             "runtimeDependencies": [
                 "ESPRESSO",
+                "ESPRESSO_LIBS_RESOURCES",
+                "ESPRESSO_RUNTIME_RESOURCES",
                 "truffle:TRUFFLE_RUNTIME",
             ],
             "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
@@ -387,6 +419,96 @@ suite = {
             "maven": False,
         },
 
+        "ESPRESSO_LIBS_RESOURCES": {
+            "platformDependent": True,
+            "moduleInfo": {
+                "name": "org.graalvm.espresso.resources.libs",
+            },
+            "distDependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "dependencies": [
+                "com.oracle.truffle.espresso.resources.libs",
+                "ESPRESSO_LIBS_DIR",
+            ],
+            "compress": True,
+            "useModulePath": True,
+            "description": "Libraries used by the Java on Truffle (aka Espresso) implementation",
+            "maven" : {
+                "tag": ["default", "public"],
+            },
+        },
+
+        "ESPRESSO_LIBS_DIR": {
+            "platformDependent": True,
+            "type": "dir",
+            "hashEntry": "META-INF/resources/java/espresso-libs/<os>/<arch>/sha256",
+            "fileListEntry": "META-INF/resources/java/espresso-libs/<os>/<arch>/files",
+            "os_arch": {
+                "linux": {
+                    "<others>": {
+                        "layout": {
+                            "META-INF/resources/java/espresso-libs/<os>/<arch>/lib/": [
+                                "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
+                                "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
+                                # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
+                                "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                                "dependency:espresso:ESPRESSO_POLYGLOT",
+                                "dependency:espresso:HOTSWAP",
+                            ],
+                        },
+                    },
+                },
+                "linux-musl": {
+                    "<others>": {
+                        "layout": {
+                            "META-INF/resources/java/espresso-libs/<os>/<arch>/lib/": [
+                                "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
+                                # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
+                                "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                                "dependency:espresso:ESPRESSO_POLYGLOT",
+                                "dependency:espresso:HOTSWAP",
+                            ],
+                        },
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "layout": {
+                            "META-INF/resources/java/espresso-libs/<os>/<arch>/lib/": [
+                                "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
+                                # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
+                                "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
+                                "dependency:espresso:ESPRESSO_POLYGLOT",
+                                "dependency:espresso:HOTSWAP",
+                            ],
+                        },
+                    },
+                },
+            },
+            "maven": False,
+        },
+
+        "ESPRESSO_RUNTIME_RESOURCES": {
+            "platformDependent": True,
+            "moduleInfo": {
+                "name": "org.graalvm.espresso.resources.runtime",
+            },
+            "distDependencies": [
+                "truffle:TRUFFLE_API",
+            ],
+            "dependencies": [
+                "com.oracle.truffle.espresso.resources.runtime",
+                "ESPRESSO_RUNTIME_DIR",
+            ],
+            "compress": True,
+            "useModulePath": True,
+            "description": "Runtime environment used by the Java on Truffle (aka Espresso) implementation",
+            "maven" : {
+                "tag": ["default", "public"],
+            },
+        },
+
         "ESPRESSO_SUPPORT": {
             "native": True,
             "description": "Espresso support distribution for the GraalVM (in espresso home)",
@@ -429,7 +551,6 @@ suite = {
                             "./": ["file:mx.espresso/native-image.properties"],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
-                                "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
                                 "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
                                 # Copy of libjvm.so, accessible by Sulong via the default Truffle file system.
                                 "dependency:espresso:com.oracle.truffle.espresso.mokapot/<lib:jvm>",
