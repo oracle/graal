@@ -1,4 +1,4 @@
 DYNAMIC_IMPORTS=/espresso,/sdk,/substratevm,/sulong,/truffle
-COMPONENTS=antlr4,ejvm,ellvm,java,lg,llrc,llrn,nfi,nfi-libffi,sdk,sdkc,sdkl,sdkni,tfl,tfla,tflc
-NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-clang-cl,graalvm-native-flang,graalvm-native-ld,lib:javavm,lib:jvmcicompiler
+COMPONENTS=antlr4,ejvm,ellvm,java,lg,llrc,llrns,nfi,nfi-libffi,sdk,sdkc,sdkl,sdkni,tfl,tfla,tflc
+NATIVE_IMAGES=lib:javavm,lib:jvmcicompiler
 NON_REBUILDABLE_IMAGES=False
