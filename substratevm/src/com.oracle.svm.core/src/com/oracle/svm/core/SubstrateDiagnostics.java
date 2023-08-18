@@ -72,7 +72,6 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
-import com.oracle.svm.core.jdk.management.SubstrateRuntimeMXBean;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -814,7 +813,7 @@ public class SubstrateDiagnostics {
             log.string(", ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
 
             log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
-            log.string("VM uptime: ").rational(ImageSingletons.lookup(SubstrateRuntimeMXBean.class).getUptime(), TimeUtils.millisPerSecond, 3).string("s").newline();
+            log.string("VM uptime: ").rational(Isolates.getCurrentUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s").newline();
 
             CodeInfo info = CodeInfoTable.getImageCodeInfo();
             Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
