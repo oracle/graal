@@ -1,4 +1,7 @@
+# mx --dy /espresso,/substratevm --components="Espresso libjvm,Java on Truffle,Truffle Macro" --disable-libpolyglot --non-rebuildable-images=lib:javavm --disable-installables=true graalvm-show --print-env
 DYNAMIC_IMPORTS=/espresso,/sdk,/substratevm,/truffle
-COMPONENTS=ejvm,java,lg,nfi,nfi-libffi,sdk,sdkc,sdkl,sdkni,tfl,tfla,tflc
-NATIVE_IMAGES=lib:javavm,lib:jvmcicompiler
-NON_REBUILDABLE_IMAGES=False
+COMPONENTS=ejvm,java,nfi,nfi-libffi,sdk,sdkc,sdkl,sdkni,tfl,tfla,tflc,tflm
+EXCLUDE_COMPONENTS=libpoly
+NATIVE_IMAGES=lib:javavm
+DISABLE_INSTALLABLES=True
+NON_REBUILDABLE_IMAGES=lib:javavm
