@@ -290,10 +290,10 @@ final class ObjectSizeCalculator {
     }
 
     @SuppressWarnings("deprecation")
-    private static boolean shouldBeReachable(APIAccess api, Object obj) {
+    private static boolean shouldBeReachable(APIAccess api, Object obj, boolean allowContext) {
         if (obj instanceof PolyglotImpl.VMObject) {
             // only these two vm objects are allowed
-            return obj instanceof PolyglotLanguageContext || obj instanceof PolyglotContextImpl;
+            return allowContext && (obj instanceof PolyglotLanguageContext || obj instanceof PolyglotContextImpl);
         }
         if (obj instanceof PolyglotContextConfig ||
                         obj instanceof TruffleLanguageProvider ||
@@ -319,7 +319,7 @@ final class ObjectSizeCalculator {
             return true;
         }
 
-        assert shouldBeReachable(api, obj) : obj.getClass().getName() + " should not be reachable";
+        assert shouldBeReachable(api, obj, true) : obj.getClass().getName() + " should not be reachable";
 
         return (obj instanceof Thread) ||
                         EngineAccessor.HOST.isHostBoundaryValue(obj) ||
@@ -354,7 +354,7 @@ final class ObjectSizeCalculator {
                         /*
                          * For safety, copy the asserts here in case asserts are disabled.
                          */
-                        !shouldBeReachable(api, obj);
+                        !shouldBeReachable(api, obj, false);
     }
 
     private static ClassInfo canProceed(APIAccess api, Map<Class<?>, ClassInfo> classInfos, Object obj) {
