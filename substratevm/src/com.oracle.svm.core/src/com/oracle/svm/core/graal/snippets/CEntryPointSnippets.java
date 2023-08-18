@@ -307,6 +307,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         }
         Isolates.setCurrentIsFirstIsolate(firstIsolate);
+        Isolates.setCurrentStartTime();
 
         /*
          * The VM operation thread must be started early as no VM operations can be scheduled before

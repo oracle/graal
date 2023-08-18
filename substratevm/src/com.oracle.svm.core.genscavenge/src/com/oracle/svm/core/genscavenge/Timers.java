@@ -24,11 +24,10 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.nativeimage.ImageSingletons;
-
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.jdk.management.SubstrateRuntimeMXBean;
 import com.oracle.svm.core.log.Log;
+import com.oracle.svm.core.util.TimeUtils;
 
 /**
  * A single wall-clock stopwatch that can be repeatedly {@linkplain #open started} and
@@ -90,7 +89,7 @@ final class Timer implements AutoCloseable {
         if (!wasOpened) {
             /* If a timer was not opened, pretend it was opened at the start of the VM. */
             assert openNanos == 0;
-            return ImageSingletons.lookup(SubstrateRuntimeMXBean.class).getStartTime();
+            return TimeUtils.millisToNanos(Isolates.getCurrentStartNanos());
         }
         return openNanos;
     }
