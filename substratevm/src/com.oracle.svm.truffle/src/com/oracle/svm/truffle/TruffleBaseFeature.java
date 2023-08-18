@@ -95,6 +95,7 @@ import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
@@ -1140,7 +1141,7 @@ final class Target_com_oracle_truffle_api_staticobject_PodBasedShapeGenerator<T>
 
     @Substitute
     @SuppressWarnings("unchecked")
-    Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> generateShape(Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> parentShape,
+    StaticShape<T> generateShape(Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape<T> parentShape,
                     Map<String, Target_com_oracle_truffle_api_staticobject_StaticProperty> staticProperties, boolean safetyChecks) {
         Pod.Builder<T> builder;
         if (parentShape == null) {
@@ -1162,7 +1163,7 @@ final class Target_com_oracle_truffle_api_staticobject_PodBasedShapeGenerator<T>
         for (var entry : propertyFields) {
             entry.getLeft().initOffset(entry.getRight().getOffset());
         }
-        return Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape.create(storageSuperClass, pod.getFactory(), safetyChecks, pod);
+        return SubstrateUtil.cast(Target_com_oracle_truffle_api_staticobject_PodBasedStaticShape.create(storageSuperClass, pod.getFactory(), safetyChecks, pod), StaticShape.class);
     }
 }
 
