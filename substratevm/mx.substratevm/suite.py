@@ -842,9 +842,27 @@ suite = {
             ],
             "dependencies": [
                 "com.oracle.svm.hosted",
+                "com.oracle.svm.driver.launcher",
             ],
             "requires" : [
                 "jdk.management",
+            ],
+            "checkstyle": "com.oracle.svm.hosted",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance" : "17+",
+            "spotbugs": "false",
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.driver.launcher": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
@@ -1705,6 +1723,7 @@ suite = {
             "mainClass": "com.oracle.svm.driver.NativeImage",
             "dependencies": [
                 "com.oracle.svm.driver",
+                "com.oracle.svm.driver.launcher",
                 "svm-compiler-flags-builder",
             ],
             "distDependencies": [
