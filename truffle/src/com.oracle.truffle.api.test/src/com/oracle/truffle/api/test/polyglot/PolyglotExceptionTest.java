@@ -442,7 +442,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
              * The optimized HotSpot runtime is initialized lazily. We have to use synchronous
              * compilation to prevent OOM in the compiler thread.
              */
-            if (Truffle.getRuntime().getClass() != DefaultTruffleRuntime.class) {
+            if (TruffleTestAssumptions.isOptimizingRuntimeUsed()) {
                 vmOptions.add("-Dpolyglot.engine.CompileImmediately=true");
                 vmOptions.add("-Dpolyglot.engine.BackgroundCompilation=false");
             }

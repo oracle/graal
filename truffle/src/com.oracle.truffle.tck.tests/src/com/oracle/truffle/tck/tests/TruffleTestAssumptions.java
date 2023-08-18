@@ -77,6 +77,18 @@ public class TruffleTestAssumptions {
         return !spawnIsolate;
     }
 
+    private static Boolean optimizingRuntimeUsed;
+
+    public static boolean isOptimizingRuntimeUsed() {
+        Boolean optimizing = optimizingRuntimeUsed;
+        if (optimizing == null) {
+            try (Engine e = Engine.create()) {
+                optimizingRuntimeUsed = optimizing = !e.getImplementationName().equals("Interpreted");
+            }
+        }
+        return optimizing;
+    }
+
     public static boolean isWeakEncapsulation() {
         return !isIsolateEncapsulation() && !isClassLoaderEncapsulation();
     }
