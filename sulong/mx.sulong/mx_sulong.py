@@ -45,6 +45,7 @@ import mx_sulong_benchmarks
 import mx_sulong_fuzz #pylint: disable=unused-import
 import mx_sulong_gen #pylint: disable=unused-import
 import mx_sulong_gate
+import mx_sulong_unittest #pylint: disable=unused-import
 import mx_sulong_llvm_config
 
 # re-export custom mx project classes so they can be used from suite.py
@@ -92,14 +93,6 @@ def _lib_versioned(arg):
         mx.abort('unsupported os')
 
 mx_subst.results_substitutions.register_with_arg('libv', _lib_versioned)
-
-
-def set_sulong_test_config_root(root):
-    mx_sulong_gate.set_sulong_test_config_root(root)
-
-
-def get_test_distribution_path_properties(suite):
-    return mx_sulong_gate.get_test_distribution_path_properties(suite)
 
 
 def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=None, unittestArgs=None):

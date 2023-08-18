@@ -1,5 +1,5 @@
 suite = {
-  "mxversion": "6.41.0",
+  "mxversion": "6.43.0",
   "name" : "sulong",
   "versionConflictResolution" : "latest",
   "groupId": "org.graalvm.llvm",
@@ -1662,6 +1662,7 @@ suite = {
           "com.oracle.truffle.llvm.spi.internal.LLVMResourceProvider",
         ],
       },
+      "useModulePath" : True,
       "subDir" : "projects",
       "dependencies" : [
         "com.oracle.truffle.llvm",
@@ -1727,6 +1728,7 @@ suite = {
           "com.oracle.truffle.llvm.spi.internal to org.graalvm.llvm_community,org.graalvm.llvm.nativemode.resources,org.graalvm.llvm.managed.resources",
         ],
       },
+      "useModulePath" : True,
       "subDir" : "projects",
       "dependencies" : [
         "com.oracle.truffle.llvm.api",
@@ -1749,6 +1751,7 @@ suite = {
           "* to org.graalvm.llvm.nativemode",
         ],
       },
+      "useModulePath" : True,
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.nativemode"],
       "distDependencies" : [
@@ -1770,6 +1773,7 @@ suite = {
           "static org.graalvm.nativeimage",
         ],
       },
+      "useModulePath" : True,
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.nativemode.resources"],
       "distDependencies" : [
@@ -1790,6 +1794,7 @@ suite = {
       "moduleInfo" : {
         "name" : "org.graalvm.llvm.nfi",
       },
+      "useModulePath" : True,
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.nfi"],
       "distDependencies" : ["truffle:TRUFFLE_NFI"],
@@ -1807,6 +1812,7 @@ suite = {
           "com.oracle.truffle.llvm.launcher to org.graalvm.launcher",
         ],
       },
+      "useModulePath" : True,
       "subDir" : "projects",
       "mainClass" : "com.oracle.truffle.llvm.launcher.LLVMLauncher",
       "dependencies" : ["com.oracle.truffle.llvm.launcher"],
@@ -2017,6 +2023,7 @@ suite = {
         "com.oracle.truffle.llvm.tests.pipe",
       ],
       "exclude" : ["mx:JUNIT"],
+      "unittestConfig" : "sulong",
       "distDependencies" : [
         "truffle:TRUFFLE_TCK",
       ],
@@ -2041,6 +2048,7 @@ suite = {
       "exclude" : [
        "mx:JUNIT"
       ],
+      "unittestConfig" : "sulong-internal",
       "distDependencies" : [
         "sulong:SULONG_API",
         "sulong:SULONG_TEST",
@@ -2060,6 +2068,7 @@ suite = {
       "exclude" : [
        "mx:JUNIT"
       ],
+      "unittestConfig" : "sulong-internal",
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_TCK",

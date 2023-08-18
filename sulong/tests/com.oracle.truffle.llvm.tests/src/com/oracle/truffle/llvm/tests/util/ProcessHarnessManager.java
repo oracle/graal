@@ -256,7 +256,6 @@ public class ProcessHarnessManager {
         Collections.addAll(commandArgs, "-Xss56m", "-Xms4g", "-Xmx4g", "-esa", "-ea", "-Djava.awt.headless=true", "-cp", classpath,
                         copyProperty("polyglot.engine.WarnInterpreterOnly"),
                         copyProperty("truffle.nfi.library"),
-                        copyProperty("polyglotimpl.DisableClassPathIsolation"),
                         copyProperty("org.graalvm.language.llvm.home"),
                         copyProperty("test.pipe.lib"),
                         "com.oracle.truffle.llvm.tests.harness.TestHarness");

@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+# Copyright (c) 2016, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -27,13 +27,11 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-import argparse
 import os
 from argparse import ArgumentParser
 
 import mx
 import mx_subst
-import mx_unittest
 
 from mx_gate import Task, add_gate_runner, add_gate_argument
 
@@ -123,45 +121,6 @@ class UnittestTaskFactory(object):
             build_task.execute(tasks)
         for test_task in self.test_tasks:
             test_task(tasks)
-
-
-_sulongTestConfigRoot = os.path.join(_suite.dir, "tests", "configs")
-
-
-def set_sulong_test_config_root(root):
-    global _sulongTestConfigRoot
-    _sulongTestConfigRoot = root
-
-
-class MxUnittestTestEngineConfigAction(argparse.Action):
-
-    config = None
-
-    def __init__(self, **kwargs):
-        kwargs['required'] = False
-        super(MxUnittestTestEngineConfigAction, self).__init__(**kwargs)
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        MxUnittestTestEngineConfigAction.config = values
-
-
-def _unittest_config_participant(config):
-    (vmArgs, mainClass, mainClassArgs) = config
-    vmArgs += get_test_distribution_path_properties(_suite)
-    vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
-    vmArgs += ['-Dsulongtest.configRoot={}'.format(_sulongTestConfigRoot)]
-    if MxUnittestTestEngineConfigAction.config:
-        vmArgs += ['-Dsulongtest.config=' + MxUnittestTestEngineConfigAction.config]
-    return (vmArgs, mainClass, mainClassArgs)
-
-
-def get_test_distribution_path_properties(suite):
-    return ['-Dsulongtest.path.{}={}'.format(d.name, d.get_output()) for d in suite.dists if
-            d.is_test_distribution() and not d.isClasspathDependency()]
-
-
-mx_unittest.add_config_participant(_unittest_config_participant)
-mx_unittest.add_unittest_argument('--sulong-config', default=None, help='Select test engine configuration for the sulong unittests.', metavar='<config>', action=MxUnittestTestEngineConfigAction)
 
 
 class SulongGateEnv(object):
@@ -273,7 +232,8 @@ def runLLVMUnittests(unittest_runner):
     test_harness_dist = mx.distribution('SULONG_TEST')
     java_run_props = [x for x in mx.get_runtime_jvm_args(test_harness_dist) if x.startswith('-D')]
     # necessary because mx native-unittest ignores config participants (GR-34875)
-    java_run_props += [x for x in _unittest_config_participant(([], None, None))[0] if x.startswith('-D')]
+    # TODO migrate to unittest config
+    # java_run_props += [x for x in _unittest_config_participant(([], None, None))[0] if x.startswith('-D')]
 
     test_suite = 'SULONG_EMBEDDED_TEST_SUITES'
     mx_sulong_suite_constituents.compileTestSuite(test_suite, extra_build_args=[])
