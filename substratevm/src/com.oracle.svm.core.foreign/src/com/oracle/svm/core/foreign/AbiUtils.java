@@ -71,7 +71,7 @@ import jdk.vm.ci.meta.PlatformKind;
 public abstract class AbiUtils {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static class Adapter {
+    public static final class Adapter {
         private static boolean allEqual(int reference, int... values) {
             return Arrays.stream(values).allMatch(v -> v == reference);
         }
@@ -211,9 +211,9 @@ public abstract class AbiUtils {
         }
 
         private static final class Reinterpret extends Adaptation {
-            public final JavaKind to;
+            private final JavaKind to;
 
-            public Reinterpret(JavaKind to) {
+            private Reinterpret(JavaKind to) {
                 this.to = to;
             }
 
@@ -471,14 +471,6 @@ class ABIs {
             return storages;
         }
 
-        @Override
-        protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
-            var adaptations = super.generateAdaptations(nep);
-            /* Drop the rax parametersAssignment */
-            adaptations.set(adaptations.size() - 1, Adapter.drop());
-            return adaptations;
-        }
-
         protected static Map<String, MemoryLayout> canonicalLayouts(ValueLayout longLayout, ValueLayout sizetLayout, ValueLayout wchartLayout) {
             return Map.ofEntries(
                             // specified canonical layouts
@@ -517,6 +509,15 @@ class ABIs {
         }
 
         @Override
+        protected List<Adapter.Adaptation> generateAdaptations(NativeEntryPointInfo nep) {
+            var adaptations = super.generateAdaptations(nep);
+            /* Drop the rax parametersAssignment */
+            assert adaptations.get(adaptations.size() - 1) == null;
+            adaptations.set(adaptations.size() - 1, Adapter.drop());
+            return adaptations;
+        }
+
+        @Override
         @Platforms(Platform.HOSTED_ONLY.class)
         public void checkLibrarySupport() {
             String name = "SystemV (Linux AMD64)";
@@ -552,17 +553,18 @@ class ABIs {
             AMD64 target = (AMD64) ImageSingletons.lookup(SubstrateTargetDescription.class).arch;
             boolean previousMatched = false;
             PlatformKind previousKind = null;
-            for (int i = 0; i < adaptations.size() - 1; ++i) {
+            for (int i = adaptations.size() - 1; i >= 0; --i) {
                 PlatformKind kind = target.getPlatformKind(JavaKind.fromJavaClass(nep.methodType().parameterType(i)));
                 if ((kind.equals(target.getPlatformKind(JavaKind.Float)) || kind.equals(target.getPlatformKind(JavaKind.Double))) &&
                                 nep.parametersAssignment()[i].type() == X86_64Architecture.StorageType.INTEGER) {
+                    assert Objects.equals(previousKind, kind) && previousMatched;
                     assert adaptations.get(i) == null;
-                    assert previousKind.equals(kind) && previousMatched;
                     adaptations.set(i, Adapter.reinterpret(JavaKind.Long));
                     previousMatched = false;
                 } else {
                     previousMatched = true;
                 }
+                previousKind = kind;
             }
 
             return adaptations;

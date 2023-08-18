@@ -39,17 +39,17 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 class ForeignGraphKit extends HostedGraphKit {
-    public ForeignGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
+    ForeignGraphKit(DebugContext debug, HostedProviders providers, ResolvedJavaMethod method, GraphProvider.Purpose purpose) {
         super(debug, providers, method, purpose);
     }
 
-    public Pair<List<ValueNode>, ValueNode> unpackArgumentsAndExtractNEP(ValueNode argumentsArray, MethodType methodType) {
+    Pair<List<ValueNode>, ValueNode> unpackArgumentsAndExtractNEP(ValueNode argumentsArray, MethodType methodType) {
         List<ValueNode> args = loadArrayElements(argumentsArray, JavaKind.Object, methodType.parameterCount() + 1);
         ValueNode nep = args.remove(args.size() - 1);
         return Pair.create(args, nep);
     }
 
-    public List<ValueNode> unboxArguments(List<ValueNode> args, MethodType methodType) {
+    List<ValueNode> unboxArguments(List<ValueNode> args, MethodType methodType) {
         assert args.size() == methodType.parameterCount() : args.size() + " " + methodType.parameterCount();
         for (int i = 0; i < args.size(); ++i) {
             ValueNode argument = args.get(i);

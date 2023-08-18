@@ -108,9 +108,10 @@ public final class AssignedLocation {
     public String toString() {
         if (assignsToRegister()) {
             return "r-" + register;
-        } else {
-            assert assignsToStack();
+        } else if (assignsToStack()) {
             return "s-" + stackOffset;
+        } else {
+            return "p";
         }
     }
 
