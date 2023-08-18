@@ -3918,7 +3918,12 @@ def _infer_env(graalvm_dist):
             if not p.is_skipped():
                 library_name = remove_lib_prefix_suffix(p.native_image_name, require_suffix_prefix=False)
                 nativeImages.append('lib:' + library_name)
-    if not nativeImages:
+    if nativeImages:
+        if mx.suite('substratevm-enterprise', fatalIfMissing=False) is not None:
+            dynamicImports.add('/substratevm-enterprise')
+        elif mx.suite('substratevm', fatalIfMissing=False) is not None:
+            dynamicImports.add('/substratevm')
+    else:
         nativeImages = ['false']
 
     disableInstallables = _disabled_installables()
