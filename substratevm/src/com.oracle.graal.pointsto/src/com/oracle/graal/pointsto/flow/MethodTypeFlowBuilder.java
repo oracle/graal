@@ -92,8 +92,9 @@ import org.graalvm.compiler.nodes.java.StoreFieldNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndExchangeNode;
 import org.graalvm.compiler.nodes.java.UnsafeCompareAndSwapNode;
+import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
+import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.type.StampTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualInstanceNode;
@@ -582,6 +583,20 @@ public class MethodTypeFlowBuilder {
         postInitFlows = typeFlowGraphBuilder.build();
     }
 
+    /**
+     * Within typeflow graphs we unproxify values and instead filter types via our typeflows. Note
+     * that we also must unproxify {@link LimitedValueProxy}s, as opposed to merely
+     * {@link ValueProxy}s, as it is necessary to see through DeoptProxies. The precautionary
+     * measures needed for DeoptProxies are accounted for via method linking.
+     */
+    protected ValueNode typeFlowUnproxify(ValueNode value) {
+        ValueNode result = value;
+        while (result instanceof LimitedValueProxy) {
+            result = ((LimitedValueProxy) result).getOriginalNode();
+        }
+        return result;
+    }
+
     protected void apply(boolean forceReparse, Object reason) {
         assert !processed : "can only call apply once per MethodTypeFlowBuilder";
         processed = true;
@@ -643,13 +658,13 @@ public class MethodTypeFlowBuilder {
         }
 
         public boolean contains(ValueNode node) {
-            return flows.containsKey(GraphUtil.unproxify(node));
+            return flows.containsKey(typeFlowUnproxify(node));
         }
 
         public TypeFlowBuilder<?> lookup(ValueNode n) {
             assert n.stamp(NodeView.DEFAULT) instanceof ObjectStamp;
 
-            ValueNode node = GraphUtil.unproxify(n);
+            ValueNode node = typeFlowUnproxify(n);
             TypeFlowBuilder<?> result = flows.get(node);
             if (result == null) {
                 /*
@@ -673,7 +688,7 @@ public class MethodTypeFlowBuilder {
                 } else {
                     /*
                      * Use a type state which consists of all allocated types (which are compatible
-                     * to the node's type). Is is a conservative assumption.
+                     * to the node's type). This is a conservative assumption.
                      */
                     result = TypeFlowBuilder.create(bb, node, TypeFlow.class, () -> {
                         TypeFlow<?> proxy = bb.analysisPolicy().proxy(AbstractAnalysisEngine.sourcePosition(node), stampType.getTypeFlow(bb, true));
@@ -689,12 +704,12 @@ public class MethodTypeFlowBuilder {
 
         public void add(ValueNode node, TypeFlowBuilder<?> flow) {
             assert !contains(node);
-            flows.put(GraphUtil.unproxify(node), flow);
+            flows.put(typeFlowUnproxify(node), flow);
         }
 
         public void update(ValueNode node, TypeFlowBuilder<?> flow) {
             assert contains(node);
-            flows.put(GraphUtil.unproxify(node), flow);
+            flows.put(typeFlowUnproxify(node), flow);
         }
 
         @Override
