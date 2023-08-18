@@ -330,6 +330,9 @@ final class MacroOption {
             }
 
             MacroOption truffleOption = getMacroOption(OptionUtils.MacroOptionKind.Macro, "truffle");
+            if (truffleOption == null) {
+                throw new VerboseInvalidMacroException("Cannot locate the truffle macro", null);
+            }
             if (option.kind.equals(OptionUtils.MacroOptionKind.Language) && !addedCheck.contains(truffleOption)) {
                 /*
                  * Every language requires Truffle. If it is not specified explicitly as a
