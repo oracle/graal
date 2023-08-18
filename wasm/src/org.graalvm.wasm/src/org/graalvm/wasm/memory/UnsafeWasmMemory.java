@@ -123,7 +123,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public long size() {
+    public synchronized long size() {
         return size;
     }
 
@@ -134,7 +134,7 @@ public final class UnsafeWasmMemory extends WasmMemory {
 
     @Override
     @TruffleBoundary
-    public boolean grow(long extraPageSize) {
+    public synchronized boolean grow(long extraPageSize) {
         if (extraPageSize == 0) {
             invokeGrowCallback();
             return true;

@@ -99,7 +99,7 @@ class NativeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public long size() {
+    public synchronized long size() {
         return size;
     }
 
@@ -109,7 +109,7 @@ class NativeWasmMemory extends WasmMemory {
     }
 
     @Override
-    public boolean grow(long extraPageSize) {
+    public synchronized boolean grow(long extraPageSize) {
         if (extraPageSize == 0) {
             invokeGrowCallback();
             return true;
