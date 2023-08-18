@@ -158,7 +158,7 @@ public class InteropNodesProcessor extends BaseProcessor {
             // Create one node per export.
             for (AnnotationMirror exportAnnotation : exportedMethods) {
                 String targetMessageName = getAnnotationValue(exportAnnotation, "name", String.class);
-                if (targetMessageName != null && targetMessageName.length() == 0) {
+                if (targetMessageName == null || targetMessageName.length() == 0) {
                     targetMessageName = methodElement.getSimpleName().toString();
                 }
                 String clsName = ProcessorUtils.capitalize(methodElement.getSimpleName().toString()) + "Node";
