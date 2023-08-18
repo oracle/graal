@@ -297,7 +297,7 @@ def _truffle_gate_runner(args, tasks):
 
 # invoked by vm gate runner in unchained configuration
 def truffle_jvm_module_path_unit_tests_gate():
-    unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
+    unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--verbose', '--max-class-failures=25']))
 
 # invoked by vm gate runner in unchained configuration
 def truffle_jvm_class_path_unit_tests_gate():
@@ -309,7 +309,7 @@ def truffle_jvm_class_path_unit_tests_gate():
             "com.oracle.truffle.api.test.examples",
             "com.oracle.truffle.tck.tests",
         ]
-    unittest(list(['--suite', 'truffle', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25'] + test_classes))
+    unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25'] + test_classes))
 
 # invoked by vm gate runner in unchained configuration
 def sl_jvm_gate_tests():

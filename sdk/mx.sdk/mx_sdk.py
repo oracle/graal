@@ -246,3 +246,27 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    vendor_info=vendor_info,
                                    use_upgrade_module_path=use_upgrade_module_path,
                                    default_to_jvmci=default_to_jvmci)
+
+class GraalVMJDKConfig(mx.JDKConfig):
+    """
+    A JDKConfig that configures the built GraalVM as a JDK config.
+    """
+    def __init__(self):
+        mx.JDKConfig.__init__(self, mx_sdk_vm.graalvm_home(fatalIfMissing=True), tag='graalvm')
+
+    @property
+    def home(self):
+        return mx_sdk_vm.graalvm_home(fatalIfMissing=True)
+
+    @home.setter
+    def home(self, home):
+        return
+
+class GraalVMJDK(mx.JDKFactory):
+    def getJDKConfig(self):
+        return GraalVMJDKConfig()
+
+    def description(self):
+        return "GraalVM JDK"
+
+mx.addJDKFactory('graalvm', mx.get_jdk(tag='default').javaCompliance, GraalVMJDK())

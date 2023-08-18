@@ -670,7 +670,12 @@ mx_gate.add_gate_argument('--extra-vm-argument', action=ShellEscapedStringAction
 mx_gate.add_gate_argument('--extra-unittest-argument', action=ShellEscapedStringAction, help='add extra unit test arguments to gate tasks if applicable')
 
 def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
-    run_vm(vmArgs + [mainClass] + mainClassArgs)
+    jdk = _get_unittest_jdk()
+    if jdk.tag is 'graalvm':
+        # we do not want to use -server for GraalVM configurations
+        mx.run_java(vmArgs + [mainClass] + mainClassArgs, jdk=jdk)
+    else:
+        run_vm(vmArgs + [mainClass] + mainClassArgs, jdk=jdk)
 
 def _remove_redundant_entries(cp):
     """
@@ -699,6 +704,7 @@ def _unittest_config_participant(config):
     cpIndex, cp = mx.find_classpath_arg(vmArgs)
     if cp:
         cp = _remove_redundant_entries(cp)
+        
         vmArgs[cpIndex] = cp
         # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
         # for the junit harness which uses reflection to find @Test methods. In addition, the
@@ -739,7 +745,30 @@ def _unittest_config_participant(config):
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
-mx_unittest.set_vm_launcher('JDK VM launcher', _unittest_vm_launcher, jdk)
+
+global _jdk_used
+_jdk_used = None
+
+class SwitchToGraalVMJDK(mx_unittest.Action):
+    def __init__(self, **kwargs):
+        global _jdk_used
+        kwargs['required'] = False
+        kwargs['nargs'] = 0
+        mx_unittest.Action.__init__(self, **kwargs) 
+        _jdk_used = None
+    def __call__(self, parser, namespace, values, option_string=None):
+        global _jdk_used
+        _jdk_used = 'graalvm'
+
+def _get_unittest_jdk():
+    global _jdk_used
+    return mx.get_jdk(tag=_jdk_used)
+
+mx_unittest.set_vm_launcher('JDK VM launcher', _unittest_vm_launcher, _get_unittest_jdk)
+# Note this option should probably be implemented in mx_sdk. However there can be only
+# one set_vm_launcher call per configuration, so we we do it here where it is easy to compose
+# with the mx_compiler behavior.
+mx_unittest.add_unittest_argument('--use-graalvm', default=False, help='Use the previously built GraalVM for running the unit test.', action=SwitchToGraalVMJDK)
 
 def _record_last_updated_jar(dist, path):
     last_updated_jar = join(dist.suite.get_output_root(), dist.name + '.lastUpdatedJar')
@@ -1036,9 +1065,9 @@ class GraalJDKFactory(mx.JDKFactory):
     def description(self):
         return "JVMCI JDK with Graal"
 
-def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
+def run_vm(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None, jdk=None):
     """run a Java program by executing the java executable in a JVMCI JDK"""
-    return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout)
+    return run_java(args, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, timeout=timeout, jdk=jdk)
 
 def run_vm_with_jvmci_compiler(args, nonZeroIsFatal=True, out=None, err=None, cwd=None, timeout=None, debugLevel=None, vmbuild=None):
     """run a Java program by executing the java executable in a JVMCI JDK,
