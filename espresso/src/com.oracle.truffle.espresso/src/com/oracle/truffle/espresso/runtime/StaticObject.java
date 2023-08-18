@@ -106,7 +106,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         if (isNull(this) || isForeignObject()) {
             return BaseInterop.class;
         }
-        if (EspressoLanguage.get(null).isShared()) {
+        if (getKlass().getContext().getLanguage().isShared()) {
             return SharedInterop.class;
         }
         return getKlass().getDispatch();
