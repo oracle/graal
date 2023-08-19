@@ -29,12 +29,12 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
       <version>${graalvm.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.graalvm.word</groupId>
+      <groupId>org.graalvm.sdk</groupId>
       <artifactId>word</artifactId>
       <version>${graalvm.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.graalvm.collections</groupId>
+      <groupId>org.graalvm.sdk</groupId>
       <artifactId>collections</artifactId>
       <version>${graalvm.version}</version>
     </dependency>
