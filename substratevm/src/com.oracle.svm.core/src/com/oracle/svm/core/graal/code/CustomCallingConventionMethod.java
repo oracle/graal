@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,31 +22,11 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.graal.meta;
-
-import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
-
-import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
-import com.oracle.svm.core.meta.SharedMethod;
+package com.oracle.svm.core.graal.code;
 
 /**
- * The method interface used at runtime.
+ * See {@link SubstrateCallingConventionType}.
  */
-public interface SharedRuntimeMethod extends SharedMethod {
-
-    int getEncodedGraphStartOffset();
-
-    default SharedRuntimeMethod getOriginal() {
-        return this;
-    }
-
-    @Override
-    default SubstrateCallingConventionType getCustomCallingConventionType() {
-        throw intentionallyUnimplemented(); // ExcludeFromJacocoGeneratedReport
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    int getDeoptOffsetInImage();
+public interface CustomCallingConventionMethod {
+    SubstrateCallingConventionType getCallingConvention();
 }

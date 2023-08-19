@@ -34,22 +34,41 @@ import org.graalvm.nativeimage.impl.RuntimeForeignAccessSupport;
  * Convenience interface until {@link RuntimeForeignAccessSupport} can be strongly typed.
  */
 public interface StronglyTypedRuntimeForeignAccessSupport extends RuntimeForeignAccessSupport {
-    @Override
-    default void registerForDowncall(ConfigurationCondition condition, Object descO, Object... optionsO) {
-        if (!(descO instanceof FunctionDescriptor)) {
-            throw new IllegalArgumentException("Desc must be an instance of " + FunctionDescriptor.class);
+    private static FunctionDescriptor castDesc(Object descO) {
+        if (descO instanceof FunctionDescriptor desc) {
+            return desc;
         }
-        FunctionDescriptor desc = (FunctionDescriptor) descO;
-        Linker.Option[] options = new Linker.Option[optionsO.length];
+        throw new IllegalArgumentException("Desc must be an instance of " + FunctionDescriptor.class + "; was " + descO.getClass());
+    }
 
+    private static Linker.Option[] castOptions(Object... optionsO) {
+        Linker.Option[] options = new Linker.Option[optionsO.length];
         for (int i = 0; i < optionsO.length; ++i) {
             if (!(optionsO[i] instanceof Linker.Option)) {
                 throw new IllegalArgumentException("Option at position " + i + " must be an instance of " + Linker.Option.class);
             }
             options[i] = (Linker.Option) optionsO[i];
         }
+        return options;
+    }
 
-        registerForDowncall(condition, desc, options);
+    @FunctionalInterface
+    interface Recorder {
+        void apply(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options);
+    }
+
+    static StronglyTypedRuntimeForeignAccessSupport make(Recorder forDowncalls) {
+        return new StronglyTypedRuntimeForeignAccessSupport() {
+            @Override
+            public void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options) {
+                forDowncalls.apply(condition, desc, options);
+            }
+        };
+    }
+
+    @Override
+    default void registerForDowncall(ConfigurationCondition condition, Object descO, Object... optionsO) {
+        registerForDowncall(condition, castDesc(descO), castOptions(optionsO));
     }
 
     void registerForDowncall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options);

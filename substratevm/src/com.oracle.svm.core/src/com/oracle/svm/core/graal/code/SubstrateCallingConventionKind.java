@@ -37,9 +37,24 @@ public enum SubstrateCallingConventionKind {
     /**
      * A call between Java and native code, which must use the platform ABI.
      */
-    Native;
+    Native,
+    /**
+     * A call between Java and native code, which uses a method-specific ABI. This can be used to
+     * pass values which are not easily representable, e.g. a structure which is split across
+     * multiple registers.
+     *
+     * Methods using this calling convention should implement {@link CustomCallingConventionMethod}.
+     */
+    Custom;
 
     public SubstrateCallingConventionType toType(boolean outgoing) {
+        if (isCustom()) {
+            throw new IllegalArgumentException("Custom calling conventions cannot be created using toType.");
+        }
         return (outgoing ? SubstrateCallingConventionType.outgoingTypes : SubstrateCallingConventionType.incomingTypes).get(this);
+    }
+
+    public boolean isCustom() {
+        return this == Custom;
     }
 }
