@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,19 +20,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.preinit;
+//TODO GR-43114 fix warnings
+@SuppressPackageWarnings({"truffle-inlining", "truffle-sharing", "truffle-neverdefault", "truffle-limit"})
+package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
-import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
-import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ContextDescription;
-import com.oracle.truffle.espresso.impl.LinkedKlass;
-import com.oracle.truffle.espresso.impl.ParserKlass;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-
-public final class DefaultLinkedKlassProvider implements LinkedKlassProvider {
-    @Override
-    public LinkedKlass getLinkedKlass(ClassLoadingEnv env, ContextDescription description, StaticObject loader, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces,
-                    ClassRegistry.ClassDefinitionInfo info) {
-        return LinkedKlass.create(description, parserKlass, superKlass, interfaces);
-    }
-}
+import com.oracle.truffle.api.dsl.SuppressPackageWarnings;

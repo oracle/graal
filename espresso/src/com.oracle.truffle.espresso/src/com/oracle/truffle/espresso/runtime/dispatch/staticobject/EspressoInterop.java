@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.runtime.dispatch;
+package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import static com.oracle.truffle.espresso.impl.Klass.STATIC_TO_CLASS;
 import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostByte;
@@ -41,13 +41,13 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.ArityException;
@@ -59,6 +59,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ArrayKlass;
@@ -83,12 +84,16 @@ import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 
 /**
  * BaseInterop (isNull, is/asString, meta-instance, identity, exceptions, toDisplayString) Support
  * Espresso and foreign objects and null.
  */
+@GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+@Shareable
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class EspressoInterop extends BaseInterop {
     // region ### is/as checks/conversions
@@ -96,18 +101,13 @@ public class EspressoInterop extends BaseInterop {
     static final Object[] EMPTY_ARGS = new Object[]{};
 
     public static Meta getMeta() {
-        CompilerAsserts.neverPartOfCompilation();
         return EspressoContext.get(null).getMeta();
     }
 
     @ExportMessage
     static boolean isBoolean(StaticObject receiver) {
-        if (receiver.isForeignObject()) {
-            return false;
-        }
-        if (isNull(receiver)) {
-            return false;
-        }
+        receiver.checkNotForeign();
+        assert !isNull(receiver) : "Null espresso object should be dispatched to BaseInterop";
         return receiver.getKlass() == receiver.getKlass().getMeta().java_lang_Boolean;
     }
 
@@ -122,9 +122,7 @@ public class EspressoInterop extends BaseInterop {
 
     @ExportMessage
     static boolean isNumber(StaticObject receiver) {
-        if (receiver.isForeignObject()) {
-            return false;
-        }
+        receiver.checkNotForeign();
         if (isNull(receiver)) {
             return false;
         }
@@ -418,414 +416,72 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
-    abstract static class ReadArrayElement {
-        @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"})
-        static boolean doBoolean(StaticObject receiver, long index,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            return receiver.<byte[]> unwrap(language)[(int) index] != 0;
-        }
-
-        @Specialization(guards = {"isCharArray(receiver)", "receiver.isEspressoObject()"})
-        static char doChar(StaticObject receiver, long index,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            return receiver.<char[]> unwrap(language)[(int) index];
-        }
-
-        @Specialization(guards = {"isByteArray(receiver)", "receiver.isEspressoObject()"})
-        static byte doByte(StaticObject receiver, long index,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            return receiver.<byte[]> unwrap(language)[(int) index];
-        }
-
-        @Specialization(guards = {"isShortArray(receiver)", "receiver.isEspressoObject()"})
-        static short doShort(StaticObject receiver, long index,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            return receiver.<short[]> unwrap(language)[(int) index];
-        }
-
-        @Specialization(guards = {"isIntArray(receiver)", "receiver.isEspressoObject()"})
-        static int doInt(StaticObject receiver, long index,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            return receiver.<int[]> unwrap(language)[(int) index];
-        }
-
-        @Specialization(guards = {"isLongArray(receiver)", "receiver.isEspressoObject()"})
-        static long doLong(StaticObject receiver, long index,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            return receiver.<long[]> unwrap(language)[(int) index];
-        }
-
-        @Specialization(guards = {"isFloatArray(receiver)", "receiver.isEspressoObject()"})
-        static float doFloat(StaticObject receiver, long index,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            return receiver.<float[]> unwrap(language)[(int) index];
-        }
-
-        @Specialization(guards = {"isDoubleArray(receiver)", "receiver.isEspressoObject()"})
-        static double doDouble(StaticObject receiver, long index,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            return receiver.<double[]> unwrap(language)[(int) index];
-        }
-
-        @Specialization(guards = {"receiver.isArray()", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)"})
-        static Object doObject(StaticObject receiver, long index,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            return receiver.<StaticObject[]> unwrap(language)[(int) index];
-        }
-
-        @SuppressWarnings("unused")
-        @Fallback
-        static Object doOther(StaticObject receiver, long index) throws UnsupportedMessageException {
-            throw UnsupportedMessageException.create();
-        }
+    @Shareable(false)
+    static Object readArrayElement(StaticObject receiver, long index,
+                    @Cached Nodes.ReadArrayElementImplNode readArrayElementNode) throws UnsupportedMessageException, InvalidArrayIndexException {
+        return readArrayElementNode.execute(receiver, index);
     }
 
     @ExportMessage
-    abstract static class WriteArrayElement {
-        @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"})
-        static void doBoolean(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            boolean boolValue;
-            try {
-                boolValue = valueLib.asBoolean(value);
-            } catch (UnsupportedMessageException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
-            }
-            receiver.<byte[]> unwrap(language)[(int) index] = boolValue ? (byte) 1 : (byte) 0;
-        }
-
-        @Specialization(guards = {"isCharArray(receiver)", "receiver.isEspressoObject()"})
-        static void doChar(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            char charValue;
-            try {
-                String s = valueLib.asString(value);
-                if (s.length() != 1) {
-                    error.enter();
-                    String message = EspressoError.format("Expected a string of length 1 as an element of char array, got %s", s);
-                    throw UnsupportedTypeException.create(new Object[]{value}, message);
-                }
-                charValue = s.charAt(0);
-            } catch (UnsupportedMessageException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
-            }
-            receiver.<char[]> unwrap(language)[(int) index] = charValue;
-        }
-
-        @Specialization(guards = {"isByteArray(receiver)", "receiver.isEspressoObject()"})
-        static void doByte(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            byte byteValue;
-            try {
-                byteValue = valueLib.asByte(value);
-            } catch (UnsupportedMessageException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
-            }
-            receiver.<byte[]> unwrap(language)[(int) index] = byteValue;
-        }
-
-        @Specialization(guards = {"isShortArray(receiver)", "receiver.isEspressoObject()"})
-        static void doShort(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            short shortValue;
-            try {
-                shortValue = valueLib.asShort(value);
-            } catch (UnsupportedMessageException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
-            }
-            receiver.<short[]> unwrap(language)[(int) index] = shortValue;
-        }
-
-        @Specialization(guards = {"isIntArray(receiver)", "receiver.isEspressoObject()"})
-        static void doInt(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            int intValue;
-            try {
-                intValue = valueLib.asInt(value);
-            } catch (UnsupportedMessageException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
-            }
-            receiver.<int[]> unwrap(language)[(int) index] = intValue;
-        }
-
-        @Specialization(guards = {"isLongArray(receiver)", "receiver.isEspressoObject()"})
-        static void doLong(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            long longValue;
-            try {
-                longValue = valueLib.asLong(value);
-            } catch (UnsupportedMessageException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
-            }
-            receiver.<long[]> unwrap(language)[(int) index] = longValue;
-        }
-
-        @Specialization(guards = {"isFloatArray(receiver)", "receiver.isEspressoObject()"})
-        static void doFloat(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            float floatValue;
-            try {
-                floatValue = valueLib.asFloat(value);
-            } catch (UnsupportedMessageException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
-            }
-            receiver.<float[]> unwrap(language)[(int) index] = floatValue;
-        }
-
-        @Specialization(guards = {"isDoubleArray(receiver)", "receiver.isEspressoObject()"})
-        static void doDouble(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            double doubleValue;
-            try {
-                doubleValue = valueLib.asDouble(value);
-            } catch (UnsupportedMessageException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
-            }
-            receiver.<double[]> unwrap(language)[(int) index] = doubleValue;
-        }
-
-        @Specialization(guards = {"isStringArray(receiver)", "receiver.isEspressoObject()"})
-        static void doString(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            StaticObject stringValue;
-            try {
-                stringValue = receiver.getKlass().getMeta().toGuestString(valueLib.asString(value));
-            } catch (UnsupportedMessageException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
-            }
-            receiver.<StaticObject[]> unwrap(language)[(int) index] = stringValue;
-        }
-
-        @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)"})
-        static void doEspressoObject(StaticObject receiver, long index, StaticObject value,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            Klass componentType = ((ArrayKlass) receiver.getKlass()).getComponentType();
-            if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
-                receiver.<StaticObject[]> unwrap(language)[(int) index] = value;
-            } else {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, "Incompatible types");
-            }
-        }
-
-        @TruffleBoundary
-        private static String getMessageBoundary(Throwable e) {
-            return e.getMessage();
-        }
-
-        @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)", "!isStaticObject(value)"})
-        static void doEspressoGeneric(StaticObject receiver, long index, Object value,
-                        @CachedLibrary("receiver") InteropLibrary receiverLib,
-                        @Cached ToReference.DynamicToReference toEspressoNode,
-                        @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
-            EspressoLanguage language = EspressoLanguage.get(receiverLib);
-            if (index < 0 || receiver.length(language) <= index) {
-                error.enter();
-                throw InvalidArrayIndexException.create(index);
-            }
-            StaticObject espressoValue;
-            try {
-                Klass componentType = ((ArrayKlass) receiver.getKlass()).getComponentType();
-                espressoValue = toEspressoNode.execute(value, componentType);
-            } catch (UnsupportedOperationException e) {
-                error.enter();
-                throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
-            }
-            receiver.<StaticObject[]> unwrap(language)[(int) index] = espressoValue;
-        }
-
-        @SuppressWarnings("unused")
-        @Fallback
-        static void doOther(StaticObject receiver, long index, Object value) throws UnsupportedMessageException {
-            throw UnsupportedMessageException.create();
-        }
+    @Shareable(false)
+    static void writeArrayElement(StaticObject receiver, long index, Object value,
+                    @Cached Nodes.WriteArrayElementImplNode writeArrayElementNode) throws UnsupportedMessageException, InvalidArrayIndexException, UnsupportedTypeException {
+        writeArrayElementNode.execute(receiver, index, value);
     }
 
-    protected static boolean isBooleanArray(StaticObject object) {
+    public static boolean isBooleanArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._boolean_array);
     }
 
-    protected static boolean isCharArray(StaticObject object) {
+    public static boolean isCharArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._char_array);
     }
 
-    protected static boolean isByteArray(StaticObject object) {
+    public static boolean isByteArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._byte_array);
     }
 
-    protected static boolean isShortArray(StaticObject object) {
+    public static boolean isShortArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._short_array);
     }
 
-    protected static boolean isIntArray(StaticObject object) {
+    public static boolean isIntArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._int_array);
     }
 
-    protected static boolean isLongArray(StaticObject object) {
+    public static boolean isLongArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._long_array);
     }
 
-    protected static boolean isFloatArray(StaticObject object) {
+    public static boolean isFloatArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._float_array);
     }
 
-    protected static boolean isDoubleArray(StaticObject object) {
+    public static boolean isDoubleArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta()._double_array);
     }
 
-    protected static boolean isStringArray(StaticObject object) {
+    public static boolean isStringArray(StaticObject object) {
         return !isNull(object) && object.getKlass().equals(object.getKlass().getMeta().java_lang_String.array());
     }
 
-    protected static boolean isPrimitiveArray(StaticObject object) {
+    public static boolean isPrimitiveArray(StaticObject object) {
         return isBooleanArray(object) || isCharArray(object) || isByteArray(object) || isShortArray(object) || isIntArray(object) || isLongArray(object) || isFloatArray(object) ||
                         isDoubleArray(object);
     }
 
-    protected static boolean isStaticObject(Object object) {
+    public static boolean isStaticObject(Object object) {
         return object instanceof StaticObject;
     }
 
-    @ExportMessage
     @ExportMessage(name = "isArrayElementModifiable")
+    @ExportMessage
     static boolean isArrayElementReadable(StaticObject receiver, long index, @CachedLibrary("receiver") InteropLibrary receiverLib) {
         receiver.checkNotForeign();
         return receiver.isArray() && 0 <= index && index < receiver.length(EspressoLanguage.get(receiverLib));
     }
 
-    @SuppressWarnings({"unused", "static-method"})
+    @SuppressWarnings({"unused"})
     @ExportMessage
     static boolean isArrayElementInsertable(StaticObject receiver, long index) {
         return false;
@@ -836,6 +492,7 @@ public class EspressoInterop extends BaseInterop {
     // region ### Members
 
     @ExportMessage
+    @Shareable(false)
     static Object readMember(StaticObject receiver, String member,
                     @Cached @Exclusive LookupInstanceFieldNode lookupField,
                     @Cached @Exclusive LookupVirtualMethodNode lookupMethod) throws UnknownIdentifierException {
@@ -880,6 +537,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @Shareable(false)
     static boolean isMemberReadable(StaticObject receiver, String member,
                     @Cached @Exclusive LookupInstanceFieldNode lookupField,
                     @Cached @Exclusive LookupVirtualMethodNode lookupMethod) {
@@ -896,6 +554,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @Shareable(false)
     static boolean isMemberModifiable(StaticObject receiver, String member,
                     @Cached @Exclusive LookupInstanceFieldNode lookup) {
         receiver.checkNotForeign();
@@ -907,9 +566,10 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @Shareable(false)
     static void writeMember(StaticObject receiver, String member, Object value,
                     @Cached @Exclusive LookupInstanceFieldNode lookup,
-                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
+                    @Cached @Exclusive ToEspressoNode.DynamicToEspresso toEspresso,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedTypeException, UnknownIdentifierException, UnsupportedMessageException {
         receiver.checkNotForeign();
         Field f = lookup.execute(getInteropKlass(receiver), member);
@@ -918,16 +578,15 @@ public class EspressoInterop extends BaseInterop {
                 error.enter();
                 throw UnsupportedMessageException.create();
             }
-            Object espressoValue = toEspressoNode.execute(value, f.resolveTypeKlass());
-            f.set(receiver, espressoValue);
+            f.set(receiver, toEspresso.execute(value, f.resolveTypeKlass()));
             return;
         }
         error.enter();
         throw UnknownIdentifierException.create(member);
     }
 
-    @ExportMessage
     @SuppressWarnings("unused")
+    @ExportMessage
     static boolean isMemberInsertable(StaticObject receiver, String member) {
         return false;
     }
@@ -943,8 +602,8 @@ public class EspressoInterop extends BaseInterop {
         }
     }
 
-    @ExportMessage
     @TruffleBoundary
+    @ExportMessage
     static Object getMembers(StaticObject receiver,
                     @SuppressWarnings("unused") boolean includeInternal) {
         receiver.checkNotForeign();
@@ -983,6 +642,7 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @Shareable(false)
     static boolean isMemberInvocable(StaticObject receiver,
                     String member,
                     @Exclusive @Cached LookupVirtualMethodNode lookupMethod) {
@@ -995,13 +655,14 @@ public class EspressoInterop extends BaseInterop {
     }
 
     @ExportMessage
+    @Shareable(false)
     static Object invokeMember(StaticObject receiver,
                     String member,
                     Object[] arguments,
                     @Exclusive @Cached LookupVirtualMethodNode lookupMethod,
                     @Exclusive @Cached OverLoadedMethodSelectorNode selectorNode,
                     @Exclusive @Cached InvokeEspressoNode invoke,
-                    @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
+                    @Exclusive @Cached ToEspressoNode.DynamicToEspresso toEspressoNode)
                     throws ArityException, UnknownIdentifierException, UnsupportedTypeException {
         Method[] candidates = lookupMethod.execute(receiver.getKlass(), member, arguments.length);
         try {
@@ -1036,6 +697,7 @@ public class EspressoInterop extends BaseInterop {
                     }
                 }
             }
+            throw UnknownIdentifierException.create(member);
         } catch (EspressoException e) {
             Meta meta = e.getGuestException().getKlass().getMeta();
             if (meta.polyglot != null && e.getGuestException().getKlass() == meta.polyglot.ForeignException) {
@@ -1045,7 +707,6 @@ public class EspressoInterop extends BaseInterop {
             }
             throw e;
         }
-        throw UnknownIdentifierException.create(member);
     }
 
     // endregion ### Members
@@ -1066,8 +727,9 @@ public class EspressoInterop extends BaseInterop {
                         instanceOf(receiver, meta.java_util_Date);
     }
 
+    @TruffleBoundary
     @ExportMessage
-    static @TruffleBoundary LocalDate asDate(StaticObject receiver,
+    static LocalDate asDate(StaticObject receiver,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (isDate(receiver)) {
@@ -1118,8 +780,9 @@ public class EspressoInterop extends BaseInterop {
                         instanceOf(receiver, meta.java_util_Date);
     }
 
+    @TruffleBoundary
     @ExportMessage
-    static @TruffleBoundary LocalTime asTime(StaticObject receiver,
+    static LocalTime asTime(StaticObject receiver,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (isTime(receiver)) {
@@ -1170,8 +833,9 @@ public class EspressoInterop extends BaseInterop {
                         instanceOf(receiver, meta.java_util_Date);
     }
 
+    @TruffleBoundary
     @ExportMessage
-    static @TruffleBoundary ZoneId asTimeZone(StaticObject receiver,
+    static ZoneId asTimeZone(StaticObject receiver,
                     @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (isTimeZone(receiver)) {
@@ -1193,8 +857,9 @@ public class EspressoInterop extends BaseInterop {
         throw UnsupportedMessageException.create();
     }
 
+    @TruffleBoundary
     @ExportMessage
-    static @TruffleBoundary Instant asInstant(StaticObject receiver,
+    static Instant asInstant(StaticObject receiver,
                     @CachedLibrary("receiver") InteropLibrary receiverLibrary, @Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
         receiver.checkNotForeign();
         if (receiverLibrary.isInstant(receiver)) {
@@ -1245,4 +910,378 @@ public class EspressoInterop extends BaseInterop {
     }
 
     // endregion ### Date/time conversions
+
+    public static class Nodes {
+
+        @GenerateUncached
+        @ImportStatic({EspressoInterop.class})
+        abstract static class ReadArrayElementImplNode extends Node {
+            public abstract Object execute(StaticObject receiver, long index) throws InvalidArrayIndexException, UnsupportedMessageException;
+
+            @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"})
+            static boolean doBoolean(StaticObject receiver, long index,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return receiver.<byte[]> unwrap(language)[(int) index] != 0;
+            }
+
+            @Specialization(guards = {"isCharArray(receiver)", "receiver.isEspressoObject()"})
+            static char doChar(StaticObject receiver, long index,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return receiver.<char[]> unwrap(language)[(int) index];
+            }
+
+            @Specialization(guards = {"isByteArray(receiver)", "receiver.isEspressoObject()"})
+            static byte doByte(StaticObject receiver, long index,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return receiver.<byte[]> unwrap(language)[(int) index];
+            }
+
+            @Specialization(guards = {"isShortArray(receiver)", "receiver.isEspressoObject()"})
+            static short doShort(StaticObject receiver, long index,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return receiver.<short[]> unwrap(language)[(int) index];
+            }
+
+            @Specialization(guards = {"isIntArray(receiver)", "receiver.isEspressoObject()"})
+            static int doInt(StaticObject receiver, long index,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return receiver.<int[]> unwrap(language)[(int) index];
+            }
+
+            @Specialization(guards = {"isLongArray(receiver)", "receiver.isEspressoObject()"})
+            static long doLong(StaticObject receiver, long index,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return receiver.<long[]> unwrap(language)[(int) index];
+            }
+
+            @Specialization(guards = {"isFloatArray(receiver)", "receiver.isEspressoObject()"})
+            static float doFloat(StaticObject receiver, long index,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return receiver.<float[]> unwrap(language)[(int) index];
+            }
+
+            @Specialization(guards = {"isDoubleArray(receiver)", "receiver.isEspressoObject()"})
+            static double doDouble(StaticObject receiver, long index,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return receiver.<double[]> unwrap(language)[(int) index];
+            }
+
+            @Specialization(guards = {"receiver.isArray()", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)"})
+            static Object doObject(StaticObject receiver, long index,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                return receiver.<StaticObject[]> unwrap(language)[(int) index];
+            }
+
+            @SuppressWarnings("unused")
+            @Specialization(guards = "invalidReceiver(receiver)")
+            static Object doOther(StaticObject receiver, long index) throws UnsupportedMessageException {
+                throw UnsupportedMessageException.create();
+            }
+
+            public static boolean invalidReceiver(StaticObject receiver) {
+                return !receiver.isArray() || !receiver.isEspressoObject();
+            }
+        }
+
+        @GenerateUncached
+        @ImportStatic({EspressoInterop.class})
+        abstract static class WriteArrayElementImplNode extends Node {
+            public abstract void execute(StaticObject receiver, long index, Object value) throws InvalidArrayIndexException, UnsupportedMessageException, UnsupportedTypeException;
+
+            @Specialization(guards = {"isBooleanArray(receiver)", "receiver.isEspressoObject()"})
+            static void doBoolean(StaticObject receiver, long index, Object value,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                boolean boolValue;
+                try {
+                    boolValue = valueLib.asBoolean(value);
+                } catch (UnsupportedMessageException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
+                }
+                receiver.<byte[]> unwrap(language)[(int) index] = boolValue ? (byte) 1 : (byte) 0;
+            }
+
+            @Specialization(guards = {"isCharArray(receiver)", "receiver.isEspressoObject()"})
+            static void doChar(StaticObject receiver, long index, Object value,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                char charValue;
+                try {
+                    String s = valueLib.asString(value);
+                    if (s.length() != 1) {
+                        error.enter();
+                        String message = EspressoError.format("Expected a string of length 1 as an element of char array, got %s", s);
+                        throw UnsupportedTypeException.create(new Object[]{value}, message);
+                    }
+                    charValue = s.charAt(0);
+                } catch (UnsupportedMessageException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
+                }
+                receiver.<char[]> unwrap(language)[(int) index] = charValue;
+            }
+
+            @Specialization(guards = {"isByteArray(receiver)", "receiver.isEspressoObject()"})
+            static void doByte(StaticObject receiver, long index, Object value,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                byte byteValue;
+                try {
+                    byteValue = valueLib.asByte(value);
+                } catch (UnsupportedMessageException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
+                }
+                receiver.<byte[]> unwrap(language)[(int) index] = byteValue;
+            }
+
+            @Specialization(guards = {"isShortArray(receiver)", "receiver.isEspressoObject()"})
+            static void doShort(StaticObject receiver, long index, Object value,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                short shortValue;
+                try {
+                    shortValue = valueLib.asShort(value);
+                } catch (UnsupportedMessageException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
+                }
+                receiver.<short[]> unwrap(language)[(int) index] = shortValue;
+            }
+
+            @Specialization(guards = {"isIntArray(receiver)", "receiver.isEspressoObject()"})
+            static void doInt(StaticObject receiver, long index, Object value,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                int intValue;
+                try {
+                    intValue = valueLib.asInt(value);
+                } catch (UnsupportedMessageException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
+                }
+                receiver.<int[]> unwrap(language)[(int) index] = intValue;
+            }
+
+            @Specialization(guards = {"isLongArray(receiver)", "receiver.isEspressoObject()"})
+            static void doLong(StaticObject receiver, long index, Object value,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                long longValue;
+                try {
+                    longValue = valueLib.asLong(value);
+                } catch (UnsupportedMessageException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
+                }
+                receiver.<long[]> unwrap(language)[(int) index] = longValue;
+            }
+
+            @Specialization(guards = {"isFloatArray(receiver)", "receiver.isEspressoObject()"})
+            static void doFloat(StaticObject receiver, long index, Object value,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                float floatValue;
+                try {
+                    floatValue = valueLib.asFloat(value);
+                } catch (UnsupportedMessageException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
+                }
+                receiver.<float[]> unwrap(language)[(int) index] = floatValue;
+            }
+
+            @Specialization(guards = {"isDoubleArray(receiver)", "receiver.isEspressoObject()"})
+            static void doDouble(StaticObject receiver, long index, Object value,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                double doubleValue;
+                try {
+                    doubleValue = valueLib.asDouble(value);
+                } catch (UnsupportedMessageException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
+                }
+                receiver.<double[]> unwrap(language)[(int) index] = doubleValue;
+            }
+
+            @Specialization(guards = {"isStringArray(receiver)", "receiver.isEspressoObject()"})
+            static void doString(StaticObject receiver, long index, Object value,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @CachedLibrary(limit = "3") InteropLibrary valueLib, // GR-37680
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                StaticObject stringValue;
+                try {
+                    stringValue = receiver.getKlass().getMeta().toGuestString(valueLib.asString(value));
+                } catch (UnsupportedMessageException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
+                }
+                receiver.<StaticObject[]> unwrap(language)[(int) index] = stringValue;
+            }
+
+            @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)"})
+            static void doEspressoObject(StaticObject receiver, long index, StaticObject value,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                Klass componentType = ((ArrayKlass) receiver.getKlass()).getComponentType();
+                if (StaticObject.isNull(value) || instanceOf(value, componentType)) {
+                    receiver.<StaticObject[]> unwrap(language)[(int) index] = value;
+                } else {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, "Incompatible types");
+                }
+            }
+
+            @TruffleBoundary
+            private static String getMessageBoundary(Throwable e) {
+                return e.getMessage();
+            }
+
+            @Specialization(guards = {"receiver.isArray()", "!isStringArray(receiver)", "receiver.isEspressoObject()", "!isPrimitiveArray(receiver)",
+                            "!isStaticObject(value)"})
+            static void doEspressoGeneric(StaticObject receiver, long index, Object value,
+                            @CachedLibrary(limit = "1") InteropLibrary receiverLib,
+                            @Cached ToReference.DynamicToReference toEspressoNode,
+                            @Shared("error") @Cached BranchProfile error) throws InvalidArrayIndexException, UnsupportedTypeException {
+                EspressoLanguage language = EspressoLanguage.get(receiverLib);
+                if (index < 0 || receiver.length(language) <= index) {
+                    error.enter();
+                    throw InvalidArrayIndexException.create(index);
+                }
+                StaticObject espressoValue;
+                try {
+                    Klass componentType = ((ArrayKlass) receiver.getKlass()).getComponentType();
+                    espressoValue = toEspressoNode.execute(value, componentType);
+                } catch (UnsupportedOperationException e) {
+                    error.enter();
+                    throw UnsupportedTypeException.create(new Object[]{value}, getMessageBoundary(e));
+                }
+                receiver.<StaticObject[]> unwrap(language)[(int) index] = espressoValue;
+            }
+
+            @SuppressWarnings("unused")
+            @Specialization(guards = "invalidReceiver(receiver)")
+            static void doOther(StaticObject receiver, long index, Object value) throws UnsupportedMessageException {
+                throw UnsupportedMessageException.create();
+            }
+
+            public static boolean invalidReceiver(StaticObject receiver) {
+                return !receiver.isArray() || !receiver.isEspressoObject();
+            }
+        }
+    }
 }

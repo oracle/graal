@@ -149,7 +149,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
         this.superKlass = superKlass;
         this.hasForeignObjectField = superKlass == meta.polyglot.EspressoForeignList;
         this.accessFlags = ACC_PUBLIC | ACC_FINAL | ACC_SUPER;
-        this.proxyClassLoader = context.getBindings().getBindingsLoader();
+        this.proxyClassLoader = context.getBindingsLoader();
         this.className = nextClassName(proxyClassContext(referencedTypes()));
     }
 
@@ -330,7 +330,7 @@ public final class EspressoForeignProxyGenerator extends ClassWriter {
 
         // All proxy interfaces are public. So maps to a dynamic proxy module
         // and add reads edge and qualified exports, if necessary
-        ModuleTable.ModuleEntry targetModule = getDynamicModule(context.getBindings().getBindingsLoader());
+        ModuleTable.ModuleEntry targetModule = getDynamicModule(context.getBindingsLoader());
 
         // set up proxy class access to proxy interfaces and types
         // referenced in the method signature

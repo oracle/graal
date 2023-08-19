@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.runtime.dispatch;
+package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import static com.oracle.truffle.espresso.runtime.StaticObject.EMPTY_ARRAY;
 
@@ -40,6 +40,8 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -49,12 +51,26 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * even if isHashEntryModifiable() returns true, trying to modify the guest map may result in a
  * guest exception (in the case of unmodifiable map, for example).
  */
+@GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class MapInterop extends EspressoInterop {
     // region ### Hashes
 
+    private static boolean containsKey(StaticObject receiver, Object key,
+                    InvokeEspressoNode invokeContains) {
+        Meta meta = receiver.getKlass().getMeta();
+        Method containsKey = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_containsKey.getITableIndex());
+        try {
+            return (boolean) invokeContains.execute(containsKey, receiver, new Object[]{key});
+        } catch (UnsupportedTypeException | ArityException e) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
     @ExportMessage
+    @Shareable
     public static boolean hasHashEntries(StaticObject receiver) {
         assert InterpreterToVM.instanceOf(receiver, receiver.getKlass().getMeta().java_util_Map);
         return true;
@@ -73,18 +89,6 @@ public class MapInterop extends EspressoInterop {
     public static boolean isHashEntryInsertable(StaticObject receiver, Object key,
                     @Cached.Shared("contains") @Cached InvokeEspressoNode invoke) {
         return !containsKey(receiver, key, invoke);
-    }
-
-    private static boolean containsKey(StaticObject receiver, Object key,
-                    InvokeEspressoNode invokeContains) {
-        Meta meta = receiver.getKlass().getMeta();
-        Method containsKey = getInteropKlass(receiver).itableLookup(meta.java_util_Map, meta.java_util_Map_containsKey.getITableIndex());
-        try {
-            return (boolean) invokeContains.execute(containsKey, receiver, new Object[]{key});
-        } catch (UnsupportedTypeException | ArityException e) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            throw EspressoError.shouldNotReachHere(e);
-        }
     }
 
     @ExportMessage

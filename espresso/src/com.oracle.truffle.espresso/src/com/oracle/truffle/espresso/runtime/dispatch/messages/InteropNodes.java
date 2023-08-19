@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,19 +20,25 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.preinit;
 
-import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
-import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ContextDescription;
-import com.oracle.truffle.espresso.impl.LinkedKlass;
-import com.oracle.truffle.espresso.impl.ParserKlass;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+package com.oracle.truffle.espresso.runtime.dispatch.messages;
 
-public final class DefaultLinkedKlassProvider implements LinkedKlassProvider {
-    @Override
-    public LinkedKlass getLinkedKlass(ClassLoadingEnv env, ContextDescription description, StaticObject loader, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces,
-                    ClassRegistry.ClassDefinitionInfo info) {
-        return LinkedKlass.create(description, parserKlass, superKlass, interfaces);
+public abstract class InteropNodes {
+    private final InteropNodes superInstance;
+    private final Class<?> dispatchClass;
+
+    public InteropNodes(Class<?> dispatchClass, InteropNodes superInstance) {
+        this.dispatchClass = dispatchClass;
+        this.superInstance = superInstance;
     }
+
+    public final void register() {
+        InteropNodes curr = this;
+        while (curr != null) {
+            curr.registerMessages(dispatchClass);
+            curr = curr.superInstance;
+        }
+    }
+
+    protected abstract void registerMessages(Class<?> dispatch);
 }

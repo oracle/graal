@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -21,19 +21,32 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.runtime.dispatch;
+package com.oracle.truffle.espresso.nodes.commands;
 
-import com.oracle.truffle.api.interop.ExceptionType;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
-@ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
-@SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
-public class InterruptedExceptionInterop extends ThrowableInterop {
-    @ExportMessage
-    public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject receiver) {
-        return ExceptionType.INTERRUPT;
+/**
+ * Node for triggering reference processing in single threaded contexts.
+ */
+public class ReferenceProcessRootNode extends RootNode {
+    public static final String EVAL_NAME = "<ProcessReferences>";
+
+    public ReferenceProcessRootNode(TruffleLanguage<?> language) {
+        super(language);
+    }
+
+    @Override
+    public String getName() {
+        return EVAL_NAME;
+    }
+
+    @Override
+    public Object execute(VirtualFrame frame) {
+        EspressoContext.get(this).getLazyCaches().getReferenceProcessCache().execute();
+        return StaticObject.NULL;
     }
 }

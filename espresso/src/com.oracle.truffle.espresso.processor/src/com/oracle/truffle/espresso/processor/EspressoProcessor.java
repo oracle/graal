@@ -50,6 +50,7 @@ import javax.lang.model.util.Types;
 import javax.tools.Diagnostic;
 import javax.tools.JavaFileObject;
 
+import com.oracle.truffle.espresso.processor.builders.AnnotationBuilder;
 import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
 import com.oracle.truffle.espresso.processor.builders.ClassFileBuilder;
 import com.oracle.truffle.espresso.processor.builders.FieldBuilder;
@@ -248,7 +249,8 @@ public abstract class EspressoProcessor extends BaseProcessor {
     // Global constants
     protected static final String FACTORY = "Factory";
 
-    static final String SUPPRESS_UNUSED = "@SuppressWarnings(\"unused\")";
+    static final String SUPPRESS_WARNINGS = "SuppressWarnings";
+    static final String UNUSED = "unused";
 
     static final String IS_TRIVIAL = "isTrivial";
     static final String GUARD = "guard";
@@ -568,7 +570,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
             return javadocBuilder;
         }
 
-        SignatureBuilder linkSignature = new SignatureBuilder(className + "#" + helper.getMethodTarget().getSimpleName());
+        SignatureBuilder linkSignature = new SignatureBuilder().withName(className + "#" + helper.getMethodTarget().getSimpleName());
 
         for (String param : parameterTypes) {
             linkSignature.addParam(param);
@@ -595,7 +597,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     }
 
     static SignatureBuilder generateNativeSignature(NativeType[] signature) {
-        SignatureBuilder sb = new SignatureBuilder("NativeSignature.create");
+        SignatureBuilder sb = new SignatureBuilder().withName("NativeSignature.create");
         for (NativeType t : signature) {
             sb.addParam("NativeType." + t);
         }
@@ -628,8 +630,8 @@ public abstract class EspressoProcessor extends BaseProcessor {
     // @formatter:on
     private ClassBuilder generateFactory(String className, String substitutorName, String targetMethodName, List<String> parameterTypeName, SubstitutionHelper helper) {
         ClassBuilder factory = new ClassBuilder(FACTORY) //
-                        .withAnnotation("@Collect(", helper.getImplAnnotation().getQualifiedName().toString(), ".class)") //
-                        .withQualifiers(new ModifierBuilder().asPublic().asStatic().asFinal()) //
+                        .withAnnotation(new AnnotationBuilder("Collect").withValue("value", helper.getImplAnnotation().getQualifiedName().toString() + ".class", false)).withQualifiers(
+                                        new ModifierBuilder().asPublic().asStatic().asFinal()) //
                         .withSuperClass(substitutor + "." + FACTORY);
         generateFactoryConstructor(factory, substitutorName, targetMethodName, parameterTypeName, helper);
         generateAdditionalFactoryMethods(factory, className, targetMethodName, parameterTypeName, helper);
@@ -644,7 +646,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private static void generateChildInstanceField(ClassBuilder cb, SubstitutionHelper helper) {
         if (helper.isNodeTarget()) {
             FieldBuilder field = new FieldBuilder(helper.getNodeTarget().getSimpleName(), "node") //
-                            .withAnnotation("@Child") //
+                            .withAnnotation(new AnnotationBuilder("Child")) //
                             .withQualifiers(new ModifierBuilder().asPrivate());
             cb.withField(field);
         }
@@ -760,7 +762,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
         }
 
         MethodBuilder constructor = generateConstructor(substitutorName, helper) //
-                        .withAnnotation(SUPPRESS_UNUSED);
+                        .withAnnotation(new AnnotationBuilder(SUPPRESS_WARNINGS).withValue("value", UNUSED));
         substitutorClass.withMethod(constructor);
 
         substitutorClass.withMethod(generateSplit());

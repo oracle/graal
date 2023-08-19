@@ -28,6 +28,7 @@ import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.espresso.nodes.commands.ReferenceProcessRootNode;
 
 /**
  * Espresso cannot parse Java sources directly, this exception is meant for parsing requests other
@@ -35,7 +36,7 @@ import com.oracle.truffle.api.library.ExportMessage;
  *
  * @see EspressoLanguage#parse(TruffleLanguage.ParsingRequest)
  * @see com.oracle.truffle.espresso.nodes.commands.GetBindingsNode#EVAL_NAME
- * @see com.oracle.truffle.espresso.nodes.commands.ReferenceProcessNode#EVAL_NAME
+ * @see ReferenceProcessRootNode#EVAL_NAME
  */
 @ExportLibrary(InteropLibrary.class)
 @SuppressWarnings("serial")

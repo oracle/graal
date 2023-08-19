@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,19 +20,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.preinit;
 
-import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
-import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ContextDescription;
-import com.oracle.truffle.espresso.impl.LinkedKlass;
-import com.oracle.truffle.espresso.impl.ParserKlass;
+package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
+
+import com.oracle.truffle.api.interop.ExceptionType;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 
-public final class DefaultLinkedKlassProvider implements LinkedKlassProvider {
-    @Override
-    public LinkedKlass getLinkedKlass(ClassLoadingEnv env, ContextDescription description, StaticObject loader, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces,
-                    ClassRegistry.ClassDefinitionInfo info) {
-        return LinkedKlass.create(description, parserKlass, superKlass, interfaces);
+@GenerateInteropNodes
+@Shareable
+@ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+@SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
+public class InterruptedExceptionInterop extends ThrowableInterop {
+    @ExportMessage
+    public static ExceptionType getExceptionType(@SuppressWarnings("unused") StaticObject receiver) {
+        return ExceptionType.INTERRUPT;
     }
 }

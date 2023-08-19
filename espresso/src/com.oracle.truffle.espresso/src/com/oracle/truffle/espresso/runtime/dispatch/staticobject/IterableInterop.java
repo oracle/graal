@@ -21,54 +21,36 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.runtime.dispatch;
+package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.nodes.interop.LookupAndInvokeKnownMethodNode;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 
+@GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
 @SuppressWarnings("truffle-abstract-export") // TODO GR-44080 Adopt BigInteger Interop
 public class IterableInterop extends EspressoInterop {
     // region ### Iterable
 
     @ExportMessage
+    @Shareable
     public static boolean hasIterator(@SuppressWarnings("unused") StaticObject receiver) {
         return true;
     }
 
     @ExportMessage
-    abstract static class GetIterator {
-
-        static final int LIMIT = 3;
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"receiver.getKlass() == cachedKlass"}, limit = "LIMIT")
-        static Object doCached(StaticObject receiver,
-                        @Cached("receiver.getKlass()") Klass cachedKlass,
-                        @Cached("doIteratorLookup(receiver)") Method method,
-                        @Cached("create(method.getCallTarget())") DirectCallNode callNode) {
-            return callNode.call(receiver);
-        }
-
-        @Specialization(replaces = "doCached")
-        static Object doUncached(StaticObject receiver,
-                        @Cached.Exclusive @Cached IndirectCallNode invoke) {
-            Method iterator = doIteratorLookup(receiver);
-            return invoke.call(iterator.getCallTarget(), receiver);
-        }
-
-        static Method doIteratorLookup(StaticObject receiver) {
-            return receiver.getKlass().lookupMethod(Symbol.Name.iterator, Symbol.Signature.java_util_Iterator);
-        }
+    public static Object getIterator(StaticObject receiver,
+                    @Bind("getMeta().java_lang_Iterable_iterator") Method iteratorMethod,
+                    @Cached LookupAndInvokeKnownMethodNode lookupAndInvoke) {
+        return lookupAndInvoke.execute(receiver, iteratorMethod);
     }
 
     // endregion ### Iterable

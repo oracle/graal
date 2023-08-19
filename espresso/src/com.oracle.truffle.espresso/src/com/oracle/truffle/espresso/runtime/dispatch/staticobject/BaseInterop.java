@@ -21,7 +21,7 @@
  * questions.
  */
 
-package com.oracle.truffle.espresso.runtime.dispatch;
+package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
@@ -29,12 +29,13 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.EspressoLanguage;
@@ -43,13 +44,17 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
+import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 import com.oracle.truffle.espresso.vm.VM;
 
 /**
  * BaseInterop (isNull, is/asString, meta-instance, identity, exceptions, toDisplayString) Support
  * Espresso and foreign objects and null.
  */
+@GenerateInteropNodes
 @ExportLibrary(value = InteropLibrary.class, receiverType = StaticObject.class)
+@Shareable
 public class BaseInterop {
     @ExportMessage
     public static boolean isNull(StaticObject object) {
@@ -71,7 +76,6 @@ public class BaseInterop {
     }
 
     // region ### Meta-objects
-
     @ExportMessage
     public static boolean isMetaObject(StaticObject object) {
         object.checkNotForeign();
@@ -183,10 +187,12 @@ public class BaseInterop {
 
     // region ### Identity/hashCode
 
-    @ExportMessage
-    public static final class IsIdenticalOrUndefined {
+    @GenerateUncached
+    abstract static class IsIdenticalOrUndefinedImplNode extends Node {
+        public abstract TriState execute(StaticObject receiver, Object other);
+
         @Specialization
-        static TriState doStaticObject(StaticObject receiver, StaticObject other) {
+        public static TriState doStaticObject(StaticObject receiver, StaticObject other) {
             receiver.checkNotForeign();
             other.checkNotForeign();
             return receiver == other ? TriState.TRUE : TriState.FALSE;
@@ -194,26 +200,26 @@ public class BaseInterop {
 
         @Fallback
         static TriState doOther(@SuppressWarnings("unused") StaticObject receiver, @SuppressWarnings("unused") Object other) {
-            receiver.checkNotForeign();
             return TriState.UNDEFINED;
         }
     }
 
     @ExportMessage
-    public static int identityHashCode(StaticObject object,
-                    @CachedLibrary("object") InteropLibrary thisLibrary, @Cached.Shared("error") @Cached BranchProfile error) throws UnsupportedMessageException {
+    public static TriState isIdenticalOrUndefined(StaticObject receiver, Object other,
+                    @Cached IsIdenticalOrUndefinedImplNode node) {
+        return node.execute(receiver, other);
+    }
+
+    @ExportMessage
+    public static int identityHashCode(StaticObject object) {
         object.checkNotForeign();
-        if (thisLibrary.hasIdentity(object)) {
-            return VM.JVM_IHashCode(object, null /*- path where language is needed is never reached through here. */);
-        }
-        error.enter();
-        throw UnsupportedMessageException.create();
+        // Working with espresso objects here, guaranteed to have identity.
+        return VM.JVM_IHashCode(object, null /*- path where language is needed is never reached through here. */);
     }
 
     // endregion ### Identity/hashCode
 
     // region ### Language/DisplayString
-
     @SuppressWarnings("unused")
     @ExportMessage
     public static boolean hasLanguage(StaticObject object) {
@@ -231,12 +237,12 @@ public class BaseInterop {
     public static Object toDisplayString(StaticObject object, boolean allowSideEffects) {
         if (object.isForeignObject()) {
             if (object.getKlass() == null) {
-                return "Foreign object: null";
+                return "Foreign receiver: null";
             }
             InteropLibrary interopLibrary = InteropLibrary.getUncached();
             try {
                 EspressoLanguage language = object.getKlass().getContext().getLanguage();
-                return "Foreign object: " + interopLibrary.asString(interopLibrary.toDisplayString(object.rawForeignObject(language), allowSideEffects));
+                return "Foreign receiver: " + interopLibrary.asString(interopLibrary.toDisplayString(object.rawForeignObject(language), allowSideEffects));
             } catch (UnsupportedMessageException e) {
                 throw EspressoError.shouldNotReachHere("Interop library failed to convert display string to string");
             }
