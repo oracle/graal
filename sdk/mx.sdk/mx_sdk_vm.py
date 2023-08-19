@@ -198,7 +198,7 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, **kwargs):
+    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, set_default_relative_home_path=True, **kwargs):
         """
         :param str language
         :param str main_class
@@ -217,8 +217,9 @@ class LanguageLibraryConfig(LibraryConfig):
         self.default_vm_args = [] if default_vm_args is None else default_vm_args
         assert all(arg.startswith("--vm.") for arg in self.default_vm_args)
 
-        # Ensure the language launcher can always find the language home
-        self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
+        if set_default_relative_home_path:
+            # Ensure the language launcher can always find the language home
+            self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
 
 class GraalVmComponent(object):
     def __init__(self,
@@ -252,7 +253,8 @@ class GraalVmComponent(object):
                  supported=None,
                  early_adopter=False,
                  stability=None,
-                 extra_installable_qualifiers=None):
+                 extra_installable_qualifiers=None,
+                 has_relative_home=True):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -286,6 +288,7 @@ class GraalVmComponent(object):
         :type post_install_msg: str
         :type stability: str | None
         :type extra_installable_qualifiers: list[str] | None
+        :type has_relative_home: bool
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -321,6 +324,7 @@ class GraalVmComponent(object):
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
         self.extra_installable_qualifiers = extra_installable_qualifiers or []
+        self.has_relative_home = has_relative_home
 
         if supported is not None or early_adopter:
             if stability is not None:
