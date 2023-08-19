@@ -88,7 +88,6 @@ import org.graalvm.polyglot.SandboxPolicy;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractPolyglotHostService;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.IOAccessor;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -1685,10 +1684,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 }
             }
 
-            if (contextSandboxPolicy.isStricterOrEqual(SandboxPolicy.CONSTRAINED)) {
-                validateSandbox(contextSandboxPolicy, ioAccess);
-            }
-
             Set<String> allowedLanguages = Collections.emptySet();
             if (onlyLanguagesArray.length == 0) {
                 if (this.permittedLanguages.length != 0) {
@@ -1872,45 +1867,6 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             }
         }
         return context;
-    }
-
-    private void validateSandbox(SandboxPolicy useSandboxPolicy, Object ioAccess) {
-        FileSystem fileSystem;
-        IOAccessor ioAccessor = impl.getIO();
-        if (ioAccessor.hasHostFileAccess(ioAccess)) {
-            throw throwSandboxException(useSandboxPolicy,
-                            "Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to the host file system, but access to the host file system must be disabled.",
-                            "disable filesystem access using Builder.allowIO(IOAccess.NONE) or install a custom filesystem using Builder.allowIO(IOAccess.newBuilder().fileSystem(customFs))");
-        }
-        if (ioAccessor.hasHostSocketAccess(ioAccess)) {
-            throw throwSandboxException(useSandboxPolicy,
-                            "Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to host sockets, but access to host sockets must be disabled.",
-                            "do not set IOAccess.Builder.allowHostSocketAccess(boolean)");
-        }
-        fileSystem = ioAccessor.getFileSystem(ioAccess);
-
-        if (fileSystem != null && FileSystems.isHostFileSystem(fileSystem)) {
-            throw throwSandboxException(useSandboxPolicy,
-                            "Builder.allowIO(IOAccess) is set to an IOAccess, which has a custom file system that allows access to the host file system, but access to the host file system must be disabled.",
-                            "disable filesystem access using Builder.allowIO(IOAccess.NONE) or install a non-host custom filesystem using Builder.allowIO(IOAccess.newBuilder().fileSystem(customFs))");
-
-        }
-    }
-
-    static IllegalArgumentException throwSandboxException(SandboxPolicy sandboxPolicy, String reason, String fix) {
-        Objects.requireNonNull(sandboxPolicy);
-        Objects.requireNonNull(reason);
-        Objects.requireNonNull(fix);
-        String spawnIsolateHelp;
-        if (sandboxPolicy.isStricterOrEqual(SandboxPolicy.ISOLATED)) {
-            spawnIsolateHelp = " If you switch to a less strict sandbox policy you can still spawn an isolate with an isolated heap using Builder.option(\"engine.SpawnIsolate\",\"true\").";
-        } else {
-            spawnIsolateHelp = "";
-        }
-        String message = String.format("The validation for the given sandbox policy %s failed. %s " +
-                        "In order to resolve this %s or switch to a less strict sandbox policy using Builder.sandbox(SandboxPolicy).%s",
-                        sandboxPolicy, reason, fix, spawnIsolateHelp);
-        throw PolyglotEngineException.illegalArgument(message);
     }
 
     private PolyglotContextImpl loadPreinitializedContext(PolyglotContextConfig config) {

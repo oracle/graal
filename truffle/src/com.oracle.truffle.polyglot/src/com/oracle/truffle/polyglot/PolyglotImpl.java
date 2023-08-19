@@ -586,6 +586,11 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     }
 
     @Override
+    public boolean isHostFileSystem(FileSystem fileSystem) {
+        return FileSystems.isHostFileSystem(fileSystem);
+    }
+
+    @Override
     public boolean copyResources(Path targetFolder, String... components) throws IOException {
         return InternalResourceCache.copyResourcesForNativeImage(targetFolder, components);
     }

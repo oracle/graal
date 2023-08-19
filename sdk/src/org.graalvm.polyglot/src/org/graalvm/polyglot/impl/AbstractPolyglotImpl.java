@@ -566,6 +566,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().createHostAccess();
     }
 
+    public boolean isHostFileSystem(FileSystem fileSystem) {
+        return getNext().isHostFileSystem(fileSystem);
+    }
+
     public boolean copyResources(Path targetFolder, String... components) throws IOException {
         return getNext().copyResources(targetFolder, components);
     }

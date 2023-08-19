@@ -63,6 +63,7 @@ import java.util.logging.Level;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.IOAccessor;
 import org.graalvm.polyglot.io.FileSystem;
 import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.MessageTransport;
@@ -2016,6 +2017,30 @@ public final class Context implements AutoCloseable {
                 if (Engine.isSystemStream(err)) {
                     throw Engine.Builder.throwSandboxException(useSandboxPolicy, "Builder uses the standard error stream, but the error output must be redirected.",
                                     "set Builder.err(OutputStream)");
+                }
+                FileSystem fileSystem;
+                if (ioAccess != null) {
+                    IOAccessor ioAccessor = Engine.getImpl().getIO();
+                    if (ioAccessor.hasHostFileAccess(ioAccess)) {
+                        throw Engine.Builder.throwSandboxException(useSandboxPolicy,
+                                        "Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to the host file system, but access to the host file system must be disabled.",
+                                        "disable filesystem access using Builder.allowIO(IOAccess.NONE) or install a custom filesystem using Builder.allowIO(IOAccess.newBuilder().fileSystem(customFs))");
+                    }
+                    if (ioAccessor.hasHostSocketAccess(ioAccess)) {
+                        throw Engine.Builder.throwSandboxException(useSandboxPolicy,
+                                        "Builder.allowIO(IOAccess) is set to an IOAccess, which allows access to host sockets, but access to host sockets must be disabled.",
+                                        "do not set IOAccess.Builder.allowHostSocketAccess(boolean)");
+                    }
+                    assert customFileSystem == null;
+                    fileSystem = ioAccessor.getFileSystem(ioAccess);
+                } else {
+                    fileSystem = customFileSystem;
+                }
+                if (fileSystem != null && Engine.getImpl().isHostFileSystem(fileSystem)) {
+                    throw Engine.Builder.throwSandboxException(useSandboxPolicy,
+                                    "Builder.allowIO(IOAccess) is set to an IOAccess, which has a custom file system that allows access to the host file system, but access to the host file system must be disabled.",
+                                    "disable filesystem access using Builder.allowIO(IOAccess.NONE) or install a non-host custom filesystem using Builder.allowIO(IOAccess.newBuilder().fileSystem(customFs))");
+
                 }
                 if (Boolean.TRUE.equals(allowIO)) {
                     throw Engine.Builder.throwSandboxException(useSandboxPolicy, "Builder.allowIO(boolean) is set to true, but must not be set to true.",
