@@ -166,8 +166,8 @@
 
     # BENCHMARKS
 
-    bench_hw.x52 + common.oraclejdk17 + bench_common + {
-      name: "bench-truffle-jmh-17",
+    bench_hw.x52 + common.labsjdkLatestCE + bench_common + {
+      name: "bench-truffle-jmh",
       notify_groups:: ["truffle_bench"],
       run: [
         ["mx", "--kill-with-sigquit", "benchmark", "--results-file", "${BENCH_RESULTS_FILE_PATH}", "truffle:*", "--", "--", "com.oracle.truffle"],
@@ -179,8 +179,8 @@
       ],
     },
 
-    linux_amd64 + common.oraclejdk17 + bench_common + {
-      name: "gate-truffle-test-benchmarks-17",
+    linux_amd64 + common.labsjdkLatestCE + bench_common + {
+      name: "gate-truffle-test-benchmarks",
       run: [
         ["mx", "benchmark", "truffle:*", "--", "--jvm", "server", "--jvm-config", "graal-core", "--", "com.oracle.truffle", "-f", "1", "-wi", "1", "-w", "1", "-i", "1", "-r", "1"],
       ],
