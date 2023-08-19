@@ -104,7 +104,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     static final Object SECRET = new Object();
     static final Object[] EMPTY_ARGS = new Object[0];
-    private final PolyglotSourceDispatch sourceDispach = new PolyglotSourceDispatch(this);
+    private final PolyglotSourceDispatch sourceDispatch = new PolyglotSourceDispatch(this);
     private final PolyglotSourceSectionDispatch sourceSectionDispatch = new PolyglotSourceSectionDispatch(this);
     private final PolyglotExecutionListenerDispatch executionListenerDispatch = new PolyglotExecutionListenerDispatch(this);
     private final PolyglotExecutionEventDispatch executionEventDispatch = new PolyglotExecutionEventDispatch(this);
@@ -196,7 +196,7 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
      */
     @SuppressWarnings("static-method")
     AbstractSourceDispatch getSourceDispatch() {
-        return sourceDispach;
+        return sourceDispatch;
     }
 
     /**
