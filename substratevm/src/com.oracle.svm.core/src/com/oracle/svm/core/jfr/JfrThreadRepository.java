@@ -156,7 +156,8 @@ public final class JfrThreadRepository implements JfrRepository {
             /* For virtual threads, a fixed thread group id is reserved. */
             return VIRTUAL_THREAD_GROUP_ID;
         }
-        return registerThreadGroup0(thread.getThreadGroup());
+        ThreadGroup group = JavaThreads.getRawThreadGroup(thread);
+        return registerThreadGroup0(group);
     }
 
     @Uninterruptible(reason = "Epoch must not change while in this method.")
