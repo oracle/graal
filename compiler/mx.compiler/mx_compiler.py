@@ -757,7 +757,7 @@ class SwitchToGraalVMJDK(mx_unittest.Action):
         mx_unittest.Action.__init__(self, **kwargs)
         _use_graalvm = False
     def __call__(self, parser, namespace, values, option_string=None):
-        global _jdk_used
+        global _use_graalvm
         _use_graalvm = True
 
 def _get_unittest_jdk():
