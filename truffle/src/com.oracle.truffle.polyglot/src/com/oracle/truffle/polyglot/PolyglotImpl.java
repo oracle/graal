@@ -99,6 +99,9 @@ import com.oracle.truffle.polyglot.PolyglotLoggers.EngineLoggerProvider;
  */
 public final class PolyglotImpl extends AbstractPolyglotImpl {
 
+    /*
+     * Used to prevent implementations of accessible API classes.
+     */
     static final Object SECRET = new Object();
     static final Object[] EMPTY_ARGS = new Object[0];
     private final PolyglotSourceDispatch sourceDispach = new PolyglotSourceDispatch(this);

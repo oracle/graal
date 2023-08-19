@@ -1754,7 +1754,7 @@ public final class Engine implements AutoCloseable {
 
         static Module createIsolatedTruffleModule(Class<?> polyglotClass) {
             if (TRACE_CLASS_PATH_ISOLATION) {
-                trace("Start Truffle class-path isolation");
+                trace("Start polyglot class-path isolation");
             }
             assert !polyglotClass.getModule().isNamed();
             assert isEnabled();
@@ -1770,7 +1770,7 @@ public final class Engine implements AutoCloseable {
                  * loader was spawned to load truffle.
                  */
                 if (TRACE_CLASS_PATH_ISOLATION) {
-                    trace("Truffle is available on the module-path. Class isolation is not needed.");
+                    trace("Polyglot is available on the module-path. Class isolation is not needed.");
                 }
                 return alreadyLoadedTruffle.get();
             }
@@ -1785,7 +1785,7 @@ public final class Engine implements AutoCloseable {
             List<Path> relevantPaths = filterClasspath(parent, classpath);
             if (relevantPaths == null) {
                 if (TRACE_CLASS_PATH_ISOLATION) {
-                    trace("No truffle and polyglot found on classpath. ");
+                    trace("No truffle-api and/or polyglot found on classpath. ");
                 }
                 return null;
             }
@@ -1801,11 +1801,21 @@ public final class Engine implements AutoCloseable {
             }
 
             ModuleFinder finder = ModuleFinder.of(relevantPaths.toArray(new Path[relevantPaths.size()]));
-            Configuration config = parent.configuration().resolveAndBind(finder, ModuleFinder.of(), Set.of(TRUFFLE_MODULE_NAME));
+            Configuration config;
+            try {
+                config = parent.configuration().resolveAndBind(finder, ModuleFinder.of(), Set.of(TRUFFLE_MODULE_NAME));
+            } catch (Throwable t) {
+                throw new InternalError(
+                                "The polyglot class isolation failed to load and resolve the module layer. This is typically caused by invalid class-path-entries or duplicated packages on the class-path. Use -D" +
+                                                OPTION_TRACE_CLASS_PATH_ISOLATION +
+                                                "=true to print more details about class loading isolation. " +
+                                                "If the problem persists, it is recommended to use the module-path instead of the class-path to load polyglot.",
+                                t);
+            }
             if (config.modules().isEmpty()) {
                 // no new modules found
                 if (TRACE_CLASS_PATH_ISOLATION) {
-                    trace("No Truffle related modules found on the class-path");
+                    trace("No polyglot related implementation modules found on the class-path");
                 }
                 return null;
             }
@@ -1976,7 +1986,8 @@ public final class Engine implements AutoCloseable {
                     trace("Collected %s class-path entries from java.class.path system property", paths.size());
                 }
             } else {
-                trace("Could not resolve class-path from environment. Using an application server?");
+                trace("Could not resolve class-path entries from environment. The class-path isolation only supports URLClassLoader and the java.class.path system property. " +
+                                "If you are using a custom class loader use a URLClassLoader base class or set the java.class.path system property to allow scanning of class-path entries.");
             }
             return paths;
         }
@@ -2033,7 +2044,18 @@ public final class Engine implements AutoCloseable {
         }
 
         private static RuntimeException noPolyglotImplementationFound() {
-            return new IllegalStateException("No language and polyglot implementation was found on the classpath. Make sure at last one language is added to the module or class-path.");
+            if (PolyglotInvalid.class.getModule().isNamed()) {
+                return new IllegalStateException(
+                                "No language and polyglot implementation was found on the module-path. " +
+                                                "Make sure at last one language is added to the module-path. ");
+            } else {
+                return new IllegalStateException(
+                                "No language and polyglot implementation was found on the class-path. " +
+                                                "Make sure at last one language is added on the class-path. " +
+                                                "If you put a language on the class-path and you encounter this error then there could be a problem with isolated class loading. " +
+                                                "Use -Dpolyglotimpl.TraceClassPathIsolation=true to debug class loader islation problems. " +
+                                                "For best performance it is recommended to use polyglot from the module-path instead of the class-path.");
+            }
         }
 
         @Override
