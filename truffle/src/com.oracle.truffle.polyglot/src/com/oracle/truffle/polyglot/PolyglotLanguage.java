@@ -48,17 +48,17 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.truffle.api.TruffleFile;
+import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Language;
+import org.graalvm.polyglot.SandboxPolicy;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
-import org.graalvm.home.Version;
-import org.graalvm.polyglot.SandboxPolicy;
 
 final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
@@ -66,7 +66,7 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     final LanguageCache cache;
     final LanguageInfo info;
 
-    Language api; // effectively final
+    Object api; // effectively final
     final int engineIndex;
     final RuntimeException initError;
     final Map<String, TruffleFile> internalResources = new ConcurrentHashMap<>();
@@ -183,6 +183,16 @@ final class PolyglotLanguage implements com.oracle.truffle.polyglot.PolyglotImpl
     @Override
     public PolyglotEngineImpl getEngine() {
         return engine;
+    }
+
+    @Override
+    public APIAccess getAPIAccess() {
+        return engine.apiAccess;
+    }
+
+    @Override
+    public PolyglotImpl getImpl() {
+        return engine.impl;
     }
 
     private void ensureInitialized(PolyglotLanguageInstance instance) {

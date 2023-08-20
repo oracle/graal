@@ -40,6 +40,18 @@
  */
 package org.graalvm.nativebridge.processor;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.function.Function;
+
 import javax.lang.model.element.AnnotationMirror;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ExecutableElement;
@@ -56,17 +68,6 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.UnionType;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.function.Function;
 
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.AbstractTypeCache;
 import org.graalvm.nativebridge.processor.AbstractBridgeParser.DefinitionData;
@@ -142,7 +143,7 @@ abstract class AbstractBridgeGenerator {
             if (types.isSameType(marshaller.forType, types.erasure(marshaller.forType))) {
                 params.add(new CodeBuilder(builder).classLiteral(marshaller.forType).build());
             } else {
-                params.add(new CodeBuilder(builder).typeLiteral(marshaller.forType).build());
+                params.add(typeLiteral(new CodeBuilder(builder), marshaller.forType).build());
             }
             for (AnnotationMirror annotationType : marshaller.annotations) {
                 params.add(new CodeBuilder(builder).classLiteral(annotationType.getAnnotationType()).build());
@@ -150,6 +151,10 @@ abstract class AbstractBridgeGenerator {
             builder.lineStart().write(marshaller.name).write(" = ");
             builder.invoke("config", "lookupMarshaller", params.toArray(new CharSequence[0])).lineEnd(";");
         }
+    }
+
+    public static CodeBuilder typeLiteral(CodeBuilder builder, TypeMirror type) {
+        return builder.newInstance((DeclaredType) builder.types.erasure(((AbstractTypeCache) builder.typeCache).typeLiteral), Collections.singletonList(type)).write("{}");
     }
 
     final CacheSnippet cacheSnippets() {

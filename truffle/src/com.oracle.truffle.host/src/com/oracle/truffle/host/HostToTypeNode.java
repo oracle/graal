@@ -62,7 +62,6 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -196,9 +195,8 @@ abstract class HostToTypeNode extends Node {
                 return convertedValue;
             }
         }
-
-        if (targetType == Value.class && context != null) {
-            return value instanceof Value ? value : context.asValue(interop, value);
+        if (targetType == language.valueClass && context != null) {
+            return language.valueClass.isInstance(value) ? value : context.asValue(interop, value);
         } else if (interop.isNull(value)) {
             if (targetType.isPrimitive()) {
                 throw HostInteropErrors.nullCoercion(context, value, targetType);
@@ -251,12 +249,13 @@ abstract class HostToTypeNode extends Node {
             return false;
         }
 
+        HostLanguage language = HostLanguage.get(interop);
         if (interop.isNull(value)) {
             if (targetType.isPrimitive()) {
                 return false;
             }
             return true;
-        } else if (targetType == Value.class && hostContext != null) {
+        } else if (targetType == language.valueClass && hostContext != null) {
             return true;
         } else if (isPrimitiveOrBigIntegerTarget(hostContext, targetType)) {
             Object convertedValue = HostUtil.convertLossLess(value, targetType, interop);
@@ -264,7 +263,6 @@ abstract class HostToTypeNode extends Node {
                 return true;
             }
         }
-        HostLanguage language = HostLanguage.get(interop);
         if (HostObject.isJavaInstance(language, targetType, value)) {
             return true;
         }
@@ -295,7 +293,7 @@ abstract class HostToTypeNode extends Node {
             return interop.isTimeZone(value);
         } else if (targetType == Duration.class) {
             return interop.isDuration(value);
-        } else if (targetType == PolyglotException.class) {
+        } else if (targetType == language.polyglotEngineClass) {
             return interop.isException(value);
         }
 
@@ -383,7 +381,7 @@ abstract class HostToTypeNode extends Node {
                  * which would change which objects are scoped if primitive values were not scoped.
                  * However, we should preserve the particular primitive type where we can, hence the
                  * following special ScopedObject unwrapping.
-                 * 
+                 *
                  * TODO GR-44457 When resolved then the special handling should not be needed.
                  */
                 if (value instanceof HostMethodScope.ScopedObject s) {
@@ -576,7 +574,7 @@ abstract class HostToTypeNode extends Node {
             } else {
                 throw HostInteropErrors.cannotConvert(hostContext, value, targetType, "Value must have duration information.");
             }
-        } else if (targetType == PolyglotException.class) {
+        } else if (targetType == hostContext.language.polyglotEngineClass) {
             if (interop.isException(value)) {
                 obj = asPolyglotException(hostContext, value, interop);
             } else {

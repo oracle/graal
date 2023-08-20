@@ -504,6 +504,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @Test
     @SuppressWarnings("unchecked")
     public void executableAsFunction() throws Exception {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         TruffleObject executable = new FunctionObject();
         Function<Integer, Integer> f = context.asValue(executable).as(Function.class);
         assertEquals(13, (int) f.apply(13));
@@ -512,6 +513,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void executableAsFunctionalInterface1() throws Exception {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         TruffleObject executable = new FunctionObject();
         FunctionalWithDefaults f = context.asValue(executable).as(FunctionalWithDefaults.class);
         assertEquals(50, f.call((Object) 13, (Object) 37));
@@ -524,6 +526,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
 
     @Test
     public void executableAsFunctionalInterface2() throws Exception {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         TruffleObject executable = new FunctionObject();
         FunctionalWithObjectMethodOverrides f = context.asValue(executable).as(FunctionalWithObjectMethodOverrides.class);
         assertEquals(50, f.call(13, 37));
@@ -537,6 +540,7 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @Ignore("Interface not accessible")
     @Test
     public void executableAsFunctionalInterface3() throws Exception {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         TruffleObject executable = new FunctionObject();
         FunctionalWithDefaults f = context.asValue(executable).as(FunctionalWithDefaults.class);
         assertEquals(42, f.call((Object) 13, (Object) 29));
@@ -723,6 +727,9 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testRemoveList() {
+        // TruffleObject
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
+
         List<Integer> list = context.asValue(new ArrayTruffleObject(100)).as(List.class);
         assertEquals(100, list.size());
         Integer value = list.remove(10);
@@ -768,6 +775,8 @@ public class ValueHostInteropTest extends AbstractPolyglotTest {
     @SuppressWarnings("unchecked")
     @Test
     public void testRemoveMap() {
+        // TruffleObject
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         int size = 15;
         Map<String, String> map = new LinkedHashMap<>();
         for (int i = 0; i < size; i++) {

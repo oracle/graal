@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,9 @@
  */
 package org.graalvm.polyglot.io;
 
-import org.graalvm.polyglot.Context;
-
 import java.util.Objects;
+
+import org.graalvm.polyglot.Context;
 
 /**
  * Represents an IO access configuration of a polyglot context. The IO access configuration
@@ -112,16 +112,16 @@ public final class IOAccess {
         this.fileSystem = fileSystem;
     }
 
-    FileSystem getFileSystem() {
-        return fileSystem;
-    }
-
     boolean hasHostFileAccess() {
         return allowHostFileAccess;
     }
 
     boolean hasHostSocketAccess() {
         return allowHostSocketAccess;
+    }
+
+    FileSystem getFileSystem() {
+        return fileSystem;
     }
 
     /**

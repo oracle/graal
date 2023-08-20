@@ -29,17 +29,18 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
       <version>${graalvm.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.graalvm.word</groupId>
+      <groupId>org.graalvm.sdk</groupId>
       <artifactId>word</artifactId>
       <version>${graalvm.version}</version>
     </dependency>
     <dependency>
-      <groupId>org.graalvm.collections</groupId>
+      <groupId>org.graalvm.sdk</groupId>
       <artifactId>collections</artifactId>
       <version>${graalvm.version}</version>
     </dependency>
     ```
 * (GR-43819) The `org.graalvm.polyglot` package and module is no longer contained in the boot module of a GraalVM JDK. Please depend on `org.graalvm.polyglot:polyglot` using Maven instead.
+* (GR-47917) Added class-path isolation if polyglot is used from the class-path. At class initialization time and if polyglot is used from the class-path then the polyglot implementation spawns a module class loader with the polyglot runtime and language implementations. This allows to use an optimized runtime even if languages and polyglot are used from the class-path. Note that for best performance, it is recommended to load polyglot and the languages from the module-path.
 * (GR-43819) Removed the deprecated APIs in `org.graalvm.nativeimage.RuntimeOptions` and added a new replacement API.
 * (GR-46556) Provide [documentation and example code](https://www.graalvm.org/latest/reference-manual/embed-languages/#compatibility-with-jsr-223-scriptengine) on how to use Truffle languages via the ScriptEngine API. The example code can be inlined and modified for testing, we still recommend to use the Polyglot API for full control over embeddings.
 * (GR-45896) JLine3 upgrade from 3.16 to 3.23. The JLine3 bundle that is used is customized and contains only `jline3-reader`, `jline3-terminal`, and `jline3-builtins` JLine3 components.

@@ -40,6 +40,18 @@
  */
 package org.graalvm.nativebridge.processor;
 
+import java.util.AbstractMap.SimpleImmutableEntry;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+import javax.lang.model.element.Element;
+import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
 import javax.lang.model.element.PackageElement;
@@ -51,22 +63,13 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
 import javax.lang.model.util.Types;
-import java.util.AbstractMap.SimpleImmutableEntry;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
-final class Utilities {
+public final class Utilities {
 
     private Utilities() {
     }
 
-    static void encodeType(StringBuilder into, TypeMirror type, String arrayStart, Function<TypeElement, String> declaredTypeNameFactory) {
+    public static void encodeType(StringBuilder into, TypeMirror type, String arrayStart, Function<TypeElement, String> declaredTypeNameFactory) {
         String desc;
         switch (type.getKind()) {
             case BOOLEAN:
@@ -109,7 +112,7 @@ final class Utilities {
         into.append(desc);
     }
 
-    static CharSequence encodeMethodSignature(Elements elements, Types types, TypeMirror returnType, TypeMirror... parameterTypes) {
+    public static CharSequence encodeMethodSignature(Elements elements, Types types, TypeMirror returnType, TypeMirror... parameterTypes) {
         Function<TypeElement, String> toBinaryName = (e) -> 'L' + elements.getBinaryName(e).toString().replace('.', '/') + ';';
         StringBuilder builder = new StringBuilder();
         builder.append('(');
@@ -121,22 +124,22 @@ final class Utilities {
         return builder;
     }
 
-    static CharSequence getTypeName(TypeMirror type) {
+    public static CharSequence getTypeName(TypeMirror type) {
         StringBuilder res = new StringBuilder();
         Utilities.printType(res, type, false);
         return res;
     }
 
-    static CharSequence printMethod(ExecutableElement method) {
+    public static CharSequence printMethod(ExecutableElement method) {
         return printMethod(method.getModifiers(), method.getSimpleName(), method.getReturnType(), method.getParameters().toArray(new VariableElement[0]));
     }
 
-    static CharSequence printMethod(Set<Modifier> modifiers, CharSequence name, TypeMirror returnType, VariableElement... parameters) {
+    public static CharSequence printMethod(Set<Modifier> modifiers, CharSequence name, TypeMirror returnType, VariableElement... parameters) {
         return printMethod(modifiers, name, returnType,
                         Arrays.stream(parameters).map((e) -> new SimpleImmutableEntry<>(e.asType(), e.getSimpleName())).collect(Collectors.toList()));
     }
 
-    static CharSequence printMethod(Set<Modifier> modifiers, CharSequence name, TypeMirror returnType, TypeMirror... parameters) {
+    public static CharSequence printMethod(Set<Modifier> modifiers, CharSequence name, TypeMirror returnType, TypeMirror... parameters) {
         List<Map.Entry<? extends TypeMirror, ? extends CharSequence>> params = new ArrayList<>(parameters.length);
         int i = 0;
         for (TypeMirror parameter : parameters) {
@@ -145,7 +148,7 @@ final class Utilities {
         return printMethod(modifiers, name, returnType, params);
     }
 
-    static CharSequence printMethod(Set<Modifier> modifiers, CharSequence name, TypeMirror returnType,
+    public static CharSequence printMethod(Set<Modifier> modifiers, CharSequence name, TypeMirror returnType,
                     List<? extends Map.Entry<? extends TypeMirror, ? extends CharSequence>> parameters) {
         StringBuilder res = new StringBuilder();
         printModifiers(res, modifiers);
@@ -169,11 +172,11 @@ final class Utilities {
         return res;
     }
 
-    static CharSequence printField(VariableElement field) {
+    public static CharSequence printField(VariableElement field) {
         return printField(field.getModifiers(), field.getSimpleName(), field.asType());
     }
 
-    static CharSequence printField(Set<Modifier> modifiers, CharSequence name, TypeMirror type) {
+    public static CharSequence printField(Set<Modifier> modifiers, CharSequence name, TypeMirror type) {
         StringBuilder res = new StringBuilder();
         printModifiers(res, modifiers);
         if (res.length() > 0) {
@@ -185,7 +188,7 @@ final class Utilities {
         return res;
     }
 
-    private static void printModifiers(StringBuilder into, Set<Modifier> modifiers) {
+    public static void printModifiers(StringBuilder into, Set<Modifier> modifiers) {
         int index = 0;
         for (Modifier modifier : modifiers) {
             switch (modifier) {
@@ -223,7 +226,7 @@ final class Utilities {
         }
     }
 
-    static void printType(StringBuilder into, TypeMirror type, boolean fqn) {
+    public static void printType(StringBuilder into, TypeMirror type, boolean fqn) {
         switch (type.getKind()) {
             case ARRAY:
                 into.append(((ArrayType) type).getComponentType()).append("[]");
@@ -261,19 +264,19 @@ final class Utilities {
         }
     }
 
-    static String getQualifiedName(TypeMirror type) {
+    public static String getQualifiedName(TypeMirror type) {
         return ((TypeElement) ((DeclaredType) type).asElement()).getQualifiedName().toString();
     }
 
-    static String getSimpleName(TypeMirror type) {
+    public static String getSimpleName(TypeMirror type) {
         return ((DeclaredType) type).asElement().getSimpleName().toString();
     }
 
-    static String cSymbol(String name) {
+    public static String cSymbol(String name) {
         return name.replace("_", "_1").replace("$", "_00024").replace('.', '_');
     }
 
-    static boolean contains(Collection<? extends TypeMirror> collection, TypeMirror mirror, Types types) {
+    public static boolean contains(Collection<? extends TypeMirror> collection, TypeMirror mirror, Types types) {
         for (TypeMirror element : collection) {
             if (types.isSameType(element, mirror)) {
                 return true;
@@ -282,11 +285,15 @@ final class Utilities {
         return false;
     }
 
-    static PackageElement getEnclosingPackageElement(TypeElement typeElement) {
-        return (PackageElement) typeElement.getEnclosingElement();
+    public static PackageElement getEnclosingPackageElement(TypeElement typeElement) {
+        Element element = typeElement.getEnclosingElement();
+        while (element != null && element.getKind() != ElementKind.PACKAGE) {
+            element = element.getEnclosingElement();
+        }
+        return (PackageElement) element;
     }
 
-    static CharSequence javaMemberName(CharSequence... nameComponents) {
+    public static CharSequence javaMemberName(CharSequence... nameComponents) {
         StringBuilder result = new StringBuilder();
         for (CharSequence component : nameComponents) {
             if (result.length() == 0) {

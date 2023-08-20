@@ -44,13 +44,9 @@ import java.util.AbstractList;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.SourceSection;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionEventDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractExecutionListenerDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.ManagementAccess;
-import org.graalvm.polyglot.management.ExecutionEvent;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -87,8 +83,8 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
 
         final AbstractExecutionEventDispatch executionEventDispatch;
         final PolyglotEngineImpl engine;
-        final Consumer<ExecutionEvent> onEnter;
-        final Consumer<ExecutionEvent> onReturn;
+        final Consumer<Object> onEnter;
+        final Consumer<Object> onReturn;
         final ManagementAccess management;
         final boolean collectInputValues;
         final boolean collectReturnValues;
@@ -97,8 +93,9 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
         volatile EventBinding<?> binding;
         volatile boolean closing;
 
-        ListenerImpl(AbstractExecutionEventDispatch executionEventDispatch, PolyglotEngineImpl engine, Consumer<ExecutionEvent> onEnter,
-                        Consumer<ExecutionEvent> onReturn,
+        ListenerImpl(AbstractExecutionEventDispatch executionEventDispatch, PolyglotEngineImpl engine,
+                        Consumer<Object> onEnter,
+                        Consumer<Object> onReturn,
                         boolean collectInputValues,
                         boolean collectReturnValues,
                         boolean collectExceptions) {
@@ -118,15 +115,15 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
 
         String getRootName();
 
-        SourceSection getLocation();
+        Object getLocation();
 
-        List<Value> getInputValues();
+        List<Object> getInputValues();
 
-        Value getReturnValue();
+        Object getReturnValue();
 
         EventContext getContext();
 
-        PolyglotException getException();
+        RuntimeException getException();
 
         PolyglotEngineImpl getEngine();
     }
@@ -134,11 +131,11 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
     static final class DynamicEvent implements Event {
 
         final AbstractNode node;
-        final List<Value> inputValues;
-        final Value returnValue;
-        final PolyglotException exception;
+        final List<Object> inputValues;
+        final Object returnValue;
+        final RuntimeException exception;
 
-        DynamicEvent(AbstractNode node, List<Value> inputValues, Value returnValue, PolyglotException ex) {
+        DynamicEvent(AbstractNode node, List<Object> inputValues, Object returnValue, RuntimeException ex) {
             this.node = node;
             this.inputValues = inputValues;
             this.returnValue = returnValue;
@@ -149,19 +146,19 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
             return node.getRootName();
         }
 
-        public PolyglotException getException() {
+        public RuntimeException getException() {
             return exception;
         }
 
-        public SourceSection getLocation() {
+        public Object getLocation() {
             return node.getLocation();
         }
 
-        public List<Value> getInputValues() {
+        public List<Object> getInputValues() {
             return inputValues;
         }
 
-        public Value getReturnValue() {
+        public Object getReturnValue() {
             return returnValue;
         }
 
@@ -245,7 +242,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                         }
                         invokeExceptionAllocate(inputValues, exception);
                     } else if (config.collectExceptions) {
-                        invokeExceptionAllocate(config.collectInputValues ? ReadOnlyValueList.EMPTY : (List<Value>) null, exception);
+                        invokeExceptionAllocate(config.collectInputValues ? ReadOnlyValueList.EMPTY : (List<Object>) null, exception);
                     } else {
                         invokeException();
                     }
@@ -267,7 +264,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                 PolyglotLanguageContext languageContext = language.getCurrentLanguageContext();
                 ReadOnlyValueList convertedInputValues;
                 if (reportInputValues) {
-                    Value[] hostValues = new Value[inputValues.length];
+                    Object[] hostValues = new Object[inputValues.length];
                     for (int i = 0; i < inputValues.length; i++) {
                         Object guestValue = inputValues[i];
                         if (guestValue != null) {
@@ -294,7 +291,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
                 return;
             } else {
                 PolyglotLanguageContext languageContext = language.getCurrentLanguageContext();
-                Value returnValue;
+                Object returnValue;
                 if (reportResult) {
                     returnValue = languageContext.asValue(result);
                 } else {
@@ -312,8 +309,8 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
         }
 
         @TruffleBoundary(allowInlining = true)
-        protected final void invokeExceptionAllocate(List<Value> inputValues, Throwable e) {
-            PolyglotException ex = e != null ? PolyglotImpl.guestToHostException(language.getCurrentLanguageContext(), e, true) : null;
+        protected final void invokeExceptionAllocate(List<Object> inputValues, Throwable e) {
+            RuntimeException ex = e != null ? PolyglotImpl.guestToHostException(language.getCurrentLanguageContext(), e, true) : null;
             config.onReturn.accept(config.management.newExecutionEvent(config.executionEventDispatch, new DynamicEvent(this, inputValues, null, ex)));
         }
 
@@ -353,7 +350,7 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
 
         final ListenerImpl config;
         final EventContext context;
-        final ExecutionEvent cachedEvent;
+        final Object cachedEvent;
 
         AbstractNode(ListenerImpl config, EventContext context) {
             this.config = config;
@@ -401,15 +398,15 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
         }
 
         @TruffleBoundary(allowInlining = true)
-        protected final void invokeReturnAllocate(List<Value> inputValues, Value returnValue) {
+        protected final void invokeReturnAllocate(List<Object> inputValues, Object returnValue) {
             config.onReturn.accept(config.management.newExecutionEvent(config.executionEventDispatch, new DynamicEvent(this, inputValues, returnValue, null)));
         }
 
-        public final SourceSection getLocation() {
+        public final Object getLocation() {
             return PolyglotImpl.getPolyglotSourceSection(config.engine.impl, context.getInstrumentedSourceSection());
         }
 
-        public final List<Value> getInputValues() {
+        public final List<Object> getInputValues() {
             if (config.collectInputValues) {
                 return ReadOnlyValueList.EMPTY;
             } else {
@@ -417,11 +414,11 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
             }
         }
 
-        public final PolyglotException getException() {
+        public final RuntimeException getException() {
             return null;
         }
 
-        public final Value getReturnValue() {
+        public final Object getReturnValue() {
             return null;
         }
 
@@ -435,18 +432,18 @@ final class PolyglotExecutionListenerDispatch extends AbstractExecutionListenerD
         }
     }
 
-    static class ReadOnlyValueList extends AbstractList<Value> {
+    static class ReadOnlyValueList extends AbstractList<Object> {
 
-        static final ReadOnlyValueList EMPTY = new ReadOnlyValueList(new Value[0]);
+        static final ReadOnlyValueList EMPTY = new ReadOnlyValueList(new Object[0]);
 
-        private final Value[] valueArray;
+        private final Object[] valueArray;
 
-        ReadOnlyValueList(Value[] valueArray) {
+        ReadOnlyValueList(Object[] valueArray) {
             this.valueArray = valueArray;
         }
 
         @Override
-        public Value get(int index) {
+        public Object get(int index) {
             return valueArray[index];
         }
 

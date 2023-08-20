@@ -502,7 +502,7 @@ final class PolyglotThreadLocalActions {
         volatile boolean invalid;
 
         PolyglotTLAccess(Thread thread, Node location) {
-            super(PolyglotImpl.getInstance());
+            super(PolyglotImpl.SECRET);
             this.thread = thread;
             this.location = location;
         }

@@ -223,7 +223,9 @@ public class SourceAPITest {
 
         assertEquals(BinarySourcesLanguage.MIME, source.getMimeType());
         assertEquals(BinarySourcesLanguage.ID, source.getLanguage());
-        assertSame(sequence, source.getBytes());
+        if (TruffleTestAssumptions.isNoClassLoaderEncapsulation()) {
+            assertSame(sequence, source.getBytes());
+        }
         assertEquals("Unnamed", source.getName());
         assertNull(source.getURL());
         assertEquals("truffle:9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a/Unnamed", source.getURI().toString());
@@ -1013,12 +1015,13 @@ public class SourceAPITest {
     @Test
     @SuppressWarnings("rawtypes")
     public void testNoContentSource() {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         AbstractPolyglotImpl polyglot = (AbstractPolyglotImpl) ReflectionUtils.invokeStatic(Engine.class, "getImpl");
         com.oracle.truffle.api.source.Source truffleSource = com.oracle.truffle.api.source.Source.newBuilder(ProxyLanguage.ID, "x", "name").content(
                         com.oracle.truffle.api.source.Source.CONTENT_NONE).build();
         Class<?>[] sourceConstructorTypes = new Class[]{AbstractSourceDispatch.class, Object.class};
         Source source = ReflectionUtils.newInstance(Source.class, sourceConstructorTypes,
-                        polyglot.getAPIAccess().getDispatch(Source.create(ProxyLanguage.ID, "")), truffleSource);
+                        polyglot.getAPIAccess().getSourceDispatch(Source.create(ProxyLanguage.ID, "")), truffleSource);
         assertFalse(source.hasCharacters());
         assertFalse(source.hasBytes());
         try {
@@ -1065,7 +1068,7 @@ public class SourceAPITest {
         try (Context context = Context.create(SourceSectionDispatchLanguage.ID)) {
             Value res = context.eval(Source.create(SourceSectionDispatchLanguage.ID, ""));
             SourceSection sourceSection = res.getSourceLocation();
-            return polyglot.getAPIAccess().getDispatch(sourceSection);
+            return polyglot.getAPIAccess().getSourceSectionDispatch(sourceSection);
         }
     }
 

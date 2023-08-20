@@ -302,7 +302,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:POLYGLOT",
         "com.oracle.truffle.api.exception",
         "truffle:TRUFFLE_ASM_9.5",
       ],
@@ -322,7 +321,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.api.modularized.test.separate.module.test",
         "TRUFFLE_API",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "mx:JUNIT",
       ],
       "checkstyle" : "com.oracle.truffle.dsl.processor",
@@ -1244,7 +1243,7 @@ suite = {
         "com.oracle.truffle.api.modularized.test",
       ],
       "distDependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "TRUFFLE_API",
         "TRUFFLE_RUNTIME",
         "TRUFFLE_SL",
@@ -1857,6 +1856,7 @@ suite = {
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
+         "TRUFFLE_TCK_INSTRUMENTATION",
       ],
       "maven" : False,
      },
@@ -1949,6 +1949,7 @@ suite = {
           "org.graalvm.shadowed.com.ibm.icu.text to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.util to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.charset to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.impl to org.graalvm.js, org.graalvm.py",
         ],
       },
       "subDir" : "src",

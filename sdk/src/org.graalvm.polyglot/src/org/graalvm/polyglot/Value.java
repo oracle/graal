@@ -189,7 +189,7 @@ public final class Value extends AbstractValue {
      * @since 19.0 revised in 20.1
      */
     public Value getMetaObject() {
-        return dispatch.getMetaObject(this.context, receiver);
+        return (Value) dispatch.getMetaObject(this.context, receiver);
     }
 
     /**
@@ -302,7 +302,7 @@ public final class Value extends AbstractValue {
      * @since 22.2
      */
     public Value getMetaParents() {
-        return dispatch.getMetaParents(this.context, receiver);
+        return (Value) dispatch.getMetaParents(this.context, receiver);
     }
 
     /**
@@ -332,7 +332,7 @@ public final class Value extends AbstractValue {
      * @since 19.0
      */
     public Value getArrayElement(long index) {
-        return dispatch.getArrayElement(this.context, receiver, index);
+        return (Value) dispatch.getArrayElement(this.context, receiver, index);
     }
 
     /**
@@ -791,7 +791,7 @@ public final class Value extends AbstractValue {
      */
     public Value getMember(String identifier) {
         Objects.requireNonNull(identifier, "identifier");
-        return dispatch.getMember(this.context, receiver, identifier);
+        return (Value) dispatch.getMember(this.context, receiver, identifier);
     }
 
     /**
@@ -876,9 +876,9 @@ public final class Value extends AbstractValue {
     public Value execute(Object... arguments) {
         if (arguments.length == 0) {
             // specialized entry point for zero argument execute calls
-            return dispatch.execute(this.context, receiver);
+            return (Value) dispatch.execute(this.context, receiver);
         } else {
-            return dispatch.execute(this.context, receiver, arguments);
+            return (Value) dispatch.execute(this.context, receiver, arguments);
         }
     }
 
@@ -930,7 +930,7 @@ public final class Value extends AbstractValue {
      */
     public Value newInstance(Object... arguments) {
         Objects.requireNonNull(arguments, "arguments");
-        return dispatch.newInstance(this.context, receiver, arguments);
+        return (Value) dispatch.newInstance(this.context, receiver, arguments);
     }
 
     /**
@@ -969,9 +969,9 @@ public final class Value extends AbstractValue {
         Objects.requireNonNull(identifier, "identifier");
         if (arguments.length == 0) {
             // specialized entry point for zero argument invoke calls
-            return dispatch.invoke(this.context, receiver, identifier);
+            return (Value) dispatch.invoke(this.context, receiver, identifier);
         } else {
-            return dispatch.invoke(this.context, receiver, identifier, arguments);
+            return (Value) dispatch.invoke(this.context, receiver, identifier, arguments);
         }
     }
 
@@ -1590,7 +1590,7 @@ public final class Value extends AbstractValue {
         if (targetType == Value.class) {
             return (T) this;
         }
-        return dispatch.as(this.context, receiver, targetType);
+        return dispatch.asClass(this.context, receiver, targetType);
     }
 
     /**
@@ -1616,7 +1616,7 @@ public final class Value extends AbstractValue {
      */
     public <T> T as(TypeLiteral<T> targetType) {
         Objects.requireNonNull(targetType, "targetType");
-        return dispatch.as(this.context, receiver, targetType);
+        return dispatch.asTypeLiteral(this.context, receiver, targetType.getRawType(), targetType.getType());
     }
 
     /**
@@ -1640,7 +1640,7 @@ public final class Value extends AbstractValue {
      * @since 19.0
      */
     public SourceSection getSourceLocation() {
-        return dispatch.getSourceLocation(this.context, receiver);
+        return (SourceSection) dispatch.getSourceLocation(this.context, receiver);
     }
 
     /**
@@ -1853,7 +1853,7 @@ public final class Value extends AbstractValue {
      * @since 19.3.0
      */
     public Context getContext() {
-        Context c = dispatch.getContext(this.context);
+        Context c = (Context) dispatch.getContext(this.context);
         if (c != null && c.currentAPI != null) {
             return c.currentAPI;
         } else {
@@ -1913,7 +1913,7 @@ public final class Value extends AbstractValue {
      * @since 21.1
      */
     public Value getIterator() {
-        return dispatch.getIterator(this.context, receiver);
+        return (Value) dispatch.getIterator(this.context, receiver);
     }
 
     /**
@@ -1967,7 +1967,7 @@ public final class Value extends AbstractValue {
      * @since 21.1
      */
     public Value getIteratorNextElement() {
-        return dispatch.getIteratorNextElement(this.context, receiver);
+        return (Value) dispatch.getIteratorNextElement(this.context, receiver);
     }
 
     /**
@@ -2024,7 +2024,7 @@ public final class Value extends AbstractValue {
      * @since 21.1
      */
     public Value getHashValue(Object key) throws UnsupportedOperationException {
-        return dispatch.getHashValue(this.context, receiver, key);
+        return (Value) dispatch.getHashValue(this.context, receiver, key);
     }
 
     /**
@@ -2039,7 +2039,7 @@ public final class Value extends AbstractValue {
      * @since 21.1
      */
     public Value getHashValueOrDefault(Object key, Object defaultValue) throws UnsupportedOperationException {
-        return dispatch.getHashValueOrDefault(this.context, receiver, key, defaultValue);
+        return (Value) dispatch.getHashValueOrDefault(this.context, receiver, key, defaultValue);
     }
 
     /**
@@ -2091,7 +2091,7 @@ public final class Value extends AbstractValue {
      * @since 21.1
      */
     public Value getHashEntriesIterator() throws UnsupportedOperationException {
-        return dispatch.getHashEntriesIterator(this.context, receiver);
+        return (Value) dispatch.getHashEntriesIterator(this.context, receiver);
     }
 
     /**
@@ -2106,7 +2106,7 @@ public final class Value extends AbstractValue {
      * @since 21.1
      */
     public Value getHashKeysIterator() throws UnsupportedOperationException {
-        return dispatch.getHashKeysIterator(this.context, receiver);
+        return (Value) dispatch.getHashKeysIterator(this.context, receiver);
     }
 
     /**
@@ -2121,7 +2121,7 @@ public final class Value extends AbstractValue {
      * @since 21.1
      */
     public Value getHashValuesIterator() throws UnsupportedOperationException {
-        return dispatch.getHashValuesIterator(this.context, receiver);
+        return (Value) dispatch.getHashValuesIterator(this.context, receiver);
     }
 
     /**
@@ -2140,7 +2140,7 @@ public final class Value extends AbstractValue {
         if (o instanceof Value) {
             return (Value) o;
         }
-        return Engine.getImpl().asValue(o);
+        return (Value) Engine.getImpl().asValue(o);
     }
 
     /**

@@ -67,6 +67,7 @@ import org.graalvm.polyglot.management.ExecutionListener;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Assume;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -91,6 +92,11 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
  * Please note that any OOME exceptions when running this test indicate memory leaks in Truffle.
  */
 public class PolyglotCachingTest {
+
+    @BeforeClass
+    public static void runWithWeakEncapsulationOnly() {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
+    }
 
     @Registration
     public static class ParseCounterTestLanguage extends AbstractExecutableTestLanguage {
@@ -137,6 +143,7 @@ public class PolyglotCachingTest {
     @Test
     public void testLanguageSourceInstanceIsEqualToEmbedder() throws Exception {
         TruffleTestAssumptions.assumeWeakEncapsulation();
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
 
         AtomicReference<com.oracle.truffle.api.source.Source> innerSource = new AtomicReference<>(null);
         ProxyLanguage.setDelegate(new ProxyLanguage() {

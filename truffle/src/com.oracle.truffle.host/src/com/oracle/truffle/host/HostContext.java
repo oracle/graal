@@ -53,8 +53,6 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -285,9 +283,9 @@ final class HostContext {
 
         if (e instanceof ThreadDeath) {
             throw (ThreadDeath) e;
-        } else if (e instanceof PolyglotException) {
+        } else if (e instanceof RuntimeException r && access.isPolyglotException(r)) {
             // this will rethrow if the guest exception in the polyglot exception can be rethrown.
-            language.access.rethrowPolyglotException(internalContext, (PolyglotException) e);
+            language.access.rethrowPolyglotException(internalContext, r);
 
             // fall-through and treat it as any other host exception
         }
@@ -306,7 +304,7 @@ final class HostContext {
         return hostToGuestException(e, null);
     }
 
-    Value asValue(Node node, Object value) {
+    Object asValue(Node node, Object value) {
         // make language lookup fold if possible
         HostLanguage l = HostLanguage.get(node);
         return l.access.toValue(internalContext, value);

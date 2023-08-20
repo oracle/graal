@@ -68,7 +68,6 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
@@ -84,7 +83,6 @@ import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 public abstract class AbstractPolyglotTest {
     private static final String STRONG_ENCAPSULATION_MESSAGE_TEMPLATE = "Cannot use %s with strong encapsulation enabled (e.g. context isolates). " +
                     "Add TruffleTestAssumptions.assumeWeakEncapsulation() in a @BeforeClass listener of the test class to resolve this.";
-    protected static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     protected Context context;
     protected TruffleLanguage.Env languageEnv;

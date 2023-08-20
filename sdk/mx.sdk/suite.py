@@ -229,6 +229,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "sdk:NATIVEIMAGE",
         "org.graalvm.options",
         "org.graalvm.collections",
         "org.graalvm.home",
@@ -236,11 +237,28 @@ suite = {
       "requires" : [
         "java.logging",
       ],
+      "annotationProcessors" : [
+          "sdk:POLYGLOT_PROCESSOR"
+      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
     },
-
+    "org.graalvm.polyglot.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "NATIVEBRIDGE_PROCESSOR"
+      ],
+      "requires" : [
+        "java.compiler"
+      ],
+      "annotationProcessors" : [
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+      "workingSets" : "API,Graal",
+    },
     "org.graalvm.sdk" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -624,6 +642,15 @@ suite = {
       },
     },
 
+    "POLYGLOT_PROCESSOR" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.polyglot.processor"
+      ],
+      "distDependencies" : ["sdk:NATIVEBRIDGE_PROCESSOR"],
+      "maven": False,
+    },
+
     "POLYGLOT" : {
       "subDir" : "src",
       "dependencies" : [
@@ -639,6 +666,12 @@ suite = {
             "org.graalvm.word",
             "org.graalvm.nativeimage",
             "org.graalvm.collections",
+            # needed for dynamically loading Truffle
+            "java.sql",
+            "java.management",
+            "jdk.unsupported",
+            "jdk.management",
+            "jdk.jfr",
         ],
         "exports" : [
           "org.graalvm.home",
