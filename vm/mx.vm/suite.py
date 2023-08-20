@@ -42,7 +42,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "04e31e4d783d1f071896c0433120bada84e93665",
+                "version": "0d157c23908acb77b1e30de3128d907663ea5ab7",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
