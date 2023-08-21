@@ -1368,6 +1368,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 '-H:-ParseRuntimeOptions',
             ]),
             extra_jvm_args=_native_image_configure_extra_jvm_args(),
+            home_finder=False,
         )
     ],
     jlink=False,
