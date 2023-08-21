@@ -1,4 +1,3 @@
 atomic_store_load
 atomic_rmw
 atomic_multi_memory
-atomic_wait_notify

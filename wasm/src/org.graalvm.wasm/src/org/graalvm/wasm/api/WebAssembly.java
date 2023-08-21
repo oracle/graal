@@ -760,7 +760,7 @@ public class WebAssembly extends Dictionary {
                 throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unable to call memory notify callback", e);
             }
         }
-        return -1;
+        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Notify instruction used from Wasm not instantiated via JS.");
     }
 
     private static Object memSetWaitCallback(Object[] args) {
@@ -790,7 +790,7 @@ public class WebAssembly extends Dictionary {
                 throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unable to call memory wait callback", e);
             }
         }
-        return -1;
+        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Wait instruction used from Wasm not instantiated via JS.");
     }
 
     private static Object memAsByteBuffer(Object[] args) {
