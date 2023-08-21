@@ -7,11 +7,9 @@ local vm_native = import 'vm-native.jsonnet';
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
 {
-  vm_java_17:: graal_common.labsjdk17 + vm_common.vm_env_mixin('17'),
   vm_java_21:: graal_common.labsjdk21 + vm_common.vm_env_mixin('21'),
   vm_java_22:: graal_common.oraclejdk22 + vm_common.vm_env_mixin('22'),
 
-  vm_java_17_llvm:: self.vm_java_17 + graal_common['labsjdk-ce-17-llvm'],
   vm_java_21_llvm:: self.vm_java_21 + graal_common['labsjdk-ce-21-llvm'],
 
   binaries_repository: 'lafo',
@@ -84,6 +82,11 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       {name: 'daily-deploy-vm-ruby-java21-linux-amd64'},
       {name: 'daily-deploy-vm-ruby-java21-darwin-amd64'},
       {name: 'daily-deploy-vm-ruby-java21-darwin-aarch64'},
+      {name: 'daily-deploy-vm-espresso-java21-linux-amd64'},
+      {name: 'daily-deploy-vm-espresso-java21-linux-aarch64'},
+      {name: 'daily-deploy-vm-espresso-java21-darwin-amd64'},
+      {name: 'daily-deploy-vm-espresso-java21-darwin-aarch64'},
+      {name: 'daily-deploy-vm-espresso-java21-windows-amd64'},
     ],
     targets+: ['daily'],
     notify_groups:: ['deploy'],
@@ -99,7 +102,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   diskspace_required: {
-    java17_linux_amd64: "30GB",
     java21_linux_amd64: "30GB",
   },
 
@@ -166,11 +168,11 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
      name: 'daily-deploy-vm-maven-darwin-aarch64',
      notify_groups:: ['deploy'],
     },
-    vm_common.svm_common_windows_amd64("17") + vm_common.gate_vm_windows_amd64 + self.maven_17_21_only_native + {
+    vm_common.svm_common_windows_amd64("21") + vm_common.gate_vm_windows_amd64 + self.maven_17_21_only_native + {
      run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven', dry_run=true)],
      name: 'gate-vm-maven-dry-run-windows-amd64',
     },
-    vm_common.svm_common_windows_amd64("17") + vm_common.deploy_daily_vm_windows + self.maven_17_21_only_native + {
+    vm_common.svm_common_windows_amd64("21") + vm_common.deploy_daily_vm_windows + self.maven_17_21_only_native + {
      run: [ $.maven_17_21_only_native.build, $.maven_17_21_only_native.deploy(repo='lafo-maven')],
      name: 'daily-deploy-vm-maven-windows-amd64',
      notify_groups:: ['deploy'],
@@ -212,11 +214,20 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_windows_amd64),
 
     #
-    # Deploy the GraalVM Ruby image (GraalVM Base + ruby )
+    # Deploy the GraalVM Ruby image (GraalVM Base + ruby)
     #
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_linux_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_darwin_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_darwin_aarch64),
+
+    #
+    # Deploy the GraalVM Espresso image (GraalVM Base + espresso)
+    #
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_linux_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_linux_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_darwin_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_darwin_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_windows_amd64),
 
     # Trigger the releaser service
     self.notify_releaser_build,

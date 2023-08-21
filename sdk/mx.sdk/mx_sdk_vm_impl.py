@@ -3933,7 +3933,12 @@ def _infer_env(graalvm_dist):
             if not p.is_skipped():
                 library_name = remove_lib_prefix_suffix(p.native_image_name, require_suffix_prefix=False)
                 nativeImages.append('lib:' + library_name)
-    if not nativeImages:
+    if nativeImages:
+        if mx.suite('substratevm-enterprise', fatalIfMissing=False) is not None:
+            dynamicImports.add('/substratevm-enterprise')
+        elif mx.suite('substratevm', fatalIfMissing=False) is not None:
+            dynamicImports.add('/substratevm')
+    else:
         nativeImages = ['false']
 
     disableInstallables = _disabled_installables()
@@ -4061,7 +4066,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
     print("Version: {}".format(_suite.release_version()))
     print("Config name: {}".format(graalvm_dist.vm_config_name))
     print("Components:")
-    for component in graalvm_dist.components:
+    for component in sorted(graalvm_dist.components, key=lambda c: c.name):
         print(" - {} ('{}', /{}, {})".format(component.name, component.short_name, component.dir_name, _get_component_stability(component)))
 
     if forced_graalvm_dist is None:
@@ -4070,7 +4075,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
         launchers = [p for p in _suite.projects if isinstance(p, GraalVmLauncher) and p.get_containing_graalvm() == graalvm_dist]
         if launchers:
             print("Launchers:")
-            for launcher in launchers:
+            for launcher in sorted(launchers, key=lambda l: l.native_image_name):
                 suffix = ''
                 profile_cnt = len(_image_profiles(GraalVmNativeProperties.canonical_image_name(launcher.native_image_config)))
                 if profile_cnt > 0:
@@ -4087,7 +4092,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
         libraries = [p for p in _suite.projects if isinstance(p, GraalVmLibrary)]
         if libraries and not args.stage1:
             print("Libraries:")
-            for library in libraries:
+            for library in sorted(libraries, key=lambda l: l.native_image_name):
                 suffix = ' ('
                 if library.is_skipped():
                     suffix += "skipped, "
@@ -4109,7 +4114,7 @@ def graalvm_show(args, forced_graalvm_dist=None):
         installables = _get_dists(GraalVmInstallableComponent)
         if installables and not args.stage1:
             print("Installables:")
-            for i in installables:
+            for i in sorted(installables):
                 print(" - {}".format(i))
                 if args.verbose:
                     for c in i.components:
@@ -4128,14 +4133,14 @@ def graalvm_show(args, forced_graalvm_dist=None):
 
             if jvm_standalones:
                 print("JVM Standalones:")
-                for s in jvm_standalones:
+                for s in sorted(jvm_standalones):
                     print(" - {}".format(s))
                     if args.verbose:
                         for c in s.involved_components:
                             print("    - {}".format(c.name))
             if native_standalones:
                 print("Native Standalones:")
-                for s in native_standalones:
+                for s in sorted(native_standalones):
                     print(" - {}".format(s))
                     if args.verbose:
                         for c in s.involved_components:
