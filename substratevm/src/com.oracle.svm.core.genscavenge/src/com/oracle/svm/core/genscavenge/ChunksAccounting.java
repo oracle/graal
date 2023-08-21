@@ -33,7 +33,7 @@ import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Accounting for a {@link Space} or {@link Generation}. For the eden space, the values are
- * inaccurate outside a GC (see {@link HeapAccounting#getYoungUsedBytes()} and
+ * inaccurate outside of a GC (see {@link HeapAccounting#getYoungUsedBytes()} and
  * {@link HeapAccounting#getEdenUsedBytes()}.
  */
 final class ChunksAccounting {

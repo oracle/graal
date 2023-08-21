@@ -272,7 +272,7 @@ public final class HeapImpl extends Heap {
     void logChunks(Log log) {
         getYoungGeneration().logChunks(log);
         getOldGeneration().logChunks(log);
-        getChunkProvider().logChunks(log);
+        getChunkProvider().logFreeChunks(log);
     }
 
     void logImageHeapPartitionBoundaries(Log log) {
