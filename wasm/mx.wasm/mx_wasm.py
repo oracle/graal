@@ -500,6 +500,14 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name="GraalWasm",
     short_name="gwa",
     dir_name="wasm",
+    standalone_dir_name='graalwasm-community-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name_enterprise='graalwasm-<version>-<graalvm_os>-<arch>',
+    standalone_dependencies={
+      'GraalVM license files': ('', ['GRAALVM-README.md']),
+    },
+    standalone_dependencies_enterprise={
+      'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
+    },
     license_files=["LICENSE_WASM.txt"],
     third_party_license_files=[],
     dependencies=["Truffle"],
