@@ -27,6 +27,7 @@ package com.oracle.svm.core.meta;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -50,6 +51,8 @@ public interface SharedMethod extends ResolvedJavaMethod {
     boolean isForeignCallTarget();
 
     SubstrateCallingConventionKind getCallingConventionKind();
+
+    SubstrateCallingConventionType getCustomCallingConventionType();
 
     boolean hasCalleeSavedRegisters();
 

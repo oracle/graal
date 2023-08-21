@@ -144,7 +144,7 @@ public final class LIRValueUtil {
             Register r1 = registers.get(i);
             for (int j = 0; j < i; j++) {
                 Register r2 = registers.get(j);
-                assert !r1.equals(r2) : r1 + " appears more than once";
+                assert !r1.equals(r2) : r1 + " appears more than once: " + j + " and " + i;
             }
         }
         return true;

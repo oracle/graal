@@ -116,6 +116,26 @@ public class SubstrateOptions {
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false);
 
+    @APIOption(name = "libc")//
+    @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
+    public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<>(null) {
+        @Override
+        public String getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (!values.containsKey(this)) {
+                return Platform.includedIn(Platform.ANDROID.class)
+                                ? "bionic"
+                                : System.getProperty("substratevm.HostLibC", "glibc");
+            }
+            return (String) values.get(this);
+        }
+
+        @Override
+        public String getValue(OptionValues values) {
+            assert checkDescriptorExists();
+            return getValueOrDefault(values.getMap());
+        }
+    };
+
     @APIOption(name = "target")//
     @Option(help = "Selects native-image compilation target (in <OS>-<architecture> format). Defaults to host's OS-architecture pair.")//
     public static final HostedOptionKey<String> TargetPlatform = new HostedOptionKey<>("") {
@@ -453,6 +473,28 @@ public class SubstrateOptions {
     /*
      * Build output options.
      */
+
+    @APIOption(name = "color")//
+    @Option(help = "Color build output ('always', 'never', or 'auto')", type = OptionType.User)//
+    public static final HostedOptionKey<String> Color = new HostedOptionKey<>("auto");
+
+    public static final boolean hasColorsEnabled(OptionValues values) {
+        if (Color.hasBeenSet(values)) {
+            String value = Color.getValue(values);
+            return switch (value) {
+                case "always" -> true;
+                case "auto" -> {
+                    /* Fail only when assertions are enabled. */
+                    assert false : "'auto' value should have been resolved in the driver";
+                    yield false;
+                }
+                case "never" -> false;
+                default -> throw UserError.abort("Unsupported value '%s' for '--color' option. Only 'always', 'never', and 'auto' are accepted.", value);
+            };
+        }
+        return false;
+    }
+
     @APIOption(name = "silent")//
     @Option(help = "Silence build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputSilent = new HostedOptionKey<>(false);
@@ -460,7 +502,7 @@ public class SubstrateOptions {
     @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 
-    @Option(help = "Colorize build output (enabled by default if colors are supported by terminal)", type = OptionType.User)//
+    @Option(help = "Color build output (enabled by default if colors are supported by terminal)", type = OptionType.User, deprecated = true, deprecationMessage = "Please use the '--color' option.")//
     public static final HostedOptionKey<Boolean> BuildOutputColorful = new HostedOptionKey<>(false);
 
     @Option(help = "Show links in build output (defaults to the value of BuildOutputColorful)", type = OptionType.User)//

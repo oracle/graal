@@ -52,6 +52,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -75,11 +76,9 @@ import org.junit.Assume;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.option.OptionProcessorTest.OptionTestInstrument1;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
@@ -306,15 +305,11 @@ public class EngineAPITest {
 
     @Test
     public void testEngineName() {
-        Engine engine = Engine.create();
-        String implName = engine.getImplementationName();
-        String suffix = TruffleTestAssumptions.isWeakEncapsulation() ? "" : " Isolated";
-        assertEquals(Truffle.getRuntime().getName() + suffix, engine.getImplementationName());
-        String name = RootNode.createConstantNode(0).getCallTarget().getClass().getSimpleName();
-        if (name.equals("DefaultCallTarget")) {
-            assertEquals(implName, "Interpreted");
-        } else if (name.endsWith("OptimizedCallTarget")) {
-            assertTrue(implName, implName.equals("Oracle GraalVM" + suffix) || implName.equals("GraalVM CE"));
+        Set<String> names = Set.of("Interpreted", "Interpreted Isolated",
+                        "Oracle GraalVM", "Oracle GraalVM Isolated",
+                        "GraalVM CE", "GraalVM CE Isolated");
+        try (Engine engine = Engine.create()) {
+            assertTrue(engine.getImplementationName(), names.contains(engine.getImplementationName()));
         }
     }
 

@@ -23,7 +23,6 @@
 package com.oracle.truffle.espresso.preinit;
 
 import com.oracle.truffle.api.TruffleLogger;
-import com.oracle.truffle.espresso.impl.ClassRegistry;
 
 public abstract class AbstractCachedKlassProvider {
     private final TruffleLogger logger;
@@ -36,12 +35,4 @@ public abstract class AbstractCachedKlassProvider {
         return logger;
     }
 
-    protected static boolean shouldCacheClass(ClassRegistry.ClassDefinitionInfo info) {
-        /*
-         * Cached class representations must not contain context-dependent objects that cannot be
-         * shared on a language level. Anonymous classes, by definition, contain a Klass
-         * self-reference in the constant pool.
-         */
-        return !info.isAnonymousClass() && !info.isHidden();
-    }
 }

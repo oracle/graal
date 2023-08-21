@@ -490,23 +490,43 @@ _suite.toolchain = ToolchainConfig('native', 'SULONG_TOOLCHAIN_LAUNCHERS', 'sulo
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
-    name='LLVM Runtime Core',
-    short_name='llrc',
+    name='LLVM Runtime License Files',
+    short_name='llrlf',
     dir_name='llvm',
-    license_files=['sulong:SULONG_GRAALVM_LICENSES/LICENSE_SULONG.txt'],
-    third_party_license_files=['sulong:SULONG_GRAALVM_LICENSES/THIRD_PARTY_LICENSE_SULONG.txt'],
-    dependencies=['ANTLR4', 'Truffle', 'Truffle NFI'],
-    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API', 'sulong:SULONG_NFI'],
+    license_files=['LICENSE_SULONG.txt'],
+    third_party_license_files=['THIRD_PARTY_LICENSE_SULONG.txt'],
+    dependencies=[],
+    truffle_jars=[],
     support_distributions=[
-        'sulong:SULONG_CORE_HOME',
-        'sulong:SULONG_GRAALVM_DOCS',
         'sulong:SULONG_GRAALVM_LICENSES',
     ],
     installable=True,
     standalone=False,
+    has_relative_home=False,
     stability='experimental' if mx.get_os() == 'windows' else 'supported',
-    priority=0,  # this is the main component of the llvm installable
+    priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
+
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='LLVM Runtime Core',
+    short_name='llrc',
+    dir_name='llvm',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['ANTLR4', 'Truffle', 'Truffle NFI', 'llrlf'],  # `llrlf`: short name so that the dependency can be overridden
+    truffle_jars=['sulong:SULONG_CORE', 'sulong:SULONG_API', 'sulong:SULONG_NFI'],
+    support_distributions=[
+        'sulong:SULONG_CORE_HOME',
+        'sulong:SULONG_GRAALVM_DOCS',
+    ],
+    installable=True,
+    standalone=False,
+    stability='experimental' if mx.get_os() == 'windows' else 'supported',
+    priority=1,  # this component is part of the llvm installable but it's not the main one
+))
+
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
@@ -516,7 +536,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle NFI LIBFFI', 'LLVM Runtime Core'],
-    truffle_jars=['sulong:SULONG_NATIVE'],
+    truffle_jars=['sulong:SULONG_NATIVE', 'sulong:SULONG_NATIVE_RESOURCES'],
     support_distributions=[
         'sulong:SULONG_BITCODE_HOME',
         'sulong:SULONG_NATIVE_HOME',
@@ -527,14 +547,34 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     priority=1,  # this component is part of the llvm installable but it's not the main one
 ))
 
+
+standalone_dependencies_common = {
+    'LLVM Runtime Core': ('lib/sulong', []),
+    'LLVM Runtime Native': ('lib/sulong', []),
+    'LLVM.org toolchain': ('lib/llvm-toolchain', []),
+}
+
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     suite=_suite,
     name='LLVM Runtime Launcher',
     short_name='llrl',
     dir_name='llvm',
+    standalone_dir_name='llvm-community-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name_enterprise='llvm-<version>-<graalvm_os>-<arch>',
     license_files=[],
     third_party_license_files=[],
-    dependencies=[],
+    dependencies=['ANTLR4', 'Truffle', 'Truffle NFI', 'Truffle NFI LIBFFI', 'LLVM Runtime Core'],
+    standalone_dependencies={**standalone_dependencies_common, **{
+        'LLVM Runtime License Files': ('', []),
+    }},
+    standalone_dependencies_enterprise={**standalone_dependencies_common, **{
+        'LLVM Runtime Enterprise': ('lib/sulong', []),
+        'LLVM Runtime Native Enterprise': ('lib/sulong', []),
+        'LLVM Runtime Managed': ('lib/sulong', []),
+        'LLVM Runtime License Files EE': ('', []),
+        'GraalVM enterprise license files': ('', ['LICENSE.txt', 'GRAALVM-README.md']),
+    }},
     truffle_jars=[],
     support_distributions=[],
     library_configs=[
@@ -548,9 +588,13 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
                 '-H:ReservedAuxiliaryImageBytes=2145482548',
             ] if not mx.is_windows() else [],
             language='llvm',
-        ),
+            # When building a GraalVM, we do not need to set a default relative home path.
+            # When building a Standalone, it would be wrong to set it since the default
+            # value (`..`) is overridden by the standalone dependency (`./sulong`).
+            set_default_relative_home_path=False,
+        )
     ],
     installable=True,
-    standalone=False,
-    priority=1,  # this component is part of the llvm installable but it's not the main one
+    standalone=True,
+    priority=0,  # this is the main component of the llvm installable and standalone
 ))

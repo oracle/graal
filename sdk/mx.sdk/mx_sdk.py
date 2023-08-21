@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -109,7 +109,7 @@ def upx(args):
 
 
 # SDK modules included if truffle, compiler and native-image is included
-graal_sdk_component = mx_sdk_vm.GraalVmJreComponent(
+graalvm_sdk_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK',
     short_name='sdk',
@@ -121,9 +121,10 @@ graal_sdk_component = mx_sdk_vm.GraalVmJreComponent(
     boot_jars=['sdk:POLYGLOT', 'sdk:GRAAL_SDK'],
     stability="supported",
 )
+mx_sdk_vm.register_graalvm_component(graalvm_sdk_component)
 
 # SDK modules included the compiler is included
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+graal_sdk_compiler_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK Compiler',
     short_name='sdkc',
@@ -134,10 +135,11 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=[],
     boot_jars=['sdk:WORD', 'sdk:COLLECTIONS'],
     stability="supported",
-))
+)
+mx_sdk_vm.register_graalvm_component(graal_sdk_compiler_component)
 
 # SDK modules included if the compiler and native-image is included
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
+graalvm_sdk_native_image_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
     name='Graal SDK Native Image',
     short_name='sdkni',
@@ -148,8 +150,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     jar_distributions=[],
     boot_jars=['sdk:NATIVEIMAGE'],
     stability="supported",
-))
-mx_sdk_vm.register_graalvm_component(graal_sdk_component)
+)
+mx_sdk_vm.register_graalvm_component(graalvm_sdk_native_image_component)
 
 graalvm_launcher_common_component = mx_sdk_vm.GraalVmJreComponent(
     suite=_suite,
@@ -244,3 +246,27 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                                    vendor_info=vendor_info,
                                    use_upgrade_module_path=use_upgrade_module_path,
                                    default_to_jvmci=default_to_jvmci)
+
+class GraalVMJDKConfig(mx.JDKConfig):
+    """
+    A JDKConfig that configures the built GraalVM as a JDK config.
+    """
+    def __init__(self):
+        mx.JDKConfig.__init__(self, mx_sdk_vm.graalvm_home(fatalIfMissing=True), tag='graalvm')
+
+    @property
+    def home(self):
+        return mx_sdk_vm.graalvm_home(fatalIfMissing=True)
+
+    @home.setter
+    def home(self, home):
+        return
+
+class GraalVMJDK(mx.JDKFactory):
+    def getJDKConfig(self):
+        return GraalVMJDKConfig()
+
+    def description(self):
+        return "GraalVM JDK"
+
+mx.addJDKFactory('graalvm', mx.get_jdk(tag='default').javaCompliance, GraalVMJDK())

@@ -178,7 +178,8 @@
       { "name": "getName", "parameterTypes": [] },
       { "name": "getSuperclass", "parameterTypes": [] },
       { "name": "getDeclaredField", "parameterTypes": ["java.lang.String"] },
-      { "name": "isInstance", "parameterTypes": ["java.lang.Object"] }
+      { "name": "isInstance", "parameterTypes": ["java.lang.Object"] },
+      { "name": "toString", "parameterTypes": [] }
     ]
   },
   {

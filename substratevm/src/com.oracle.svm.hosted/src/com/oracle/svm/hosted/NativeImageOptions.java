@@ -242,7 +242,7 @@ public class NativeImageOptions {
     @Option(help = "If an error occurs, save a build error report to this file [default: " + DEFAULT_ERROR_FILE_NAME + "] (%p replaced with pid, %t with timestamp).)")//
     public static final HostedOptionKey<String> ErrorFile = new HostedOptionKey<>(DEFAULT_ERROR_FILE_NAME);
 
-    @Option(help = "Show exception stack traces for exceptions during image building.)")//
+    @Option(help = "Show exception stack traces for exceptions during image building.)", stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(areAssertionsEnabled());
 
     @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types is necessary.", type = Debug)//

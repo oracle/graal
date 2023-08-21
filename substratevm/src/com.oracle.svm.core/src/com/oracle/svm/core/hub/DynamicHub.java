@@ -257,6 +257,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     /** Is the class a proxy class according to {@link java.lang.reflect.Proxy#isProxyClass}? */
     private static final int IS_PROXY_CLASS_BIT = 2;
 
+    private static final int IS_REGISTERED_FOR_SERIALIZATION = 3;
+
     /**
      * The {@link Modifier modifiers} of this class.
      */
@@ -436,7 +438,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setData(int layoutEncoding, int typeID, int monitorOffset, int optionalIdentityHashOffset, short typeCheckStart, short typeCheckRange, short typeCheckSlot,
-                    short[] typeCheckSlots, CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance, boolean isProxyClass) {
+                    short[] typeCheckSlots, CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance, boolean isProxyClass,
+                    boolean isRegisteredForSerialization) {
         assert this.vtable == null : "Initialization must be called only once";
         assert !(!isInstantiated && canInstantiateAsInstance);
         if (LayoutEncoding.isPureInstance(layoutEncoding)) {
@@ -462,7 +465,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.referenceMapIndex = (int) referenceMapIndex;
         this.additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated) |
                         makeFlag(CAN_INSTANTIATE_AS_INSTANCE_BIT, canInstantiateAsInstance) |
-                        makeFlag(IS_PROXY_CLASS_BIT, isProxyClass));
+                        makeFlag(IS_PROXY_CLASS_BIT, isProxyClass) |
+                        makeFlag(IS_REGISTERED_FOR_SERIALIZATION, isRegisteredForSerialization));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -881,6 +885,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     public boolean isLambdaFormHidden() {
         return isFlagSet(flags, IS_LAMBDA_FORM_HIDDEN_BIT);
+    }
+
+    public boolean isRegisteredForSerialization() {
+        return isFlagSet(additionalFlags, IS_REGISTERED_FOR_SERIALIZATION);
     }
 
     @KeepOriginal

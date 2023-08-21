@@ -16,6 +16,9 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-46740) Add support for foreign downcalls (part of "Project Panama") on the AMD64 platform.
 * (GR-27034) Add `-H:ImageBuildID` option to generate Image Build ID, which is a 128-bit UUID string generated randomly, once per bundle or digest of input args when bundles are not used.
 * (GR-47647) Add `-H:±UnlockExperimentalVMOptions` for unlocking access to experimental options similar to HotSpot's `-XX:UnlockExperimentalVMOptions`. Explicit unlocking will be required in a future release, which can be tested with the env setting `NATIVE_IMAGE_EXPERIMENTAL_OPTIONS_ARE_FATAL=true`. For more details, see [issue #7105](https://github.com/oracle/graal/issues/7105).
+* (GR-47647) Add `--color[=WHEN]` option to color the output WHEN ('always', 'never', or 'auto'). This API option supersedes the experimental option `-H:+BuildOutputColorful`.
+* (GR-43920) Add support for executing native image bundles as jar files with extra options `--with-native-image-agent` and `--container`.
+* (GR-43920) Add `,container[=<container-tool>]`, `,dockerfile=<dockerfile>` and `,dry-run` options to `--bundle-create`and `--bundle-apply`.
 
 ## GraalVM for JDK 17 and GraalVM for JDK 20 (Internal Version 23.0.0)
 * (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, `-H:+AllowDeprecatedBuilderClassesOnImageClasspath` allows turning the error into a warning.

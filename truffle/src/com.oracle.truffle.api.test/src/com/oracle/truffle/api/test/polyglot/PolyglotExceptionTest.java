@@ -51,6 +51,7 @@ import static org.junit.Assert.fail;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.io.NotSerializableException;
 import java.io.ObjectOutputStream;
 import java.io.PrintWriter;
 import java.lang.reflect.Constructor;
@@ -82,14 +83,12 @@ import org.junit.Test;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -135,6 +134,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testExceptionWrapping() {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
         try (Context context1 = Context.create();
                         Context context2 = Context.create()) {
 
@@ -202,6 +202,8 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testLanguageExceptionUnwrapping() {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation(); // TruffleObject used
+
         try (Context c = Context.create()) {
 
             Value throwError = c.asValue(new ProxyExecutable() {
@@ -397,7 +399,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
     public void testGuestOOMResourceLimit() throws IOException, InterruptedException {
         Runnable test = () -> {
             Context.Builder builder = Context.newBuilder();
-            if (TruffleTestAssumptions.isStrongEncapsulation()) {
+            if (TruffleTestAssumptions.isIsolateEncapsulation()) {
                 builder.option("engine.IsolateOption.MaxHeapSize", "1g");
             }
             try (Context c = builder.build()) {
@@ -417,14 +419,14 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                             assertEquals("testRootName", frame.getRootName());
                         }
                     }
-                    if (TruffleTestAssumptions.isWeakEncapsulation()) { // GR-35913
+                    if (TruffleTestAssumptions.isNoIsolateEncapsulation()) { // GR-35913
                         // No guest stack trace injected into OutOfMemoryError.
                         assertFalse(foundFrame);
                     }
                 });
             }
         };
-        if (ImageInfo.inImageCode() || TruffleTestAssumptions.isStrongEncapsulation()) {
+        if (ImageInfo.inImageCode() || TruffleTestAssumptions.isIsolateEncapsulation()) {
             test.run();
         } else {
             List<String> vmOptions = new ArrayList<>();
@@ -438,7 +440,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
              * The optimized HotSpot runtime is initialized lazily. We have to use synchronous
              * compilation to prevent OOM in the compiler thread.
              */
-            if (Truffle.getRuntime().getClass() != DefaultTruffleRuntime.class) {
+            if (TruffleTestAssumptions.isOptimizingRuntime()) {
                 vmOptions.add("-Dpolyglot.engine.CompileImmediately=true");
                 vmOptions.add("-Dpolyglot.engine.BackgroundCompilation=false");
             }
@@ -481,7 +483,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                         assertEquals("testRootName", frame.getRootName());
                     }
                 }
-                if (TruffleTestAssumptions.isWeakEncapsulation()) { // GR-35913
+                if (TruffleTestAssumptions.isNoIsolateEncapsulation()) { // GR-35913
                     // No guest stack trace injected into StackOverflowError.
                     assertFalse(foundFrame);
                 }
@@ -562,7 +564,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                         break;
                     }
                     prev = element;
-                    if (TruffleTestAssumptions.isStrongEncapsulation()) { // GR-35913
+                    if (TruffleTestAssumptions.isIsolateEncapsulation()) { // GR-35913
                         break;
                     }
                 }
@@ -677,6 +679,8 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testCancelDoesNotMaskInternalError() throws InterruptedException, ExecutionException {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
+
         DetectWaitingStartedExecutable detectWaitingStartedExecutable = new DetectWaitingStartedExecutable();
         try (Context c = Context.newBuilder().allowHostAccess(HostAccess.ALL).build()) {
             ExecutorService executorService = Executors.newSingleThreadExecutor();
@@ -702,7 +706,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                                             }
                                         }
                                     }
-                                    if (TruffleTestAssumptions.isWeakEncapsulation()) { // GR-35913
+                                    if (TruffleTestAssumptions.isNoIsolateEncapsulation()) { // GR-35913
                                         assertTrue(foundGuestFrame);
                                     }
                                     assertTrue(foundHostFrame);
@@ -722,6 +726,8 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
 
     @Test
     public void testExceptionMessage() {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation(); // uses TruffleObject
+
         try (Context ctx = Context.create()) {
             TestGuestError guestError = new TestGuestError();
             guestError.exceptionMessage = "interop exception message";
@@ -805,7 +811,7 @@ public class PolyglotExceptionTest extends AbstractPolyglotTest {
                 AbstractPolyglotTest.assertFails(() -> {
                     out.writeObject(polyglotExceptionHolder.get());
                     return null;
-                }, IOException.class, (ioe) -> assertEquals("PolyglotException serialization is not supported.", ioe.getMessage()));
+                }, NotSerializableException.class);
             }
         }
     }

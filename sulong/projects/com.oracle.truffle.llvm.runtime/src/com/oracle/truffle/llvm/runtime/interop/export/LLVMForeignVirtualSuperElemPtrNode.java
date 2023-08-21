@@ -29,12 +29,12 @@
  */
 package com.oracle.truffle.llvm.runtime.interop.export;
 
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
-import com.oracle.truffle.llvm.runtime.PlatformCapability.OS;
 import com.oracle.truffle.llvm.runtime.interop.access.LLVMInteropType;
 import com.oracle.truffle.llvm.runtime.pointer.LLVMPointer;
 
@@ -63,6 +63,6 @@ public abstract class LLVMForeignVirtualSuperElemPtrNode extends LLVMForeignGetS
 
     @Idempotent
     protected boolean isWindows() {
-        return getLanguage().getCapability(PlatformCapability.class).getOS().equals(OS.Windows);
+        return getLanguage().getCapability(PlatformCapability.class).getOS().equals(OS.WINDOWS);
     }
 }

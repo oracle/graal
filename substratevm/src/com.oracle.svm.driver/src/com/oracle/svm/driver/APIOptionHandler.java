@@ -76,7 +76,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     private static final String LEAVE_UNLOCK_SCOPE = SubstrateOptionsParser.commandArgument(SubstrateOptions.UnlockExperimentalVMOptions, "-");
 
     record OptionInfo(String[] variants, char[] valueSeparator, String builderOption, String defaultValue, String helpText, boolean defaultFinal, String deprecationWarning,
-                    List<Function<Object, Object>> valueTransformers, APIOptionGroup group, boolean extra) {
+                    List<Function<Object, Object>> valueTransformers, APIOptionGroup group, boolean extra, boolean launcherOption) {
         boolean isDeprecated() {
             return deprecationWarning.length() > 0;
         }
@@ -259,7 +259,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
             boolean defaultFinal = booleanOption || hasFixedValue;
             apiOptions.put(apiOptionName,
                             new APIOptionHandler.OptionInfo(apiAnnotation.name(), apiAnnotation.valueSeparator(), builderOption, defaultValue, helpText,
-                                            defaultFinal, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra()));
+                                            defaultFinal, apiAnnotation.deprecated(), valueTransformers, group, apiAnnotation.extra(), apiAnnotation.launcherOption()));
         }
 
         if (optionDescriptor.getStability() == OptionStability.STABLE) {
@@ -328,6 +328,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
 
     String translateOption(ArgumentQueue argQueue) {
         OptionInfo option = null;
+        boolean whitespaceSeparated = false;
         String[] optionNameAndOptionValue = null;
         OptionOrigin argumentOrigin = OptionOrigin.from(argQueue.argumentOrigin);
         found: for (OptionInfo optionInfo : apiOptions.values()) {
@@ -353,6 +354,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                         }
                         option = optionInfo;
                         optionNameAndOptionValue = new String[]{headArg, optionValue};
+                        whitespaceSeparated = true;
                         break found;
                     } else {
                         boolean withSeparator = valueSeparator != APIOption.NO_SEPARATOR;
@@ -388,6 +390,14 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
 
                 builderOption += transformed.toString();
+            }
+
+            if (nativeImage.useBundle() && option.launcherOption) {
+                if (whitespaceSeparated) {
+                    nativeImage.bundleSupport.bundleLauncherArgs.addAll(List.of(optionNameAndOptionValue));
+                } else {
+                    nativeImage.bundleSupport.bundleLauncherArgs.add(argQueue.peek());
+                }
             }
 
             return builderOption;
@@ -580,7 +590,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
         }
 
         for (var illegalOption : illegalExperimentalOptions) {
-            LogUtils.warning("The option '" + illegalOption + "' is experimental and must be enabled via " + ENTER_UNLOCK_SCOPE + " in the future.");
+            LogUtils.warning("The option '" + illegalOption + "' is experimental and must be enabled via '" + ENTER_UNLOCK_SCOPE + "' in the future.");
         }
         LogUtils.warning("Please re-evaluate whether any experimental option is required, and either remove or unlock it. " +
                         "The build output lists all active experimental options, including where they come from and possible alternatives. " +

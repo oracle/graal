@@ -489,6 +489,10 @@ suite = {
                 "INSIGHT",
                 "INSIGHT_HEAP",
             ],
+            "exclude": [
+              "mx:HAMCREST",
+              "mx:JUNIT",
+            ],
             "description" : "Tests for the Ultimate Insights Gathering Platform",
             "maven" : False,
         },
@@ -552,6 +556,10 @@ suite = {
                 "truffle:TRUFFLE_TEST",
                 "TRUFFLE_PROFILER",
             ],
+            "exclude": [
+              "mx:HAMCREST",
+              "mx:JUNIT",
+            ],
             "description" : "Tests for the truffle profiler.",
             "maven" : False,
         },
@@ -604,6 +612,10 @@ suite = {
                 "truffle:TRUFFLE_TEST",
                 "TRUFFLE_COVERAGE",
             ],
+            "exclude": [
+              "mx:HAMCREST",
+              "mx:JUNIT",
+            ],
             "description" : "Tests for the truffle coverage tool.",
             "maven" : False,
          },
@@ -654,6 +666,10 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_TEST",
                 "DAP",
+            ],
+            "exclude": [
+              "mx:HAMCREST",
+              "mx:JUNIT",
             ],
             "description" : "Tests for the Truffle Debug Protocol Server.",
             "maven" : False,
@@ -730,6 +746,10 @@ suite = {
             "distDependencies" : [
                 "LSP",
                 "truffle:TRUFFLE_SL",
+            ],
+            "exclude": [
+              "mx:HAMCREST",
+              "mx:JUNIT",
             ],
             "description" : "Tests for the Truffle Language Server backend.",
             "maven": False,

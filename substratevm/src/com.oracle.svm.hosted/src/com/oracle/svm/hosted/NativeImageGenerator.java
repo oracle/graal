@@ -970,7 +970,7 @@ public class NativeImageGenerator {
                 registerEntryPointStubs(entryPoints);
             }
 
-            ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures());
+            ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures(), loader);
         }
     }
 

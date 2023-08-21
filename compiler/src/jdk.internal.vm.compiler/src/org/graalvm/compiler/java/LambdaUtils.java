@@ -176,4 +176,8 @@ public final class LambdaUtils {
             throw new JVMCIError(ex);
         }
     }
+
+    public static String capturingClass(String className) {
+        return className.split(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN)[0];
+    }
 }

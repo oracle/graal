@@ -439,11 +439,12 @@ public class NativeImageGeneratorRunner {
                         throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
                     } catch (UnsupportedClassVersionError ex) {
                         if (ex.getMessage().contains("compiled by a more recent version of the Java Runtime")) {
-                            throw UserError.abort(ex, "Unable to load '%s' due to a Java version mismatch.%n" +
+                            throw UserError.abort("Unable to load '%s' due to a Java version mismatch.%n" +
                                             "Please take one of the following actions:%n" +
                                             " 1) Recompile the source files for your application using Java %s, then try running native-image again%n" +
-                                            " 2) Use a version of native-image corresponding to the version of Java with which you compiled the source files for your application%n",
-                                            className, Runtime.version().feature());
+                                            " 2) Use a version of native-image corresponding to the version of Java with which you compiled the source files for your application%n%n" +
+                                            "Root cause: %s",
+                                            className, Runtime.version().feature(), ex);
                         } else {
                             throw UserError.abort(ex.getMessage());
                         }

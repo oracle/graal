@@ -22,12 +22,6 @@
  */
 package com.oracle.truffle.espresso.processor;
 
-import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
-import com.oracle.truffle.espresso.processor.builders.ClassFileBuilder;
-import com.oracle.truffle.espresso.processor.builders.JavadocBuilder;
-import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
-import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
-
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.PrintWriter;
@@ -51,6 +45,12 @@ import javax.lang.model.util.Elements;
 import javax.tools.Diagnostic;
 import javax.tools.FileObject;
 
+import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.ClassFileBuilder;
+import com.oracle.truffle.espresso.processor.builders.JavadocBuilder;
+import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
+
 /**
  * Processes classes annotated with {@code Collect}. For and class {@code C}, this processor
  * generates a class {@code CCollector} in the same package as {@code C} containing a list or all
@@ -62,7 +62,7 @@ public class CollectProcessor extends BaseProcessor {
     private static final String COLLECT = "com.oracle.truffle.espresso.substitutions.Collect";
     private final Set<TypeElement> processedClasses = new HashSet<>();
     private final Set<TypeElement> processedAnchors = new HashSet<>();
-    private final Map<TypeElement, Set<TypeElement>> collectedClasses = new HashMap<>();
+    private final Map<TypeElement, Set<ClassAndInstanceGetter>> collectedClasses = new HashMap<>();
 
     @Override
     public SourceVersion getSupportedSourceVersion() {
@@ -94,9 +94,11 @@ public class CollectProcessor extends BaseProcessor {
         AnnotationMirror annotation = getAnnotation(collected, getType(COLLECT));
         if (annotation != null) {
             List<TypeMirror> anchorClasses = getAnnotationValueList(annotation, "value", TypeMirror.class);
+            String getter = getAnnotationValue(annotation, "getter", String.class);
+            ClassAndInstanceGetter cell = new ClassAndInstanceGetter(collected, getter);
             for (TypeMirror anchorClass : anchorClasses) {
                 if (verifyAnnotation(anchorClass, collected)) {
-                    this.collectedClasses.computeIfAbsent(asTypeElement(anchorClass), typeElement -> new HashSet<>()).add(collected);
+                    this.collectedClasses.computeIfAbsent(asTypeElement(anchorClass), typeElement -> new HashSet<>()).add(cell);
                 }
             }
         }
@@ -119,20 +121,20 @@ public class CollectProcessor extends BaseProcessor {
             processElement((TypeElement) element);
         }
 
-        for (Entry<TypeElement, Set<TypeElement>> e : collectedClasses.entrySet()) {
+        for (Entry<TypeElement, Set<ClassAndInstanceGetter>> e : collectedClasses.entrySet()) {
             TypeElement anchorClass = e.getKey();
             if (processedAnchors.contains(anchorClass)) {
                 env().getMessager().printMessage(Diagnostic.Kind.ERROR, getClass().getName() + " already generated a collector for anchor class: " + anchorClass.getQualifiedName());
             }
-            Set<TypeElement> classes = e.getValue();
-            createCollector(anchorClass, classes.toArray(new TypeElement[0]));
+            Set<ClassAndInstanceGetter> classes = e.getValue();
+            createCollector(anchorClass, classes.toArray(new ClassAndInstanceGetter[0]));
         }
         collectedClasses.clear();
 
         return true;
     }
 
-    private String generateCollector(TypeElement anchorClass, TypeElement... classes) {
+    private String generateCollector(TypeElement anchorClass, ClassAndInstanceGetter... classes) {
         String pkg = processingEnv.getElementUtils().getPackageOf(anchorClass).getQualifiedName().toString();
 
         MethodBuilder getInstancesMethod = new MethodBuilder("getInstances") //
@@ -141,8 +143,8 @@ public class CollectProcessor extends BaseProcessor {
                         .withTemplateParams("T") //
                         .withParams("Class<? extends T> componentClass") //
                         .addBodyLine("List<T> classes = new ArrayList<>(", classes.length, ");");
-        for (TypeElement clazz : classes) {
-            getInstancesMethod.addBodyLine("classes.add(componentClass.cast(new ", clazz.getQualifiedName(), "()));");
+        for (ClassAndInstanceGetter cell : classes) {
+            getInstancesMethod.addBodyLine("classes.add(componentClass.cast(" + cell.getter() + "));");
         }
         getInstancesMethod.addBodyLine("return classes;");
 
@@ -171,18 +173,48 @@ public class CollectProcessor extends BaseProcessor {
      * &lt;anchorClass&gt; allowing to list classes annotated with
      * &#064;Collect(&lt;anchorClass&gt;.class).
      */
-    public void createCollector(TypeElement anchorClass, TypeElement... classes) {
+    public void createCollector(TypeElement anchorClass, ClassAndInstanceGetter... classes) {
         assert classes.length > 0;
         processedAnchors.add(anchorClass);
         String name = String.format("%sCollector", anchorClass.getQualifiedName());
         env().getMessager().printMessage(Diagnostic.Kind.NOTE, "Generating collector " + name);
         try {
-            FileObject file = processingEnv.getFiler().createSourceFile(name, classes);
+            FileObject file = processingEnv.getFiler().createSourceFile(name, ClassAndInstanceGetter.asClassArray(classes));
             PrintWriter writer = new PrintWriter(new OutputStreamWriter(file.openOutputStream(), "UTF-8"));
             writer.print(generateCollector(anchorClass, classes));
             writer.close();
         } catch (IOException e) {
-            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage(), classes[0]);
+            processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, e.getMessage(), classes[0].cls());
+        }
+    }
+
+    private static class ClassAndInstanceGetter {
+        private final TypeElement cls;
+        private final String getter;
+
+        ClassAndInstanceGetter(TypeElement cls, String getter) {
+            this.cls = cls;
+            if (getter == null || getter.length() == 0) {
+                this.getter = "new " + cls.getQualifiedName() + "()";
+            } else {
+                this.getter = cls.getQualifiedName() + "." + getter + "()";
+            }
+        }
+
+        TypeElement cls() {
+            return cls;
+        }
+
+        String getter() {
+            return getter;
+        }
+
+        static TypeElement[] asClassArray(ClassAndInstanceGetter[] classes) {
+            TypeElement[] result = new TypeElement[classes.length];
+            for (int i = 0; i < classes.length; i++) {
+                result[i] = classes[i].cls();
+            }
+            return result;
         }
     }
 }

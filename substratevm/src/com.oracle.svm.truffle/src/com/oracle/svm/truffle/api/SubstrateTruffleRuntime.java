@@ -141,6 +141,8 @@ public final class SubstrateTruffleRuntime extends OptimizedTruffleRuntime {
     @Platforms(Platform.HOSTED_ONLY.class)
     public void resetHosted() {
         truffleCompiler = null;
+        engineOptions = null;
+        initializeEngineCacheSupport(new EngineCacheSupport.Disabled());
     }
 
     @Override

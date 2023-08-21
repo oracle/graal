@@ -66,14 +66,14 @@ import java.util.logging.Handler;
 import java.util.logging.Level;
 import java.util.logging.LogRecord;
 
+import org.graalvm.polyglot.SandboxPolicy;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
+
 import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.polyglot.EngineAccessor.EngineImpl;
 import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
-import org.graalvm.polyglot.SandboxPolicy;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 
 final class PolyglotLoggers {
 
@@ -123,12 +123,12 @@ final class PolyglotLoggers {
      * @throws IllegalArgumentException if {@code logHandlerOrStream} is not {@link Handler} nor
      *             {@link OutputStream}
      */
-    static LogHandler asLogHandler(AbstractPolyglotImpl polyglot, Object logHandlerOrStream) {
+    static LogHandler asLogHandler(Object logHandlerOrStream) {
         if (logHandlerOrStream instanceof Handler) {
-            return new JavaLogHandler(polyglot, (Handler) logHandlerOrStream);
+            return new JavaLogHandler((Handler) logHandlerOrStream);
         }
         if (logHandlerOrStream instanceof OutputStream) {
-            return createStreamHandler(polyglot, (OutputStream) logHandlerOrStream, true, true);
+            return createStreamHandler((OutputStream) logHandlerOrStream, true, true);
         }
         throw new IllegalArgumentException("Unexpected logHandlerOrStream parameter: " + logHandlerOrStream);
     }
@@ -140,18 +140,18 @@ final class PolyglotLoggers {
      * @param out the {@link OutputStream} to print log messages into
      * @param sandboxPolicy the engine's sandbox policy
      */
-    static LogHandler createDefaultHandler(AbstractPolyglotImpl polyglot, OutputStream out, SandboxPolicy sandboxPolicy) {
-        return new StreamLogHandler(polyglot, out, false, true, true,
+    static LogHandler createDefaultHandler(OutputStream out, SandboxPolicy sandboxPolicy) {
+        return new StreamLogHandler(out, false, true, true,
                         sandboxPolicy.isStricterOrEqual(SandboxPolicy.UNTRUSTED) ? sandboxPolicy : null);
     }
 
-    static LogHandler getFileHandler(AbstractPolyglotImpl polyglot, String path) {
+    static LogHandler getFileHandler(String path) {
         Path absolutePath = Paths.get(path).toAbsolutePath().normalize();
         synchronized (fileHandlers) {
             SharedFileHandler handler = fileHandlers.get(absolutePath);
             if (handler == null) {
                 try {
-                    handler = new SharedFileHandler(polyglot, absolutePath);
+                    handler = new SharedFileHandler(absolutePath);
                     fileHandlers.put(absolutePath, handler);
                 } catch (IOException ioe) {
                     throw PolyglotEngineException.illegalArgument("Cannot open log file " + path + " for writing, IO error: " + (ioe.getMessage() != null ? ioe.getMessage() : null));
@@ -173,7 +173,6 @@ final class PolyglotLoggers {
     /**
      * Creates a {@link Handler} printing log messages into given {@link OutputStream}.
      *
-     * @param polyglot the polyglot owning the handler
      * @param out the {@link OutputStream} to print log messages into
      * @param closeStream if true the {@link Handler#close() handler's close} method closes given
      *            stream
@@ -181,8 +180,8 @@ final class PolyglotLoggers {
      *            {@link Handler#publish(java.util.logging.LogRecord) publish}
      * @return the {@link Handler}
      */
-    static LogHandler createStreamHandler(AbstractPolyglotImpl polyglot, OutputStream out, boolean closeStream, boolean flushOnPublish) {
-        return new StreamLogHandler(polyglot, out, closeStream, flushOnPublish, false, null);
+    static LogHandler createStreamHandler(OutputStream out, boolean closeStream, boolean flushOnPublish) {
+        return new StreamLogHandler(out, closeStream, flushOnPublish, false, null);
     }
 
     static LogRecord createLogRecord(Level level, String loggerName, String message, String className, String methodName, Object[] parameters, Throwable thrown, String formatKind) {
@@ -227,7 +226,7 @@ final class PolyglotLoggers {
         }
 
         static LoggerCache newEngineLoggerCache(PolyglotEngineImpl engine) {
-            return newEngineLoggerCache(new PolyglotLogHandler(engine.getImpl(), engine.logHandler), engine.logLevels, true, Collections.emptySet());
+            return newEngineLoggerCache(new PolyglotLogHandler(engine.logHandler), engine.logLevels, true, Collections.emptySet());
         }
 
         static LoggerCache newEngineLoggerCache(LogHandler handler, Map<String, Level> logLevels, boolean useCurrentContext,
@@ -286,10 +285,6 @@ final class PolyglotLoggers {
         volatile boolean closed;
         private ErrorManager errorManager;
 
-        AbstractLogHandler(AbstractPolyglotImpl polyglot) {
-            super(polyglot);
-        }
-
         final void checkClosed() {
             if (closed) {
                 throw new AssertionError("The log handler is closed.");
@@ -316,8 +311,7 @@ final class PolyglotLoggers {
 
         private final Handler handler;
 
-        JavaLogHandler(AbstractPolyglotImpl polyglot, Handler handler) {
-            super(polyglot);
+        JavaLogHandler(Handler handler) {
             this.handler = Objects.requireNonNull(handler, "Handler must be non null");
         }
 
@@ -370,9 +364,8 @@ final class PolyglotLoggers {
         private final SandboxPolicy disabledForActiveSandboxPolicy;
         private boolean notificationPrinted;
 
-        StreamLogHandler(AbstractPolyglotImpl polyglot, OutputStream stream, boolean closeStream, boolean flushOnPublish,
+        StreamLogHandler(OutputStream stream, boolean closeStream, boolean flushOnPublish,
                         boolean isDefault, SandboxPolicy disabledForActiveSandboxPolicy) {
-            super(polyglot);
             Objects.requireNonNull(stream, "Stream must be non null");
             this.stream = stream;
             this.writer = new OutputStreamWriter(stream);
@@ -529,8 +522,8 @@ final class PolyglotLoggers {
         private final Path path;
         private int refCount;
 
-        SharedFileHandler(AbstractPolyglotImpl polyglot, Path path) throws IOException {
-            super(polyglot, new FileOutputStream(path.toFile(), true), true, true, false, null);
+        SharedFileHandler(Path path) throws IOException {
+            super(new FileOutputStream(path.toFile(), true), true, true, false, null);
             this.path = path;
         }
 
@@ -555,17 +548,15 @@ final class PolyglotLoggers {
 
     private static final class PolyglotLogHandler extends LogHandler {
 
-        private static final LogHandler INSTANCE = new PolyglotLogHandler(PolyglotImpl.getInstance());
+        private static final LogHandler INSTANCE = new PolyglotLogHandler();
 
         private final LogHandler fallBackHandler;
 
-        PolyglotLogHandler(AbstractPolyglotImpl polyglot) {
-            super(polyglot);
+        PolyglotLogHandler() {
             this.fallBackHandler = null;
         }
 
-        PolyglotLogHandler(AbstractPolyglotImpl polyglot, LogHandler fallbackHandler) {
-            super(polyglot);
+        PolyglotLogHandler(LogHandler fallbackHandler) {
             this.fallBackHandler = fallbackHandler;
         }
 
@@ -611,7 +602,6 @@ final class PolyglotLoggers {
         private final WeakReference<PolyglotContextImpl> contextRef;
 
         ContextLogHandler(PolyglotContextImpl context) {
-            super(context.getImpl());
             this.contextRef = new WeakReference<>(context);
         }
 
