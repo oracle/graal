@@ -505,9 +505,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     dependencies=["Truffle"],
     truffle_jars=["wasm:WASM"],
     support_distributions=["wasm:WASM_GRAALVM_SUPPORT"],
-    launcher_configs=[
-        mx_sdk_vm.LanguageLauncherConfig(
-            destination="bin/<exe:wasm>",
+    library_configs=[
+        mx_sdk_vm.LanguageLibraryConfig(
+            launchers=["bin/<exe:wasm>"],
             jar_distributions=["wasm:WASM_LAUNCHER"],
             main_class="org.graalvm.wasm.launcher.WasmLauncher",
             build_args=[],
