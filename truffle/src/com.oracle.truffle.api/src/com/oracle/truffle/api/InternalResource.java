@@ -386,10 +386,14 @@ public interface InternalResource {
     }
 
     /**
-     * The annotation used to lookup {@link InternalResource} by an id. In addition to being
-     * annotated with this annotation, the implementation of an internal resource must also be
-     * registered using the {@link TruffleLanguage.Registration#internalResources()} to be assigned
-     * to language or instrument.
+     * The annotation used to lookup {@link InternalResource} by an id. The internal resource can be
+     * designated as either required or optional. For required internal resources, their
+     * availability is imperative. In addition to being annotated with this annotation, they also
+     * need to be registered using the {@link TruffleLanguage.Registration#internalResources()}
+     * method to be associated with a specific language or instrument. On the other hand, optional
+     * internal resources are not mandatory in the runtime. Instead of being registered using the
+     * {@link TruffleLanguage.Registration#internalResources()} annotation, they should supply the
+     * relevant language or instrument id through {@link Id#optionalFor()}.
      *
      * @since 23.1
      */
@@ -403,6 +407,15 @@ public interface InternalResource {
          * @since 23.1
          */
         String value();
+
+        /**
+         * Marks the annotated resource as optional for a language or instrument specified by the
+         * language or instrument id. By default, internal resources are required and registered
+         * using {@code TruffleLanguage.Registration} or {@code TruffleInstrument.Registration}.
+         *
+         * @since 23.1
+         */
+        String optionalFor() default "";
     }
 
     /**

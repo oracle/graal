@@ -42,7 +42,10 @@ package com.oracle.truffle.polyglot;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleOptions;
+import com.oracle.truffle.api.provider.InternalResourceProvider;
+import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ProcessProperties;
@@ -52,6 +55,7 @@ import java.io.IOError;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.lang.reflect.Constructor;
+import java.net.URL;
 import java.nio.file.DirectoryStream;
 import java.nio.file.FileAlreadyExistsException;
 import java.nio.file.Files;
@@ -59,10 +63,15 @@ import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.CodeSource;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.concurrent.locks.Lock;
@@ -72,6 +81,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 final class InternalResourceCache {
 
@@ -81,6 +91,8 @@ final class InternalResourceCache {
     private static final String OVERRIDDEN_RESOURCE_ROOT = "polyglot.engine.resourcePath.%s.%s";
 
     private static final Lock unpackLock = new ReentrantLock();
+
+    private static final Map<Collection<AbstractClassLoaderSupplier>, Map<String, Map<String, Supplier<InternalResourceCache>>>> optionalInternalResourcesCaches = new HashMap<>();
     private static volatile Pair<Path, Boolean> cacheRoot;
 
     private final String id;
@@ -394,6 +406,69 @@ final class InternalResourceCache {
         }
     }
 
+    static Map<String, Map<String, Supplier<InternalResourceCache>>> loadOptionalInternalResources(List<AbstractClassLoaderSupplier> suppliers) {
+        synchronized (InternalResourceCache.class) {
+            Map<String, Map<String, Supplier<InternalResourceCache>>> cache = optionalInternalResourcesCaches.get(suppliers);
+            if (cache == null) {
+                cache = new HashMap<>();
+                for (EngineAccessor.AbstractClassLoaderSupplier supplier : suppliers) {
+                    ClassLoader loader = supplier.get();
+                    if (loader == null || !isValidLoader(loader)) {
+                        continue;
+                    }
+                    var cacheFin = cache;
+                    StreamSupport.stream(ServiceLoader.load(InternalResourceProvider.class, loader).spliterator(), false).filter((p) -> supplier.accepts(p.getClass())).forEach((p) -> {
+                        ModuleUtils.exportTransitivelyTo(p.getClass().getModule());
+                        String componentId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(p);
+                        String resourceId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(p);
+                        var componentOptionalResources = cacheFin.computeIfAbsent(componentId, (k) -> new HashMap<>());
+                        var resourceSupplier = new OptionalResourceSupplier(p);
+                        var existing = (OptionalResourceSupplier) componentOptionalResources.put(resourceId, resourceSupplier);
+                        if (existing != null && !hasSameCodeSource(resourceSupplier, existing)) {
+                            throw throwDuplicateOptionalResourceException(existing.get(), resourceSupplier.get());
+                        }
+                    });
+
+                }
+                optionalInternalResourcesCaches.put(suppliers, cache);
+            }
+            return cache;
+        }
+    }
+
+    private static boolean hasSameCodeSource(OptionalResourceSupplier first, OptionalResourceSupplier second) {
+        return first.optionalResource.getClass() == second.optionalResource.getClass();
+    }
+
+    private static boolean isValidLoader(ClassLoader loader) {
+        try {
+            Class<?> truffleLanguageClassAsSeenByLoader = Class.forName(TruffleLanguage.class.getName(), true, loader);
+            return truffleLanguageClassAsSeenByLoader == TruffleLanguage.class;
+        } catch (ClassNotFoundException ex) {
+            return false;
+        }
+    }
+
+    static RuntimeException throwDuplicateOptionalResourceException(InternalResourceCache existing, InternalResourceCache duplicate) {
+        String message = String.format("Duplicate optional resource id %s for component %s. First optional resource [%s]. Second optional resource [%s].",
+                        existing.resourceId,
+                        existing.id,
+                        formatResourceLocation(existing.resourceFactory.get()),
+                        formatResourceLocation(duplicate.resourceFactory.get()));
+        throw new IllegalStateException(message);
+    }
+
+    private static String formatResourceLocation(InternalResource internalResource) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Internal resource class ").append(internalResource.getClass().getName());
+        CodeSource source = internalResource.getClass().getProtectionDomain().getCodeSource();
+        URL url = source != null ? source.getLocation() : null;
+        if (url != null) {
+            sb.append(", Loaded from ").append(url);
+        }
+        return sb.toString();
+    }
+
     private static boolean isEmpty(Path folder) throws IOException {
         try (Stream<Path> children = Files.list(folder)) {
             return children.findAny().isEmpty();
@@ -473,6 +548,21 @@ final class InternalResourceCache {
                 }
             }
             return res;
+        }
+    }
+
+    private record OptionalResourceSupplier(InternalResourceProvider optionalResource) implements Supplier<InternalResourceCache> {
+
+        private OptionalResourceSupplier {
+            Objects.requireNonNull(optionalResource, "OptionalResource must be non null");
+        }
+
+        @Override
+        public InternalResourceCache get() {
+            return new InternalResourceCache(
+                            EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(optionalResource),
+                            EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(optionalResource),
+                            () -> EngineAccessor.LANGUAGE_PROVIDER.createInternalResource(optionalResource));
         }
     }
 }

@@ -196,6 +196,7 @@ CLSS public abstract interface static !annotation com.oracle.truffle.api.Interna
  anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
  anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[TYPE])
 intf java.lang.annotation.Annotation
+meth public abstract !hasdefault java.lang.String optionalFor()
 meth public abstract java.lang.String value()
 
 CLSS public final static !enum com.oracle.truffle.api.InternalResource$OS
@@ -1381,6 +1382,13 @@ cons public init(java.lang.Object)
 meth public java.lang.Object getResult()
 supr com.oracle.truffle.api.nodes.SlowPathException
 hfds result,serialVersionUID
+
+CLSS public abstract com.oracle.truffle.api.provider.InternalResourceProvider
+cons public init()
+meth protected abstract java.lang.Object createInternalResource()
+meth protected abstract java.lang.String getComponentId()
+meth protected abstract java.lang.String getResourceId()
+supr java.lang.Object
 
 CLSS public abstract com.oracle.truffle.api.provider.TruffleLanguageProvider
 cons protected init()

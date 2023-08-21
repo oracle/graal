@@ -766,6 +766,58 @@ public class InternalResourceTest {
         }
     }
 
+    @InternalResource.Id(value = OptionalResource.ID, optionalFor = "com_oracle_truffle_api_test_polyglot_internalresourcetest_testoptionalresources")
+    static class OptionalResource implements InternalResource {
+
+        static final String ID = "optional-sources";
+
+        static final String[] RESOURCES = {"source_a", "source_b", "source_c"};
+
+        static int unpackedCalled;
+
+        @Override
+        public void unpackFiles(Env env, Path targetDirectory) throws IOException {
+            unpackedCalled++;
+            for (String resource : RESOURCES) {
+                Files.createFile(targetDirectory.resolve(resource));
+            }
+        }
+
+        @Override
+        public String versionHash(Env env) {
+            return "1";
+        }
+    }
+
+    @Registration(/* ... */internalResources = SourcesResource.class)
+    public static class TestOptionalResources extends AbstractExecutableTestLanguage {
+
+        @Override
+        @TruffleBoundary
+        @SuppressWarnings("try")
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            try (TemporaryResourceCacheRoot cache = new TemporaryResourceCacheRoot()) {
+                OptionalResource.unpackedCalled = 0;
+                TruffleFile srcRoot = env.getInternalResource(SourcesResource.ID);
+                verifyResources(srcRoot, SourcesResource.RESOURCES);
+                TruffleFile optionalRoot = env.getInternalResource(OptionalResource.ID);
+                assertEquals(1, OptionalResource.unpackedCalled);
+                verifyResources(optionalRoot, OptionalResource.RESOURCES);
+                env.getInternalResource(OptionalResource.ID);
+                assertEquals(1, OptionalResource.unpackedCalled);
+                return "";
+            }
+        }
+    }
+
+    @Test
+    public void testOptionalResources() {
+        Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
+        try (Context context = Context.create()) {
+            AbstractExecutableTestLanguage.execute(context, TestOptionalResources.class);
+        }
+    }
+
     private static boolean hasResource(Path folder, Class<? extends AbstractExecutableTestLanguage> language, Class<? extends InternalResource> resource) {
         return hasResource(folder, TestUtils.getDefaultLanguageId(language), resource);
     }
