@@ -182,7 +182,7 @@ mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce-da
 mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce-darwin-aarch64')
 mx_sdk_vm.register_vm_config('community', ce_components, _suite, env_file='ce')
 mx_sdk_vm.register_vm_config('ruby-community', ce_ruby_components, _suite, env_file='ce-ruby')
-mx_sdk_vm.register_vm_config('espresso-community', ['antlr4', 'bgraalvm-native-binutil', 'bgraalvm-native-clang', 'bgraalvm-native-clang++', 'bgraalvm-native-clang-cl', 'bgraalvm-native-flang', 'bgraalvm-native-ld', 'ejvm', 'ellvm', 'gvm', 'java', 'llrc', 'llrn', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='ce-espresso')
+mx_sdk_vm.register_vm_config('espresso-community', ['antlr4', 'ejvm', 'ellvm', 'gvm', 'java', 'llp', 'llrc', 'llrn', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='ce-espresso')
 mx_sdk_vm.register_vm_config('espresso-community', ['ejvm', 'gvm', 'java', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='ce-win-espresso')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'jsl', 'jss', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent'], _suite, dist_name='ce-js', env_file='ce-js')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'jsl', 'jss', 'njs', 'njsl', 'rgx', 'sjsvm'], _suite, dist_name='ce', env_file='ce-nodejs')
