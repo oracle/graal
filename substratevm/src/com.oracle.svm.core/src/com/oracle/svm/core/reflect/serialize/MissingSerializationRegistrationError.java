@@ -1,6 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2020, 2020, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,10 +24,29 @@
  */
 package com.oracle.svm.core.reflect.serialize;
 
-public interface SerializationRegistry {
+import java.io.Serial;
 
-    boolean isRegisteredForSerialization(Class<?> cl);
+/**
+ * Error thrown when types are not <a href=
+ * "https://www.graalvm.org/latest/reference-manual/native-image/metadata/#serialization">registered</a>
+ * for serialization or deserialization.
+ * <p/>
+ * The purpose of this exception is to easily discover unregistered elements and to assure that all
+ * serialization or deserialization operations have expected behavior.
+ */
+public final class MissingSerializationRegistrationError extends Error {
+    @Serial private static final long serialVersionUID = 2764341882856270641L;
+    private final Class<?> culprit;
 
-    Object getSerializationConstructorAccessor(Class<?> serializationTargetClass, Class<?> targetConstructorClass);
+    public MissingSerializationRegistrationError(String message, Class<?> cl) {
+        super(message);
+        this.culprit = cl;
+    }
 
+    /**
+     * Returns the class that was not registered for serialization or deserialization.
+     */
+    public Class<?> getCulprit() {
+        return culprit;
+    }
 }
