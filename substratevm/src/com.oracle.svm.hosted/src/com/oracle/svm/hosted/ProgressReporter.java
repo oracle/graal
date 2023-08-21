@@ -398,7 +398,7 @@ public class ProgressReporter {
         }
 
         l().printLineSeparator();
-        l().doclink("Build resources", "#glossary-build-resources").a(":").println();
+        l().yellowBold().doclink("Build resources", "#glossary-build-resources").a(":").reset().println();
         l().a(" - %.2fGB of memory (%.1f%% of %.2fGB system memory, %s)",
                         ByteFormattingUtil.bytesToGiB(maxMemory), Utils.toPercentage(maxMemory, totalMemorySize), ByteFormattingUtil.bytesToGiB(totalMemorySize), maxHeapSuffix).println();
         l().a(" - %s thread(s) (%.1f%% of %s available processor(s), %s)",
