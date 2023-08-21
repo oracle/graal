@@ -163,50 +163,55 @@ public class CgroupV1Subsystem implements CgroupSubsystem, CgroupV1Metrics {
     private static void setSubSystemControllerPath(CgroupV1Subsystem subsystem, String[] entry) {
         String controllerName;
         String base;
-        CgroupV1SubsystemController controller = null;
-        CgroupV1SubsystemController controller2 = null;
+        CgroupV1SubsystemController[] controllers = null;
 
         controllerName = entry[1];
         base = entry[2];
         if (controllerName != null && base != null) {
-            switch (controllerName) {
-                case "memory":
-                    controller = subsystem.memoryController();
-                    break;
-                case "cpuset":
-                    controller = subsystem.cpuSetController();
-                    break;
-                case "cpu,cpuacct":
-                case "cpuacct,cpu":
-                    controller = subsystem.cpuController();
-                    controller2 = subsystem.cpuAcctController();
-                    break;
-                case "cpuacct":
-                    controller = subsystem.cpuAcctController();
-                    break;
-                case "cpu":
-                    controller = subsystem.cpuController();
-                    break;
-                case "blkio":
-                    controller = subsystem.blkIOController();
-                    break;
-                // Ignore subsystems that we don't support
-                default:
-                    break;
+            // Multiple controllers can set be set on the same hierarchy and separated by comma
+            String[] controllerNames = controllerName.split(",");
+            controllers = new CgroupV1SubsystemController[controllerNames.length];
+
+            for (int i = 0; i < controllerNames.length; i++) {
+                switch (controllerNames[i]) {
+                    case "memory":
+                        controllers[i] = subsystem.memoryController();
+                        break;
+                    case "cpuset":
+                        controllers[i] = subsystem.cpuSetController();
+                        break;
+                    case "cpuacct":
+                        controllers[i] = subsystem.cpuAcctController();
+                        break;
+                    case "cpu":
+                        controllers[i] = subsystem.cpuController();
+                        break;
+                    case "blkio":
+                        controllers[i] = subsystem.blkIOController();
+                        break;
+                    // Ignore subsystems that we don't support
+                    default:
+                        break;
+                }
             }
         }
 
-        if (controller != null) {
-            controller.setPath(base);
-            if (controller instanceof CgroupV1MemorySubSystemController) {
-                CgroupV1MemorySubSystemController memorySubSystem = (CgroupV1MemorySubSystemController)controller;
-                boolean isHierarchial = getHierarchical(memorySubSystem);
-                memorySubSystem.setHierarchical(isHierarchial);
+        if (controllers != null) {
+            boolean isActive = false;
+            for (CgroupV1SubsystemController controller : controllers) {
+                if (controller != null) {
+                    isActive = true;
+                    controller.setPath(base);
+                    if (controller instanceof CgroupV1MemorySubSystemController) {
+                        CgroupV1MemorySubSystemController memorySubSystem = (CgroupV1MemorySubSystemController) controller;
+                        boolean isHierarchial = getHierarchical(memorySubSystem);
+                        memorySubSystem.setHierarchical(isHierarchial);
+                    }
+                }
             }
-            subsystem.setActiveSubSystems();
-        }
-        if (controller2 != null) {
-            controller2.setPath(base);
+            if (isActive) {
+                subsystem.setActiveSubSystems();
+            }
         }
     }
 
