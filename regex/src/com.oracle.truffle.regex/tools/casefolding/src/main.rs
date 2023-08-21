@@ -50,11 +50,11 @@ use std::process::Command;
 use std::time::Instant;
 
 use csv::{Reader, StringRecord, Trim};
-use error_chain::{bail, error_chain};
+use error_chain::error_chain;
 use icu_collator::{CaseLevel, Collator, CollatorOptions, Strength};
 use icu_locid::Locale;
 use indicatif::ProgressIterator;
-use oracle::{Connection, Connector, Privilege, Statement};
+use oracle::{Connection, Connector, Privilege};
 use oracle::sql_type::OracleType;
 use reqwest::Url;
 
@@ -69,9 +69,6 @@ error_chain! {
         OracleDB(oracle::Error);
     }
 }
-
-/// refers to the index of a codepoint or string in a global index
-type IElement = usize;
 
 const FILE_FORMAT_VERSION: u16 = 0;
 const OUTPUT_FOLDER: &str = "./out";
@@ -101,11 +98,11 @@ enum EqMapping {
     Set(usize),
     AlternatingAL,
     AlternatingUL,
-    Single(IElement),
+    Single(usize),
 }
 
 impl EqMapping {
-    fn from_single_mapping(src: IElement, dst: IElement) -> EqMapping {
+    fn from_single_mapping(src: usize, dst: usize) -> EqMapping {
         let offset = (dst as i32) - (src as i32);
         if offset == 1 {
             if src & 1 == 0 { EqMapping::AlternatingAL } else { EqMapping::AlternatingUL }
@@ -122,8 +119,8 @@ enum OrderMapping {
 }
 
 trait RangeMapping<T> {
-    fn lo(&self) -> IElement;
-    fn hi(&self) -> IElement;
+    fn lo(&self) -> usize;
+    fn hi(&self) -> usize;
     fn mapping(&self) -> &T;
 }
 
@@ -135,11 +132,11 @@ struct OrderTableEntry {
 }
 
 impl RangeMapping<OrderMapping> for OrderTableEntry {
-    fn lo(&self) -> IElement {
+    fn lo(&self) -> usize {
         self.lo
     }
 
-    fn hi(&self) -> IElement {
+    fn hi(&self) -> usize {
         self.hi
     }
 
@@ -150,8 +147,8 @@ impl RangeMapping<OrderMapping> for OrderTableEntry {
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 struct EqTableEntry {
-    lo: IElement,
-    hi: IElement,
+    lo: usize,
+    hi: usize,
     mapping: EqMapping,
 }
 
@@ -164,7 +161,7 @@ impl EqTableEntry {
         }
     }
 
-    fn with_hi(&self, hi: IElement) -> EqTableEntry {
+    fn with_hi(&self, hi: usize) -> EqTableEntry {
         EqTableEntry {
             lo: self.lo,
             hi,
@@ -172,7 +169,7 @@ impl EqTableEntry {
         }
     }
 
-    fn with_lo(&self, lo: IElement) -> EqTableEntry {
+    fn with_lo(&self, lo: usize) -> EqTableEntry {
         EqTableEntry {
             lo,
             hi: self.hi,
@@ -190,11 +187,11 @@ impl EqTableEntry {
 }
 
 impl RangeMapping<EqMapping> for EqTableEntry {
-    fn lo(&self) -> IElement {
+    fn lo(&self) -> usize {
         self.lo
     }
 
-    fn hi(&self) -> IElement {
+    fn hi(&self) -> usize {
         self.hi
     }
 
@@ -206,7 +203,7 @@ impl RangeMapping<EqMapping> for EqTableEntry {
 trait RangeMappingTable<T, M: Debug + RangeMapping<T>> {
     fn table(&self) -> &Vec<M>;
 
-    fn binary_search(&self, key: IElement) -> Option<&M> {
+    fn binary_search(&self, key: usize) -> Option<&M> {
         let table = self.table();
         let mut lo: i32 = 0;
         let mut hi: i32 = (table.len() as i32) - 1;
@@ -241,7 +238,7 @@ impl RangeMappingTable<OrderMapping, OrderTableEntry> for OrderTable {
 
 struct EqTable {
     table: Vec<EqTableEntry>,
-    sets: Vec<Vec<IElement>>,
+    sets: Vec<Vec<usize>>,
 }
 
 impl RangeMappingTable<EqMapping, EqTableEntry> for EqTable {
@@ -338,8 +335,8 @@ impl EqTable {
     ///
     fn create<F: Fn(&str, &str) -> Ordering>(collator: F, full_map: &Vec<CollationElementIndex>) -> EqTable {
         let mut eq_map_0: Vec<EqTableEntry> = Vec::with_capacity(full_map.len());
-        let mut eq_sets: Vec<Vec<IElement>> = Vec::new();
-        let mut buf: Vec<IElement> = Vec::new();
+        let mut eq_sets: Vec<Vec<usize>> = Vec::new();
+        let mut buf: Vec<usize> = Vec::new();
         // first pass: find equivalent elements and create mappings
         for i in 1..full_map.len() {
             if collator(&full_map[i - 1].element.string, &full_map[i].element.string) == Ordering::Equal {
@@ -363,13 +360,13 @@ impl EqTable {
         EqTable { table: EqTable::eq_map_merge_adjacent(&mut eq_map_0), sets: eq_sets }
     }
 
-    fn from_vec<'a>(mut equivalences: Vec<Vec<IElement>>) -> EqTable {
+    fn from_vec<'a>(mut equivalences: Vec<Vec<usize>>) -> EqTable {
         for vec in equivalences.iter_mut() {
             vec.sort();
         }
         equivalences.sort();
         let mut eq_map_0: Vec<EqTableEntry> = Vec::with_capacity(equivalences.len());
-        let mut eq_sets: Vec<Vec<IElement>> = Vec::new();
+        let mut eq_sets: Vec<Vec<usize>> = Vec::new();
         // first pass: find equivalent elements and create mappings
         for buf in equivalences {
             if buf.len() > 1 {
@@ -382,7 +379,7 @@ impl EqTable {
         EqTable { table: EqTable::eq_map_merge_adjacent(&mut eq_map_0), sets: eq_sets }
     }
 
-    fn eq_map_push_first_pass(eq_map_0: &mut Vec<EqTableEntry>, eq_tables: &mut Vec<Vec<IElement>>, buf: &Vec<IElement>) {
+    fn eq_map_push_first_pass(eq_map_0: &mut Vec<EqTableEntry>, eq_tables: &mut Vec<Vec<usize>>, buf: &Vec<usize>) {
         if buf.len() == 2 {
             let offset = (buf[0] as i32) - (buf[1] as i32);
             if offset.abs() == 1 {
@@ -436,8 +433,8 @@ impl EqTable {
         eq_map
     }
 
-    fn create_one_way_mapping(mappings: Vec<(IElement, IElement)>) -> EqTable {
-        fn can_use_single_mapping(last: &EqTableEntry, dst: IElement) -> bool {
+    fn create_one_way_mapping(mappings: Vec<(usize, usize)>) -> EqTable {
+        fn can_use_single_mapping(last: &EqTableEntry, dst: usize) -> bool {
             match last.mapping {
                 EqMapping::IntegerOffset(offset) => {
                     last.lo == last.hi && last.lo as i32 + offset == dst as i32
@@ -495,7 +492,7 @@ impl EqTable {
                 (a, b) => { a.eq(b) }
             }
         }
-        fn mapping_clone(child: &EqTable, cur_child: &EqTableEntry, eq_table_diff: &mut Vec<EqTableEntry>, sets_diff: &mut Vec<Vec<IElement>>, sets_map: &mut Vec<Option<usize>>) {
+        fn mapping_clone(child: &EqTable, cur_child: &EqTableEntry, eq_table_diff: &mut Vec<EqTableEntry>, sets_diff: &mut Vec<Vec<usize>>, sets_map: &mut Vec<Option<usize>>) {
             if eq_table_diff.last().map(|last| last.hi == cur_child.hi).unwrap_or(false) {
                 return;
             }
@@ -519,7 +516,7 @@ impl EqTable {
         }
 
         let mut eq_table_diff: Vec<EqTableEntry> = Vec::with_capacity(child.table.len());
-        let mut lut_diff: Vec<Vec<IElement>> = Vec::with_capacity(child.sets.len());
+        let mut lut_diff: Vec<Vec<usize>> = Vec::with_capacity(child.sets.len());
         let mut lut_map: Vec<Option<usize>> = vec![None; child.sets.len()];
         let mut i_parent = parent.table.iter();
         let mut i_child = child.table.iter();
@@ -582,19 +579,19 @@ impl EqTable {
         let diff = EqTable { table: eq_table_diff, sets: lut_diff };
         for e in &child.table {
             for i in e.lo..e.hi {
-                let vec1: Vec<IElement> = child.lookup(i).unwrap();
-                let vec2: Vec<IElement> = diff.lookup(i).unwrap_or_else(|| { parent.lookup(i).unwrap() });
-                assert_eq!(HashSet::<IElement>::from_iter(vec1), HashSet::<IElement>::from_iter(vec2), "");
+                let vec1: Vec<usize> = child.lookup(i).unwrap();
+                let vec2: Vec<usize> = diff.lookup(i).unwrap_or_else(|| { parent.lookup(i).unwrap() });
+                assert_eq!(HashSet::<usize>::from_iter(vec1), HashSet::<usize>::from_iter(vec2), "");
             }
         }
         diff
     }
 
-    fn lookup(&self, key: IElement) -> Option<Vec<IElement>> {
+    fn lookup(&self, key: usize) -> Option<Vec<usize>> {
         self.binary_search(key).map(|e| {
             return match &e.mapping {
                 EqMapping::IntegerOffset(o) => {
-                    vec![key, (o + (key as i32)) as IElement]
+                    vec![key, (o + (key as i32)) as usize]
                 }
                 EqMapping::Set(i) => {
                     self.sets[*i].clone()
@@ -663,8 +660,8 @@ impl EqTable {
     }
 }
 
-fn list_to_ranges(set: &Vec<IElement>) -> Vec<IElement> {
-    let mut ranges: Vec<IElement> = vec![];
+fn list_to_ranges(set: &Vec<usize>) -> Vec<usize> {
+    let mut ranges: Vec<usize> = vec![];
     if set.len() > 0 {
         ranges.push(set[0]);
         let mut last = set[0];
@@ -681,7 +678,7 @@ fn list_to_ranges(set: &Vec<IElement>) -> Vec<IElement> {
     return ranges;
 }
 
-fn list_to_ranges_str(set: &Vec<IElement>) -> String {
+fn list_to_ranges_str(set: &Vec<usize>) -> String {
     list_to_ranges(set).iter().map(|v| format!("{:#08x}", v)).collect::<Vec<String>>().join(", ")
 }
 
@@ -925,7 +922,7 @@ fn main() -> Result<()> {
 }
 
 fn generate_case_fold_data() -> Result<()> {
-    let mut multi_character_strings: HashMap<String, IElement> = HashMap::new();
+    let mut multi_character_strings: HashMap<String, usize> = HashMap::new();
 
     let unicode_version = "15.0.0";
     let unicode_version_oracle_db = "12.1.0";
@@ -940,7 +937,7 @@ fn generate_case_fold_data() -> Result<()> {
     let eq_ruby = unicode_case_folding_one_way(&unicode_case_folding_txt, &mut multi_character_strings, Full)?;
     let eq_oracle = unicode_case_folding_one_way(&unicode_case_folding_txt_oracle, &mut multi_character_strings, Full)?;
     let eq_oracle_ai = oracledb_extract_ai_case_fold_table(&mut multi_character_strings)?;
-    let foldable_chars: Vec<IElement> = parse_case_folding_txt(&unicode_case_folding_txt, Simple)?.iter().map(|(src, _)| src.chars().next().unwrap() as IElement).collect();
+    let foldable_chars: Vec<usize> = parse_case_folding_txt(&unicode_case_folding_txt, Simple)?.iter().map(|(src, _)| src.chars().next().unwrap() as usize).collect();
 
     let mut out = vec![];
     writeln!(out)?;
@@ -974,9 +971,6 @@ fn java_string_escape(s: &str) -> String {
     s.chars().map(|c| {
         if c == '\\' {
             return "\\\\".to_string();
-        }
-        if c == '\n' {
-            return "\\n".to_string();
         }
         if ' ' <= c && c <= '~' {
             return c.to_string();
@@ -1048,7 +1042,7 @@ fn parse_case_folding_txt(unicode_case_folding: &String, variant: UnicodeCaseFol
     })))
 }
 
-fn unicode_case_folding(unicode_case_folding: &String, multi_character_strings: &mut HashMap<String, IElement>, variant: UnicodeCaseFoldingVariant) -> Result<EqTable> {
+fn unicode_case_folding(unicode_case_folding: &String, multi_character_strings: &mut HashMap<String, usize>, variant: UnicodeCaseFoldingVariant) -> Result<EqTable> {
     let mut eq_builder = EquivalenceBuilder::new(multi_character_strings);
     for (src, dst) in parse_case_folding_txt(unicode_case_folding, variant)? {
         eq_builder.add_equivalence(src.as_str(), dst.as_str());
@@ -1056,16 +1050,16 @@ fn unicode_case_folding(unicode_case_folding: &String, multi_character_strings: 
     Ok(eq_builder.create_eq_table())
 }
 
-fn unicode_case_folding_one_way(unicode_case_folding: &String, multi_character_strings: &mut HashMap<String, IElement>, variant: UnicodeCaseFoldingVariant) -> Result<EqTable> {
+fn unicode_case_folding_one_way(unicode_case_folding: &String, multi_character_strings: &mut HashMap<String, usize>, variant: UnicodeCaseFoldingVariant) -> Result<EqTable> {
     let mut eq_builder = EquivalenceBuilder::new(multi_character_strings);
-    let mut mappings: Vec<(IElement, IElement)> = vec![];
+    let mut mappings: Vec<(usize, usize)> = vec![];
     for (src, dst) in parse_case_folding_txt(unicode_case_folding, variant)? {
         mappings.push((eq_builder.index(src.as_str()), eq_builder.index(dst.as_str())));
     }
     Ok(EqTable::create_one_way_mapping(mappings))
 }
 
-fn js_non_unicode_case_folding(unicode_data: &String, unicode_special_casing: &String, multi_character_strings: &mut HashMap<String, IElement>) -> Result<EqTable> {
+fn js_non_unicode_case_folding(unicode_data: &String, unicode_special_casing: &String, multi_character_strings: &mut HashMap<String, usize>) -> Result<EqTable> {
     let mut upper_map: HashMap<String, String> = HashMap::new();
     for result in unicode_table(unicode_data)?.records() {
         let record = result?;
@@ -1104,8 +1098,8 @@ fn js_non_unicode_case_folding(unicode_data: &String, unicode_special_casing: &S
     Ok(eq_builder.create_eq_table())
 }
 
-fn python_unicode_case_folding(unicode_data: &String, unicode_special_casing: &String, multi_character_strings: &mut HashMap<String, IElement>) -> Result<EqTable> {
-    fn read_data_file_mapping(unicode_data_file: &String, multi_character_strings: &mut HashMap<String, IElement>, cell_src: usize, cell_dst: usize) -> Result<HashMap<IElement, Vec<IElement>>> {
+fn python_unicode_case_folding(unicode_data: &String, unicode_special_casing: &String, multi_character_strings: &mut HashMap<String, usize>) -> Result<EqTable> {
+    fn read_data_file_mapping(unicode_data_file: &String, multi_character_strings: &mut HashMap<String, usize>, cell_src: usize, cell_dst: usize) -> Result<HashMap<usize, Vec<usize>>> {
         let mut eq_builder = EquivalenceBuilder::new(multi_character_strings);
         for result in unicode_table(unicode_data_file)?.records() {
             let record = result?;
@@ -1117,7 +1111,7 @@ fn python_unicode_case_folding(unicode_data: &String, unicode_special_casing: &S
         Ok(eq_builder.equivalences)
     }
 
-    fn read_special_casing_mapping(unicode_special_casing: &String, multi_character_strings: &mut HashMap<String, IElement>, cell_src: usize, cell_dst: usize) -> Result<HashMap<IElement, Vec<IElement>>> {
+    fn read_special_casing_mapping(unicode_special_casing: &String, multi_character_strings: &mut HashMap<String, usize>, cell_src: usize, cell_dst: usize) -> Result<HashMap<usize, Vec<usize>>> {
         let mut eq_builder = EquivalenceBuilder::new(multi_character_strings);
         for result in unicode_table(unicode_special_casing)?.records() {
             let record = result?;
@@ -1138,23 +1132,23 @@ fn python_unicode_case_folding(unicode_data: &String, unicode_special_casing: &S
     let eq_upper = read_data_file_mapping(unicode_data, multi_character_strings, 0, 13)?;
     let eq_special_lower = read_special_casing_mapping(unicode_special_casing, multi_character_strings, 0, 1)?;
     let eq_special_upper = read_special_casing_mapping(unicode_special_casing, multi_character_strings, 0, 3)?;
-    let merged = Vec::from_iter(merge_eq_classes(merge_eq_classes(eq_lower.values(), eq_special_lower.values()).iter(), merge_eq_classes(eq_upper.values(), eq_special_upper.values()).iter()).iter().map(|set| Vec::from_iter(set.iter().cloned())));
+    let merged = Vec::from_iter(merge_sets(merge_sets(eq_lower.values(), eq_special_lower.values()).iter(), merge_sets(eq_upper.values(), eq_special_upper.values()).iter()).iter().map(|set| Vec::from_iter(set.iter().cloned())));
     Ok(EqTable::from_vec(merged))
 }
 
 struct EquivalenceBuilder<'a> {
-    multi_character_strings: &'a mut HashMap<String, IElement>,
-    equivalences: HashMap<IElement, Vec<IElement>>,
+    multi_character_strings: &'a mut HashMap<String, usize>,
+    equivalences: HashMap<usize, Vec<usize>>,
 }
 
 impl EquivalenceBuilder<'_> {
-    fn new(multi_character_strings: &mut HashMap<String, IElement>) -> EquivalenceBuilder {
+    fn new(multi_character_strings: &mut HashMap<String, usize>) -> EquivalenceBuilder {
         EquivalenceBuilder { multi_character_strings, equivalences: Default::default() }
     }
 
-    fn index(&mut self, s: &str) -> IElement {
+    fn index(&mut self, s: &str) -> usize {
         if s.chars().count() == 1 {
-            return s.chars().next().unwrap() as IElement;
+            return s.chars().next().unwrap() as usize;
         }
         let next_id = self.multi_character_strings.len() + 0x11_0000;
         return *self.multi_character_strings.entry(s.to_string()).or_insert(next_id);
@@ -1181,24 +1175,24 @@ impl EquivalenceBuilder<'_> {
     }
 }
 
-fn merge_eq_classes<'a, I, Inner>(a: I, b: I) -> Vec<HashSet<IElement>> where I: Iterator<Item=Inner>, Inner: IntoIterator<Item=&'a IElement> + Copy + Debug {
-    let eq_classes_a: Vec<HashSet<IElement>> = Vec::from_iter(a.map(|eq_class_a| HashSet::from_iter(eq_class_a.into_iter().cloned())));
-    let chars_a_mapped_to_class_index: HashMap<IElement, usize> = HashMap::from_iter(eq_classes_a.iter().enumerate().flat_map(|(i, set)| {
+fn merge_sets<'a, I, Inner>(a: I, b: I) -> Vec<HashSet<usize>> where I: Iterator<Item=Inner>, Inner: IntoIterator<Item=&'a usize> + Copy + Debug {
+    let sets: Vec<HashSet<usize>> = Vec::from_iter(a.map(|x| HashSet::from_iter(x.into_iter().cloned())));
+    let m: HashMap<usize, usize> = HashMap::from_iter(sets.iter().enumerate().flat_map(|(i, set)| {
         set.iter().cloned().map(move |v| (v, i))
     }));
-    let mut eq_class_a_copy = vec![true; eq_classes_a.len()];
-    let mut merged_classes: Vec<HashSet<IElement>> = b.map(|eq_class_b| {
-        HashSet::from_iter(eq_class_b.into_iter().flat_map(|char_b: &IElement| chars_a_mapped_to_class_index.get(char_b)).flat_map(|i| {
-            eq_class_a_copy[*i] = false;
-            eq_classes_a.get(*i)
-        }).flatten().cloned().chain(eq_class_b.into_iter().cloned()))
+    let mut to_copy = vec![true; sets.len()];
+    let mut ret: Vec<HashSet<usize>> = b.map(|vec| {
+        HashSet::from_iter(vec.into_iter().flat_map(|v: &usize| m.get(v)).flat_map(|i| {
+            to_copy[*i] = false;
+            sets.get(*i)
+        }).flatten().cloned().chain(vec.into_iter().cloned()))
     }).collect();
-    for (i, copy) in eq_class_a_copy.iter().enumerate() {
+    for (i, copy) in to_copy.iter().enumerate() {
         if *copy {
-            merged_classes.push(eq_classes_a.get(i).unwrap().clone());
+            ret.push(sets.get(i).unwrap().clone());
         }
     }
-    merged_classes
+    ret
 }
 
 fn oracledb_start_docker_container() {
@@ -1232,11 +1226,11 @@ fn oracledb_connect() -> std::result::Result<Connection, oracle::Error> {
     })
 }
 
-fn oracledb_extract_ai_case_fold_table<'a>(multi_character_strings: &mut HashMap<String, IElement>) -> Result<EqTable> {
+fn oracledb_extract_ai_case_fold_table<'a>(multi_character_strings: &mut HashMap<String, usize>) -> Result<EqTable> {
     let conn = oracledb_connect()?;
 
     let mut eq_builder = EquivalenceBuilder::new(multi_character_strings);
-    let mut mappings: Vec<(IElement, IElement)> = vec![];
+    let mut mappings: Vec<(usize, usize)> = vec![];
 
     let query = "select nlssort(:c, 'nls_sort = binary_ai') from dual";
     println!("extracting accent insensitive mappings from OracleDB");
@@ -1281,8 +1275,8 @@ fn oracledb_generate_posix_char_classes() -> Result<()> {
     let mut statement = conn.statement(query).build()?;
     let mut out = vec![];
     for name in ["alpha", "blank", "cntrl", "digit", "graph", "lower", "print", "punct", "space", "upper", "xdigit"] {
-        let mut chars: Vec<IElement> = vec![];
-        for row_result in statement.query_as::<IElement>(&[&format!("[[:{}:]]", name).as_str()])? {
+        let mut chars: Vec<usize> = vec![];
+        for row_result in statement.query_as::<usize>(&[&format!("[[:{}:]]", name).as_str()])? {
             chars.push(row_result?);
         }
         writeln!(out, "\n\nPOSIX_CHAR_CLASSES.put(\"{}\", CodePointSet.createNoDedup(", name)?;
@@ -1293,55 +1287,24 @@ fn oracledb_generate_posix_char_classes() -> Result<()> {
 }
 
 fn oracledb_generate_tests() -> Result<()> {
-    enum TestResult {
-        Match(Vec<i32>),
-        NoMatch,
-        SyntaxError(String),
-    }
-
-    fn run_test(statement: &mut Statement, pattern: &str, flags: &str, input: &str, from_index: i32) -> Result<TestResult> {
-        fn count_groups(pattern: &str) -> i32 {
-            let mut par_open = 0;
-            let mut escaped = false;
-            let mut n = 1;
-            for c in pattern.chars() {
-                if !escaped {
-                    if c == '(' {
-                        par_open += 1;
-                    } else if c == ')' {
-                        if par_open > 0 {
-                            par_open -= 1;
-                            n += 1;
-                        }
-                    }
-                }
-                escaped = c == '\\';
-            }
-            return min(n, 10);
-        }
-        let occurrence = 1;
-        let n_groups = count_groups(pattern);
-        let mut groups = vec![];
-        for i_group in 0..n_groups {
-            for start_or_end in [0, 1] {
-                // explicit type for flags string: the client library will set the data type of strings to NVARCHAR2, but REGEXP_INSTR only accepts VARCHAR or CHAR on the flags parameter
-                match statement.query_row_as::<i32>(&[&input, &pattern, &from_index, &occurrence, &start_or_end, &(&flags, &OracleType::Char(10)), &i_group]) {
-                    Ok(i) => {
-                        if i_group == 0 && i == 0 {
-                            return Ok(TestResult::NoMatch);
-                        }
-                        groups.push(i - 1);
-                    }
-                    Err(oracle::Error::OciError(e)) => {
-                        return Ok(TestResult::SyntaxError(e.message()[(e.message().find(": ").unwrap() + 2)..].to_string()));
-                    }
-                    Err(e) => {
-                        bail!(e);
+    fn count_groups(pattern: &str) -> i32 {
+        let mut par_open = 0;
+        let mut escaped = false;
+        let mut n = 1;
+        for c in pattern.chars() {
+            if !escaped {
+                if c == '(' {
+                    par_open += 1;
+                } else if c == ')' {
+                    if par_open > 0 {
+                        par_open -= 1;
+                        n += 1;
                     }
                 }
             }
+            escaped = c == '\\';
         }
-        return Ok(TestResult::Match(groups));
+        return min(n, 10);
     }
 
     let conn = oracledb_connect()?;
@@ -2000,39 +1963,24 @@ fn oracledb_generate_tests() -> Result<()> {
         ("([[=a=]])\\1", "i", "\u{00e4}a"),
         ("([[=a=]])\\1", "i", "\u{00c4}a"),
         ("([[=a=]])\\1", "i", "\u{00c4}A"),
-        ("[[=a=]o]+", "i", "\u{00e4}O\u{00f6}"),
-        ("[[=a=]o]+", "i", "\u{00e4}O\u{00f6}"),
-        ("[[=\u{00df}=]o]+", "i", "s"),
-        ("[[=\u{00df}=]o]+", "i", "ss"),
-        ("[[=\u{00df}=]o]+", "", "s"),
-        ("[[=\u{00df}=]o]+", "", "ss"),
-        ("[\u{0132}]+", "", "ij"),
-        ("[\u{0132}]+", "i", "ij"),
-        ("[[=\u{0132}=]]+", "", "ij"),
-        ("[[=\u{0132}=]o]+", "", "ij"),
-        ("[[=\u{0132}=]o]+", "i", "ij"),
-        ("[\\s-r]+", "", "\\stu"),
-        ("[\\s-v]+", "", "\\stu"),
-        ("$(\\A|)", "", "x"),
-        ("(^\\w)|()^", "", "empty"),
-        ("x(y|())", "", "xy"),
-        ("(x|())*", "", "xxx"),
-        ("a(\\z|())", "", "a"),
     ] {
         let from_index = 1;
-        let e_pattern = java_string_escape(pattern);
-        let e_input = java_string_escape(input);
-        match run_test(&mut statement, &pattern, &flags, &input, from_index)? {
-            TestResult::Match(groups) => {
-                writeln!(out, "test(\"{}\", \"{}\", \"{}\", {}, true, {});", e_pattern, flags, e_input, from_index - 1, groups.iter().map(|v| format!("{}", v)).collect::<Vec<String>>().join(", "))?;
-            }
-            TestResult::NoMatch => {
-                writeln!(out, "test(\"{}\", \"{}\", \"{}\", {}, false);", e_pattern, flags, e_input, from_index - 1)?;
-            }
-            TestResult::SyntaxError(message) => {
-                writeln!(out, "expectSyntaxError(\"{}\", \"{}\", \"{}\");", e_pattern, flags, java_string_escape(message.as_str()))?;
+        let occurrence = 1;
+        let n_groups = count_groups(pattern);
+        let mut groups = vec![];
+        for i_group in 0..n_groups {
+            for start_or_end in [0, 1] {
+                // explicit type for flags string: the client library will set the data type of strings to NVARCHAR2, but REGEXP_INSTR only accepts VARCHAR or CHAR on the flags parameter
+                let i = statement.query_row_as::<i32>(&[&input, &pattern, &from_index, &occurrence, &start_or_end, &(&flags, &OracleType::Char(10)), &i_group])?;
+                groups.push(i - 1);
             }
         }
+        let is_match = *groups.get(0).unwrap() >= 0;
+        write!(out, "test(\"{}\", \"{}\", \"{}\", {}, {}", java_string_escape(pattern), flags, java_string_escape(input), from_index - 1, is_match)?;
+        if is_match {
+            write!(out, ", {}", groups.iter().map(|v| format!("{}", v)).collect::<Vec<String>>().join(", "))?;
+        }
+        writeln!(out, ");")?;
     }
     insert_generated_code(Path::new(PATH_GRAAL_REPO).join(PATH_ORACLE_DB_TESTS).as_path(), &out)?;
     Ok(())

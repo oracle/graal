@@ -212,7 +212,7 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected CodePointSet getPredefinedCharClass(char c) {
+    protected CodePointSet getPredefinedCharClass(char c, boolean inCharClass) {
         switch (c) {
             case 's':
                 if (source.getOptions().isU180EWhitespace()) {

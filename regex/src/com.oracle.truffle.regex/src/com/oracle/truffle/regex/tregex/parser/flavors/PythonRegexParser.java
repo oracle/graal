@@ -50,6 +50,7 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
+import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
@@ -110,11 +111,9 @@ public final class PythonRegexParser implements RegexParser {
         }
         List<Token.BackReference> conditionalBackReferences = new ArrayList<>();
         Token token = null;
-        Token prev;
         Token.Kind prevKind;
         while (lexer.hasNext()) {
-            prev = token;
-            prevKind = prev == null ? null : prev.kind;
+            prevKind = token == null ? null : token.kind;
             token = lexer.next();
             switch (token.kind) {
                 case A:
@@ -164,7 +163,7 @@ public final class PythonRegexParser implements RegexParser {
                         break;
                     }
                     if (getLocalFlags().isUnicode(mode)) {
-                        astBuilder.addWordBoundaryAssertion(lexer.getPredefinedCharClass('w'), lexer.getPredefinedCharClass('W'));
+                        astBuilder.addWordBoundaryAssertion(lexer.getPredefinedCharClass('w', false), lexer.getPredefinedCharClass('W', false));
                     } else if (getLocalFlags().isLocale()) {
                         astBuilder.addWordBoundaryAssertion(lexer.getLocaleData().getWordCharacters(), lexer.getLocaleData().getNonWordCharacters());
                     } else {
@@ -180,7 +179,7 @@ public final class PythonRegexParser implements RegexParser {
                         break;
                     }
                     if (getLocalFlags().isUnicode(mode)) {
-                        astBuilder.addWordNonBoundaryAssertionPython(lexer.getPredefinedCharClass('w'), lexer.getPredefinedCharClass('W'));
+                        astBuilder.addWordNonBoundaryAssertionPython(lexer.getPredefinedCharClass('w', false), lexer.getPredefinedCharClass('W', false));
                     } else if (getLocalFlags().isLocale()) {
                         astBuilder.addWordNonBoundaryAssertionPython(lexer.getLocaleData().getWordCharacters(), lexer.getLocaleData().getNonWordCharacters());
                     } else {
@@ -213,9 +212,6 @@ public final class PythonRegexParser implements RegexParser {
                 case nonCaptureGroupBegin:
                     astBuilder.pushGroup(token);
                     break;
-                case atomicGroupBegin:
-                    astBuilder.pushAtomicGroup(token);
-                    break;
                 case lookAheadAssertionBegin:
                     astBuilder.pushLookAheadAssertion(token, ((Token.LookAheadAssertionBegin) token).isNegated());
                     break;
@@ -245,7 +241,9 @@ public final class PythonRegexParser implements RegexParser {
                     curCharClass.clear();
                     break;
                 case charClassAtom:
-                    curCharClass.addSet(((Token.CharacterClassAtom) token).getContents());
+                    ClassSetContents contents = ((Token.CharacterClassAtom) token).getContents();
+                    assert contents.isCodePointSetOnly();
+                    curCharClass.addSet(contents.getCodePointSet());
                     break;
                 case charClassEnd:
                     boolean wasSingleChar = !lexer.isCurCharClassInverted() && curCharClass.matchesSingleChar();
@@ -262,17 +260,10 @@ public final class PythonRegexParser implements RegexParser {
                     astBuilder.pushConditionalBackReferenceGroup(conditionalBackRefToken);
                     break;
                 case inlineFlags:
-                    Token.InlineFlags inlineFlags = (Token.InlineFlags) token;
-                    if (inlineFlags.isGlobal()) {
-                        boolean first = prev == null || (prevKind == Token.Kind.inlineFlags && ((Token.InlineFlags) prev).isGlobal());
-                        if (!first) {
-                            throw syntaxErrorAtAbs(PyErrorMessages.GLOBAL_FLAGS_NOT_AT_START, inlineFlags.getPosition());
-                        }
-                        lexer.addGlobalFlags((PythonFlags) inlineFlags.getFlags());
-                    } else {
-                        astBuilder.pushGroup(inlineFlags);
+                    // flagStack push is handled in the lexer
+                    if (!((Token.InlineFlags) token).isGlobal()) {
+                        astBuilder.pushGroup(token);
                         astBuilder.getCurGroup().setLocalFlags(true);
-                        lexer.pushLocalFlags((PythonFlags) inlineFlags.getFlags());
                     }
                     break;
             }
@@ -291,7 +282,6 @@ public final class PythonRegexParser implements RegexParser {
                 throw syntaxErrorAtAbs(PyErrorMessages.invalidGroupReference(Integer.toString(conditionalBackReference.getGroupNumbers()[0])), conditionalBackReference.getPosition() + 3);
             }
         }
-        lexer.fixFlags();
         return ast;
     }
 

@@ -107,18 +107,8 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected boolean featureEnabledPossessiveQuantifiers() {
-        return false;
-    }
-
-    @Override
     protected boolean featureEnabledCharClassFirstBracketIsLiteral() {
         return true;
-    }
-
-    @Override
-    protected boolean featureEnabledCCRangeWithPredefCharClass() {
-        return false;
     }
 
     @Override
@@ -237,14 +227,12 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected boolean isPredefCharClass(char c) {
-        // OracleDB ignores \s \d \w inside character classes, and interprets them as literal
-        // characters instead
-        return !inCharacterClass() && PREDEFINED_CHAR_CLASSES.get(c);
-    }
-
-    @Override
-    protected CodePointSet getPredefinedCharClass(char c) {
+    protected CodePointSet getPredefinedCharClass(char c, boolean inCharClass) {
+        if (inCharClass) {
+            // OracleDB ignores \s \d \w inside character classes, and interprets them as literal
+            // characters instead
+            return '\\' < c ? CodePointSet.create('\\', '\\', c, c) : CodePointSet.create(c, c, '\\', '\\');
+        }
         CodePointSet cps = getPOSIXCharClass(c);
         if (isLowerCase(c)) {
             return cps;
@@ -276,12 +264,12 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected long boundedQuantifierMaxValue() {
-        return Integer.MAX_VALUE;
+        return 0xffff_ffffL;
     }
 
     @Override
     protected RegexSyntaxException handleBoundedQuantifierOutOfOrder() {
-        return syntaxError(OracleDBErrorMessages.INVALID_INTERVAL);
+        return syntaxError(OracleDBErrorMessages.QUANTIFIER_OUT_OF_ORDER);
     }
 
     @Override
@@ -293,15 +281,29 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected Token handleBoundedQuantifierOverflow(long min, long max) {
+        if (min == -1 || max == -1) {
+            // bounded quantifiers outside uint32 range are treated as string literals
+            position = getLastTokenPosition() + 1;
+            return literalChar('{');
+        }
         if (Long.compareUnsigned(min, max) > 0) {
             throw handleBoundedQuantifierOutOfOrder();
         }
-        throw syntaxError(OracleDBErrorMessages.INVALID_INTERVAL);
+        // oracledb quirk: values between 0x7fff_ffff and 0xffff_ffff are treated as uint32 in the
+        // quantifier order check, but are later "cast" to int32 by stripping the sign bit.
+        return new Token.Quantifier((int) (min & Integer.MAX_VALUE), (int) (max & Integer.MAX_VALUE), !consumingLookahead("?"));
     }
 
     @Override
     protected Token handleBoundedQuantifierOverflowMin(long min, long max) {
-        throw syntaxError(OracleDBErrorMessages.INVALID_INTERVAL);
+        if (min == -1) {
+            // bounded quantifiers outside uint32 range are treated as string literals
+            position = getLastTokenPosition() + 1;
+            return literalChar('{');
+        }
+        // oracledb quirk: values between 0x7fff_ffff and 0xffff_ffff are treated as uint32 in the
+        // quantifier order check, but are later "cast" to int32 by stripping the sign bit.
+        return new Token.Quantifier((int) (min & Integer.MAX_VALUE), (int) (max & Integer.MAX_VALUE), !consumingLookahead("?"));
     }
 
     @Override
@@ -311,7 +313,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
 
     @Override
     protected void handleCCRangeWithPredefCharClass(int startPos, ClassSetContents firstAtom, ClassSetContents secondAtom) {
-        if ((firstAtom.isAllowedInRange() || !firstAtom.isCodePointSetOnly()) && secondAtom.isCodePointSetOnly()) {
+        if (firstAtom.isAllowedInRange()) {
             throw syntaxError(OracleDBErrorMessages.INVALID_RANGE);
         }
     }

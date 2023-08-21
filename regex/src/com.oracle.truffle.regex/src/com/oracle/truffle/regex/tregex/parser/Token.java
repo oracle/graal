@@ -68,7 +68,6 @@ public class Token implements JsonConvertible {
         alternation,
         captureGroupBegin,
         nonCaptureGroupBegin,
-        atomicGroupBegin,
         lookAheadAssertionBegin,
         lookBehindAssertionBegin,
         groupEnd,
@@ -94,7 +93,6 @@ public class Token implements JsonConvertible {
     private static final Token NON_CAPTURE_GROUP_BEGIN = new Token(Kind.nonCaptureGroupBegin);
     private static final Token CHAR_CLASS_BEGIN = new Token(Kind.charClassBegin);
     private static final Token CHAR_CLASS_END = new Token(Kind.charClassEnd);
-    private static final Token ATOMIC_GROUP_BEGIN = new Token(Kind.atomicGroupBegin);
     private static final Token LOOK_AHEAD_ASSERTION_BEGIN = new LookAheadAssertionBegin(false);
     private static final Token NEGATIVE_LOOK_AHEAD_ASSERTION_BEGIN = new LookAheadAssertionBegin(true);
     private static final Token LOOK_BEHIND_ASSERTION_BEGIN = new LookBehindAssertionBegin(false);
@@ -141,10 +139,6 @@ public class Token implements JsonConvertible {
         return NON_CAPTURE_GROUP_BEGIN;
     }
 
-    public static Token createAtomicGroupBegin() {
-        return ATOMIC_GROUP_BEGIN;
-    }
-
     public static Token createLookAheadAssertionBegin() {
         return LOOK_AHEAD_ASSERTION_BEGIN;
     }
@@ -169,10 +163,6 @@ public class Token implements JsonConvertible {
         return new Quantifier(min, max, greedy);
     }
 
-    public static Quantifier createQuantifier(int min, int max, boolean greedy, boolean possessive) {
-        return new Quantifier(min, max, greedy, possessive);
-    }
-
     public static LiteralCharacter createLiteralCharacter(int codePoint) {
         return new LiteralCharacter(codePoint);
     }
@@ -193,8 +183,8 @@ public class Token implements JsonConvertible {
         return CHAR_CLASS_BEGIN;
     }
 
-    public static Token createCharacterClassAtom(CodePointSet contents, boolean isPosixCollationEquivalenceClass) {
-        return new CharacterClassAtom(contents, isPosixCollationEquivalenceClass);
+    public static Token createCharacterClassAtom(ClassSetContents contents) {
+        return new CharacterClassAtom(contents);
     }
 
     public static Token createCharacterClassEnd() {
@@ -254,20 +244,14 @@ public class Token implements JsonConvertible {
         private final int min;
         private final int max;
         private final boolean greedy;
-        private final boolean possessive;
         @CompilationFinal private int index = -1;
         @CompilationFinal private int zeroWidthIndex = -1;
 
-        public Quantifier(int min, int max, boolean greedy, boolean possessive) {
+        public Quantifier(int min, int max, boolean greedy) {
             super(Kind.quantifier);
             this.min = min;
             this.max = max;
             this.greedy = greedy;
-            this.possessive = possessive;
-        }
-
-        public Quantifier(int min, int max, boolean greedy) {
-            this(min, max, greedy, false);
         }
 
         public boolean isInfiniteLoop() {
@@ -290,10 +274,6 @@ public class Token implements JsonConvertible {
 
         public boolean isGreedy() {
             return greedy;
-        }
-
-        public boolean isPossessive() {
-            return possessive;
         }
 
         public boolean hasIndex() {
@@ -340,7 +320,10 @@ public class Token implements JsonConvertible {
          * Returns {@code true} if the quantified term can never match. This is the case when:
          * <ul>
          * <li>The minimum is virtually infinite (i.e. greater than the maximum string length).</li>
-         * <li>The minimum is larger than the maximum. This is usually a syntax error.
+         * <li>The minimum is larger than the maximum. This is usually a syntax error, but in
+         * {@link com.oracle.truffle.regex.tregex.parser.flavors.OracleDBFlavor} this can happen due
+         * to a quirk in the integer overflow handling in bounded quantifiers, see
+         * {@link com.oracle.truffle.regex.tregex.parser.flavors.OracleDBRegexLexer}.</li>
          * </ul>
          */
         public boolean isDead() {
@@ -349,11 +332,11 @@ public class Token implements JsonConvertible {
 
         @Override
         public int hashCode() {
-            return Objects.hash(min, max, greedy, possessive, index, zeroWidthIndex);
+            return Objects.hash(min, max, greedy, index, zeroWidthIndex);
         }
 
         public boolean equalsSemantic(Quantifier o) {
-            return min == o.min && max == o.max && greedy == o.greedy && possessive == o.possessive;
+            return min == o.min && max == o.max && greedy == o.greedy;
         }
 
         @Override
@@ -365,14 +348,14 @@ public class Token implements JsonConvertible {
                 return false;
             }
             Quantifier o = (Quantifier) obj;
-            return min == o.min && max == o.max && greedy == o.greedy && possessive == o.possessive && index == o.index && zeroWidthIndex == o.zeroWidthIndex;
+            return min == o.min && max == o.max && greedy == o.greedy && index == o.index && zeroWidthIndex == o.zeroWidthIndex;
         }
 
         @TruffleBoundary
         @Override
         public String toString() {
             String ret = minMaxToString();
-            return isPossessive() ? ret + "+" : isGreedy() ? ret : ret + "?";
+            return isGreedy() ? ret : ret + "?";
         }
 
         private String minMaxToString() {
@@ -394,8 +377,7 @@ public class Token implements JsonConvertible {
             return super.toJson().append(
                             Json.prop("min", getMin()),
                             Json.prop("max", getMax()),
-                            Json.prop("greedy", isGreedy()),
-                            Json.prop("possessive", isPossessive()));
+                            Json.prop("greedy", isGreedy()));
         }
     }
 
@@ -421,13 +403,11 @@ public class Token implements JsonConvertible {
 
     public static final class CharacterClassAtom extends Token {
 
-        private final CodePointSet contents;
-        private final boolean isPosixCollationEquivalenceClass;
+        private final ClassSetContents contents;
 
-        public CharacterClassAtom(CodePointSet contents, boolean isPosixCollationEquivalenceClass) {
+        public CharacterClassAtom(ClassSetContents contents) {
             super(Kind.charClassAtom);
             this.contents = contents;
-            this.isPosixCollationEquivalenceClass = isPosixCollationEquivalenceClass;
         }
 
         @TruffleBoundary
@@ -436,12 +416,8 @@ public class Token implements JsonConvertible {
             return super.toJson().append(Json.prop("contents", contents));
         }
 
-        public CodePointSet getContents() {
+        public ClassSetContents getContents() {
             return contents;
-        }
-
-        public boolean isPosixCollationEquivalenceClass() {
-            return isPosixCollationEquivalenceClass;
         }
     }
 
