@@ -123,7 +123,11 @@ public class JSRegexValidator implements RegexValidator {
                 case wordBoundary:
                 case nonWordBoundary:
                 case backReference:
+                case literalChar:
                 case charClass:
+                case charClassBegin:
+                case charClassAtom:
+                case charClassEnd:
                 case classSet:
                     curTermState = CurTermState.Other;
                     break;
@@ -179,6 +183,9 @@ public class JSRegexValidator implements RegexValidator {
                 default:
                     throw CompilerDirectives.shouldNotReachHere();
             }
+        }
+        if (lexer.inCharacterClass()) {
+            throw syntaxError(JsErrorMessages.UNMATCHED_LEFT_BRACKET);
         }
         if (!syntaxStack.isEmpty()) {
             throw syntaxError(JsErrorMessages.UNTERMINATED_GROUP);
