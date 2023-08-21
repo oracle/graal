@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -53,6 +54,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.introspection.ExceptionHandler;
 import com.oracle.truffle.api.operation.introspection.Instruction;
 import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
@@ -170,7 +172,7 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
 
     /**
      * Gets the {@code bci} associated with a particular
-     * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance}.
+     * {@link com.oracle.truffle.api.frame.FrameInstance frameInstance} obtained from a stack walk.
      *
      * @param frameInstance the frame instance
      * @return the corresponding bytecode index, or -1 if the index could not be found
@@ -188,13 +190,41 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
          * into the frame before any operation that might call another node. This incurs a bit of
          * overhead during regular execution (but just for the baseline interpreter).
          */
-        for (Node operationNode = frameInstance.getCallNode(); operationNode != null; operationNode = operationNode.getParent()) {
-            if (operationNode.getParent() instanceof OperationRootNode rootNode) {
-                return rootNode.findBciOfOperationNode(operationNode);
-            }
+        int fromCallNode = findBciFromLocation(frameInstance.getCallNode());
+        if (fromCallNode != -1) {
+            return fromCallNode;
         }
         if (frameInstance.getCallTarget() instanceof RootCallTarget rootCallTarget && rootCallTarget.getRootNode() instanceof OperationRootNode operationRootNode) {
             return operationRootNode.readBciFromFrame(frameInstance.getFrame(FrameAccess.READ_ONLY));
+        }
+        return -1;
+    }
+
+    /**
+     * Gets the {@code bci} associated with a particular point in execution.
+     *
+     * Depending on the execution mode of the interpreter, the {@code bci} will be determined either
+     * via the {@code location} or the {@code frame}, so both parameters are required.
+     *
+     * @param operationRootNode the root node
+     * @param location a node optionally adopted by the root node
+     * @param frame the frame at the current point in execution
+     *
+     * @return the corresponding bytecode index, or -1 if the index could not be found
+     */
+    static int findBci(OperationRootNode operationRootNode, Node location, Frame frame) {
+        /**
+         * See comments on {@link OperationRootNode#findBci(FrameInstance)} above.
+         */
+        int fromCallNode = findBciFromLocation(location);
+        return (fromCallNode != -1) ? fromCallNode : operationRootNode.readBciFromFrame(frame);
+    }
+
+    private static int findBciFromLocation(Node location) {
+        for (Node operationNode = location; operationNode != null; operationNode = operationNode.getParent()) {
+            if (operationNode.getParent() instanceof OperationRootNode rootNode) {
+                return rootNode.findBciOfOperationNode(operationNode);
+            }
         }
         return -1;
     }
