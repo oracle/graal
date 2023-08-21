@@ -57,11 +57,17 @@ import org.graalvm.compiler.word.Word;
 public class ObjectSnippets implements Snippets {
 
     @NodeIntrinsic(ForeignCallNode.class)
-    public static native boolean fastNotifyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word thread, Object o);
+    public static native byte fastNotifyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word thread, Object o);
+
+    static boolean fastNotifyStub(ForeignCallDescriptor descriptor, Object object) {
+        // These functions return a jboolean with can be returned as a subword type so we must
+        // explicitly mask the part we want to read.
+        return (fastNotifyStub(descriptor, CurrentJavaThreadNode.get(), object) & 0xff) != 0;
+    }
 
     @Snippet
     public static void fastNotify(Object thisObj) {
-        if (probability(FAST_PATH_PROBABILITY, fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY, CurrentJavaThreadNode.get(), thisObj))) {
+        if (probability(FAST_PATH_PROBABILITY, fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY, thisObj))) {
             return;
         } else {
             PiNode.piCastNonNull(thisObj, SnippetAnchorNode.anchor()).notify();
@@ -70,7 +76,7 @@ public class ObjectSnippets implements Snippets {
 
     @Snippet
     public static void fastNotifyAll(Object thisObj) {
-        if (probability(FAST_PATH_PROBABILITY, fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY_ALL, CurrentJavaThreadNode.get(), thisObj))) {
+        if (probability(FAST_PATH_PROBABILITY, fastNotifyStub(HotSpotHostForeignCallsProvider.NOTIFY_ALL, thisObj))) {
             return;
         } else {
             PiNode.piCastNonNull(thisObj, SnippetAnchorNode.anchor()).notifyAll();
