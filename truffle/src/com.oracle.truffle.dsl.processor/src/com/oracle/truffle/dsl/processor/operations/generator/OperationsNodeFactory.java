@@ -4102,7 +4102,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end(); // nested try
             b.end(); // else
 
-            b.statement("ex = $this.interceptTruffleException(ex, frame, bci)");
+            b.statement("ex = $this.interceptTruffleException(ex, " + localFrame() + ", bci)");
 
             b.statement("int[] handlers = $this.handlers");
             b.startFor().string("int idx = 0; idx < handlers.length; idx += 5").end().startBlock();
