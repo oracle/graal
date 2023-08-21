@@ -80,7 +80,8 @@ public class Isolates {
     }
 
     public static void setCurrentStartTime() {
-        VMError.guarantee(startMillis == 0);
+        assert startMillis == 0;
+        assert startNanos == 0;
         startMillis = System.currentTimeMillis();
         startNanos = System.nanoTime();
     }
@@ -99,6 +100,7 @@ public class Isolates {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getCurrentStartNanos() {
+        assert startNanos != 0;
         return startNanos;
     }
 

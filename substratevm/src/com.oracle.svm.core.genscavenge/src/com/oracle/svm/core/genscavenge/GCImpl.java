@@ -1332,25 +1332,26 @@ public final class GCImpl implements GC {
             UnsignedWord allocatedChunkBytes = accounting.getTotalAllocatedChunkBytes().add(youngChunkBytes);
             UnsignedWord allocatedObjectBytes = accounting.getAllocatedObjectBytes().add(youngObjectBytes);
 
-            log.string("CollectedTotalChunkBytes: ").signed(accounting.getTotalCollectedChunkBytes()).newline();
-            log.string("CollectedTotalObjectBytes: ").signed(accounting.getTotalCollectedObjectBytes()).newline();
-            log.string("AllocatedChunkBytes: ").signed(allocatedChunkBytes).newline();
-            log.string("AllocatedObjectBytes: ").signed(allocatedObjectBytes).newline();
+            log.string("Collected chunk bytes: ").rational(accounting.getTotalCollectedChunkBytes(), M, 2).string("M").newline();
+            log.string("Collected object bytes: ").rational(accounting.getTotalCollectedObjectBytes(), M, 2).string("M").newline();
+            log.string("Allocated chunk bytes: ").rational(allocatedChunkBytes, M, 2).string("M").newline();
+            log.string("Allocated object bytes: ").rational(allocatedObjectBytes, M, 2).string("M").newline();
 
             long incrementalNanos = accounting.getIncrementalCollectionTotalNanos();
-            log.string("IncrementalGCCount: ").signed(accounting.getIncrementalCollectionCount()).newline();
-            log.string("IncrementalGCNanos: ").signed(incrementalNanos).newline();
+            log.string("Incremental GC count: ").signed(accounting.getIncrementalCollectionCount()).newline();
+            log.string("Incremental GC time: ").rational(incrementalNanos, TimeUtils.nanosPerSecond, 3).string("s").newline();
             long completeNanos = accounting.getCompleteCollectionTotalNanos();
-            log.string("CompleteGCCount: ").signed(accounting.getCompleteCollectionCount()).newline();
-            log.string("CompleteGCNanos: ").signed(completeNanos).newline();
+            log.string("Complete GC count: ").signed(accounting.getCompleteCollectionCount()).newline();
+            log.string("Complete GC time: ").rational(completeNanos, TimeUtils.nanosPerSecond, 3).string("s").newline();
 
             long gcNanos = incrementalNanos + completeNanos;
+
             long mutatorNanos = GCImpl.getGCImpl().timers.mutator.getMeasuredNanos();
             long totalNanos = gcNanos + mutatorNanos;
             long roundedGCLoad = (0 < totalNanos ? TimeUtils.roundedDivide(100 * gcNanos, totalNanos) : 0);
-            log.string("GCNanos: ").signed(gcNanos).newline();
-            log.string("TotalNanos: ").signed(totalNanos).newline();
-            log.string("GCLoadPercent: ").signed(roundedGCLoad).indent(false);
+            log.string("GC time: ").rational(gcNanos, TimeUtils.nanosPerSecond, 3).string("s").newline();
+            log.string("Run time: ").rational(totalNanos, TimeUtils.nanosPerSecond, 3).string("s").newline();
+            log.string("GC load: ").signed(roundedGCLoad).string("%").indent(false);
         }
     }
 }

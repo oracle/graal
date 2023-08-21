@@ -279,7 +279,7 @@ final class HeapChunkProvider {
         }
     }
 
-    void logChunks(Log log) {
+    void logFreeChunks(Log log) {
         HeapChunkLogging.logChunks(log, unusedAlignedChunks.get(), "F", true);
     }
 

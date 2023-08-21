@@ -34,9 +34,9 @@ import com.oracle.svm.core.Uninterruptible;
 
 /**
  * Note that this data may be updated up to 3 times during a single VM operation (incremental GC,
- * full GC, full GC that treats soft references as weak). It should therefore only be used
- * GC-internally by code that is aware of this (could result in incorrect "before" values
- * otherwise). Non-GC code should use {@link HeapAccounting} instead.
+ * full GC, full GC that treats soft references as weak). Therefore, this class should only be used
+ * by GC internal code that is aware of this (could result in incorrect "before"/"after" values
+ * otherwise). Non-GC code should use the class {@link HeapAccounting} instead.
  *
  * ChunkBytes refer to bytes reserved (but maybe not occupied). ObjectBytes refer to bytes occupied
  * by objects.
