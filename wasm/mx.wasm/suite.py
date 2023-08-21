@@ -271,6 +271,12 @@ suite = {
     },
 
     "WASM_LAUNCHER" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.wasm.launcher",
+        "exports" : [
+          "org.graalvm.wasm.launcher to org.graalvm.launcher",
+        ],
+      },
       "subDir" : "src",
       "dependencies" : [
         "org.graalvm.wasm.launcher",
@@ -278,6 +284,7 @@ suite = {
       "distDependencies" : [
         "sdk:LAUNCHER_COMMON",
       ],
+      "mainClass" : "org.graalvm.wasm.WasmLauncher",
       "license" : "UPL",
       "maven" : False,
     },
