@@ -43,6 +43,7 @@ package org.graalvm.launcher;
 import static java.lang.Integer.max;
 
 import java.io.IOException;
+import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -78,7 +79,11 @@ public abstract class LanguageLauncherBase extends Launcher {
 
     static Engine getTempEngine() {
         if (tempEngine == null) {
-            tempEngine = Engine.newBuilder().useSystemProperties(false).build();
+            tempEngine = Engine.newBuilder().useSystemProperties(false).//
+                            out(OutputStream.nullOutputStream()).//
+                            err(OutputStream.nullOutputStream()).//
+                            option("engine.WarnInterpreterOnly", "false").//
+                            build();
         }
         return tempEngine;
     }
