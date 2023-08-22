@@ -109,17 +109,13 @@ public class LocalizationSupport {
             if (bundleNameWithModule.length < 2) {
                 resourceName = control.toBundleName(bundleName, locale).replace('.', '/').concat(".properties");
 
-                // find module based on package name
                 Map<String, Set<Module>> packageToModules = ImageSingletons.lookup(ClassLoaderSupport.class).getPackageToModules();
                 Set<Module> modules = packageToModules.getOrDefault(packageName(bundleName), Collections.emptySet());
 
-                // there should be only one module, but we will check all modules where given
-                // package is found
                 for (Module m : modules) {
                     ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, resourceName);
                 }
 
-                // if didn't find resource in any module, we will try with unnamed module
                 if (modules.isEmpty()) {
                     ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName);
                 }
