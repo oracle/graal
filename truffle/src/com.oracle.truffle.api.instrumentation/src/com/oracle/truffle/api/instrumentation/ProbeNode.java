@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -331,6 +331,42 @@ public final class ProbeNode extends Node {
         EventChainNode localChain = lazyUpdate(frame);
         if (localChain != null) {
             EventChainNode.onInputValue(localChain, context, frame, targetBinding, inputContext, inputIndex, inputValue);
+        }
+    }
+
+    /**
+     * Should be invoked when the node yields execution. Use
+     * {@link GenerateWrapper#yieldExceptions()} when possible, to have <code>onYield()</code>
+     * called automatically.
+     * <p>
+     * When the yielded execution is resumed, call {@link #onResume(VirtualFrame)}, or use
+     * {@link GenerateWrapper#resumeMethodPrefix()}.
+     *
+     * @param frame the current frame of the execution.
+     * @since 24.0
+     */
+    public void onYield(VirtualFrame frame, Object result) {
+        EventChainNode localChain = lazyUpdate(frame);
+        if (localChain != null) {
+            EventChainNode.onYield(localChain, context, frame, result);
+        }
+    }
+
+    /**
+     * Should be invoked when execution is resumed after a {@link #onYield(VirtualFrame, Object)
+     * yield}. Use {@link GenerateWrapper#resumeMethodPrefix()} when possible, to have this method
+     * called automatically by the wrapper node.
+     * <p>
+     * Override {@link RootNode#isSameFrame(Frame, Frame)} if necessary, to be able to match the
+     * yielded and resumed executions.
+     *
+     * @param frame the current frame of the execution.
+     * @since 24.0
+     */
+    public void onResume(VirtualFrame frame) {
+        EventChainNode localChain = lazyUpdate(frame);
+        if (localChain != null) {
+            EventChainNode.onResume(localChain, context, frame);
         }
     }
 
@@ -1137,6 +1173,46 @@ public final class ProbeNode extends Node {
 
         protected abstract Object innerOnUnwind(EventContext context, VirtualFrame frame, Object info);
 
+        @ExplodeLoop
+        static void onYield(EventChainNode eventChain, EventContext context, VirtualFrame frame, Object value) {
+            EventChainNode current = eventChain;
+            RuntimeException prevError = null;
+            while (current != null) {
+                try {
+                    current.innerOnYield(context, frame, value);
+                } catch (Throwable t) {
+                    current.profileBranch(SEEN_EXCEPTION_ON_ENTER);
+                    prevError = current.handleError("onYield", prevError, t);
+                }
+                current = current.next;
+            }
+            if (prevError != null) {
+                throw prevError;
+            }
+        }
+
+        protected abstract void innerOnYield(EventContext context, VirtualFrame frame, Object value);
+
+        @ExplodeLoop
+        static void onResume(EventChainNode eventChain, EventContext context, VirtualFrame frame) {
+            EventChainNode current = eventChain;
+            RuntimeException prevError = null;
+            while (current != null) {
+                try {
+                    current.innerOnResume(context, frame);
+                } catch (Throwable t) {
+                    current.profileBranch(SEEN_EXCEPTION_ON_ENTER);
+                    prevError = current.handleError("onResume", prevError, t);
+                }
+                current = current.next;
+            }
+            if (prevError != null) {
+                throw prevError;
+            }
+        }
+
+        protected abstract void innerOnResume(EventContext context, VirtualFrame frame);
+
         EventChainNode find(EventBinding<?> b) {
             if (binding == b) {
                 assert next == null || next.find(b) == null : "only one chain entry per binding allowed";
@@ -1177,6 +1253,16 @@ public final class ProbeNode extends Node {
         @Override
         protected Object innerOnUnwind(EventContext context, VirtualFrame frame, Object info) {
             return listener.onUnwind(context, frame, info);
+        }
+
+        @Override
+        protected void innerOnYield(EventContext context, VirtualFrame frame, Object value) {
+            listener.onYield(context, frame, value);
+        }
+
+        @Override
+        protected void innerOnResume(EventContext context, VirtualFrame frame) {
+            listener.onResume(context, frame);
         }
 
         @Override
@@ -1406,6 +1492,16 @@ public final class ProbeNode extends Node {
         }
 
         @Override
+        protected void innerOnYield(EventContext context, VirtualFrame frame, Object value) {
+            eventNode.onYield(frame, value);
+        }
+
+        @Override
+        protected void innerOnResume(EventContext context, VirtualFrame frame) {
+            eventNode.onResume(frame);
+        }
+
+        @Override
         protected void innerOnDispose(EventContext context, VirtualFrame frame) {
             eventNode.onDispose(frame);
         }
@@ -1463,5 +1559,14 @@ public final class ProbeNode extends Node {
         @Override
         protected void innerOnReturnExceptional(EventContext context, VirtualFrame frame, Throwable exception) {
         }
+
+        @Override
+        protected void innerOnYield(EventContext context, VirtualFrame frame, Object value) {
+        }
+
+        @Override
+        protected void innerOnResume(EventContext context, VirtualFrame frame) {
+        }
+
     }
 }
