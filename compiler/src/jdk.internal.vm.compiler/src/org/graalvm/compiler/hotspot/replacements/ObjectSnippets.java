@@ -60,7 +60,7 @@ public class ObjectSnippets implements Snippets {
     public static native byte fastNotifyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word thread, Object o);
 
     static boolean fastNotifyStub(ForeignCallDescriptor descriptor, Object object) {
-        // These functions return a jboolean with can be returned as a subword type so we must
+        // These functions return a jboolean which can be returned as a subword type so we must
         // explicitly mask the part we want to read.
         return (fastNotifyStub(descriptor, CurrentJavaThreadNode.get(), object) & 0xff) != 0;
     }
