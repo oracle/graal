@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr.events;
 import java.util.Map;
 import java.util.Properties;
 
+import jdk.jfr.Enabled;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -38,6 +39,8 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
+import com.oracle.svm.core.thread.VMThreads;
+import com.oracle.svm.core.thread.JavaThreads;
 
 import jdk.jfr.Event;
 import jdk.jfr.Name;
@@ -61,6 +64,7 @@ public class EndChunkNativePeriodicEvents extends Event {
         emitInitialEnvironmentVariables(getEnvironmentVariables());
         emitInitialSystemProperties(getSystemProperties());
         emitThreadCPULoad();
+//        emitThreadAllocationStatistics();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -180,6 +184,32 @@ public class EndChunkNativePeriodicEvents extends Event {
     private static void emitThreadCPULoad() {
         ThreadCPULoadEvent.emitEvents();
     }
+
+//    @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
+//    private static void emitThreadAllocationStatistics() {
+//        if (JfrEvent.ThreadAllocationStatistics.shouldEmit()) {
+//            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
+//            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+//
+//            VMThreads.lockThreadMutexInNativeCode();
+//            try {
+//                org.graalvm.nativeimage.IsolateThread isolateThread = VMThreads.firstThread();
+//                while (isolateThread.isNonNull()) {
+//                    Thread javaThread = com.oracle.svm.core.thread.PlatformThreads.currentThread.get(isolateThread);
+//                    if (javaThread != null) {
+//                        JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadAllocationStatistics);
+//                        JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+//                        JfrNativeEventWriter.putThread(data, JavaThreads.getThreadId(javaThread));
+//                        JfrNativeEventWriter.putLong(data,Heap.getHeap().getThreadAllocatedMemory(isolateThread));
+//                        JfrNativeEventWriter.endSmallEvent(data);
+//                    }
+//                    isolateThread = VMThreads.nextThread(isolateThread);
+//                }
+//            } finally {
+//                VMThreads.THREAD_MUTEX.unlock();
+//            }
+//        }
+//    }
 
     private static StringEntry[] getEnvironmentVariables() {
         Map<String, String> env = System.getenv();

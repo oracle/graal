@@ -278,6 +278,25 @@ public abstract class PlatformThreads {
         }
     }
 
+//    @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
+//    public static Map<Long, Long> getAllThreadAllocatedBytes() {
+//        Map<Long,Long> threadAllocations = new HashMap<>();
+//        VMThreads.lockThreadMutexInNativeCode();
+//        try {
+//            IsolateThread isolateThread = VMThreads.firstThread();
+//            while (isolateThread.isNonNull()) {
+//                Thread javaThread = PlatformThreads.currentThread.get(isolateThread);
+//                if (javaThread != null) {
+//                    threadAllocations.put(JavaThreads.getThreadId(javaThread), Heap.getHeap().getThreadAllocatedMemory(isolateThread));
+//                }
+//                isolateThread = VMThreads.nextThread(isolateThread);
+//            }
+//        } finally {
+//            VMThreads.THREAD_MUTEX.unlock();
+//        }
+//        return threadAllocations;
+//    }
+
     /* End of accessor functions. */
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

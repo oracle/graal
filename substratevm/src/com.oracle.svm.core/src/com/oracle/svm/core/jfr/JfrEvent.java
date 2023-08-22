@@ -62,6 +62,7 @@ public final class JfrEvent {
     public static final JfrEvent JavaMonitorInflate = create("jdk.JavaMonitorInflate", true);
     public static final JfrEvent ObjectAllocationInNewTLAB = create("jdk.ObjectAllocationInNewTLAB", false);
     public static final JfrEvent GCHeapSummary = create("jdk.GCHeapSummary", false);
+    public static final JfrEvent ThreadAllocationStatistics = create("jdk.ThreadAllocationStatistics", false);
 
     private final long id;
     private final String name;
