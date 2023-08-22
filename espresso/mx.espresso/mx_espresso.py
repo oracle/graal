@@ -224,11 +224,6 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     polyglot_lib_jar_dependencies=['espresso:LIB_JAVAVM'],
     has_polyglot_lib_entrypoints=True,
     priority=1,
-    # Always append `truffle` to the list of JVMs in `lib/jvm.cfg`.
-    jvm_configs=[{
-        'configs': ['-truffle KNOWN'],
-        'priority': 2,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
-    }],
     post_install_msg="""
 This version of Java on Truffle is experimental. We do not recommended it for production use.
 
@@ -291,6 +286,11 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     third_party_license_files=[],
     dependencies=['Java on Truffle'],
     support_libraries_distributions=['espresso:ESPRESSO_JVM_SUPPORT'],
+    # Always append `truffle` to the list of JVMs in `lib/jvm.cfg`.
+    jvm_configs=[{
+        'configs': ['-truffle KNOWN'],
+        'priority': 2,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+    }],
     priority=2,
     stability=_espresso_stability,
 ))
