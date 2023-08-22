@@ -249,9 +249,27 @@ def runLLVMMul(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True,
         dists.append('CHROMEINSPECTOR')
     return mx.run_java(getCommonOptions(False) + vmArgs + get_classpath_options(dists) + ["com.oracle.truffle.llvm.launcher.LLVMMultiContextLauncher"] + sulongArgs, timeout=timeout, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
 
+
+mx.add_argument('--use-llvm-standalone', action='store', metavar='<mode>', choices=['jvm', 'native'],
+                help='Use the LLVM standalone instead of the full GraalVM for `mx lli` or `mx unittest`.')
+
 def get_lli_path():
-    # on Windows <GRAALVM_HOME>/bin/lli is always a .cmd file because it is a "fake symlink"
-    return os.path.join(mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True), 'bin', mx_subst.path_substitutions.substitute('<cmd:lli>'))
+    standaloneMode = mx.get_opts().use_llvm_standalone
+    if standaloneMode is None:
+        # on Windows <GRAALVM_HOME>/bin/lli is always a .cmd file because it is a "fake symlink"
+        path = mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True)
+        return os.path.join(path, 'bin', mx_subst.path_substitutions.substitute('<cmd:lli>'))
+    else:
+        useJvm = None
+        if standaloneMode == "jvm":
+            useJvm = True
+        elif standaloneMode == "native":
+            useJvm = False
+        else:
+            mx.abort(f"Unknown standalone type {standaloneMode}.")
+        path = mx_sdk_vm_impl.standalone_home("llvm", useJvm)
+        return os.path.join(path, 'bin', mx_subst.path_substitutions.substitute('<exe:lli>'))
+
 
 mx_subst.path_substitutions.register_no_arg('lli_path', get_lli_path)
 

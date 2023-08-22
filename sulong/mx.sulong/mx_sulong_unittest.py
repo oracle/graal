@@ -32,6 +32,7 @@ import os
 
 import mx
 import mx_unittest
+import mx_sulong
 
 _suite = mx.suite('sulong')
 
@@ -90,21 +91,25 @@ class SulongUnittestConfigBase(mx_unittest.MxUnittestConfig):
         vmArgs = [arg for arg in vmArgs if not arg.startswith('-Dorg.graalvm.language.llvm.home')]
         vmArgs += [f'-Dsulongtest.path.{d.name}={d.get_output()}' for d in _get_test_distributions(cfg.nativeTestDistFrom)]
         vmArgs += [f'-Dsulongtest.configRoot={cfg.configRoot}']
-        vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
         vmArgs += [f'-Dsulongtest.config={cfg.name}']
-        if not SulongUnittestConfigBase.useResources:
-            vmArgs += [f'-Dorg.graalvm.language.llvm.home={mx.distribution(cfg.sulongHome).get_output()}']
+        if mx.get_opts().use_llvm_standalone is not None:
+            vmArgs += [f'-Dsulongtest.testAOTImage={mx_sulong.get_lli_path()}']
+        else:
+            vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+            if not SulongUnittestConfigBase.useResources:
+                vmArgs += [f'-Dorg.graalvm.language.llvm.home={mx.distribution(cfg.sulongHome).get_output()}']
         vmArgs += cfg.extra_vm_args()
         return (vmArgs, mainClass, mainClassArgs)
 
     def processDeps(self, deps):
         cfg = SulongUnittestConfigBase.sulongConfig
         deps.add(mx.distribution(cfg.testConfigDep))
-        for d in cfg.runtimeDeps:
-            deps.add(mx.distribution(d))
-        if SulongUnittestConfigBase.useResources:
-            for d in cfg.resourceDeps:
+        if mx.get_opts().use_llvm_standalone is None:
+            for d in cfg.runtimeDeps:
                 deps.add(mx.distribution(d))
+            if SulongUnittestConfigBase.useResources:
+                for d in cfg.resourceDeps:
+                    deps.add(mx.distribution(d))
 
 # unittest config for Sulong tests that depend only on the embedders API
 class SulongUnittestConfig(SulongUnittestConfigBase):

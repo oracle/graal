@@ -149,6 +149,29 @@ def _sulong_gate_runner(args, tasks):
 
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
         if t: mx.command_function('clangformat')([])
+
+    standaloneMode = mx.get_opts().use_llvm_standalone
+    slowStandalone = False
+    if mx.is_windows():
+        slowStandalone = standaloneMode is not None
+    else:
+        slowStandalone = standaloneMode == "jvm"
+
+    with Task('Build GraalJDK', tasks, tags=['standalone']) as t:
+        # building GraalJDK to work around a bug in the mx support code of the compiler suite
+        # `mx unittest` doesn't work if this is not built, and we want to avoid doing a full `mx build` in the standalone jobs
+        if t:
+            import mx_compiler
+            mx.command_function('build')(['--dependencies', mx_compiler._graaljdk_dist(edition='ce').name])
+
+    if standaloneMode == "native":
+        with Task('Build Native LLVM Standalone', tasks, tags=['standalone']) as t:
+            if t: mx.command_function('build')(['--dependencies', 'LLVM_NATIVE_STANDALONE_SVM_JAVA21'])
+
+    if standaloneMode == "jvm":
+        with Task('Build Java LLVM Standalone', tasks, tags=['standalone']) as t:
+            if t: mx.command_function('build')(['--dependencies', 'LLVM_JAVA_STANDALONE_SVM_JAVA21'])
+
     # Folders not containing tests: options, services, util
     _unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', description="Language Benchmark game tests", testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
     _unittest('Internal', 'SULONG_EMBEDDED_TEST_SUITES', description="Test internal Sulong implementation classes (e.g. fp80)", testClasses=['com.oracle.truffle.llvm.tests.internal.'], tags=['internal', 'sulongMisc', 'sulongWinSupport'])
@@ -160,11 +183,15 @@ def _sulong_gate_runner(args, tasks):
     _unittest('GCC_C', 'SULONG_GCC_C_TEST_SUITE', description="GCC 5.2 test suite (C tests)", testClasses=['GccCSuite'], tags=['gcc_c'])
     _unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', description="GCC 5.2 test suite (C++ tests)", testClasses=['GccCppSuite'], tags=['gcc_cpp'])
     _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran'])
-    _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic'])
-    _unittest('SulongUnchained', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests with resources instead of language home", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic', 'sulongUnchained'],
-              extraUnittestArgs=['--sulong-test-resources'])
+    _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic', 'standalone'],
+              # run only a small subset of the tests on the jvm standalone, the startup overhead per test is too high for more
+              extraUnittestArgs=['-Dsulongtest.testNameFilter=cpp'] if slowStandalone else [])
     _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongWinSupport'])
-    _unittest('InteropUnchained', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests with resources instead of language home", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongWinSupport', 'sulongUnchained'],
+    if standaloneMode is None:
+        # can't test with resources in standalone mode
+        _unittest('SulongUnchained', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests with resources instead of language home", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic', 'sulongUnchained'],
+              extraUnittestArgs=['--sulong-test-resources'])
+        _unittest('InteropUnchained', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests with resources instead of language home", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongWinSupport', 'sulongUnchained'],
               extraUnittestArgs=['--sulong-test-resources'])
     _unittest('SulongNFI', 'SULONG_NFI_TESTS', description="Truffle NFI test suite with the Sulong NFI backend", testClasses=['com.oracle.truffle.nfi.test'], tags=['sulongNFI', 'sulongBasic', 'sulongWinSupport'],
               extraUnittestArgs=['-Dnative.test.backend=llvm', '-Dnative.test.path.llvm=<path:SULONG_NFI_TESTS>', '-Dorg.graalvm.language.llvm.home=<path:SULONG_HOME>'])
