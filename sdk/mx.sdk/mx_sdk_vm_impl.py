@@ -3063,18 +3063,20 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         return {'type': 'standalone', 'edition': get_graalvm_edition(), 'project': _project_name}
 
 
+def _get_jvm_cfg():
+    candidates = (['lib', 'jvm.cfg'], ['jre', 'lib', 'jvm.cfg'], ['jre', 'lib', mx.get_arch(), 'jvm.cfg'])
+    probed = []
+    for candidate in candidates:
+        jvm_cfg = join(_src_jdk.home, *candidate)
+        if exists(jvm_cfg):
+            return jvm_cfg
+        probed.append(jvm_cfg)
+    nl = os.linesep
+    probed = f'{nl}  '.join(probed)
+    raise mx.abort(f"Could not find jvm.cfg. Locations probed:{nl}  {probed}")
+
+
 def _get_jvm_cfg_contents(cfgs_to_add):
-    def _get_jvm_cfg():
-        candidates = (['lib', 'jvm.cfg'], ['jre', 'lib', 'jvm.cfg'], ['jre', 'lib', mx.get_arch(), 'jvm.cfg'])
-        probed = []
-        for candidate in candidates:
-            jvm_cfg = join(_src_jdk.home, *candidate)
-            if exists(jvm_cfg):
-                return jvm_cfg
-            probed.append(jvm_cfg)
-        nl = os.linesep
-        probed = f'{nl}  '.join(probed)
-        raise mx.abort(f"Could not find jvm.cfg. Locations probed:{nl}  {probed}")
 
     def validate_cfg_line(line, source):
         if line.startswith('#'):
@@ -4174,6 +4176,25 @@ def graalvm_show(args, forced_graalvm_dist=None):
                             print("    - {}".format(c.name))
             if not jvm_standalones and not native_standalones:
                 print("No standalone")
+            jvm_configs = {}
+            for component in graalvm_dist.components:
+                for jvm_config in component.jvm_configs:
+                    priority = jvm_config['priority']
+                    if callable(priority):
+                        priority = priority()
+                    jvm_configs[priority] = {
+                        'configs': jvm_config['configs'],
+                        'source': component.name,
+                    }
+            if jvm_configs:
+                jvm_configs[0] = {
+                    'configs': ['<original VMs>'],
+                    'source': _get_jvm_cfg(),
+                }
+                print("JVMs:")
+                for _, cfg in sorted(jvm_configs.items()):
+                    for config in cfg['configs']:
+                        print(f" {config} (from {cfg['source']})")
 
         if args.print_env:
             def _print_env(name, val):
