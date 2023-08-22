@@ -26,7 +26,6 @@ import signal
 import subprocess
 
 import mx
-import mx_subst
 import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
 import mx_sdk_vm_impl
