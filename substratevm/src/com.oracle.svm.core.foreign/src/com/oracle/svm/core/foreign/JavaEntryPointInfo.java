@@ -5,17 +5,16 @@ import java.lang.invoke.MethodType;
 import java.util.Arrays;
 import java.util.Objects;
 
-import com.oracle.svm.core.graal.code.AssignedLocation;
-
 import jdk.internal.foreign.abi.ABIDescriptor;
+import jdk.internal.foreign.abi.VMStorage;
 
 public class JavaEntryPointInfo {
     private final MethodType methodType;
-    private final AssignedLocation[] argumentsAssignment;
-    private final AssignedLocation[] returnAssignment;
+    private final VMStorage[] argumentsAssignment;
+    private final VMStorage[] returnAssignment;
     private final int returnBufferSize;
 
-    private JavaEntryPointInfo(MethodType methodType, AssignedLocation[] argumentsAssignment, AssignedLocation[] returnAssignment, long returnBufferSize) {
+    private JavaEntryPointInfo(MethodType methodType, VMStorage[] argumentsAssignment, VMStorage[] returnAssignment, long returnBufferSize) {
         this.methodType = Objects.requireNonNull(methodType);
         this.argumentsAssignment = Objects.requireNonNull(argumentsAssignment);
         this.returnAssignment = Objects.requireNonNull(returnAssignment);
@@ -24,10 +23,8 @@ public class JavaEntryPointInfo {
 
     static JavaEntryPointInfo make(MethodType mt, Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs conv,
                     boolean needsReturnBuffer, long returnBufferSize) {
-        AssignedLocation[] args = AbiUtils.singleton().toMemoryAssignment(conv.argRegs(), false);
-        AssignedLocation[] ret = AbiUtils.singleton().toMemoryAssignment(conv.retRegs(), true);
-        assert needsReturnBuffer == (ret.length >= 2);
-        return new JavaEntryPointInfo(mt, args, ret, returnBufferSize);
+        assert needsReturnBuffer == (conv.retRegs().length >= 2);
+        return new JavaEntryPointInfo(mt, conv.argRegs(), conv.retRegs(), returnBufferSize);
     }
 
     static JavaEntryPointInfo make(MethodHandle mh, ABIDescriptor abi, Target_jdk_internal_foreign_abi_UpcallLinker_CallRegs conv,
@@ -55,11 +52,11 @@ public class JavaEntryPointInfo {
         return returnAssignment.length >= 2;
     }
 
-    public AssignedLocation[] argumentsAssignment() {
+    public VMStorage[] parametersAssignment() {
         return argumentsAssignment;
     }
 
-    public AssignedLocation[] returnAssignment() {
+    public VMStorage[] returnAssignment() {
         return returnAssignment;
     }
 

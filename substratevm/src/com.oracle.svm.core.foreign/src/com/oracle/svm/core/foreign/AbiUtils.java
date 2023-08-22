@@ -25,8 +25,6 @@
 package com.oracle.svm.core.foreign;
 
 import static com.oracle.svm.core.util.VMError.unsupportedFeature;
-import static java.lang.invoke.MethodHandles.collectArguments;
-import static java.lang.invoke.MethodHandles.dropReturn;
 import static java.lang.invoke.MethodType.methodType;
 import static jdk.vm.ci.amd64.AMD64.rax;
 
@@ -90,6 +88,10 @@ public abstract class AbiUtils {
             return Arrays.stream(values).allMatch(v -> v == reference);
         }
 
+        private static boolean allSameSize(List<?> reference, List<?>... others) {
+            return Arrays.stream(others).allMatch(v -> v.size() == reference.size());
+        }
+
         private Adapter() {
         }
 
@@ -98,18 +100,23 @@ public abstract class AbiUtils {
             CaptureBufferAddress
         }
 
-        public record AdaptationResult(
-                        Map<Extracted, ValueNode> extractedArguments,
-                        List<ValueNode> arguments,
-                        List<AssignedLocation> parametersAssignment,
-                        List<AssignedLocation> returnsAssignment,
-                        MethodType callType) {
-            public ValueNode getArgument(Extracted id) {
-                return extractedArguments.get(id);
+        public static class Result {
+            public record FullNativeAdaptation(
+                            Map<Extracted, ValueNode> extractedArguments,
+                            List<ValueNode> arguments,
+                            List<AssignedLocation> parametersAssignment,
+                            List<AssignedLocation> returnsAssignment,
+                            MethodType callType) {
+                public ValueNode getArgument(Extracted id) {
+                    return extractedArguments.get(id);
+                }
+            }
+
+            public record TypeAdaptation(List<AssignedLocation> parametersAssignment, MethodType callType) {
             }
         }
 
-        public static AdaptationResult adapt(AbiUtils self, List<Adaptation> adaptations, List<ValueNode> originalArguments, NativeEntryPointInfo nep) {
+        public static Result.FullNativeAdaptation adapt(AbiUtils self, List<Adaptation> adaptations, List<ValueNode> originalArguments, NativeEntryPointInfo nep) {
             AssignedLocation[] originalAssignment = self.toMemoryAssignment(nep.parametersAssignment(), false);
             VMError.guarantee(allEqual(adaptations.size(), originalArguments.size(), nep.methodType().parameterCount(), originalAssignment.length));
 
@@ -118,8 +125,8 @@ public abstract class AbiUtils {
             List<AssignedLocation> assignment = new ArrayList<>();
             List<Class<?>> argumentTypes = new ArrayList<>();
 
-            for (int i = 0; i < adaptations.size(); ++i) {
-                Adaptation adaptation = adaptations.get(i);
+            int i = 0;
+            for (Adaptation adaptation : adaptations) {
                 if (adaptation == null) {
                     adaptation = NOOP;
                 }
@@ -128,19 +135,42 @@ public abstract class AbiUtils {
                 assignment.addAll(adaptation.apply(originalAssignment[i]));
                 argumentTypes.addAll(adaptation.apply(nep.methodType().parameterType(i)));
 
-                VMError.guarantee(allEqual(arguments.size(), assignment.size(), argumentTypes.size()));
+                VMError.guarantee(allSameSize(arguments, assignment, argumentTypes));
+                ++i;
             }
+            assert i == nep.methodType().parameterCount();
 
             // Sanity checks
             VMError.guarantee(extractedArguments.containsKey(Extracted.CallTarget));
             VMError.guarantee(!nep.capturesCallState() || extractedArguments.containsKey(Extracted.CaptureBufferAddress));
-            for (int i = 0; i < arguments.size(); ++i) {
-                VMError.guarantee(arguments.get(i) != null);
-                VMError.guarantee(!assignment.get(i).isPlaceholder() || (i == 0 && nep.needsReturnBuffer()));
+            for (int j = 0; j < arguments.size(); ++j) {
+                VMError.guarantee(arguments.get(j) != null);
+                VMError.guarantee(!assignment.get(j).isPlaceholder() || (j == 0 && nep.needsReturnBuffer()));
             }
 
-            return new AdaptationResult(extractedArguments, arguments, assignment, Arrays.stream(self.toMemoryAssignment(nep.returnsAssignment(), true)).toList(),
+            return new Result.FullNativeAdaptation(extractedArguments, arguments, assignment, Arrays.stream(self.toMemoryAssignment(nep.returnsAssignment(), true)).toList(),
                             MethodType.methodType(nep.methodType().returnType(), argumentTypes));
+        }
+
+        public static Result.TypeAdaptation adapt(AbiUtils self, List<Adaptation> adaptations, JavaEntryPointInfo jep) {
+            AssignedLocation[] originalAssignment = self.toMemoryAssignment(jep.parametersAssignment(), false);
+
+            List<AssignedLocation> assignment = new ArrayList<>();
+            List<Class<?>> argumentTypes = new ArrayList<>();
+
+            int i = 0;
+            for (Adaptation adaptation : adaptations) {
+                if (adaptation == null) {
+                    adaptation = NOOP;
+                }
+
+                assignment.addAll(adaptation.apply(originalAssignment[i]));
+                argumentTypes.addAll(adaptation.apply(jep.handleType().parameterType(i)));
+                ++i;
+            }
+            assert i == jep.handleType().parameterCount();
+
+            return new Result.TypeAdaptation(assignment, MethodType.methodType(jep.handleType().returnType(), argumentTypes));
         }
 
         /**
@@ -315,8 +345,13 @@ public abstract class AbiUtils {
      * used to call said entrypoint.
      */
     @Platforms(Platform.HOSTED_ONLY.class)
-    public final Adapter.AdaptationResult adapt(List<ValueNode> arguments, NativeEntryPointInfo nep) {
+    public final Adapter.Result.FullNativeAdaptation adapt(List<ValueNode> arguments, NativeEntryPointInfo nep) {
         return Adapter.adapt(this, generateAdaptations(nep), arguments, nep);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public final Adapter.Result.TypeAdaptation adapt(JavaEntryPointInfo jep) {
+        return Adapter.adapt(this, generateAdaptations(jep), jep);
     }
 
     /**
@@ -332,6 +367,15 @@ public abstract class AbiUtils {
         adaptations.set(current++, Adapter.extract(Adapter.Extracted.CallTarget, long.class));
         if (nep.capturesCallState()) {
             adaptations.set(current++, Adapter.extract(Adapter.Extracted.CaptureBufferAddress, long.class));
+        }
+        return adaptations;
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    protected List<Adapter.Adaptation> generateAdaptations(JavaEntryPointInfo jep) {
+        List<Adapter.Adaptation> adaptations = new ArrayList<>(Collections.nCopies(jep.handleType().parameterCount(), null));
+        if (jep.buffersReturn()) {
+            adaptations.set(0, Adapter.drop());
         }
         return adaptations;
     }
@@ -546,25 +590,6 @@ class ABIs {
                     throw VMError.shouldNotReachHere(e);
                 }
             }
-
-            private static MethodHandle adaptUpcallForIMR(MethodHandle target, boolean dropReturn) {
-                if (target.type().returnType() != MemorySegment.class)
-                    throw new IllegalArgumentException("Must return MemorySegment for IMR");
-
-                target = collectArguments(MH_BUFFER_COPY, 1, target); // (MemorySegment, ...)
-                // MemorySegment
-
-                if (dropReturn) { // no handling for return value, need to drop it
-                    target = dropReturn(target);
-                } else {
-                    // adjust return type so it matches the inferred type of the effective
-                    // function descriptor
-                    target = target.asType(target.type().changeReturnType(MemorySegment.class));
-                }
-
-                return target;
-            }
-
         }
 
         protected abstract CallingSequence makeCallingSequence(MethodType type, FunctionDescriptor desc, boolean forUpcall, LinkerOptions options);

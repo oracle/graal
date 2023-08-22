@@ -80,7 +80,7 @@ public interface StronglyTypedRuntimeForeignAccessSupport extends RuntimeForeign
 
     @Override
     default void registerForUpcall(ConfigurationCondition condition, Object descO, Object... optionsO) {
-        registerForUpcall(condition, typeDesc(descO), typeOptions(optionsO));
+        registerForUpcall(condition, castDesc(descO), castOptions(optionsO));
     }
 
     void registerForUpcall(ConfigurationCondition condition, FunctionDescriptor desc, Linker.Option... options);

@@ -45,7 +45,7 @@ public final class AssignedLocation {
         if (!isValidOffset(this.stackOffset)) {
             throw new IllegalStateException("Stack offset cannot be < 0 (and not NONE).");
         }
-        if (assignsToRegister() != (this.registerKind == null)) {
+        if (assignsToRegister() && (this.registerKind == null)) {
             throw new IllegalStateException("Missing register kind.");
         }
         if (assignsToStack() == assignsToRegister()) {

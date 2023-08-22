@@ -90,7 +90,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
     private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredDowncalls = ConcurrentHashMap.newKeySet();
     private int downcallCount = 0;
 
-    private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredUpcalls = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<Pair<FunctionDescriptor, Linker.Option[]>> registeredUpcalls = ConcurrentHashMap.newKeySet();
     private int upcallCount = 0;
 
     @Fold
@@ -165,7 +165,7 @@ public class ForeignFunctionsFeature implements InternalFeature {
                         access,
                         true,
                         AbiUtils.singleton()::makeJavaEntryPoint,
-                        j -> new UpcallStubC(j, access.getUniverse(), access.getMetaAccess().getWrapped()),
+                        j -> UpcallStub.create(j, access.getUniverse(), access.getMetaAccess().getWrapped()),
                         ForeignFunctionsRuntime.singleton()::addUpcallStubPointer);
     }
 

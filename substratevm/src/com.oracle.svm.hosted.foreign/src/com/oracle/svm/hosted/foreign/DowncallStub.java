@@ -117,7 +117,7 @@ class DowncallStub extends NonBytecodeMethod {
         arguments = argumentsAndNep.getLeft();
         ValueNode runtimeNep = argumentsAndNep.getRight();
 
-        AbiUtils.Adapter.AdaptationResult adapted = AbiUtils.singleton().adapt(kit.unboxArguments(arguments, this.nep.methodType()), this.nep);
+        AbiUtils.Adapter.Result.FullNativeAdaptation adapted = AbiUtils.singleton().adapt(kit.unboxArguments(arguments, this.nep.methodType()), this.nep);
 
         ValueNode callAddress = adapted.getArgument(AbiUtils.Adapter.Extracted.CallTarget);
 

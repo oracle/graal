@@ -3,6 +3,7 @@ package com.oracle.svm.hosted.foreign;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_FAST_PATH_PROBABILITY;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Method;
 import java.util.List;
 
@@ -35,7 +36,6 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.SubstrateTargetDescription;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -70,18 +70,18 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public abstract class UpcallStub extends NonBytecodeMethod {
     protected final JavaEntryPointInfo jep;
 
-    protected UpcallStub(JavaEntryPointInfo jep, MetaAccessProvider metaAccess, boolean javaSide) {
+    protected UpcallStub(JavaEntryPointInfo jep, MethodType methodType, MetaAccessProvider metaAccess, boolean high) {
         super(
-                        UpcallStubsHolder.stubName(jep, javaSide),
+                        UpcallStubsHolder.stubName(jep, high),
                         true,
                         metaAccess.lookupJavaType(UpcallStubsHolder.class),
-                        SimpleSignature.fromMethodType(javaSide ? jep.javaMethodType() : jep.cMethodType(), metaAccess),
+                        SimpleSignature.fromMethodType(methodType, metaAccess),
                         UpcallStubsHolder.getConstantPool(metaAccess));
         this.jep = jep;
     }
 
     public static UpcallStub create(JavaEntryPointInfo jep, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
-        return new UpcallStubC(jep, universe, metaAccess);
+        return LowUpcallStub.make(jep, universe, metaAccess);
     }
 }
 
@@ -109,18 +109,32 @@ public abstract class UpcallStub extends NonBytecodeMethod {
  * {@link ReservedRegisters#getThreadRegister}</li>
  * </ul>
  */
-class UpcallStubC extends UpcallStub implements CustomCallingConventionMethod {
+class LowUpcallStub extends UpcallStub implements CustomCallingConventionMethod {
     private final ResolvedJavaMethod javaSide;
     private final RegisterArray savedRegisters;
+    private final AssignedLocation[] parametersAssignment;
 
-    public UpcallStubC(JavaEntryPointInfo jep, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
-        super(jep, metaAccess, false);
-        this.javaSide = universe.lookup(new UpcallStubJava(jep, metaAccess));
-        SubstrateTargetDescription target = ConfigurationValues.getTarget();
-        this.savedRegisters = ImageSingletons.lookup(SubstrateRegisterConfigFactory.class)
-                        .newRegisterFactory(SubstrateRegisterConfig.ConfigKind.NATIVE_TO_JAVA, null, target, SubstrateOptions.PreserveFramePointer.getValue()).getCalleeSaveRegisters();
+    static LowUpcallStub make(JavaEntryPointInfo jep, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
+        return new LowUpcallStub(jep, AbiUtils.singleton().adapt(jep), universe, metaAccess);
     }
 
+    private LowUpcallStub(JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, AnalysisUniverse universe, MetaAccessProvider metaAccess) {
+        super(jep, adapted.callType(), metaAccess, false);
+        this.javaSide = universe.lookup(new HighUpcallStub(jep, adapted, metaAccess));
+        this.savedRegisters = ImageSingletons.lookup(SubstrateRegisterConfigFactory.class)
+                        .newRegisterFactory(SubstrateRegisterConfig.ConfigKind.NATIVE_TO_JAVA, null, ConfigurationValues.getTarget(), SubstrateOptions.PreserveFramePointer.getValue())
+                        .getCalleeSaveRegisters();
+        this.parametersAssignment = adapted.parametersAssignment().toArray(new AssignedLocation[0]);
+    }
+
+    /**
+     * Implementation note: it would have been nice to be able to reuse the
+     * {@link com.oracle.svm.core.foreign.AbiUtils.Adapter} facilities to implement the argument
+     * transformations between the low and high call. Unfortunately, these facilities are not really
+     * suited here: there is no assignment to transform, the type must be transformed before the
+     * function is actually called (so all transformations should not be applied at the same time)
+     * and finally argument injection is not currently supported.
+     */
     @Override
     public StructuredGraph buildGraph(DebugContext debug, ResolvedJavaMethod method, HostedProviders providers, Purpose purpose) {
         assert ExplicitCallingConvention.Util.getCallingConventionKind(method, false) == SubstrateCallingConventionKind.Custom;
@@ -161,8 +175,7 @@ class UpcallStubC extends UpcallStub implements CustomCallingConventionMethod {
 
         StackValueNode returnBuffer = null;
         if (jep.buffersReturn()) {
-            assert jep.javaMethodType().returnType().equals(void.class) : getName();
-            assert jep.cMethodType().returnType().equals(void.class) : getName();
+            assert jep.handleType().returnType().equals(void.class) : getName();
             returnBuffer = kit.append(StackValueNode.create(jep.returnBufferSize(), method, BytecodeFrame.UNKNOWN_BCI, true));
             FrameState frameState = new FrameState(BytecodeFrame.UNKNOWN_BCI);
             frameState.invalidateForDeoptimization();
@@ -187,7 +200,7 @@ class UpcallStubC extends UpcallStub implements CustomCallingConventionMethod {
         if (jep.buffersReturn()) {
             assert returnBuffer != null;
             long offset = 0;
-            for (AssignedLocation loc : jep.returnAssignment()) {
+            for (AssignedLocation loc : AbiUtils.create().toMemoryAssignment(jep.returnAssignment(), true)) {
                 assert loc.assignsToRegister();
                 assert !save.containsKey(loc.register());
 
@@ -215,7 +228,7 @@ class UpcallStubC extends UpcallStub implements CustomCallingConventionMethod {
     private static void annotationsHolder() {
     }
 
-    private static final Method ANNOTATIONS_HOLDER = ReflectionUtil.lookupMethod(UpcallStubC.class, "annotationsHolder");
+    private static final Method ANNOTATIONS_HOLDER = ReflectionUtil.lookupMethod(LowUpcallStub.class, "annotationsHolder");
 
     private static final AnnotationValue[] INJECTED_ANNOTATIONS = SubstrateAnnotationExtractor.prepareInjectedAnnotations(
                     AnnotationAccess.getAnnotation(ANNOTATIONS_HOLDER, ExplicitCallingConvention.class),
@@ -228,21 +241,33 @@ class UpcallStubC extends UpcallStub implements CustomCallingConventionMethod {
 
     @Override
     public SubstrateCallingConventionType getCallingConvention() {
-        return SubstrateCallingConventionType.makeCustom(false, jep.argumentsAssignment(), jep.returnAssignment());
+        return SubstrateCallingConventionType.makeCustom(
+                        false,
+                        parametersAssignment,
+                        AbiUtils.singleton().toMemoryAssignment(jep.returnAssignment(), true));
     }
 }
 
 /**
  * In charge of high-level stuff, mainly invoking the method handle
  */
-class UpcallStubJava extends UpcallStub {
+class HighUpcallStub extends UpcallStub {
     private static final Method INVOKE = ReflectionUtil.lookupMethod(
                     MethodHandle.class,
                     "invokeWithArguments",
                     Object[].class);
 
-    public UpcallStubJava(JavaEntryPointInfo jep, MetaAccessProvider metaAccess) {
-        super(jep, metaAccess, true);
+    private static MethodType computeType(JavaEntryPointInfo jep, MethodType lowType) {
+        /* Inject return buffer */
+        if (jep.buffersReturn()) {
+            lowType = lowType.insertParameterTypes(0, long.class);
+        }
+        /* Inject method handle */
+        return lowType.insertParameterTypes(0, MethodHandle.class);
+    }
+
+    HighUpcallStub(JavaEntryPointInfo jep, AbiUtils.Adapter.Result.TypeAdaptation adapted, MetaAccessProvider metaAccess) {
+        super(jep, computeType(jep, adapted.callType()), metaAccess, true);
     }
 
     @Override
@@ -254,7 +279,7 @@ class UpcallStubJava extends UpcallStub {
         List<ValueNode> allArguments = kit.loadArguments(getSignature().toParameterTypes(null));
 
         ValueNode mh = allArguments.remove(0);
-        /* If adaptations are ever needed for upcall, it should most likely be applied here */
+        /* If adaptations are ever needed for upcall, they should most likely be applied here */
         allArguments = kit.boxArguments(allArguments, jep.handleType());
         ValueNode arguments = kit.packArguments(allArguments);
 
