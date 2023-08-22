@@ -26,7 +26,6 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.management.ManagementFactory;
@@ -47,6 +46,9 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
     private static final int TIMEOUT = 10000;
     private static final String THREAD_NAME_1 = "Thread-1";
     private static final String THREAD_NAME_2 = "Thread-2";
+    private static final String THREAD_NAME_3 = "Thread-3";
+    private static Thread thread3 = null;
+    private static volatile boolean finished = false;
 
     @Test
     public void test() throws Throwable {
@@ -55,15 +57,21 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
 
         WeakReference<Thread> thread1 = createAndStartBusyWaitThread(THREAD_NAME_1, 10, 250);
         WeakReference<Thread> thread2 = createAndStartBusyWaitThread(THREAD_NAME_2, 250, 10);
+        thread3 = createAndStartLongLived(THREAD_NAME_3);
 
         waitUntilCollected(thread1);
         waitUntilCollected(thread2);
 
+        /**
+         * Thread 3 should be alive at the time of final chunk rotation to test whether this event
+         * is emitted correctly upon chunk end.
+         */
         stopRecording(recording, TestThreadCPULoadEvent::validateEvents);
+        finished = true;
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
-        assertEquals(2, events.size());
+        assertTrue(thread3.isAlive());
         Map<String, Float> userTimes = new HashMap<>();
         Map<String, Float> cpuTimes = new HashMap<>();
 
@@ -73,11 +81,10 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
             float systemTime = e.<Float> getValue("system");
             assertTrue("User time is outside 0..1 range", 0.0 <= userTime && userTime <= 1.0);
             assertTrue("System time is outside 0..1 range", 0.0 <= systemTime && systemTime <= 1.0);
-
             userTimes.put(threadName, userTime);
             cpuTimes.put(threadName, userTime + systemTime);
         }
-
+        assertTrue(cpuTimes.containsKey(THREAD_NAME_3));
         assertTrue(userTimes.get(THREAD_NAME_1) < userTimes.get(THREAD_NAME_2));
         assertTrue(cpuTimes.get(THREAD_NAME_1) < cpuTimes.get(THREAD_NAME_2));
     }
@@ -90,6 +97,21 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
         thread.setName(name);
         thread.start();
         return new WeakReference<>(thread);
+    }
+
+    private static Thread createAndStartLongLived(String name) {
+        Thread thread = new Thread(() -> {
+            while (!finished) {
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+        thread.setName(name);
+        thread.start();
+        return thread;
     }
 
     private static void busyWait(long waitMs) {
