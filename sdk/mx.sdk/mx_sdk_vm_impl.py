@@ -3099,6 +3099,7 @@ def _get_jvm_cfg_contents(cfgs_to_add):
         for config in cfg['configs']:
             validate_cfg_line(config, cfg['source'])
             new_lines.append(config.strip() + os.linesep)
+    # escape things that look like string substitutions
     return re.sub(r'<[\w\-]+?(:(.+?))?>', lambda m: '<esc:' + m.group(0)[1:], ''.join(new_lines))
 
 
