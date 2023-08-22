@@ -118,7 +118,7 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
 
     public static class Options {
         @Option(help = "Determines if JFR uses a signal handler for execution sampling.")//
-        public static final HostedOptionKey<Boolean> SignalHandlerBasedExecutionSampler = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> SignalHandlerBasedExecutionSampler = new HostedOptionKey<>(true);
     }
 }
 
