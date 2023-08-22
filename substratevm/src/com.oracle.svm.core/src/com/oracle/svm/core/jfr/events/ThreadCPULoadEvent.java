@@ -44,6 +44,8 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.util.TimeUtils;
 
+import static com.oracle.svm.core.thread.PlatformThreads.fromVMThread;
+
 public class ThreadCPULoadEvent {
     private static final FastThreadLocalLong cpuTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.cpuTimeTL");
     private static final FastThreadLocalLong userTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.userTimeTL");
@@ -119,7 +121,7 @@ public class ThreadCPULoadEvent {
 
         JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadCPULoad);
         JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-        JfrNativeEventWriter.putEventThread(data);
+        JfrNativeEventWriter.putThread(data, fromVMThread(isolateThread));
         JfrNativeEventWriter.putFloat(data, userTime / totalAvailableTime);
         JfrNativeEventWriter.putFloat(data, systemTime / totalAvailableTime);
         JfrNativeEventWriter.endSmallEvent(data);
