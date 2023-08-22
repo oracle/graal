@@ -150,6 +150,9 @@ public class NativeImageOptions {
     @Option(help = "Deprecated", type = User)//
     static final HostedOptionKey<Boolean> AllowIncompleteClasspath = new HostedOptionKey<>(false);
 
+    @Option(help = "Disable substitution return type checking", type = Debug, deprecated = true, stability = OptionStability.EXPERIMENTAL, deprecationMessage = "This option will be removed soon and the return type check will be mandatory.")//
+    public static final HostedOptionKey<Boolean> DisableSubstitutionReturnTypeCheck = new HostedOptionKey<>(false);
+
     @SuppressWarnings("all")
     private static boolean areAssertionsEnabled() {
         boolean assertsEnabled = false;
