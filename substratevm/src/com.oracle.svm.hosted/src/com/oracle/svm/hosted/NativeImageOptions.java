@@ -199,7 +199,7 @@ public class NativeImageOptions {
      * Analysis scales well up to 12 cores and gives slight improvements until 18 cores. We set the
      * default value to 16 to minimize wasted resources in large machines.
      */
-    @Option(help = "The number of threads to use for analysis during native image generation. The number must be smaller than the NumberOfThreads.")//
+    @Option(help = "The number of threads to use for analysis during native image generation. The number must be smaller than the NumberOfThreads.", deprecated = true, deprecationMessage = "Please use '--parallelism' instead.")//
     public static final HostedOptionKey<Integer> NumberOfAnalysisThreads = new HostedOptionKey<>(-1);
 
     @Option(help = "Return after analysis")//
