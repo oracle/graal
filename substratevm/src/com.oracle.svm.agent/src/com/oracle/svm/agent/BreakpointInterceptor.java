@@ -679,18 +679,10 @@ final class BreakpointInterceptor {
             callerMethod = state.getCallerMethod(3);
         }
         JNIObjectHandle callerClass = getMethodDeclaringClass(callerMethod);
-        JNIObjectHandle callerModule = getObjectArgument(thread, 0);
-        JNIObjectHandle module = getObjectArgument(thread, 1);
         JNIObjectHandle baseName = getObjectArgument(thread, 2);
         JNIObjectHandle locale = getObjectArgument(thread, 3);
-        JNIObjectHandle control = getObjectArgument(thread, 4);
-        JNIObjectHandle result = Support.callStaticObjectMethodLLLLL(jni, bp.clazz, bp.method, callerModule, module, baseName, locale, control);
-        BundleInfo bundleInfo = BundleInfo.NONE;
-        if (!clearException(jni)) {
-            bundleInfo = extractBundleInfo(jni, result);
-        }
-        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, "getBundleImpl", true, state.getFullStackTraceOrNull(),
-                        Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, bundleInfo.classNames, bundleInfo.locales);
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(),
+                        Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), readLocaleTag(jni, locale), Tracer.UNKNOWN_VALUE);
         return true;
     }
 
@@ -701,59 +693,6 @@ final class BreakpointInterceptor {
             return "";
         }
         return fromJniString(jni, languageTag);
-    }
-
-    private static final class BundleInfo {
-
-        static final BundleInfo NONE = new BundleInfo(new String[0], new String[0]);
-
-        final String[] classNames;
-        final String[] locales;
-
-        BundleInfo(String[] classNames, String[] locales) {
-            this.classNames = classNames;
-            this.locales = locales;
-        }
-    }
-
-    /**
-     * Traverses the bundle parent chain and collects classnames and locales of all encountered
-     * bundles.
-     *
-     */
-    private static BundleInfo extractBundleInfo(JNIEnvironment jni, JNIObjectHandle bundle) {
-        List<String> locales = new ArrayList<>();
-        List<String> classNames = new ArrayList<>();
-        JNIObjectHandle curr = bundle;
-        while (curr.notEqual(nullHandle())) {
-            JNIObjectHandle locale = Support.callObjectMethod(jni, curr, agent.handles().getJavaUtilResourceBundleGetLocale(jni));
-            if (clearException(jni)) {
-                return BundleInfo.NONE;
-            }
-            String localeTag = readLocaleTag(jni, locale);
-            if (localeTag.equals("und")) {
-                /*- Root locale is serialized into "und" */
-                localeTag = "";
-            }
-            JNIObjectHandle clazz = Support.callObjectMethod(jni, curr, agent.handles().javaLangObjectGetClass);
-            if (!clearException(jni)) {
-                JNIObjectHandle classNameHandle = Support.callObjectMethod(jni, clazz, agent.handles().javaLangClassGetName);
-                if (!clearException(jni)) {
-                    classNames.add(fromJniString(jni, classNameHandle));
-                    locales.add(localeTag);
-                }
-            }
-            curr = getResourceBundleParent(jni, curr);
-        }
-        return new BundleInfo(classNames.toArray(new String[0]), locales.toArray(new String[0]));
-    }
-
-    private static JNIObjectHandle getResourceBundleParent(JNIEnvironment jni, JNIObjectHandle bundle) {
-        JNIObjectHandle parent = Support.readObjectField(jni, bundle, agent.handles().getJavaUtilResourceBundleParentField(jni));
-        if (!clearException(jni)) {
-            return parent;
-        }
-        return nullHandle();
     }
 
     private static boolean loadClass(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
