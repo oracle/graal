@@ -33,7 +33,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 class CharsetSubstitutionsFeature implements InternalFeature {
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        access.registerReachabilityHandler((e) -> RuntimeResourceAccess.addResource(ModuleLayer.boot().findModule("java.base").get(),
+        access.registerReachabilityHandler((e) -> RuntimeResourceAccess.addResource(Class.class.getModule(),
                         "java/lang/uniName.dat"), access.findClassByName("java.lang.CharacterName"));
     }
 }
