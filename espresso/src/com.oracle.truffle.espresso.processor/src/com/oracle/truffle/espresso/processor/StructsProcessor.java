@@ -23,16 +23,11 @@
 
 package com.oracle.truffle.espresso.processor;
 
-import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
-import com.oracle.truffle.espresso.processor.builders.ClassFileBuilder;
-import com.oracle.truffle.espresso.processor.builders.FieldBuilder;
-import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
-import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
-
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.IMPORT_INTEROP_LIBRARY;
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.IMPORT_STATIC_OBJECT;
 import static com.oracle.truffle.espresso.processor.EspressoProcessor.IMPORT_TRUFFLE_OBJECT;
-import static com.oracle.truffle.espresso.processor.EspressoProcessor.SUPPRESS_UNUSED;
+import static com.oracle.truffle.espresso.processor.EspressoProcessor.SUPPRESS_WARNINGS;
+import static com.oracle.truffle.espresso.processor.EspressoProcessor.UNUSED;
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.argument;
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.assignment;
 import static com.oracle.truffle.espresso.processor.ProcessorUtils.call;
@@ -63,6 +58,13 @@ import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.tools.JavaFileObject;
+
+import com.oracle.truffle.espresso.processor.builders.AnnotationBuilder;
+import com.oracle.truffle.espresso.processor.builders.ClassBuilder;
+import com.oracle.truffle.espresso.processor.builders.ClassFileBuilder;
+import com.oracle.truffle.espresso.processor.builders.FieldBuilder;
+import com.oracle.truffle.espresso.processor.builders.MethodBuilder;
+import com.oracle.truffle.espresso.processor.builders.ModifierBuilder;
 
 public class StructsProcessor extends AbstractProcessor {
 
@@ -260,7 +262,7 @@ public class StructsProcessor extends AbstractProcessor {
 
         // Java struct declaration
         ClassBuilder struct = new ClassBuilder(className) //
-                        .withAnnotation(SUPPRESS_UNUSED) //
+                        .withAnnotation(new AnnotationBuilder(SUPPRESS_WARNINGS).withValue("value", UNUSED)) //
                         .withQualifiers(new ModifierBuilder().asPublic().asFinal()) //
                         .withSuperClass(STRUCT_STORAGE_CLASS + "<" + className + "." + wrapperName + ">");
 

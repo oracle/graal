@@ -46,7 +46,7 @@ import com.oracle.graal.pointsto.util.TimerCollection;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 public class StandalonePointsToAnalysis extends PointsToAnalysis {
-    private Set<AnalysisMethod> addedClinits = ConcurrentHashMap.newKeySet();
+    private final Set<AnalysisMethod> addedClinits = ConcurrentHashMap.newKeySet();
 
     public StandalonePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM,
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
@@ -78,7 +78,7 @@ public class StandalonePointsToAnalysis extends PointsToAnalysis {
     public void onTypeReachable(AnalysisType type) {
         AnalysisMethod clinitMethod = type.getClassInitializer();
         if (clinitMethod != null && !addedClinits.contains(clinitMethod)) {
-            addRootMethod(clinitMethod, true);
+            addRootMethod(clinitMethod, true, "Class initializer added onTypeReachable, in " + StandalonePointsToAnalysis.class);
             addedClinits.add(clinitMethod);
         }
     }

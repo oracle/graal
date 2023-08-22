@@ -26,8 +26,6 @@ package org.graalvm.compiler.truffle.test;
 
 import java.util.stream.IntStream;
 
-import org.graalvm.compiler.truffle.runtime.BytecodeOSRMetadata;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -43,6 +41,8 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.BytecodeOSRMetadata;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 @SuppressWarnings("deprecation")
 public class LoopNodeOSRTest extends TestWithSynchronousCompiling {

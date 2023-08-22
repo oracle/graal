@@ -287,7 +287,7 @@ public final class InlineSupport {
         public <V> ReferenceField<V> getReference(int index, Class<?> valueClass) {
             Objects.requireNonNull(valueClass);
             ReferenceField<?> reference = get(index, ReferenceField.class);
-            Class<?> varType = reference.getFieldClass();
+            Class<?> varType = reference.valueClass;
             if (!varType.isAssignableFrom(valueClass)) {
                 throw incompatibleAccessError(String.format("Expected reference type %s, but got %s. ",
                                 valueClass.getName(), varType.getName()));
@@ -513,8 +513,11 @@ public final class InlineSupport {
      */
     public static final class ReferenceField<T> extends InlinableField {
 
+        final Class<?> valueClass;
+
         ReferenceField(Class<?> receiverClass, Class<?> lookupFieldClass, Lookup declaringLookup, String fieldName, Class<T> valueClass) {
             super(receiverClass, lookupFieldClass, declaringLookup, fieldName, valueClass);
+            this.valueClass = valueClass;
         }
 
         /**
@@ -552,7 +555,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public void set(Node node, T value) {
-            setObject(node, value);
+            setObject(node, value, valueClass);
         }
 
         /**
@@ -577,7 +580,7 @@ public final class InlineSupport {
          * @since 23.0
          */
         public boolean compareAndSet(Node node, T expect, T update) {
-            return compareAndSetObject(node, expect, update);
+            return compareAndSetObject(node, expect, update, valueClass);
         }
 
         /**
@@ -1106,14 +1109,11 @@ public final class InlineSupport {
         final Class<?> receiverClass;
         final long offset;
 
-        final Class<?> fieldClass;
-
         UnsafeField(UnsafeField prev) {
             this.offset = prev.offset;
             this.receiverClass = prev.receiverClass;
             this.declaringClass = prev.declaringClass;
             this.name = prev.name;
-            this.fieldClass = prev.fieldClass;
         }
 
         UnsafeField(Class<?> receiverClass, Class<?> declaringClass, Lookup declaringLookup, String fieldName, Class<?> valueClass) {
@@ -1124,6 +1124,7 @@ public final class InlineSupport {
             Objects.requireNonNull(valueClass);
 
             Field field;
+            Class<?> fieldClass;
             try {
                 this.declaringClass = declaringClass;
                 this.name = fieldName;
@@ -1136,7 +1137,7 @@ public final class InlineSupport {
                                         return declaringClass.getDeclaredField(fieldName);
                                     }
                                 });
-                this.fieldClass = field.getType();
+                fieldClass = field.getType();
             } catch (PrivilegedActionException pae) {
                 if (pae.getException() instanceof NoSuchFieldException) {
                     throw new IllegalArgumentException(String.format("No such field %s.%s.", declaringClass.getName(), fieldName), pae);
@@ -1177,7 +1178,7 @@ public final class InlineSupport {
         }
 
         /**
-         * Lookups up the parent {@link SpecializationDataNode} instances to find the correct
+         * Looks up the parent {@link SpecializationDataNode} instances to find the correct
          * receiver.
          */
         @ExplodeLoop
@@ -1189,10 +1190,10 @@ public final class InlineSupport {
                  */
                 return node;
             }
-            Node receiver = (Node) node;
+            Object receiver = node;
             while (receiver != null) {
                 assert validateForParentLookup(node, receiver);
-                receiver = PARENT.getParent(receiver);
+                receiver = U.getObject(receiver, PARENT.offset);
                 if (receiverClass.isInstance(receiver)) {
                     break;
                 }
@@ -1211,7 +1212,7 @@ public final class InlineSupport {
          * the DSL. Any further parent lookups are invalid.
          */
         @TruffleBoundary
-        private boolean validateForParentLookup(Object inlineTarget, Node parent) {
+        private boolean validateForParentLookup(Object inlineTarget, Object parent) {
             if (CompilerDirectives.inCompiledCode()) {
                 return true;
             }
@@ -1252,10 +1253,6 @@ public final class InlineSupport {
                             getEnclosingSimpleName(receiverClass), getEnclosingSimpleName(((Node) inlineTarget).getClass())));
         }
 
-        final Class<?> getFieldClass() {
-            return fieldClass;
-        }
-
         final boolean getBoolean(Object node) {
             return U.getBoolean(resolveReceiver(node), offset);
         }
@@ -1292,14 +1289,6 @@ public final class InlineSupport {
             return U.getObject(resolveReceiver(node), offset);
         }
 
-        /**
-         * A get object without parent resolution, when walking parents.
-         */
-        final Node getParent(Node node) {
-            assert this == PARENT;
-            return (Node) U.getObject(node, offset);
-        }
-
         final void setBoolean(Object node, boolean v) {
             U.putBoolean(resolveReceiver(node), offset, v);
         }
@@ -1332,9 +1321,9 @@ public final class InlineSupport {
             U.putDouble(resolveReceiver(node), offset, v);
         }
 
-        final void setObject(Object node, Object v) {
-            if (!fieldClass.isInstance(v) && v != null) {
-                throw InlinableField.invalidValue(fieldClass, v);
+        final void setObject(Object node, Object v, Class<?> valueClass) {
+            if (!valueClass.isInstance(v) && v != null) {
+                throw InlinableField.invalidValue(valueClass, v);
             }
             U.putObject(resolveReceiver(node), offset, v);
         }
@@ -1343,9 +1332,9 @@ public final class InlineSupport {
             return U.getObjectVolatile(resolveReceiver(node), offset);
         }
 
-        final boolean compareAndSetObject(Object node, Object expect, Object update) {
-            if (!fieldClass.isInstance(update) && update != null) {
-                throw InlinableField.invalidValue(fieldClass, update);
+        final boolean compareAndSetObject(Object node, Object expect, Object update, Class<?> valueClass) {
+            if (!valueClass.isInstance(update) && update != null) {
+                throw InlinableField.invalidValue(valueClass, update);
             }
             return U.compareAndSwapObject(resolveReceiver(node), offset, expect, update);
         }

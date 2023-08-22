@@ -212,7 +212,7 @@ def _rmdir_recursive(to_delete):
         os.unlink(to_delete)
 
 def _run(args, log_level=False):
-    _log(LogLevel.FINE, "exec({0})", ', '.join(['"' + a + '"' for a in args]))
+    _log(LogLevel.FINE, "exec({0})", ' '.join(args))
     return subprocess.Popen(args)
 
 def _run_java(javaHome, mainClass, cp=None, truffleCp=None, bootCp=None, vmArgs=None, args=None, dbgPort=None):
@@ -351,13 +351,13 @@ def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_
     jarsToPatch = []
     for jarPath in cp:
         if 'polyglot-tck.jar' in jarPath:
-            additional_vm_arguments.append('--add-exports=org.graalvm.sdk/org.graalvm.polyglot.tck=ALL-UNNAMED')
+            additional_vm_arguments.append('--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.tck=ALL-UNNAMED')
             jarsToPatch.append(os.path.abspath(jarPath))
         if 'truffle-tck-common.jar' in jarPath:
-            additional_vm_arguments.append('--add-exports=org.graalvm.sdk/com.oracle.truffle.tck.common.inline=ALL-UNNAMED')
+            additional_vm_arguments.append('--add-exports=org.graalvm.polyglot/com.oracle.truffle.tck.common.inline=ALL-UNNAMED')
             jarsToPatch.append(os.path.abspath(jarPath))
     if jarsToPatch:
-        additional_vm_arguments.extend(['--patch-module', 'org.graalvm.sdk=' + ':'.join(jarsToPatch)])
+        additional_vm_arguments.extend(['--patch-module', 'org.graalvm.polyglot=' + ':'.join(jarsToPatch)])
 
     return _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter,
         [_ClassPathEntry(os.path.abspath(e)) for e in cp],

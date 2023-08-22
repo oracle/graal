@@ -89,10 +89,7 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
         register(new HotSpotForeignCallLinkageImpl(EXCEPTION_HANDLER_IN_CALLER, JUMP_ADDRESS, DESTROYS_ALL_CALLER_SAVE_REGISTERS, exceptionCc, null));
 
         linkSnippetStubs(providers, options, IntrinsicStubsGen::new, ArrayEqualsForeignCalls.STUBS_AMD64);
-
-        if (VectorizedHashCodeNode.isSupported(target.arch)) {
-            linkSnippetStubs(providers, options, IntrinsicStubsGen::new, VectorizedHashCodeNode.STUBS);
-        }
+        linkSnippetStubs(providers, options, IntrinsicStubsGen::new, VectorizedHashCodeNode.STUBS);
 
         super.initialize(providers, options);
     }
@@ -116,5 +113,4 @@ public class AMD64HotSpotForeignCallsProvider extends HotSpotHostForeignCallsPro
             super.registerMathStubs(hotSpotVMConfig, providers, options);
         }
     }
-
 }

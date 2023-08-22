@@ -129,7 +129,7 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
     }
 
     @Override
-    public final MethodHandleAccessProvider getMethodHandleAccess() {
+    public MethodHandleAccessProvider getMethodHandleAccess() {
         throw shouldNotReachHereAtRuntime(); // ExcludeFromJacocoGeneratedReport
     }
 

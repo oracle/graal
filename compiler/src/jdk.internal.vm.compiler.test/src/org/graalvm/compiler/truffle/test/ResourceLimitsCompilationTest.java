@@ -37,7 +37,6 @@ import org.graalvm.compiler.nodes.java.LoweredAtomicReadAndAddNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.memory.ReadNode;
 import org.graalvm.compiler.nodes.memory.WriteNode;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.ResourceLimits;
@@ -46,6 +45,7 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.instrumentation.test.InstrumentationTestLanguage;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class ResourceLimitsCompilationTest extends PartialEvaluationTest {
 

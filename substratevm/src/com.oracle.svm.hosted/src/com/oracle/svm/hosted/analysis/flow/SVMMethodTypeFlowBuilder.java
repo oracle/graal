@@ -149,7 +149,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
             LoadFieldNode offsetLoadNode = (LoadFieldNode) offsetNode;
             AnalysisField field = (AnalysisField) offsetLoadNode.field();
             if (field.isStatic() &&
-                            !getHostVM().getClassInitializationSupport().shouldInitializeAtRuntime(field.getDeclaringClass()) &&
+                            getHostVM().getClassInitializationSupport().maybeInitializeAtBuildTime(field.getDeclaringClass()) &&
                             !field.getDeclaringClass().unsafeFieldsRecomputed() &&
                             !(field.wrapped instanceof ComputedValueField) &&
                             !(base.isConstant() && base.asConstant().isDefaultForKind())) {

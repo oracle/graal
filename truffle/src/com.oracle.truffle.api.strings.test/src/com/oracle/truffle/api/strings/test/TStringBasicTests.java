@@ -80,7 +80,7 @@ public class TStringBasicTests extends TStringTestBase {
         });
     }
 
-    private static void testTransCode(int codepoint, TruffleString.Encoding encodingA) throws Exception {
+    private static void testTransCode(int codepoint, TruffleString.Encoding encodingA) {
         TruffleString stringA = TruffleString.fromCodePointUncached(codepoint, encodingA);
         Assert.assertEquals(codepoint, stringA.codePointAtIndexUncached(0, encodingA, TruffleString.ErrorHandling.BEST_EFFORT));
         if (isAsciiCompatible(encodingA)) {
@@ -100,7 +100,7 @@ public class TStringBasicTests extends TStringTestBase {
         }
     }
 
-    private static void switchEncodingEquivalentCodePoint(int codepoint, TruffleString.Encoding encodingA, TruffleString stringA, TruffleString.Encoding encodingB) throws Exception {
+    private static void switchEncodingEquivalentCodePoint(int codepoint, TruffleString.Encoding encodingA, TruffleString stringA, TruffleString.Encoding encodingB) {
         if (encodingA != TruffleString.Encoding.BYTES && encodingB != TruffleString.Encoding.BYTES) {
             TruffleString stringB = stringA.switchEncodingUncached(encodingB);
             Assert.assertEquals(codepoint, stringB.codePointAtIndexUncached(0, encodingB, TruffleString.ErrorHandling.BEST_EFFORT));

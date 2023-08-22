@@ -38,7 +38,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 
@@ -48,16 +48,10 @@ import jdk.vm.ci.meta.Value;
 
 // @formatter:off
 
-@StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 4681,
-          lineEnd   = 4700,
-          commit    = "83d92672d4c2637fc37ddd873533c85a9b083904",
-          sha1      = "57f40186d75104a5e607d6fc047bbd50ef246590")
-@StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 3516,
-          lineEnd   = 3552,
-          commit    = "83d92672d4c2637fc37ddd873533c85a9b083904",
-          sha1      = "33649be9177daf5f0b4817d807458a5ff8c00365")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/d7b941640638b35f9ac1ef11cd6bf6ccb795c29a/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L4701-L4720",
+          sha1 = "57f40186d75104a5e607d6fc047bbd50ef246590")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L3514-L3550",
+          sha1 = "33649be9177daf5f0b4817d807458a5ff8c00365")
 // @formatter:on
 public final class AArch64BigIntegerMulAddOp extends AArch64LIRInstruction {
 

@@ -43,6 +43,8 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -66,6 +68,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -84,6 +87,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
@@ -99,6 +103,8 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
+import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -107,7 +113,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.RuntimeCompilationSupport;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
@@ -124,6 +130,7 @@ import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils.Accumulative
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -136,12 +143,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeature implements Feature, RuntimeCompilationSupport {
 
     public static class Options {
-        /*
-         * Note this phase is currently overly aggressive and can illegally remove proxies. This
-         * will be fixed in GR-44459.
-         */
         @Option(help = "Remove Deopt(Entries,Anchors,Proxies) determined to be unneeded after the runtime compiled graphs have been finalized.")//
-        public static final HostedOptionKey<Boolean> RemoveUnneededDeoptSupport = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> RemoveUnneededDeoptSupport = new HostedOptionKey<>(true);
 
         @Option(help = "Perform InlineBeforeAnalysis on runtime compiled methods")//
         public static final HostedOptionKey<Boolean> RuntimeCompilationInlineBeforeAnalysis = new HostedOptionKey<>(true);
@@ -212,9 +215,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
     static final class RuntimeCompiledMethodImpl implements RuntimeCompiledMethod {
         final AnalysisMethod method;
+        final Collection<ResolvedJavaMethod> inlinedMethods;
 
-        private RuntimeCompiledMethodImpl(AnalysisMethod method) {
+        private RuntimeCompiledMethodImpl(AnalysisMethod method, Collection<ResolvedJavaMethod> inlinedMethods) {
             this.method = method;
+            this.inlinedMethods = inlinedMethods;
         }
 
         @Override
@@ -224,10 +229,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         @Override
         public Collection<ResolvedJavaMethod> getInlinedMethods() {
-            /*
-             * Currently no inlining is performed when ParseOnceJIT is enabled.
-             */
-            return List.of();
+            return inlinedMethods;
         }
 
         @Override
@@ -257,11 +259,19 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
     }
 
-    public static class RuntimeGraphBuilderPhase extends AnalysisGraphBuilderPhase {
+    private static final class RuntimeGraphBuilderPhase extends AnalysisGraphBuilderPhase {
 
-        RuntimeGraphBuilderPhase(Providers providers,
+        private RuntimeGraphBuilderPhase(Providers providers,
                         GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext, WordTypes wordTypes, SVMHost hostVM) {
             super(providers, graphBuilderConfig, optimisticOpts, initialIntrinsicContext, wordTypes, hostVM);
+        }
+
+        static RuntimeGraphBuilderPhase createRuntimeGraphBuilderPhase(BigBang bb, Providers providers,
+                        GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts) {
+
+            // Adjust graphbuilderconfig to match analysis phase
+            var newGraphBuilderConfig = graphBuilderConfig.withEagerResolving(true).withUnresolvedIsError(PointstoOptions.UnresolvedIsError.getValue(bb.getOptions()));
+            return new RuntimeGraphBuilderPhase(providers, newGraphBuilderConfig, optimisticOpts, null, providers.getWordTypes(), (SVMHost) bb.getHostVM());
         }
 
         @Override
@@ -270,7 +280,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
     }
 
-    public static class RuntimeBytecodeParser extends AnalysisGraphBuilderPhase.AnalysisBytecodeParser {
+    private static final class RuntimeBytecodeParser extends AnalysisGraphBuilderPhase.AnalysisBytecodeParser {
 
         RuntimeBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext, SVMHost svmHost) {
@@ -307,7 +317,8 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     private Map<RuntimeCompilationCandidate, CallTreeNode> runtimeCandidateCallTree = null;
     private Map<AnalysisMethod, CallTreeNode> runtimeCompiledMethodCallTree = null;
     private HostedProviders analysisProviders = null;
-    private AllowInliningPredicate allowInliningPredicate = null;
+    private AllowInliningPredicate allowInliningPredicate = (builder, target) -> AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
+    private boolean allowInliningPredicateUpdated = false;
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -334,8 +345,9 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
     @Override
     public void registerAllowInliningPredicate(AllowInliningPredicate predicate) {
-        assert allowInliningPredicate == null;
+        assert !allowInliningPredicateUpdated;
         allowInliningPredicate = predicate;
+        allowInliningPredicateUpdated = true;
     }
 
     @Override
@@ -372,10 +384,6 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         if (GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
             config.requireAnalysisIteration();
         }
-
-        if (objectReplacer.updateDataDuringAnalysis()) {
-            config.requireAnalysisIteration();
-        }
     }
 
     @Override
@@ -391,10 +399,15 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         for (var method : impl.getUniverse().getMethods()) {
             var rMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
             if (rMethod != null && rMethod.isReachable() && !invalidForRuntimeCompilation.containsKey(rMethod)) {
-                boolean added = runtimeCompilations.add(new RuntimeCompiledMethodImpl(method));
-                if (added) {
-                    assert runtimeCompiledMethodCallTree.containsKey(method);
-                }
+                var runtimeInlinedMethods = rMethod.getAnalyzedGraph().getInlinedMethods();
+                var inlinedMethods = runtimeInlinedMethods.stream().map(inlinedMethod -> {
+                    ResolvedJavaMethod orig = ((AnalysisMethod) inlinedMethod).getMultiMethod(ORIGINAL_METHOD);
+                    assert orig != null;
+                    return orig;
+                }).collect(Collectors.toUnmodifiableSet());
+                boolean added = runtimeCompilations.add(new RuntimeCompiledMethodImpl(method, inlinedMethods));
+                assert added;
+                assert runtimeCompiledMethodCallTree.containsKey(method);
             }
         }
 
@@ -403,8 +416,6 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         // after analysis has completed we must ensure no new SubstrateTypes are introduced
         objectReplacer.forbidNewTypes();
-
-        System.out.println("Number of runtime compiled methods: " + getRuntimeCompiledMethods().size());
     }
 
     @Override
@@ -624,10 +635,10 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             }
         }
 
-        ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
+        HeapBreakdownProvider.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
         GraalSupport.setGraphEncoding(null, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
-        objectReplacer.updateDataDuringAnalysis();
+        objectReplacer.setMethodsImplementations();
 
         /* All the temporary data structures used during encoding are no longer necessary. */
         graphEncoder = null;
@@ -635,15 +646,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess c) {
-        System.out.println("Number of runtime compiled methods: " + getRuntimeCompiledMethods().size());
-
         beforeCompilationHelper();
-
-        System.out.println("Num runtime parsed methods " + parsedRuntimeMethods.size());
-        System.out.println("Num deopt parsed methods " + parsedDeoptMethods.size());
-        System.out.println("total count of runtime parsed methods " + totalParsedRuntimeMethods.get());
-        System.out.println("total count of deopt parsed methods " + totalParsedDeoptMethods.get());
-
     }
 
     @Override
@@ -725,7 +728,15 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         substrateAnalysisMethods.add(sMethod);
 
         if (registeredRuntimeCompilations.add(aMethod)) {
-            config.registerAsRoot(aMethod, true);
+            aMethod.getOrCreateMultiMethod(RUNTIME_COMPILED_METHOD);
+            /*
+             * For static methods it is important to also register the deopt targets to ensure the
+             * method will be linked appropriately. However, we do not need to make the entire flow
+             * until we see what FrameStates exist.
+             */
+            var deoptMethod = aMethod.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+            SubstrateCompilationDirectives.singleton().registerDeoptTarget(deoptMethod);
+            config.registerAsRoot(aMethod, true, "Runtime compilation, registered in " + ParseOnceRuntimeCompilationFeature.class, RUNTIME_COMPILED_METHOD, DEOPT_TARGET_METHOD);
         }
 
         return sMethod;
@@ -756,6 +767,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         @Override
         public boolean allowAssumptions(AnalysisMethod method) {
+            return method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
+        }
+
+        @Override
+        public boolean recordInlinedMethods(AnalysisMethod method) {
             return method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
         }
 
@@ -807,7 +823,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                 if (parsed) {
                     // enable this logging to get log output in compilation passes
                     try (Indent indent2 = debug.logAndIndent("parse graph phases")) {
-                        new RuntimeGraphBuilderPhase(analysisProviders, graphBuilderConfig, optimisticOpts, null, analysisProviders.getWordTypes(), (SVMHost) bb.getHostVM()).apply(graph);
+                        RuntimeGraphBuilderPhase.createRuntimeGraphBuilderPhase(bb, analysisProviders, graphBuilderConfig, optimisticOpts).apply(graph);
                     } catch (PermanentBailoutException ex) {
                         bb.getUnsupportedFeatures().addMessage(method.format("%H.%n(%p)"), method, ex.getLocalizedMessage(), null, ex);
                         recordFailed(method);
@@ -852,8 +868,13 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         public boolean validateGraph(PointsToAnalysis bb, StructuredGraph graph) {
             PointsToAnalysisMethod aMethod = (PointsToAnalysisMethod) graph.method();
             MultiMethod.MultiMethodKey multiMethodKey = aMethod.getMultiMethodKey();
+            Supplier<Boolean> hasStackValues = () -> graph.getNodes(StackValueNode.TYPE).isNotEmpty();
+            if (aMethod.isOriginalMethod() && DeoptimizationUtils.canDeoptForTesting(aMethod, false, hasStackValues)) {
+                DeoptimizationUtils.registerDeoptEntriesForDeoptTesting(bb, graph, aMethod);
+                return true;
+            }
             if (multiMethodKey != ORIGINAL_METHOD) {
-                if (graph.getNodes(StackValueNode.TYPE).isNotEmpty()) {
+                if (hasStackValues.get()) {
                     /*
                      * Stack allocated memory is not seen by the deoptimization code, i.e., it is
                      * not copied in case of deoptimization. Also, pointers to it can be used for
@@ -1033,10 +1054,14 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         @Override
-        protected AbstractPolicyScope openCalleeScope(ResolvedJavaMethod method, AbstractPolicyScope outer) {
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
+                        ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
             if (outer instanceof AccumulativeInlineScope accOuter) {
-                // once the accumulative policy is activated, then we cannot return to the trivial policy
-                return InlineBeforeAnalysisPolicyUtils.createAccumulativeInlineScope(accOuter, inliningUtils);
+                /*
+                 * once the accumulative policy is activated, then we cannot return to the trivial
+                 * policy
+                 */
+                return inliningUtils.createAccumulativeInlineScope(accOuter, metaAccess, method, constArgsWithReceiver, intrinsifiedMethodHandle);
             }
 
             assert outer == null || outer instanceof AlwaysInlineScope : "unexpected outer scope: " + outer;
@@ -1048,7 +1073,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                 return new AlwaysInlineScope(inliningDepth);
             } else {
                 // start with a new accumulative inline scope
-                return InlineBeforeAnalysisPolicyUtils.createAccumulativeInlineScope(null, inliningUtils);
+                return inliningUtils.createAccumulativeInlineScope(null, metaAccess, method, constArgsWithReceiver, intrinsifiedMethodHandle);
             }
         }
     }
@@ -1071,49 +1096,65 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             }
             assert implementation.isOriginalMethod() && target.isOriginalMethod();
 
-            // recording compilation candidate
-            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD) {
-                runtimeCompilationCandidates.add(new RuntimeCompilationCandidateImpl(implementation, target));
-            }
-
-            boolean jitPossible = runtimeCompilationCandidatePredicate.allowRuntimeCompilation(implementation);
-            if (!jitPossible) {
-                assert !registeredRuntimeCompilations.contains(implementation) : "invalid method registered for runtime compilation";
-                /*
-                 * If this method cannot be jitted, then only the original implementation is needed.
-                 */
-                return List.of(implementation);
-            }
-
+            boolean registeredRuntimeCompilation = registeredRuntimeCompilations.contains(implementation);
             if (callerMultiMethodKey == ORIGINAL_METHOD) {
                 /*
                  * Unless the method is a registered runtime compilation, it is not possible for an
                  * original variant to call a runtime variant (and indirectly the deoptimiztation
                  * variant).
                  */
-                if (registeredRuntimeCompilations.contains(implementation)) {
+                if (registeredRuntimeCompilation) {
                     return List.of(implementation, getDeoptVersion(implementation), getRuntimeVersion(bb, implementation, true, invokeFlow));
+                } else if (DeoptimizationUtils.canDeoptForTesting(implementation, false, () -> false)) {
+                    /*
+                     * If the target is registered for deoptimization, then we must also make a
+                     * deoptimized version.
+                     */
+                    return List.of(implementation, getDeoptVersion(implementation));
                 } else {
                     return List.of(implementation);
                 }
-            } else if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD) {
-                /*
-                 * The runtime method can call all three types: original (if it is not partial
-                 * evaluated), runtime (if it is partial evaluated), and deoptimized (if the runtime
-                 * deoptimizes).
-                 */
-                return List.of(implementation, getDeoptVersion(implementation), getRuntimeVersion(bb, implementation, true, invokeFlow));
             } else {
-                assert callerMultiMethodKey == DEOPT_TARGET_METHOD;
-                /*
-                 * A deoptimization target will always call the original method. However, the return
-                 * can also be from a deoptimized version when a deoptimization is triggered in an
-                 * inlined callee. In addition, because we want runtime information to flow into
-                 * this method via the return, we also need to link against the runtime variant. We
-                 * only register the runtime variant as a stub though because its flow only needs to
-                 * be made upon it being reachable from a runtime compiled method's invoke.
-                 */
-                return List.of(implementation, getDeoptVersion(implementation), getRuntimeVersion(bb, implementation, false, invokeFlow));
+                boolean runtimeCompilationCandidate = registeredRuntimeCompilation || runtimeCompilationCandidatePredicate.allowRuntimeCompilation(implementation);
+
+                if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD) {
+                    // recording compilation candidate
+                    runtimeCompilationCandidates.add(new RuntimeCompilationCandidateImpl(implementation, target));
+                    /*
+                     * The runtime method can call all three types: original (if it is not partial
+                     * evaluated), runtime (if it is partial evaluated), and deoptimized (if the
+                     * runtime deoptimizes).
+                     */
+                    if (runtimeCompilationCandidate) {
+                        return List.of(implementation, getDeoptVersion(implementation), getRuntimeVersion(bb, implementation, true, invokeFlow));
+                    } else {
+                        /*
+                         * If this method cannot be jitted, then only the original implementation is
+                         * needed.
+                         */
+                        return List.of(implementation);
+                    }
+                } else {
+                    assert callerMultiMethodKey == DEOPT_TARGET_METHOD;
+                    /*
+                     * A deoptimization target will always call the original method. However, the
+                     * return can also be from a deoptimized version when a deoptimization is
+                     * triggered in an inlined callee. In addition, because we want runtime
+                     * information to flow into this method via the return, we also need to link
+                     * against the runtime variant. We only register the runtime variant as a stub
+                     * though because its flow only needs to be made upon it being reachable from a
+                     * runtime compiled method's invoke.
+                     */
+                    if (runtimeCompilationCandidate) {
+                        return List.of(implementation, getDeoptVersion(implementation), getRuntimeVersion(bb, implementation, false, invokeFlow));
+                    } else {
+                        /*
+                         * If this method cannot be jitted, then only the original implementation is
+                         * needed.
+                         */
+                        return List.of(implementation);
+                    }
+                }
             }
 
         }
@@ -1172,6 +1213,10 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         @Override
         public boolean canComputeReturnedParameterIndex(MultiMethod.MultiMethodKey multiMethodKey) {
+            /*
+             * Since Deopt Target Methods may have their flow created multiple times, this
+             * optimization is not allowed.
+             */
             return multiMethodKey != DEOPT_TARGET_METHOD;
         }
 
@@ -1182,58 +1227,103 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     }
 
     /**
-     * Removes Deoptimizations Entrypoints which are deemed to be unnecessary after the runtime
-     * compilation methods are optimized.
+     * Removes {@link DeoptEntryNode}s, {@link DeoptProxyAnchorNode}s, and {@link DeoptProxyNode}s
+     * which are determined to be unnecessary after the runtime compilation methods are optimized.
      */
     static class RemoveUnneededDeoptSupport extends Phase {
+        enum RemovalDecision {
+            KEEP,
+            PROXIFY,
+            REMOVE
+        }
 
         @Override
         protected void run(StructuredGraph graph) {
-            EconomicMap<StateSplit, Boolean> decisionCache = EconomicMap.create();
+            EconomicMap<StateSplit, RemovalDecision> decisionCache = EconomicMap.create();
 
             // First go through and delete all unneeded proxies
             for (DeoptProxyNode proxyNode : graph.getNodes(DeoptProxyNode.TYPE).snapshot()) {
                 ValueNode proxyPoint = proxyNode.getProxyPoint();
                 if (proxyPoint instanceof StateSplit) {
-                    if (proxyPoint instanceof DeoptEntryNode && shouldRemove((StateSplit) proxyPoint, decisionCache)) {
+                    if (getDecision((StateSplit) proxyPoint, decisionCache) == RemovalDecision.REMOVE) {
                         proxyNode.replaceAtAllUsages(proxyNode.getOriginalNode(), true);
                         proxyNode.safeDelete();
                     }
                 }
             }
 
-            // Next remove all unneeded DeoptEntryNodes
+            // Next, remove all unneeded DeoptEntryNodes
             for (DeoptEntryNode deoptEntry : graph.getNodes().filter(DeoptEntryNode.class).snapshot()) {
-                if (shouldRemove(deoptEntry, decisionCache)) {
-                    deoptEntry.killExceptionEdge();
-                    graph.removeSplit(deoptEntry, deoptEntry.getPrimarySuccessor());
+                switch (getDecision(deoptEntry, decisionCache)) {
+                    case REMOVE -> {
+                        deoptEntry.killExceptionEdge();
+                        graph.removeSplit(deoptEntry, deoptEntry.getPrimarySuccessor());
+                    }
+                    case PROXIFY -> {
+                        deoptEntry.killExceptionEdge();
+                        DeoptProxyAnchorNode newAnchor = graph.add(new DeoptProxyAnchorNode(deoptEntry.getProxifiedInvokeBci()));
+                        newAnchor.setStateAfter(deoptEntry.stateAfter());
+                        graph.replaceSplitWithFixed(deoptEntry, newAnchor, deoptEntry.getPrimarySuccessor());
+                    }
+                }
+            }
+
+            // Finally, remove all unneeded DeoptProxyAnchorNodes
+            for (DeoptProxyAnchorNode proxyAnchor : graph.getNodes().filter(DeoptProxyAnchorNode.class).snapshot()) {
+                if (getDecision(proxyAnchor, decisionCache) == RemovalDecision.REMOVE) {
+                    graph.removeFixed(proxyAnchor);
                 }
             }
         }
 
-        boolean shouldRemove(StateSplit node, EconomicMap<StateSplit, Boolean> decisionCache) {
-            Boolean cached = decisionCache.get(node);
+        RemovalDecision getDecision(StateSplit node, EconomicMap<StateSplit, RemovalDecision> decisionCache) {
+            RemovalDecision cached = decisionCache.get(node);
             if (cached != null) {
                 return cached;
             }
 
-            var directive = SubstrateCompilationDirectives.singleton();
-            FrameState state = node.stateAfter();
-            HostedMethod method = (HostedMethod) state.getMethod();
+            DeoptEntrySupport proxyNode;
+            if (node instanceof ExceptionObjectNode exceptionObject) {
+                /*
+                 * For the exception edge of a DeoptEntryNode, we insert the proxies on the
+                 * exception object.
+                 */
+                proxyNode = (DeoptEntrySupport) exceptionObject.predecessor();
+            } else {
+                proxyNode = (DeoptEntrySupport) node;
+            }
 
-            boolean result = true;
-            if (directive.isRegisteredDeoptTarget(method)) {
-                result = !directive.isDeoptEntry(method, state.bci, state.duringCall(), state.rethrowException());
+            RemovalDecision decision = RemovalDecision.REMOVE;
+            var directive = SubstrateCompilationDirectives.singleton();
+            FrameState state = proxyNode.stateAfter();
+            HostedMethod method = (HostedMethod) state.getMethod();
+            if (proxyNode instanceof DeoptEntryNode) {
+                if (directive.isDeoptEntry(method, state.bci, state.duringCall(), state.rethrowException())) {
+                    // must keep all deopt entries which are still guarding nodes
+                    decision = RemovalDecision.KEEP;
+                }
+            }
+
+            if (decision == RemovalDecision.REMOVE) {
+                // now check for any implicit deopt entry being protected against
+                int proxifiedInvokeBci = proxyNode.getProxifiedInvokeBci();
+                if (proxifiedInvokeBci != BytecodeFrame.UNKNOWN_BCI && directive.isDeoptEntry(method, proxifiedInvokeBci, true, false)) {
+                    // must keep still keep a proxy for nodes which are "proxifying" an invoke
+                    decision = proxyNode instanceof DeoptEntryNode ? RemovalDecision.PROXIFY : RemovalDecision.KEEP;
+                }
             }
 
             // cache the decision
-            decisionCache.put(node, result);
-            return result;
+            decisionCache.put(node, decision);
+            if (proxyNode != node) {
+                decisionCache.put(proxyNode, decision);
+            }
+            return decision;
         }
 
         @Override
         public CharSequence getName() {
-            return "RemoveDeoptEntries";
+            return "RemoveUnneededDeoptSupport";
         }
     }
 }

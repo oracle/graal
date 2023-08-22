@@ -43,9 +43,8 @@ public abstract class VirtualState extends Node {
 
     public static final NodeClass<VirtualState> TYPE = NodeClass.create(VirtualState.class);
 
-    public abstract static class NodePositionClosure<T extends Node> {
-
-        public abstract void apply(T from, Position p);
+    public interface NodePositionClosure<T extends Node> {
+        void apply(T from, Position p);
     }
 
     public interface VirtualClosure {

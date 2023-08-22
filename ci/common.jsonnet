@@ -42,17 +42,15 @@ local common_json = import "../common.json";
     },
     for name in std.objectFields(jdks_data)
   } + {
-    local latestJDKCE = self["labsjdk-ce-20"],
-    local latestJDKEE = self["labsjdk-ee-20"],
     # Some convenient JDK aliases which don't require ["name"] for frequently-used JDKs
     labsjdk17ce: self["labsjdk-ce-17"],
     labsjdk17ee: self["labsjdk-ee-17"],
 
-    labsjdk20ce: latestJDKCE,
-    labsjdk20ee: latestJDKEE,
+    labsjdk20ce: self["labsjdk-ce-20"],
+    labsjdk20ee: self["labsjdk-ee-20"],
 
-    labsjdkLatestCE: latestJDKCE,
-    labsjdkLatestEE: latestJDKEE,
+    labsjdkLatestCE: self["labsjdk-ce-21"],
+    labsjdkLatestEE: self["labsjdk-ee-21"],
   },
 
   # The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)
@@ -65,6 +63,7 @@ local common_json = import "../common.json";
     "linux-jdk17": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
+    "linux-jdk21": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
   },
 
   # Dependencies
@@ -122,9 +121,13 @@ local common_json = import "../common.json";
 
     graalnodejs:: {
       packages+: if self.os == "linux" then {
-        "00:devtoolset": "==7",
         cmake: "==3.22.2",
-      } else {},
+      } + (if self.arch == "aarch64" then {
+        "00:devtoolset": "==10",
+      } else {
+        "00:devtoolset": "==11",
+      })
+      else {},
     },
 
     svm:: {
@@ -142,12 +145,13 @@ local common_json = import "../common.json";
         "*.log",
       ],
 
-      packages+: if self.os == "linux" && self.arch == "amd64" then {
-        "00:devtoolset": "==7",
-        "01:binutils": ">=2.34",
-      } else if self.os == "linux" && self.arch == "aarch64" then {
-        "00:devtoolset": "==7",
-      } else {},
+      packages+: if self.os == "linux" && std.objectHas(self, "os_distro") && self.os_distro == "ol" then
+        (if self.arch == "aarch64" then {
+          "00:devtoolset": "==10",
+        } else {
+          "00:devtoolset": "==11",
+        })
+      else {},
     },
   },
 
@@ -166,6 +170,10 @@ local common_json = import "../common.json";
     post_merge: {
       targets+: ["post-merge"],
     },
+    opt_post_merge: {
+      targets+: ["opt-post-merge"],
+      tags+: []
+    },
     daily: {
       targets+: ["daily"],
     },
@@ -174,7 +182,7 @@ local common_json = import "../common.json";
     },
     monthly: {
       targets+: ["monthly"],
-    },
+    }
   },
 
   # Hardware definitions and common fields
@@ -236,6 +244,18 @@ local common_json = import "../common.json";
       mount_modules: true,
     },
   },
+  local ol9 = {
+    docker+: {
+      image: "buildslave_ol9",
+      mount_modules: true,
+    },
+  },
+  local ubuntu22 = {
+    docker+: {
+      image: "buildslave_ubuntu22",
+      mount_modules: true,
+    },
+  },
   local deps_linux = {
   },
   local deps_darwin = {
@@ -250,15 +270,20 @@ local common_json = import "../common.json";
 
   local amd64   = { arch:: "amd64",   capabilities+: [self.arch] },
   local aarch64 = { arch:: "aarch64", capabilities+: [self.arch] },
+  local ol_distro = {os_distro:: "ol"},
 
-  linux_amd64: linux + amd64 + ol7,
-  linux_aarch64: linux + aarch64,
+  linux_amd64: linux + amd64 + ol7 + ol_distro,
+  linux_amd64_ubuntu: linux + amd64 + ubuntu22 + {os_distro:: "ubuntu"},
+  linux_amd64_ol9: linux + amd64 + ol9 + ol_distro,
+  linux_aarch64: linux + aarch64 + ol_distro,
+  linux_aarch64_ol9: linux + aarch64 + ol9 + ol_distro,
 
   darwin_amd64: darwin + amd64,
   darwin_aarch64: darwin + aarch64,
 
   windows_amd64: windows + amd64,
   windows_server_2016_amd64: windows_server_2016 + amd64,
+
 
   # Utils
   disable_proxies: {

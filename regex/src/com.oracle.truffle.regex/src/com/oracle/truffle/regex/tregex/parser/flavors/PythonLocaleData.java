@@ -40,13 +40,6 @@
  */
 package com.oracle.truffle.regex.tregex.parser.flavors;
 
-import com.ibm.icu.lang.UCharacter;
-import com.oracle.truffle.regex.charset.CodePointSet;
-import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
-import com.oracle.truffle.regex.charset.Range;
-import com.oracle.truffle.regex.tregex.string.Encodings;
-import org.graalvm.collections.EconomicMap;
-
 import java.nio.ByteBuffer;
 import java.nio.CharBuffer;
 import java.nio.charset.CharacterCodingException;
@@ -62,6 +55,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.shadowed.com.ibm.icu.lang.UCharacter;
+
+import com.oracle.truffle.regex.charset.CodePointSet;
+import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
+import com.oracle.truffle.regex.charset.Range;
+import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public final class PythonLocaleData {
 

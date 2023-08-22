@@ -60,11 +60,15 @@ public class GraphBuilderPhase extends BasePhase<HighTierContext> {
 
     @Override
     protected void run(StructuredGraph graph, HighTierContext context) {
-        new Instance(context, graphBuilderConfig, context.getOptimisticOptimizations(), null).run(graph);
+        createInstance(context, graphBuilderConfig, context.getOptimisticOptimizations(), null).run(graph);
     }
 
     public GraphBuilderConfiguration getGraphBuilderConfig() {
         return graphBuilderConfig;
+    }
+
+    protected Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+        return new Instance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext);
     }
 
     // Fully qualified name is a workaround for JDK-8056066

@@ -154,10 +154,24 @@ public abstract class Stamp implements SpeculationContextObject {
     }
 
     /**
+     * Tests whether this stamp represents a floating-point value.
+     */
+    public boolean isFloatStamp() {
+        return this instanceof FloatStamp;
+    }
+
+    /**
      * Tests whether this stamp represents an Object value.
      */
     public boolean isObjectStamp() {
         return this instanceof AbstractObjectStamp;
+    }
+
+    /**
+     * Tests whether this stamp represents a pointer that is not an Object value.
+     */
+    public boolean isNonObjectPointerStamp() {
+        return isPointerStamp() && !isObjectStamp();
     }
 
     /**

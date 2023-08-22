@@ -97,6 +97,11 @@ public final class TRegexLiteralLookAroundExecutorNode extends TRegexBacktracker
     }
 
     @Override
+    public int getNumberOfStates() {
+        return matchers.length;
+    }
+
+    @Override
     public String getName() {
         return "la";
     }

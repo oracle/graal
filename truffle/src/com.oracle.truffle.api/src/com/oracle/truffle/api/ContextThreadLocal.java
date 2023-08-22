@@ -64,7 +64,7 @@ public abstract class ContextThreadLocal<T> {
      * @since 20.3
      */
     protected ContextThreadLocal(Object polyglotObject) {
-        if (!ENGINE.isPolyglotObject(polyglotObject)) {
+        if (!ENGINE.isPolyglotSecret(polyglotObject)) {
             throw new IllegalStateException("No custom subclasses of ContextLocal allowed.");
         }
     }

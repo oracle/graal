@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -37,6 +37,7 @@ import com.oracle.truffle.llvm.parser.factories.BasicIntrinsicsProvider;
 import com.oracle.truffle.llvm.parser.factories.BasicNodeFactory;
 import com.oracle.truffle.llvm.parser.factories.BasicPlatformCapability;
 import com.oracle.truffle.llvm.runtime.ContextExtension;
+import com.oracle.truffle.llvm.runtime.InternalLibraryLocator;
 import com.oracle.truffle.llvm.runtime.LLVMIntrinsicProvider;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage;
 import com.oracle.truffle.llvm.runtime.LLVMLanguage.Loader;
@@ -54,12 +55,15 @@ public class NativeConfiguration implements Configuration {
     private final Loader loader;
     private final LLVMIntrinsicProvider intrinsicProvider;
     private final PlatformCapability<?> platformCapability;
+    private final InternalLibraryLocator internalLocator;
+
     protected final Key languageOptions;
 
     protected NativeConfiguration(LLVMLanguage language, ContextExtension.Registry ctxExtRegistry, Key key) {
         loader = new DefaultLoader();
         intrinsicProvider = new BasicIntrinsicsProvider(language);
         platformCapability = BasicPlatformCapability.create(key.loadCxxLibraries);
+        internalLocator = InternalLibraryLocator.create("native", language, platformCapability.getOS(), platformCapability.getArch());
         this.languageOptions = key;
         if (key.enableNFI) {
             ctxExtRegistry.register(NativeContextExtension.class, new NFIContextExtension.Factory());
@@ -84,6 +88,8 @@ public class NativeConfiguration implements Configuration {
             return type.cast(intrinsicProvider);
         } else if (type == PlatformCapability.class) {
             return type.cast(platformCapability);
+        } else if (type == InternalLibraryLocator.class) {
+            return type.cast(internalLocator);
         }
         return null;
     }

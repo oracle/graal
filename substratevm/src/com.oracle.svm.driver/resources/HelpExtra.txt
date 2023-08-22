@@ -1,5 +1,10 @@
 Non-standard options help:
 
+    --exclude-config      exclude configuration for a comma-separated pair of classpath/modulepath
+                          pattern and resource pattern. For example:
+                          '--exclude-config foo.jar,META-INF\/native-image\/.*.properties'
+                          ignores all .properties files in 'META-INF/native-image' in all
+                          JARs named 'foo.jar'.
     --expert-options      lists image build options for experts
     --expert-options-all  lists all image build options for experts (use at your own risk).
                           Options marked with [Extra help available] contain help that can be
@@ -16,14 +21,20 @@ Non-standard options help:
     --diagnostics-mode    Enables logging of image-build information to a diagnostics folder.
     --dry-run             output the command line that would be used for building
 
-    --bundle-create[=new-bundle.nib]
+    --bundle-create[=new-bundle.nib][,dry-run][,container[=<container-tool>][,dockerfile=<Dockerfile>]]
                           in addition to image building, create a Native Image bundle file (*.nib
                           file) that allows rebuilding of that image again at a later point. If a
                           bundle-file gets passed, the bundle will be created with the given
                           name. Otherwise, the bundle-file name is derived from the image name.
-                          Note both bundle options can be combined with --dry-run to only perform
-                          the bundle operations without any actual image building.
-    --bundle-apply=some-bundle.nib
+                          Note both bundle options can be extended with ",dry-run" and ",container"
+                          * 'dry-run': only perform the bundle operations without any actual image building.
+                          * 'container': sets up a container image for image building and performs image building
+                            from inside that container. Requires podman or rootless docker to be installed.
+                            If available, 'podman' is preferred and rootless 'docker' is the fallback. Specifying
+                            one or the other as '=<container-tool>' forces the use of a specific tool.
+                          * 'dockerfile=<Dockerfile>': Use a user provided 'Dockerfile' instead of the default based on
+                            Oracle Linux 8 base images for GraalVM (see https://github.com/graalvm/container)
+    --bundle-apply=some-bundle.nib[,dry-run][,container[=<container-tool>][,dockerfile=<Dockerfile>]]
                           an image will be built from the given bundle file with the exact same
                           arguments and files that have been passed to native-image originally
                           to create the bundle. Note that if an extra --bundle-create gets passed

@@ -30,7 +30,6 @@ import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.Instr
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.InstrumentBranchesPerInlineSite;
 import static org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions.InstrumentationTableSize;
 
-import java.lang.reflect.Method;
 import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -55,6 +54,7 @@ import org.graalvm.compiler.nodes.java.LoadIndexedNode;
 import org.graalvm.compiler.nodes.java.StoreIndexedNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 
@@ -62,40 +62,16 @@ import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaUtil;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
-
-    private static boolean checkMethodExists(String declaringClassName, String methodName) {
-        try {
-            Class<?> declaringClass = Class.forName(declaringClassName);
-            for (Method m : declaringClass.getDeclaredMethods()) {
-                if (m.getName().equals(methodName)) {
-                    return true;
-                }
-            }
-        } catch (ClassNotFoundException e) {
-            throw new NoClassDefFoundError(declaringClassName);
-        }
-        throw new NoSuchMethodError(declaringClassName + "." + methodName);
-    }
-
-    private static String asStackPattern(String declaringClassName, String methodName) {
-        assert checkMethodExists(declaringClassName, methodName);
-        return declaringClassName + "." + methodName;
-    }
-
-    private static final String[] OMITTED_STACK_PATTERNS = new String[]{
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "executeRootNode"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "profiledPERoot"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedCallTarget", "callDirect"),
-                    asStackPattern("org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode", "call"),
-    };
     private final Instrumentation instrumentation;
     protected final SnippetReflectionProvider snippetReflection;
 
     public InstrumentPhase(SnippetReflectionProvider snippetReflection, Instrumentation instrumentation) {
         this.snippetReflection = snippetReflection;
         this.instrumentation = instrumentation;
+
     }
 
     public Instrumentation getInstrumentation() {
@@ -190,9 +166,20 @@ public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
         public Map<String, Point> pointMap = new LinkedHashMap<>();
         public int tableIdCount;
         public int tableStartIndex;
+        private final String[] omittedStackPatterns;
 
-        public Instrumentation(long[] accessTable) {
+        public Instrumentation(KnownTruffleTypes types, long[] accessTable) {
             this.accessTable = accessTable;
+            this.omittedStackPatterns = new String[]{
+                            asStackPattern(types.OptimizedCallTarget_executeRootNode),
+                            asStackPattern(types.OptimizedCallTarget_profiledPERoot),
+                            asStackPattern(types.OptimizedCallTarget_callDirect),
+                            asStackPattern(types.OptimizedCallTarget_call),
+            };
+        }
+
+        private static String asStackPattern(ResolvedJavaMethod method) {
+            return method.getDeclaringClass().toJavaName(true) + "." + method.getName();
         }
 
         /*
@@ -226,7 +213,7 @@ public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
             }
         }
 
-        private static String prettify(String key, Point p) {
+        private String prettify(String key, Point p) {
             if (p.isPrettified()) {
                 StringBuilder sb = new StringBuilder();
                 NodeSourcePosition pos = p.getPosition();
@@ -235,7 +222,7 @@ public abstract class InstrumentPhase extends BasePhase<TruffleTierContext> {
 
                 callerChainLoop: while (pos != null) {
                     // Skip stack frame if it is a known pattern.
-                    for (String pattern : OMITTED_STACK_PATTERNS) {
+                    for (String pattern : omittedStackPatterns) {
                         if (pos.getMethod().format("%H.%n(%p)").contains(pattern)) {
                             pos = pos.getCaller();
                             continue callerChainLoop;

@@ -9,14 +9,6 @@ meth public abstract void close() throws java.lang.Exception
 CLSS public abstract interface java.lang.Comparable<%0 extends java.lang.Object>
 meth public abstract int compareTo({java.lang.Comparable%0})
 
-CLSS public abstract interface !annotation java.lang.Deprecated
- anno 0 java.lang.annotation.Documented()
- anno 0 java.lang.annotation.Retention(java.lang.annotation.RetentionPolicy value=RUNTIME)
- anno 0 java.lang.annotation.Target(java.lang.annotation.ElementType[] value=[CONSTRUCTOR, FIELD, LOCAL_VARIABLE, METHOD, PACKAGE, MODULE, PARAMETER, TYPE])
-intf java.lang.annotation.Annotation
-meth public abstract !hasdefault boolean forRemoval()
-meth public abstract !hasdefault java.lang.String since()
-
 CLSS public abstract java.lang.Enum<%0 extends java.lang.Enum<{java.lang.Enum%0}>>
 cons protected init(java.lang.String,int)
 innr public final static EnumDesc
@@ -35,7 +27,7 @@ meth public final java.util.Optional<java.lang.Enum$EnumDesc<{java.lang.Enum%0}>
 meth public java.lang.String toString()
 meth public static <%0 extends java.lang.Enum<{%%0}>> {%%0} valueOf(java.lang.Class<{%%0}>,java.lang.String)
 supr java.lang.Object
-hfds name,ordinal
+hfds hash,name,ordinal
 
 CLSS public java.lang.Error
 cons protected init(java.lang.String,java.lang.Throwable,boolean,boolean)
@@ -233,12 +225,12 @@ meth public abstract void log(org.graalvm.nativeimage.c.type.CCharPointer,org.gr
 
 CLSS public final org.graalvm.nativeimage.MissingReflectionRegistrationError
 cons public init(java.lang.String,java.lang.Class<?>,java.lang.Class<?>,java.lang.String,java.lang.Class<?>[])
-meth public java.lang.Class<?> getElementType()
 meth public java.lang.Class<?> getDeclaringClass()
-meth public java.lang.String getElementName()
+meth public java.lang.Class<?> getElementType()
 meth public java.lang.Class<?>[] getParameterTypes()
+meth public java.lang.String getElementName()
 supr java.lang.Error
-hfds serialVersionUID
+hfds declaringClass,elementName,elementType,parameterTypes,serialVersionUID
 
 CLSS public abstract interface org.graalvm.nativeimage.ObjectHandle
 intf org.graalvm.word.ComparableWord
@@ -457,23 +449,22 @@ meth public static void exec(java.nio.file.Path,java.lang.String[],java.util.Map
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.RuntimeOptions
-innr public final static !enum OptionClass
+innr public abstract interface static Descriptor
 meth public static <%0 extends java.lang.Object> {%%0} get(java.lang.String)
-meth public static org.graalvm.options.OptionDescriptors getOptions()
- anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="23.0")
-meth public static org.graalvm.options.OptionDescriptors getOptions(java.util.EnumSet<org.graalvm.nativeimage.RuntimeOptions$OptionClass>)
- anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="23.0")
+meth public static java.util.List<org.graalvm.nativeimage.RuntimeOptions$Descriptor> listDescriptors()
+meth public static org.graalvm.nativeimage.RuntimeOptions$Descriptor getDescriptor(java.lang.String)
 meth public static void set(java.lang.String,java.lang.Object)
 supr java.lang.Object
 
-CLSS public final static !enum org.graalvm.nativeimage.RuntimeOptions$OptionClass
+CLSS public abstract interface static org.graalvm.nativeimage.RuntimeOptions$Descriptor
  outer org.graalvm.nativeimage.RuntimeOptions
- anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="23.0")
-fld public final static org.graalvm.nativeimage.RuntimeOptions$OptionClass Compiler
-fld public final static org.graalvm.nativeimage.RuntimeOptions$OptionClass VM
-meth public static org.graalvm.nativeimage.RuntimeOptions$OptionClass valueOf(java.lang.String)
-meth public static org.graalvm.nativeimage.RuntimeOptions$OptionClass[] values()
-supr java.lang.Enum<org.graalvm.nativeimage.RuntimeOptions$OptionClass>
+meth public abstract boolean deprecated()
+meth public abstract java.lang.Class<?> valueType()
+meth public abstract java.lang.Object convertValue(java.lang.String)
+meth public abstract java.lang.Object defaultValue()
+meth public abstract java.lang.String deprecatedMessage()
+meth public abstract java.lang.String help()
+meth public abstract java.lang.String name()
 
 CLSS public final org.graalvm.nativeimage.StackValue
 meth public static <%0 extends org.graalvm.word.PointerBase> {%%0} get(int)
@@ -1077,6 +1068,10 @@ meth public !varargs static void initializeAtRunTime(java.lang.Class<?>[])
 meth public !varargs static void initializeAtRunTime(java.lang.String[])
 supr java.lang.Object
 
+CLSS public final org.graalvm.nativeimage.hosted.RuntimeForeignAccess
+meth public !varargs static void registerForDowncall(java.lang.Object,java.lang.Object[])
+supr java.lang.Object
+
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeJNIAccess
 meth public !varargs static void register(java.lang.Class<?>[])
 meth public !varargs static void register(java.lang.reflect.Executable[])
@@ -1093,26 +1088,26 @@ meth public !varargs static void register(boolean,boolean,java.lang.reflect.Fiel
 meth public !varargs static void register(boolean,java.lang.reflect.Field[])
  anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="21.1")
 meth public !varargs static void register(java.lang.Class<?>[])
-meth public static void registerClassLookup(java.lang.String)
 meth public !varargs static void register(java.lang.reflect.Executable[])
-meth public !varargs static void registerMethodLookup(java.lang.Class<?>,java.lang.String,java.lang.Class<?>[])
-meth public !varargs static void registerConstructorLookup(java.lang.Class<?>,java.lang.Class<?>[])
 meth public !varargs static void register(java.lang.reflect.Field[])
-meth public static void registerFieldLookup(java.lang.Class<?>,java.lang.String)
 meth public !varargs static void registerAsQueried(java.lang.reflect.Executable[])
+meth public !varargs static void registerConstructorLookup(java.lang.Class<?>,java.lang.Class<?>[])
 meth public !varargs static void registerForReflectiveInstantiation(java.lang.Class<?>[])
+meth public !varargs static void registerMethodLookup(java.lang.Class<?>,java.lang.String,java.lang.Class<?>[])
 meth public static void registerAllClasses(java.lang.Class<?>)
-meth public static void registerAllDeclaredClasses(java.lang.Class<?>)
 meth public static void registerAllConstructors(java.lang.Class<?>)
+meth public static void registerAllDeclaredClasses(java.lang.Class<?>)
 meth public static void registerAllDeclaredConstructors(java.lang.Class<?>)
-meth public static void registerAllFields(java.lang.Class<?>)
 meth public static void registerAllDeclaredFields(java.lang.Class<?>)
-meth public static void registerAllMethods(java.lang.Class<?>)
 meth public static void registerAllDeclaredMethods(java.lang.Class<?>)
+meth public static void registerAllFields(java.lang.Class<?>)
+meth public static void registerAllMethods(java.lang.Class<?>)
 meth public static void registerAllNestMembers(java.lang.Class<?>)
 meth public static void registerAllPermittedSubclasses(java.lang.Class<?>)
 meth public static void registerAllRecordComponents(java.lang.Class<?>)
 meth public static void registerAllSigners(java.lang.Class<?>)
+meth public static void registerClassLookup(java.lang.String)
+meth public static void registerFieldLookup(java.lang.Class<?>,java.lang.String)
 supr java.lang.Object
 
 CLSS public final org.graalvm.nativeimage.hosted.RuntimeResourceAccess

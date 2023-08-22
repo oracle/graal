@@ -1389,7 +1389,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             continue loop;
                         }
                         BaseQuickNode quickNode = nodes[bs.readCPI2(curBCI)];
-                        if (quickNode.removedByRedefintion()) {
+                        if (quickNode.removedByRedefinition()) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             quickNode = getBaseQuickNode(curBCI, top, statementIndex, quickNode);
                         }

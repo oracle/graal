@@ -26,10 +26,9 @@ The Dockerfile will be provided.
 
 For the demo you will use the [Spring Boot 3 Native Image Microservice example](https://github.com/graalvm/graalvm-demos/blob/master/spring-native-image/README.md). 
 
-1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
-    ```bash
-    bash <(curl -sL https://get.graalvm.org/jdk)
-    ``` 
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 2. Clone the [GraalVM Demos repository](https://github.com/graalvm/graalvm-demos) and enter the application directory:
 

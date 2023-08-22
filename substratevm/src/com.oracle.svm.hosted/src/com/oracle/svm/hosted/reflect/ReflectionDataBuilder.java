@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.reflect;
 
-import static com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CLASSES_FLAG;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_DECLARED_CLASSES_FLAG;
@@ -225,7 +225,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void registerClassLookup(ConfigurationCondition condition, String typeName) {
         checkNotSealed();
         try {
-            register(condition, Class.forName(typeName, false, null));
+            register(condition, Class.forName(typeName, false, ClassLoader.getSystemClassLoader()));
         } catch (ClassNotFoundException e) {
             registerConditionalConfiguration(condition, () -> ClassForNameSupport.registerNegativeQuery(typeName));
         } catch (Throwable t) {
@@ -743,7 +743,10 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     private void registerTypesForRecordComponent(RecordComponent recordComponent) {
-        register(ConfigurationCondition.alwaysTrue(), true, recordComponent.getAccessor());
+        Method accessorOrNull = recordComponent.getAccessor();
+        if (accessorOrNull != null) {
+            register(ConfigurationCondition.alwaysTrue(), true, accessorOrNull);
+        }
         registerTypesForAnnotations(recordComponent);
         registerTypesForTypeAnnotations(recordComponent);
     }

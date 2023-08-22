@@ -154,6 +154,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     /** The list of known service classes defined by the JCA. */
     private static final List<Class<?>> knownServices;
 
+    private static final boolean isMscapiModulePresent;
+
     static {
         List<Class<?>> classList = new ArrayList<>(List.of(
                         AlgorithmParameterGenerator.class, AlgorithmParameters.class,
@@ -175,6 +177,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         if (ModuleLayer.boot().findModule("java.smartcardio").isPresent()) {
             classList.add(ReflectionUtil.lookupClass(false, "javax.smartcardio.TerminalFactory"));
         }
+
+        isMscapiModulePresent = ModuleLayer.boot().findModule("jdk.crypto.mscapi").isPresent();
+
         knownServices = Collections.unmodifiableList(classList);
     }
 
@@ -219,6 +224,8 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, getClass(), false, "java.base", "sun.security.x509");
         ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, getClass(), Security.class);
         ImageSingletons.add(SecurityProvidersFilter.class, this);
+        ImageSingletons.lookup(RuntimeClassInitializationSupport.class).initializeAtBuildTime("javax.security.auth.kerberos.KeyTab",
+                        "Force initialization of sun.security.krb5.KerberosSecrets.javaxSecurityAuthKerberosAccess");
     }
 
     @Override
@@ -254,7 +261,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
          * SeedGenerator.getSystemEntropy().
          */
         rci.rerunInitialization(clazz(access, "sun.security.provider.AbstractDrbg$SeederHolder"), "for substitutions");
-        if (isWindows()) {
+        if (isMscapiModulePresent) {
             /* PRNG.<clinit> creates a Cleaner (see JDK-8210476), which starts its thread. */
             rci.rerunInitialization(clazz(access, "sun.security.mscapi.PRNG"), "for substitutions");
         }
@@ -270,6 +277,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil$CachedSecureRandomHolder"), "for substitutions");
         rci.rerunInitialization(clazz(access, "com.sun.crypto.provider.SunJCE$SecureRandomHolder"), "for substitutions");
         optionalClazz(access, "sun.security.krb5.Confounder").ifPresent(clazz -> rci.rerunInitialization(clazz, "for substitutions"));
+        optionalClazz(access, "sun.security.krb5.Config").ifPresent(clazz -> rci.rerunInitialization(clazz, "Reset the value of lazily initialized field sun.security.krb5.Config#singleton"));
 
         rci.rerunInitialization(clazz(access, "sun.security.jca.JCAUtil"), "JCAUtil.def holds a SecureRandom.");
 
@@ -338,7 +346,7 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
             });
         }
 
-        if (isWindows()) {
+        if (isMscapiModulePresent) {
             access.registerReachabilityHandler(SecurityServicesFeature::registerSunMSCAPIConfig, clazz(access, "sun.security.mscapi.SunMSCAPI"));
             /* Resolve calls to sun_security_mscapi* as builtIn. */
             PlatformNativeLibrarySupport.singleton().addBuiltinPkgNativePrefix("sun_security_mscapi");
@@ -419,20 +427,23 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
                         "java.security.KeyException", "java.security.KeyStoreException", "java.security.ProviderException",
                         "java.security.SignatureException", "java.lang.OutOfMemoryError");
 
-        /*
-         * JDK-6782021 changed the `loadKeysOrCertificateChains` method signature, so we try the new
-         * signature first and fall back to the old one in case we're on a JDK without the change.
-         */
-        a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
-                        optionalMethod(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class)
-                                        .orElseGet(() -> method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class)));
-        a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
-                        method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
-        a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
-                        method(a, "sun.security.mscapi.CKeyStore", "storePrivateKey", String.class, byte[].class, String.class, int.class));
-        a.registerReachabilityHandler(SecurityServicesFeature::registerCPublicKeyOf,
-                        method(a, "sun.security.mscapi.CSignature", "importECPublicKey", String.class, byte[].class, int.class),
-                        method(a, "sun.security.mscapi.CSignature", "importPublicKey", String.class, byte[].class, int.class));
+        if (isMscapiModulePresent) {
+            /*
+             * JDK-6782021 changed the `loadKeysOrCertificateChains` method signature, so we try the
+             * new signature first and fall back to the old one in case we're on a JDK without the
+             * change.
+             */
+            a.registerReachabilityHandler(SecurityServicesFeature::registerLoadKeysOrCertificateChains,
+                            optionalMethod(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class, int.class)
+                                            .orElseGet(() -> method(a, "sun.security.mscapi.CKeyStore", "loadKeysOrCertificateChains", String.class)));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerGenerateCKeyPair,
+                            method(a, "sun.security.mscapi.CKeyPairGenerator$RSA", "generateCKeyPair", String.class, int.class, String.class));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerCPrivateKeyOf,
+                            method(a, "sun.security.mscapi.CKeyStore", "storePrivateKey", String.class, byte[].class, String.class, int.class));
+            a.registerReachabilityHandler(SecurityServicesFeature::registerCPublicKeyOf,
+                            method(a, "sun.security.mscapi.CSignature", "importECPublicKey", String.class, byte[].class, int.class),
+                            method(a, "sun.security.mscapi.CSignature", "importPublicKey", String.class, byte[].class, int.class));
+        }
     }
 
     private static void registerLoadKeysOrCertificateChains(DuringAnalysisAccess a) {

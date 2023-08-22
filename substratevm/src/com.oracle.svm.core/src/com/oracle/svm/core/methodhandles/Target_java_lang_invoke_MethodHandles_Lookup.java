@@ -31,6 +31,7 @@ import java.lang.invoke.MethodHandles;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -53,13 +54,13 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
         return mh;
     }
 
-    @Alias //
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
     private Class<?> lookupClass;
 
-    @Alias //
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
     private Class<?> prevLookupClass;
 
-    @Alias //
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
     private int allowedModes;
 
     @Substitute

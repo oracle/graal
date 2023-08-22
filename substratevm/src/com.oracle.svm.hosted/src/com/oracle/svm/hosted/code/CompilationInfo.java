@@ -130,6 +130,10 @@ public class CompilationInfo {
         compilationGraph = CompilationGraph.encode(graph);
     }
 
+    public void setCompilationGraph(CompilationGraph graph) {
+        compilationGraph = graph;
+    }
+
     public void setCompileOptions(OptionValues compileOptions) {
         this.compileOptions = compileOptions;
     }

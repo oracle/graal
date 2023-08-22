@@ -99,7 +99,7 @@ final class NFIContext {
             }
         }
 
-        return null;
+        throw new NFIParserException(String.format("Unknown NFI backend '%s'.", backendId), false);
     }
 
     private static final ContextReference<NFIContext> REFERENCE = ContextReference.create(NFILanguage.class);

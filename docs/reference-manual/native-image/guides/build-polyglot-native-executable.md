@@ -13,7 +13,7 @@ GraalVM makes it possible to ahead-of-time compile a Java application with embed
 
 This guide will show how to build a polyglot native executable with Java host language and JavaScript as a guest language. 
 
-For a demo, you will use this JSON pretty-printer Java application that prints the output in the JSON format:
+For a demo, you will use this JSON Pretty Printer Java application that prints the output in the JSON format:
 
 ```java
 import java.io.*;
@@ -34,18 +34,24 @@ public class PrettyPrintJSON {
   }
 } 
 ```
-1. Download and install the latest GraalVM JDK with JavaScript support using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
-    ```bash
-    bash <(curl -sL https://get.graalvm.org/jdk) -c 'js'
+
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
+
+2. Install the JavaScript runtime:
+
+    ```
+    gu install js
     ```
 
-2. Save it in the _PrettyPrintJSON.java_ file and compile:
+3. Save the above application in a file named _PrettyPrintJSON.java_ and compile it:
 
     ```shell
     javac PrettyPrintJSON.java
     ```
     
-3. Build a native executable by enabling the JavaScript interoperability:
+4. Build a native executable by enabling the JavaScript interoperability:
 
     ```shell
     native-image --language:js PrettyPrintJSON
@@ -55,7 +61,7 @@ public class PrettyPrintJSON {
 
     > Note: Building a polyglot native executable requires more physical memory because the Truffle framework is included.
 
-4. Run the resulting executable and perform some pretty-printing:
+5. Run the resulting executable and perform some pretty-printing:
 
     ```shell
     ./prettyprintjson <<EOF

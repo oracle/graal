@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.initialization;
 
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -91,7 +92,7 @@ public final class InitializeModuleNode extends LLVMNode implements LLVMHasDatal
         this.dataLayout = parserResult.getDataLayout();
         this.bitcodeID = parserResult.getRuntime().getBitcodeID();
         this.constructor = createConstructor(parserResult, moduleName);
-        if (language.getCapability(PlatformCapability.class).getOS() == PlatformCapability.OS.Darwin) {
+        if (language.getCapability(PlatformCapability.class).getOS() == OS.DARWIN) {
             this.selectors = InitObjcSelectorsNodeGen.create(parserResult);
         }
     }

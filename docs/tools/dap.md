@@ -57,7 +57,7 @@ code .
 5&#46; Open the App.js source in VS Code, and put a breakpoint, for example, at line 6 (`res.send('Hello World!')`).
 
 6&#46; Navigate to View > Run to create a launch configuration (Ctrl+Shift+D):
-![](img/create_launch_json.png)
+![Create a Launch Configuration](img/create_launch_json.png)
 
 7&#46; Then create the _launch.json_ file with the following content:
 ```json

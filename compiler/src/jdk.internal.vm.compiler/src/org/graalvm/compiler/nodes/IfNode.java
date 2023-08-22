@@ -73,6 +73,7 @@ import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.UnboxNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
 import org.graalvm.compiler.nodes.java.LoadFieldNode;
+import org.graalvm.compiler.nodes.memory.MemoryAnchorNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -1151,7 +1152,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 FixedWithNextNode falseNext = (FixedWithNextNode) falseSucc.next();
                 NodeClass<?> nodeClass = trueNext.getNodeClass();
                 if (trueNext.getClass() == falseNext.getClass()) {
-                    if (trueNext instanceof AbstractBeginNode || trueNext instanceof ControlFlowAnchored) {
+                    if (trueNext instanceof AbstractBeginNode || trueNext instanceof ControlFlowAnchored || trueNext instanceof MemoryAnchorNode) {
                         /*
                          * Cannot do this optimization for begin nodes, because it could move guards
                          * above the if that need to stay below a branch.

@@ -24,8 +24,12 @@
  */
 package com.oracle.svm.hosted.heap;
 
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodType;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
@@ -44,11 +48,13 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.ameta.ReadableJavaField;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.methodhandles.MethodHandleFeature;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -63,6 +69,10 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     private final Field economicMapImplEntriesField;
     private final Field economicMapImplHashArrayField;
     private final ReflectionHostedSupport reflectionSupport;
+    private final Class<?> memberNameClass;
+    private final MethodHandleFeature methodHandleSupport;
+    private final Class<?> directMethodHandleClass;
+    private final VarHandleFeature varHandleSupport;
 
     @SuppressWarnings("this-escape")
     public SVMImageHeapScanner(BigBang bb, ImageHeap imageHeap, ImageClassLoader loader, AnalysisMetaAccess metaAccess,
@@ -74,6 +84,10 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         economicMapImplHashArrayField = ReflectionUtil.lookupField(economicMapImpl, "hashArray");
         ImageSingletons.add(ImageHeapScanner.class, this);
         reflectionSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
+        memberNameClass = getClass("java.lang.invoke.MemberName");
+        methodHandleSupport = ImageSingletons.lookup(MethodHandleFeature.class);
+        directMethodHandleClass = getClass("java.lang.invoke.DirectMethodHandle");
+        varHandleSupport = ImageSingletons.lookup(VarHandleFeature.class);
     }
 
     public static ImageHeapScanner instance() {
@@ -107,7 +121,13 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     @Override
     protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
         AnalysisConstantReflectionProvider aConstantReflection = (AnalysisConstantReflectionProvider) this.constantReflection;
-        return aConstantReflection.readHostedFieldValue(field, hostedMetaAccess, receiver);
+        return aConstantReflection.readHostedFieldValue(field, hostedMetaAccess, receiver, true);
+    }
+
+    @Override
+    public JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
+        AnalysisConstantReflectionProvider aConstantReflection = (AnalysisConstantReflectionProvider) this.constantReflection;
+        return aConstantReflection.readValue(metaAccess, field, receiver, true);
     }
 
     @Override
@@ -143,6 +163,14 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
                 reflectionSupport.registerHeapReflectionExecutable(executable, reason);
             } else if (object instanceof DynamicHub hub) {
                 reflectionSupport.registerHeapDynamicHub(hub, reason);
+            } else if (object instanceof VarHandle varHandle) {
+                varHandleSupport.registerHeapVarHandle(varHandle);
+            } else if (directMethodHandleClass.isInstance(object)) {
+                varHandleSupport.registerHeapMethodHandle((MethodHandle) object);
+            } else if (object instanceof MethodType methodType) {
+                methodHandleSupport.registerHeapMethodType(methodType);
+            } else if (memberNameClass.isInstance(object)) {
+                methodHandleSupport.registerHeapMemberName((Member) object);
             }
         }
     }

@@ -24,11 +24,18 @@
  */
 package com.oracle.svm.core.jdk.localization.substitutions;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-
+import java.io.IOException;
 import java.util.Locale;
 import java.util.ResourceBundle;
+
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.jdk.localization.LocalizationSupport;
+
+import sun.util.resources.Bundles;
 
 @TargetClass(value = java.util.ResourceBundle.class, innerClass = "Control")
 @SuppressWarnings({"unused", "static-method"})
@@ -45,4 +52,34 @@ final class Target_java_util_ResourceBundle_Control {
 
         return false;
     }
+
+    @Substitute
+    public ResourceBundle newBundle(String baseName, Locale locale, String format, ClassLoader loader, boolean reload)
+                    throws IllegalAccessException, InstantiationException, IOException {
+        /*
+         * Legacy mechanism to locate resource bundle in unnamed module only that is visible to the
+         * given loader and accessible to the given caller.
+         */
+        String bundleName = toBundleName(baseName, locale);
+        if (format.equals("java.class") && ImageSingletons.lookup(LocalizationSupport.class).isNotIncluded(bundleName)) {
+            return null;
+        }
+        var bundle = newBundle0(bundleName, format, loader, reload);
+        if (bundle == null) {
+            // Try loading legacy ISO language's other bundles
+            var otherBundleName = Bundles.toOtherBundleName(baseName, bundleName, locale);
+            if (!bundleName.equals(otherBundleName)) {
+                bundle = newBundle0(otherBundleName, format, loader, reload);
+            }
+        }
+
+        return bundle;
+    }
+
+    @Alias
+    public native String toBundleName(String baseName, Locale locale);
+
+    @Alias
+    private native ResourceBundle newBundle0(String bundleName, String format, ClassLoader loader, boolean reload)
+                    throws IllegalAccessException, InstantiationException, IOException;
 }

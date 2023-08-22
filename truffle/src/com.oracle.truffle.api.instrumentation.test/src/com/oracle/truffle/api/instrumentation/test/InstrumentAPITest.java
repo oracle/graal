@@ -47,12 +47,15 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 
 public class InstrumentAPITest extends AbstractPolyglotTest {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     public InstrumentAPITest() {
         needsLanguageEnv = true;

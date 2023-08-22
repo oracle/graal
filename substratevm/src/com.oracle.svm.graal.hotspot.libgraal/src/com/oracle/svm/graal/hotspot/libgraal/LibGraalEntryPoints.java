@@ -50,18 +50,10 @@ import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNIMethodScope;
-import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.LibGraalScope;
-import org.graalvm.nativeimage.Isolate;
-import org.graalvm.nativeimage.IsolateThread;
-import org.graalvm.nativeimage.ObjectHandles;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
-import org.graalvm.nativeimage.c.function.CEntryPoint.Builtin;
-import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawFieldAddress;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -94,7 +86,7 @@ import jdk.vm.ci.runtime.JVMCIBackend;
 import jdk.vm.ci.runtime.JVMCICompiler;
 
 /**
- * Entry points in libgraal corresponding to native methods in {@link LibGraalScope} and
+ * Entry points in libgraal corresponding to native methods in the scope and
  * {@code CompileTheWorld}.
  */
 public final class LibGraalEntryPoints {
@@ -210,15 +202,6 @@ public final class LibGraalEntryPoints {
         }
     }
 
-    @CEntryPoint(builtin = Builtin.GET_CURRENT_THREAD, name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateThreadIn")
-    private static native IsolateThread getIsolateThreadIn(PointerBase env, PointerBase hsClazz, @IsolateContext Isolate isolate);
-
-    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_attachThreadTo", builtin = CEntryPoint.Builtin.ATTACH_THREAD)
-    static native long attachThreadTo(PointerBase env, PointerBase hsClazz, @CEntryPoint.IsolateContext long isolate);
-
-    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_detachThreadFrom", builtin = CEntryPoint.Builtin.DETACH_THREAD)
-    static native void detachThreadFrom(PointerBase env, PointerBase hsClazz, @CEntryPoint.IsolateThreadContext long isolateThread);
-
     static class CachedOptions {
         final OptionValues options;
         final long hash;
@@ -230,16 +213,6 @@ public final class LibGraalEntryPoints {
     }
 
     private static final ThreadLocal<CachedOptions> cachedOptions = new ThreadLocal<>();
-
-    public static boolean hasLibGraalIsolatePeer() {
-        return hasLibGraalIsolatePeer;
-    }
-
-    /**
-     * Indicates whether this runtime has an associated peer runtime that it must be unregistered
-     * from during shutdown.
-     */
-    private static boolean hasLibGraalIsolatePeer;
 
     private static OptionValues decodeOptions(long address, int size, int hash) {
         CachedOptions options = cachedOptions.get();
@@ -263,33 +236,6 @@ public final class LibGraalEntryPoints {
             cachedOptions.set(options);
         }
         return options.options;
-    }
-
-    @SuppressWarnings({"unused"})
-    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalObject_releaseHandle")
-    public static boolean releaseHandle(PointerBase jniEnv,
-                    PointerBase jclass,
-                    @CEntryPoint.IsolateThreadContext long isolateThreadId,
-                    long handle) {
-        try {
-            ObjectHandles.getGlobal().destroy(WordFactory.pointer(handle));
-            return true;
-        } catch (Throwable t) {
-            return false;
-        }
-    }
-
-    @SuppressWarnings({"unused"})
-    @CEntryPoint(name = "Java_org_graalvm_libgraal_LibGraalScope_getIsolateId")
-    public static long getIsolateId(PointerBase jniEnv,
-                    PointerBase jclass,
-                    @CEntryPoint.IsolateThreadContext long isolateThreadId) {
-        try {
-            hasLibGraalIsolatePeer = true;
-            return IsolateUtil.getIsolateID();
-        } catch (Throwable t) {
-            return 0L;
-        }
     }
 
     @SuppressWarnings({"unused", "try"})

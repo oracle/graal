@@ -76,7 +76,7 @@ public class TRegexLazyCaptureGroupsRootNode extends RegexBodyNode {
         final RegexResult receiver = (RegexResult) args[0];
         final int start;
         if (findStartCallTarget != null) {
-            start = (int) findStartCallNode.call(receiver);
+            start = (int) ((long) findStartCallNode.call(receiver));
         } else {
             start = receiver.getStart();
         }

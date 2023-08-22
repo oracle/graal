@@ -71,6 +71,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvo
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.host.InjectImmutableFrameFieldsPhase;
@@ -120,7 +121,6 @@ import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.snippets.SubstrateGraphBuilderPlugins;
-import com.oracle.svm.truffle.api.SubstrateTruffleRuntime;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -137,6 +137,7 @@ import com.oracle.truffle.api.library.GenerateLibrary;
 import com.oracle.truffle.api.library.Library;
 import com.oracle.truffle.api.library.LibraryExport;
 import com.oracle.truffle.api.library.LibraryFactory;
+import com.oracle.truffle.api.library.provider.DefaultExportProvider;
 import com.oracle.truffle.api.nodes.DenyReplace;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.Node.Child;
@@ -144,13 +145,13 @@ import com.oracle.truffle.api.nodes.NodeClass;
 import com.oracle.truffle.api.nodes.NodeInterface;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.profiles.Profile;
-import com.oracle.truffle.api.library.provider.DefaultExportProvider;
 import com.oracle.truffle.api.staticobject.StaticProperty;
 import com.oracle.truffle.api.staticobject.StaticShape;
 
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
+import org.graalvm.polyglot.Engine;
 
 /**
  * Base feature for using Truffle in the SVM. If only this feature is used (not included through
@@ -168,14 +169,22 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public String getDescription() {
-        return "Provides base support for Truffle";
+        return "Provides support for Truffle languages";
+    }
+
+    public static Class<?> lookupClass(String className) {
+        try {
+            return Class.forName(className, false, TruffleBaseFeature.class.getClassLoader());
+        } catch (ClassNotFoundException ex) {
+            throw new AssertionError(ex);
+        }
     }
 
     public static class Options {
 
         @Option(help = "Automatically copy the necessary language resources to the resources/languages directory next to the produced image." +
                         "Language resources for each language are specified in the native-image-resources.filelist file located in the language home directory." +
-                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User)//
+                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User, stability = OptionStability.STABLE)//
         public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
 
         @Option(help = "Check that context pre-initialization does not introduce absolute TruffleFiles into the image heap.")//
@@ -288,7 +297,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         TruffleRuntime runtime = Truffle.getRuntime();
         UserError.guarantee(runtime != null, "TruffleRuntime not available via Truffle.getRuntime()");
-        UserError.guarantee(runtime instanceof SubstrateTruffleRuntime || runtime instanceof DefaultTruffleRuntime,
+        UserError.guarantee(isSubstrateRuntime(runtime) || runtime instanceof DefaultTruffleRuntime,
                         "Unsupported TruffleRuntime %s (only SubstrateTruffleRuntime or DefaultTruffleRuntime allowed)",
                         runtime.getClass().getName());
 
@@ -310,19 +319,21 @@ public final class TruffleBaseFeature implements InternalFeature {
         profilingEnabled = false;
     }
 
+    @SuppressWarnings({"null", "unused"})
+    private static boolean isSubstrateRuntime(TruffleRuntime runtime) {
+        /*
+         * We cannot directly depend on SubstrateTruffleRuntime from the base feature, as the
+         * runtime might not be on the module-path.
+         */
+        return runtime.getClass().getName().equals("com.oracle.svm.truffle.api.SubstrateTruffleRuntime");
+    }
+
     public void setProfilingEnabled(boolean profilingEnabled) {
         this.profilingEnabled = profilingEnabled;
     }
 
     @Override
     public void cleanup() {
-        /*
-         * Clean the cached call target nodes to prevent them from keeping application classes alive
-         */
-        TruffleRuntime runtime = Truffle.getRuntime();
-        if (!(runtime instanceof DefaultTruffleRuntime) && !(runtime instanceof SubstrateTruffleRuntime)) {
-            throw VMError.shouldNotReachHere("Only SubstrateTruffleRuntime and DefaultTruffleRuntime supported");
-        }
 
         // clean up the language cache
         invokeStaticMethod("com.oracle.truffle.polyglot.PolyglotFastThreadLocals", "resetNativeImageState", Collections.emptyList());
@@ -375,7 +386,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        if (!ImageSingletons.contains(TruffleFeature.class) && (Truffle.getRuntime() instanceof SubstrateTruffleRuntime)) {
+        if (!ImageSingletons.contains(TruffleFeature.class) && isSubstrateRuntime(Truffle.getRuntime())) {
             VMError.shouldNotReachHere("TruffleFeature is required for SubstrateTruffleRuntime.");
         }
         access.registerObjectReplacer(this::processInlinedField);
@@ -442,6 +453,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             BeforeAnalysisAccessImpl config = (BeforeAnalysisAccessImpl) access;
             SubstrateProviders substrateProviders = ImageSingletons.lookup(SubstrateGraalCompilerSetup.class).getSubstrateProviders(metaAccess);
             graalGraphObjectReplacer = new GraalGraphObjectReplacer(config.getUniverse(), substrateProviders, new SubstrateUniverseFactory());
+            graalGraphObjectReplacer.setAnalysisAccess(config);
         }
 
         TruffleHostEnvironment.overrideLookup(new SubstrateTruffleHostEnvironmentLookup());
@@ -485,6 +497,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         markAsUnsafeAccessed = null;
+        invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "resetNativeImageState", List.of());
     }
 
     public static void preInitializeEngine() {
@@ -747,7 +760,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                     UserError.abort("Detected an absolute TruffleFile %s in the image heap. " +
                                     "Files with an absolute path created during the context pre-initialization may not be valid at the image execution time. " +
                                     "This check can be disabled using -H:-TruffleCheckPreinitializedFiles." +
-                                    classInitializationSupport.objectInstantiationTraceMessage(object, ""),
+                                    classInitializationSupport.objectInstantiationTraceMessage(object, "", culprit -> ""),
                                     file.getPath());
                 }
             }
@@ -1003,17 +1016,28 @@ public final class TruffleBaseFeature implements InternalFeature {
             static void onBuildInvocation(Class<?> storageSuperClass, Class<?> factoryInterface) {
                 PodSupport.singleton().registerSuperclass(storageSuperClass, factoryInterface);
             }
+
         }
     }
 
     @Override
     public void afterImageWrite(AfterImageWriteAccess access) {
-        if (languageHomesToCopy != null) {
-            Path buildDir = access.getImagePath().getParent();
-            assert buildDir != null;
-            Path languagesDir = buildDir.resolve(Path.of("resources", "languages"));
-            if (Files.exists(languagesDir)) {
+        if (Options.CopyLanguageResources.getValue()) {
+            Path buildDir = access.getImagePath();
+            if (buildDir != null) {
+                Path parent = buildDir.getParent();
+                if (parent != null) {
+                    copyResources(parent);
+                }
+            }
+        }
+    }
 
+    private void copyResources(Path buildDir) {
+        Path resourcesDir = buildDir.resolve("resources");
+        if (languageHomesToCopy != null) {
+            Path languagesDir = resourcesDir.resolve("languages");
+            if (Files.exists(languagesDir)) {
                 try (Stream<Path> filesToDelete = Files.walk(languagesDir)) {
                     filesToDelete.sorted(Comparator.reverseOrder())
                                     .forEach(f -> {
@@ -1042,6 +1066,13 @@ public final class TruffleBaseFeature implements InternalFeature {
                 }
                 BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_HOME, copyTo);
             });
+        }
+        try {
+            if (Engine.copyResources(resourcesDir)) {
+                BuildArtifacts.singleton().add(BuildArtifacts.ArtifactType.LANGUAGE_INTERNAL_RESOURCES, resourcesDir);
+            }
+        } catch (IOException ioe) {
+            throw VMError.shouldNotReachHere("Copying of internal resources failed.", ioe);
         }
     }
 
@@ -1244,10 +1275,11 @@ final class StaticPropertyOffsetTransformer implements FieldValueTransformerWith
          */
         return svmArrayBaseOffset + svmAlignmentCorrection + svmArrayIndexScaleOffset * index;
     }
+
 }
 
 final class ArrayBasedShapeGeneratorOffsetTransformer implements FieldValueTransformerWithAvailability {
-    static final Class<?> SHAPE_GENERATOR = ReflectionUtil.lookupClass(false, "com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
+    static final Class<?> SHAPE_GENERATOR = TruffleBaseFeature.lookupClass("com.oracle.truffle.api.staticobject.ArrayBasedShapeGenerator");
 
     private final String storageClassFieldName;
 
@@ -1321,6 +1353,32 @@ final class Target_com_oracle_truffle_polyglot_LanguageCache {
     private String languageHome;
 }
 
+@TargetClass(className = "com.oracle.truffle.polyglot.InternalResourceCache", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_InternalResourceCache {
+
+    /*
+     * The field is also reset explicitly in InternalResourceCache.resetFileSystemNativeImageState.
+     * However, the explicit reset comes too late for the String-must-not-contain-the-home-directory
+     * verification in DisallowedImageHeapObjectFeature, so we also do the implicit reset using a
+     * substitution.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private static volatile Pair<Path, Boolean> cacheRoot;
+}
+
+@TargetClass(className = "com.oracle.truffle.polyglot.InternalResourceCache$ResettableCachedRoot", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_InternalResourceCache_ResettableCachedRoot {
+
+    /*
+     * The field is also reset explicitly in InternalResourceCache.resetFileSystemNativeImageState.
+     * However, the explicit reset comes too late for the String-must-not-contain-the-home-directory
+     * verification in DisallowedImageHeapObjectFeature, so we also do the implicit reset using a
+     * substitution.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private volatile Path resourceCacheRoot;
+}
+
 @TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicObjectFieldLocation", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_object_CoreLocations_DynamicObjectFieldLocation {
     @Alias @RecomputeFieldValue(kind = Kind.AtomicFieldUpdaterOffset) //
@@ -1385,6 +1443,12 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = OffsetComputer.class, isFinal = true) //
     private long offset;
 
+    /*
+     * These fields are not needed at runtime in a native image. The offset is enough.
+     */
+    @Delete private Class<?> declaringClass;
+    @Delete private String name;
+
     private static class OffsetComputer implements FieldValueTransformerWithAvailability {
         @Override
         public ValueAvailability valueAvailability() {
@@ -1403,4 +1467,5 @@ final class Target_com_oracle_truffle_api_dsl_InlineSupport_UnsafeField {
             return Long.valueOf(offset);
         }
     }
+
 }

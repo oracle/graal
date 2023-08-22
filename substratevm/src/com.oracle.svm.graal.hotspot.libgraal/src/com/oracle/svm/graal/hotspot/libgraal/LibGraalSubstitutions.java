@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal;
 
+import java.lang.ref.ReferenceQueue;
 import java.util.Map;
 
 import com.oracle.svm.core.annotate.Alias;
@@ -40,7 +41,8 @@ public final class LibGraalSubstitutions {
 @TargetClass(value = Services.class, onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_jdk_vm_ci_services_Services {
     // Checkstyle: stop
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true)//
     public static boolean IS_IN_NATIVE_IMAGE = true;
     // Checkstyle: resume
 
@@ -49,13 +51,22 @@ final class Target_jdk_vm_ci_services_Services {
      * requires a larger JVMCI change because the annotation is not visible in that project, so we
      * use this substitution instead.
      */
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private static Map<String, String> savedProperties;
+}
+
+@TargetClass(className = "jdk.vm.ci.hotspot.Cleaner", onlyWith = LibGraalFeature.IsEnabled.class)
+final class Target_jdk_vm_ci_hotspot_Cleaner {
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, isFinal = true, declClass = ReferenceQueue.class)//
+    private static ReferenceQueue<Object> queue;
 }
 
 @TargetClass(className = "jdk.vm.ci.hotspot.HotSpotJDKReflection", onlyWith = LibGraalFeature.IsEnabled.class)
 final class Target_jdk_vm_ci_hotspot_HotSpotJDKReflection {
 
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None)//
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.None)//
     private long oopSizeOffset;
 }

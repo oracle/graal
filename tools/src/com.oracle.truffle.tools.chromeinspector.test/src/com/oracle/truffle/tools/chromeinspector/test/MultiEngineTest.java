@@ -49,12 +49,13 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 import org.junit.Test;
 
 import com.oracle.truffle.tools.utils.java_websocket.client.WebSocketClient;
 import com.oracle.truffle.tools.utils.java_websocket.handshake.ServerHandshake;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;

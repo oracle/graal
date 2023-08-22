@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.polyglot;
 
+import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
+
+import java.util.BitSet;
 import java.util.LinkedList;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -81,6 +84,9 @@ final class PolyglotThreadInfo {
     final Object[] fastThreadLocals;
     final EncapsulatingNodeReference encapsulatingNodeReference;
 
+    private final BitSet initializedLanguageContexts;
+    private boolean finalizationComplete;
+
     PolyglotThreadInfo(PolyglotContextImpl context, Thread thread, boolean polyglotThreadFirstEnter) {
         this.context = context;
         this.thread = new TruffleWeakReference<>(thread);
@@ -105,10 +111,47 @@ final class PolyglotThreadInfo {
             this.encapsulatingNodeReference = EngineAccessor.NODES.createEncapsulatingNodeReference(thread);
             this.fastThreadLocals = PolyglotFastThreadLocals.createFastThreadLocals(this);
         }
+        if (context != null) {
+            initializedLanguageContexts = new BitSet(context.contexts.length);
+        } else {
+            initializedLanguageContexts = null;
+        }
     }
 
     Thread getThread() {
         return thread.get();
+    }
+
+    boolean isLanguageContextInitialized(PolyglotLanguage language) {
+        assert Thread.holdsLock(context);
+        return initializedLanguageContexts.get(language.engineIndex);
+    }
+
+    void initializeLanguageContext(PolyglotLanguageContext languageContext) {
+        assert Thread.holdsLock(context);
+        assert !finalizationComplete;
+        LANGUAGE.initializeThread(languageContext.env, getThread());
+        initializedLanguageContexts.set(languageContext.language.engineIndex);
+    }
+
+    void clearLanguageContextInitialized(PolyglotLanguage language) {
+        assert Thread.holdsLock(context);
+        initializedLanguageContexts.clear(language.engineIndex);
+    }
+
+    int initializedLanguageContextsCount() {
+        assert Thread.holdsLock(context);
+        return initializedLanguageContexts.cardinality();
+    }
+
+    boolean isFinalizationComplete() {
+        assert Thread.holdsLock(context);
+        return finalizationComplete;
+    }
+
+    void setFinalizationComplete() {
+        assert Thread.holdsLock(context);
+        this.finalizationComplete = true;
     }
 
     boolean isSafepointActive() {
@@ -116,7 +159,7 @@ final class PolyglotThreadInfo {
         return safepointActive;
     }
 
-    public void setSafepointActive(boolean safepointActive) {
+    void setSafepointActive(boolean safepointActive) {
         assert isCurrent();
         this.safepointActive = safepointActive;
     }

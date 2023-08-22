@@ -665,7 +665,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
                                                         "To resolve this add a '%s' parameter to the specialization method and pass the value along to inlined cached values.",
                                         nodeParameter, nodeParameter);
 
-                        specialization.addError(message);
+                        specialization.addSuppressableWarning(TruffleSuppressedWarnings.INLINING_RECOMMENDATION, message);
 
                     } else if (!isStatic && mode != ParseMode.EXPORTED_MESSAGE) {
                         // The static keyword does not make sense for exported messages, where the

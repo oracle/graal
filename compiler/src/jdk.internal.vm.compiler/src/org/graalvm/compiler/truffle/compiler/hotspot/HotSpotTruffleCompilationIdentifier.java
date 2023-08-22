@@ -25,9 +25,10 @@
 package org.graalvm.compiler.truffle.compiler.hotspot;
 
 import org.graalvm.compiler.hotspot.HotSpotCompilationIdentifier;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.vm.ci.hotspot.HotSpotCompilationRequest;
 

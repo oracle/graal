@@ -3,6 +3,7 @@ layout: ni-docs
 toc_group: how-to-guides
 link_title: Access Environment Variables
 permalink: /reference-manual/native-image/guides/access-environment-variables/
+redirect_from: /reference-manual/native-image/Properties/
 ---
 
 # Access Environment Variables in a Native Executable at Run Time
@@ -30,10 +31,9 @@ public class EnvMap {
 
 This code iterates over your environment variables and prints out the ones that contain the String of characters passed as the command-line argument.
 
-1. Download and install the latest GraalVM JDK with Native Image using the [GraalVM JDK Downloader](https://github.com/graalvm/graalvm-jdk-downloader):
-    ```bash
-    bash <(curl -sL https://get.graalvm.org/jdk)
-    ```
+1. Make sure you have installed a GraalVM JDK.
+The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
+For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 2. Compile the file and build a native executable, as follows:
     ```shell

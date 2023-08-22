@@ -40,14 +40,15 @@ import org.graalvm.compiler.nodes.graphbuilderconf.ParameterPlugin;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.PEGraphDecoder;
 import org.graalvm.compiler.replacements.PEGraphDecoder.SpecialCallTargetCacheKey;
-import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
-import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleTierContext;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.truffle.compiler.ConstantFieldInfo;
+import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;

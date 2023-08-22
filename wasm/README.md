@@ -99,7 +99,7 @@ This command results in the following output:
 --------------------------------------------------------------------------------
 Running: BranchBlockSuite (4/16 tests - you have enabled filters)
 --------------------------------------------------------------------------------
-Using runtime: org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleRuntime@7b1d7fff
+Using runtime: com.oracle.truffle.runtime.hotspot.HotSpotTruffleRuntime@7b1d7fff
 😍😍😍😍
 Finished running: BranchBlockSuite
 🍀 4/4 Wasm tests passed.
@@ -179,7 +179,7 @@ This will result in the following output:
 --------------------------------------------------------------------------------
 Running: CSuite (1 tests)
 --------------------------------------------------------------------------------
-Using runtime: org.graalvm.compiler.truffle.runtime.hotspot.java.HotSpotTruffleRuntime@368239c8
+Using runtime: com.oracle.truffle.runtime.hotspot.HotSpotTruffleRuntime@368239c8
 😍
 Finished running: CSuite
 🍀 1/1 Wasm tests passed.

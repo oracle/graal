@@ -30,7 +30,6 @@ import java.util.List;
 
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.TruffleReturnBoxedParameterTestFactory.IntNodeFactory;
 import org.junit.Test;
 
@@ -42,6 +41,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 /**
  * A simple test to verify that a truffle compilation unit returning a parameter re-uses the boxed

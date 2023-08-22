@@ -117,7 +117,7 @@ final class EspressoShutdownHandler extends ContextAccessImpl {
             return;
         }
         getContext().getLogger().fine(() -> {
-            StaticObject currentThread = getContext().getCurrentThread();
+            StaticObject currentThread = getContext().getCurrentPlatformThread();
             String guestName = getThreadAccess().getThreadName(currentThread);
             return "doExit(" + code + ") from " + guestName;
         });

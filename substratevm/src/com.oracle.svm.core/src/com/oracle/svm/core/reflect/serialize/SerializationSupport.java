@@ -31,13 +31,12 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.util.VMError;
 
 public class SerializationSupport implements SerializationRegistry {
 
@@ -125,6 +124,19 @@ public class SerializationSupport implements SerializationRegistry {
         return constructorAccessors.putIfAbsent(key, constructorAccessor);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class) private final Set<Class<?>> classes = ConcurrentHashMap.newKeySet();
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerSerializationTargetClass(Class<?> serializationTargetClass) {
+        classes.add(serializationTargetClass);
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean isRegisteredForSerialization(Class<?> cl) {
+        return classes.contains(cl);
+    }
+
     @Override
     public Object getSerializationConstructorAccessor(Class<?> rawDeclaringClass, Class<?> rawTargetConstructorClass) {
         Class<?> declaringClass = rawDeclaringClass;
@@ -140,9 +152,9 @@ public class SerializationSupport implements SerializationRegistry {
             return constructorAccessor;
         } else {
             String targetConstructorClassName = targetConstructorClass.getName();
-            throw VMError.unsupportedFeature("SerializationConstructorAccessor class not found for declaringClass: " + declaringClass.getName() +
-                            " (targetConstructorClass: " + targetConstructorClassName + "). Usually adding " + declaringClass.getName() +
-                            " to serialization-config.json fixes the problem.");
+            MissingSerializationRegistrationUtils.missingSerializationRegistration(declaringClass,
+                            "type " + declaringClass.getName() + " with target constructor class: " + targetConstructorClassName);
+            return null;
         }
     }
 }

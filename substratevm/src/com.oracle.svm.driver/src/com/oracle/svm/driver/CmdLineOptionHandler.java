@@ -63,10 +63,12 @@ class CmdLineOptionHandler extends NativeImage.OptionHandler<NativeImage> {
     boolean consume(ArgumentQueue args) {
         String headArg = args.peek();
         boolean consumed = consume(args, headArg);
-        OptionOrigin origin = OptionOrigin.from(args.argumentOrigin);
-        if (consumed && !origin.commandLineLike()) {
-            String msg = String.format("Using '%s' provided by %s is only allowed on command line.", headArg, origin);
-            throw NativeImage.showError(msg);
+        if (consumed) {
+            OptionOrigin origin = OptionOrigin.from(args.argumentOrigin);
+            if (!origin.commandLineLike()) {
+                String msg = String.format("Using '%s' provided by %s is only allowed on command line.", headArg, origin);
+                throw NativeImage.showError(msg);
+            }
         }
         return consumed;
     }

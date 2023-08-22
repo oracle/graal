@@ -22,7 +22,15 @@
  */
 package com.oracle.truffle.espresso.ffi.nfi;
 
-import com.oracle.truffle.api.CompilerAsserts;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.espresso.EspressoOptions;
@@ -32,14 +40,6 @@ import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.substitutions.Collect;
-import org.graalvm.options.OptionValues;
-
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Collections;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public final class NFISulongNativeAccess extends NFINativeAccess {
 
@@ -57,11 +57,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
     }
 
     @Override
-    public @Pointer TruffleObject loadLibrary(Path libraryPath) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (!Files.exists(libraryPath)) {
-            return null;
-        }
+    protected @Pointer TruffleObject loadLibrary0(Path libraryPath) {
         String nfiSource = String.format("with llvm load(RTLD_LAZY|RTLD_LOCAL) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
     }

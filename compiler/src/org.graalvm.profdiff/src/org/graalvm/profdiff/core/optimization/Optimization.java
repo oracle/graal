@@ -64,11 +64,6 @@ public class Optimization extends OptimizationTreeNode {
     private final UnmodifiableEconomicMap<String, Object> properties;
 
     /**
-     * A pre-calculated hash code.
-     */
-    private final int cachedHashCode;
-
-    /**
      * Constructs an optimization.
      *
      * @param optimizationName the name of this optimization
@@ -77,7 +72,6 @@ public class Optimization extends OptimizationTreeNode {
      * @param properties a map of additional properties of this optimization, mapped by property
      *            name
      */
-    @SuppressWarnings("this-escape")
     public Optimization(String optimizationName,
                     String eventName,
                     Position position,
@@ -86,7 +80,6 @@ public class Optimization extends OptimizationTreeNode {
         this.eventName = eventName;
         this.position = (position == null) ? Position.EMPTY : position;
         this.properties = (properties == null) ? EconomicMap.emptyMap() : properties;
-        cachedHashCode = calculateHashCode();
     }
 
     /**
@@ -222,13 +215,9 @@ public class Optimization extends OptimizationTreeNode {
         writer.writeln(toString(writer.getOptionValues().isBCILongForm(), enclosingMethod));
     }
 
-    private int calculateHashCode() {
-        return Objects.hash(position, getName(), eventName, EconomicMapUtil.hashCode(properties));
-    }
-
     @Override
     public int hashCode() {
-        return cachedHashCode;
+        return Objects.hash(position, getName(), eventName, EconomicMapUtil.hashCode(properties));
     }
 
     @Override
@@ -237,8 +226,7 @@ public class Optimization extends OptimizationTreeNode {
             return false;
         }
         Optimization other = (Optimization) object;
-        return cachedHashCode == other.cachedHashCode && eventName.equals(other.eventName) &&
-                        getName().equals(other.getName()) && position.equals(other.position) &&
+        return eventName.equals(other.eventName) && getName().equals(other.getName()) && position.equals(other.position) &&
                         EconomicMapUtil.equals(properties, other.properties);
     }
 

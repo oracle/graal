@@ -26,10 +26,6 @@ package org.graalvm.compiler.truffle.test;
 
 import java.lang.reflect.Field;
 
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntimeListener;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -42,10 +38,14 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.ReflectionUtils;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntimeListener;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
 public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
 
-    protected static final GraalTruffleRuntime runtime = (GraalTruffleRuntime) Truffle.getRuntime();
+    protected static final OptimizedTruffleRuntime runtime = (OptimizedTruffleRuntime) Truffle.getRuntime();
     static final Object[] noArguments = {};
     protected SplitCountingListener listener;
 
@@ -170,7 +170,7 @@ public class AbstractSplittingStrategyTest extends TestWithPolyglotOptions {
         runtime.removeListener(listener);
     }
 
-    static class SplitCountingListener implements GraalTruffleRuntimeListener {
+    static class SplitCountingListener implements OptimizedTruffleRuntimeListener {
 
         int splitCount = 0;
 

@@ -383,6 +383,10 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return isReadUpdater.get(this);
     }
 
+    public Object getAccessedReason() {
+        return isAccessed;
+    }
+
     /**
      * Returns true if the field is reachable. Fields that are read or manually registered as
      * reachable are always reachable. For fields that are write-only, more cases need to be
@@ -407,12 +411,24 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isReadUpdater);
     }
 
+    public Object getReadReason() {
+        return isRead;
+    }
+
     public boolean isWritten() {
         return AtomicUtils.isSet(this, isAccessedUpdater) || AtomicUtils.isSet(this, isWrittenUpdater);
     }
 
+    public Object getWrittenReason() {
+        return isWritten;
+    }
+
     public boolean isFolded() {
         return AtomicUtils.isSet(this, isFoldedUpdater);
+    }
+
+    public Object getFoldedReason() {
+        return isFolded;
     }
 
     @Override
@@ -511,7 +527,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     @Override
     public String toString() {
         return "AnalysisField<" + format("%h.%n") + " -> " + wrapped.toString() + ", accessed: " + (isAccessed != null) +
-                        ", read: " + (isRead != null) + ", written: " + (isWritten != null) + ", folded: " + (isFolded != null) + ">";
+                        ", read: " + (isRead != null) + ", written: " + (isWritten != null) + ", folded: " + isFolded() + ">";
     }
 
     @Override

@@ -48,12 +48,15 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLConnection;
 import java.nio.file.FileSystemNotFoundException;
+import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.CodeSource;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -66,7 +69,9 @@ import java.util.TreeSet;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextPolicy;
@@ -109,6 +114,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     private final SandboxPolicy sandboxPolicy;
     private volatile List<FileTypeDetector> fileTypeDetectors;
     private volatile Set<Class<? extends Tag>> providedTags;
+    private final Map<String, InternalResourceCache> internalResources;
     private int staticIndex;
 
     /*
@@ -142,6 +148,11 @@ final class LanguageCache implements Comparable<LanguageCache> {
         this.providerAdapter = providerAdapter;
         this.website = website;
         this.sandboxPolicy = sandboxPolicy;
+        Map<String, InternalResourceCache> map = new HashMap<>();
+        for (String resourceId : providerAdapter.getInternalResourceIds()) {
+            map.put(resourceId, new InternalResourceCache(id, resourceId, () -> providerAdapter.createInternalResource(resourceId)));
+        }
+        this.internalResources = Collections.unmodifiableMap(map);
     }
 
     /**
@@ -200,7 +211,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     /**
      * Returns {@code true} if any registered language has {@link Registration#needsAllEncodings()}
      * set.
-     *
+     * <p>
      * NOTE: this method is called reflectively by downstream projects.
      */
     @SuppressWarnings("unused")
@@ -215,6 +226,35 @@ final class LanguageCache implements Comparable<LanguageCache> {
 
     static Map<String, LanguageCache> languages() {
         return loadLanguages(EngineAccessor.locatorOrDefaultLoaders());
+    }
+
+    static Collection<LanguageCache> internalLanguages() {
+        Set<LanguageCache> result = new HashSet<>();
+        for (Map.Entry<String, LanguageCache> e : languages().entrySet()) {
+            if (e.getValue().isInternal()) {
+                result.add(e.getValue());
+            }
+        }
+        return result;
+    }
+
+    static Collection<LanguageCache> computeTransitiveLanguageDependencies(String id) {
+        Map<String, LanguageCache> languagesById = languages();
+        LanguageCache root = languagesById.get(id);
+        if (root == null) {
+            throw new IllegalArgumentException(String.format("A language with id '%s' is not installed. Installed languages are: %s.",
+                            id, String.join(", ", languagesById.keySet())));
+        }
+        Set<LanguageCache> result = new HashSet<>();
+        Deque<LanguageCache> todo = new ArrayDeque<>();
+        todo.add(root);
+        while (!todo.isEmpty()) {
+            LanguageCache current = todo.removeFirst();
+            if (result.add(current)) {
+                current.getDependentLanguages().stream().map(languagesById::get).filter(Objects::nonNull).forEach(todo::add);
+            }
+        }
+        return result;
     }
 
     static Map<String, LanguageCache> loadLanguages(List<AbstractClassLoaderSupplier> classLoaders) {
@@ -396,12 +436,26 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     private static String getLanguageHomeImpl(String languageId) {
-        String home = System.getProperty("org.graalvm.language." + languageId + ".home");
+        String home = toRealStringPath("org.graalvm.language." + languageId + ".home");
         if (home == null) {
             // check legacy property
-            home = System.getProperty(languageId + ".home");
+            home = toRealStringPath(languageId + ".home");
         }
         return home;
+    }
+
+    private static String toRealStringPath(String propertyName) {
+        String path = System.getProperty(propertyName);
+        if (path != null) {
+            try {
+                path = Path.of(path).toRealPath().toString();
+            } catch (NoSuchFileException nsfe) {
+                return path;
+            } catch (IOException ioe) {
+                throw CompilerDirectives.shouldNotReachHere(ioe);
+            }
+        }
+        return path;
     }
 
     static boolean overridesPathContext(String languageId) {
@@ -608,6 +662,20 @@ final class LanguageCache implements Comparable<LanguageCache> {
         return result;
     }
 
+    InternalResourceCache getResourceCache(String resourceId) {
+        InternalResourceCache cache = internalResources.get(resourceId);
+        if (cache == null) {
+            throw new IllegalArgumentException(String.format("Resource with id %s is not provided by language %s, provided resource types are %s",
+                            resourceId, id, String.join(", ", internalResources.keySet())));
+        } else {
+            return cache;
+        }
+    }
+
+    Collection<String> getResourceIds() {
+        return internalResources.keySet();
+    }
+
     @Override
     public String toString() {
         return "LanguageCache [id=" + id + ", name=" + name + ", implementationName=" + implementationName + ", version=" + version + ", className=" + className + ", services=" + services + "]";
@@ -674,6 +742,10 @@ final class LanguageCache implements Comparable<LanguageCache> {
         Collection<String> getServicesClassNames();
 
         List<FileTypeDetector> createFileTypeDetectors();
+
+        List<String> getInternalResourceIds();
+
+        InternalResource createInternalResource(String resourceId);
     }
 
     /**
@@ -714,6 +786,16 @@ final class LanguageCache implements Comparable<LanguageCache> {
         public List<FileTypeDetector> createFileTypeDetectors() {
             return provider.createFileTypeDetectors();
         }
+
+        @Override
+        public List<String> getInternalResourceIds() {
+            return List.of();
+        }
+
+        @Override
+        public InternalResource createInternalResource(String resourceId) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     /**
@@ -751,6 +833,16 @@ final class LanguageCache implements Comparable<LanguageCache> {
         @Override
         public List<FileTypeDetector> createFileTypeDetectors() {
             return EngineAccessor.LANGUAGE_PROVIDER.createFileTypeDetectors(provider);
+        }
+
+        @Override
+        public List<String> getInternalResourceIds() {
+            return EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceIds(provider);
+        }
+
+        @Override
+        public InternalResource createInternalResource(String resourceId) {
+            return EngineAccessor.LANGUAGE_PROVIDER.createInternalResource(provider, resourceId);
         }
     }
 }

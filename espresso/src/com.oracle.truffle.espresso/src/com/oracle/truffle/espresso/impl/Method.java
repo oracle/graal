@@ -34,6 +34,7 @@ import static com.oracle.truffle.espresso.classfile.Constants.ACC_CALLER_SENSITI
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_FORCE_INLINE;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_HIDDEN;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_NATIVE;
+import static com.oracle.truffle.espresso.classfile.Constants.ACC_SCOPED;
 import static com.oracle.truffle.espresso.classfile.Constants.ACC_VARARGS;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeInterface;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
@@ -206,6 +207,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     @Override
+    @Idempotent
     public ObjectKlass getDeclaringKlass() {
         return declaringKlass;
     }
@@ -519,6 +521,10 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
 
     public boolean isHidden() {
         return (getModifiers() & ACC_HIDDEN) != 0;
+    }
+
+    public boolean isScoped() {
+        return (getModifiers() & ACC_SCOPED) != 0;
     }
 
     public int getMethodModifiers() {

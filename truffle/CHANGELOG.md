@@ -19,7 +19,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-44217 In the past, on a GraalVM JDK, languages or instruments could be provided using `-Dtruffle.class.path.append`, but are now loaded from the application module path. The truffle class path is deprecated and should no longer be used, but remains functional. Languages are not picked up from the application class path, so the language first needs to be [migrated](https://github.com/oracle/graal/blob/master/truffle/docs/ModuleMigration.md). Truffle languages or instruments installed as a GraalVM component in the GraalVM JDK are still loaded in an unnamed module. However, GraalVM components will be deprecated, so languages and instruments should be migrated to the module path.
 * GR-46181 `truffle-tck.jar` is not included in GraalVM artifacts anymore. It is still available via Maven.
 * GR-46181 `truffle-dsl-processor.jar` is not included in GraalVM artifacts anymore. It is still available via Maven.
-* GR-44222 Deprecated several experimental engine options and moved them to use the `compiler` prefix instead of the `engine` prefix.
+* GR-44222 Deprecated several experimental engine options and moved them to use the `compiler` prefix instead of the `engine` prefix. You can search for these options with this regexp: `git grep -P '\bengine\.(EncodedGraphCache|ExcludeAssertions|FirstTierInliningPolicy|FirstTierUseEconomy|InlineAcrossTruffleBoundary|InlineOnly|Inlining|InliningExpansionBudget|InliningInliningBudget|InliningPolicy|InliningRecursionDepth|InliningUseSize|InstrumentBoundaries|InstrumentBoundariesPerInlineSite|InstrumentBranches|InstrumentBranchesPerInlineSite|InstrumentFilter|InstrumentationTableSize|IterativePartialEscape|MaximumGraalGraphSize|MethodExpansionStatistics|NodeExpansionStatistics|NodeSourcePositions|ParsePEGraphsWithAssumptions|TraceInlining|TraceInliningDetails|TraceMethodExpansion|TraceNodeExpansion|TracePerformanceWarnings|TraceStackTraceLimit|TreatPerformanceWarningsAsErrors)\b'`.
 * GR-44222 The following deprecated debugging options were removed in this release:
 	* `engine.InvalidationReprofileCount`: The option no longer has any effect. Remove the usage to migrate.
 	* `engine.ReplaceReprofileCount`: The option no longer has any effect. Remove the usage to migrate.
@@ -29,7 +29,14 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 	* `engine.CompilationExceptionsArePrinted`: Use `engine.CompilationFailureAction=Print` instead.
 	* `engine.CompilationExceptionsAreThrown`: Use `engine.CompilationFailureAction=Throw` instead.
 	* `engine.CompilationExceptionsAreFatal`: Use `engine.CompilationFailureAction=ExitVM` instead.
-
+* GR-44420 Added `TruffleLanguage.finalizeThread(Object, Thread)` to allow languages run finalization hooks for initialized threads before the context is disposed.
+* GR-45923 Added `EventBinding.tryAttach()` to try to attach a binding, if not disposed or attached already.
+* GR-20628 Added atomic byte-array operations to `ByteArraySupport` and subclasses.
+* GR-39571 Added `TranscodingErrorHandler` to `TruffleString.SwitchEncodingNode`. 
+* GR-46345 Added a support for the lazy unpacking of language and instrument resources necessary for execution. This support replaces the concept of language homes for Maven language and tool deployment. For a language or instrument that requires additional files to execute, it needs to follow these steps:
+  * Bundle the necessary files into a jar distribution.
+  * Implement the `InternalResource` interface for handling the resource file unpacking.
+  * Call the `Env#getInternalResource` when the language or instrument needs the bundled resource files. This method ensures that the requested `InternalResource` is unpacked and provides a directory containing the unpacked files. Since unpacking internal resources can be an expensive operation, the implementation ensures that internal resources are cached.
 
 ## Version 23.0.0
 

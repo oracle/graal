@@ -51,7 +51,7 @@ import com.oracle.truffle.regex.util.TruffleNull;
 import com.oracle.truffle.regex.util.TruffleReadOnlyMap;
 import com.oracle.truffle.regex.util.TruffleSmallReadOnlyStringToIntMap;
 
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -78,13 +78,19 @@ public abstract class AbstractRegexObject implements TruffleObject {
     }
 
     @TruffleBoundary
-    public static AbstractRegexObject createNamedCaptureGroupMapInt(Map<String, Integer> namedCaptureGroups) {
+    public static AbstractRegexObject createNamedCaptureGroupMapInt(Map<String, List<Integer>> namedCaptureGroups) {
         if (namedCaptureGroups == null) {
             return TruffleNull.INSTANCE;
-        } else if (TruffleSmallReadOnlyStringToIntMap.canCreate(namedCaptureGroups)) {
+        }
+        if (TruffleSmallReadOnlyStringToIntMap.canCreate(namedCaptureGroups)) {
             return TruffleSmallReadOnlyStringToIntMap.create(namedCaptureGroups);
         } else {
-            return new TruffleReadOnlyMap(namedCaptureGroups);
+            Map<String, Integer> simpleNamedCaptureGroups = new LinkedHashMap<>(namedCaptureGroups.size());
+            for (Map.Entry<String, List<Integer>> entry : namedCaptureGroups.entrySet()) {
+                assert entry.getValue().size() == 1;
+                simpleNamedCaptureGroups.put(entry.getKey(), entry.getValue().get(0));
+            }
+            return new TruffleReadOnlyMap(simpleNamedCaptureGroups);
         }
     }
 
@@ -93,7 +99,7 @@ public abstract class AbstractRegexObject implements TruffleObject {
         if (namedCaptureGroups == null) {
             return TruffleNull.INSTANCE;
         } else {
-            Map<String, TruffleReadOnlyIntArray> map = new HashMap<>(namedCaptureGroups.size());
+            Map<String, TruffleReadOnlyIntArray> map = new LinkedHashMap<>(namedCaptureGroups.size());
             for (Map.Entry<String, List<Integer>> entry : namedCaptureGroups.entrySet()) {
                 int[] array = new int[entry.getValue().size()];
                 for (int i = 0; i < array.length; i++) {
@@ -101,7 +107,7 @@ public abstract class AbstractRegexObject implements TruffleObject {
                 }
                 map.put(entry.getKey(), new TruffleReadOnlyIntArray(array));
             }
-            return new TruffleReadOnlyMap(namedCaptureGroups);
+            return new TruffleReadOnlyMap(map);
         }
     }
 }

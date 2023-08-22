@@ -39,14 +39,14 @@
 # SOFTWARE.
 #
 
-from distutils.dir_util import copy_tree
+from shutil import copytree
 
 # Populate simplelanguage
-copy_tree("../src/com.oracle.truffle.sl/src/", "simplelanguage/language/src/main/java/")
-copy_tree("../src/com.oracle.truffle.sl.test/src/com/", "simplelanguage/language/src/test/java/com")
-copy_tree("../src/com.oracle.truffle.sl.test/src/tests", "simplelanguage/language/tests")
-copy_tree("../src/com.oracle.truffle.sl.launcher/src/com/", "simplelanguage/launcher/src/main/java/com")
-copy_tree("../src/com.oracle.truffle.sl.tck/src", "simplelanguage/tck/src")
+copytree("../src/com.oracle.truffle.sl/src/", "simplelanguage/language/src/main/java/")
+copytree("../src/com.oracle.truffle.sl.test/src/com/", "simplelanguage/language/src/test/java/com")
+copytree("../src/com.oracle.truffle.sl.test/src/tests", "simplelanguage/language/tests")
+copytree("../src/com.oracle.truffle.sl.launcher/src/com/", "simplelanguage/launcher/src/main/java/com")
+copytree("../src/com.oracle.truffle.sl.tck/src", "simplelanguage/tck/src")
 
 # Create simplelanguage module-info
 # GR-46339 Mx supports module-info in the project sources.
@@ -56,7 +56,7 @@ module org.graalvm.sl {
   requires java.logging;
   requires jdk.unsupported;
   requires org.antlr.antlr4.runtime;
-  requires org.graalvm.sdk;
+  requires org.graalvm.polyglot;
   requires org.graalvm.truffle;
   provides  com.oracle.truffle.api.provider.TruffleLanguageProvider with
     com.oracle.truffle.sl.SLLanguageProvider;
@@ -66,5 +66,5 @@ with open('simplelanguage/language/src/main/java/module-info.java', 'w') as f:
     f.write(module_info)
 
 # Populate simpletool
-copy_tree("../src/com.oracle.truffle.st/src/com/", "simpletool/src/main/java/com")
-copy_tree("../src/com.oracle.truffle.st.test/src/com/", "simpletool/src/test/java/com")
+copytree("../src/com.oracle.truffle.st/src/com/", "simpletool/src/main/java/com")
+copytree("../src/com.oracle.truffle.st.test/src/com/", "simpletool/src/test/java/com")

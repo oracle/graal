@@ -181,7 +181,7 @@ public abstract class ImageHeapScanner {
         universe.getBigbang().registerTypeAsInHeap(type, reason);
     }
 
-    JavaConstant createImageHeapConstant(JavaConstant constant, ScanReason reason) {
+    public JavaConstant createImageHeapConstant(JavaConstant constant, ScanReason reason) {
         if (isNonNullObjectConstant(constant)) {
             return getOrCreateImageHeapConstant(constant, reason);
         }
@@ -359,6 +359,7 @@ public abstract class ImageHeapScanner {
             ObjectScanner.unsupportedFeatureDuringFieldScan(universe.getBigbang(), field, receiver, e, reason);
             transformedValue = JavaConstant.NULL_POINTER;
         }
+        assert transformedValue != null : field.getDeclaringClass().toJavaName() + "::" + field.getName();
 
         return createImageHeapConstant(transformedValue, reason);
     }
@@ -488,6 +489,10 @@ public abstract class ImageHeapScanner {
         // Wrap the hosted constant into a substrate constant
         JavaConstant value = universe.lookup(hostedConstantReflection.readFieldValue(field.wrapped, receiver));
         return ValueSupplier.eagerValue(value);
+    }
+
+    public JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
+        return constantReflection.readFieldValue(field, receiver);
     }
 
     protected boolean skipScanning() {

@@ -460,8 +460,32 @@ public class Graph {
         return addHelper(node);
     }
 
+    /**
+     * Returns {@code node} if it is alive in this graph. Otherwise, looks for an existing, GVN
+     * equivalent node and returns it if found. If no such node is found, {@code node} is added to
+     * this graph and returned.
+     * <p>
+     * The return value of this function should not be ignored. If the return value is not assigned
+     * to {@code node}, {@code node} should not be used afterwards:
+     *
+     * <pre>
+     * x = ...;
+     * graph.unique(x); // wrong!
+     *
+     * x = ...;
+     * x = graph.unique(x); // ok
+     *
+     * x = ...;
+     * y = graph.unique(x); // ok
+     * // do not use x anymore
+     * </pre>
+     *
+     * @return {@code node} if it is already in this graph or if no GVN equivalent node exists,
+     *         otherwise an existing, GVN equivalent node
+     */
     public <T extends Node> T addOrUnique(T node) {
         if (node.isAlive()) {
+            GraalError.guarantee(node.graph() == this, "Node is alive in another graph.");
             return node;
         }
         if (node.getNodeClass().valueNumberable()) {
@@ -470,13 +494,63 @@ public class Graph {
         return add(node);
     }
 
+    /**
+     * Returns {@code node} if it is alive in this graph. Otherwise, looks for nodes in the graph
+     * which are GVN equivalent to {@code node} and its inputs, recursively. Adds all nodes to the
+     * graph, where no GVN equivalent nodes are found. Returns either {@code node} or an existing
+     * GVN equivalent node.
+     * <p>
+     * The return value of this function should not be ignored. If the return value is not assigned
+     * to {@code node}, {@code node} should not be used afterwards:
+     *
+     * <pre>
+     * x = ...;
+     * graph.addOrUniqueWithInputs(x); // wrong!
+     *
+     * x = ...;
+     * x = graph.addOrUniqueWithInputs(x); // ok
+     *
+     * x = ...;
+     * y = graph.addOrUniqueWithInputs(x); // ok
+     * // do not use x anymore
+     * </pre>
+     *
+     * @return {@code node} if it is already in this graph or if no GVN equivalent node exists,
+     *         otherwise an existing, GVN equivalent node
+     */
     public <T extends Node> T addOrUniqueWithInputs(T node) {
         return addOrUniqueWithInputs(node, null);
     }
 
+    /**
+     * Returns {@code node} if it is alive in this graph. Otherwise, looks for nodes in the graph
+     * which are GVN equivalent to {@code node} and its inputs, recursively. Adds all nodes to the
+     * graph, where no GVN equivalent nodes are found. Potentially GVN equivalent nodes are filtered
+     * by the predicate. If {@code predicate == null}, it is more likely to find existing nodes in
+     * the graph and not add new nodes for all inputs. Returns either {@code node} or an existing,
+     * GVN equivalent node.
+     * <p>
+     * The return value of this function should not be ignored. If the return value is not assigned
+     * to {@code node}, {@code node} should not be used afterwards:
+     *
+     * <pre>
+     * x = ...;
+     * graph.addOrUniqueWithInputs(x, p); // wrong!
+     *
+     * x = ...;
+     * x = graph.addOrUniqueWithInputs(x, p); // ok
+     *
+     * x = ...;
+     * y = graph.addOrUniqueWithInputs(x, p); // ok
+     * // do not use x anymore
+     * </pre>
+     *
+     * @return {@code node} if it is already in this graph or if no GVN equivalent node exists,
+     *         otherwise an existing, GVN equivalent node which matches the predicate
+     */
     public <T extends Node> T addOrUniqueWithInputs(T node, NodePredicate predicate) {
         if (node.isAlive()) {
-            assert node.graph() == this;
+            GraalError.guarantee(node.graph() == this, "Node is alive in another graph.");
             return node;
         } else {
             assert node.isUnregistered();
@@ -749,10 +823,25 @@ public class Graph {
     }
 
     /**
-     * Looks for a node <i>similar</i> to {@code node} and returns it if found. Otherwise
-     * {@code node} is added to this graph and returned.
+     * Looks for an existing, GVN equivalent node and returns it if found. Otherwise {@code node} is
+     * added to this graph and returned.
+     * <p>
+     * The return value of this function should not be ignored. If the return value is not assigned
+     * to {@code node}, {@code node} should not be used afterwards:
      *
-     * @return a node similar to {@code node} if one exists, otherwise {@code node}
+     * <pre>
+     * x = ...;
+     * graph.unique(x); // wrong!
+     *
+     * x = ...;
+     * x = graph.unique(x); // ok
+     *
+     * x = ...;
+     * y = graph.unique(x); // ok
+     * // do not use x anymore
+     * </pre>
+     *
+     * @return an existing, GVN equivalent node if one exists, otherwise {@code node}
      */
     public <T extends Node & ValueNumberable> T unique(T node) {
         return uniqueHelper(node, null);

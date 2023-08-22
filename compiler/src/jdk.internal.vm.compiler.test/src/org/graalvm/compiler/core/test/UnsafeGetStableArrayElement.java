@@ -314,10 +314,14 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
      * Tests this sequence:
      *
      * <pre>
-     * 1. {@code res1 = c()}
+     * 1. {@code
+     * res1 = c()
+     * }
      * 2. Compile c.
      * 3. Change stable array element read by c.
-     * 4. {@code res2 = c()}
+     * 4. {@code
+     * res2 = c()
+     * }
      * 5. {@code assert Objects.equals(res1, res2)}
      * </pre>
      *
@@ -360,10 +364,14 @@ public class UnsafeGetStableArrayElement extends GraalCompilerTest {
      * Tests this sequence:
      *
      * <pre>
-     * 1. {@code res1 = c()}
+     * 1. {@code
+     * res1 = c()
+     * }
      * 2. Compile c.
      * 3. Change stable array element read by c.
-     * 4. {@code res2 = c()}
+     * 4. {@code
+     * res2 = c()
+     * }
      * 5. {@code assert !Objects.equals(res1, res2)}
      * </pre>
      *

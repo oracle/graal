@@ -119,8 +119,8 @@ public final class JNIGeneratedMethodSupport {
         return WordFactory.nullPointer();
     }
 
-    static boolean destroyArrayViewByAddress(PointerBase address, int mode) throws Throwable {
-        return JNIThreadLocalPrimitiveArrayViews.destroyArrayViewByAddress(address, mode);
+    static void destroyNewestArrayViewByAddress(PointerBase address, int mode) throws Throwable {
+        JNIThreadLocalPrimitiveArrayViews.destroyNewestArrayViewByAddress(address, mode);
     }
 
     static void getPrimitiveArrayRegion(JavaKind elementKind, Object array, int start, int count, PointerBase buffer) {

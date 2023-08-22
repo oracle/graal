@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.common.PartialEvaluationMethodInfo;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.core.util.HostedStringDeduplication;
 import com.oracle.svm.graal.meta.SubstrateMethod;
+import com.oracle.truffle.compiler.PartialEvaluationMethodInfo;
 
 public class SubstrateTruffleMethod extends SubstrateMethod implements TruffleMethod {
 

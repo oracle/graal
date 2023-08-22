@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.27.1",
+  "mxversion": "6.41.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
   "version" : "23.1.0",
@@ -82,7 +82,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:TRUFFLE_API",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "requires": [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -243,12 +243,31 @@ suite = {
       ],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "description" : "GraalWasm, an engine for the WebAssembly language in GraalVM.",
       "allowsJavadocWarnings": True,
       "license" : "UPL",
-      "maven" : False,
+      "maven" : {
+        "artifactId" : "wasm-language",
+        "tag": ["default", "public"],
+      },
+      "noMavenJavadoc": True,
+    },
+
+    "WASM_COMMUNITY": {
+      "type": "pom",
+      "runtimeDependencies": [
+        "WASM",
+        "truffle:TRUFFLE_RUNTIME",
+      ],
+      "maven": {
+        "groupId": "org.graalvm.polyglot",
+        "artifactId": "wasm-community",
+        "tag": ["default", "public"],
+      },
+      "description": "Graal WASM engine.",
+      "license": "UPL",
     },
 
     "WASM_LAUNCHER" : {

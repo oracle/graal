@@ -31,21 +31,12 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.OptimizedAssumptionDependency;
 import org.graalvm.compiler.truffle.compiler.EconomyPartialEvaluatorConfiguration;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerConfiguration;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilerImpl;
 import org.graalvm.compiler.truffle.compiler.TruffleTierConfiguration;
-import org.graalvm.compiler.truffle.runtime.BackgroundCompileQueue;
-import org.graalvm.compiler.truffle.runtime.EngineData;
-import org.graalvm.compiler.truffle.runtime.OptimizedAssumption;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedDirectCallNode;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
@@ -65,6 +56,13 @@ import com.oracle.svm.truffle.isolated.IsolatedTruffleRuntimeSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.compiler.OptimizedAssumptionDependency;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.runtime.BackgroundCompileQueue;
+import com.oracle.truffle.runtime.EngineData;
+import com.oracle.truffle.runtime.OptimizedAssumption;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedDirectCallNode;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -95,10 +93,6 @@ public class TruffleSupport {
 
     public SubstratePartialEvaluator createPartialEvaluator(TruffleCompilerConfiguration config, GraphBuilderConfiguration graphBuilderConfigForRoot) {
         return new SubstratePartialEvaluator(config, graphBuilderConfigForRoot);
-    }
-
-    @SuppressWarnings("unused")
-    public void registerInterpreterEntryMethodsAsCompiled(PartialEvaluator partialEvaluator, Feature.BeforeAnalysisAccess access) {
     }
 
     public SubstrateTruffleCompiler createTruffleCompiler(SubstrateTruffleRuntime runtime) {
@@ -174,4 +168,5 @@ public class TruffleSupport {
         }
         return TriState.UNDEFINED;
     }
+
 }

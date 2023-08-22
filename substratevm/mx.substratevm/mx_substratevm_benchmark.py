@@ -38,6 +38,7 @@ import mx
 import mx_benchmark
 import mx_sdk_benchmark
 import mx_java_benchmarks
+import mx_sdk_vm_impl
 
 _suite = mx.suite("substratevm")
 _successful_stage_pattern = re.compile(r'Successfully finished the last specified stage:.*$', re.MULTILINE)
@@ -117,9 +118,9 @@ _RENAISSANCE_EXTRA_IMAGE_BUILD_ARGS = {
                             force_buildtime_init_slf4j_1_7_73,
                             force_runtime_init_netty_4_1_72
                           ],
-    'dotty'             : [
+    'dotty'             : mx_sdk_vm_impl.svm_experimental_options([
                             '-H:+AllowJRTFileSystem'
-                          ]
+                          ])
 }
 
 _renaissance_pre014_config = {
@@ -588,7 +589,8 @@ class DaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.DaCapoBenchmarkSuite, B
         return ["9.12-MR1-git+2baec49"]
 
     def daCapoIterations(self):
-        return _daCapo_iterations
+        compiler_iterations = super(DaCapoNativeImageBenchmarkSuite, self).daCapoIterations()
+        return {key: _daCapo_iterations[key] for key in compiler_iterations.keys() if key in _daCapo_iterations.keys()}
 
     def benchmark_resources(self, benchmark):
         return _dacapo_resources[benchmark]
@@ -711,7 +713,8 @@ class ScalaDaCapoNativeImageBenchmarkSuite(mx_java_benchmarks.ScalaDaCapoBenchma
         return 'scala-dacapo'
 
     def daCapoIterations(self):
-        return _scala_dacapo_iterations
+        compiler_iterations = super(ScalaDaCapoNativeImageBenchmarkSuite, self).daCapoIterations()
+        return {key: _scala_dacapo_iterations[key] for key in compiler_iterations.keys() if key in _scala_dacapo_iterations.keys()}
 
     def benchmark_resources(self, benchmark):
         return _scala_dacapo_resources[benchmark]
@@ -793,6 +796,9 @@ class ConsoleNativeImageBenchmarkSuite(mx_java_benchmarks.ConsoleBenchmarkSuite,
         self.benchmark_name = benchmarks[0]
         return args
 
+    def checkSamplesInPgo(self):
+        return False
+
 
 mx_benchmark.add_bm_suite(ConsoleNativeImageBenchmarkSuite())
 
@@ -819,7 +825,7 @@ class SpecJVM2008NativeImageBenchmarkSuite(mx_java_benchmarks.SpecJvm2008Benchma
         return args
 
     def extra_image_build_argument(self, benchmark, args):
-        return super(SpecJVM2008NativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args) + ["-H:-ParseRuntimeOptions", "-Djava.awt.headless=false"]
+        return super(SpecJVM2008NativeImageBenchmarkSuite, self).extra_image_build_argument(benchmark, args) + mx_sdk_vm_impl.svm_experimental_options(['-H:-ParseRuntimeOptions']) + ['-Djava.awt.headless=false']
 
 
 mx_benchmark.add_bm_suite(SpecJVM2008NativeImageBenchmarkSuite())

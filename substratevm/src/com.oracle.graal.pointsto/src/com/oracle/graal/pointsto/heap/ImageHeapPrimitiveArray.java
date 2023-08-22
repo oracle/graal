@@ -27,8 +27,6 @@ package com.oracle.graal.pointsto.heap;
 import java.lang.reflect.Array;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.debug.GraalError;
-
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -97,35 +95,10 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
 
     @Override
     public void setElement(int idx, JavaConstant value) {
-        /*
-         * Constants for sub-integer types are often just integer constants, i.e., we cannot rely on
-         * the JavaKind of the constant to match the type of the array.
-         */
-        if (array instanceof boolean[] booleanArray) {
-            booleanArray[idx] = value.asInt() != 0;
-        } else if (array instanceof byte[] byteArray) {
-            byte v = (byte) value.asInt();
-            GraalError.guarantee(v == value.asInt(), "type mismatch");
-            byteArray[idx] = v;
-        } else if (array instanceof short[] shortArray) {
-            short v = (short) value.asInt();
-            GraalError.guarantee(v == value.asInt(), "type mismatch");
-            shortArray[idx] = v;
-        } else if (array instanceof char[] charArray) {
-            char v = (char) value.asInt();
-            GraalError.guarantee(v == value.asInt(), "type mismatch");
-            charArray[idx] = v;
-        } else if (array instanceof int[] intArray) {
-            intArray[idx] = value.asInt();
-        } else if (array instanceof long[] longArray) {
-            longArray[idx] = value.asLong();
-        } else if (array instanceof float[] floatArray) {
-            floatArray[idx] = value.asFloat();
-        } else if (array instanceof double[] doubleArray) {
-            doubleArray[idx] = value.asDouble();
-        } else {
-            throw AnalysisError.shouldNotReachHere("Unexpected array type: " + array.getClass());
+        if (value.getJavaKind() != type.getComponentType().getJavaKind()) {
+            throw AnalysisError.shouldNotReachHere("Cannot store value of kind " + value.getJavaKind() + " into primitive array of type " + type);
         }
+        Array.set(array, idx, value.asBoxedPrimitive());
     }
 
     @Override

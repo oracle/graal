@@ -81,7 +81,7 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.ProgressReporter;
+import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.code.DeoptimizationUtils;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.meta.HostedMethod;
@@ -241,10 +241,6 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
             metaAccess.lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
         if (GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), nodeClasses)) {
-            config.requireAnalysisIteration();
-        }
-
-        if (objectReplacer.updateDataDuringAnalysis()) {
             config.requireAnalysisIteration();
         }
     }
@@ -493,10 +489,10 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
             }
         }
 
-        ProgressReporter.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
+        HeapBreakdownProvider.singleton().setGraphEncodingByteLength(graphEncoder.getEncoding().length);
         GraalSupport.setGraphEncoding(config, graphEncoder.getEncoding(), graphEncoder.getObjects(), graphEncoder.getNodeClasses());
 
-        objectReplacer.updateDataDuringAnalysis();
+        objectReplacer.setMethodsImplementations();
 
         /* All the temporary data structures used during encoding are no longer necessary. */
         graphEncoder = null;
@@ -533,7 +529,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
 
         if (!runtimeCompiledMethodMap.containsKey(aMethod)) {
             runtimeCompiledMethodMap.put(aMethod, new CallTreeNode(aMethod, aMethod, null, ""));
-            config.registerAsRoot(aMethod, true);
+            config.registerAsRoot(aMethod, true, "Runtime compilation, registered in " + LegacyRuntimeCompilationFeature.class);
         }
 
         return sMethod;

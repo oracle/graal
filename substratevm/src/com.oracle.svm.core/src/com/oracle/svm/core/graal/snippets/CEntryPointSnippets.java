@@ -73,6 +73,7 @@ import com.oracle.svm.core.JavaMainWrapper.JavaMainSupport;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.SubstrateGCOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -205,7 +206,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @SubstrateForeignCallTarget(stubCallingConvention = false)
-    private static int createIsolate(CEntryPointCreateIsolateParameters parameters, int vmThreadSize) {
+    private static int createIsolate(CEntryPointCreateIsolateParameters providedParameters, int vmThreadSize) {
         CPUFeatureAccess cpuFeatureAccess = ImageSingletons.lookup(CPUFeatureAccess.class);
         if (cpuFeatureAccess.verifyHostSupportsArchitectureEarly() != 0) {
             return CEntryPointErrors.CPU_FEATURE_CHECK_FAILED;
@@ -219,15 +220,25 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             return CEntryPointErrors.PAGE_SIZE_CHECK_FAILED;
         }
         CLongPointer parsedArgs = StackValue.get(IsolateArgumentParser.getStructSize());
+        CEntryPointCreateIsolateParameters parameters = providedParameters;
+        if (parameters.isNull() || parameters.version() < 1) {
+            parameters = StackValue.get(CEntryPointCreateIsolateParameters.class);
+            parameters.setReservedSpaceSize(WordFactory.zero());
+            parameters.setVersion(1);
+        }
         IsolateArgumentParser.parse(parameters, parsedArgs);
+        if (parameters.reservedSpaceSize().equal(0)) {
+            parameters.setReservedSpaceSize(WordFactory.unsigned(parsedArgs.read(IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize))));
+        }
 
-        WordPointer isolate = StackValue.get(WordPointer.class);
-        int error = Isolates.create(isolate, parameters);
+        WordPointer isolatePtr = StackValue.get(WordPointer.class);
+        int error = Isolates.create(isolatePtr, parameters);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
+        Isolate isolate = isolatePtr.read();
         if (SpawnIsolates.getValue()) {
-            setHeapBase(Isolates.getHeapBase(isolate.read()));
+            setHeapBase(Isolates.getHeapBase(isolate));
         }
 
         return createIsolate0(parsedArgs, isolate, vmThreadSize);
@@ -235,9 +246,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @NeverInline(value = "Ensure this code cannot rise above where heap base is set.")
-    private static int createIsolate0(CLongPointer parsedArgs, WordPointer isolate, int vmThreadSize) {
+    private static int createIsolate0(CLongPointer parsedArgs, Isolate isolate, int vmThreadSize) {
+
         IsolateArgumentParser.singleton().persistOptions(parsedArgs);
-        IsolateListenerSupport.singleton().afterCreateIsolate(isolate.read());
+        IsolateListenerSupport.singleton().afterCreateIsolate(isolate);
 
         CodeInfoTable.prepareImageCodeInfo();
         if (MultiThreaded.getValue()) {
@@ -245,7 +257,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
             }
         }
-        int error = attachThread(isolate.read(), false, false, vmThreadSize, true);
+        int error = attachThread(isolate, false, false, vmThreadSize, true);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }

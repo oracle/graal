@@ -1212,7 +1212,7 @@ public class HeapDumpWriter {
                  */
                 markStackValuesAsGCRoots(sp, ip, codeInfo);
 
-                frameInfoCursor.initialize(codeInfo, ip);
+                frameInfoCursor.initialize(codeInfo, ip, true);
                 while (frameInfoCursor.advance()) {
                     FrameInfoQueryResult frame = frameInfoCursor.get();
                     visitFrame(frame);

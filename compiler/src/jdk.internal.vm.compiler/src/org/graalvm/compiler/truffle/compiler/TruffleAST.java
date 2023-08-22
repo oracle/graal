@@ -36,16 +36,17 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleSourceLanguagePosition;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator.SourceLanguagePositionImpl;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.CallNode;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.CallNode.State;
 import org.graalvm.compiler.truffle.compiler.phases.inlining.CallTree;
 import org.graalvm.graphio.GraphBlocks;
 import org.graalvm.graphio.GraphStructure;
+
+import com.oracle.truffle.compiler.ConstantFieldInfo;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleSourceLanguagePosition;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;

@@ -52,8 +52,8 @@ import org.graalvm.polyglot.io.ByteSequence;
 
 final class PolyglotSourceDispatch extends AbstractSourceDispatch {
 
-    protected PolyglotSourceDispatch(AbstractPolyglotImpl engineImpl) {
-        super(engineImpl);
+    PolyglotSourceDispatch(AbstractPolyglotImpl polyglot) {
+        super(polyglot);
     }
 
     @Override
@@ -199,6 +199,12 @@ final class PolyglotSourceDispatch extends AbstractSourceDispatch {
     public ByteSequence getBytes(Object impl) {
         com.oracle.truffle.api.source.Source source = (com.oracle.truffle.api.source.Source) impl;
         return source.getBytes();
+    }
+
+    @Override
+    public byte[] getByteArray(Object impl) {
+        ByteSequence content = getBytes(impl);
+        return content.toByteArray();
     }
 
     @Override

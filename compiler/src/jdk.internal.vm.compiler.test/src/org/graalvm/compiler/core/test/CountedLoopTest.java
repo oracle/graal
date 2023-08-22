@@ -40,6 +40,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.nodes.loop.InductionVariable;
+import org.graalvm.compiler.nodes.loop.LoopEx;
 import org.graalvm.compiler.nodes.loop.LoopsData;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
@@ -485,6 +486,32 @@ public class CountedLoopTest extends GraalCompilerTest {
     }
 
     public static Result decrementUnsignedSnippet(int start, int limit, int step) {
+        if (!GraalDirectives.inCompiledCode()) {
+            /*
+             * C2 can spuriously deopt this method due to tiered compilation and profile update
+             * issues when executing the expected code shape. This incurs tremendous test timeouts
+             * because we exercise entire integer ranges on these texts. Thus, we have a fast path
+             * for the interpreter and C2 only.
+             */
+
+            Result ret = new Result();
+
+            final long lInit = Integer.toUnsignedLong(start);
+            final long lLimit = Integer.toUnsignedLong(limit);
+            final long absStride = Integer.toUnsignedLong(step);
+            final long stride = Integer.toUnsignedLong(step) * -1L;
+            final long range = lInit - lLimit;
+
+            final long tripCount = lInit > lLimit ? (range + (absStride - 1)) / absStride : 0L;
+            final long iterationsTimeStride = (tripCount - 1L) * stride;
+            final long extremum = lInit + iterationsTimeStride;
+            final long exitValue = extremum - absStride;
+
+            // test below only sets extremum if loop is actually entered
+            ret.extremum = tripCount > 0 ? extremum : 0;
+            ret.exitValue = exitValue;
+            return ret;
+        }
         int dec = ((step - 1) & 0xFFFF) + 1; // make sure this value is always strictly positive
         Result ret = new Result();
         int i;
@@ -641,6 +668,9 @@ public class CountedLoopTest extends GraalCompilerTest {
     protected void checkHighTierGraph(StructuredGraph graph) {
         LoopsData loops = getDefaultMidTierContext().getLoopsDataProvider().getLoopsData(graph);
         loops.detectCountedLoops();
+        for (LoopEx lex : loops.countedLoops()) {
+            lex.counted().createOverFlowGuard();
+        }
         for (IVPropertyNode node : graph.getNodes().filter(IVPropertyNode.class)) {
             node.rewrite(loops);
         }

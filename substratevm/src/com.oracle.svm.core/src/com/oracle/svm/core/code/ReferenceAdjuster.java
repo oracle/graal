@@ -35,7 +35,6 @@ import com.oracle.svm.core.c.NonmovableArrays;
 import com.oracle.svm.core.c.NonmovableObjectArray;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.heap.ReferenceAccess;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -57,7 +56,7 @@ public interface ReferenceAdjuster {
     default <T extends Constant> NonmovableObjectArray<Object> copyOfObjectConstantArray(T[] constants) {
         NonmovableObjectArray<Object> objects = NonmovableArrays.createObjectArray(Object[].class, constants.length);
         for (int i = 0; i < constants.length; i++) {
-            setConstantTargetInArray(objects, i, (SubstrateObjectConstant) constants[i]);
+            setConstantTargetInArray(objects, i, (JavaConstant) constants[i]);
         }
         return objects;
     }

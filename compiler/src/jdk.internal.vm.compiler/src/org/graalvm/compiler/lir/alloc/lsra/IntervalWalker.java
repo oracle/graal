@@ -263,8 +263,8 @@ public class IntervalWalker {
     }
 
     /**
-     * Move {@linkplain #unhandledLists unhandled} stack intervals to
-     * {@linkplain IntervalWalker #activeLists active}.
+     * Move {@linkplain #unhandledLists unhandled} stack intervals to {@linkplain IntervalWalker
+     * #activeLists active}.
      *
      * Note that for {@linkplain RegisterBinding#Fixed fixed} and {@linkplain RegisterBinding#Any
      * any} intervals this is done in {@link #nextInterval(int)}.

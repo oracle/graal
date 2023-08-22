@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -524,6 +525,22 @@ public class SubstrateJVM {
         }
     }
 
+    @Uninterruptible(reason = "Accesses a native JFR buffer.")
+    public long commit(long nextPosition) {
+        assert nextPosition != 0 : "invariant";
+        JfrBuffer current = threadLocal.getJavaBuffer();
+        assert current.isNonNull() : "invariant";
+        Pointer next = WordFactory.pointer(nextPosition);
+        assert next.aboveOrEqual(current.getCommittedPos()) : "invariant";
+        assert next.belowOrEqual(JfrBufferAccess.getDataEnd(current)) : "invariant";
+        if (JfrThreadLocal.isNotified()) {
+            JfrThreadLocal.clearNotification();
+            return current.getCommittedPos().rawValue();
+        }
+        current.setCommittedPos(next);
+        return nextPosition;
+    }
+
     public void markChunkFinal() {
         JfrChunkWriter chunkWriter = unlockedChunkWriter.lock();
         try {
@@ -615,7 +632,7 @@ public class SubstrateJVM {
      * See {@link JVM#getEventWriter}.
      */
     public Target_jdk_jfr_internal_EventWriter getEventWriter() {
-        return threadLocal.getEventWriter();
+        return JfrThreadLocal.getEventWriter();
     }
 
     /**
@@ -662,6 +679,11 @@ public class SubstrateJVM {
         return true;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    long getThresholdTicks(JfrEvent event) {
+        return eventSettings[(int) event.getId()].getThresholdTicks();
+    }
+
     /**
      * See {@link JVM#setCutoff}.
      */
@@ -680,7 +702,7 @@ public class SubstrateJVM {
     }
 
     public void setExcluded(Thread thread, boolean excluded) {
-        getThreadLocal().setExcluded(thread, excluded);
+        JfrThreadLocal.setExcluded(thread, excluded);
     }
 
     public boolean isExcluded(Thread thread) {
@@ -692,7 +714,7 @@ public class SubstrateJVM {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isCurrentThreadExcluded() {
-        return getThreadLocal().isCurrentThreadExcluded();
+        return JfrThreadLocal.isCurrentThreadExcluded();
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {

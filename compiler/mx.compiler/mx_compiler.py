@@ -670,7 +670,13 @@ mx_gate.add_gate_argument('--extra-vm-argument', action=ShellEscapedStringAction
 mx_gate.add_gate_argument('--extra-unittest-argument', action=ShellEscapedStringAction, help='add extra unit test arguments to gate tasks if applicable')
 
 def _unittest_vm_launcher(vmArgs, mainClass, mainClassArgs):
-    run_vm(vmArgs + [mainClass] + mainClassArgs)
+    jdk = _get_unittest_jdk()
+    if jdk.tag == 'graalvm':
+        # we do not want to use -server for GraalVM configurations
+        mx.run_java(vmArgs + [mainClass] + mainClassArgs, jdk=jdk)
+    else:
+        run_vm(vmArgs + [mainClass] + mainClassArgs)
+
 
 def _remove_redundant_entries(cp):
     """
@@ -699,12 +705,13 @@ def _unittest_config_participant(config):
     cpIndex, cp = mx.find_classpath_arg(vmArgs)
     if cp:
         cp = _remove_redundant_entries(cp)
+
         vmArgs[cpIndex] = cp
         # JVMCI is dynamically exported to Graal when JVMCI is initialized. This is too late
         # for the junit harness which uses reflection to find @Test methods. In addition, the
         # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
         # ALL-UNNAMED.
-        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=jdk.internal.vm.compiler,ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.internal.vm.compiler,ALL-UNNAMED'])
 
         limited_modules = None
         for arg in vmArgs:
@@ -739,7 +746,33 @@ def _unittest_config_participant(config):
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
-mx_unittest.set_vm_launcher('JDK VM launcher', _unittest_vm_launcher, jdk)
+
+_use_graalvm = False
+
+class SwitchToGraalVMJDK(mx_unittest.Action):
+    def __init__(self, **kwargs):
+        global _use_graalvm
+        kwargs['required'] = False
+        kwargs['nargs'] = 0
+        mx_unittest.Action.__init__(self, **kwargs)
+        _use_graalvm = False
+    def __call__(self, parser, namespace, values, option_string=None):
+        global _use_graalvm
+        _use_graalvm = True
+
+def _get_unittest_jdk():
+    global _use_graalvm
+    if _use_graalvm:
+        return mx.get_jdk(tag='graalvm')
+    else:
+        return jdk
+
+mx_unittest.set_vm_launcher('JDK VM launcher', _unittest_vm_launcher, _get_unittest_jdk)
+# Note this option should probably be implemented in mx_sdk. However there can be only
+# one set_vm_launcher call per configuration, so we we do it here where it is easy to compose
+# with the mx_compiler behavior.
+mx_unittest.add_unittest_argument('--use-graalvm', default=False, help='Use the previously built GraalVM for running the unit test.', action=SwitchToGraalVMJDK)
+
 
 def _record_last_updated_jar(dist, path):
     last_updated_jar = join(dist.suite.get_output_root(), dist.name + '.lastUpdatedJar')
@@ -1172,7 +1205,7 @@ def java_base_unittest(args):
     # Remove GRAAL_MANAGEMENT from the module path as it
     # depends on the java.management module which is not in
     # the limited module set
-    base_modules = ['java.base', 'java.logging', 'jdk.internal.vm.ci', 'jdk.unsupported', 'jdk.compiler', 'java.instrument']
+    base_modules = ['java.base', 'java.logging', 'jdk.internal.vm.ci', 'org.graalvm.truffle.runtime', 'jdk.unsupported', 'jdk.compiler', 'java.instrument']
     compiler_modules = [as_java_module(d, jdk).name for d in _graal_config().dists if d.name != 'GRAAL_MANAGEMENT']
     root_module_names = base_modules + compiler_modules
     extra_args = ['--limit-modules=' + ','.join(root_module_names)]
@@ -1294,14 +1327,13 @@ def _graal_config():
         def __init__(self):
             self.jvmci_dists = []
             self.jvmci_jars = []
-            self.jvmci_parent_dists = []
             self.jvmci_parent_jars = []
             self.boot_dists = []
             self.boot_jars = []
             self.truffle_jars = []
             self.jars = []
 
-            for component in mx_sdk_vm.graalvm_components():
+            for component in mx_sdk_vm_impl.registered_graalvm_components():
                 if isinstance(component, mx_sdk_vm.GraalVmJvmciComponent):
                     for jar in component.jvmci_jars:
                         d = mx.distribution(jar)
@@ -1312,10 +1344,9 @@ def _graal_config():
                     self.boot_dists.append(d)
                     self.boot_jars.append(d.classpath_repr())
 
-            self.jvmci_parent_dists = [mx.distribution('truffle:TRUFFLE_API')]
-            self.jvmci_parent_jars = [jar.classpath_repr() for jar in self.jvmci_parent_dists]
+            self.jvmci_parent_jars = []
 
-            self.dists = self.jvmci_dists + self.jvmci_parent_dists + self.boot_dists
+            self.dists = self.jvmci_dists + self.boot_dists
             self.jars = self.jvmci_jars + self.jvmci_parent_jars + self.boot_jars
 
             self.dists_dict = {e.suite.name + ':' + e.name : e for e in self.dists}
@@ -1328,7 +1359,6 @@ def _jvmci_jars():
     return [
         'compiler:GRAAL',
         'compiler:GRAAL_MANAGEMENT',
-        'compiler:GRAAL_TRUFFLE_JFR_IMPL',
     ]
 
 # The community compiler component
@@ -1340,7 +1370,7 @@ cmp_ce_components = [
         dir_name='graal',
         license_files=[],
         third_party_license_files=[],
-        dependencies=['Truffle API'],
+        dependencies=['Truffle Compiler', 'Graal SDK Compiler'],
         jar_distributions=[  # Dev jars (annotation processors)
             'compiler:GRAAL_PROCESSOR',
         ],

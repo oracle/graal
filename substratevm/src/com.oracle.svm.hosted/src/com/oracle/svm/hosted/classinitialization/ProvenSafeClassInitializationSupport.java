@@ -450,7 +450,7 @@ class ProvenSafeClassInitializationSupport extends ClassInitializationSupport {
                                  * See if initialization worked--it can fail due to implicit
                                  * exceptions.
                                  */
-                                if (!shouldInitializeAtRuntime(c)) {
+                                if (maybeInitializeAtBuildTime(c)) {
                                     provenSafe.add(c);
                                     ClassInitializationInfo initializationInfo = type.getClassInitializer() == null ? ClassInitializationInfo.NO_INITIALIZER_INFO_SINGLETON
                                                     : ClassInitializationInfo.INITIALIZED_INFO_SINGLETON;

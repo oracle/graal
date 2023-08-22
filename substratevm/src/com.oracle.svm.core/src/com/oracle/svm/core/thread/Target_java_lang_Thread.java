@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ThreadFactory;
 
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -59,7 +58,9 @@ import com.oracle.svm.core.jdk.JDK19OrEarlier;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.jdk.JDK20OrLater;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.JDK21OrLater;
+import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jdk.NotLoomJDK;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -279,7 +280,6 @@ public final class Target_java_lang_Thread {
         contextClassLoader = ClassLoader.getSystemClassLoader();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     public long getId() {
@@ -289,10 +289,6 @@ public final class Target_java_lang_Thread {
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public native String getName();
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public native ThreadGroup getThreadGroup();
 
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -595,8 +591,15 @@ public final class Target_java_lang_Thread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
+    @TargetElement(onlyWith = {JDK21OrLater.class, JDK21OrEarlier.class})
     private static void sleep0(long nanos) throws InterruptedException {
+        // Virtual threads are handled in sleep()
+        PlatformThreads.sleep(nanos);
+    }
+
+    @Substitute
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    private static void sleepNanos0(long nanos) throws InterruptedException {
         // Virtual threads are handled in sleep()
         PlatformThreads.sleep(nanos);
     }
@@ -784,7 +787,6 @@ public final class Target_java_lang_Thread {
      */
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isTerminated() {
         return (holder.threadStatus & JVMTI_THREAD_STATE_TERMINATED) != 0;
     }

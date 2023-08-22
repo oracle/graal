@@ -75,6 +75,7 @@ import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.NodeMap;
+import org.graalvm.compiler.hotspot.HotSpotGraphBuilderPhase;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -1590,7 +1591,7 @@ public abstract class GraalCompilerTest extends GraalTest {
         initializeInvocationPluginExtensions();
         GraphBuilderConfiguration gbConfCopy = editGraphBuilderConfiguration(gbConf.copy());
         iterator.remove();
-        iterator.add(new GraphBuilderPhase(gbConfCopy));
+        iterator.add(new HotSpotGraphBuilderPhase(gbConfCopy));
         return suite;
     }
 

@@ -32,6 +32,7 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQ
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.EnumMap;
+import java.util.function.Supplier;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.Fold.InjectedParameter;
@@ -60,10 +61,12 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.java.ArrayLengthNode;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
 import org.graalvm.compiler.replacements.SnippetCounter;
@@ -496,6 +499,18 @@ public abstract class ArrayCopySnippets implements Snippets {
     }
 
     /**
+     * Returns a {@link Supplier} that builds a phase suite with extra phases to run on the snippet
+     * in the mid tier. Extension point for subclasses, used to implement
+     * {@link Templates#createMidTierPreLoweringPhases()}.
+     *
+     * @return a valid {@link Supplier} that returns either a valid {@link PhaseSuite} or
+     *         {@code null} if no extra lowering phases are needed
+     */
+    protected Supplier<PhaseSuite<CoreProviders>> midTierPreLoweringPhaseFactory() {
+        return () -> null;
+    }
+
+    /**
      * Identifies snippets used for {@linkplain ArrayCopyWithDelayedLoweringNode delayed lowering}
      * of {@link ArrayCopyNode}.
      *
@@ -529,6 +544,7 @@ public abstract class ArrayCopySnippets implements Snippets {
         private final boolean useOriginalArraycopy;
         private ResolvedJavaMethod originalArraycopy;
         private final Counters counters;
+        private final Supplier<PhaseSuite<CoreProviders>> midTierPreLoweringPhaseFactory;
 
         @SuppressWarnings("this-escape")
         public Templates(ArrayCopySnippets receiver, Group.Factory factory, OptionValues options, Providers providers) {
@@ -544,6 +560,7 @@ public abstract class ArrayCopySnippets implements Snippets {
             checkcastArraycopySnippet = snippet(providers, receiver, "checkcastArraycopySnippet");
             genericArraycopySnippet = snippet(providers, receiver, "genericArraycopySnippet");
             exactArraycopyWithExpandedLoopSnippet = snippet(providers, receiver, "exactArraycopyWithExpandedLoopSnippet");
+            midTierPreLoweringPhaseFactory = receiver.midTierPreLoweringPhaseFactory();
         }
 
         private SnippetInfo getSnippet(WorkSnippetID workSnippetID) {
@@ -747,6 +764,11 @@ public abstract class ArrayCopySnippets implements Snippets {
                 }
             }
             return originalArraycopy;
+        }
+
+        @Override
+        protected PhaseSuite<CoreProviders> createMidTierPreLoweringPhases() {
+            return midTierPreLoweringPhaseFactory.get();
         }
     }
 }

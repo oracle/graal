@@ -22,15 +22,12 @@
  */
 package com.oracle.truffle.espresso.ffi.nfi;
 
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Objects;
 
-import com.oracle.truffle.espresso.substitutions.Collect;
 import org.graalvm.home.HomeFinder;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
@@ -53,6 +50,7 @@ import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
 import com.oracle.truffle.espresso.impl.EmptyKeysArray;
 import com.oracle.truffle.espresso.meta.EspressoError;
+import com.oracle.truffle.espresso.substitutions.Collect;
 
 /**
  * Isolated native linking namespace based on glibc's dlmopen.
@@ -113,11 +111,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
     }
 
     @Override
-    public @Pointer TruffleObject loadLibrary(Path libraryPath) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (!Files.exists(libraryPath)) {
-            return null;
-        }
+    protected @Pointer TruffleObject loadLibrary0(Path libraryPath) {
         String nfiSource = String.format("load(RTLD_LAZY|RTLD_LOCAL|ISOLATED_NAMESPACE) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
     }

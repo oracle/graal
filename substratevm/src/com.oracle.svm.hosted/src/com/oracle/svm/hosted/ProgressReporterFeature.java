@@ -27,17 +27,21 @@ package com.oracle.svm.hosted;
 import java.util.List;
 import java.util.function.Supplier;
 
+import com.oracle.svm.util.LogUtils;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.SubstrateGCOptions;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.jni.access.JNIAccessibleClass;
+import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
+import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter.DirectPrinter;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
-import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
 
@@ -46,11 +50,39 @@ public class ProgressReporterFeature implements InternalFeature {
     protected final ProgressReporter reporter = ProgressReporter.singleton();
 
     @Override
+    public void afterRegistration(AfterRegistrationAccess access) {
+        if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
+            ImageSingletons.add(HeapBreakdownProvider.class, new HeapBreakdownProvider());
+        }
+    }
+
+    @Override
     public void duringAnalysis(DuringAnalysisAccess access) {
         reporter.reportStageProgress();
     }
 
+    @Override
+    public void afterCompilation(AfterCompilationAccess access) {
+        if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
+            ImageSingletons.add(CodeBreakdownProvider.class, new CodeBreakdownProvider(((AfterCompilationAccessImpl) access).getCompilationTasks()));
+        }
+    }
+
+    @Override
+    public void beforeImageWrite(BeforeImageWriteAccess access) {
+        if (SubstrateOptions.BuildOutputBreakdowns.getValue()) {
+            HeapBreakdownProvider.singleton().calculate(((BeforeImageWriteAccessImpl) access));
+        }
+    }
+
     protected void appendGraalSuffix(@SuppressWarnings("unused") DirectPrinter graalLine) {
+    }
+
+    public void afterBreakdowns() {
+        String userWarning = ImageSingletons.lookup(Log4ShellFeature.class).getUserWarning();
+        if (userWarning != null) {
+            LogUtils.warning(userWarning);
+        }
     }
 
     public void createAdditionalArtifacts(@SuppressWarnings("unused") BuildArtifacts artifacts) {
@@ -75,18 +107,20 @@ public class ProgressReporterFeature implements InternalFeature {
     }
 
     private static boolean recommendTraceAgentForAWT() {
-        if (!ImageSingletons.contains(JNIRegistrationSupport.class)) {
+        if (!ImageSingletons.contains(JNIRegistrationSupport.class) || !ImageSingletons.contains(JNIReflectionDictionary.class)) {
             return false;
         }
         if (!JNIRegistrationSupport.singleton().isRegisteredLibrary("awt")) {
             return false; // AWT not used
         }
-        // check if any method located in java.awt or sun.awt packages is registered for reflection
-        ReflectionDataBuilder dataBuilder = (ReflectionDataBuilder) ImageSingletons.lookup(RuntimeReflectionSupport.class);
-        return dataBuilder.getReflectionExecutables().values().stream().anyMatch(m -> {
-            String className = m.getDeclaringClass().getName();
-            return className.startsWith("java.awt") || className.startsWith("sun.awt");
-        });
+        // check if any class located in java.awt or sun.awt is registered for JNI access
+        for (JNIAccessibleClass clazz : JNIReflectionDictionary.singleton().getClasses()) {
+            String className = clazz.getClassObject().getName();
+            if (className.startsWith("java.awt") || className.startsWith("sun.awt")) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public record UserRecommendation(String id, String description, Supplier<Boolean> isApplicable) {

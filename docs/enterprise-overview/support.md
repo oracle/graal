@@ -18,10 +18,10 @@ The following platforms are certified for Oracle GraalVM:
 
 | Operating System 	| Version 	| Architecture 	| Installation Guide 	|
 |------------------------------------	|--------------	|--------------	|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------	|
-| Oracle Linux 	| 7, 8 	| x64, AArch64| [Installation Guide for Oracle Linux](../getting-started/graalvm-enterprise/oci/installation-compute-instance-with-OL.md) 	|
-| Red Hat Enterprise Linux(RHEL) 	| 7, 8 	| x64 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/linux.md) 	|
-| macOS 	| 10.14 (Mojave), 10.15 (Catalina), 11 (Big Sur), 12.4 (Monterey), 13.2 (Ventura)	| x64, AArch64	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/macos.md) 	|
-| Microsoft Windows 	| Server 2016, 2019	| x64 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/windows.md) 	|
+| Oracle Linux 	| 7, 8, 9 	| x64, AArch64| [Installation Guide for Oracle Linux](../getting-started/graalvm-enterprise/oci/installation-compute-instance-with-OL.md) 	|
+| Red Hat Enterprise Linux (RHEL) 	| 7, 8, 9 	| x64 	| [Installation Guide for Linux](../getting-started/graalvm-enterprise/linux.md) 	|
+| macOS 	| 11 (Big Sur), 12.4 (Monterey), 13.3 (Ventura)	| x64, AArch64	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/macos.md) 	|
+| Microsoft Windows 	| Server 2016, 2019, 2022	| x64 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/windows.md) 	|
 
 ## Features Support
 
@@ -39,14 +39,16 @@ The following table lists supported and experimental features in Oracle GraalVM 
 | Feature         | Linux x64     | Linux AArch64 | macOS x64     | macOS AArch64 | Windows x64   |
 |-----------------|---------------|---------------|---------------|---------------|---------------|
 | Native Image    | supported     | supported     | supported     | supported     | supported     |
-| LLVM runtime    | supported     | supported     | supported     | supported     | experimental  |
+| LLVM runtime    | deprecated<sup>(1)</sup> | deprecated<sup>(1)</sup> | deprecated<sup>(1)</sup> | deprecated <sup>(1)</sup>| deprecated <sup>(1)</sup> |
 | LLVM toolchain  | supported     | supported     | supported     | supported     | experimental  |
 | JavaScript      | supported     | supported     | supported     | supported     | supported     |
-| Node.js         | supported     | supported     | supported     | supported     | supported     |
+| Node.js         | deprecated<sup>(1)</sup> | deprecated<sup>(1)</sup> | deprecated<sup>(1)</sup> | deprecated <sup>(1)</sup>| deprecated <sup>(1)</sup> |
 | Java on Truffle | supported     | experimental  | experimental  | experimental  | experimental  |
 | Python          | experimental  | experimental  | experimental  | experimental  | not available |
 | Ruby            | experimental  | experimental  | experimental  | experimental  | not available |
 | WebAssembly     | experimental  | experimental  | experimental  | experimental  | experimental  |
+
+**(1)** This functionality has been deprecated and will be removed in Oracle GraalVM for JDK 23.
 
 ## Licensing and Support
 

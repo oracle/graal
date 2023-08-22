@@ -219,7 +219,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
             assert verifyMethodLayout();
 
-            buildRuntimeMetadata(new MethodPointer(getFirstCompilation().getLeft(), true), WordFactory.unsigned(totalSize));
+            buildRuntimeMetadata(bb.getSnippetReflectionProvider(), threadPool, new MethodPointer(getFirstCompilation().getLeft(), true), WordFactory.unsigned(totalSize));
         }
     }
 

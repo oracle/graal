@@ -87,7 +87,7 @@ public class HybridLayoutSupport {
             arrayComponentType = foundArrayField.getType().getComponentType();
 
             assert !arrayTypeIsSet || arrayComponentType.equals(metaAccess.lookupJavaType(annotation.componentType())) : //
-            "@Hybrid.componentType must match the type of a @Hybrid.Array field when both are present";
+                            "@Hybrid.componentType must match the type of a @Hybrid.Array field when both are present";
         } else {
             assert arrayTypeIsSet : "@Hybrid.componentType must be set when no @Hybrid.Array field is present (if present, ensure it is reachable)";
             arrayComponentType = (HostedType) metaAccess.lookupJavaType(annotation.componentType());

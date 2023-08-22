@@ -64,7 +64,7 @@ import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.aarch64.AArch64;
@@ -74,11 +74,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp",
-          lineStart = 2947,
-          lineEnd   = 3207,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
-          sha1      = "92b14626598de2a676cc3440a3ef5deb5460acd0")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/d7b941640638b35f9ac1ef11cd6bf6ccb795c29a/src/hotspot/cpu/aarch64/stubGenerator_aarch64.cpp#L2947-L3227",
+          sha1 = "75a3a4dabdc42e5e23bbec0cb448d09fb0d7b129")
 // @formatter:on
 public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
 
@@ -238,16 +235,17 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
         // Setup the counter
         masm.neon.moveVI(ASIMDSize.FullReg, ElementSize.Word, v4, 0);
         masm.neon.moveVI(ASIMDSize.FullReg, ElementSize.Word, v5, 1);
-        masm.neon.insXX(ElementSize.Word, v4, 3, v5, 3);
-        // v4 contains { 0, 0, 0, 1 }
+        masm.neon.insXX(ElementSize.Word, v4, 2, v5, 2);
+        // v4 contains { 0, 1 }
 
-        // Load the counter into v0
+        // 128-bit big-endian increment
         masm.fldr(128, v0, AArch64Address.createBaseRegisterOnlyAddress(128, counter));
-        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v0);
-        masm.neon.addVVV(ASIMDSize.FullReg, ElementSize.Word, v16, v16, v4);
-        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v16);
-        // Save the incremented counter back
+        masm.neon.rev64VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v0);
+        beAdd128x64(masm, v16, v16, v4, v5);
+        masm.neon.rev64VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v16);
         masm.fstr(128, v16, AArch64Address.createBaseRegisterOnlyAddress(128, counter));
+        // Previous counter value is in v0
+        // v4 contains { 0, 1 }
 
         // We have fewer than bulk_width blocks of data left. Encrypt
         // them one by one until there is less than a full block
@@ -277,9 +275,9 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
 
         // Increment the counter, store it back
         masm.neon.orrVVV(ASIMDSize.FullReg, v0, v16, v16);
-        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v16);
-        masm.neon.addVVV(ASIMDSize.FullReg, ElementSize.Word, v16, v16, v4);
-        masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v16);
+        masm.neon.rev64VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v16);
+        beAdd128x64(masm, v16, v16, v4, v5);
+        masm.neon.rev64VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v16);
         // Save the incremented counter back
         masm.fstr(128, v16, AArch64Address.createBaseRegisterOnlyAddress(128, counter));
 
@@ -311,6 +309,22 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
         masm.mov(32, result, savedLen);
     }
 
+    // Big-endian 128-bit + 64-bit -> 128-bit addition.
+    // Inputs: 128-bits. in is preserved.
+    // The least-significant 64-bit word is in the upper dword of each vector.
+    // inc (the 64-bit increment) is preserved. Its lower dword must be zero.
+    // Output: result
+    private static void beAdd128x64(AArch64MacroAssembler masm, Register result, Register in, Register inc, Register tmp) {
+        // Add inc to the least-significant dword of input
+        masm.neon.addVVV(ASIMDSize.FullReg, ElementSize.DoubleWord, result, in, inc);
+        // Check for result overflowing
+        masm.neon.cmhiVVV(ASIMDSize.FullReg, ElementSize.DoubleWord, tmp, inc, result);
+        // Swap LSD of comparison result to MSD and MSD == 0 (must be!) to LSD
+        masm.neon.extVVV(ASIMDSize.FullReg, tmp, tmp, tmp, 0x08);
+        // Subtract -1 from MSD if there was an overflow
+        masm.neon.subVVV(ASIMDSize.FullReg, ElementSize.DoubleWord, result, result, tmp);
+    }
+
     private static void emitCTRLargeBlock(AArch64MacroAssembler masm, int bulkWidth, Register in, Register out, Register counter,
                     Register usedPtr, Register len, Register used, Register offset, Register keylen) {
         GraalError.guarantee(bulkWidth == 4 || bulkWidth == 8, "bulk_width must be 4 or 8");
@@ -337,7 +351,7 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
             // v0 contains the first counter
             masm.fldr(128, v0, AArch64Address.createBaseRegisterOnlyAddress(128, counter));
             // v16 contains byte-reversed counter
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v0);
+            masm.neon.rev64VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v0);
 
             // AES/CTR loop
             masm.bind(labelCTRLoop);
@@ -345,12 +359,12 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
             // Setup the counters
             masm.neon.moveVI(ASIMDSize.FullReg, ElementSize.Word, v8, 0);
             masm.neon.moveVI(ASIMDSize.FullReg, ElementSize.Word, v9, 1);
-            masm.neon.insXX(ElementSize.Word, v8, 3, v9, 3);
-            // v8 contains { 0, 0, 0, 1 }
+            masm.neon.insXX(ElementSize.Word, v8, 2, v9, 2);
+            // v8 contains { 0, 1 }
 
             for (int i = 0; i < bulkWidth; i++) {
-                masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, asFloatRegister(v0, i), v16);
-                masm.neon.addVVV(ASIMDSize.FullReg, ElementSize.Word, v16, v16, v8);
+                masm.neon.rev64VV(ASIMDSize.FullReg, ElementSize.Byte, asFloatRegister(v0, i), v16);
+                beAdd128x64(masm, v16, v16, v8, v9);
             }
 
             masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, v8, v9, v10, v11,
@@ -381,7 +395,7 @@ public final class AArch64CounterModeAESCryptOp extends AArch64LIRInstruction {
             masm.cbnz(32, len, labelCTRLoop);
 
             // Save the counter back where it goes
-            masm.neon.rev32VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v16);
+            masm.neon.rev64VV(ASIMDSize.FullReg, ElementSize.Byte, v16, v16);
             masm.fstr(128, v16, AArch64Address.createBaseRegisterOnlyAddress(128, counter));
 
             masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.Byte, v8, v9, v10, v11,

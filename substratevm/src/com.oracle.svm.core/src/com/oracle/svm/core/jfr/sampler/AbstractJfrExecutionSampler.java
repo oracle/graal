@@ -262,8 +262,8 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
             boolean shouldSample = shouldSample();
             if (sampler.isSampling != shouldSample) {
                 if (shouldSample) {
-                    sampler.startSampling();
                     sampler.isSampling = true;
+                    sampler.startSampling();
                 } else {
                     sampler.stopSampling();
                     sampler.isSampling = false;

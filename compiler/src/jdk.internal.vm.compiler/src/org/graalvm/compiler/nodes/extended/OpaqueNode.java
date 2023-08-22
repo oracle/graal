@@ -27,41 +27,38 @@ package org.graalvm.compiler.nodes.extended;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.NodeWithIdentity;
+import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 
 @NodeInfo(cycles = CYCLES_0, size = SIZE_0)
-public final class OpaqueNode extends FloatingNode implements LIRLowerable, NodeWithIdentity {
+public abstract class OpaqueNode extends FloatingNode implements NodeWithIdentity {
     public static final NodeClass<OpaqueNode> TYPE = NodeClass.create(OpaqueNode.class);
 
-    @Input protected ValueNode value;
+    @OptionalInput(InputType.Anchor) protected AnchoringNode anchor;
 
-    public OpaqueNode(ValueNode value) {
-        super(TYPE, value.stamp(NodeView.DEFAULT).unrestricted());
-        this.value = value;
+    protected OpaqueNode(NodeClass<? extends OpaqueNode> c, Stamp stamp) {
+        super(c, stamp);
     }
 
-    public ValueNode getValue() {
-        return value;
-    }
+    public abstract ValueNode getValue();
 
-    public void setValue(ValueNode value) {
-        this.updateUsages(this.value, value);
-        this.value = value;
-    }
+    public abstract void setValue(ValueNode value);
 
     public void remove() {
         replaceAndDelete(getValue());
     }
 
-    @Override
-    public void generate(NodeLIRBuilderTool gen) {
-        gen.setResult(this, gen.operand(value));
+    public AnchoringNode getAnchor() {
+        return anchor;
+    }
+
+    public void setAnchor(AnchoringNode x) {
+        updateUsagesInterface(this.anchor, x);
+        this.anchor = x;
     }
 }

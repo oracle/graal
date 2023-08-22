@@ -25,8 +25,6 @@
 
 package org.graalvm.component.installer.gds.rest;
 
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
 import org.graalvm.component.installer.CommonConstants;
 import org.graalvm.component.installer.Feedback;
 import org.graalvm.component.installer.SystemUtils;
@@ -35,6 +33,9 @@ import org.graalvm.component.installer.SystemUtils.ARCH;
 import org.graalvm.component.installer.model.ComponentInfo;
 import org.graalvm.component.installer.model.StabilityLevel;
 import org.graalvm.component.installer.persist.HeaderParser;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
+
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;

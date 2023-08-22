@@ -27,6 +27,7 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
 
+import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -64,6 +65,7 @@ import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.ClassLoaderSupport.ResourceCollector;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -156,7 +158,7 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public void injectResource(Module module, String resourcePath, byte[] resourceContent) {
-            Resources.registerResource(module, resourcePath, resourceContent);
+            Resources.singleton().registerResource(module, resourcePath, resourceContent);
         }
 
         @Override
@@ -308,6 +310,16 @@ public final class ResourcesFeature implements InternalFeature {
         public void addDirectoryResource(Module module, String dir, String content, boolean fromJar) {
             registerDirectoryResource(debugContext, module, dir, content, fromJar);
         }
+
+        @Override
+        public void registerIOException(Module module, String resourceName, IOException e, boolean linkAtBuildTime) {
+            Resources.singleton().registerIOException(module, resourceName, e, linkAtBuildTime);
+        }
+
+        @Override
+        public void registerNegativeQuery(Module module, String resourceName) {
+            Resources.singleton().registerNegativeQuery(module, resourceName);
+        }
     }
 
     @Override
@@ -321,6 +333,11 @@ public final class ResourcesFeature implements InternalFeature {
 
         DuringAnalysisAccessImpl duringAnalysisAccess = ((DuringAnalysisAccessImpl) access);
         ResourcePattern[] includePatterns = compilePatterns(resourcePatternWorkSet);
+        if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
+            for (ResourcePattern resourcePattern : includePatterns) {
+                Resources.singleton().registerIncludePattern(resourcePattern.moduleName, resourcePattern.pattern.pattern());
+            }
+        }
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
         DebugContext debugContext = duringAnalysisAccess.getDebugContext();
         ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, duringAnalysisAccess.bb.getHeartbeatCallback());
@@ -347,12 +364,7 @@ public final class ResourcesFeature implements InternalFeature {
             return new ResourcePattern(null, Pattern.compile(moduleNameWithPattern[0]));
         } else {
             String moduleName = moduleNameWithPattern[0];
-            boolean acceptModuleName = MODULE_NAME_ALL_UNNAMED.equals(moduleName) ? true : imageClassLoader.findModule(moduleName).isPresent();
-            if (acceptModuleName) {
-                return new ResourcePattern(moduleName, Pattern.compile(moduleNameWithPattern[1]));
-            } else {
-                throw UserError.abort("Resource pattern \"" + rawPattern + "\"s specifies unknown module " + moduleName);
-            }
+            return new ResourcePattern(moduleName, Pattern.compile(moduleNameWithPattern[1]));
         }
     }
 
@@ -399,7 +411,7 @@ public final class ResourcesFeature implements InternalFeature {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             String moduleNamePrefix = module == null ? "" : module.getName() + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, resourceName);
-            Resources.registerResource(module, resourceName, resourceStream, fromJar);
+            Resources.singleton().registerResource(module, resourceName, resourceStream, fromJar);
         }
     }
 
@@ -408,7 +420,7 @@ public final class ResourcesFeature implements InternalFeature {
         try (DebugContext.Scope s = debugContext.scope("registerResource")) {
             String moduleNamePrefix = module == null ? "" : module.getName() + ":";
             debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, dir);
-            Resources.registerDirectoryResource(module, dir, content, fromJar);
+            Resources.singleton().registerDirectoryResource(module, dir, content, fromJar);
         }
     }
 

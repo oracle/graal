@@ -47,6 +47,7 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
@@ -140,7 +141,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
                 compileBitcodeBatches(executor, debug, numBatches);
             }
             try (StopTimer t = TimerCollection.createTimerAndStart("(postlink)")) {
-                linkCompiledBatches(executor, debug, numBatches);
+                linkCompiledBatches(bb.getSnippetReflectionProvider(), debug, threadPool, executor, numBatches);
             }
         }
     }
@@ -198,7 +199,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         });
     }
 
-    private void linkCompiledBatches(BatchExecutor executor, DebugContext debug, int numBatches) {
+    private void linkCompiledBatches(SnippetReflectionProvider snippetReflection, DebugContext debug, ForkJoinPool threadPool, BatchExecutor executor, int numBatches) {
         List<String> compiledBatches = IntStream.range(0, numBatches).mapToObj(this::getBatchCompiledFilename).collect(Collectors.toList());
         nativeLink(debug, getLinkedFilename(), compiledBatches, basePath, this::getFunctionName);
 
@@ -222,7 +223,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
         llvmCleanupStackMaps(debug, getLinkedFilename(), basePath);
         codeAreaSize = textSectionInfo.getCodeSize();
 
-        buildRuntimeMetadata(new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(codeAreaSize));
+        buildRuntimeMetadata(snippetReflection, threadPool, new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(codeAreaSize));
     }
 
     private Path getBitcodePath(int id) {

@@ -24,49 +24,22 @@
  */
 package com.oracle.svm.core.reflect;
 
-import java.io.Serial;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
 import java.util.StringJoiner;
-import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.MissingReflectionRegistrationError;
 
-import com.oracle.svm.core.MissingRegistrationSupport;
-import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.MissingRegistrationUtils;
 import com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets;
-import com.oracle.svm.core.option.HostedOptionKey;
-import com.oracle.svm.core.util.ExitStatus;
 
 public final class MissingReflectionRegistrationUtils {
-    public static class Options {
-        @Option(help = {"Select the mode in which the missing reflection registrations will be reported.",
-                        "Possible values are:",
-                        "\"Throw\" (default): Throw a MissingReflectionRegistrationError;",
-                        "\"Exit\": Call System.exit() to avoid accidentally catching the error;",
-                        "\"Warn\": Print a message to stdout, including a stack trace to see what caused the issue."})//
-        public static final HostedOptionKey<ReportingMode> MissingRegistrationReportingMode = new HostedOptionKey<>(ReportingMode.Throw);
-    }
-
-    public enum ReportingMode {
-        Warn,
-        Throw,
-        ExitTest,
-        Exit
-    }
-
-    public static boolean throwMissingRegistrationErrors() {
-        return SubstrateOptions.ThrowMissingRegistrationErrors.hasBeenSet();
-    }
-
-    public static ReportingMode missingRegistrationReportingMode() {
-        return Options.MissingRegistrationReportingMode.getValue();
-    }
 
     public static void forClass(String className) {
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access class", className),
@@ -83,8 +56,10 @@ public final class MissingReflectionRegistrationUtils {
 
     public static void forMethod(Class<?> declaringClass, String methodName, Class<?>[] paramTypes) {
         StringJoiner paramTypeNames = new StringJoiner(", ", "(", ")");
-        for (Class<?> paramType : paramTypes) {
-            paramTypeNames.add(paramType.getTypeName());
+        if (paramTypes != null) {
+            for (Class<?> paramType : paramTypes) {
+                paramTypeNames.add(paramType.getTypeName());
+            }
         }
         MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access method",
                         declaringClass.getTypeName() + "#" + methodName + paramTypeNames),
@@ -110,77 +85,33 @@ public final class MissingReflectionRegistrationUtils {
         report(exception);
     }
 
-    private static String errorMessage(String failedAction, String elementDescriptor) {
-        return "The program tried to reflectively " + failedAction + " " + elementDescriptor +
-                        " without it being registered for runtime reflection. Add it to the reflection metadata to solve this problem. " +
-                        "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#reflection for help.";
+    public static void forProxy(Class<?>... interfaces) {
+        MissingReflectionRegistrationError exception = new MissingReflectionRegistrationError(errorMessage("access the proxy class inheriting",
+                        Arrays.toString(Arrays.stream(interfaces).map(Class::getTypeName).toArray()),
+                        "The order of interfaces used to create proxies matters.", "dynamic-proxy"),
+                        Proxy.class, null, null, interfaces);
+        report(exception);
+        /*
+         * If report doesn't throw, we throw the exception anyway since this is a Native
+         * Image-specific error that is unrecoverable in any case.
+         */
+        throw exception;
     }
 
-    private static final int CONTEXT_LINES = 4;
+    private static String errorMessage(String failedAction, String elementDescriptor) {
+        return errorMessage(failedAction, elementDescriptor, null, "reflection");
+    }
 
-    private static final Set<String> seenOutputs = Options.MissingRegistrationReportingMode.getValue() == ReportingMode.Warn ? ConcurrentHashMap.newKeySet() : null;
+    private static String errorMessage(String failedAction, String elementDescriptor, String note, String helpLink) {
+        return "The program tried to reflectively " + failedAction + " " + elementDescriptor +
+                        " without it being registered for runtime reflection. Add " + elementDescriptor + " to the " + helpLink + " metadata to solve this problem. " +
+                        (note != null ? "Note: " + note + " " : "") +
+                        "See https://www.graalvm.org/latest/reference-manual/native-image/metadata/#" + helpLink + " for help.";
+    }
 
     private static void report(MissingReflectionRegistrationError exception) {
         StackTraceElement responsibleClass = getResponsibleClass(exception);
-        if (responsibleClass != null && !MissingRegistrationSupport.singleton().reportMissingRegistrationErrors(responsibleClass)) {
-            return;
-        }
-        switch (missingRegistrationReportingMode()) {
-            case Throw -> {
-                throw exception;
-            }
-            case Exit -> {
-                exception.printStackTrace(System.out);
-                System.exit(ExitStatus.MISSING_METADATA.getValue());
-            }
-            case ExitTest -> {
-                throw new ExitException(exception);
-            }
-            case Warn -> {
-                StackTraceElement[] stackTrace = exception.getStackTrace();
-                int printed = 0;
-                StackTraceElement entryPoint = null;
-                StringBuilder sb = new StringBuilder(exception.toString());
-                sb.append("\n");
-                for (StackTraceElement stackTraceElement : stackTrace) {
-                    if (printed == 0) {
-                        String moduleName = stackTraceElement.getModuleName();
-                        /*
-                         * Skip internal stack trace entries to include only the relevant part of
-                         * the trace in the output. The heuristic used is that any JDK and Graal
-                         * code is excluded except the first element, so that the rest of the trace
-                         * consists of meaningful application code entries.
-                         */
-                        if (moduleName != null && (moduleName.equals("java.base") || moduleName.startsWith("org.graalvm"))) {
-                            entryPoint = stackTraceElement;
-                        } else {
-                            printLine(sb, entryPoint);
-                            printed++;
-                        }
-                    }
-                    if (printed > 0) {
-                        printLine(sb, stackTraceElement);
-                        printed++;
-                    }
-                    if (printed >= CONTEXT_LINES) {
-                        break;
-                    }
-                }
-                if (seenOutputs.isEmpty()) {
-                    /* First output, we print an explanation message */
-                    System.out.println("Note: this run will print partial stack traces of the locations where a MissingReflectionRegistrationError would be thrown " +
-                                    "when the -H:+ThrowMissingRegistrationErrors option is set. The trace stops at the first entry of JDK code and provides 4 lines of context.");
-                }
-                String output = sb.toString();
-                if (seenOutputs.add(output)) {
-                    System.out.print(output);
-                }
-            }
-        }
-    }
-
-    private static void printLine(StringBuilder sb, Object object) {
-        sb.append("  ").append(object).append(System.lineSeparator());
+        MissingRegistrationUtils.report(exception, responsibleClass);
     }
 
     /*
@@ -213,6 +144,7 @@ public final class MissingReflectionRegistrationUtils {
                                     "newInstance"),
                     Method.class.getTypeName(), Set.of("invoke"),
                     Constructor.class.getTypeName(), Set.of("newInstance"),
+                    Proxy.class.getTypeName(), Set.of("getProxyClass", "newProxyInstance"),
                     "java.lang.reflect.ReflectAccess", Set.of("newInstance"),
                     "jdk.internal.access.JavaLangAccess", Set.of("getDeclaredPublicMethods"),
                     "sun.misc.Unsafe", Set.of("allocateInstance"),
@@ -235,14 +167,5 @@ public final class MissingReflectionRegistrationUtils {
             }
         }
         return null;
-    }
-
-    public static final class ExitException extends Error {
-        @Serial//
-        private static final long serialVersionUID = -3638940737396726143L;
-
-        private ExitException(Throwable cause) {
-            super(cause);
-        }
     }
 }

@@ -160,7 +160,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
         }
 
         private boolean canRunAt(com.oracle.truffle.api.source.SourceSection ss) {
-            SourceSection section = TruffleTCKAccessor.instrumentAccess().createSourceSection(env, null, ss);
+            SourceSection section = (SourceSection) TruffleTCKAccessor.instrumentAccess().createPolyglotSourceSection(env, null, ss);
             return predicate.test(section);
         }
 
@@ -221,7 +221,7 @@ public class VerifierInstrument extends TruffleInstrument implements InlineVerif
 
             @TruffleBoundary
             private void verify(final Throwable exception) {
-                final PolyglotException pe = VerifierInstrument.TruffleTCKAccessor.engineAccess().wrapGuestException(snippet.getLanguage(), exception);
+                final PolyglotException pe = (PolyglotException) VerifierInstrument.TruffleTCKAccessor.engineAccess().wrapGuestException(snippet.getLanguage(), exception);
                 resultVerifier.verify(pe);
             }
 

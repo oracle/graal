@@ -70,6 +70,74 @@ public class JSONParser {
         return value;
     }
 
+    /**
+     * Parses the source as a JSON map using a list of allowed keys. The returned map contains
+     * values for the allowed keys only but not necessarily all of them. The method returns as soon
+     * as all allowed keys are parsed, i.e., the rest of the JSON may be left unparsed and
+     * unchecked. This is useful to parse only few keys from the beginning of a large JSON object.
+     *
+     * @param allowedKeys the list of allowed keys
+     * @return the parsed JSON map containing only values for (not necessarily all) allowed keys
+     */
+    public EconomicMap<String, Object> parseAllowedKeys(List<String> allowedKeys) {
+        EconomicMap<String, Object> result = EconomicMap.create();
+        if (allowedKeys.isEmpty()) {
+            pos = length;
+            return result;
+        }
+        skipWhiteSpace();
+        int state = STATE_EMPTY;
+
+        int c = peek();
+        if (c == EOF) {
+            throw expectedError(pos, "json literal", "eof");
+        }
+        if (c != '{') {
+            throw expectedError(pos, "{", toString(c));
+        }
+        pos++;
+
+        while (pos < length) {
+            skipWhiteSpace();
+            c = peek();
+
+            switch (c) {
+                case '"':
+                    if (state == STATE_ELEMENT_PARSED) {
+                        throw expectedError(pos, ", or }", toString(c));
+                    }
+                    final String id = parseString();
+                    expectColon();
+                    final Object value = parseLiteral();
+                    if (allowedKeys.contains(id)) {
+                        result.put(id, value);
+                    }
+                    if (result.size() == allowedKeys.size()) {
+                        pos = length;
+                        return result;
+                    }
+                    state = STATE_ELEMENT_PARSED;
+                    break;
+                case ',':
+                    if (state != STATE_ELEMENT_PARSED) {
+                        throw error("Trailing comma is not allowed in JSON", pos);
+                    }
+                    state = STATE_COMMA_PARSED;
+                    pos++;
+                    break;
+                case '}':
+                    if (state == STATE_COMMA_PARSED) {
+                        throw error("Trailing comma is not allowed in JSON", pos);
+                    }
+                    pos++;
+                    return result;
+                default:
+                    throw expectedError(pos, ", or }", toString(c));
+            }
+        }
+        throw expectedError(pos, ", or }", "eof");
+    }
+
     @SuppressWarnings("unchecked")
     public static EconomicMap<String, Object> parseDict(Reader input) throws IOException {
         JSONParser parser = new JSONParser(input);

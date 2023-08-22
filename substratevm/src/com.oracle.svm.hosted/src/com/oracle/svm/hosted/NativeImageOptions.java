@@ -35,6 +35,7 @@ import java.util.Date;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
@@ -48,6 +49,7 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.util.StringUtil;
@@ -61,7 +63,7 @@ public class NativeImageOptions {
                     "environment. Note that enabling features not present within the target environment " +
                     "may result in application crashes. The specific options available are target " +
                     "platform dependent. See --list-cpu-features for feature list. These features " +
-                    "are in addition to -march.", type = User)//
+                    "are in addition to -march.", type = User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> CPUFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter());
 
     @APIOption(name = "list-cpu-features")//
@@ -186,6 +188,7 @@ public class NativeImageOptions {
     /**
      * Configures the number of threads used by the {@link CompletionExecutor}.
      */
+    @APIOption(name = "parallelism")//
     @Option(help = "The maximum number of threads to use concurrently during native image generation.")//
     public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.min(Runtime.getRuntime().availableProcessors(), 32));
 
@@ -239,7 +242,7 @@ public class NativeImageOptions {
     @Option(help = "If an error occurs, save a build error report to this file [default: " + DEFAULT_ERROR_FILE_NAME + "] (%p replaced with pid, %t with timestamp).)")//
     public static final HostedOptionKey<String> ErrorFile = new HostedOptionKey<>(DEFAULT_ERROR_FILE_NAME);
 
-    @Option(help = "Show exception stack traces for exceptions during image building.)")//
+    @Option(help = "Show exception stack traces for exceptions during image building.)", stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> ReportExceptionStackTraces = new HostedOptionKey<>(areAssertionsEnabled());
 
     @Option(help = "Maximum number of types allowed in the image. Used for tests where small number of types is necessary.", type = Debug)//
@@ -266,21 +269,22 @@ public class NativeImageOptions {
 
     public static int getMaximumNumberOfConcurrentThreads(OptionValues optionValues) {
         int maxNumberOfThreads = NativeImageOptions.NumberOfThreads.getValue(optionValues);
-        if (maxNumberOfThreads < 0) {
-            throw UserError.abort("Number of threads can't be negative. Set the NumberOfThreads flag to a positive value.");
-        }
+        VMError.guarantee(maxNumberOfThreads > 0, "Number of threads must be greater than zero. Validation should have happened in driver.");
         return maxNumberOfThreads;
     }
 
     public static int getMaximumNumberOfAnalysisThreads(OptionValues optionValues) {
         int optionValue = NativeImageOptions.NumberOfAnalysisThreads.getValue(optionValues);
         int analysisThreads = NumberOfAnalysisThreads.hasBeenSet(optionValues) ? optionValue : Math.min(getMaximumNumberOfConcurrentThreads(optionValues), DEFAULT_MAX_ANALYSIS_SCALING);
-        if (analysisThreads < 0) {
-            throw UserError.abort("Number of analysis threads can't be negative. Set the NumberOfAnalysisThreads flag to a positive value.");
+        if (analysisThreads <= 0) {
+            throw UserError.abort("Number of analysis threads was set to '" + analysisThreads + "'. Please set the NumberOfAnalysisThreads flag to a number greater than 0.");
         }
 
-        if (analysisThreads > NumberOfThreads.getValue(optionValues)) {
-            throw UserError.abort("Number of analysis threads can't be larger than NumberOfThreads. Set the NumberOfAnalysisThreads flag to a positive value smaller than NumberOfThreads.");
+        Integer maxNumberOfThreads = NumberOfThreads.getValue(optionValues);
+        if (analysisThreads > maxNumberOfThreads) {
+            throw UserError.abort(
+                            "NumberOfAnalysisThreads is not allowed to be larger than the number of threads set with the --parallelism option. Please set the NumberOfAnalysisThreads flag to a value between 0 and " +
+                                            (maxNumberOfThreads + 1) + ".");
         }
         return analysisThreads;
     }

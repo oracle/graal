@@ -114,6 +114,8 @@ public class TruffleTypes {
     public static final String FrameDescriptor_Name = "com.oracle.truffle.api.frame.FrameDescriptor";
     public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
     public static final String HostCompilerDirectives_Name = "com.oracle.truffle.api.HostCompilerDirectives";
+
+    public static final String InternalResource_Id_Name = "com.oracle.truffle.api.InternalResource.Id";
     public static final String InvalidAssumptionException_Name = "com.oracle.truffle.api.nodes.InvalidAssumptionException";
     public static final String MaterializedFrame_Name = "com.oracle.truffle.api.frame.MaterializedFrame";
     public static final String Node_Child_Name = "com.oracle.truffle.api.nodes.Node.Child";
@@ -156,6 +158,7 @@ public class TruffleTypes {
     public final DeclaredType FrameDescriptor = c.getDeclaredType(FrameDescriptor_Name);
     public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);
     public final DeclaredType HostCompilerDirectives = c.getDeclaredType(HostCompilerDirectives_Name);
+    public final DeclaredType InternalResource_Id = c.getDeclaredType(InternalResource_Id_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
     public final DeclaredType MaterializedFrame = c.getDeclaredType(MaterializedFrame_Name);
     public final DeclaredType Node = c.getDeclaredType(Node_Name);

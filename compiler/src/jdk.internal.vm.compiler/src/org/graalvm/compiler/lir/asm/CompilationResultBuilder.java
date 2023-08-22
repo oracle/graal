@@ -69,7 +69,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -290,7 +289,7 @@ public class CompilationResultBuilder {
 
     public void recordImplicitException(int pcOffset, LIRFrameState info) {
         lastImplicitExceptionOffset = pcOffset;
-        if (GraalServices.supportsArbitraryImplicitException() && info instanceof ImplicitLIRFrameState) {
+        if (info instanceof ImplicitLIRFrameState) {
             if (pendingImplicitExceptionList == null) {
                 pendingImplicitExceptionList = new ArrayList<>(4);
             }

@@ -33,6 +33,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.lir.InstructionStateProcedure;
 import org.graalvm.compiler.lir.LIR;
@@ -40,6 +41,7 @@ import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LIRInstruction.OperandFlag;
 import org.graalvm.compiler.lir.LIRInstruction.OperandMode;
+import org.graalvm.compiler.lir.LIRValueUtil;
 import org.graalvm.compiler.lir.ValueConsumer;
 import org.graalvm.compiler.lir.framemap.FrameMap;
 import org.graalvm.compiler.lir.util.ValueSet;
@@ -137,8 +139,8 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
         try (Indent indent = debug.logAndIndent("handle op %d, %s", op.id(), op)) {
             // kills
 
-            op.visitEachTemp(defConsumer);
             op.visitEachOutput(defConsumer);
+            op.visitEachTemp(defConsumer);
             if (frameMap != null && op.destroysCallerSavedRegisters()) {
                 for (Register reg : frameMap.getRegisterConfig().getCallerSaveRegisters()) {
                     PlatformKind kind = frameMap.getTarget().arch.getLargestStorableKind(reg.getRegisterCategory());
@@ -153,6 +155,8 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
             op.forEachState(stateConsumer);
             // gen
             op.visitEachInput(useConsumer);
+        } catch (GraalError e) {
+            throw e.addContext("lir instruction", "@" + op.id() + " " + op.getClass().getName() + " " + op);
         }
     }
 
@@ -168,11 +172,16 @@ public abstract class LocationMarker<S extends ValueSet<S>> {
         public void visitValue(Value operand, OperandMode mode, EnumSet<OperandFlag> flags) {
             if (shouldProcessValue(operand)) {
                 // no need to insert values and derived reference
+                // Remove any cast so the uses and defs are in agreement about the type
+                Value value = LIRValueUtil.uncast(operand);
                 DebugContext debug = lir.getDebug();
                 if (debug.isLogEnabled()) {
-                    debug.log("set operand: %s", operand);
+                    if (!value.equals(operand)) {
+                        debug.log("changing operand from %s to %s", operand, value);
+                    }
+                    debug.log("set operand: %s", value);
                 }
-                currentSet.put(operand);
+                currentSet.put(value);
             }
         }
     };

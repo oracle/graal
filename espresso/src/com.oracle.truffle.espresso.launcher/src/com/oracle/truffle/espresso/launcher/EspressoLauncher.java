@@ -194,6 +194,9 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "--add-reads":
                     parseNumberedOption(args, "java.AddReads", "module");
                     break;
+                case "--enable-native-access":
+                    parseNumberedOption(args, "java.EnableNativeAccess", "module");
+                    break;
                 case "-m":
                 case "--module":
                     /* This arguments specifies in which module we find the main class. */
@@ -234,6 +237,16 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "-Xdebug": // only for backward compatibility
                     // ignore
                     break;
+                case "-Xcomp":
+                    espressoOptions.put("engine.CompileImmediately", "true");
+                    break;
+                case "-Xbatch":
+                    espressoOptions.put("engine.BackgroundCompilation", "false");
+                    espressoOptions.put("engine.CompileImmediately", "true");
+                    break;
+                case "-Xint":
+                    espressoOptions.put("engine.Compilation", "false");
+                    break;
 
                 case "-XX:+PauseOnExit":
                     pauseOnExit = true;
@@ -242,6 +255,10 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                 case "--engine.RelaxStaticObjectSafetyChecks":
                     isRelaxStaticObjectSafetyChecksSet = true;
                     unrecognized.add(args.getArg());
+                    break;
+
+                case "--enable-preview":
+                    espressoOptions.put("java.EnablePreview", "true");
                     break;
 
                 default:
@@ -274,6 +291,8 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
                         espressoOptions.put(AGENT_PATH + split[0], split[1]);
                     } else if (arg.startsWith("-Xmn") || arg.startsWith("-Xms") || arg.startsWith("-Xmx") || arg.startsWith("-Xss")) {
                         unrecognized.add("--vm." + arg.substring(1));
+                    } else if (arg.startsWith("-XX:")) {
+                        handleXXArg(arg, unrecognized);
                     } else
                     // -Dsystem.property=value
                     if (arg.startsWith("-D")) {
@@ -353,6 +372,36 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         }
 
         return unrecognized;
+    }
+
+    private void handleXXArg(String fullArg, ArrayList<String> unrecognized) {
+        String arg = fullArg.substring("-XX:".length());
+        String name;
+        String value;
+        if (arg.length() >= 1 && (arg.charAt(0) == '+' || arg.charAt(0) == '-')) {
+            value = Boolean.toString(arg.charAt(0) == '+');
+            name = arg.substring(1);
+        } else {
+            int idx = arg.indexOf('=');
+            if (idx < 0) {
+                unrecognized.add(fullArg);
+                return;
+            }
+            name = arg.substring(0, idx);
+            value = arg.substring(idx + 1);
+        }
+        switch (name) {
+            case "UnlockDiagnosticVMOptions", "UnlockExperimentalVMOptions" -> unrecognized.add("--experimental-options=" + value);
+            case "WhiteBoxAPI" -> espressoOptions.put("java." + name, value);
+            case "TieredStopAtLevel" -> {
+                if ("0".equals(value)) {
+                    espressoOptions.put("engine.Compilation", "false");
+                } else {
+                    unrecognized.add(fullArg);
+                }
+            }
+            default -> unrecognized.add(fullArg);
+        }
     }
 
     private void buildJvmArgs(List<String> arguments, int toBuild) {
@@ -573,7 +622,7 @@ public final class EspressoLauncher extends AbstractLanguageLauncher {
         String javaVersion = system.invokeMember("getProperty", "java.version").asString();
         String javaVersionDate = system.invokeMember("getProperty", "java.version.date").asString();
         String debugLevel = system.invokeMember("getProperty", "jdk.debug", "release").asString();
-        String vendorVersion = system.invokeMember("getProperty", "java.vendor.version").asString();
+        String vendorVersion = system.invokeMember("getProperty", "java.vendor.version", "").asString();
         String javaRuntimeName = system.invokeMember("getProperty", "java.runtime.name").asString();
         String javaRuntimeVersion = system.invokeMember("getProperty", "java.runtime.version").asString();
         boolean isLTS = javaRuntimeVersion.contains("LTS");

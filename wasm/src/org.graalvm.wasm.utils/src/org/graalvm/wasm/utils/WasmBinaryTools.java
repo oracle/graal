@@ -48,10 +48,17 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.EnumSet;
+import java.util.List;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class WasmBinaryTools {
+    public enum WabtOption {
+        MULTI_MEMORY,
+        THREADS
+    }
 
     private static Supplier<String> asyncReadInputStream(InputStream is) {
         class SupplierThread extends Thread implements Supplier<String> {
@@ -88,44 +95,58 @@ public class WasmBinaryTools {
         }
     }
 
-    private static byte[] wat2wasm(File input, File output) throws IOException, InterruptedException {
+    private static byte[] wat2wasm(File input, File output, EnumSet<WabtOption> options) throws IOException, InterruptedException {
         Assert.assertNotNull(
                         Assert.format("The %s property must be set in order to be able to compile .wat to .wasm", SystemProperties.WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME),
                         SystemProperties.WAT_TO_WASM_EXECUTABLE);
+
+        List<String> commandLine = new ArrayList<>();
+        commandLine.add(SystemProperties.WAT_TO_WASM_EXECUTABLE);
+        commandLine.add(input.getPath());
+        // This option is needed so that wat2wasm agrees to generate
+        // invalid wasm files.
+        commandLine.add("-v");
+        commandLine.add("--no-check");
+        for (WabtOption option : options) {
+            switch (option) {
+                case MULTI_MEMORY:
+                    commandLine.add("--enable-multi-memory");
+                    break;
+                case THREADS:
+                    commandLine.add("--enable-threads");
+                    break;
+            }
+        }
+        commandLine.add("-o");
+        commandLine.add(output.getPath());
+
         // execute the wat2wasm tool and wait for it to finish execution
-        runExternalToolAndVerify(
-                        "wat2wasm compilation failed",
-                        new String[]{
-                                        SystemProperties.WAT_TO_WASM_EXECUTABLE,
-                                        input.getPath(),
-                                        // This option is needed so that wat2wasm agrees to generate
-                                        // invalid wasm files.
-                                        "-v",
-                                        "--no-check",
-                                        "-o",
-                                        output.getPath(),
-                        });
+        runExternalToolAndVerify("wat2wasm compilation failed", commandLine.toArray(new String[0]));
         // read the resulting binary, delete the temporary files and return
         return Files.readAllBytes(output.toPath());
     }
 
-    public static byte[] compileWat(File watFile) throws IOException, InterruptedException {
+    public static byte[] compileWat(File watFile, EnumSet<WabtOption> options) throws IOException, InterruptedException {
         File wasmFile = File.createTempFile("wasm-bin-", ".wasm");
-        byte[] binary = wat2wasm(watFile, wasmFile);
+        byte[] binary = wat2wasm(watFile, wasmFile, options);
         wasmFile.deleteOnExit();
         return binary;
     }
 
-    public static byte[] compileWat(String name, String program) throws IOException, InterruptedException {
+    public static byte[] compileWat(String name, String program, EnumSet<WabtOption> options) throws IOException, InterruptedException {
         // create two temporary files for the text and the binary, write the given program to the
         // first one
         File watFile = File.createTempFile(name + "-wasm-text-", ".wat");
         File wasmFile = File.createTempFile(name + "-wasm-bin-", ".wasm");
         Files.write(watFile.toPath(), program.getBytes(StandardCharsets.UTF_8), StandardOpenOption.WRITE);
         // read the resulting binary, delete the temporary files and return
-        byte[] binary = wat2wasm(watFile, wasmFile);
+        byte[] binary = wat2wasm(watFile, wasmFile, options);
         watFile.deleteOnExit();
         wasmFile.deleteOnExit();
         return binary;
+    }
+
+    public static byte[] compileWat(String name, String program) throws IOException, InterruptedException {
+        return compileWat(name, program, EnumSet.noneOf(WabtOption.class));
     }
 }

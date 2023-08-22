@@ -1265,11 +1265,13 @@ public class LoggingTest {
                 boolean graalRuntime = AbstractPolyglotTest.isGraalRuntime();
                 Assert.assertTrue(graalRuntime ? !hasMessage : hasMessage);
             }
+            handler.clear();
             try (Context ctx = Context.newBuilder().option("engine.WarnInterpreterOnly", "true").logHandler(handler).build()) {
                 boolean hasMessage = hasInterpreterOnlyWarning(handler.getLog());
                 boolean graalRuntime = AbstractPolyglotTest.isGraalRuntime();
                 Assert.assertTrue(graalRuntime ? !hasMessage : hasMessage);
             }
+            handler.clear();
             try (Context ctx = Context.newBuilder().option("engine.WarnInterpreterOnly", "false").logHandler(handler).build()) {
                 Assert.assertFalse(hasInterpreterOnlyWarning(handler.getLog()));
             }
@@ -1283,7 +1285,7 @@ public class LoggingTest {
     private static boolean hasInterpreterOnlyWarning(Iterable<Map.Entry<Level, String>> log) {
         for (Map.Entry<Level, String> record : log) {
             String message = record.getValue();
-            if (message.startsWith("The polyglot context is using an implementation that does not support runtime compilation.")) {
+            if (message.startsWith("The polyglot engine uses a fallback runtime that does not support runtime compilation to native code.")) {
                 return true;
             }
         }

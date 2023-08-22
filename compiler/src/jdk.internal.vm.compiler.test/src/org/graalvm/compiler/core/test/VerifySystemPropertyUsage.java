@@ -88,7 +88,7 @@ public class VerifySystemPropertyUsage extends VerifyPhase<CoreProviders> {
             // The main method in JVMCIVersionCheck is only called from the shell
             return;
         } else if (packageName.startsWith("com.oracle.truffle") || packageName.startsWith("org.graalvm.polyglot") ||
-                        packageName.startsWith("org.graalvm.home") || packageName.equals("org.graalvm.compiler.truffle.runtime.hotspot")) {
+                        packageName.startsWith("org.graalvm.home") || packageName.equals("com.oracle.truffle.runtime.hotspot")) {
             // Truffle, SDK and Truffle runtime do not depend on JVMCI so they cannot use
             // Services.getSavedProperties()
             return;

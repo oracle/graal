@@ -28,7 +28,6 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.nodes.ProxyNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.phases.util.GraphOrder;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -44,6 +43,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.api.nodes.RootNode;
 
 /**

@@ -61,6 +61,11 @@ public final class MemoryPhiNode extends PhiNode implements SingleMemoryKill {
         this.values = new NodeInputList<>(this, values);
     }
 
+    @Override
+    public InputType valueInputType() {
+        return InputType.Memory;
+    }
+
     public LocationIdentity getLocationIdentity() {
         return locationIdentity;
     }

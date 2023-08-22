@@ -274,8 +274,9 @@ public final class TruffleProcessBuilder {
      * @throws NullPointerException if the given stream is {@code null}
      * @since 19.2.0
      */
+    @SuppressWarnings("static-method")
     public Redirect createRedirectToStream(OutputStream stream) {
-        return IOAccessor.engineAccess().createRedirectToOutputStream(polyglotLanguageContext, stream);
+        return Redirect.createRedirectToStream(stream);
     }
 
     /**

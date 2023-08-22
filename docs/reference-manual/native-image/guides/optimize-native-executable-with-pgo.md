@@ -3,6 +3,7 @@ layout: ni-docs
 toc_group: how-to-guides
 link_title: Optimize a Native Executable with PGO
 permalink: /reference-manual/native-image/guides/optimize-native-executable-with-pgo/
+redirect_from: /reference-manual/native-image/PGO/
 ---
 
 # Optimize a Native Executable with Profile-Guided Optimizations
@@ -33,6 +34,8 @@ Arrays.stream(persons)
 ```
 
 Follow these steps to build an optimized native executable using PGO.
+
+> Note: Make sure you have installed a GraalVM JDK. The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal). For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
 1.  Save [the following code](https://github.com/graalvm/graalvm-demos/blob/master/streams/Streams.java) to the file named _Streams.java_:
 

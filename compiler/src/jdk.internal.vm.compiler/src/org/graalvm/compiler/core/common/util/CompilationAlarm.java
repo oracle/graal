@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -40,7 +40,7 @@ public final class CompilationAlarm implements AutoCloseable {
         @Option(help = "Time limit in seconds before a compilation expires (0 to disable the limit). " +
                        "A non-zero value for this option is doubled if assertions are enabled and quadrupled if DetailedAsserts is true.",
                 type = OptionType.Debug)
-        public static final OptionKey<Integer> CompilationExpirationPeriod = new OptionKey<>(300);
+        public static final OptionKey<Double> CompilationExpirationPeriod = new OptionKey<>(300d);
         // @formatter:on
     }
 
@@ -98,7 +98,7 @@ public final class CompilationAlarm implements AutoCloseable {
      *         before this call otherwise {@code null}
      */
     public static CompilationAlarm trackCompilationPeriod(OptionValues options) {
-        int period = Options.CompilationExpirationPeriod.getValue(options);
+        double period = Options.CompilationExpirationPeriod.getValue(options);
         if (period > 0) {
             if (Assertions.assertionsEnabled()) {
                 period *= 2;
@@ -108,7 +108,7 @@ public final class CompilationAlarm implements AutoCloseable {
             }
             CompilationAlarm current = currentAlarm.get();
             if (current == null) {
-                long expiration = System.currentTimeMillis() + period * 1000;
+                long expiration = System.currentTimeMillis() + (long) (period * 1000);
                 current = new CompilationAlarm(expiration);
                 currentAlarm.set(current);
                 return current;

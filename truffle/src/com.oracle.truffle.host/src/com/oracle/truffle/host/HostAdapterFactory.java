@@ -47,7 +47,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -155,7 +154,7 @@ final class HostAdapterFactory {
         HostMethodDesc.SingleMethod valueConstructor = null;
         if (constructor != null) {
             for (HostMethodDesc.SingleMethod overload : constructor.getOverloads()) {
-                if (overload.getParameterCount() == 1 && overload.getParameterTypes()[0] == Value.class) {
+                if (overload.getParameterCount() == 1 && overload.getParameterTypes()[0] == hostClassCache.apiAccess.getValueClass()) {
                     valueConstructor = overload;
                     break;
                 }
@@ -170,8 +169,7 @@ final class HostAdapterFactory {
         boolean classOverride = classOverrides != null;
         HostAdapterBytecodeGenerator bytecodeGenerator = new HostAdapterBytecodeGenerator(superClass, interfaces, commonLoader, hostClassCache, classOverride);
         HostAdapterClassLoader generatedClassLoader = bytecodeGenerator.createAdapterClassLoader();
-
-        return generatedClassLoader.generateClass(commonLoader, classOverrides);
+        return generatedClassLoader.generateClass(hostClassCache, commonLoader, classOverrides);
     }
 
     @TruffleBoundary

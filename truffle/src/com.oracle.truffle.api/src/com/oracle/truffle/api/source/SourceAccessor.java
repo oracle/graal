@@ -74,7 +74,7 @@ final class SourceAccessor extends Accessor {
     }
 
     static TruffleFile getTruffleFile(URI uri, Object fileSystemContext) {
-        return ACCESSOR.languageSupport().getTruffleFile(fileSystemContext, uri);
+        return ACCESSOR.languageSupport().getTruffleFile(uri, fileSystemContext);
     }
 
     static TruffleFile getTruffleFile(String path, Object fileSystemContext) {
@@ -112,10 +112,10 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
-        public org.graalvm.polyglot.Source getOrCreatePolyglotSource(Source source,
-                        Function<Source, org.graalvm.polyglot.Source> createSource) {
-            WeakReference<org.graalvm.polyglot.Source> ref = source.cachedPolyglotSource;
-            org.graalvm.polyglot.Source polyglotSource;
+        public Object getOrCreatePolyglotSource(Source source,
+                        Function<Source, Object> createSource) {
+            WeakReference<Object> ref = source.cachedPolyglotSource;
+            Object polyglotSource;
             if (ref == null) {
                 polyglotSource = null;
             } else {

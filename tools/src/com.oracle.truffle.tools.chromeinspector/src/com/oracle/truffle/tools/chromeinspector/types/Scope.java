@@ -25,8 +25,8 @@
 package com.oracle.truffle.tools.chromeinspector.types;
 
 import com.oracle.truffle.api.debug.DebugScope;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 public final class Scope {
 

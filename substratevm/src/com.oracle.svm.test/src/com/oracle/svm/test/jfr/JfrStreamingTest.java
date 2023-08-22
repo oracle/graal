@@ -111,7 +111,7 @@ public abstract class JfrStreamingTest extends AbstractJfrTest {
     private static void enableEvents(RecordingStream stream, String[] events) {
         /* Additionally, enable all events that the test case wants to test explicitly. */
         for (String event : events) {
-            stream.enable(event).withStackTrace();
+            stream.enable(event).withStackTrace().withThreshold(Duration.ZERO);
         }
     }
 

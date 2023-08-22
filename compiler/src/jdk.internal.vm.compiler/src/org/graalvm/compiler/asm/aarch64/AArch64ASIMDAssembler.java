@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,11 +32,13 @@ import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.rd;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.rn;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.rs1;
 import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.rs2;
+import static org.graalvm.compiler.asm.aarch64.AArch64Assembler.rs3;
 
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.Stride;
 import org.graalvm.compiler.debug.GraalError;
 
@@ -536,6 +538,8 @@ public abstract class AArch64ASIMDAssembler {
      */
     private static final int UBit = 0b1 << 29;
 
+    private static final int ReplicateFlag = 0b1 << 21;
+
     public enum ASIMDInstruction {
 
         /* Advanced SIMD load/store multiple structures (C4-296). */
@@ -554,12 +558,40 @@ public abstract class AArch64ASIMDAssembler {
 
         /* Advanced SIMD load/store single structure (C4-299). */
         LD1R(LoadFlag | 0b110 << 13),
+        LD4R(LoadFlag | ReplicateFlag | 0b111 << 13),
 
         /* Cryptographic AES (C4-341). */
         AESE(0b00100 << 12),
         AESD(0b00101 << 12),
         AESMC(0b00110 << 12),
         AESIMC(0b00111 << 12),
+
+        /* Cryptographic three-register SHA */
+        SHA1C(0b000 << 12),
+        SHA1P(0b001 << 12),
+        SHA1M(0b010 << 12),
+        SHA1SU0(0b011 << 12),
+        SHA256H(0b100 << 12),
+        SHA256H2(0b101 << 12),
+        SHA256SU1(0b110 << 12),
+
+        /* Cryptographic two-register SHA */
+        SHA1H(0b00000 << 12),
+        SHA1SU1(0b00001 << 12),
+        SHA256SU0(0b00010 << 12),
+
+        /* Cryptographic three-register SHA512 */
+        SHA512H(0b00 << 10),
+        SHA512H2(0b01 << 10),
+        SHA512SU1(0b10 << 10),
+        RAX1(0b11 << 10),
+
+        /* Cryptographic two-register SHA 512 */
+        SHA512SU0(0b00 << 10),
+
+        /* Cryptographic four-register */
+        EOR3(0b00 << 21),
+        BCAX(0b01 << 21),
 
         /* Advanced SIMD table lookup (C4-355). */
         TBL(0b0 << 12),
@@ -644,6 +676,7 @@ public abstract class AArch64ASIMDAssembler {
         SSHL(0b01000 << 11),
         SMAX(0b01100 << 11),
         SMIN(0b01101 << 11),
+        SMINP(0b10101 << 11),
         ADD(0b10000 << 11),
         CMTST(0b10001 << 11),
         MLA(0b10010 << 11),
@@ -785,6 +818,7 @@ public abstract class AArch64ASIMDAssembler {
         int encoding;
         switch (instr) {
             case LD1R:
+            case LD4R:
                 encoding = eSize.encoding;
                 break;
             default:
@@ -838,6 +872,31 @@ public abstract class AArch64ASIMDAssembler {
     private void cryptographicAES(ASIMDInstruction instr, Register dst, Register src) {
         int baseEncoding = 0b01001110_00_10100_00000_10_00000_00000;
         emitInt(instr.encoding | baseEncoding | elemSize00 | rd(dst) | rn(src));
+    }
+
+    private void cryptographicThreeSHA(ASIMDInstruction instr, Register dst, Register src1, Register src2) {
+        int baseEncoding = 0b01011110_00_0_00000_0_000_00_00000_00000;
+        emitInt(instr.encoding | baseEncoding | elemSize00 | rd(dst) | rs1(src1) | rs2(src2));
+    }
+
+    private void cryptographicTwoSHA(ASIMDInstruction instr, Register dst, Register src) {
+        int baseEncoding = 0b01011110_00_10100_00000_10_00000_00000;
+        emitInt(instr.encoding | baseEncoding | elemSize00 | rd(dst) | rn(src));
+    }
+
+    private void cryptographicThreeSHA512(ASIMDInstruction instr, Register dst, Register src1, Register src2) {
+        int baseEncoding = 0b11001110011_00000_1_0_00_00_00000_00000;
+        emitInt(instr.encoding | baseEncoding | rd(dst) | rs1(src1) | rs2(src2));
+    }
+
+    private void cryptographicTwoSHA512(ASIMDInstruction instr, Register dst, Register src) {
+        int baseEncoding = 0b11001110110000001000_00_00000_00000;
+        emitInt(instr.encoding | baseEncoding | rd(dst) | rn(src));
+    }
+
+    private void cryptographicFour(ASIMDInstruction instr, Register dst, Register src1, Register src2, Register src3) {
+        int baseEncoding = 0b110011100_00_00000_0_00000_00000_00000;
+        emitInt(instr.encoding | baseEncoding | rd(dst) | rs1(src1) | rs2(src2) | rs3(src3));
     }
 
     private void scalarThreeSameEncoding(ASIMDInstruction instr, int eSizeEncoding, Register dst, Register src1, Register src2) {
@@ -1087,6 +1146,28 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.AND, size, elemSize00, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.12 Bit Clear and exclusive-OR.<br>
+     *
+     * Bit Clear and exclusive-OR performs a bitwise AND of the 128-bit vector in a source SIMD&FP
+     * register and the complement of the vector in another source SIMD&FP register, then performs a
+     * bitwise exclusive-OR of the resulting vector and the vector in a third source SIMD&FP
+     * register, and writes the result to the destination SIMD&FP register.
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     * @param src3 SIMD register.
+     */
+    public void bcaxVVVV(Register dst, Register src1, Register src2, Register src3) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert src3.getRegisterCategory().equals(SIMD);
+
+        cryptographicFour(ASIMDInstruction.BCAX, dst, src1, src2, src3);
     }
 
     /**
@@ -1504,6 +1585,28 @@ public abstract class AArch64ASIMDAssembler {
         assert src2.getRegisterCategory().equals(SIMD);
 
         threeSameEncoding(ASIMDInstruction.EOR, size, elemSize00, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.42 Bitwise three-way exclusive or vector.<br>
+     *
+     * <code>for i in 0..127 do dst[i] = src1[i] ^ src2[i] ^ src3[i]</code>
+     *
+     * Three-way Exclusive-OR performs a three-way exclusive-OR of the values in the three source
+     * SIMD&FP registers, and writes the result to the destination SIMD&FP register.
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     * @param src3 SIMD register.
+     */
+    public void eor3VVVV(Register dst, Register src1, Register src2, Register src3) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert src3.getRegisterCategory().equals(SIMD);
+
+        cryptographicFour(ASIMDInstruction.EOR3, dst, src1, src2, src3);
     }
 
     /**
@@ -2274,6 +2377,25 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.188 Load single 4-element structure and Replicate to all lanes of four registers.<br>
+     *
+     * This instruction loads a 4-element structure from memory and replicates the structure to all
+     * lanes of the four registers.
+     *
+     * @param size register size.
+     * @param eSize element size of value to replicate.
+     * @param dst1 destination of first structure's value.
+     * @param dst2 destination of second structure's value. Must be register after dst1.
+     * @param dst3 destination of third structure's value. Must be register after dst2.
+     * @param dst4 destination of fourth structure's value. Must be register after dst3.
+     * @param addr address of first structure.
+     */
+    public void ld4rVVVV(ASIMDSize size, ElementSize eSize, Register dst1, Register dst2, Register dst3, Register dst4, AArch64Address addr) {
+        assert assertConsecutiveSIMDRegisters(dst1, dst2, dst3, dst4);
+        loadStoreSingleStructure(ASIMDInstruction.LD4R, size, eSize, dst1, addr);
+    }
+
+    /**
      * C7.2.196 Multiply-add to accumulator.<br>
      *
      * <code>for i in 0..n-1 do dst[i] += int_multiply(src1[i], src2[i])</code>
@@ -2483,6 +2605,26 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.217 Rotate and Exclusive-OR.<br>
+     *
+     * Rotate and Exclusive-OR rotates each 64-bit element of the 128-bit vector in a source SIMD&FP
+     * register left by 1, performs a bitwise exclusive-OR of the resulting 128-bit vector and the
+     * vector in another source SIMD&FP register, and writes the result to the destination SIMD&FP
+     * register.
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void rax1VVV(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA512(ASIMDInstruction.RAX1, dst, src1, src2);
+    }
+
+    /**
      * C7.2.218 Reverse Bit order.<br>
      * This instruction reverses the bits in each byte.
      *
@@ -2590,6 +2732,208 @@ public abstract class AArch64ASIMDAssembler {
     }
 
     /**
+     * C7.2.239 SHA1 hash update.<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha1c(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA(ASIMDInstruction.SHA1C, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.240 SHA1 fixed rotate.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void sha1h(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicTwoSHA(ASIMDInstruction.SHA1H, dst, src);
+    }
+
+    /**
+     * C7.2.241 SHA1 hash update (majority).<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha1m(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA(ASIMDInstruction.SHA1M, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.242 SHA1 hash update (parity).<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha1p(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA(ASIMDInstruction.SHA1P, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.243 SHA1 schedule update 0.<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha1su0(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA(ASIMDInstruction.SHA1SU0, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.244 SHA1 schedule update 1.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void sha1su1(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicTwoSHA(ASIMDInstruction.SHA1SU1, dst, src);
+    }
+
+    /**
+     * C7.2.245 SHA256 hash update (part 2).<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha256h2(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA(ASIMDInstruction.SHA256H2, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.246 SHA256 hash update (part 1).<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha256h(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA(ASIMDInstruction.SHA256H, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.247 SHA256 schedule update 0.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void sha256su0(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicTwoSHA(ASIMDInstruction.SHA256SU0, dst, src);
+    }
+
+    /**
+     * C7.2.248 SHA256 schedule update 1.<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha256su1(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA(ASIMDInstruction.SHA256SU1, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.249 SHA512 Hash update part 1.<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha512h(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA512(ASIMDInstruction.SHA512H, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.250 SHA512 Hash update part 2.<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha512h2(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA512(ASIMDInstruction.SHA512H2, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.251 SHA512 Schedule Update 0.<br>
+     *
+     * @param dst SIMD register.
+     * @param src SIMD register.
+     */
+    public void sha512su0(Register dst, Register src) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src.getRegisterCategory().equals(SIMD);
+
+        cryptographicTwoSHA512(ASIMDInstruction.SHA512SU0, dst, src);
+    }
+
+    /**
+     * C7.2.252 SHA512 Schedule Update 1.<br>
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sha512su1(Register dst, Register src1, Register src2) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+
+        cryptographicThreeSHA512(ASIMDInstruction.SHA512SU1, dst, src1, src2);
+    }
+
+    /**
      * C7.2.254 shift left (immediate).<br>
      *
      * <code>for i in 0..n-1 do dst[i] = src[i] << imm</code>
@@ -2657,6 +3001,31 @@ public abstract class AArch64ASIMDAssembler {
         assert eSize != ElementSize.DoubleWord : "Invalid lane width for smin";
 
         threeSameEncoding(ASIMDInstruction.SMIN, size, elemSizeXX(eSize), dst, src1, src2);
+    }
+
+    /**
+     * C7.2.272 Signed minimum pairwise.<br>
+     *
+     * <code>
+     *     concat = src2:src1
+     *     for i in 0..n-1 do dst[i] = int_min(concat[2 * i], concat[2 * i + 1])
+     * </code>
+     *
+     * @param size register size.
+     * @param eSize element size.
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     */
+    public void sminpVVV(ASIMDSize size, ElementSize eSize, Register dst, Register src1, Register src2) {
+        assert usesMultipleLanes(size, eSize);
+
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert eSize != ElementSize.DoubleWord : "Invalid lane width for sminp";
+
+        threeSameEncoding(ASIMDInstruction.SMINP, size, elemSizeXX(eSize), dst, src1, src2);
     }
 
     /**
@@ -3545,6 +3914,29 @@ public abstract class AArch64ASIMDAssembler {
         assert usesMultipleLanes(dstSize, eSize);
 
         permuteEncoding(ASIMDInstruction.UZP2, dstSize, eSize, dst, src1, src2);
+    }
+
+    /**
+     * C7.2.401 Exclusive-OR and Rotate.<br>
+     *
+     * Exclusive-OR and Rotate performs a bitwise exclusive-OR of the 128-bit vectors in the two
+     * source SIMD&FP registers, rotates each 64-bit element of the resulting 128-bit vector right
+     * by the value specified by a 6-bit immediate value, and writes the result to the destination
+     * SIMD&FP register.
+     *
+     * @param dst SIMD register.
+     * @param src1 SIMD register.
+     * @param src2 SIMD register.
+     * @param imm6 6-bit immediate
+     */
+    public void xarVVVI(Register dst, Register src1, Register src2, int imm6) {
+        assert dst.getRegisterCategory().equals(SIMD);
+        assert src1.getRegisterCategory().equals(SIMD);
+        assert src2.getRegisterCategory().equals(SIMD);
+        assert NumUtil.isUnsignedNbit(6, imm6);
+
+        int baseEncoding = 0b110011101_00_00000_000000_00000_00000;
+        emitInt(baseEncoding | rd(dst) | rs1(src1) | rs2(src2) | imm6 << 10);
     }
 
     /**

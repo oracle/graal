@@ -29,7 +29,6 @@ import static com.oracle.graal.pointsto.util.AnalysisError.shouldNotReachHere;
 import java.lang.ref.PhantomReference;
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
-import java.lang.ref.WeakReference;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -49,8 +48,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiPredicate;
-import java.util.function.Function;
 import java.util.function.BooleanSupplier;
+import java.util.function.Function;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
@@ -86,6 +85,7 @@ import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
@@ -114,7 +114,6 @@ import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.HubType;
 import com.oracle.svm.core.hub.ReferenceType;
-import com.oracle.svm.core.jdk.ClassLoaderSupport;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.jdk.LambdaFormHiddenMethod;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -126,6 +125,7 @@ import com.oracle.svm.hosted.analysis.CustomTypeFieldHandler;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
+import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
 import com.oracle.svm.hosted.code.InliningUtilities;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.code.UninterruptibleAnnotationChecker;
@@ -135,6 +135,7 @@ import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
+import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyImpl;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
@@ -306,29 +307,7 @@ public class SVMHost extends HostVM {
         }
 
         /* Decide when the type should be initialized. */
-        classInitializationSupport.maybeInitializeHosted(analysisType);
-
-        /*
-         * For reachable classes, registering class's package in appropriate class loader.
-         */
-        Class<?> javaClass = analysisType.getJavaClass();
-        /**
-         * Due to using {@link NativeImageSystemClassLoader}, a class's ClassLoader during runtime
-         * may be different than the class used to load it during native-image generation.
-         */
-        ClassLoader classloader = javaClass.getClassLoader();
-        if (classloader == null) {
-            classloader = BootLoaderSupport.getBootLoader();
-        }
-        ClassLoader runtimeClassLoader = ClassLoaderFeature.getRuntimeClassLoader(classloader);
-        if (runtimeClassLoader != null) {
-            Package packageValue = javaClass.getPackage();
-            if (packageValue != null) {
-                DynamicHub typeHub = typeToHub.get(analysisType);
-                String packageName = typeHub.getPackageName();
-                ClassLoaderSupport.registerPackage(runtimeClassLoader, packageName, packageValue);
-            }
-        }
+        classInitializationSupport.maybeInitializeAtBuildTime(analysisType);
 
         /* Compute the automatic substitutions. */
         automaticSubstitutions.computeSubstitutions(this, GraalAccess.getOriginalProviders().getMetaAccess().lookupJavaType(analysisType.getJavaClass()));
@@ -336,10 +315,10 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean isInitialized(AnalysisType type) {
-        boolean shouldInitializeAtRuntime = classInitializationSupport.shouldInitializeAtRuntime(type);
-        assert shouldInitializeAtRuntime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized: " + type;
+        boolean initializedAtBuildTime = classInitializationSupport.maybeInitializeAtBuildTime(type);
+        assert !initializedAtBuildTime || type.getWrapped().isInitialized() : "Types that are not marked for runtime initializations must have been initialized: " + type;
 
-        return !shouldInitializeAtRuntime;
+        return initializedAtBuildTime;
     }
 
     private final boolean parseOnce = SubstrateOptions.parseOnce();
@@ -528,14 +507,15 @@ public class SVMHost extends HostVM {
 
     private static ReferenceType computeReferenceType(AnalysisType type) {
         Class<?> clazz = type.getJavaClass();
-        if (PhantomReference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Phantom;
-        } else if (WeakReference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Weak;
-        } else if (SoftReference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Soft;
-        } else if (Reference.class.isAssignableFrom(clazz)) {
-            return ReferenceType.Other;
+        if (Reference.class.isAssignableFrom(clazz)) {
+            if (PhantomReference.class.isAssignableFrom(clazz)) {
+                return ReferenceType.Phantom;
+            } else if (SoftReference.class.isAssignableFrom(clazz)) {
+                return ReferenceType.Soft;
+            } else {
+                /* Treat all other java.lang.Reference subclasses as weak references. */
+                return ReferenceType.Weak;
+            }
         }
         return ReferenceType.None;
     }
@@ -770,7 +750,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public InlineBeforeAnalysisGraphDecoder createInlineBeforeAnalysisGraphDecoder(BigBang bb, AnalysisMethod method, StructuredGraph resultGraph) {
-        return new InlineBeforeAnalysisGraphDecoder(bb, inlineBeforeAnalysisPolicy(method.getMultiMethodKey()), resultGraph, bb.getProviders(method), null);
+        return new InlineBeforeAnalysisGraphDecoderImpl(bb, inlineBeforeAnalysisPolicy(method.getMultiMethodKey()), resultGraph, bb.getProviders(method));
     }
 
     public static class Options {
@@ -922,6 +902,14 @@ public class SVMHost extends HostVM {
     }
 
     @Override
+    public boolean recordInlinedMethods(AnalysisMethod method) {
+        if (parsingSupport != null) {
+            return parsingSupport.recordInlinedMethods(method);
+        }
+        return super.recordInlinedMethods(method);
+    }
+
+    @Override
     public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
         if (parsingSupport != null) {
             HostedProviders providers = parsingSupport.getHostedProviders(key);
@@ -960,6 +948,16 @@ public class SVMHost extends HostVM {
             }
         }
         return super.getStrengthenGraphsToTargetFunction(key);
+    }
+
+    @Override
+    public boolean allowConstantFolding(AnalysisMethod method) {
+        /*
+         * Currently constant folding is only enabled for original methods which do not deoptimize.
+         * More work is needed to support it within deoptimization targets and runtime-compiled
+         * methods.
+         */
+        return method.isOriginalMethod() && !SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method);
     }
 
     @Override
@@ -1031,5 +1029,9 @@ public class SVMHost extends HostVM {
             annotationTypes.add(fieldType.getJavaClass());
         }
         return annotationTypes.toArray(new Class<?>[0]);
+    }
+
+    public SimulateClassInitializerSupport createSimulateClassInitializerSupport(AnalysisMetaAccess aMetaAccess) {
+        return new SimulateClassInitializerSupport(aMetaAccess, this);
     }
 }

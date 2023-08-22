@@ -186,12 +186,15 @@ public class CodeInfoEncoder {
 
         /* Mark the method start and register the frame size. */
         IPData startEntry = makeEntry(compilationOffset);
+        FrameInfoEncoder.FrameData defaultFrameData = frameInfoEncoder.addDefaultDebugInfo(method, totalFrameSize);
+        startEntry.frameData = defaultFrameData;
         startEntry.frameSizeEncoding = encodeFrameSize(totalFrameSize, true, isEntryPoint, hasCalleeSavedRegisters);
 
         /* Register the frame size for all entries that are starting points for the index. */
         long entryIP = CodeInfoDecoder.lookupEntryIP(CodeInfoDecoder.indexGranularity() + compilationOffset);
         while (entryIP <= CodeInfoDecoder.lookupEntryIP(compilationSize + compilationOffset - 1)) {
             IPData entry = makeEntry(entryIP);
+            entry.frameData = defaultFrameData;
             entry.frameSizeEncoding = encodeFrameSize(totalFrameSize, false, isEntryPoint, hasCalleeSavedRegisters);
             entryIP += CodeInfoDecoder.indexGranularity();
         }
@@ -209,7 +212,7 @@ public class CodeInfoEncoder {
                         throw VMError.shouldNotReachHere("Encoding two infopoints at same offset. Conflicting infopoint: " + infopoint);
                     }
                     IPData entry = makeEntry(offset + compilationOffset);
-                    assert entry.referenceMap == null && entry.frameData == null;
+                    assert entry.referenceMap == null && (entry.frameData == null || entry.frameData.isDefaultFrameData);
                     entry.referenceMap = (ReferenceMapEncoder.Input) debugInfo.getReferenceMap();
                     entry.frameData = frameInfoEncoder.addDebugInfo(method, compilation, infopoint, totalFrameSize);
                     if (entry.frameData != null && entry.frameData.frame.isDeoptEntry) {
@@ -433,7 +436,11 @@ public class CodeInfoEncoder {
             if (data.frameData.frame.isDeoptEntry) {
                 return CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4;
             } else {
-                return CodeInfoDecoder.FI_INFO_ONLY_INDEX_S4;
+                if (data.frameData.isDefaultFrameData) {
+                    return CodeInfoDecoder.FI_DEFAULT_INFO_INDEX_S4;
+                } else {
+                    return CodeInfoDecoder.FI_INFO_ONLY_INDEX_S4;
+                }
             }
         } else {
             throw new IllegalArgumentException();
@@ -442,6 +449,7 @@ public class CodeInfoEncoder {
 
     private static void writeEncodedFrameInfo(UnsafeArrayTypeWriter writeBuffer, IPData data, int entryFlags) {
         switch (CodeInfoDecoder.extractFI(entryFlags)) {
+            case CodeInfoDecoder.FI_DEFAULT_INFO_INDEX_S4:
             case CodeInfoDecoder.FI_DEOPT_ENTRY_INDEX_S4:
             case CodeInfoDecoder.FI_INFO_ONLY_INDEX_S4:
                 writeBuffer.putS4(data.frameData.encodedFrameInfoIndex);
@@ -462,9 +470,9 @@ public class CodeInfoEncoder {
 
 class CodeInfoVerifier {
     static void verifyMethod(SharedMethod method, CompilationResult compilation, int compilationOffset, int compilationSize, CodeInfo info) {
+        CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
         for (int relativeIP = 0; relativeIP < compilationSize; relativeIP++) {
             int totalIP = relativeIP + compilationOffset;
-            CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
             CodeInfoAccess.lookupCodeInfo(info, totalIP, queryResult);
             assert queryResult.isEntryPoint() == method.isEntryPoint();
             assert queryResult.hasCalleeSavedRegisters() == method.hasCalleeSavedRegisters();
@@ -478,7 +486,6 @@ class CodeInfoVerifier {
                 int offset = CodeInfoEncoder.getEntryOffset(infopoint);
                 if (offset >= 0) {
                     assert offset < compilationSize;
-                    CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
                     CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult);
 
                     CollectingObjectReferenceVisitor visitor = new CollectingObjectReferenceVisitor();
@@ -498,7 +505,6 @@ class CodeInfoVerifier {
             int offset = handler.pcOffset;
             assert offset >= 0 && offset < compilationSize;
 
-            CodeInfoQueryResult queryResult = new CodeInfoQueryResult();
             CodeInfoAccess.lookupCodeInfo(info, offset + compilationOffset, queryResult);
             long actual = queryResult.getExceptionOffset();
             long expected = handler.handlerPos - handler.pcOffset;

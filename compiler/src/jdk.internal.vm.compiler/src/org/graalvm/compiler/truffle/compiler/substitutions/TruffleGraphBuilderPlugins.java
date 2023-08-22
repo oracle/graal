@@ -97,7 +97,6 @@ import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.replacements.nodes.arithmetic.UnsignedMulHighNode;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.PerformanceInformationHandler;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
@@ -122,6 +121,8 @@ import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSetNode;
 import org.graalvm.compiler.truffle.compiler.nodes.frame.VirtualFrameSwapNode;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleSafepointInsertionPhase;
 import org.graalvm.word.LocationIdentity;
+
+import com.oracle.truffle.compiler.TruffleCompilationTask;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -170,7 +171,7 @@ public class TruffleGraphBuilderPlugins {
     private static void registerTruffleSafepointPlugins(InvocationPlugins plugins, KnownTruffleTypes types, boolean canDelayIntrinsification) {
         final ResolvedJavaType truffleSafepoint = types.TruffleSafepoint;
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(truffleSafepoint));
-        r.register(new RequiredInvocationPlugin("poll", com.oracle.truffle.api.nodes.Node.class) {
+        r.register(new RequiredInvocationPlugin("poll", new ResolvedJavaSymbol(types.Node)) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
                 if (!TruffleSafepointInsertionPhase.allowsSafepoints(b.getGraph())) {
@@ -926,9 +927,6 @@ public class TruffleGraphBuilderPlugins {
         });
     }
 
-    /**
-     * @see com.oracle.truffle.api.nodes.Node
-     */
     public static void registerNodePlugins(InvocationPlugins plugins, KnownTruffleTypes types, MetaAccessProvider metaAccess, boolean canDelayIntrinsification,
                     ConstantReflectionProvider constantReflection) {
         Registration r = new Registration(plugins, new ResolvedJavaSymbol(types.Node));

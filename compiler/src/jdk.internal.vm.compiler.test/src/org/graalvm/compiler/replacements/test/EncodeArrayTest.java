@@ -28,7 +28,6 @@ import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.test.AddExports;
-import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.code.InstalledCode;
@@ -53,7 +52,8 @@ public class EncodeArrayTest extends GraalCompilerTest {
                     "XMM-XMM-XMM-XMM+YMM-YMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-",
                     "XMM-XMM-XMM-XMM-YMM-YMM-YMM-YMM+ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-",
                     "XMM-XMM-XMM-XMM-YMM-YMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM+",
-                    ""
+                    "",
+                    "\u0000" + "0".repeat(15) + "1".repeat(15) + "\u00ffsome-string",
     };
 
     private static Result executeCompiledMethod(InstalledCode compiledMethod, Object... args) {
@@ -80,37 +80,53 @@ public class EncodeArrayTest extends GraalCompilerTest {
             UNSAFE.copyMemory(value, UNSAFE.arrayBaseOffset(char[].class), sa, UNSAFE.arrayBaseOffset(byte[].class), sa.length);
             byte[] daExpected = new byte[len];
             byte[] daActual = new byte[len];
-            Result expected = executeExpected(method, null, sa, 0, daExpected, 0, len);
-            Result actual = executeCompiledMethod(compiledMethod, sa, 0, daActual, 0, len);
-            assertEquals(expected, actual);
-            assertDeepEquals(daExpected, daActual);
+            int sp = 0;
+            int dp = 0;
+            while (sp < value.length) {
+                Result expected = executeExpected(method, null, sa, sp, daExpected, dp, len);
+                Result actual = executeCompiledMethod(compiledMethod, sa, sp, daActual, dp, len);
+                assertEquals(expected, actual);
+                assertDeepEquals(daExpected, daActual);
+                int ret = (int) actual.returnValue;
+                sp += ret;
+                dp += ret;
+                while (sp < value.length && value[sp++] > 0xff) {
+                    dp++;
+                }
+            }
         }
     }
 
     @Test
     public void testStringCodingAscii() throws ClassNotFoundException {
-        try {
-            Class<?> klass = Class.forName("java.lang.StringCoding");
-            ResolvedJavaMethod method = getResolvedJavaMethod(klass, "implEncodeAsciiArray");
-            StructuredGraph graph = getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
-            InstalledCode compiledMethod = getCode(method, graph);
+        Class<?> klass = Class.forName("java.lang.StringCoding");
+        ResolvedJavaMethod method = getResolvedJavaMethod(klass, "implEncodeAsciiArray");
+        StructuredGraph graph = getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
+        InstalledCode compiledMethod = getCode(method, graph);
 
-            // Caller of the tested method should guarantee the indexes are within the range --
-            // there is no need for boundary-value testing.
-            for (String input : testData) {
+        // Caller of the tested method should guarantee the indexes are within the range --
+        // there is no need for boundary-value testing.
+        for (String inputOrig : testData) {
+            for (String input : new String[]{inputOrig, "_".repeat(31) + inputOrig, "_".repeat(63) + inputOrig}) {
                 char[] value = input.toCharArray();
                 int len = value.length;
-                byte[] sa = new byte[len << 1];
-                UNSAFE.copyMemory(value, UNSAFE.arrayBaseOffset(char[].class), sa, UNSAFE.arrayBaseOffset(byte[].class), sa.length);
                 byte[] daExpected = new byte[len];
                 byte[] daActual = new byte[len];
-                Result expected = executeExpected(method, null, sa, 0, daExpected, 0, len);
-                Result actual = executeCompiledMethod(compiledMethod, sa, 0, daActual, 0, len);
-                assertEquals(expected, actual);
-                assertDeepEquals(daExpected, daActual);
+                int sp = 0;
+                int dp = 0;
+                while (sp < value.length) {
+                    Result expected = executeExpected(method, null, value, sp, daExpected, dp, len - sp);
+                    Result actual = executeCompiledMethod(compiledMethod, value, sp, daActual, dp, len - sp);
+                    assertEquals(expected, actual);
+                    assertDeepEquals(daExpected, daActual);
+                    int ret = (int) actual.returnValue;
+                    sp += ret;
+                    dp += ret;
+                    while (sp < value.length && value[sp++] > 0x7f) {
+                        dp++;
+                    }
+                }
             }
-        } catch (RuntimeException e) {
-            Assume.assumeNoException(e);
         }
     }
 
@@ -128,10 +144,20 @@ public class EncodeArrayTest extends GraalCompilerTest {
             int len = sa.length;
             byte[] daExpected = new byte[len];
             byte[] daActual = new byte[len];
-            Result expected = executeExpected(method, null, sa, 0, daExpected, 0, len);
-            Result actual = executeCompiledMethod(compiledMethod, sa, 0, daActual, 0, len);
-            assertEquals(expected, actual);
-            assertDeepEquals(daExpected, daActual);
+            int sp = 0;
+            int dp = 0;
+            while (sp < sa.length) {
+                Result expected = executeExpected(method, null, sa, sp, daExpected, dp, len);
+                Result actual = executeCompiledMethod(compiledMethod, sa, sp, daActual, dp, len);
+                assertEquals(expected, actual);
+                assertDeepEquals(daExpected, daActual);
+                int ret = (int) actual.returnValue;
+                sp += ret;
+                dp += ret;
+                while (sp < sa.length && sa[sp++] > 0xff) {
+                    dp++;
+                }
+            }
         }
     }
 }

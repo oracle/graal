@@ -65,6 +65,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
@@ -411,12 +412,12 @@ public class FeatureImpl {
             registerAsUnsafeAccessed(aField, reason);
         }
 
-        public void registerAsRoot(Executable method, boolean invokeSpecial) {
-            bb.addRootMethod(method, invokeSpecial);
+        public void registerAsRoot(Executable method, boolean invokeSpecial, String reason, MultiMethod.MultiMethodKey... otherRoots) {
+            bb.addRootMethod(method, invokeSpecial, reason, otherRoots);
         }
 
-        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial) {
-            bb.addRootMethod(aMethod, invokeSpecial);
+        public void registerAsRoot(AnalysisMethod aMethod, boolean invokeSpecial, String reason, MultiMethod.MultiMethodKey... otherRoots) {
+            bb.addRootMethod(aMethod, invokeSpecial, reason, otherRoots);
         }
 
         public void registerUnsafeFieldsRecomputed(Class<?> clazz) {
@@ -787,6 +788,10 @@ public class FeatureImpl {
 
         @Override
         public Path getImagePath() {
+            if (linkerInvocation == null) {
+                /* Some backends might not use native-linking */
+                return null;
+            }
             return linkerInvocation.getOutputFile();
         }
 

@@ -62,6 +62,12 @@ public @interface APIOption {
     boolean extra() default false;
 
     /**
+     * This option should be stored in a native image bundle and passed to the jvm when executed
+     * with {@code com.oracle.svm.driver.launcher.BundleLauncher}.
+     */
+    boolean launcherOption() default false;
+
+    /**
      * Make a boolean option part of a group of boolean options.
      **/
     Class<? extends APIOptionGroup> group() default NullGroup.class;

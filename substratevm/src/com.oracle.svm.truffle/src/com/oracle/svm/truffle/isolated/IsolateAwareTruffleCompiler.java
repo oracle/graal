@@ -31,9 +31,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.PauseNode;
-import org.graalvm.compiler.truffle.common.TruffleCompilable;
-import org.graalvm.compiler.truffle.common.TruffleCompilationTask;
-import org.graalvm.compiler.truffle.common.TruffleCompilerListener;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 import org.graalvm.compiler.truffle.compiler.TruffleCompilation;
 import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
@@ -65,6 +62,9 @@ import com.oracle.svm.graal.isolated.IsolatedHandles;
 import com.oracle.svm.truffle.api.SubstrateCompilableTruffleAST;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompiler;
 import com.oracle.svm.truffle.api.SubstrateTruffleCompilerImpl;
+import com.oracle.truffle.compiler.TruffleCompilable;
+import com.oracle.truffle.compiler.TruffleCompilationTask;
+import com.oracle.truffle.compiler.TruffleCompilerListener;
 
 public class IsolateAwareTruffleCompiler implements SubstrateTruffleCompiler {
     private static final Word ISOLATE_INITIALIZING = WordFactory.signed(-1);

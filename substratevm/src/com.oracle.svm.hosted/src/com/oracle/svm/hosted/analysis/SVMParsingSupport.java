@@ -56,6 +56,8 @@ public interface SVMParsingSupport {
 
     boolean allowAssumptions(AnalysisMethod method);
 
+    boolean recordInlinedMethods(AnalysisMethod method);
+
     HostedProviders getHostedProviders(MultiMethod.MultiMethodKey key);
 
     void initializeInlineBeforeAnalysisPolicy(SVMHost svmHost, InlineBeforeAnalysisPolicyUtils inliningUtils);

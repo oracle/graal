@@ -49,7 +49,7 @@ final class DarwinVMSemaphoreFeature implements InternalFeature {
     private final ClassInstanceReplacer<VMSemaphore, VMSemaphore> semaphoreReplacer = new ClassInstanceReplacer<>(VMSemaphore.class) {
         @Override
         protected VMSemaphore createReplacement(VMSemaphore source) {
-            return new DarwinVMSemaphore();
+            return new DarwinVMSemaphore(source.getName());
         }
     };
 
@@ -105,7 +105,8 @@ final class DarwinVMSemaphoreSupport extends PosixVMSemaphoreSupport {
 final class DarwinVMSemaphore extends VMSemaphore {
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    DarwinVMSemaphore() {
+    DarwinVMSemaphore(String name) {
+        super(name);
     }
 
     @Override

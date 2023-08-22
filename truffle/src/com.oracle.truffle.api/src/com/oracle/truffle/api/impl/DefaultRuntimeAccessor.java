@@ -40,8 +40,13 @@
  */
 package com.oracle.truffle.api.impl;
 
+import java.util.Collection;
+import java.util.List;
+import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
+import com.oracle.truffle.api.InternalResource;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -271,6 +276,15 @@ final class DefaultRuntimeAccessor extends Accessor {
             return DefaultContextThreadLocal.SINGLETON;
         }
 
+        @Override
+        public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
+            return ThreadLocal.withInitial(initialValue);
+        }
+
+        @Override
+        public Collection<InternalResource> getInternalResources() {
+            return List.of();
+        }
     }
 
 }

@@ -24,9 +24,10 @@
  */
 package org.graalvm.compiler.truffle.test.collection;
 
-import org.graalvm.compiler.truffle.runtime.collection.BTreeQueue;
 import org.junit.Assert;
 import org.junit.Test;
+
+import com.oracle.truffle.runtime.collection.BTreeQueue;
 
 import java.util.ArrayList;
 import java.util.Arrays;

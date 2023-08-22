@@ -211,8 +211,8 @@ public final class LivenessAnalysis {
     }
 
     private static boolean isExempt(Method m) {
-        if (m.getDeclaringKlass() == m.getMeta().java_security_AccessController &&
-                        m.getName() == Symbol.Name.executePrivileged) {
+        if ((m.getDeclaringKlass() == m.getMeta().java_security_AccessController &&
+                        m.getName() == Symbol.Name.executePrivileged) || m.isScoped()) {
             // Special case:
             // Frame locals inspection is necessary for access control.
             return true;

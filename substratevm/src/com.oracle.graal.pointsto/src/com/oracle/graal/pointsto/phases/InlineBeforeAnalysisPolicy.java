@@ -97,7 +97,13 @@ public abstract class InlineBeforeAnalysisPolicy {
 
     protected abstract AbstractPolicyScope createRootScope();
 
-    protected abstract AbstractPolicyScope openCalleeScope(ResolvedJavaMethod method, AbstractPolicyScope outer);
+    protected abstract AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
+                    ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle);
+
+    /** @see InlineBeforeAnalysisGraphDecoder#shouldOmitIntermediateMethodInStates */
+    protected boolean shouldOmitIntermediateMethodInState(ResolvedJavaMethod method) {
+        return false;
+    }
 
     public static final InlineBeforeAnalysisPolicy NO_INLINING = new InlineBeforeAnalysisPolicy(new NodePlugin[0]) {
 
@@ -137,7 +143,8 @@ public abstract class InlineBeforeAnalysisPolicy {
         }
 
         @Override
-        protected AbstractPolicyScope openCalleeScope(ResolvedJavaMethod method, AbstractPolicyScope outer) {
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
+                        ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
             throw AnalysisError.shouldNotReachHere("NO_INLINING policy should not try to inline");
         }
     };

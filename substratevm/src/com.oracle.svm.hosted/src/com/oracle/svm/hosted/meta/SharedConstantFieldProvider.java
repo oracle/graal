@@ -85,7 +85,7 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
     }
 
     private boolean allowConstantFolding(ResolvedJavaField field) {
-        if (field.isStatic() && !field.getDeclaringClass().isInitialized() && !(asAnalysisField(field).getWrapped() instanceof ReadableJavaField)) {
+        if (field.isStatic() && !isClassInitialized(field) && !(asAnalysisField(field).getWrapped() instanceof ReadableJavaField)) {
             /*
              * The class is not initialized at image build time, so we do not have a static field
              * value to constant fold. Note that a ReadableJavaField is able to provide a field
@@ -94,6 +94,10 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
             return false;
         }
         return hostVM.allowConstantFolding(field);
+    }
+
+    protected boolean isClassInitialized(ResolvedJavaField field) {
+        return field.getDeclaringClass().isInitialized();
     }
 
     @Override

@@ -26,6 +26,8 @@
 
 package com.oracle.graal.pointsto.standalone;
 
+import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
+
 import java.io.File;
 import java.lang.reflect.Method;
 import java.net.MalformedURLException;
@@ -63,9 +65,10 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.phases.NoClassInitializationPlugin;
+import com.oracle.graal.pointsto.reports.AnalysisReporter;
 import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureImpl;
 import com.oracle.graal.pointsto.standalone.features.StandaloneAnalysisFeatureManager;
-import com.oracle.graal.pointsto.reports.AnalysisReporter;
+import com.oracle.graal.pointsto.standalone.heap.StandaloneHeapSnapshotVerifier;
 import com.oracle.graal.pointsto.standalone.heap.StandaloneImageHeapScanner;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantFieldProvider;
 import com.oracle.graal.pointsto.standalone.meta.StandaloneConstantReflectionProvider;
@@ -82,8 +85,6 @@ import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
-
-import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 public final class PointsToAnalyzer {
 
@@ -162,7 +163,7 @@ public final class PointsToAnalyzer {
         StandaloneImageHeapScanner heapScanner = new StandaloneImageHeapScanner(bigbang, heap, aMetaAccess,
                         snippetReflection, aConstantReflection, new AnalysisObjectScanningObserver(bigbang), analysisClassLoader);
         aUniverse.setHeapScanner(heapScanner);
-        HeapSnapshotVerifier heapVerifier = new HeapSnapshotVerifier(bigbang, heap, heapScanner);
+        HeapSnapshotVerifier heapVerifier = new StandaloneHeapSnapshotVerifier(bigbang, heap, heapScanner);
         aUniverse.setHeapVerifier(heapVerifier);
         /* Register already created types as assignable. */
         aUniverse.getTypes().forEach(t -> {
@@ -187,11 +188,23 @@ public final class PointsToAnalyzer {
             bigbang.addRootClass(byte[][].class, false, false).registerAsInHeap("root class");
             bigbang.addRootClass(Object[].class, false, false).registerAsInHeap("root class");
 
-            bigbang.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true);
+            var rootReason = "Registered in " + PointsToAnalyzer.class;
+            bigbang.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, rootReason);
 
             for (JavaKind kind : JavaKind.values()) {
                 if (kind.isPrimitive() && kind != JavaKind.Void) {
                     bigbang.addRootClass(kind.toJavaClass(), false, true);
+                    bigbang.addRootField(kind.toBoxedJavaClass(), "value");
+                    bigbang.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true, rootReason);
+                    bigbang.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true, rootReason);
+                    /*
+                     * Register the cache location as reachable.
+                     * BoxingSnippets$Templates#getCacheLocation accesses the cache field.
+                     */
+                    Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
+                    if (innerClasses != null && innerClasses.length > 0) {
+                        bigbang.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable("root class");
+                    }
                 }
             }
             bigbang.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
@@ -321,7 +334,7 @@ public final class PointsToAnalyzer {
                 Class<?> analysisMainClass = Class.forName(entryClass, false, analysisClassLoader);
                 Method main = analysisMainClass.getDeclaredMethod("main", String[].class);
                 // main method is static, whatever the invokeSpecial is it is ignored.
-                bigbang.addRootMethod(main, true);
+                bigbang.addRootMethod(main, true, "Single entry point, registered in " + PointsToAnalyzer.class);
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException("Can't find the specified analysis main class " + entryClass, e);
             } catch (NoSuchMethodException e) {
@@ -339,7 +352,7 @@ public final class PointsToAnalyzer {
                 if (!t.isAbstract()) {
                     t.registerAsInHeap("Root class.");
                 }
-                bigbang.addRootMethod(m, isInvokeSpecial);
+                bigbang.addRootMethod(m, isInvokeSpecial, "Entry point from file, registered in " + PointsToAnalyzer.class);
             });
         }
     }

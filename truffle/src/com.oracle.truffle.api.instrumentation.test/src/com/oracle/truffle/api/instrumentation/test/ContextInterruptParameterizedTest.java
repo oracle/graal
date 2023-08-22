@@ -74,6 +74,7 @@ import org.junit.runners.Parameterized;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.impl.DefaultTruffleRuntime;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
+import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Parameterized.class)
 public class ContextInterruptParameterizedTest {
@@ -256,7 +257,7 @@ public class ContextInterruptParameterizedTest {
     }
 
     private static Object getThreadLocalStackTraceIfAvailable() {
-        if (Truffle.getRuntime() instanceof DefaultTruffleRuntime) {
+        if (TruffleTestAssumptions.isFallbackRuntime() && !TruffleTestAssumptions.isClassLoaderEncapsulation()) {
             DefaultTruffleRuntime runtime = (DefaultTruffleRuntime) (Truffle.getRuntime());
             try {
                 Method method = runtime.getClass().getDeclaredMethod("getThreadLocalStackTrace");

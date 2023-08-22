@@ -25,6 +25,7 @@ package com.oracle.truffle.espresso.processor.builders;
 public final class ModifierBuilder extends AbstractCodeBuilder {
     public static String PUBLIC = "public";
     public static String PRIVATE = "private";
+    public static String PROTECTED = "protected";
     public static String ABSTRACT = "abstract";
     public static String STATIC = "static";
     public static String FINAL = "final";
@@ -34,6 +35,7 @@ public final class ModifierBuilder extends AbstractCodeBuilder {
 
     private boolean qualifiedAsPublic;
     private boolean qualifiedAsPrivate;
+    private boolean qualifiedAsProtected;
     private boolean qualifiedAsStatic;
     private boolean qualifiedAsFinal;
     private boolean qualifiedAsVolatile;
@@ -45,6 +47,9 @@ public final class ModifierBuilder extends AbstractCodeBuilder {
         if (qualifiedAsPrivate) {
             throw new IllegalStateException("Cannot qualify as both public and private");
         }
+        if (qualifiedAsProtected) {
+            throw new IllegalStateException("Cannot qualify as both public and protected");
+        }
         this.qualifiedAsPublic = true;
         return this;
     }
@@ -52,17 +57,29 @@ public final class ModifierBuilder extends AbstractCodeBuilder {
     public ModifierBuilder asPrivate() {
         if (qualifiedAsPublic) {
             throw new IllegalStateException("Cannot qualify as both public and private");
-        } else if (qualifiedAsAbstract) {
+        }
+        if (qualifiedAsProtected) {
+            throw new IllegalStateException("Cannot qualify as both private and protected");
+        }
+        if (qualifiedAsAbstract) {
             throw new IllegalStateException("Cannot qualify as both abstract and private");
         }
         this.qualifiedAsPrivate = true;
         return this;
     }
 
-    public ModifierBuilder asStatic() {
-        if (qualifiedAsAbstract) {
-            throw new IllegalStateException("Cannot qualify as both abstract and static");
+    public ModifierBuilder asProtected() {
+        if (qualifiedAsPublic) {
+            throw new IllegalStateException("Cannot qualify as both public and protected");
         }
+        if (qualifiedAsPrivate) {
+            throw new IllegalStateException("Cannot qualify as both protected and private");
+        }
+        this.qualifiedAsProtected = true;
+        return this;
+    }
+
+    public ModifierBuilder asStatic() {
         this.qualifiedAsStatic = true;
         return this;
     }
@@ -98,6 +115,7 @@ public final class ModifierBuilder extends AbstractCodeBuilder {
     public ModifierBuilder combineWith(ModifierBuilder other) {
         qualifiedAsPublic = qualifiedAsPublic || other.qualifiedAsPublic;
         qualifiedAsPrivate = qualifiedAsPrivate || other.qualifiedAsPrivate;
+        qualifiedAsProtected = qualifiedAsProtected || other.qualifiedAsProtected;
         qualifiedAsStatic = qualifiedAsStatic || other.qualifiedAsStatic;
         qualifiedAsFinal = qualifiedAsFinal || other.qualifiedAsFinal;
         qualifiedAsVolatile = qualifiedAsVolatile || other.qualifiedAsVolatile;
@@ -113,11 +131,15 @@ public final class ModifierBuilder extends AbstractCodeBuilder {
             sb.appendSpace(PUBLIC);
         } else if (qualifiedAsPrivate) {
             sb.appendSpace(PRIVATE);
+        } else if (qualifiedAsProtected) {
+            sb.appendSpace(PROTECTED);
         }
 
         if (qualifiedAsAbstract) {
             sb.appendSpace(ABSTRACT);
-        } else if (qualifiedAsStatic) {
+        }
+
+        if (qualifiedAsStatic) {
             sb.appendSpace(STATIC);
         }
 

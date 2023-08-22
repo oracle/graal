@@ -28,7 +28,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.concurrent.atomic.AtomicReference;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
 
@@ -42,6 +41,7 @@ import com.oracle.truffle.api.instrumentation.ThreadsActivationListener;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage.LanguageContext;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class ThreadsActivationCompilationTest extends AbstractPolyglotTest {
 

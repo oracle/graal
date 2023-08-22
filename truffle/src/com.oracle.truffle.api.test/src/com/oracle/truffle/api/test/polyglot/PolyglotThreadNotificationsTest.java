@@ -44,6 +44,10 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.PrintStream;
 import java.time.Duration;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.WeakHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -69,6 +73,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
 import com.oracle.truffle.api.test.common.NullObject;
 import com.oracle.truffle.api.test.common.TestUtils;
@@ -608,6 +613,350 @@ public class PolyglotThreadNotificationsTest {
             }
             Assert.assertEquals(1, beforeEnterErrorCount);
             Assert.assertEquals(1, afterLeaveErrorCount);
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class FinalizeThreadNotificationLanguage extends TruffleLanguage<FinalizeThreadNotificationLanguage.Context> {
+        static final String ID = TestUtils.getDefaultLanguageId(FinalizeThreadNotificationLanguage.class);
+
+        static class Context {
+            private final Env env;
+            Map<Thread, Boolean> initializedThreads = new WeakHashMap<>();
+            Map<Thread, CallTarget> threadDisposeCallTargetMap = new WeakHashMap<>();
+            AtomicInteger finalizeThreadCount = new AtomicInteger();
+            AtomicInteger disposeThreadCount = new AtomicInteger();
+            List<Thread> polyglotThreads = new ArrayList<>();
+
+            Context(Env env) {
+                this.env = env;
+            }
+
+            private static final ContextReference<Context> REFERENCE = ContextReference.create(FinalizeThreadNotificationLanguage.class);
+        }
+
+        @Override
+        protected Context createContext(Env env) {
+            return new Context(env);
+        }
+
+        enum Action {
+            START_THREADS,
+            FINALIZE_THREAD
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            Action action = Action.valueOf(request.getSource().getCharacters().toString());
+            return new RootNode(this) {
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return evalBoundary();
+                }
+
+                @TruffleBoundary
+                private Object evalBoundary() {
+                    Context ctx = Context.REFERENCE.get(this);
+                    if (action == Action.START_THREADS) {
+                        CountDownLatch countDownLatch = new CountDownLatch(10);
+                        for (int i = 0; i < 10; i++) {
+                            ctx.polyglotThreads.add(ctx.env.newTruffleThreadBuilder(() -> countDown(countDownLatch)).build());
+                            ctx.polyglotThreads.get(ctx.polyglotThreads.size() - 1).start();
+                        }
+                        try {
+                            countDownLatch.await();
+                        } catch (InterruptedException ie) {
+                            throw new AssertionError(ie);
+                        }
+                    }
+                    if (action == Action.FINALIZE_THREAD) {
+                        ctx.finalizeThreadCount.incrementAndGet();
+                    }
+                    return NullObject.SINGLETON;
+                }
+
+                @TruffleBoundary
+                private static void countDown(CountDownLatch countDownLatch) {
+                    countDownLatch.countDown();
+                }
+
+            }.getCallTarget();
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+
+        @Override
+        protected void initializeThread(Context context, Thread thread) {
+            context.initializedThreads.put(thread, true);
+            context.threadDisposeCallTargetMap.put(thread, new RootNode(this) {
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return evalBoundary();
+                }
+
+                @TruffleBoundary
+                private Object evalBoundary() {
+                    Context ctx = Context.REFERENCE.get(this);
+                    ctx.disposeThreadCount.incrementAndGet();
+                    return NullObject.SINGLETON;
+                }
+
+            }.getCallTarget());
+        }
+
+        @Override
+        protected void finalizeThread(Context context, Thread thread) {
+            CallTarget finalizeThreadCalltarget = context.env.parseInternal(
+                            Source.newBuilder(FinalizeThreadNotificationLanguage.ID, Action.FINALIZE_THREAD.name(), Action.FINALIZE_THREAD.name()).build());
+            if (finalizeThreadCalltarget != null) {
+                finalizeThreadCalltarget.call();
+            }
+            if (context.polyglotThreads.contains(thread)) {
+                // initialize new language during finalization of polyglot threads
+                context.env.parseInternal(Source.newBuilder(ThreadFinalizationCounterLanguage.ID, "", "dummy").build());
+            }
+        }
+
+        @Override
+        protected void disposeThread(Context context, Thread thread) {
+            CallTarget disposeThreadCalltarget = context.threadDisposeCallTargetMap.get(thread);
+            if (disposeThreadCalltarget != null) {
+                disposeThreadCalltarget.call();
+            }
+        }
+
+        @Override
+        protected void finalizeContext(Context context) {
+            for (Thread polyglotThread : context.polyglotThreads) {
+                try {
+                    polyglotThread.join();
+                } catch (InterruptedException ie) {
+                    throw new AssertionError(ie);
+                }
+            }
+        }
+
+        @Override
+        protected void disposeContext(Context context) {
+            Assert.assertEquals(1 + context.polyglotThreads.size(), context.finalizeThreadCount.get());
+            Assert.assertEquals(1 + context.polyglotThreads.size(), context.disposeThreadCount.get());
+        }
+    }
+
+    @Test
+    public void testFinalizeThreadNotification() {
+        try (Context ctx = Context.newBuilder().allowCreateThread(true).build()) {
+            ctx.eval(FinalizeThreadNotificationLanguage.ID, FinalizeThreadNotificationLanguage.Action.START_THREADS.name());
+        }
+    }
+
+    @TruffleLanguage.Registration(internal = true)
+    static class ThreadFinalizationCounterLanguage extends TruffleLanguage<ThreadFinalizationCounterLanguage.Context> {
+        static final String ID = TestUtils.getDefaultLanguageId(ThreadFinalizationCounterLanguage.class);
+
+        static class Context {
+            private final AtomicInteger initializedThreads = new AtomicInteger();
+            private final AtomicInteger finalizedThreads = new AtomicInteger();
+            private final AtomicInteger disposedThreads = new AtomicInteger();
+        }
+
+        @Override
+        protected Context createContext(Env env) {
+            return new Context();
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return new RootNode(this) {
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return NullObject.SINGLETON;
+                }
+            }.getCallTarget();
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+
+        @Override
+        protected void initializeThread(Context context, Thread thread) {
+            context.initializedThreads.incrementAndGet();
+        }
+
+        @Override
+        protected void finalizeThread(Context context, Thread thread) {
+            context.finalizedThreads.incrementAndGet();
+        }
+
+        @Override
+        protected void disposeThread(Context context, Thread thread) {
+            context.disposedThreads.incrementAndGet();
+        }
+
+        @Override
+        protected void disposeContext(Context context) {
+            Assert.assertEquals(context.initializedThreads.get(), context.finalizedThreads.get());
+            Assert.assertEquals(context.finalizedThreads.get(), context.disposedThreads.get());
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class DisallowedOperationsInFinalizeThreadLanguage extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(DisallowedOperationsInFinalizeThreadLanguage.class);
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+
+        @Override
+        protected void finalizeThread(ExecutableContext context, Thread thread) {
+            AtomicReference<Throwable> throwableRef = new AtomicReference<>();
+            Thread t = context.env.newTruffleThreadBuilder(() -> {
+            }).build();
+            t.setUncaughtExceptionHandler((t1, e) -> throwableRef.set(e));
+            t.start();
+            try {
+                t.join();
+            } catch (InterruptedException ie) {
+                throw new AssertionError(ie);
+            }
+            Assert.assertTrue(throwableRef.get() instanceof IllegalStateException);
+            Assert.assertEquals("The Context is already closed.", throwableRef.get().getMessage());
+            AbstractPolyglotTest.assertFails(() -> context.env.parseInternal(
+                            Source.newBuilder(ThreadFinalizationCounterLanguage.ID, "", "dummy").build()), IllegalStateException.class,
+                            e -> Assert.assertEquals(
+                                            String.format("Creation of context for language %s is no longer allowed. Language contexts are finalized when embedder threads are being finalized.",
+                                                            ThreadFinalizationCounterLanguage.ID),
+                                            e.getMessage()));
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+    }
+
+    @Test
+    public void testDisallowedOperationsInFinalizeThread() {
+        try (Context ctx = Context.newBuilder(DisallowedOperationsInFinalizeThreadLanguage.ID, FinalizeThreadNotificationLanguage.ID).allowCreateThread(true).build()) {
+            AbstractExecutableTestLanguage.evalTestLanguage(ctx, DisallowedOperationsInFinalizeThreadLanguage.class, "");
+        }
+    }
+
+    @TruffleLanguage.Registration
+    static class DeadlockLanguageInitializationTestLanguage extends TruffleLanguage<DeadlockLanguageInitializationTestLanguage.Context> {
+        static final String ID = TestUtils.getDefaultLanguageId(DeadlockLanguageInitializationTestLanguage.class);
+
+        static class Context {
+            private final Env env;
+            private final Thread creationThread;
+
+            Context(Env env, Thread creationThread) {
+                this.env = env;
+                this.creationThread = creationThread;
+            }
+
+            private static final ContextReference<Context> REFERENCE = ContextReference.create(DeadlockLanguageInitializationTestLanguage.class);
+        }
+
+        @Override
+        protected Context createContext(Env env) {
+            return new Context(env, Thread.currentThread());
+        }
+
+        @Override
+        protected CallTarget parse(ParsingRequest request) throws Exception {
+            return new RootNode(this) {
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    return evalBoundary();
+                }
+
+                @TruffleBoundary
+                private Object evalBoundary() {
+                    Context ctx = Context.REFERENCE.get(this);
+                    Thread t = ctx.env.newTruffleThreadBuilder(() -> {
+                    }).build();
+                    t.start();
+                    ctx.env.initializeLanguage(ctx.env.getInternalLanguages().get(DummyLanguage1.ID));
+                    try {
+                        t.join();
+                    } catch (InterruptedException ie) {
+                        throw new AssertionError(ie);
+                    }
+                    return NullObject.SINGLETON;
+                }
+
+            }.getCallTarget();
+        }
+
+        @Override
+        protected void initializeThread(Context context, Thread thread) {
+            if (thread != context.creationThread) {
+                context.env.initializeLanguage(context.env.getInternalLanguages().get(DummyLanguage1.ID));
+            }
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+    }
+
+    @TruffleLanguage.Registration(internal = true)
+    static class DummyLanguage1 extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(DummyLanguage1.class);
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+
+        @Override
+        protected void initializeThread(ExecutableContext context, Thread thread) {
+            context.env.initializeLanguage(context.env.getInternalLanguages().get(DummyLanguage2.ID));
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+    }
+
+    @TruffleLanguage.Registration(internal = true)
+    static class DummyLanguage2 extends AbstractExecutableTestLanguage {
+        static final String ID = TestUtils.getDefaultLanguageId(DummyLanguage2.class);
+
+        @Override
+        protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
+            return null;
+        }
+
+        @Override
+        protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
+            return true;
+        }
+    }
+
+    @Test
+    public void testLanguageInitializationDeadlock() {
+        // TODO GR-47643 too slow with isolates
+        TruffleTestAssumptions.assumeWeakEncapsulation();
+
+        for (int i = 0; i < 1000; i++) {
+            try (Context ctx = Context.newBuilder().allowCreateThread(true).build()) {
+                ctx.eval(DeadlockLanguageInitializationTestLanguage.ID, "");
+            }
         }
     }
 

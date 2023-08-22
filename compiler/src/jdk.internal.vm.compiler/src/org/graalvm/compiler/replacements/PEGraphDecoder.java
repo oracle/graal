@@ -80,6 +80,7 @@ import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
+import org.graalvm.compiler.nodes.Invokable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -94,6 +95,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.UnwindNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.calc.FloatingNode;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.extended.AnchoringNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -236,24 +238,41 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public NodeSourcePosition getCallerBytecodePosition(NodeSourcePosition position) {
+        public NodeSourcePosition getCallerNodeSourcePosition() {
+            NodeSourcePosition callerPosition = resolveCallerBytecodePosition();
+            if (callerPosition == null) {
+                return null;
+            }
+            final SourceLanguagePosition pos = resolveSourceLanguagePosition();
+            if (pos != null) {
+                return new NodeSourcePosition(pos, callerPosition.getCaller(), callerPosition.getMethod(), callerPosition.getBCI());
+            }
+            return callerBytecodePosition;
+        }
+
+        @Override
+        public NodeSourcePosition getNodeSourcePosition(NodeSourcePosition original) {
+            assert original != null : "Unexpected null value";
+            NodeSourcePosition callerPosition = resolveCallerBytecodePosition();
+            if (callerPosition == null) {
+                return original;
+            }
+            return original.addCaller(resolveSourceLanguagePosition(), callerBytecodePosition);
+        }
+
+        private NodeSourcePosition resolveCallerBytecodePosition() {
             if (caller == null) {
-                return position;
+                return null;
             }
             if (callerBytecodePosition == null) {
                 NodeSourcePosition invokePosition = invokeData.invoke.asNode().getNodeSourcePosition();
                 if (invokePosition == null) {
-                    assert position == null : "should only happen when tracking is disabled";
                     return null;
                 }
+                if (invokePosition.getCaller() != null && shouldOmitIntermediateMethodInStates(invokePosition.getMethod())) {
+                    invokePosition = invokePosition.getCaller();
+                }
                 callerBytecodePosition = invokePosition;
-            }
-            if (position != null) {
-                return position.addCaller(resolveSourceLanguagePosition(), callerBytecodePosition);
-            }
-            final SourceLanguagePosition pos = resolveSourceLanguagePosition();
-            if (pos != null && callerBytecodePosition != null) {
-                return new NodeSourcePosition(pos, callerBytecodePosition.getCaller(), callerBytecodePosition.getMethod(), callerBytecodePosition.getBCI());
             }
             return callerBytecodePosition;
         }
@@ -407,7 +426,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public <T extends ValueNode> T append(T value) {
+        public <T extends Node> T append(T value) {
             throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
@@ -417,7 +436,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
         }
 
         @Override
-        public Invoke handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
+        public Invokable handleReplacedInvoke(InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode[] args, boolean inlineEverything) {
             throw unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
         }
 
@@ -536,11 +555,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @SuppressWarnings("try")
         @Override
-        public <T extends ValueNode> T append(T v) {
+        public <T extends Node> T append(T v) {
             if (v.graph() != null) {
                 return v;
             }
-            try (DebugCloseable position = withNodeSoucePosition()) {
+            try (DebugCloseable position = withNodeSourcePosition()) {
                 T added = getGraph().addOrUniqueWithInputs(v);
                 if (added == v) {
                     updateLastInstruction(v);
@@ -549,9 +568,24 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
         }
 
-        private DebugCloseable withNodeSoucePosition() {
+        @Override
+        public Node canonicalizeAndAdd(Node node) {
+            Node canonicalized = node;
+            if (canonicalized instanceof FixedNode fixedNode) {
+                canonicalized = canonicalizeFixedNode(methodScope, null, fixedNode);
+            } else if (canonicalized instanceof FloatingNode floatingNode) {
+                canonicalized = handleFloatingNodeBeforeAdd(methodScope, null, floatingNode);
+            }
+
+            if (canonicalized == null) {
+                return null;
+            }
+            return super.canonicalizeAndAdd(canonicalized);
+        }
+
+        private DebugCloseable withNodeSourcePosition() {
             if (getGraph().trackNodeSourcePosition()) {
-                NodeSourcePosition callerBytecodePosition = methodScope.getCallerBytecodePosition();
+                NodeSourcePosition callerBytecodePosition = methodScope.getCallerNodeSourcePosition();
                 if (callerBytecodePosition != null) {
                     return getGraph().withNodeSourcePosition(callerBytecodePosition);
                 }
@@ -559,7 +593,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             return null;
         }
 
-        private <T extends ValueNode> void updateLastInstruction(T v) {
+        private <T extends Node> void updateLastInstruction(T v) {
             if (v instanceof FixedNode) {
                 FixedNode fixedNode = (FixedNode) v;
                 if (lastInstr != null) {
@@ -707,11 +741,11 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         @SuppressWarnings("try")
         @Override
-        public <T extends ValueNode> T append(T v) {
+        public <T extends Node> T append(T v) {
             if (v.graph() != null) {
                 return v;
             }
-            try (DebugCloseable position = withNodeSoucePosition()) {
+            try (DebugCloseable position = withNodeSourcePosition()) {
                 T added = getGraph().addOrUniqueWithInputs(v);
                 if (added == v) {
                     updateLastInstruction(v);
@@ -720,17 +754,17 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
             }
         }
 
-        private DebugCloseable withNodeSoucePosition() {
+        private DebugCloseable withNodeSourcePosition() {
             if (getGraph().trackNodeSourcePosition()) {
-                NodeSourcePosition callerBytecodePosition = methodScope.getCallerBytecodePosition();
-                if (callerBytecodePosition != null) {
-                    return getGraph().withNodeSourcePosition(callerBytecodePosition);
+                NodeSourcePosition callerNodeSourcePosition = methodScope.getCallerNodeSourcePosition();
+                if (callerNodeSourcePosition != null) {
+                    return getGraph().withNodeSourcePosition(callerNodeSourcePosition);
                 }
             }
             return null;
         }
 
-        private <T extends ValueNode> void updateLastInstruction(T value) {
+        private <T extends Node> void updateLastInstruction(T value) {
             if (value instanceof FixedWithNextNode) {
                 FixedWithNextNode fixed = (FixedWithNextNode) value;
                 graph.addBeforeFixed(insertBefore, fixed);
@@ -944,20 +978,22 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
     @Override
     protected LoopScope handleInvoke(MethodScope s, LoopScope loopScope, InvokeData invokeData) {
-        PEMethodScope methodScope = (PEMethodScope) s;
         /*
          * Decode the call target, but do not add it to the graph yet. This avoids adding usages for
          * all the arguments, which are expensive to remove again when we can inline the method.
          */
         assert invokeData.invoke.callTarget() == null : "callTarget edge is ignored during decoding of Invoke";
-        CallTargetNode callTarget = (CallTargetNode) decodeFloatingNode(methodScope, loopScope, invokeData.callTargetOrderId);
-        invokeData.callTarget = callTarget;
-        if (callTarget instanceof MethodCallTargetNode) {
-            MethodCallTargetNode methodCall = (MethodCallTargetNode) callTarget;
+        invokeData.callTarget = (CallTargetNode) decodeFloatingNode(s, loopScope, invokeData.callTargetOrderId);
+        return handleInvokeWithCallTarget((PEMethodScope) s, loopScope, invokeData);
+    }
+
+    protected LoopScope handleInvokeWithCallTarget(PEMethodScope methodScope, LoopScope loopScope, InvokeData invokeData) {
+        CallTargetNode callTarget = invokeData.callTarget;
+        if (callTarget instanceof MethodCallTargetNode methodCall) {
             if (methodCall.invokeKind().hasReceiver()) {
                 invokeData.constantReceiver = methodCall.arguments().get(0).asJavaConstant();
             }
-            callTarget = trySimplifyCallTarget(methodScope, invokeData, (MethodCallTargetNode) callTarget);
+            callTarget = trySimplifyCallTarget(methodScope, invokeData, methodCall);
             ResolvedJavaMethod targetMethod = callTarget.targetMethod();
             if (forceLink && targetMethod.hasBytecodes() && targetMethod.getCode() == null && !targetMethod.getDeclaringClass().isLinked()) {
                 targetMethod.getDeclaringClass().link();
@@ -977,7 +1013,9 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
 
         /* We know that we need an invoke, so now we can add the call target to the graph. */
         graph.add(callTarget);
-        registerNode(loopScope, invokeData.callTargetOrderId, callTarget, false, false);
+        if (invokeData.callTargetOrderId > 0) {
+            registerNode(loopScope, invokeData.callTargetOrderId, callTarget, false, false);
+        }
         appendInvoke(methodScope, loopScope, invokeData, callTarget);
     }
 
@@ -1100,7 +1138,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                                     BytecodeFrame.isPlaceholderBci(((DeoptBciSupplier) graphBuilderContext.lastInstr).bci())) {
                         ((DeoptBciSupplier) graphBuilderContext.lastInstr).setBci(invokeData.invoke.bci());
                     }
-                    registerNode(loopScope, invokeData.invokeOrderId, graphBuilderContext.pushedNode, true, true);
+                    registerNode(loopScope, invokeData.orderId, graphBuilderContext.pushedNode, true, true);
                     invoke.asNode().replaceAtUsages(graphBuilderContext.pushedNode);
                     BeginNode begin = graphBuilderContext.lastInstr instanceof BeginNode ? (BeginNode) graphBuilderContext.lastInstr : null;
                     FixedNode afterInvoke = nodeAfterInvoke(methodScope, loopScope, invokeData, begin);
@@ -1362,7 +1400,7 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
          * Use the handles that we have on the return value and the exception to update the
          * orderId->Node table.
          */
-        registerNode(loopScope, invokeData.invokeOrderId, returnValue, true, true);
+        registerNode(loopScope, invokeData.orderId, returnValue, true, true);
         if (invoke instanceof InvokeWithExceptionNode) {
             registerNode(loopScope, invokeData.exceptionOrderId, exceptionValue, true, true);
         }
@@ -1647,8 +1685,21 @@ public abstract class PEGraphDecoder extends SimplifyingGraphDecoder {
                 ensureOuterStateDecoded(methodScope.caller);
                 outerState.setOuterFrameState(methodScope.caller.outerState);
             }
+            if (outerState.outerFrameState() != null && shouldOmitIntermediateMethodInStates(outerState.getMethod())) {
+                outerState = outerState.outerFrameState();
+            }
             methodScope.outerState = outerState;
         }
+    }
+
+    /**
+     * Determines whether to omit an intermediate method (a method other than the root method or a
+     * leaf caller) from {@link FrameState} or {@link NodeSourcePosition} information. When used to
+     * discard intermediate methods of generated code with non-deterministic names, for example,
+     * this can improve matching of profile-guided optimization information between executions.
+     */
+    protected boolean shouldOmitIntermediateMethodInStates(@SuppressWarnings("unused") ResolvedJavaMethod method) {
+        return false;
     }
 
     protected void ensureStateAfterDecoded(PEMethodScope methodScope) {

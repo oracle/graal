@@ -86,10 +86,38 @@ public class ClassEntry extends StructureTypeEntry {
      */
     private final EconomicMap<Range, CompiledMethodEntry> compiledMethodIndex = EconomicMap.create();
 
+    /**
+     * A list of all files referenced from info associated with this class, including info detailing
+     * inline method ranges.
+     */
+    private final ArrayList<FileEntry> files;
+    /**
+     * A list of all directories referenced from info associated with this class, including info
+     * detailing inline method ranges.
+     */
+    private final ArrayList<DirEntry> dirs;
+    /**
+     * An index identifying the file table position of every file referenced from info associated
+     * with this class, including info detailing inline method ranges.
+     */
+    private EconomicMap<FileEntry, Integer> fileIndex;
+    /**
+     * An index identifying the dir table position of every directory referenced from info
+     * associated with this class, including info detailing inline method ranges.
+     */
+    private EconomicMap<DirEntry, Integer> dirIndex;
+
     public ClassEntry(String className, FileEntry fileEntry, int size) {
         super(className, size);
         this.fileEntry = fileEntry;
         this.loader = null;
+        // file and dir lists/indexes are populated after all DebugInfo API input has
+        // been received and are only created on demand
+        files = new ArrayList<>();
+        dirs = new ArrayList<>();
+        // create these on demand using the size of the file and dir lists
+        this.fileIndex = null;
+        this.dirIndex = null;
     }
 
     @Override
@@ -179,7 +207,33 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     public int getFileIdx() {
-        return fileEntry.getIdx();
+        return getFileIdx(this.getFileEntry());
+    }
+
+    public int getFileIdx(FileEntry file) {
+        if (file == null || fileIndex == null) {
+            return 0;
+        }
+        return fileIndex.get(file);
+    }
+
+    public DirEntry getDirEntry(FileEntry file) {
+        if (file == null) {
+            return null;
+        }
+        return file.getDirEntry();
+    }
+
+    public int getDirIdx(FileEntry file) {
+        DirEntry dirEntry = getDirEntry(file);
+        return getDirIdx(dirEntry);
+    }
+
+    public int getDirIdx(DirEntry dir) {
+        if (dir == null || dir.getPathString().isEmpty() || dirIndex == null) {
+            return 0;
+        }
+        return dirIndex.get(dir);
     }
 
     public String getLoaderId() {
@@ -187,23 +241,12 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     /**
-     * Retrieve a stream of all compiled method entries for this class, including both normal and
-     * deopt fallback compiled methods.
+     * Retrieve a stream of all compiled method entries for this class.
      *
      * @return a stream of all compiled method entries for this class.
      */
     public Stream<CompiledMethodEntry> compiledEntries() {
         return compiledEntries.stream();
-    }
-
-    /**
-     * Retrieve a stream of all normal compiled method entries for this class, excluding deopt
-     * fallback compiled methods.
-     *
-     * @return a stream of all normal compiled method entries for this class.
-     */
-    public Stream<CompiledMethodEntry> normalCompiledEntries() {
-        return compiledEntries();
     }
 
     protected void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
@@ -267,8 +310,17 @@ public class ClassEntry extends StructureTypeEntry {
         return builder.toString();
     }
 
+    public int compiledEntryCount() {
+        return compiledEntries.size();
+    }
+
     public boolean hasCompiledEntries() {
-        return compiledEntries.size() != 0;
+        return compiledEntryCount() != 0;
+    }
+
+    public int compiledEntriesBase() {
+        assert hasCompiledEntries();
+        return compiledEntries.get(0).getPrimary().getLo();
     }
 
     public ClassEntry getSuperClass() {
@@ -316,5 +368,81 @@ public class ClassEntry extends StructureTypeEntry {
     public int hipc() {
         assert hasCompiledEntries();
         return compiledEntries.get(compiledEntries.size() - 1).getPrimary().getHi();
+    }
+
+    /**
+     * Add a file to the list of files referenced from info associated with this class.
+     * 
+     * @param file The file to be added.
+     */
+    public void includeFile(FileEntry file) {
+        assert !files.contains(file) : "caller should ensure file is only included once";
+        assert fileIndex == null : "cannot include files after index has been created";
+        files.add(file);
+    }
+
+    /**
+     * Add a directory to the list of firectories referenced from info associated with this class.
+     * 
+     * @param dirEntry The directory to be added.
+     */
+    public void includeDir(DirEntry dirEntry) {
+        assert !dirs.contains(dirEntry) : "caller should ensure dir is only included once";
+        assert dirIndex == null : "cannot include dirs after index has been created";
+        dirs.add(dirEntry);
+    }
+
+    /**
+     * Populate the file and directory indexes that track positions in the file and dir tables for
+     * this class's line info section.
+     */
+    public void buildFileAndDirIndexes() {
+        // this is a one-off operation
+        assert fileIndex == null && dirIndex == null : "file and indexes can only be generated once";
+        if (files.isEmpty()) {
+            assert dirs.isEmpty() : "should not have included any dirs if we have no files";
+        }
+        int idx = 1;
+        fileIndex = EconomicMap.create(files.size());
+        for (FileEntry file : files) {
+            fileIndex.put(file, idx++);
+        }
+        dirIndex = EconomicMap.create(dirs.size());
+        idx = 1;
+        for (DirEntry dir : dirs) {
+            if (!dir.getPathString().isEmpty()) {
+                dirIndex.put(dir, idx++);
+            } else {
+                assert idx == 1;
+            }
+        }
+    }
+
+    /**
+     * Retrieve a stream of all files referenced from debug info for this class in line info file
+     * table order, starting with the file at index 1.
+     * 
+     * @return a stream of all referenced files
+     */
+    public Stream<FileEntry> fileStream() {
+        if (!files.isEmpty()) {
+            return files.stream();
+        } else {
+            return Stream.empty();
+        }
+    }
+
+    /**
+     * Retrieve a stream of all directories referenced from debug info for this class in line info
+     * directory table order, starting with the directory at index 1.
+     *
+     * @return a stream of all referenced directories
+     */
+    public Stream<DirEntry> dirStream() {
+        if (!dirs.isEmpty()) {
+            return dirs.stream();
+        } else {
+            return Stream.empty();
+        }
     }
 }

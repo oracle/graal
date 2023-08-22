@@ -503,7 +503,6 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
 
     private void generateExceptionHandler(ResolvedJavaMethod method, HostedProviders providers, Purpose purpose, HostedGraphKit kit, ExceptionObjectNode exception, JavaKind returnKind) {
         if (entryPointData.getExceptionHandler() == CEntryPoint.FatalExceptionHandler.class) {
-            kit.appendStateSplitProxy(exception.stateAfter());
             CEntryPointLeaveNode leave = new CEntryPointLeaveNode(LeaveAction.ExceptionAbort, exception);
             kit.append(leave);
             kit.append(new LoweredDeadEndNode());

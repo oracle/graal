@@ -92,7 +92,7 @@ final class Target_jdk_jfr_internal_periodic_JVMEventTask {
 // Only present in JDKs without JDK-8268398
 @TargetClass(className = "jdk.jfr.internal.Utils", onlyWith = JDK17OrEarlier.class)
 @Platforms(LINUX.class)
-final class Target_jdk_jfr_internal_Utils {
+final class Target_jdk_jfr_internal_Utils_JDK17 {
     @Alias //
     @RecomputeFieldValue(kind = Kind.Reset) //
     private static Target_jdk_internal_platform_Metrics[] metrics;

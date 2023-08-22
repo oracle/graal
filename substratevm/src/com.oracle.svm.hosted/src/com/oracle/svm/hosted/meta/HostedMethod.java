@@ -62,9 +62,11 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.deopt.Deoptimizer;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.graal.code.CustomCallingConventionMethod;
 import com.oracle.svm.core.graal.code.ExplicitCallingConvention;
 import com.oracle.svm.core.graal.code.StubCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
+import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
 import com.oracle.svm.core.graal.phases.SubstrateSafepointInsertionPhase;
 import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SharedMethod;
@@ -349,6 +351,13 @@ public final class HostedMethod extends HostedElement implements SharedMethod, W
     @Override
     public SubstrateCallingConventionKind getCallingConventionKind() {
         return ExplicitCallingConvention.Util.getCallingConventionKind(wrapped, isEntryPoint());
+    }
+
+    @Override
+    public SubstrateCallingConventionType getCustomCallingConventionType() {
+        VMError.guarantee(getCallingConventionKind().isCustom(), "%s does not have a custom calling convention.", name);
+        VMError.guarantee(wrapped.getWrapped() instanceof CustomCallingConventionMethod, "%s has a custom calling convention but doesn't implement %s", name, CustomCallingConventionMethod.class);
+        return ((CustomCallingConventionMethod) wrapped.getWrapped()).getCallingConvention();
     }
 
     @Override

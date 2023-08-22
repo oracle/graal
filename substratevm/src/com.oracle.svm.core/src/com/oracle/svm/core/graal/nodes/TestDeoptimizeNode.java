@@ -38,7 +38,6 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.meta.SharedMethod;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
@@ -61,7 +60,13 @@ public class TestDeoptimizeNode extends FixedWithNextNode implements Canonicaliz
         ResolvedJavaMethod method = graph().method();
 
         if (SubstrateOptions.parseOnce()) {
-            throw VMError.unimplemented("Deopt Testing does not yet work.");
+            if (MultiMethod.isDeoptTarget(method)) {
+                /* no-op for deoptimization target methods. */
+                return null;
+            } else {
+                /* deoptimization for all other methods. */
+                return new DeoptimizeNode(DeoptimizationAction.None, DeoptimizationReason.TransferToInterpreter);
+            }
         } else {
             if (method instanceof SharedMethod) {
                 if (MultiMethod.isDeoptTarget(method)) {

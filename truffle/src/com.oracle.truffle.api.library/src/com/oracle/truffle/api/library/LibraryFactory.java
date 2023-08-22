@@ -504,6 +504,16 @@ public abstract class LibraryFactory<T extends Library> {
         }
     }
 
+    /**
+     * Internal method for generated code only.
+     *
+     * @since 23.1
+     */
+    protected static boolean assertAdopted(Node node) {
+        LibraryExport.assertAdopted(node);
+        return true;
+    }
+
     private boolean needsAssertions(LibraryExport<T> export) {
         Class<?> registerClass = export.registerClass;
         if (export.isDefaultExport() && registerClass != null && registerClass.getName().equals("com.oracle.truffle.api.interop.DefaultTruffleObjectExports")) {

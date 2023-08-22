@@ -58,7 +58,8 @@ import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransfor
  */
 @TargetClass(className = "java.lang.invoke.BoundMethodHandle")
 final class Target_java_lang_invoke_BoundMethodHandle {
-    @Alias static Target_java_lang_invoke_BoundMethodHandle_Specializer SPECIALIZER;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    static Target_java_lang_invoke_BoundMethodHandle_Specializer SPECIALIZER;
 
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)
@@ -139,7 +140,7 @@ final class Target_java_lang_invoke_BoundMethodHandle_Species_L {
 
 @TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "SpeciesData")
 final class Target_java_lang_invoke_BoundMethodHandle_SpeciesData {
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class, isFinal = true) //
     private Target_java_lang_invoke_BoundMethodHandle_SpeciesData[] extensions;
 }
 

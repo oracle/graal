@@ -33,9 +33,10 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.test.SubprocessTestUtils;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
+import com.oracle.truffle.runtime.OptimizedRuntimeOptions;
+
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-import org.graalvm.compiler.truffle.runtime.OptimizedRuntimeOptions;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
