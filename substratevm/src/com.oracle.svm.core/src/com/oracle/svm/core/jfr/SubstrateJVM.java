@@ -709,7 +709,7 @@ public class SubstrateJVM {
         if (!thread.equals(Thread.currentThread())) {
             return false;
         }
-        return getThreadLocal().isCurrentThreadExcluded();
+        return isCurrentThreadExcluded();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
