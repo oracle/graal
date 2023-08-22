@@ -1520,8 +1520,8 @@ def clinittest(args):
                 '-J-ea', '-J-esa',
                 '-o', binary_path,
                 '-H:+ReportExceptionStackTraces',
-            ] + svm_experimental_options([
                 '-H:Class=com.oracle.svm.test.clinit.TestClassInitialization',
+            ] + svm_experimental_options([
                 '-H:+PrintClassInitialization',
             ]) + policy_args + args)
         mx.run([binary_path])
