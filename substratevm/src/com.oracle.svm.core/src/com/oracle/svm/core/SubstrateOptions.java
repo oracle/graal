@@ -98,7 +98,7 @@ public class SubstrateOptions {
     @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//
     public static final HostedOptionKey<String> Module = new HostedOptionKey<>("");
 
-    @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User)//
+    @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<String> Class = new HostedOptionKey<>("");
 
     @Option(help = "Name of the main entry point method. Optional if --shared is used.")//
