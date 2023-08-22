@@ -737,15 +737,17 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                     for supported_key in supported_keys:
                         if supported_key not in jvm_config:
                             raise mx.abort("Component '{}' defines a jvm_config that misses the '{}' property: '{}'".format(_component.name, supported_key, jvm_config))
-                    priority = jvm_config['priority']
-                    if not isinstance(priority, int):
-                        raise mx.abort("The type of the 'priority' property of a jvm_config defined by component '{}' must be 'int': '{}'".format(_component.name, jvm_config))
                     if not isinstance(jvm_config['configs'], list):
                         raise mx.abort("The type of the 'configs' property of a jvm_config defined by component '{}' must be 'list': '{}'".format(_component.name, jvm_config))
+                    priority = jvm_config['priority']
+                    if callable(priority):
+                        priority = priority()
+                    if not isinstance(priority, int):
+                        raise mx.abort("The type of the 'priority' property of a jvm_config defined by component '{}' must be 'int' or a callable that returns an int: '{}'".format(_component.name, jvm_config))
                     if priority == 0:
                         raise mx.abort("Component '{}' registers a jvm_config with default priority (0): '{}'\nSet a priority less than 0 to prepend to the default list of JVMs and more than 0 to append.".format(_component.name, jvm_config))
                     if priority in jvm_configs:
-                        raise mx.abort("Two components define jvm_configs with the same priority:\n1. {}\n2. {}".format(jvm_configs[priority], jvm_config))
+                        raise mx.abort("Two components define jvm_configs with the same priority:\n1. '{}': {}\n2. '{}': {}".format(jvm_configs[priority]['source'], jvm_configs[priority]['configs'], _component.name, jvm_config['configs']))
                     jvm_configs[priority] = {
                         'configs': jvm_config['configs'],
                         'source': _component.name,
