@@ -502,7 +502,7 @@ public class SubstrateOptions {
     @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 
-    @Option(help = "Color build output (enabled by default if colors are supported by terminal)", type = OptionType.User, deprecated = true, deprecationMessage = "Please use the '--color' option.")//
+    @Option(help = "Color build output (enabled by default if colors are supported by terminal)", type = OptionType.User, deprecated = true, deprecationMessage = "Please use '--color' instead.")//
     public static final HostedOptionKey<Boolean> BuildOutputColorful = new HostedOptionKey<>(false);
 
     @Option(help = "Show links in build output (defaults to the value of BuildOutputColorful)", type = OptionType.User)//

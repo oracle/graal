@@ -100,7 +100,7 @@ public class NativeImageOptions {
     };
 
     @Option(help = "Uses the native architecture, i.e., the architecture of a machine that builds an image.", type = User, //
-                    deprecated = true, deprecationMessage = "Please use -march=native instead. See --help for details.") //
+                    deprecated = true, deprecationMessage = "Please use '-march=native' instead. See '--help' for details.") //
     public static final HostedOptionKey<Boolean> NativeArchitecture = new HostedOptionKey<>(false) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
