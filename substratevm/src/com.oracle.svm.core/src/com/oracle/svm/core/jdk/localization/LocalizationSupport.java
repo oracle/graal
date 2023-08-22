@@ -120,10 +120,12 @@ public class LocalizationSupport {
                     ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(null, resourceName);
                 }
             } else {
-                resourceName = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/').concat(".properties");
-                Optional<Module> module = findModule.apply(bundleNameWithModule[0]);
-                String finalResourceName = resourceName;
-                module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName));
+                if (findModule != null) {
+                    resourceName = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/').concat(".properties");
+                    Optional<Module> module = findModule.apply(bundleNameWithModule[0]);
+                    String finalResourceName = resourceName;
+                    module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName));
+                }
             }
         } else {
             registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale));
