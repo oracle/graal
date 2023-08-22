@@ -26,6 +26,7 @@ import signal
 import subprocess
 
 import mx
+import mx_subst
 import mx_espresso_benchmarks  # pylint: disable=unused-import
 import mx_sdk_vm
 import mx_sdk_vm_impl
@@ -224,10 +225,10 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     polyglot_lib_jar_dependencies=['espresso:LIB_JAVAVM'],
     has_polyglot_lib_entrypoints=True,
     priority=1,
-    # Always append `truffle` to the list of JVMs in `lib/jvm.cfg`
+    # Always append `truffle` to the list of JVMs in `lib/jvm.cfg`.
     jvm_configs=[{
         'configs': ['-truffle KNOWN'],
-        'priority': 1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+        'priority': 2,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
     }],
     post_install_msg="""
 This version of Java on Truffle is experimental. We do not recommended it for production use.
@@ -329,9 +330,10 @@ jvm_cfg_component = mx_sdk_vm.GraalVmJreComponent(
     support_distributions=[],
     launcher_configs=[],
     # Espresso standalones prepend `truffle` to the list of JVMs in `lib/jvm.cfg`
+    # when the Espresso native library is built.
     jvm_configs=[{
         'configs': ['-truffle KNOWN'],
-        'priority': -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+        'priority': lambda: 1 if mx_sdk_vm_impl._skip_libraries(espresso_library_config) else -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
     }],
     stability=_espresso_stability,
 )
