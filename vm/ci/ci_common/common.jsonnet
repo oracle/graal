@@ -271,20 +271,40 @@ local devkits = graal_common.devkits;
     targets+: ['daily', 'deploy'],
   },
 
+  deploy_vm_darwin_amd64: self.vm_darwin_amd64 + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
   deploy_daily_vm_darwin_aarch64: self.vm_darwin_aarch64 + {
     targets+: ['daily', 'deploy'],
+  },
+
+  deploy_vm_darwin_aarch64: self.vm_darwin_aarch64 + {
+    targets+: ['post-merge', 'deploy'],
   },
 
   deploy_daily_vm_windows: self.vm_windows + {
     targets+: ['daily', 'deploy'],
   },
 
+  deploy_vm_windows: self.vm_windows + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
   deploy_daily_vm_windows_jdk17: self.vm_windows_jdk17 + {
     targets+: ['daily', 'deploy'],
   },
 
+  deploy_vm_windows_jdk17: self.vm_windows_jdk17 + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
   deploy_daily_vm_windows_jdk21: self.vm_windows_jdk21 + {
     targets+: ['daily', 'deploy'],
+  },
+
+  deploy_vm_windows_jdk21: self.vm_windows_jdk21 + {
+    targets+: ['post-merge', 'deploy'],
   },
 
   postmerge_vm_linux_amd64: self.vm_linux_amd64 + {
@@ -636,37 +656,37 @@ local devkits = graal_common.devkits;
   deploy_vm_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java21") + {name: 'post-merge-deploy-vm-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
 
   # Linux/AARCH64
-  deploy_vm_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64("java21") + {name: 'daily-deploy-vm-java21-linux-aarch64', notify_groups:: ["deploy"]},
+  deploy_vm_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64("java21") + {name: 'post-merge-deploy-vm-java21-linux-aarch64', notify_groups:: ["deploy"]},
 
   # Darwin/AMD64
-  deploy_vm_base_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64("java21") + {name: 'daily-deploy-vm-base-java21-darwin-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_installable_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_installables_darwin_amd64("java21") + {name: 'daily-deploy-vm-installable-java21-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
+  deploy_vm_base_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64("java21") + {name: 'post-merge-deploy-vm-base-java21-darwin-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_installable_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_installables_darwin_amd64("java21") + {name: 'post-merge-deploy-vm-installable-java21-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
 
   # Darwin/AARCH64
-  deploy_vm_base_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_base_darwin_aarch64("java21") + {name: 'daily-deploy-vm-base-java21-darwin-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_installable_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_installables_darwin_aarch64("java21") + {name: 'daily-deploy-vm-installable-java21-darwin-aarch64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
+  deploy_vm_base_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_base_darwin_aarch64("java21") + {name: 'post-merge-deploy-vm-base-java21-darwin-aarch64', notify_groups:: ["deploy"]},
+  deploy_vm_installable_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_installables_darwin_aarch64("java21") + {name: 'post-merge-deploy-vm-installable-java21-darwin-aarch64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
 
   # Windows/AMD64
-  deploy_vm_base_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_base_windows_amd64("java21") + self.deploy_build + {name: 'daily-deploy-vm-base-java21-windows-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_installable_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_installables_windows_amd64("java21") + self.deploy_build + {name: 'daily-deploy-vm-installable-java21-windows-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
+  deploy_vm_base_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.deploy_vm_windows_jdk21 + self.deploy_graalvm_base_windows_amd64("java21") + self.deploy_build + {name: 'post-merge-deploy-vm-base-java21-windows-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_installable_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows + self.deploy_vm_windows_jdk21 + self.deploy_graalvm_installables_windows_amd64("java21") + self.deploy_build + {name: 'post-merge-deploy-vm-installable-java21-windows-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"]},
 
   #
   # Deploy the GraalVM Ruby artifact (GraalVM Base + ruby - native image)
   #
 
-  deploy_vm_ruby_java21_linux_amd64: vm.vm_java_21 + self.ruby_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java21') + {name: 'daily-deploy-vm-ruby-java21-linux-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_ruby_java21_darwin_amd64: vm.vm_java_21 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_ruby('darwin', 'amd64', 'java21') + {name: 'daily-deploy-vm-ruby-java21-darwin-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_ruby_java21_darwin_aarch64: vm.vm_java_21 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_ruby('darwin', 'aarch64', 'java21') + {name: 'daily-deploy-vm-ruby-java21-darwin-aarch64', notify_groups:: ["deploy"]},
+  deploy_vm_ruby_java21_linux_amd64: vm.vm_java_21 + self.ruby_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java21') + {name: 'post-merge-deploy-vm-ruby-java21-linux-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_ruby_java21_darwin_amd64: vm.vm_java_21 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_ruby('darwin', 'amd64', 'java21') + {name: 'post-merge-deploy-vm-ruby-java21-darwin-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_ruby_java21_darwin_aarch64: vm.vm_java_21 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_ruby('darwin', 'aarch64', 'java21') + {name: 'post-merge-deploy-vm-ruby-java21-darwin-aarch64', notify_groups:: ["deploy"]},
 
   #
   # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
   #
 
-  deploy_vm_espresso_java21_linux_amd64: vm.vm_java_21 + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_espresso('linux', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-linux-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_espresso('linux', 'aarch64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-linux-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_darwin_amd64: vm.vm_java_21 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_espresso('darwin', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-darwin-amd64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_espresso('darwin', 'aarch64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-darwin-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.deploy_build + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_linux_amd64: vm.vm_java_21 + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_espresso('linux', 'amd64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-linux-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_vm_linux_aarch64 + self.deploy_graalvm_espresso('linux', 'aarch64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-linux-aarch64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_darwin_amd64: vm.vm_java_21 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_espresso('darwin', 'amd64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-darwin-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_espresso('darwin', 'aarch64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-darwin-aarch64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.deploy_build + self.deploy_vm_windows_jdk21 + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
 
   local builds = [
     #
