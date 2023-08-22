@@ -33,15 +33,15 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 
-import com.oracle.svm.core.util.VMError;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.configure.config.ResourceConfiguration;
-import com.oracle.svm.core.util.json.JsonWriter;
 import com.oracle.svm.core.configure.ResourceConfigurationParser;
 import com.oracle.svm.core.configure.ResourcesRegistry;
+import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 public class ResourceConfigurationTest {
 
@@ -96,7 +96,7 @@ public class ResourceConfigurationTest {
 
                 @Override
                 public void addResource(Module module, String resourcePath) {
-                    VMError.shouldNotReachHere("Unused function.");
+                    throw VMError.shouldNotReachHere("Unused function.");
                 }
 
                 @Override

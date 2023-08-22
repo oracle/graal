@@ -176,7 +176,7 @@ public final class ResourcesFeature implements InternalFeature {
             try {
                 resourcePatternWorkSet.add(new ConditionalPattern(condition, pattern));
             } catch (UnsupportedOperationException e) {
-                UserError.abort("Resource registration should be performed before beforeAnalysis phase.");
+                throw UserError.abort("Resource registration should be performed before beforeAnalysis phase.");
             }
         }
 
