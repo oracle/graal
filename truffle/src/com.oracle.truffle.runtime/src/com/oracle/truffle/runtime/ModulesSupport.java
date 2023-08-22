@@ -137,7 +137,7 @@ public final class ModulesSupport {
                 Class<?> resourceCacheClass = Class.forName("com.oracle.truffle.polyglot.InternalResourceCache", false, ModulesSupport.class.getClassLoader());
                 Method installRuntimeResource = resourceCacheClass.getDeclaredMethod("installRuntimeResource", InternalResource.class);
                 installRuntimeResource.setAccessible(true);
-                Path root = (Path) installRuntimeResource.invoke(null, LibTruffleAttachResource.INSTANCE);
+                Path root = (Path) installRuntimeResource.invoke(null, new LibTruffleAttachResource());
                 Path libAttach = root.resolve("bin").resolve(System.mapLibraryName("truffleattach"));
                 attachLibPath = libAttach.toString();
             }

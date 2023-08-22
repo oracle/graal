@@ -3485,6 +3485,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     else:
                         with_non_rebuildable_configs = True
             for library_config in _get_library_configs(component):
+                library_project = None
                 if with_svm:
                     library_project = GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config)
                     register_project(library_project)
@@ -3496,11 +3497,34 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         jmod_file = library_config.add_to_module + ('' if library_config.add_to_module.endswith('.jmod') else '.jmod')
                         modified_jmods.setdefault(jmod_file, []).append(library_project)
                     needs_stage1 = True  # library configs need a stage1 even when they are skipped
-                if isinstance(library_config, mx_sdk.LanguageLibraryConfig) and library_config.launchers:
-                    launcher_project = NativeLibraryLauncherProject(component, library_config)
-                    register_project(launcher_project)
-                    polyglot_config_project = PolyglotConfig(component, library_config)
-                    register_project(polyglot_config_project)
+                if isinstance(library_config, mx_sdk.LanguageLibraryConfig):
+                    if library_config.launchers:
+                        launcher_project = NativeLibraryLauncherProject(component, library_config)
+                        register_project(launcher_project)
+                        polyglot_config_project = PolyglotConfig(component, library_config)
+                        register_project(polyglot_config_project)
+                    if with_svm and library_config.isolate_library_layout_distribution and not library_project.is_skipped() and has_component('tfle', stage1=True):
+                        # Create a layout distribution with the resulting language library that can be consumed into the
+                        # isolate resources jar distribution,
+                        resource_base_folder = f'META-INF/resources/engine/{library_config.language}-isolate/<os>/<arch>/libvm'
+                        attrs = {
+                            'description': f'Contains {library_config.language} language library resources',
+                            'hashEntry': f'{resource_base_folder}/sha256',
+                            'fileListEntry': f'{resource_base_folder}/files',
+                            'maven': False,
+                        }
+                        register_distribution(mx.LayoutDirDistribution(
+                            suite=_suite,
+                            name=library_config.isolate_library_layout_distribution,
+                            deps=[],
+                            layout={
+                                f'{resource_base_folder}/': f'dependency:{library_project.name}'
+                            },
+                            path=None,
+                            platformDependent=True,
+                            theLicense=None,
+                            **attrs
+                        ))
             if isinstance(component, mx_sdk.GraalVmLanguage) and component.support_distributions:
                 ni_resources_components = dir_name_to_ni_resources_components.get(component.dir_name)
                 if not ni_resources_components:
