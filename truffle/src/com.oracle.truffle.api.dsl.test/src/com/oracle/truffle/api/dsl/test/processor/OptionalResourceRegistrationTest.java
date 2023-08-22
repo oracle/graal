@@ -42,58 +42,30 @@ package com.oracle.truffle.api.dsl.test.processor;
 
 import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.dsl.test.ExpectError;
-
-import java.nio.file.Path;
+import com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.ProxyInternalResource;
 
 public class OptionalResourceRegistrationTest {
 
-    @InternalResource.Id(value = "optional-resource", optionalFor = "test-language")
-    public static final class OptionalResource1 implements InternalResource {
-
-        @Override
-        public void unpackFiles(Env env, Path targetDirectory) {
-        }
-
-        @Override
-        public String versionHash(Env env) {
-            return null;
-        }
+    @InternalResource.Id(value = "optional-resource", componentId = "test-language", optional = true)
+    public static final class OptionalResource1 extends ProxyInternalResource {
     }
 
     @ExpectError("The class OptionalResourceRegistrationTest.OptionalResource2 must be a static inner-class or a top-level class. " +
                     "To resolve this, make the OptionalResource2 static or top-level class.")
-    @InternalResource.Id(value = "optional-resource", optionalFor = "test-language")
-    public final class OptionalResource2 implements InternalResource {
-
-        @Override
-        public void unpackFiles(Env env, Path targetDirectory) {
-        }
-
-        @Override
-        public String versionHash(Env env) {
-            return null;
-        }
+    @InternalResource.Id(value = "optional-resource", componentId = "test-language", optional = true)
+    public final class OptionalResource2 extends ProxyInternalResource {
     }
 
     @ExpectError("The class OptionalResourceRegistrationTest.OptionalResource3 must be public or package protected in the com.oracle.truffle.api.dsl.test.processor package. " +
                     "To resolve this, make the OptionalResourceRegistrationTest.OptionalResource3 package protected or move it to the com.oracle.truffle.api.dsl.test.processor package.")
-    @InternalResource.Id(value = "optional-resource", optionalFor = "test-language")
-    private static final class OptionalResource3 implements InternalResource {
-
-        @Override
-        public void unpackFiles(Env env, Path targetDirectory) {
-        }
-
-        @Override
-        public String versionHash(Env env) {
-            return null;
-        }
+    @InternalResource.Id(value = "optional-resource", componentId = "test-language", optional = true)
+    private static final class OptionalResource3 extends ProxyInternalResource {
     }
 
     @ExpectError("The class OptionalResourceRegistrationTest.OptionalResource4 must have a no argument public or package protected constructor. " +
                     "To resolve this, add OptionalResource4() constructor.")
-    @InternalResource.Id(value = "optional-resource", optionalFor = "test-language")
-    public static final class OptionalResource4 implements InternalResource {
+    @InternalResource.Id(value = "optional-resource", componentId = "test-language", optional = true)
+    public static final class OptionalResource4 extends ProxyInternalResource {
 
         @SuppressWarnings("unused")
         private OptionalResource4() {
@@ -102,20 +74,18 @@ public class OptionalResourceRegistrationTest {
         @SuppressWarnings("unused")
         public OptionalResource4(String str) {
         }
-
-        @Override
-        public void unpackFiles(Env env, Path targetDirectory) {
-        }
-
-        @Override
-        public String versionHash(Env env) {
-            return null;
-        }
     }
 
     @ExpectError("The annotation @Id can be applied only to InternalResource instances. " +
                     "To resolve this, remove the @Id annotation or implement InternalResource.")
-    @InternalResource.Id(value = "optional-resource", optionalFor = "test-language")
+    @InternalResource.Id(value = "optional-resource", componentId = "test-language", optional = true)
     private static final class OptionalResource5 {
+    }
+
+    @ExpectError("The '@Id.componentId' for an optional internal resource must be set to language or " +
+                    "instrument identifier for which the resource is registered. " +
+                    "To resolve this, add 'componentId = \"<component-id>\"' or make the internal resource required.")
+    @InternalResource.Id(value = "optional-resource", optional = true)
+    private static final class OptionalResource6 extends ProxyInternalResource {
     }
 }

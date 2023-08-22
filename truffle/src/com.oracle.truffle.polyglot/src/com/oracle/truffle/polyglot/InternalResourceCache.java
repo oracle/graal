@@ -93,6 +93,7 @@ final class InternalResourceCache {
     private static final Lock unpackLock = new ReentrantLock();
 
     private static final Map<Collection<AbstractClassLoaderSupplier>, Map<String, Map<String, Supplier<InternalResourceCache>>>> optionalInternalResourcesCaches = new HashMap<>();
+    private static final Map<String, Map<String, Supplier<InternalResourceCache>>> nativeImageCache = TruffleOptions.AOT ? new HashMap<>() : null;
     private static volatile Pair<Path, Boolean> cacheRoot;
 
     private final String id;
@@ -310,6 +311,15 @@ final class InternalResourceCache {
     }
 
     /**
+     * Collects optional internal resources for native-image build. This method is called
+     * reflectively by the {@code TruffleBaseFeature#initializeTruffleReflectively}.
+     */
+    static void initializeNativeImageState(ClassLoader nativeImageClassLoader) {
+        assert TruffleOptions.AOT : "Only supported during image generation";
+        nativeImageCache.putAll(collectOptionalResources(List.of(new EngineAccessor.StrongClassLoaderSupplier(nativeImageClassLoader))));
+    }
+
+    /**
      * Resets cache roots after closed word analyses. This method is called reflectively by the
      * {@code TruffleBaseFeature#afterAnalysis}.
      */
@@ -327,6 +337,7 @@ final class InternalResourceCache {
                 cache.resetFileSystemNativeImageState();
             }
         }
+        nativeImageCache.clear();
     }
 
     private void resetFileSystemNativeImageState() {
@@ -407,33 +418,40 @@ final class InternalResourceCache {
     }
 
     static Map<String, Map<String, Supplier<InternalResourceCache>>> loadOptionalInternalResources(List<AbstractClassLoaderSupplier> suppliers) {
+        if (TruffleOptions.AOT) {
+            assert nativeImageCache != null;
+            return nativeImageCache;
+        }
         synchronized (InternalResourceCache.class) {
             Map<String, Map<String, Supplier<InternalResourceCache>>> cache = optionalInternalResourcesCaches.get(suppliers);
             if (cache == null) {
-                cache = new HashMap<>();
-                for (EngineAccessor.AbstractClassLoaderSupplier supplier : suppliers) {
-                    ClassLoader loader = supplier.get();
-                    if (loader == null || !isValidLoader(loader)) {
-                        continue;
-                    }
-                    var cacheFin = cache;
-                    StreamSupport.stream(ServiceLoader.load(InternalResourceProvider.class, loader).spliterator(), false).filter((p) -> supplier.accepts(p.getClass())).forEach((p) -> {
-                        ModuleUtils.exportTransitivelyTo(p.getClass().getModule());
-                        String componentId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(p);
-                        String resourceId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(p);
-                        var componentOptionalResources = cacheFin.computeIfAbsent(componentId, (k) -> new HashMap<>());
-                        var resourceSupplier = new OptionalResourceSupplier(p);
-                        var existing = (OptionalResourceSupplier) componentOptionalResources.put(resourceId, resourceSupplier);
-                        if (existing != null && !hasSameCodeSource(resourceSupplier, existing)) {
-                            throw throwDuplicateOptionalResourceException(existing.get(), resourceSupplier.get());
-                        }
-                    });
-
-                }
+                cache = collectOptionalResources(suppliers);
                 optionalInternalResourcesCaches.put(suppliers, cache);
             }
             return cache;
         }
+    }
+
+    private static Map<String, Map<String, Supplier<InternalResourceCache>>> collectOptionalResources(List<AbstractClassLoaderSupplier> suppliers) {
+        Map<String, Map<String, Supplier<InternalResourceCache>>> cache = new HashMap<>();
+        for (EngineAccessor.AbstractClassLoaderSupplier supplier : suppliers) {
+            ClassLoader loader = supplier.get();
+            if (loader == null || !isValidLoader(loader)) {
+                continue;
+            }
+            StreamSupport.stream(ServiceLoader.load(InternalResourceProvider.class, loader).spliterator(), false).filter((p) -> supplier.accepts(p.getClass())).forEach((p) -> {
+                ModuleUtils.exportTransitivelyTo(p.getClass().getModule());
+                String componentId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(p);
+                String resourceId = EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(p);
+                var componentOptionalResources = cache.computeIfAbsent(componentId, (k) -> new HashMap<>());
+                var resourceSupplier = new OptionalResourceSupplier(p);
+                var existing = (OptionalResourceSupplier) componentOptionalResources.put(resourceId, resourceSupplier);
+                if (existing != null && !hasSameCodeSource(resourceSupplier, existing)) {
+                    throw throwDuplicateOptionalResourceException(existing.get(), resourceSupplier.get());
+                }
+            });
+        }
+        return cache;
     }
 
     private static boolean hasSameCodeSource(OptionalResourceSupplier first, OptionalResourceSupplier second) {

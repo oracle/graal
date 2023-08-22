@@ -93,6 +93,7 @@ import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.InternalResource.Id;
 import com.oracle.truffle.api.TruffleFile.FileSystemContext;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -521,9 +522,13 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Declarative list of {@link InternalResource} classes that is associated with this
-         * language. To unpack all resources of a language embedders may use
-         * {@link Engine#copyResources(Path, String...)}.
+         * language. Use the {@code internalResources} attribute solely for registering required
+         * internal resources. Optional internal resources should provide the associated language
+         * identifier using the {@link Id#componentId()} method. To unpack all resources of a
+         * language embedders may use {@link Engine#copyResources(Path, String...)}.
          *
+         * @see InternalResource
+         * @see Id
          * @since 23.1
          */
         Class<? extends InternalResource>[] internalResources() default {};

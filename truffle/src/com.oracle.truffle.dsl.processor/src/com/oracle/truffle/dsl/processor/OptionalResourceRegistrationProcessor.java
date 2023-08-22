@@ -73,7 +73,7 @@ public class OptionalResourceRegistrationProcessor extends AbstractRegistrationP
 
     @Override
     boolean accepts(Element annotatedElement, AnnotationMirror registrationMirror) {
-        return !ElementUtils.getAnnotationValue(String.class, registrationMirror, "optionalFor").isEmpty();
+        return ElementUtils.getAnnotationValue(Boolean.class, registrationMirror, "optional");
     }
 
     @Override
@@ -85,7 +85,15 @@ public class OptionalResourceRegistrationProcessor extends AbstractRegistrationP
             String idSimpleName = ElementUtils.getSimpleName(types.InternalResource_Id);
             String internalResourceClzName = getScopedName((TypeElement) types.InternalResource.asElement());
             emitError(String.format("The annotation @%s can be applied only to %s instances. To resolve this, remove the @%s annotation or implement %s.",
-                            idSimpleName, internalResourceClzName, idSimpleName, internalResourceClzName), annotatedElement);
+                            idSimpleName, internalResourceClzName, idSimpleName, internalResourceClzName), annotatedElement, registrationMirror, null);
+            return false;
+        }
+        if (ElementUtils.getAnnotationValue(String.class, registrationMirror, "componentId").isEmpty()) {
+            String idSimpleName = ElementUtils.getSimpleName(types.InternalResource_Id);
+            emitError(String.format("The '@%s.componentId' for an optional internal resource must be set to language " +
+                            "or instrument identifier for which the resource is registered. " +
+                            "To resolve this, add 'componentId = \"<component-id>\"' or make the internal resource required.",
+                            idSimpleName), annotatedElement, registrationMirror, null);
             return false;
         }
         Set<Modifier> modifiers = internalResourceElement.getModifiers();
@@ -127,7 +135,7 @@ public class OptionalResourceRegistrationProcessor extends AbstractRegistrationP
         AnnotationMirror registration = ElementUtils.findAnnotationMirror(annotatedElement.getAnnotationMirrors(), types.InternalResource_Id);
         CodeTreeBuilder builder = methodToImplement.createBuilder();
         switch (methodToImplement.getSimpleName().toString()) {
-            case "getComponentId" -> builder.startReturn().doubleQuote(ElementUtils.getAnnotationValue(String.class, registration, "optionalFor")).end();
+            case "getComponentId" -> builder.startReturn().doubleQuote(ElementUtils.getAnnotationValue(String.class, registration, "componentId")).end();
             case "getResourceId" -> builder.startReturn().doubleQuote(ElementUtils.getAnnotationValue(String.class, registration, "value")).end();
             case "createInternalResource" -> {
                 DeclaredType internalResource = (DeclaredType) annotatedElement.asType();

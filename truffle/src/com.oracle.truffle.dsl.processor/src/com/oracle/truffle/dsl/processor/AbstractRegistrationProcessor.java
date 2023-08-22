@@ -198,12 +198,21 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                                 getScopedName(internalResourceElement), idSimpleName, idSimpleName), annotatedElement, mirror, value);
                 return false;
             }
-            String optionalFor = ElementUtils.getAnnotationValue(String.class, id, "optionalFor");
-            if (!optionalFor.isEmpty()) {
+            boolean optional = ElementUtils.getAnnotationValue(Boolean.class, id, "optional");
+            if (optional) {
                 String resourceClzName = getScopedName(internalResourceElement);
-                emitError(String.format("Optional internal resources must not be registered using @Registration annotation. " +
-                                "To resolve this, remove the %s from 'internalResources' the or make the %s non-optional by removing 'optionalFor=\"%s\"'.",
-                                resourceClzName, resourceClzName, optionalFor), annotatedElement, mirror, value);
+                emitError(String.format("Optional internal resources must not be registered using '@Registration' annotation. " +
+                                "To resolve this, remove the '%s' from 'internalResources' the or make the '%s' non-optional by removing 'optional = true'.",
+                                resourceClzName, resourceClzName), annotatedElement, mirror, value);
+                return false;
+            }
+            String resourceComponentId = ElementUtils.getAnnotationValue(String.class, id, "componentId");
+            String registrationComponentId = ElementUtils.getAnnotationValue(String.class, mirror, "id");
+            if (!resourceComponentId.isEmpty() && !resourceComponentId.equals(registrationComponentId)) {
+                String idSimpleName = ElementUtils.getSimpleName(types.InternalResource_Id);
+                emitError(String.format("The '@%s.componentId' for an required internal resources must be unset or equal to '@Registration.id'. " +
+                                "To resolve this, remove the '@%s.componentId = \"%s\"'.",
+                                idSimpleName, idSimpleName, resourceComponentId), annotatedElement, mirror, value);
                 return false;
             }
             String idValue = ElementUtils.getAnnotationValue(String.class, id, "value");

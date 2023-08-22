@@ -766,7 +766,7 @@ public class InternalResourceTest {
         }
     }
 
-    @InternalResource.Id(value = OptionalResource.ID, optionalFor = "com_oracle_truffle_api_test_polyglot_internalresourcetest_testoptionalresources")
+    @InternalResource.Id(value = OptionalResource.ID, componentId = "com_oracle_truffle_api_test_polyglot_internalresourcetest_testoptionalresources", optional = true)
     static class OptionalResource implements InternalResource {
 
         static final String ID = "optional-sources";
