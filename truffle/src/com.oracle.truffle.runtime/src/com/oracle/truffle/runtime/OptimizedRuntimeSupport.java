@@ -40,13 +40,10 @@
  */
 package com.oracle.truffle.runtime;
 
-import java.util.Collection;
-import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.InternalResource;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionValues;
 
@@ -375,10 +372,5 @@ final class OptimizedRuntimeSupport extends RuntimeSupport {
     @Override
     public <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination) {
         return OptimizedTruffleRuntime.createTerminatingThreadLocal(initialValue, onThreadTermination);
-    }
-
-    @Override
-    public Collection<InternalResource> getInternalResources() {
-        return List.of(LibTruffleAttachResource.INSTANCE);
     }
 }
