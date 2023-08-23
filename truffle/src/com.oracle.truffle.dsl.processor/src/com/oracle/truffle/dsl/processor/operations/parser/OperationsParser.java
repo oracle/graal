@@ -83,10 +83,10 @@ import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsMo
 import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel.SuperInstructionDecision;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONException;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-import com.oracle.truffle.tools.utils.json.JSONTokener;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONException;
+import org.graalvm.shadowed.org.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONTokener;
 
 public class OperationsParser extends AbstractParser<OperationsModelList> {
 
