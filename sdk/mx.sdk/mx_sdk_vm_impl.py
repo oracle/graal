@@ -538,7 +538,6 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                 'path': '*',
                 'exclude': jimage_exclusion_list,
             })
-            _add(layout, "<jre_base>/lib/jvm.cfg", "string:" + _get_jvm_cfg_contents())
 
         # Add the rest of the GraalVM
 
@@ -553,6 +552,7 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
         component_dists = set()  # the jar distributions directly mentioned by components
 
         _lang_homes_with_ni_resources = []
+        jvm_configs = {}
 
         for _component in sorted(self.components, key=lambda c: c.name):
             mx.logv('Adding {} ({}) to the {} {}'.format(_component.name, _component.__class__.__name__, name, self.__class__.__name__))
@@ -728,6 +728,33 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
 
             if _component.installable:
                 installable_component_lists.setdefault(_component.installable_id, []).append(_component)
+
+            if not stage1:
+                for jvm_config in _component.jvm_configs:
+                    supported_keys = ('configs', 'priority')
+                    if any(key not in supported_keys for key in jvm_config.keys()):
+                        raise mx.abort("Component '{}' defines a jvm_config with an unsupported property: '{}'. Supported properties are: {}".format(_component.name, jvm_config, supported_keys))
+                    for supported_key in supported_keys:
+                        if supported_key not in jvm_config:
+                            raise mx.abort("Component '{}' defines a jvm_config that misses the '{}' property: '{}'".format(_component.name, supported_key, jvm_config))
+                    if not isinstance(jvm_config['configs'], list):
+                        raise mx.abort("The type of the 'configs' property of a jvm_config defined by component '{}' must be 'list': '{}'".format(_component.name, jvm_config))
+                    priority = jvm_config['priority']
+                    if callable(priority):
+                        priority = priority()
+                    if not isinstance(priority, int):
+                        raise mx.abort("The type of the 'priority' property of a jvm_config defined by component '{}' must be 'int' or a callable that returns an int: '{}'".format(_component.name, jvm_config))
+                    if priority == 0:
+                        raise mx.abort("Component '{}' registers a jvm_config with default priority (0): '{}'\nSet a priority less than 0 to prepend to the default list of JVMs and more than 0 to append.".format(_component.name, jvm_config))
+                    if priority in jvm_configs:
+                        raise mx.abort("Two components define jvm_configs with the same priority:\n1. '{}': {}\n2. '{}': {}".format(jvm_configs[priority]['source'], jvm_configs[priority]['configs'], _component.name, jvm_config['configs']))
+                    jvm_configs[priority] = {
+                        'configs': jvm_config['configs'],
+                        'source': _component.name,
+                    }
+
+        if is_graalvm:
+            _add(layout, "<jre_base>/lib/jvm.cfg", "string:" + _get_jvm_cfg_contents(jvm_configs))
 
         graalvm_dists.difference_update(component_dists)
         _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in sorted(graalvm_dists)], with_sources=True)
@@ -3048,32 +3075,34 @@ def _get_jvm_cfg():
     probed = f'{nl}  '.join(probed)
     raise mx.abort(f"Could not find jvm.cfg. Locations probed:{nl}  {probed}")
 
-def _get_jvm_cfg_contents():
+
+def _get_jvm_cfg_contents(cfgs_to_add):
+
+    def validate_cfg_line(line, source):
+        if line.startswith('#'):
+            return
+        if not line.startswith('-'):
+            raise mx.abort("Invalid line in {}:\n{}".format(source, line))
+        parts = re.split('[ \t]', line)
+        if len(parts) < 2:
+            raise mx.abort("Invalid line in {}:\n{}".format(source, line))
+
+    assert 0 not in cfgs_to_add
+    all_cfgs = cfgs_to_add.copy()
+
     jvm_cfg = _get_jvm_cfg()
     with open(jvm_cfg, 'r') as orig_f:
         orig_lines = orig_f.readlines()
+    all_cfgs[0] = {
+        'configs': orig_lines,
+        'source': jvm_cfg
+    }
+
     new_lines = []
-    vms_to_add = set(mx_sdk_vm._known_vms)
-    for line in orig_lines:
-        if line.startswith('#'):
-            new_lines.append(line)
-            continue
-        if not line.startswith('-'):
-            raise mx.abort("Invalid line in {}:\n{}".format(jvm_cfg, line))
-        parts = re.split('[ \t]', line)
-        if len(parts) < 2:
-            raise mx.abort("Invalid line in {}:\n{}".format(jvm_cfg, line))
-        vm_name = parts[0][1:]
-        vm_type = parts[1]
-        if vm_name in vms_to_add:
-            if vm_type == "KNOWN":
-                vms_to_add.remove(vm_name)
-                new_lines.append(line)
-            # else skip the line that would remove this VM
-        else:
-            new_lines.append(line)
-    for vm_to_add in vms_to_add:
-        new_lines.append('-' + vm_to_add + ' KNOWN' + os.linesep)
+    for _, cfg in sorted(all_cfgs.items()):
+        for config in cfg['configs']:
+            validate_cfg_line(config, cfg['source'])
+            new_lines.append(config.strip() + os.linesep)
     # escape things that look like string substitutions
     return re.sub(r'<[\w\-]+?(:(.+?))?>', lambda m: '<esc:' + m.group(0)[1:], ''.join(new_lines))
 
@@ -4147,6 +4176,25 @@ def graalvm_show(args, forced_graalvm_dist=None):
                             print("    - {}".format(c.name))
             if not jvm_standalones and not native_standalones:
                 print("No standalone")
+            jvm_configs = {}
+            for component in graalvm_dist.components:
+                for jvm_config in component.jvm_configs:
+                    priority = jvm_config['priority']
+                    if callable(priority):
+                        priority = priority()
+                    jvm_configs[priority] = {
+                        'configs': jvm_config['configs'],
+                        'source': component.name,
+                    }
+            if jvm_configs:
+                jvm_configs[0] = {
+                    'configs': ['<original VMs>'],
+                    'source': _get_jvm_cfg(),
+                }
+                print("JVMs:")
+                for _, cfg in sorted(jvm_configs.items()):
+                    for config in cfg['configs']:
+                        print(f" {config} (from {cfg['source']})")
 
         if args.print_env:
             def _print_env(name, val):
