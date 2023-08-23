@@ -2816,7 +2816,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     'path': None,
                 })
 
-            assert not self.is_jvm or not is_main or len(launcher_configs) == 0, "JVM standalones do not yet support main components with launcher configs, only thin launchers. Found: '{}'".format(name)
+            assert not self.is_jvm or not is_main or all(type(lc) == mx_sdk.LauncherConfig for lc in launcher_configs), "JVM standalones do not yet support main components with language launcher configs, only thin launchers and plain NI launchers. Found: '{}'".format(name)  # pylint: disable=unidiomatic-typecheck
             for launcher_config in launcher_configs:
                 launcher_dest = path_prefix + launcher_config.destination
                 if launcher_config.destination not in excluded_paths:
@@ -3560,7 +3560,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     mx.warn("Skipping standalone of '{}' because the following components are excluded:\n * {}".format(main_component.name, '\n * '.join(missing_dependency_names)))
             else:
                 # JVM standalones
-                if len(main_component.launcher_configs):
+                if any(type(lc) != mx_sdk.LauncherConfig for lc in main_component.launcher_configs):  # pylint: disable=unidiomatic-typecheck
                     if mx.get_opts().verbose:
                         mx.warn("Skipping JVM standalone of '{}' because it contains launcher configs that are not yet supported".format(main_component.name))
                 else:
