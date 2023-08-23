@@ -130,6 +130,111 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
     }
 
     @Test
+    public void testFinallyTryBindBasic() {
+        // try {
+        //   arg0.append(1);
+        // } finally(ex) {
+        //   if (ex) arg0.append(3) else arg0.append(2)
+        // }
+
+        RootCallTarget root = parse("finallyTryBindBasic", b -> {
+            b.beginRoot(LANGUAGE);
+            OperationLocal ex = b.createLocal();
+            b.beginFinallyTry(ex);
+            b.beginIfThenElse();
+            b.beginNonNull();
+            b.emitLoadLocal(ex);
+            b.endNonNull();
+            emitAppend(b, 3);
+            emitAppend(b, 2);
+            b.endIfThenElse();
+
+            emitAppend(b, 1);
+            b.endFinallyTry();
+
+            emitReturn(b, 0);
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 1L, 2L);
+    }
+
+    @Test
+    public void testFinallyTryBindException() {
+        // try {
+        //   arg0.append(1);
+        //   throw 0;
+        //   arg0.append(2);
+        // } finally(ex) {
+        //   if (ex) arg0.append(3) else arg0.append(4);
+        // }
+
+        RootCallTarget root = parse("finallyTryBindException", b -> {
+            b.beginRoot(LANGUAGE);
+            OperationLocal ex = b.createLocal();
+            b.beginFinallyTry(ex);
+                b.beginIfThenElse();
+                b.beginNonNull();
+                b.emitLoadLocal(ex);
+                b.endNonNull();
+                emitAppend(b, 3);
+                emitAppend(b, 4);
+                b.endIfThenElse();
+
+                b.beginBlock();
+                    emitAppend(b, 1);
+                    emitThrow(b, 0);
+                    emitAppend(b, 2);
+                b.endBlock();
+            b.endFinallyTry();
+
+            emitReturn(b, 0);
+
+            b.endRoot();
+        });
+
+        testOrdering(true, root, 1L, 3L);
+    }
+
+    @Test
+    public void testFinallyTryBindReturn() {
+        // try {
+        //   arg0.append(2);
+        //   return 0;
+        // } finally(ex) {
+        //   if (ex) arg0.append(4) else arg0.append(1);
+        // }
+        // arg0.append(3);
+
+        RootCallTarget root = parse("finallyTryBindReturn", b -> {
+            b.beginRoot(LANGUAGE);
+            OperationLocal ex = b.createLocal();
+            b.beginFinallyTry(ex);
+                b.beginIfThenElse();
+                b.beginNonNull();
+                b.emitLoadLocal(ex);
+                b.endNonNull();
+                emitAppend(b, 4);
+                emitAppend(b, 1);
+                b.endIfThenElse();
+
+                b.beginBlock();
+                    emitAppend(b, 2);
+
+                    emitReturn(b, 0);
+                b.endBlock();
+            b.endFinallyTry();
+
+            emitAppend(b, 3);
+
+            b.endRoot();
+        });
+
+        testOrdering(false, root, 2L, 1L);
+    }
+
+    @Test
     public void testFinallyTryBranchOut() {
         // try {
         //   arg0.append(1);

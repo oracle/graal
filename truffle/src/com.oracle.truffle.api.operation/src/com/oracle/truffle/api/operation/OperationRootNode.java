@@ -44,7 +44,6 @@ import java.util.List;
 import java.util.Set;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
@@ -54,7 +53,6 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.introspection.ExceptionHandler;
 import com.oracle.truffle.api.operation.introspection.Instruction;
 import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
