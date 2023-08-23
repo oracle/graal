@@ -619,14 +619,14 @@ def gate_sulong(tasks):
         if t:
             lli = join(mx_sdk_vm_impl.graalvm_output(), 'bin', 'lli')
             sulong = mx.suite('sulong')
-            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--enable-timing'])
+            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--suite=sulong', '--enable-timing'])
 
     with Task('Run SulongSuite tests as native-image with engine cache', tasks, tags=[VmGateTasks.sulong_aot]) as t:
         if t:
             lli = join(mx_sdk_vm_impl.graalvm_output(), 'bin', 'lli')
             sulong = mx.suite('sulong')
-            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--enable-timing', '--sulong-config', 'AOTCacheStoreNative'])
-            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--enable-timing', '--sulong-config', 'AOTCacheLoadNative'])
+            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--suite=sulong', '--enable-timing', '--sulong-config', 'AOTCacheStoreNative'])
+            sulong.extensions.testLLVMImage(lli, libPath=False, unittestArgs=['--suite=sulong', '--enable-timing', '--sulong-config', 'AOTCacheLoadNative'])
 
     with Task('Run Sulong interop tests as native-image', tasks, tags=[VmGateTasks.sulong]) as t:
         if t:
