@@ -1132,7 +1132,7 @@ public final class GCImpl implements GC {
         long startMillis;
         if (lastWholeHeapExaminedTimeMillis < 0) {
             // no full GC has yet been run, use time since the first allocation
-            startMillis = Isolates.getCurrentStartMillis();
+            startMillis = Isolates.getCurrentStartTimeMillis();
         } else {
             startMillis = lastWholeHeapExaminedTimeMillis;
         }
