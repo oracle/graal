@@ -732,23 +732,27 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
         graalvm_dists.difference_update(component_dists)
         _add(layout, '<jre_base>/lib/graalvm/', ['dependency:' + d for d in sorted(graalvm_dists)], with_sources=True)
 
-        installer = get_component('gu', stage1=stage1)
-        if installer:
-            # Register pre-installed components
-            components_dir = _get_component_type_base(installer) + installer.dir_name + '/components/'
-            for installable_components in installable_component_lists.values():
-                manifest_str = _gen_gu_manifest(installable_components, _format_properties, bundled=True)
-                main_component = _get_main_component(installable_components)
-                mx.logv("Adding gu metadata for{}installable '{}'".format(' disabled ' if _disable_installable(main_component) else ' ', main_component.installable_id))
-                _add(layout, components_dir + 'org.graalvm.' + main_component.installable_id + '.component', "string:" + manifest_str)
-            # Register Core
-            manifest_str = _format_properties({
-                "Bundle-Name": "GraalVM Core",
-                "Bundle-Symbolic-Name": "org.graalvm",
-                "Bundle-Version": _suite.release_version(),
-                "x-GraalVM-Stability-Level": _get_core_stability(),
-            })
-            _add(layout, components_dir + 'org.graalvm.component', "string:" + manifest_str)
+        if mx.suite('vm', fatalIfMissing=False):
+            import mx_vm
+            installer_components_dir = _get_component_type_base(mx_vm.gu_component) + mx_vm.gu_component.dir_name + '/components/'
+            if not is_graalvm or get_component(mx_vm.gu_component.short_name, stage1=stage1):
+                # Execute the following code if this is not a GraalVM distribution (e.g., is an installable) or if the
+                # GraalVM distribution includes `gu`.
+                #
+                # Register pre-installed components
+                for installable_components in installable_component_lists.values():
+                    manifest_str = _gen_gu_manifest(installable_components, _format_properties, bundled=True)
+                    main_component = _get_main_component(installable_components)
+                    mx.logv("Adding gu metadata for{}installable '{}'".format(' disabled ' if _disable_installable(main_component) else ' ', main_component.installable_id))
+                    _add(layout, installer_components_dir + 'org.graalvm.' + main_component.installable_id + '.component', "string:" + manifest_str)
+                # Register Core
+                manifest_str = _format_properties({
+                    "Bundle-Name": "GraalVM Core",
+                    "Bundle-Symbolic-Name": "org.graalvm",
+                    "Bundle-Version": _suite.release_version(),
+                    "x-GraalVM-Stability-Level": _get_core_stability(),
+                })
+                _add(layout, installer_components_dir + 'org.graalvm.component', "string:" + manifest_str)
 
         for _base, _suites in component_suites.items():
             _metadata = self._get_metadata(_suites)

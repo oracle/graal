@@ -46,7 +46,7 @@ _suite = mx.suite('vm')
 gu_build_args = [] # externalized to simplify extensions
 
 
-mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
+gu_component = mx_sdk_vm.GraalVmJdkComponent(
     suite=_suite,
     name='Component installer',
     short_name='gu',
@@ -76,7 +76,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJdkComponent(
         ),
     ],
     stability="supported",
-))
+)
+mx_sdk_vm.register_graalvm_component(gu_component)
 
 
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmComponent(
