@@ -4522,7 +4522,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                             ElementFilter.constructorsIn(((TypeElement) types.RootNode.asElement()).getEnclosedElements()).stream().filter(x -> x.getParameters().size() == 2).findFirst().get()));
 
             continuationRootNodeImpl.add(createExecute());
-            continuationRootNodeImpl.add(createGetOperationRootNode());
+            continuationRootNodeImpl.add(createGetSourceRootNode());
             continuationRootNodeImpl.add(createGetLocals());
 
             continuationRootNodeImpl.add(createToString());
@@ -4559,8 +4559,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private CodeExecutableElement createGetOperationRootNode() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationRootNode, "getOperationRootNode");
+        private CodeExecutableElement createGetSourceRootNode() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationRootNode, "getSourceRootNode");
             CodeTreeBuilder b = ex.createBuilder();
             b.startReturn().string("root").end();
             return ex;
