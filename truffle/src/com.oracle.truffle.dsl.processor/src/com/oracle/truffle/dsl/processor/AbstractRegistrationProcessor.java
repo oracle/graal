@@ -119,7 +119,7 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 for (Element e : annotatedElements) {
                     AnnotationMirror mirror = ElementUtils.findAnnotationMirror(e, supportedAnnotation.asType());
                     if (mirror != null && e.getKind() == ElementKind.CLASS) {
-                        if (validateRegistration(e, mirror)) {
+                        if (accepts(e, mirror) && validateRegistration(e, mirror)) {
                             TypeElement annotatedElement = (TypeElement) e;
                             String providerImplBinName = generateProvider(annotatedElement);
                             registrations.put(providerImplBinName, annotatedElement);
@@ -132,6 +132,11 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
             }
             return true;
         }
+    }
+
+    @SuppressWarnings("unused")
+    boolean accepts(Element annotatedElement, AnnotationMirror registrationMirror) {
+        return true;
     }
 
     abstract boolean validateRegistration(Element annotatedElement, AnnotationMirror registrationMirror);
@@ -191,6 +196,23 @@ abstract class AbstractRegistrationProcessor extends AbstractProcessor {
                 String idSimpleName = ElementUtils.getSimpleName(types.InternalResource_Id);
                 emitError(String.format("The class %s must be annotated by the @%s annotation. To resolve this, add '@%s(\"resource-id\")' annotation.",
                                 getScopedName(internalResourceElement), idSimpleName, idSimpleName), annotatedElement, mirror, value);
+                return false;
+            }
+            boolean optional = ElementUtils.getAnnotationValue(Boolean.class, id, "optional");
+            if (optional) {
+                String resourceClzName = getScopedName(internalResourceElement);
+                emitError(String.format("Optional internal resources must not be registered using '@Registration' annotation. " +
+                                "To resolve this, remove the '%s' from 'internalResources' the or make the '%s' non-optional by removing 'optional = true'.",
+                                resourceClzName, resourceClzName), annotatedElement, mirror, value);
+                return false;
+            }
+            String resourceComponentId = ElementUtils.getAnnotationValue(String.class, id, "componentId");
+            String registrationComponentId = ElementUtils.getAnnotationValue(String.class, mirror, "id");
+            if (!resourceComponentId.isEmpty() && !resourceComponentId.equals(registrationComponentId)) {
+                String idSimpleName = ElementUtils.getSimpleName(types.InternalResource_Id);
+                emitError(String.format("The '@%s.componentId' for an required internal resources must be unset or equal to '@Registration.id'. " +
+                                "To resolve this, remove the '@%s.componentId = \"%s\"'.",
+                                idSimpleName, idSimpleName, resourceComponentId), annotatedElement, mirror, value);
                 return false;
             }
             String idValue = ElementUtils.getAnnotationValue(String.class, id, "value");

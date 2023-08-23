@@ -1413,6 +1413,7 @@ suite = {
           "java.nio.file.spi.FileTypeDetector",
           "com.oracle.truffle.api.impl.TruffleLocator",
           "com.oracle.truffle.api.provider.TruffleLanguageProvider",
+          "com.oracle.truffle.api.provider.InternalResourceProvider",
           "com.oracle.truffle.api.library.provider.DefaultExportProvider",
           "com.oracle.truffle.api.library.provider.EagerExportProvider",
           "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
