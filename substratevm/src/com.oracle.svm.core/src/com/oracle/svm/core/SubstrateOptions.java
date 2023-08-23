@@ -377,6 +377,8 @@ public class SubstrateOptions {
             }
         }
     };
+    @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, Immutable);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);

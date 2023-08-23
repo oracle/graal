@@ -90,7 +90,7 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
 
     @Override
     public void onCollectionEnd(boolean completeCollection, GCCause cause) {
-        UnsignedWord oldLive = GCImpl.getGCImpl().getAccounting().getOldGenerationAfterChunkBytes();
+        UnsignedWord oldLive = GCImpl.getAccounting().getOldGenerationAfterChunkBytes();
         oldSizeExceededInPreviousCollection = oldLive.aboveThan(oldSize);
 
         boolean resizeOldOnlyForPromotions = !completeCollection;
@@ -123,7 +123,7 @@ final class ProportionateSpacesPolicy extends AbstractCollectionPolicy {
 
     private void computeNewOldGenSize(boolean resizeOnlyForPromotions) { // TenuredGeneration::compute_new_size_inner
         UnsignedWord capacityAtPrologue = oldSize;
-        UnsignedWord usedAfterGc = GCImpl.getGCImpl().getAccounting().getOldGenerationAfterChunkBytes();
+        UnsignedWord usedAfterGc = GCImpl.getAccounting().getOldGenerationAfterChunkBytes();
         if (oldSize.belowThan(usedAfterGc)) {
             oldSize = usedAfterGc;
         }

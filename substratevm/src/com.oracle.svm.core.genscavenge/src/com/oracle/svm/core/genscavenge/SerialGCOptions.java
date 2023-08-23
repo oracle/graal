@@ -73,13 +73,11 @@ public final class SerialGCOptions {
                     "for which a soft reference will keep its referent alive after its last access. Serial GC only.", type = OptionType.Expert) //
     public static final HostedOptionKey<Integer> SoftRefLRUPolicyMSPerMB = new HostedOptionKey<>(1000, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Print the shape of the heap before and after each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
-    public static final RuntimeOptionKey<Boolean> PrintHeapShape = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
-
     @Option(help = "Print summary GC information after application main method returns. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCSummary = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Print a time stamp at each collection, if +PrintGC or +VerboseGC. Serial GC only.", type = OptionType.Debug)//
+    /* Will be removed as part of GR-48148. */
+    @Option(help = "Deprecated. Print a time stamp at each collection, if +PrintGC or +VerboseGC. Serial GC only.", type = OptionType.Debug)//
     public static final RuntimeOptionKey<Boolean> PrintGCTimeStamps = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
     @Option(help = "Print the time for each of the phases of each collection, if +VerboseGC. Serial GC only.", type = OptionType.Debug)//
@@ -106,7 +104,7 @@ public final class SerialGCOptions {
     @Option(help = "Verify write barriers. Serial GC only.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> VerifyWriteBarriers = new HostedOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
-    @Option(help = "Trace heap chunks during collections, if +VerboseGC and +PrintHeapShape. Serial GC only.", type = OptionType.Debug) //
+    @Option(help = "Trace heap chunks during collections, if +VerboseGC. Serial GC only.", type = OptionType.Debug) //
     public static final RuntimeOptionKey<Boolean> TraceHeapChunks = new RuntimeOptionKey<>(false, SerialGCOptions::serialGCOnly);
 
     @Option(help = "Develop demographics of the object references visited. Serial GC only.", type = OptionType.Debug)//
