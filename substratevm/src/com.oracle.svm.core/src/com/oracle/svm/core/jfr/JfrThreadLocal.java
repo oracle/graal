@@ -250,11 +250,11 @@ public class JfrThreadLocal implements ThreadListener {
      * for the case where {@link Thread#currentThread()} returns null.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isCurrentThreadExcluded() {
-        if (Thread.currentThread() == null) {
-            return true;
+    public static boolean isThreadExcluded(Thread thread) {
+        if (thread == null || (thread != Thread.currentThread() && !VMOperation.isInProgressAtSafepoint())) {
+            return false;
         }
-        Target_java_lang_Thread tjlt = SubstrateUtil.cast(Thread.currentThread(), Target_java_lang_Thread.class);
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
         return tjlt.jfrExcluded;
     }
 
@@ -286,7 +286,7 @@ public class JfrThreadLocal implements ThreadListener {
             throw new OutOfMemoryError("OOME for thread local buffer");
         }
 
-        Target_jdk_jfr_internal_EventWriter result = JfrEventWriterAccess.newEventWriter(buffer, isCurrentThreadExcluded());
+        Target_jdk_jfr_internal_EventWriter result = JfrEventWriterAccess.newEventWriter(buffer, isThreadExcluded(Thread.currentThread()));
         javaEventWriter.set(result);
         return result;
     }

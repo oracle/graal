@@ -27,11 +27,12 @@ package com.oracle.svm.core.jfr.events;
 import java.util.Map;
 import java.util.Properties;
 
-import jdk.jfr.Enabled;
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrEventWriteStatus;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
@@ -40,7 +41,7 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.JavaVMOperation;
 
 import jdk.jfr.Event;
 import jdk.jfr.Name;
@@ -63,8 +64,7 @@ public class EndChunkNativePeriodicEvents extends Event {
         emitOSInformation(formatOSInformation());
         emitInitialEnvironmentVariables(getEnvironmentVariables());
         emitInitialSystemProperties(getSystemProperties());
-        emitThreadCPULoad();
-//        emitThreadAllocationStatistics();
+        emitPerThreadEndChunkEvents();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -181,35 +181,22 @@ public class EndChunkNativePeriodicEvents extends Event {
         return JfrNativeEventWriter.endEvent(data, isLarge);
     }
 
-    private static void emitThreadCPULoad() {
-        ThreadCPULoadEvent.emitEvents();
+    /**
+     * This is responsible for handling the emission of all per thread events. This allows for a
+     * single VM operation to iterate the running threads.
+     */
+    private static void emitPerThreadEndChunkEvents() {
+        if (shouldEmitUnsafe()) {
+            EmitPerThreadEndChunkEventsOperation vmOp = new EmitPerThreadEndChunkEventsOperation();
+            vmOp.enqueue();
+        }
     }
 
-//    @Uninterruptible(reason = "Thread locks/holds the THREAD_MUTEX.")
-//    private static void emitThreadAllocationStatistics() {
-//        if (JfrEvent.ThreadAllocationStatistics.shouldEmit()) {
-//            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-//            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
-//
-//            VMThreads.lockThreadMutexInNativeCode();
-//            try {
-//                org.graalvm.nativeimage.IsolateThread isolateThread = VMThreads.firstThread();
-//                while (isolateThread.isNonNull()) {
-//                    Thread javaThread = com.oracle.svm.core.thread.PlatformThreads.currentThread.get(isolateThread);
-//                    if (javaThread != null) {
-//                        JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadAllocationStatistics);
-//                        JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-//                        JfrNativeEventWriter.putThread(data, JavaThreads.getThreadId(javaThread));
-//                        JfrNativeEventWriter.putLong(data,Heap.getHeap().getThreadAllocatedMemory(isolateThread));
-//                        JfrNativeEventWriter.endSmallEvent(data);
-//                    }
-//                    isolateThread = VMThreads.nextThread(isolateThread);
-//                }
-//            } finally {
-//                VMThreads.THREAD_MUTEX.unlock();
-//            }
-//        }
-//    }
+    @Uninterruptible(reason = "Used to avoid the VM operation if it is not absolutely needed.")
+    private static boolean shouldEmitUnsafe() {
+        /* The returned value is racy. */
+        return JfrEvent.ThreadCPULoad.shouldEmit() || JfrEvent.ThreadAllocationStatistics.shouldEmit();
+    }
 
     private static StringEntry[] getEnvironmentVariables() {
         Map<String, String> env = System.getenv();
@@ -244,6 +231,20 @@ public class EndChunkNativePeriodicEvents extends Event {
         StringEntry(String key, String value) {
             this.key = key;
             this.value = value;
+        }
+    }
+
+    private static final class EmitPerThreadEndChunkEventsOperation extends JavaVMOperation {
+        EmitPerThreadEndChunkEventsOperation() {
+            super(VMOperationInfos.get(EmitPerThreadEndChunkEventsOperation.class, "Emit per thread end chunk events", SystemEffect.SAFEPOINT));
+        }
+
+        @Override
+        protected void operate() {
+            for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
+                ThreadCPULoadEvent.emit(isolateThread);
+                ThreadAllocationStatisticsEvent.emit(isolateThread);
+            }
         }
     }
 }
