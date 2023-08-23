@@ -71,6 +71,7 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.io.IOAccess;
+import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.BeforeClass;
 import org.junit.Test;
@@ -658,7 +659,7 @@ public class InternalResourceTest {
         protected Object execute(RootNode node, Env env, Object[] contextArguments, Object[] frameArguments) throws Exception {
             try (TemporaryResourceCacheRoot cache = new TemporaryResourceCacheRoot()) {
                 AbstractPolyglotTest.assertFails(() -> env.getInternalResource(SourcesResource.class), IllegalArgumentException.class);
-                AbstractPolyglotTest.assertFails(() -> env.getInternalResource(SourcesResource.ID), IllegalArgumentException.class);
+                Assert.assertNull(env.getInternalResource(SourcesResource.ID));
                 return "";
             }
         }

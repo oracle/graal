@@ -3542,11 +3542,12 @@ public abstract class TruffleLanguage<C> {
          * resource. Unlike the {@link #getInternalResource(Class)}, this method can be used for
          * optional resources whose classes may not exist at runtime. In this case the optional
          * resource must be unpacked at build time, see
-         * {@link Engine#copyResources(Path, String...)}.
+         * {@link Engine#copyResources(Path, String...)}. If the resource with the specified
+         * {@code resourceId} is not associated to this language, the function returns {@code null}.
          *
          * @param resourceId unique id of the resource to be loaded
-         * @throws IllegalArgumentException if resource with the {@code resourceId} is not
-         *             associated with this language
+         * @return internal resource directory or {@code null} if resource with the
+         *         {@code resourceId} is not associated with this language
          * @throws IOException in case of IO error
          * @see #getInternalResource(Class)
          * @see Engine#copyResources(Path, String...)

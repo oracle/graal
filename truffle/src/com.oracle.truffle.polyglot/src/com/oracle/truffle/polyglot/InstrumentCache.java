@@ -287,13 +287,7 @@ final class InstrumentCache {
     }
 
     InternalResourceCache getResourceCache(String resourceId) {
-        InternalResourceCache cache = internalResources.get(resourceId);
-        if (cache == null) {
-            throw new IllegalArgumentException(String.format("Resource with id %s is not provided by language %s, provided resource types are %s",
-                            resourceId, id, String.join(", ", internalResources.keySet())));
-        } else {
-            return cache;
-        }
+        return internalResources.get(resourceId);
     }
 
     Collection<String> getResourceIds() {
