@@ -123,11 +123,15 @@ interface ElementHelpers {
     }
 
     static CodeVariableElement addField(CodeElement<? super Element> e, Set<Modifier> modifiers, Class<?> type, String name, String initString) {
+        CodeVariableElement var = createInitializedVariable(modifiers, type, name, initString);
+        e.add(var);
+        return var;
+    }
+
+    static CodeVariableElement createInitializedVariable(Set<Modifier> modifiers, Class<?> type, String name, String initString) {
         CodeTree init = CodeTreeBuilder.singleString(initString);
-        CodeVariableElement var = e.add(new CodeVariableElement(modifiers, ProcessorContext.getInstance().getType(type), name));
-        if (init != null) {
-            var.createInitBuilder().tree(init);
-        }
+        CodeVariableElement var = new CodeVariableElement(modifiers, ProcessorContext.getInstance().getType(type), name);
+        var.createInitBuilder().tree(init);
         return var;
     }
 

@@ -5,12 +5,18 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.junit.runners.Parameterized;
+import org.junit.runners.Parameterized.Parameter;
+import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -30,6 +36,8 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.operation.ContinuationResult;
 import com.oracle.truffle.api.operation.GenerateOperations;
+import com.oracle.truffle.api.operation.GenerateOperationsTestVariants;
+import com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLocal;
@@ -39,15 +47,46 @@ import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.Variadic;
 
+@RunWith(Parameterized.class)
 public class OperationGetLocalsTest {
-    public static OperationLocal makeLocal(List<String> names, OperationNodeWithLocalIntrospectionGen.Builder b, String name) {
+    @Parameters(name = "{0}")
+    public static List<Class<? extends OperationNodeWithLocalIntrospection>> getInterpreterClasses() {
+        return List.of(OperationNodeWithLocalIntrospectionBase.class, OperationNodeWithLocalIntrospectionWithBaseline.class);
+    }
+
+    @Parameter(0) public Class<? extends OperationNodeWithLocalIntrospection> interpreterClass;
+
+    public static OperationLocal makeLocal(List<String> names, OperationNodeWithLocalIntrospectionBuilder b, String name) {
         names.add(name);
         return b.createLocal();
     }
 
-    public static OperationNodeWithLocalIntrospection parseNode(OperationParser<OperationNodeWithLocalIntrospectionGen.Builder> builder) {
-        OperationNodes<OperationNodeWithLocalIntrospection> nodes = OperationNodeWithLocalIntrospectionGen.create(OperationConfig.DEFAULT, builder);
+    @SuppressWarnings("unchecked")
+    public static <T extends OperationNodeWithLocalIntrospectionBuilder> OperationNodes<OperationNodeWithLocalIntrospection> createNodes(
+                    Class<? extends OperationNodeWithLocalIntrospection> interpreterClass,
+                    OperationConfig config,
+                    OperationParser<T> builder) {
+        try {
+            Method create = interpreterClass.getMethod("create", OperationConfig.class, OperationParser.class);
+            return (OperationNodes<OperationNodeWithLocalIntrospection>) create.invoke(null, config, builder);
+        } catch (InvocationTargetException e) {
+            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
+            // get caught by the test harness.
+            throw new IllegalStateException(e.getCause());
+        } catch (Exception e) {
+            // Other exceptions (e.g., NoSuchMethodError) likely indicate a bad reflective call.
+            throw new AssertionError("Encountered exception during reflective call: " + e.getMessage());
+        }
+    }
+
+    public static <T extends OperationNodeWithLocalIntrospectionBuilder> OperationNodeWithLocalIntrospection parseNode(Class<? extends OperationNodeWithLocalIntrospection> interpreterClass,
+                    OperationParser<T> builder) {
+        OperationNodes<OperationNodeWithLocalIntrospection> nodes = createNodes(interpreterClass, OperationConfig.DEFAULT, builder);
         return nodes.getNodes().get(nodes.getNodes().size() - 1);
+    }
+
+    public <T extends OperationNodeWithLocalIntrospectionBuilder> OperationNodeWithLocalIntrospection parseNode(OperationParser<T> builder) {
+        return parseNode(interpreterClass, builder);
     }
 
     @Test
@@ -455,7 +494,10 @@ public class OperationGetLocalsTest {
     }
 }
 
-@GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true)
+@GenerateOperationsTestVariants({
+                @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true)),
+                @Variant(suffix = "WithBaseline", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableBaselineInterpreter = true))
+})
 @OperationProxy(value = ContinuationResult.ContinueNode.class, operationName = "Continue")
 abstract class OperationNodeWithLocalIntrospection extends RootNode implements OperationRootNode {
     @CompilationFinal(dimensions = 1) String[] localNames;

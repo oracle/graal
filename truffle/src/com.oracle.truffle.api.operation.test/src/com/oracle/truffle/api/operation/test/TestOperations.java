@@ -304,6 +304,14 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     }
 
     @Operation
+    public static final class NonNull {
+        @Specialization
+        public static boolean doObject(Object o) {
+            return o != null;
+        }
+    }
+
+    @Operation
     public static final class GetSourcePosition {
         @Specialization
         public static Object doOperation(@Bind("$root") Node rootNode, @Bind("$bci") int bci) {

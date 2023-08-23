@@ -48,6 +48,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.boxType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.addField;
 import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.arrayOf;
+import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.createInitializedVariable;
 import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.generic;
 import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.type;
 import static javax.lang.model.element.Modifier.ABSTRACT;
@@ -118,6 +119,11 @@ import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 public class OperationsNodeFactory implements ElementHelpers {
     private static final Name Uncached_Name = CodeNames.of("Uncached");
 
+    public static final String USER_LOCALS_START_IDX = "USER_LOCALS_START_IDX";
+    public static final String FINALLY_TRY_EXCEPTION_IDX = "FINALLY_TRY_EXCEPTION_IDX";
+    public static final String BASELINE_BCI_IDX = "BASELINE_BCI_IDX";
+    public static final String COROUTINE_FRAME_IDX = "COROUTIME_FRAME_IDX";
+
     private final ProcessorContext context = ProcessorContext.getInstance();
     private final TruffleTypes types = context.getTypes();
     private final OperationsModel model;
@@ -183,6 +189,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // Print a summary of the model in a docstring at the start.
         operationNodeGen.createDocBuilder().startDoc().lines(model.pp()).end();
+
+        // Define constants for accessing the frame.
+        operationNodeGen.addAll(createFrameLayoutConstants());
 
         // Define the interpreter implementations.
         if (model.enableBaselineInterpreter) {
@@ -286,18 +295,13 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "handlers")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, VOLATILE), context.getType(int[].class), "sourceInfo")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals")));
-        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "userLocals")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex")));
         if (model.hasBoxingElimination()) {
             operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(byte[].class), "localBoxingState")));
         }
         if (model.enableBaselineInterpreter) {
-            operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bciSlot")));
             operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "baselineExecuteCount")).createInitBuilder().string("16");
-        }
-        if (model.enableYield) {
-            operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "localFrameSlot")));
         }
         if (model.enableTracing) {
             operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary")));
@@ -353,6 +357,30 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createDumpBytecode());
 
         return operationNodeGen;
+    }
+
+    private List<CodeVariableElement> createFrameLayoutConstants() {
+        List<CodeVariableElement> result = new ArrayList<>();
+        int reserved = 0;
+
+        int finallyTryExceptionIndex = reserved++;
+        result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, FINALLY_TRY_EXCEPTION_IDX, finallyTryExceptionIndex + ""));
+
+        int baselineBciIndex = -1;
+        if (model.enableBaselineInterpreter) {
+            baselineBciIndex = reserved++;
+            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, BASELINE_BCI_IDX, baselineBciIndex + ""));
+        }
+
+        int coroutineFrameIndex = 1;
+        if (model.enableYield) {
+            coroutineFrameIndex = reserved++;
+            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, COROUTINE_FRAME_IDX, coroutineFrameIndex + ""));
+        }
+
+        result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, USER_LOCALS_START_IDX, reserved + ""));
+
+        return result;
     }
 
     private CodeTree createFastAccessFieldInitializer() {
@@ -565,15 +593,8 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(context.getType(Object[].class), "constants"),
                         new CodeVariableElement(context.getType(int[].class), "handlers"),
                         new CodeVariableElement(context.getType(int.class), "numLocals"),
-                        new CodeVariableElement(context.getType(int[].class), "userLocals"),
                         new CodeVariableElement(context.getType(int.class), "numNodes"),
                         new CodeVariableElement(context.getType(int.class), "buildIndex")));
-        if (model.enableBaselineInterpreter) {
-            params.add(new CodeVariableElement(context.getType(int.class), "bciSlot"));
-        }
-        if (model.enableYield) {
-            params.add(new CodeVariableElement(context.getType(int.class), "localFrameSlot"));
-        }
         if (model.enableTracing) {
             params.add(new CodeVariableElement(context.getType(int[].class), "basicBlockBoundary"));
         }
@@ -1008,9 +1029,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.declaration(context.getType(Object[].class), "result", "new Object[userLocals.length]");
-        b.startFor().string("int i = 0; i < userLocals.length; i++").end().startBlock();
-        b.statement("result[i] = ACCESS.getObject(frame, userLocals[i])");
+        b.declaration(context.getType(Object[].class), "result", "new Object[numLocals - " + USER_LOCALS_START_IDX + "]");
+        b.startFor().string("int i = 0; i < numLocals - " + USER_LOCALS_START_IDX + "; i++").end().startBlock();
+        b.statement("result[i] = ACCESS.getObject(frame, i + " + USER_LOCALS_START_IDX + ")");
         b.end();
 
         b.startReturn().string("result").end();
@@ -1091,7 +1112,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         CodeTreeBuilder b = ex.createBuilder();
         if (model.enableBaselineInterpreter) {
-            b.startReturn().string("ACCESS.getInt(frame, bciSlot)").end();
+            b.startReturn().string("ACCESS.getInt(frame, " + BASELINE_BCI_IDX + ")").end();
         } else {
             b.lineComment("The bci is only stored in the frame for baseline interpreters.");
             b.startReturn().string("-1").end();
@@ -1512,7 +1533,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), new ArrayCodeTypeMirror(operationStackEntry.asType()), "operationStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "operationSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals"),
-                        new CodeVariableElement(Set.of(PRIVATE), generic(ArrayList.class, context.getDeclaredType(Integer.class)), "userLocals"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLabels"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "stackValueBciStack"),
@@ -1795,6 +1815,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             builder.add(createBeginOperation());
             builder.add(createEndOperation());
+            builder.add(createBeginFinallyTryNoArgs());
             builder.add(createEmitOperationBegin());
             builder.add(createBeforeChild());
             builder.add(createAfterChild());
@@ -2068,9 +2089,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 });
                 b.end();
             }
-            b.declaration(context.getType(int.class), "slot", "numLocals++");
-            b.statement("userLocals.add(slot)");
-            b.startReturn().startNew(operationLocalImpl.asType()).string("slot").end(2);
+            b.startReturn().startNew(operationLocalImpl.asType()).string("numLocals++").end(2);
 
             return ex;
         }
@@ -2328,7 +2347,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.string("new HashSet<>()");
                     b.string("finallyTryContext");
                     b.end(2);
-                    b.statement("operationStack[operationSp - 1].data = finallyTryContext");
+                    b.statement("((Object[]) operationStack[operationSp - 1].data)[1] = finallyTryContext");
 
                     buildContextSensitiveFieldInitializer(b);
 
@@ -2366,8 +2385,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("operationStack = new OperationStackEntry[8]");
             b.statement("opSeqNum = 0");
             b.statement("operationSp = 0");
-            b.statement("numLocals = 0");
-            b.statement("userLocals = new ArrayList<>()");
+
+            b.statement("numLocals = " + USER_LOCALS_START_IDX);
             b.statement("numLabels = 0");
             b.statement("numNodes = 0");
             b.statement("constantPool = new ConstantPool()");
@@ -2475,10 +2494,25 @@ public class OperationsNodeFactory implements ElementHelpers {
                                     "curStack /* entry stack height */, " +
                                     "((OperationLocalImpl) arg0).index /* exception local index */}");
                     break;
+                case FINALLY_TRY:
+                    b.string("new Object[]{ arg0 /* exception local */, null /* finallyTryContext */}");
+                    break;
+                case FINALLY_TRY_NO_EXCEPT:
+                    b.string("new Object[]{ null /* exception local */, null /* finallyTryContext */}");
+                    break;
                 default:
                     b.string("null");
                     break;
             }
+        }
+
+        private CodeExecutableElement createBeginFinallyTryNoArgs() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "beginFinallyTry");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startStatement().startCall("beginFinallyTry").string("null").end(2);
+
+            return ex;
         }
 
         private CodeExecutableElement createEndOperation() {
@@ -2601,9 +2635,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                     }
                     break;
                 case FINALLY_TRY:
-                    b.statement("FinallyTryContext ctx = (FinallyTryContext) operationStack[operationSp].data");
-                    b.statement("short exceptionLocal = (short) numLocals++");
-                    b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, curStack, exceptionLocal)");
+                    b.statement("Object[] finallyTryData = (Object[]) operationStack[operationSp].data");
+                    b.statement("OperationLocalImpl exceptionLocal = (OperationLocalImpl) finallyTryData[0]");
+                    b.statement("FinallyTryContext ctx = (FinallyTryContext) finallyTryData[1]");
+                    b.statement("short exceptionIndex = (exceptionLocal != null) ? (short) exceptionLocal.index : " + FINALLY_TRY_EXCEPTION_IDX);
+                    b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, curStack, exceptionIndex)");
                     b.lineComment("emit handler for normal completion case");
                     b.statement("doEmitFinallyHandler(ctx)");
                     b.statement("int endBranchIndex = bci + 1");
@@ -2617,11 +2653,12 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.lineComment("emit handler for exceptional case");
                     b.statement("exHandlers[exHandlerIndex + 2] = bci /* handler start */");
                     b.statement("doEmitFinallyHandler(ctx)");
-                    buildEmitInstruction(b, model.throwInstruction, new String[]{"exceptionLocal"});
+                    buildEmitInstruction(b, model.throwInstruction, new String[]{"exceptionIndex"});
                     b.statement(writeBc("endBranchIndex", "(short) bci"));
                     break;
                 case FINALLY_TRY_NO_EXCEPT:
-                    b.statement("FinallyTryContext ctx = (FinallyTryContext) operationStack[operationSp].data");
+                    b.statement("Object[] finallyTryData = (Object[]) operationStack[operationSp].data");
+                    b.statement("FinallyTryContext ctx = (FinallyTryContext) finallyTryData[1]");
                     b.statement("doEmitFinallyHandler(ctx)");
                     break;
                 case RETURN:
@@ -2685,13 +2722,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.cast(types.TruffleLanguage).string("rootData[1]");
             b.end();
 
-            if (model.enableBaselineInterpreter) {
-                b.declaration(context.getType(int.class), "bciSlot", "numLocals++");
-            }
-            if (model.enableYield) {
-                b.declaration(context.getType(int.class), "localFrameSlot", "numLocals++");
-            }
-
             CodeTree newBuilderCall = CodeTreeBuilder.createBuilder().startStaticCall(types.FrameDescriptor, "newBuilder").string("numLocals + maxStack").end().build();
             b.declaration(types.FrameDescriptor_Builder, "fdb", newBuilderCall);
             b.startStatement().startCall("fdb.addSlots");
@@ -2704,26 +2734,14 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.string("fdb");
             b.end(2);
 
-            b.declaration(context.getType(int[].class), "userLocalsArray", "new int[userLocals.size()]");
-            b.startFor().string("int i = 0; i < userLocals.size(); i++").end().startBlock();
-            b.statement("userLocalsArray[i] = userLocals.get(i)");
-            b.end();
-
             b.startStatement().startCall("result", "setInterpreterState");
             b.string("nodes");
             b.string("Arrays.copyOf(bc, bci)"); // bc
             b.string("constantPool.toArray()"); // constants
             b.string("Arrays.copyOf(exHandlers, exHandlerCount)"); // handlers
             b.string("numLocals");
-            b.string("userLocalsArray"); // userLocals
             b.string("numNodes");
             b.string("buildIndex");
-            if (model.enableBaselineInterpreter) {
-                b.string("bciSlot");
-            }
-            if (model.enableYield) {
-                b.string("localFrameSlot");
-            }
             if (model.enableTracing) {
                 b.string("Arrays.copyOf(basicBlockBoundary, bci)");
             }
@@ -3622,7 +3640,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
             b.startBlock();
 
-            b.statement("FinallyTryContext ctx = (FinallyTryContext) operationStack[i].data");
+            b.statement("FinallyTryContext ctx = (FinallyTryContext) ((Object[]) operationStack[i].data)[1]");
             b.startIf().string("ctx.handlerIsSet()").end().startBlock();
             b.statement("doEmitFinallyHandler(ctx)");
             b.end();
@@ -3863,7 +3881,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (model.enableBaselineInterpreter && !tier.isUncached) {
                 // Non-baseline interpreters don't use the bci slot. Set it to an invalid value just
                 // in case it gets read during a stack walk.
-                b.statement("ACCESS.setInt(frame, $this.bciSlot, -1)");
+                b.statement("ACCESS.setInt(frame, " + BASELINE_BCI_IDX + ", -1)");
             }
 
             if (model.enableTracing) {
@@ -4238,7 +4256,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (tier.isUncached) {
                 // If in the baseline interpreter, we need to store the bci in the frame in case the
                 // stack is inspected.
-                b.statement("ACCESS.setInt(frame, $this.bciSlot, bci)");
+                b.statement("ACCESS.setInt(frame, " + BASELINE_BCI_IDX + ", bci)");
             } else {
                 // If not in the baseline interpreter, we need to retrieve the node for the call.
                 InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
@@ -4533,7 +4551,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.declaration("int", "sp", "((target >> 16) & 0xffff) + root.numLocals");
             b.lineComment("Copy any existing stack values (from numLocals to sp - 1) to the current frame, which will be used for stack accesses.");
             b.statement(copyFrameTo("parentFrame", "root.numLocals", "frame", "root.numLocals", "sp - 1 - root.numLocals"));
-            b.statement(setFrameObject("root.localFrameSlot", "parentFrame"));
+            b.statement(setFrameObject(COROUTINE_FRAME_IDX, "parentFrame"));
             b.statement(setFrameObject("sp - 1", "inputValue"));
 
             b.statement("return root.continueAt(frame, parentFrame, (sp << 16) | (target & 0xffff))");
@@ -4551,7 +4569,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeExecutableElement createGetLocals() {
             CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.ContinuationRootNode, "getLocals");
             CodeTreeBuilder b = ex.createBuilder();
-            b.declaration(types.Frame, "localFrame", cast(types.Frame, getFrameObject("root.localFrameSlot")));
+            b.declaration(types.Frame, "localFrame", cast(types.Frame, getFrameObject(COROUTINE_FRAME_IDX)));
             b.startReturn().startCall("root", "getLocals").string("localFrame").end(2);
             return ex;
         }

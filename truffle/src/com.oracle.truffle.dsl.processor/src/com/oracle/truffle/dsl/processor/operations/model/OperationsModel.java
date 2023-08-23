@@ -174,7 +174,8 @@ public class OperationsModel extends Template implements PrettyPrintable {
         operation(OperationKind.FINALLY_TRY, "FinallyTry") //
                         .setVoid(true) //
                         .setNumChildren(2) //
-                        .setChildrenMustBeValues(false, false);
+                        .setChildrenMustBeValues(false, false) //
+                        .setOperationArguments(types.OperationLocal);
         operation(OperationKind.FINALLY_TRY_NO_EXCEPT, "FinallyTryNoExcept") //
                         .setVoid(true) //
                         .setNumChildren(2) //
