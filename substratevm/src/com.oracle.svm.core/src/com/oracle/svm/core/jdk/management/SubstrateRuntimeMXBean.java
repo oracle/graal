@@ -78,7 +78,7 @@ public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
         try {
             id = ProcessProperties.getProcessID();
         } catch (Throwable t) {
-            id = Isolates.getCurrentStartMillis();
+            id = Isolates.getCurrentStartTimeMillis();
         }
         try {
             hostName = InetAddress.getLocalHost().getHostName();
@@ -153,7 +153,7 @@ public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getStartTime() {
-        return Isolates.getCurrentStartMillis();
+        return Isolates.getCurrentStartTimeMillis();
     }
 
     /** Copied from {@code sun.management.RuntimeImpl#getSystemProperties()}. */

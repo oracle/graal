@@ -969,7 +969,7 @@ public final class VMOperationControl {
         void print(Log log, boolean allowJavaHeapAccess) {
             VMOpStatus localStatus = status;
             if (localStatus != null) {
-                long uptime = timestamp - Isolates.getCurrentStartMillis();
+                long uptime = timestamp - Isolates.getCurrentStartTimeMillis();
                 log.rational(uptime, TimeUtils.millisPerSecond, 3).string("s - ").spaces(nestingLevel * 2).string(localStatus.name());
                 if (allowJavaHeapAccess) {
                     log.string(" ").string(name);

@@ -60,8 +60,8 @@ public class Isolates {
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME);
 
     private static Boolean isCurrentFirst;
-    private static long startMillis;
-    private static long startNanos;
+    private static long startTimeMillis;
+    private static long startNanoTime;
 
     /**
      * Indicates if the current isolate is the first isolate in this process. If so, it can be
@@ -80,28 +80,28 @@ public class Isolates {
     }
 
     public static void setCurrentStartTime() {
-        assert startMillis == 0;
-        assert startNanos == 0;
-        startMillis = System.currentTimeMillis();
-        startNanos = System.nanoTime();
+        assert startTimeMillis == 0;
+        assert startNanoTime == 0;
+        startTimeMillis = System.currentTimeMillis();
+        startNanoTime = System.nanoTime();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getCurrentStartMillis() {
-        assert startMillis != 0;
-        return startMillis;
+    public static long getCurrentStartTimeMillis() {
+        assert startTimeMillis != 0;
+        return startTimeMillis;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getCurrentUptimeMillis() {
-        assert startMillis != 0;
-        return System.currentTimeMillis() - startMillis;
+        assert startTimeMillis != 0;
+        return System.currentTimeMillis() - startTimeMillis;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static long getCurrentStartNanos() {
-        assert startNanos != 0;
-        return startNanos;
+    public static long getCurrentStartNanoTime() {
+        assert startNanoTime != 0;
+        return startNanoTime;
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")

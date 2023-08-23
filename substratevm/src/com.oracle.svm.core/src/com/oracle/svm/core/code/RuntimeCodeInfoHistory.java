@@ -162,7 +162,7 @@ public class RuntimeCodeInfoHistory {
 
         public void print(Log log, boolean allowJavaHeapAccess) {
             if (kind != null) {
-                long uptime = timestamp - Isolates.getCurrentStartMillis();
+                long uptime = timestamp - Isolates.getCurrentStartTimeMillis();
                 log.rational(uptime, TimeUtils.millisPerSecond, 3).string("s - ").string(kind).spaces(1);
                 String name = allowJavaHeapAccess ? codeName : null;
                 CodeInfoAccess.printCodeInfo(log, codeInfo, codeInfoState, name, codeStart, codeEnd, hasInstalledCode, installedCodeAddress, installedCodeEntryPoint);
