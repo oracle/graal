@@ -28,11 +28,8 @@ import java.util.Map;
 import java.util.Properties;
 
 import org.graalvm.nativeimage.StackValue;
-import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrEventWriteStatus;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
@@ -40,8 +37,6 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.thread.VMThreads;
-import com.oracle.svm.core.thread.JavaVMOperation;
 
 import jdk.jfr.Event;
 import jdk.jfr.Name;
@@ -59,12 +54,10 @@ public class EndChunkNativePeriodicEvents extends Event {
     }
 
     public static void emit() {
-        emitClassLoadingStatistics(Heap.getHeap().getClassCount());
         emitJVMInformation(JVMInformation.getJVMInfo());
         emitOSInformation(formatOSInformation());
         emitInitialEnvironmentVariables(getEnvironmentVariables());
         emitInitialSystemProperties(getSystemProperties());
-        emitPerThreadEndChunkEvents();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -118,20 +111,6 @@ public class EndChunkNativePeriodicEvents extends Event {
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emitClassLoadingStatistics(long loadedClassCount) {
-        if (JfrEvent.ClassLoadingStatistics.shouldEmit()) {
-            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
-            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
-
-            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ClassLoadingStatistics);
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putLong(data, loadedClassCount);
-            JfrNativeEventWriter.putLong(data, 0); /* unloadedClassCount */
-            JfrNativeEventWriter.endSmallEvent(data);
-        }
-    }
-
-    @Uninterruptible(reason = "Accesses a JFR buffer.")
     private static void emitJVMInformation(JVMInformation jvmInformation) {
         if (JfrEvent.JVMInformation.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
@@ -181,23 +160,6 @@ public class EndChunkNativePeriodicEvents extends Event {
         return JfrNativeEventWriter.endEvent(data, isLarge);
     }
 
-    /**
-     * This is responsible for handling the emission of all per thread events. This allows for a
-     * single VM operation to iterate the running threads.
-     */
-    private static void emitPerThreadEndChunkEvents() {
-        if (shouldEmitUnsafe()) {
-            EmitPerThreadEndChunkEventsOperation vmOp = new EmitPerThreadEndChunkEventsOperation();
-            vmOp.enqueue();
-        }
-    }
-
-    @Uninterruptible(reason = "Used to avoid the VM operation if it is not absolutely needed.")
-    private static boolean shouldEmitUnsafe() {
-        /* The returned value is racy. */
-        return JfrEvent.ThreadCPULoad.shouldEmit() || JfrEvent.ThreadAllocationStatistics.shouldEmit();
-    }
-
     private static StringEntry[] getEnvironmentVariables() {
         Map<String, String> env = System.getenv();
         StringEntry[] result = new StringEntry[env.size()];
@@ -231,20 +193,6 @@ public class EndChunkNativePeriodicEvents extends Event {
         StringEntry(String key, String value) {
             this.key = key;
             this.value = value;
-        }
-    }
-
-    private static final class EmitPerThreadEndChunkEventsOperation extends JavaVMOperation {
-        EmitPerThreadEndChunkEventsOperation() {
-            super(VMOperationInfos.get(EmitPerThreadEndChunkEventsOperation.class, "Emit per thread end chunk events", SystemEffect.SAFEPOINT));
-        }
-
-        @Override
-        protected void operate() {
-            for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
-                ThreadCPULoadEvent.emit(isolateThread);
-                ThreadAllocationStatisticsEvent.emit(isolateThread);
-            }
         }
     }
 }

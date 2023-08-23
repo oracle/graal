@@ -43,17 +43,15 @@ public class ThreadAllocationStatisticsEvent {
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(IsolateThread isolateThread) {
         Thread javaThread = PlatformThreads.fromVMThread(isolateThread);
-        if (JfrEvent.ThreadAllocationStatistics.shouldEmit(javaThread)) {
+        if (javaThread != null && JfrEvent.ThreadAllocationStatistics.shouldEmit(javaThread)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+            JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadAllocationStatistics);
+            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+            JfrNativeEventWriter.putLong(data, Heap.getHeap().getThreadAllocatedMemory(isolateThread)); // Allocation
+            JfrNativeEventWriter.putThread(data, javaThread);
+            JfrNativeEventWriter.endSmallEvent(data);
 
-            if (javaThread != null) {
-                JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadAllocationStatistics);
-                JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-                JfrNativeEventWriter.putLong(data, Heap.getHeap().getThreadAllocatedMemory(isolateThread)); // Allocation
-                JfrNativeEventWriter.putThread(data, javaThread);
-                JfrNativeEventWriter.endSmallEvent(data);
-            }
         }
     }
 }

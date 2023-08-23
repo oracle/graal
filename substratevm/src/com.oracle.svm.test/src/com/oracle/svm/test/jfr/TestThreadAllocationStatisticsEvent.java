@@ -47,10 +47,10 @@ public class TestThreadAllocationStatisticsEvent extends JfrRecordingTest {
         String[] events = new String[]{"jdk.ThreadAllocationStatistics"};
         Recording recording = startRecording(events);
 
-        thread = createAndStartLongLived(THREAD_NAME);
-        stopRecording(recording, TestThreadAllocationStatisticsEvent::validateEvents);
-        assertTrue(thread.isAlive());
+        createAndStartLongLived(THREAD_NAME);
+        recording.dump(createTempJfrFile());
         finished = true;
+        stopRecording(recording, TestThreadAllocationStatisticsEvent::validateEvents);
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
@@ -64,8 +64,8 @@ public class TestThreadAllocationStatisticsEvent extends JfrRecordingTest {
         assertTrue(found);
     }
 
-    private Thread createAndStartLongLived(String name) {
-        Thread thread = new Thread(() -> {
+    private void createAndStartLongLived(String name) {
+        thread = new Thread(() -> {
             while (!finished) {
                 try {
                     dummyList.add(new byte[1024]);
@@ -77,6 +77,5 @@ public class TestThreadAllocationStatisticsEvent extends JfrRecordingTest {
         });
         thread.setName(name);
         thread.start();
-        return thread;
     }
 }
