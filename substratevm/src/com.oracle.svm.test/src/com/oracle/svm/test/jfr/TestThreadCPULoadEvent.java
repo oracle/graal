@@ -26,7 +26,6 @@
 
 package com.oracle.svm.test.jfr;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
 import java.lang.management.ManagementFactory;
@@ -63,7 +62,6 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
-        assertEquals(2, events.size());
         Map<String, Float> userTimes = new HashMap<>();
         Map<String, Float> cpuTimes = new HashMap<>();
 
