@@ -60,9 +60,9 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
-import com.oracle.truffle.tools.utils.json.JSONTokener;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONTokener;
 
 /**
  * This is a per-context singleton. It retains tracing statistics for each root node and writes them

@@ -460,8 +460,8 @@ suite = {
         "com.oracle.truffle.api.library",
         "com.oracle.truffle.api.interop",
         "com.oracle.truffle.api.exception",
-        "com.oracle.truffle.api.instrumentation", 
-        "TruffleJSON",
+        "com.oracle.truffle.api.instrumentation",
+        "TRUFFLE_JSON",
       ],
       "requires" : [
         "jdk.unsupported", # sun.misc.Unsafe
@@ -563,7 +563,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "truffle:ANTLR4",
-        "TruffleJSON",
+        "TRUFFLE_JSON",
       ],
       "requires" : [
         "java.compiler",
@@ -1778,6 +1778,7 @@ suite = {
         "sdk:COLLECTIONS",
         "sdk:NATIVEIMAGE",
         "sdk:POLYGLOT",
+        "TRUFFLE_JSON",
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",

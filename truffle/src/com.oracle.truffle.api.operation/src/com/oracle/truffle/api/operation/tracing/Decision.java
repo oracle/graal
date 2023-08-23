@@ -46,8 +46,8 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.operation.tracing.OperationsStatistics.OperationRootNodeStatistics;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 abstract class Decision {
     static final Comparator<Decision> COMPARATOR = (o1, o2) -> -Double.compare(o1.value(), o2.value());
