@@ -1522,6 +1522,18 @@ public class BinaryParser extends BinaryStreamParser {
                 int atomicOpcode = read1() & 0xFF;
                 state.addAtomicFlag();
                 switch (atomicOpcode) {
+                    case Instructions.ATOMIC_NOTIFY:
+                        atomicNotify(state, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_NOTIFY, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_WAIT32:
+                        atomicWait(state, I32_TYPE, 32, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_WAIT32, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
+                    case Instructions.ATOMIC_WAIT64:
+                        atomicWait(state, I64_TYPE, 64, longMultiResult);
+                        state.addAtomicMemoryInstruction(Bytecode.ATOMIC_WAIT64, (int) longMultiResult[0], longMultiResult[1], module.memoryHasIndexType64((int) longMultiResult[0]));
+                        break;
                     case Instructions.ATOMIC_FENCE:
                         read1();
                         state.addInstruction(Bytecode.ATOMIC_FENCE);
@@ -1811,22 +1823,9 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void store(ParserState state, byte type, int n, long[] result) {
-        int alignHint = readAlignHint(n); // align hint
-        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
-        // the alignment bitfield
-        final int memoryIndex;
-        if (multiMemory && (alignHint & 0b0100_0000) != 0) {
-            memoryIndex = readMemoryIndex();
-        } else {
-            memoryIndex = 0;
-            checkMemoryIndex(0);
-        }
-        final long memoryOffset;
-        if (memory64) {
-            memoryOffset = readUnsignedInt64(); // 64-bit store offset
-        } else {
-            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit store offset
-        }
+        int alignHint = readAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
         state.popChecked(type); // value to store
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE);
@@ -1838,22 +1837,9 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void load(ParserState state, byte type, int n, long[] result) {
-        final int alignHint = readAlignHint(n); // align hint
-        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
-        // the alignment bitfield
-        final int memoryIndex;
-        if (multiMemory && (alignHint & 0b0100_0000) != 0) {
-            memoryIndex = readMemoryIndex();
-        } else {
-            memoryIndex = 0;
-            checkMemoryIndex(0);
-        }
-        final long memoryOffset;
-        if (memory64) {
-            memoryOffset = readUnsignedInt64(); // 64-bit load offset
-        } else {
-            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit load offset
-        }
+        final int alignHint = readAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
         } else {
@@ -1865,22 +1851,9 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void atomicStore(ParserState state, byte type, int n, long[] result) {
-        int alignHint = readAtomicAlignHint(n); // align hint
-        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
-        // the alignment bitfield
-        final int memoryIndex;
-        if (multiMemory && (alignHint & 0b0100_0000) != 0) {
-            memoryIndex = readMemoryIndex();
-        } else {
-            memoryIndex = 0;
-            checkMemoryIndex(0);
-        }
-        final long memoryOffset;
-        if (memory64) {
-            memoryOffset = readUnsignedInt64(); // 64-bit store offset
-        } else {
-            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit store offset
-        }
+        int alignHint = readAtomicAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
         state.popChecked(type); // value to store
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE);
@@ -1892,22 +1865,9 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void atomicLoad(ParserState state, byte type, int n, long[] result) {
-        final int alignHint = readAtomicAlignHint(n); // align hint
-        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
-        // the alignment bitfield
-        final int memoryIndex;
-        if (multiMemory && (alignHint & 0b0100_0000) != 0) {
-            memoryIndex = readMemoryIndex();
-        } else {
-            memoryIndex = 0;
-            checkMemoryIndex(0);
-        }
-        final long memoryOffset;
-        if (memory64) {
-            memoryOffset = readUnsignedInt64(); // 64-bit load offset
-        } else {
-            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit load offset
-        }
+        final int alignHint = readAtomicAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
         } else {
@@ -1919,22 +1879,9 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void atomicReadModifyWrite(ParserState state, byte type, int n, long[] result) {
-        final int alignHint = readAtomicAlignHint(n); // align hint
-        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
-        // the alignment bitfield
-        final int memoryIndex;
-        if (multiMemory && (alignHint & 0b0100_0000) != 0) {
-            memoryIndex = readMemoryIndex();
-        } else {
-            memoryIndex = 0;
-            checkMemoryIndex(0);
-        }
-        final long memoryOffset;
-        if (memory64) {
-            memoryOffset = readUnsignedInt64(); // 64-bit load offset
-        } else {
-            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit load offset
-        }
+        final int alignHint = readAtomicAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
         state.popChecked(type); // RMW value
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
             state.popChecked(I64_TYPE); // 64-bit base address
@@ -1947,22 +1894,9 @@ public class BinaryParser extends BinaryStreamParser {
     }
 
     private void atomicCompareExchange(ParserState state, byte type, int n, long[] result) {
-        final int alignHint = readAtomicAlignHint(n); // align hint
-        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
-        // the alignment bitfield
-        final int memoryIndex;
-        if (multiMemory && (alignHint & 0b0100_0000) != 0) {
-            memoryIndex = readMemoryIndex();
-        } else {
-            memoryIndex = 0;
-            checkMemoryIndex(0);
-        }
-        final long memoryOffset;
-        if (memory64) {
-            memoryOffset = readUnsignedInt64(); // 64-bit load offset
-        } else {
-            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit load offset
-        }
+        final int alignHint = readAtomicAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
         state.popChecked(type); // replacement value
         state.popChecked(type); // expected value
         if (module.memoryHasIndexType64(memoryIndex) && memory64) {
@@ -1971,6 +1905,37 @@ public class BinaryParser extends BinaryStreamParser {
             state.popChecked(I32_TYPE); // 32-bit base address
         }
         state.push(type); // loaded value
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
+    }
+
+    private void atomicNotify(ParserState state, long[] result) {
+        final int alignHint = readAtomicAlignHint(32);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
+        state.popChecked(I32_TYPE); // 32-bit count (number of threads to notify)
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
+            state.popChecked(I64_TYPE); // 64-bit base address
+        } else {
+            state.popChecked(I32_TYPE); // 32-bit base address
+        }
+        state.push(I32_TYPE); // 32-bit count (number of threads notified)
+        result[0] = memoryIndex;
+        result[1] = memoryOffset;
+    }
+
+    private void atomicWait(ParserState state, byte type, int n, long[] result) {
+        final int alignHint = readAtomicAlignHint(n);
+        final int memoryIndex = readMemoryIndexFromAlignHint(alignHint);
+        final long memoryOffset = readBaseMemoryOffset();
+        state.popChecked(I64_TYPE); // 64-bit relative timeout
+        state.popChecked(type); // expected value
+        if (module.memoryHasIndexType64(memoryIndex) && memory64) {
+            state.popChecked(I64_TYPE); // 64-bit base address
+        } else {
+            state.popChecked(I32_TYPE); // 32-bit base address
+        }
+        state.push(I32_TYPE); // 32-bit return value (0, 1, 2)
         result[0] = memoryIndex;
         result[1] = memoryOffset;
     }
@@ -2493,6 +2458,29 @@ public class BinaryParser extends BinaryStreamParser {
             byte type = readValueType(bulkMemoryAndRefTypes);
             module.symbolTable().registerFunctionTypeResultType(funcTypeIdx, resultIdx, type);
         }
+    }
+
+    private int readMemoryIndexFromAlignHint(int alignHint) {
+        // if bit 6 (the MSB of the first LEB byte) is set, then an i32 memory index follows after
+        // the alignment bitfield
+        final int memoryIndex;
+        if (multiMemory && (alignHint & 0b0100_0000) != 0) {
+            memoryIndex = readMemoryIndex();
+        } else {
+            memoryIndex = 0;
+            checkMemoryIndex(0);
+        }
+        return memoryIndex;
+    }
+
+    private long readBaseMemoryOffset() {
+        final long memoryOffset;
+        if (memory64) {
+            memoryOffset = readUnsignedInt64(); // 64-bit store offset
+        } else {
+            memoryOffset = Integer.toUnsignedLong(readUnsignedInt32()); // 32-bit store offset
+        }
+        return memoryOffset;
     }
 
     private boolean isEOF() {
