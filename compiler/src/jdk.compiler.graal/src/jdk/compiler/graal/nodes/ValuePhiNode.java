@@ -34,6 +34,7 @@ import jdk.compiler.graal.graph.NodeFlood;
 import jdk.compiler.graal.graph.NodeInputList;
 import jdk.compiler.graal.nodeinfo.InputType;
 import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.spi.LimitedValueProxy;
 import jdk.compiler.graal.nodes.type.StampTool;
 import jdk.compiler.graal.util.CollectionsUtil;
 
@@ -129,7 +130,7 @@ public class ValuePhiNode extends PhiNode {
      */
     private Stamp tryInferLoopPhiStamp(Stamp valuesStamp) {
         if (isAlive() && isLoopPhi() && valuesStamp.isPointerStamp()) {
-            Stamp firstValueStamp = firstValue().stamp(NodeView.DEFAULT);
+            Stamp firstValueStamp = stripProxies(firstValue()).stamp(NodeView.DEFAULT);
             if (firstValueStamp.meet(valuesStamp).equals(firstValueStamp)) {
                 /*
                  * Even the first value's stamp is not more precise than the current stamp, we won't
@@ -137,14 +138,14 @@ public class ValuePhiNode extends PhiNode {
                  */
                 return valuesStamp;
             }
-            boolean hasDirectPhiOrProxyInput = false;
+            boolean hasDirectPhiInput = false;
             for (ValueNode value : values()) {
-                if (value instanceof ValuePhiNode || value instanceof ValueProxyNode) {
-                    hasDirectPhiOrProxyInput = true;
+                if (stripProxies(value) instanceof ValuePhiNode) {
+                    hasDirectPhiInput = true;
                     break;
                 }
             }
-            if (!hasDirectPhiOrProxyInput) {
+            if (!hasDirectPhiInput) {
                 // Nothing to recurse over.
                 return valuesStamp;
             }
@@ -153,13 +154,12 @@ public class ValuePhiNode extends PhiNode {
             NodeFlood flood = new NodeFlood(graph());
             flood.addAll(values());
             for (Node node : flood) {
-                if (node == this) {
+                Node unproxifiedNode = stripProxies(node);
+                if (unproxifiedNode == this) {
                     // Don't use this value's stamp as that is what we are computing.
-                } else if (node instanceof ValuePhiNode phi) {
+                } else if (unproxifiedNode instanceof ValuePhiNode phi) {
                     flood.addAll(phi.values());
-                } else if (node instanceof ValueProxyNode proxy) {
-                    flood.add(proxy.value());
-                } else if (node instanceof ValueNode value) {
+                } else if (unproxifiedNode instanceof ValueNode value) {
                     currentStamp = currentStamp.meet(value.stamp(NodeView.DEFAULT));
                     if (currentStamp.equals(valuesStamp)) {
                         // We won't become more precise.
@@ -173,6 +173,25 @@ public class ValuePhiNode extends PhiNode {
             }
         }
         return valuesStamp;
+    }
+
+    private static Node stripProxies(Node n) {
+        if (n instanceof ValueNode value) {
+            return stripProxies(value);
+        }
+        return n;
+    }
+
+    /**
+     * Proxies with the same stamp as the original node should be ignored when trying to infer a
+     * loop stamp.
+     */
+    private static ValueNode stripProxies(ValueNode v) {
+        ValueNode result = v;
+        while (result instanceof LimitedValueProxy proxy && proxy.getOriginalNode().stamp(NodeView.DEFAULT).equals(result.stamp(NodeView.DEFAULT))) {
+            result = proxy.getOriginalNode();
+        }
+        return result;
     }
 
     @Override
