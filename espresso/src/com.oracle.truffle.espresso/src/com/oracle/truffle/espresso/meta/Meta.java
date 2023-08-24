@@ -888,7 +888,12 @@ public final class Meta extends ContextAccessImpl {
         java_util_Map_remove = java_util_Map.requireDeclaredMethod(Name.remove, Signature.Object_Object);
         java_util_Map_containsKey = java_util_Map.requireDeclaredMethod(Name.containsKey, Signature._boolean_Object);
         java_util_Map_entrySet = java_util_Map.requireDeclaredMethod(Name.entrySet, Signature.java_util_Set);
+        java_util_Map_copy_of = java_util_Map.requireDeclaredMethod(Name.copyOf, Signature.Map_Map);
         assert java_util_Map.isInterface();
+
+        java_util_HashMap = knownKlass(Type.java_util_HashMap);
+        java_util_HashMap_init = java_util_HashMap.requireDeclaredMethod(Name._init_, Signature._void_int);
+        java_util_HashMap_put = java_util_HashMap.requireDeclaredMethod(Name.put, Signature.Object_Object_Object);
 
         java_util_Map_Entry = knownKlass(Type.java_util_Map_Entry);
         java_util_Map_Entry_getKey = java_util_Map_Entry.requireDeclaredMethod(Name.getKey, Signature.Object);
@@ -929,6 +934,30 @@ public final class Meta extends ContextAccessImpl {
         java_util_Optional = knownKlass(Type.java_util_Optional);
         java_util_Optional_EMPTY = java_util_Optional.requireDeclaredField(Name.EMPTY, Type.java_util_Optional);
         java_util_Optional_value = java_util_Optional.requireDeclaredField(Name.value, Type.java_lang_Object);
+
+        java_util_regex_Pattern = knownKlass(Type.java_util_regex_Pattern);
+        java_util_regex_Pattern_HIDDEN_tregex = java_util_regex_Pattern.requireHiddenField(Name.HIDDEN_TREGEX);
+        java_util_regex_Pattern_HIDDEN_tregexSearch = java_util_regex_Pattern.requireHiddenField(Name.HIDDEN_TREGEX_SEARCH);
+        java_util_regex_Pattern_pattern = java_util_regex_Pattern.requireDeclaredField(Name.pattern, Type.java_lang_String);
+        java_util_regex_Pattern_flags0 = java_util_regex_Pattern.requireDeclaredField(Name.flags0, Type._int);
+        java_util_regex_Pattern_compiled = java_util_regex_Pattern.requireDeclaredField(Name.compiled, Type._boolean);
+        java_util_regex_Pattern_init = java_util_regex_Pattern.requireMethod(Name._init_, Signature._void_String_int);
+        java_util_regex_Pattern_namedGroups = java_util_regex_Pattern.requireMethod(Name.namedGroups, Signature.Map);
+        java_util_regex_Pattern_capturingGroupCount = java_util_regex_Pattern.requireDeclaredField(Name.capturingGroupCount, Type._int);
+
+        java_util_regex_PatternSyntaxException = knownKlass(Type.java_util_regex_PatternSyntaxException);
+        java_util_regex_PatternSyntaxException_init = java_util_regex_PatternSyntaxException.requireMethod(Name._init_, Signature._void_String_String_int);
+
+        java_util_regex_Matcher = knownKlass(Type.java_util_regex_Matcher);
+        java_util_regex_Matcher_parentPattern = java_util_regex_Matcher.requireDeclaredField(Name.parentPattern, Type.java_util_regex_Pattern);
+        java_util_regex_Matcher_text = java_util_regex_Matcher.requireDeclaredField(Name.text, Type.java_lang_CharSequence);
+        java_util_regex_Matcher_match = java_util_regex_Matcher.requireMethod(Name.match, Signature._boolean_int_int);
+        java_util_regex_Matcher_search = java_util_regex_Matcher.requireMethod(Name.search, Signature._boolean_int);
+        java_util_regex_Matcher_groups = java_util_regex_Matcher.requireDeclaredField(Name.groups, Type._int_array);
+        java_util_regex_Matcher_first = java_util_regex_Matcher.requireDeclaredField(Name.first, Type._int);
+        java_util_regex_Matcher_last = java_util_regex_Matcher.requireDeclaredField(Name.last, Type._int);
+        java_util_regex_Matcher_to = java_util_regex_Matcher.requireDeclaredField(Name.to, Type._int);
+        java_util_regex_Matcher_modCount = java_util_regex_Matcher.requireDeclaredField(Name.modCount, Type._int);
 
         java_math_BigInteger = knownKlass(Type.java_math_BigInteger);
         java_math_BigInteger_init = java_math_BigInteger.requireDeclaredMethod(Name._init_, Signature._void_byte_array);
@@ -1666,7 +1695,11 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_util_Map_remove;
     public final Method java_util_Map_containsKey;
     public final Method java_util_Map_entrySet;
+    public final Method java_util_Map_copy_of;
 
+    public final ObjectKlass java_util_HashMap;
+    public final Method java_util_HashMap_init;
+    public final Method java_util_HashMap_put;
     public final ObjectKlass java_util_Map_Entry;
     public final Method java_util_Map_Entry_getKey;
     public final Method java_util_Map_Entry_getValue;
@@ -1698,6 +1731,28 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_util_Optional;
     public final Field java_util_Optional_value;
     public final Field java_util_Optional_EMPTY;
+
+    public final ObjectKlass java_util_regex_Pattern;
+    public final Field java_util_regex_Pattern_HIDDEN_tregex;
+    public final Field java_util_regex_Pattern_HIDDEN_tregexSearch;
+    public final Field java_util_regex_Pattern_pattern;
+    public final Field java_util_regex_Pattern_flags0;
+    public final Field java_util_regex_Pattern_compiled;
+    public final Method java_util_regex_Pattern_init;
+    public final Method java_util_regex_Pattern_namedGroups;
+    public final Field java_util_regex_Pattern_capturingGroupCount;
+    public final ObjectKlass java_util_regex_PatternSyntaxException;
+    public final Method java_util_regex_PatternSyntaxException_init;
+    public final ObjectKlass java_util_regex_Matcher;
+    public final Field java_util_regex_Matcher_modCount;
+    public final Field java_util_regex_Matcher_parentPattern;
+    public final Field java_util_regex_Matcher_text;
+    public final Field java_util_regex_Matcher_groups;
+    public final Field java_util_regex_Matcher_first;
+    public final Field java_util_regex_Matcher_last;
+    public final Field java_util_regex_Matcher_to;
+    public final Method java_util_regex_Matcher_match;
+    public final Method java_util_regex_Matcher_search;
 
     public final ObjectKlass java_math_BigInteger;
     public final Method java_math_BigInteger_init;

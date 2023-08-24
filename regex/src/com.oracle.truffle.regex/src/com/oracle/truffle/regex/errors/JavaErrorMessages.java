@@ -15,6 +15,7 @@ public interface JavaErrorMessages {
     String TOO_BIG_NUMBER = "too big number";
     String UNBALANCED_PARENTHESIS = "unbalanced parenthesis";
     String UNDEFINED_GROUP_OPTION = "undefined group option";
+    String UNCLOSED_GROUP = "Unclosed group";
     String UNEXPECTED_END_OF_PATTERN = "unexpected end of pattern";
     String UNTERMINATED_CHARACTER_SET = "unterminated character set";
     String UNTERMINATED_SUBPATTERN = "missing ), unterminated subpattern";
@@ -24,6 +25,23 @@ public interface JavaErrorMessages {
     String UNKNOWN_INLINE_MODIFIER = "Unknown inline modifier";
     String ILLEGAL_OCT_ESCAPE = "Illegal octal escape sequence";
     String UNESCAPED_TRAILING_BACKSLASH = "Unescaped trailing backslash";
+    String BAD_CLASS_SYNTAX = "Bad class syntax";
+    String UNCLOSED_CHAR_FAMILY = "Unclosed character family";
+    String EMPTY_CHAR_FAMILY = "Empty character family";
+
+    String HEX_TOO_BIG = "Hexadecimal codepoint is too big";
+
+    String UNCLOSED_HEX = "Unclosed hexadecimal escape sequence";
+
+    String UNCLOSED_CHAR_NAME = "Unclosed character name escape sequence";
+
+    String ILLEGAL_CHARACTER_NAME = "Illegal character name escape sequence";
+
+    String ILLEGAL_CTRL_SEQ = "Illegal control escape sequence";
+
+    String ILLEGAL_UNICODE_ESC_SEQ = "Illegal Unicode escape sequence";
+
+    String ILLEGAL_ESCAPE_SEQUENCE = "Illegal/unsupported escape sequence";
 
     @TruffleBoundary
     static String badCharacterRange(String range) {
@@ -63,5 +81,20 @@ public interface JavaErrorMessages {
     @TruffleBoundary
     static String unknownGroupReference(String name) {
         return "named capturing group <" + name + "> does not exist";
+    }
+
+    @TruffleBoundary
+    static String unknownUnicodeProperty(String name, String value) {
+        return "Unknown Unicode property {name=<" + name + ">, " + "value=<" + value + ">}";
+    }
+
+    @TruffleBoundary
+    static String unknownUnicodeCharacterProperty(String name) {
+        return "Unknown character property name {" + name + "}";
+    }
+
+    @TruffleBoundary
+    static String unknownCharacterName(String name) {
+        return "Unknown character name [" + name + "]";
     }
 }

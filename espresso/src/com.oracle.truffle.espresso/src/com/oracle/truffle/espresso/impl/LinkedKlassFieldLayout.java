@@ -222,6 +222,10 @@ final class LinkedKlassFieldLayout {
                         }),
                         entry(Type.java_lang_Module, new HiddenField[]{
                                         new HiddenField(Name.HIDDEN_MODULE_ENTRY)
+                        }),
+                        entry(Type.java_util_regex_Pattern, new HiddenField[]{
+                                        new HiddenField(Name.HIDDEN_TREGEX),
+                                        new HiddenField(Name.HIDDEN_TREGEX_SEARCH)
                         }));
 
         private final Symbol<Name> name;

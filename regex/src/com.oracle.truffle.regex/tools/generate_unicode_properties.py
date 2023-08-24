@@ -129,7 +129,7 @@ bin_props_emoji_str = [
     'RGI_Emoji_ZWJ_Sequence'
 ]
 
-tracked_props = bin_props_xml + bin_props_emoji_cp + bin_props_emoji_str + ['gc', 'sc', 'scx'] + ['RGI_Emoji']
+tracked_props = bin_props_xml + bin_props_emoji_cp + bin_props_emoji_str + ['gc', 'sc', 'scx', 'blk'] + ['RGI_Emoji']
 
 prop_contents = {}
 str_prop_contents = {}
@@ -209,6 +209,7 @@ for name in bin_props_emoji_str + ['RGI_Emoji']:
 
 gc_aliases = {}
 sc_aliases = {}
+blk_aliases = {}
 
 for line in unicode_file_lines_without_comments('PropertyValueAliases.txt'):
     fields = [x.strip() for x in line.split(';')]
@@ -221,7 +222,9 @@ for line in unicode_file_lines_without_comments('PropertyValueAliases.txt'):
     elif prop_name == 'sc':
         for value_name in all_value_names:
             sc_aliases[value_name] = short_value_name
-
+    elif prop_name == 'blk':
+        for value_name in all_value_names:
+            blk_aliases[value_name] = short_value_name
 
 # Parse XML
 
@@ -238,6 +241,7 @@ for char_elem in root.find('unicode:repertoire', ns):
             add_xml_entry_to_property(char_elem, bin_prop_name)
     add_xml_entry_to_property(char_elem, 'gc=' + char_elem.get('gc'))
     add_xml_entry_to_property(char_elem, 'sc=' + char_elem.get('sc'))
+    add_xml_entry_to_property(char_elem, 'blk=' + char_elem.get('blk'))
     for script in char_elem.get('scx').split():
         add_xml_entry_to_property(char_elem, 'scx=' + script)
 
@@ -349,6 +353,8 @@ GENERAL_CATEGORY_ALIASES = aliases_to_java_initializer('GENERAL_CATEGORY_ALIASES
 
 SCRIPT_ALIASES = aliases_to_java_initializer('SCRIPT_ALIASES', sc_aliases)
 
+BLOCK_ALIASES = aliases_to_java_initializer('BLOCK_ALIASES', blk_aliases)
+
 POPULATE_CALLS = '\n'.join(['populate%s();' % mangle_prop_name(name)
                             for name in sorted(prop_contents.keys()) + sorted(str_prop_contents.keys()) + ['RGI_Emoji']])
 
@@ -427,6 +433,7 @@ class UnicodePropertyData {
     static final EconomicMap<String, String> PROPERTY_ALIASES = EconomicMap.create(%d);
     static final EconomicMap<String, String> GENERAL_CATEGORY_ALIASES = EconomicMap.create(%d);
     static final EconomicMap<String, String> SCRIPT_ALIASES = EconomicMap.create(%d);
+    static final EconomicMap<String, String> BLOCK_ALIASES = EconomicMap.create(%d);
     private static final EconomicMap<String, CodePointSet> SET_ENCODINGS = EconomicMap.create(%d);
     private static final EconomicMap<String, ClassSetContents> CLASS_SET_ENCODINGS = EconomicMap.create(%d);
 
@@ -457,11 +464,13 @@ class UnicodePropertyData {
 %s
 
 %s
+
+%s
     }
 
 %s
 
 %s
-}''' % (len(prop_aliases), len(gc_aliases), len(sc_aliases), len(prop_contents), len(str_prop_contents) + 1,
-        indent(PROPERTY_ALIASES, 8), indent(GENERAL_CATEGORY_ALIASES, 8), indent(SCRIPT_ALIASES, 8), indent(POPULATE_CALLS, 8),
+}''' % (len(prop_aliases), len(gc_aliases), len(sc_aliases), len(blk_aliases), len(prop_contents), len(str_prop_contents) + 1,
+        indent(PROPERTY_ALIASES, 8), indent(GENERAL_CATEGORY_ALIASES, 8), indent(SCRIPT_ALIASES, 8), indent(BLOCK_ALIASES, 8), indent(POPULATE_CALLS, 8),
         indent(POPULATE_DEFS, 4), indent(POPULATE_STR_DEFS, 4)))

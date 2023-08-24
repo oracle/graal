@@ -219,6 +219,20 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> unnamedModule = StaticSymbols.putName("unnamedModule");
         public static final Symbol<Name> nameAndId = StaticSymbols.putName("nameAndId");
         public static final Symbol<Name> HIDDEN_CLASS_LOADER_REGISTRY = StaticSymbols.putName("0HIDDEN_CLASS_LOADER_REGISTRY");
+        public static final Symbol<Name> HIDDEN_TREGEX = StaticSymbols.putName("0HIDDEN_TREGEX");
+        public static final Symbol<Name> HIDDEN_TREGEX_SEARCH = StaticSymbols.putName("0HIDDEN_TREGEX_SEARCH");
+
+        public static final Symbol<Name> parentPattern = StaticSymbols.putName("parentPattern");
+        public static final Symbol<Name> pattern = StaticSymbols.putName("pattern");
+        public static final Symbol<Name> flags0 = StaticSymbols.putName("flags0");
+        public static final Symbol<Name> compiled = StaticSymbols.putName("compiled");
+        public static final Symbol<Name> namedGroups = StaticSymbols.putName("namedGroups");
+        public static final Symbol<Name> capturingGroupCount = StaticSymbols.putName("capturingGroupCount");
+        public static final Symbol<Name> text = StaticSymbols.putName("text");
+        public static final Symbol<Name> match = StaticSymbols.putName("match");
+        public static final Symbol<Name> search = StaticSymbols.putName("search");
+        public static final Symbol<Name> modCount = StaticSymbols.putName("modCount");
+        public static final Symbol<Name> to = StaticSymbols.putName("to");
 
         // j.l.Module
         public static final Symbol<Name> loader = StaticSymbols.putName("loader");
@@ -257,6 +271,9 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> dispatchUncaughtException = StaticSymbols.putName("dispatchUncaughtException");
         public static final Symbol<Name> getStackTrace = StaticSymbols.putName("getStackTrace");
         public static final Symbol<Name> group = StaticSymbols.putName("group");
+        public static final Symbol<Name> groups = StaticSymbols.putName("groups");
+        public static final Symbol<Name> first = StaticSymbols.putName("first");
+        public static final Symbol<Name> last = StaticSymbols.putName("last");
         public static final Symbol<Name> holder = StaticSymbols.putName("holder");
         public static final Symbol<Name> VTHREAD_GROUP = StaticSymbols.putName("VTHREAD_GROUP");
         public static final Symbol<Name> inheritedAccessControlContext = StaticSymbols.putName("inheritedAccessControlContext");
@@ -501,6 +518,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> containsKey = StaticSymbols.putName("containsKey");
         public static final Symbol<Name> getKey = StaticSymbols.putName("getKey");
         public static final Symbol<Name> getValue = StaticSymbols.putName("getValue");
+        public static final Symbol<Name> copyOf = StaticSymbols.putName("copyOf");
         public static final Symbol<Name> setValue = StaticSymbols.putName("setValue");
         public static final Symbol<Name> entrySet = StaticSymbols.putName("entrySet");
         public static final Symbol<Name> hasNext = StaticSymbols.putName("hasNext");
@@ -909,6 +927,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> java_lang_Iterable = StaticSymbols.putType("Ljava/lang/Iterable;");
         public static final Symbol<Type> java_util_List = StaticSymbols.putType("Ljava/util/List;");
         public static final Symbol<Type> java_util_Map = StaticSymbols.putType("Ljava/util/Map;");
+        public static final Symbol<Type> java_util_HashMap = StaticSymbols.putType("Ljava/util/HashMap;");
         public static final Symbol<Type> java_util_Iterator = StaticSymbols.putType("Ljava/util/Iterator;");
         public static final Symbol<Type> java_util_NoSuchElementException = StaticSymbols.putType("Ljava/util/NoSuchElementException;");
         public static final Symbol<Type> java_util_Map_Entry = StaticSymbols.putType("Ljava/util/Map$Entry;");
@@ -917,6 +936,10 @@ public final class Symbol<T> extends ByteSequence {
 
         // Optional
         public static final Symbol<Type> java_util_Optional = StaticSymbols.putType("Ljava/util/Optional;");
+
+        public static final Symbol<Type> java_util_regex_Pattern = StaticSymbols.putType("Ljava/util/regex/Pattern;");
+        public static final Symbol<Type> java_util_regex_PatternSyntaxException = StaticSymbols.putType("Ljava/util/regex/PatternSyntaxException;");
+        public static final Symbol<Type> java_util_regex_Matcher = StaticSymbols.putType("Ljava/util/regex/Matcher;");
 
         // java math
         public static final Symbol<Type> java_math_BigInteger = StaticSymbols.putType("Ljava/math/BigInteger;");
@@ -1012,6 +1035,8 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> Object = StaticSymbols.putSignature(Type.java_lang_Object);
         public static final Symbol<Signature> String = StaticSymbols.putSignature(Type.java_lang_String);
         public static final Symbol<Signature> ClassLoader = StaticSymbols.putSignature(Type.java_lang_ClassLoader);
+        public static final Symbol<Signature> Map = StaticSymbols.putSignature(Type.java_util_Map);
+        public static final Symbol<Signature> Map_Map = StaticSymbols.putSignature(Type.java_util_Map, Type.java_util_Map);
         public static final Symbol<Signature> _void_URL_array_ClassLoader = StaticSymbols.putSignature(Type._void, Type.java_net_URL_array, Type.java_lang_ClassLoader);
         public static final Symbol<Signature> Class_PermissionDomain = StaticSymbols.putSignature(Type._void, Type.java_lang_Class, Type.java_security_ProtectionDomain);
 
@@ -1027,6 +1052,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> StackTraceElement_array = StaticSymbols.putSignature(Type.java_lang_StackTraceElement_array);
         public static final Symbol<Signature> _void_String_Throwable = StaticSymbols.putSignature(Type._void, Type.java_lang_String, Type.java_lang_Throwable);
         public static final Symbol<Signature> _void_String = StaticSymbols.putSignature(Type._void, Type.java_lang_String);
+        public static final Symbol<Signature> _void_String_int = StaticSymbols.putSignature(Type._void, Type.java_lang_String, Type._int);
         public static final Symbol<Signature> Class_String = StaticSymbols.putSignature(Type.java_lang_Class, Type.java_lang_String);
         public static final Symbol<Signature> InputStream_String = StaticSymbols.putSignature(Type.java_io_InputStream, Type.java_lang_String);
         public static final Symbol<Signature> _int_byte_array_int_int = StaticSymbols.putSignature(Type._int, Type._byte_array, Type._int, Type._int);
@@ -1048,12 +1074,15 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Signature> ByteBuffer_ByteOrder = StaticSymbols.putSignature(Type.java_nio_ByteBuffer, Type.java_nio_ByteOrder);
         public static final Symbol<Signature> _long_ClassLoader_String = StaticSymbols.putSignature(Type._long, Type.java_lang_ClassLoader, Type.java_lang_String);
         public static final Symbol<Signature> _void_Exception = StaticSymbols.putSignature(Type._void, Type.java_lang_Exception);
+        public static final Symbol<Signature> _void_String_String_int = StaticSymbols.putSignature(Type._void, Type.java_lang_String, Type.java_lang_String, Type._int);
         public static final Symbol<Signature> _void_String_String_String_int = StaticSymbols.putSignature(Type._void, Type.java_lang_String, Type.java_lang_String, Type.java_lang_String, Type._int);
         public static final Symbol<Signature> _void_int = StaticSymbols.putSignature(Type._void, Type._int);
         public static final Symbol<Signature> _void_boolean = StaticSymbols.putSignature(Type._void, Type._boolean);
         public static final Symbol<Signature> _void_long = StaticSymbols.putSignature(Type._void, Type._long);
         public static final Symbol<Signature> _void_long_int = StaticSymbols.putSignature(Type._void, Type._long, Type._int);
         public static final Symbol<Signature> _void_long_long = StaticSymbols.putSignature(Type._void, Type._long, Type._long);
+        public static final Symbol<Signature> _boolean_int = StaticSymbols.putSignature(Type._boolean, Type._int);
+        public static final Symbol<Signature> _boolean_int_int = StaticSymbols.putSignature(Type._boolean, Type._int, Type._int);
         public static final Symbol<Signature> _int_int_int = StaticSymbols.putSignature(Type._int, Type._int, Type._int);
         public static final Symbol<Signature> _void_char_array = StaticSymbols.putSignature(Type._void, Type._char_array);
         public static final Symbol<Signature> _void_byte_array = StaticSymbols.putSignature(Type._void, Type._byte_array);

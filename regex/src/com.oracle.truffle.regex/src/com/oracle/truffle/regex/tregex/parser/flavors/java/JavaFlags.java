@@ -75,9 +75,7 @@ public final class JavaFlags extends AbstractConstantKeysObject {
                     PROP_DOTALL,
                     PROP_UNICODE_CASE,
                     PROP_COMMENTS);
-    private static final TBitSet FLAGS = TBitSet.valueOf('C', 'U', 'd', 'i', 'm', 's', 'u', 'x');
-    private static final TBitSet TYPE_FLAGS = TBitSet.valueOf('U', 'd', 'u');
-
+    private static final TBitSet FLAGS = TBitSet.valueOf('U', 'c', 'd', 'i', 'm', 's', 'u', 'x');
     private final int value;
 
     public JavaFlags(int bits) {
@@ -89,7 +87,7 @@ public final class JavaFlags extends AbstractConstantKeysObject {
         for (int i = 0; i < source.length(); i++) {
             char ch = source.charAt(i);
             switch (ch) {
-                case 'C':
+                case 'c':
                     flags |= Pattern.CANON_EQ;
                     break;
                 case 'U':
@@ -120,7 +118,7 @@ public final class JavaFlags extends AbstractConstantKeysObject {
 
     private static int maskForFlag(int flagChar) {
         switch (flagChar) {
-            case 'C':
+            case 'c':
                 return Pattern.CANON_EQ;
             case 'U':
                 return Pattern.UNICODE_CHARACTER_CLASS;
@@ -146,7 +144,7 @@ public final class JavaFlags extends AbstractConstantKeysObject {
     public String toString() {
         StringBuilder sb = new StringBuilder(KEYS.size());
         if (isSet(Pattern.CANON_EQ)) {
-            sb.append('C');
+            sb.append('c');
         }
         if (isSet(Pattern.UNICODE_CHARACTER_CLASS)) {
             sb.append('U');
@@ -209,11 +207,7 @@ public final class JavaFlags extends AbstractConstantKeysObject {
     }
 
     public JavaFlags addFlag(int flagChar) {
-        if (isTypeFlag(flagChar)) {
-            return new JavaFlags(this.value);
-        } else {
-            return new JavaFlags(this.value | maskForFlag(flagChar));
-        }
+        return new JavaFlags(this.value | maskForFlag(flagChar));
     }
 
     public JavaFlags delFlag(int flagChar) {
@@ -222,10 +216,6 @@ public final class JavaFlags extends AbstractConstantKeysObject {
 
     public static boolean isValidFlagChar(int candidateChar) {
         return FLAGS.get(candidateChar);
-    }
-
-    public static boolean isTypeFlag(int candidateChar) {
-        return TYPE_FLAGS.get(candidateChar);
     }
 
     @Override

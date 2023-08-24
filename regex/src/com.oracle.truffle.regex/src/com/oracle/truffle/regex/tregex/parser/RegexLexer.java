@@ -89,6 +89,7 @@ public abstract class RegexLexer {
     private int nGroups = 1;
     private boolean identifiedAllGroups = false;
     protected final CompilationBuffer compilationBuffer;
+    private boolean literalMode = false;
 
     public RegexLexer(RegexSource source, CompilationBuffer compilationBuffer) {
         this.source = source;
@@ -333,8 +334,10 @@ public abstract class RegexLexer {
 
     /**
      * Handle incomplete hex escapes, e.g. {@code \x1}.
+     *
+     * @return
      */
-    protected abstract void handleIncompleteEscapeX();
+    protected abstract int handleIncompleteEscapeX();
 
     /**
      * Handle group references to non-existent groups.
@@ -576,7 +579,7 @@ public abstract class RegexLexer {
         return true;
     }
 
-    private boolean consumingLookahead(char character) {
+    protected boolean consumingLookahead(char character) {
         if (atEnd()) {
             return false;
         }
@@ -789,6 +792,16 @@ public abstract class RegexLexer {
 
     private Token getNext() throws RegexSyntaxException {
         final char c = consumeChar();
+
+        if (literalMode) {
+            if (parseLiteralEnd(c)) {
+                literalMode = false;
+                return Token.createNop();
+            } else {
+                return charClass(CodePointSet.create(toCodePoint(c)));
+            }
+        }
+
         if (inCharacterClass()) {
             if (c == ']' && (!featureEnabledCharClassFirstBracketIsLiteral() || position != curCharClassStartIndex + (curCharClassInverted ? 2 : 1))) {
                 curCharClassStartIndex = -1;
@@ -844,6 +857,12 @@ public abstract class RegexLexer {
         if (custom != null) {
             return custom;
         }
+
+        if (parseLiteralStart(c)) {
+            literalMode = true;
+            return Token.createNop();
+        }
+
         if ('1' <= c && c <= '9') {
             final int restoreIndex = position;
             final int backRefNumber = parseIntSaturated(c - '0', countDecimalDigits(getMaxBackReferenceDigits() - 1), Integer.MAX_VALUE);
@@ -868,7 +887,7 @@ public abstract class RegexLexer {
         }
         if (featureEnabledWordBoundaries()) {
             if (c == 'b') {
-                return Token.createWordBoundary();
+                return handleWordBoundary();
             } else if (c == 'B') {
                 return Token.createNonWordBoundary();
             }
@@ -891,6 +910,24 @@ public abstract class RegexLexer {
         } else {
             return literalChar(parseEscapeChar(c, false));
         }
+    }
+
+    protected boolean parseLiteralStart(char c) {
+        return false;
+    }
+
+    protected boolean parseLiteralEnd(char c) {
+        return false;
+    }
+
+    protected Token handleWordBoundary() {
+        return Token.createWordBoundary();
+    }
+
+    protected Token parseUnicodePropertyEscape(char c) {
+        ClassSetContents unicodePropertyContents = parseUnicodeCharacterProperty(c == 'P');
+        assert unicodePropertyContents.isCodePointSetOnly();
+        return charClass(unicodePropertyContents.getCodePointSet());
     }
 
     private Token parseGroupBegin() throws RegexSyntaxException {
@@ -1093,8 +1130,7 @@ public abstract class RegexLexer {
     private int countZeros(int fromIndex) {
         return countFrom((c) -> c == '0', fromIndex);
     }
-
-    private ClassSetContents parseCharClassAtomPredefCharClass(char c) throws RegexSyntaxException {
+    protected ClassSetContents parseCharClassAtomPredefCharClass(char c) throws RegexSyntaxException {
         if (c == '\\') {
             if (atEnd()) {
                 handleUnfinishedEscape();
@@ -1162,7 +1198,7 @@ public abstract class RegexLexer {
         }
     }
 
-    private int parseCharClassAtomCodePoint(char c) throws RegexSyntaxException {
+    protected int parseCharClassAtomCodePoint(char c) throws RegexSyntaxException {
         if (c == '\\') {
             assert !atEnd();
             assert !isEscapeCharClass(curChar());
@@ -1248,7 +1284,7 @@ public abstract class RegexLexer {
         }
     }
 
-    private ClassSetContents parseClassSetExpression() throws RegexSyntaxException {
+    protected ClassSetContents parseClassSetExpression() throws RegexSyntaxException {
         final boolean invert = consumingLookahead("^");
         ClassSetContentsAccumulator curClassSet = new ClassSetContentsAccumulator();
         ClassSetOperator operator = null;
@@ -1402,7 +1438,7 @@ public abstract class RegexLexer {
         return sb.toString();
     }
 
-    private ClassSetContents parseUnicodeCharacterProperty(boolean invert) throws RegexSyntaxException {
+    protected ClassSetContents parseUnicodeCharacterProperty(boolean invert) throws RegexSyntaxException {
         if (!consumingLookahead("{")) {
             throw syntaxError(JsErrorMessages.INVALID_UNICODE_PROPERTY);
         }
@@ -1457,7 +1493,11 @@ public abstract class RegexLexer {
                 return '\u000B';
             case 'x':
                 if (!consumingLookahead(RegexLexer::isHexDigit, 2)) {
-                    handleIncompleteEscapeX();
+                    int handle = handleIncompleteEscapeX();
+                    if (handle != -1) {
+                        return handle;
+                    }
+
                     return c;
                 }
                 return Integer.parseInt(pattern, position - 2, position, 16);
