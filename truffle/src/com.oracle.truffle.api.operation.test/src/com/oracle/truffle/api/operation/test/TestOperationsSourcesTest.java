@@ -222,7 +222,7 @@ public class TestOperationsSourcesTest extends AbstractTestOperationsTest {
             b.beginSource(source);
             b.beginSourceSection(0, 11);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
 
             // finally
             b.beginSourceSection(4, 7);

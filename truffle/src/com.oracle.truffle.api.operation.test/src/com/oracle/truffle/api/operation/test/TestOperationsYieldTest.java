@@ -197,7 +197,7 @@ public class TestOperationsYieldTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("yieldFromFinally", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
 
             b.beginYield();
             b.emitLoadConstant(4L);
