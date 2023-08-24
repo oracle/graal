@@ -506,7 +506,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         'gwal': ('', []), # GraalWasm license files
     },
     standalone_dependencies_enterprise={
-        'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
+        'gwal': ('', []), # GraalWasm license files
+        'GraalVM enterprise license files': ('LICENSE.txt', ['GRAALVM-README.md']),
     },
     license_files=[],
     third_party_license_files=[],
