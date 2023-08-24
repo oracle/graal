@@ -1864,6 +1864,10 @@ public final class Engine implements AutoCloseable {
                     Set<ModuleReference> modules = finder.findAll();
                     if (modules.size() > 0) {
                         parsedModules.add(new ParsedModule(path, modules));
+                    } else {
+                        if (TRACE_CLASS_PATH_ISOLATION) {
+                            trace("No modules found in class-path entry %s", path);
+                        }
                     }
                 } catch (FindException t) {
                     // error in module finding -> not a valid module descriptor ignore
@@ -1922,7 +1926,15 @@ public final class Engine implements AutoCloseable {
                         if (includedModules.contains(d.name())) {
                             usedServices.addAll(d.uses());
                             for (Requires r : d.requires()) {
-                                if (!r.modifiers().contains(Requires.Modifier.STATIC) && includedModules.add(r.name())) {
+                                /*
+                                 * We deliberately follow static resources here, even though they
+                                 * are not real dependencies in the module-graph. If we don't follow
+                                 * static requires we might fallback to the parent class-loader for
+                                 * these classes causing weird problems. So if the module is on the
+                                 * class-path and there is a static requires we pick it up into the
+                                 * module-graph well.
+                                 */
+                                if (includedModules.add(r.name())) {
                                     if (TRACE_CLASS_PATH_ISOLATION) {
                                         trace("Include module '%s' because it is required by '%s'.", r.name(), d.name());
                                     }
@@ -1940,6 +1952,9 @@ public final class Engine implements AutoCloseable {
                 for (ModuleReference ref : module.modules()) {
                     String name = ref.descriptor().name();
                     if (!includedModules.contains(name)) {
+                        if (TRACE_CLASS_PATH_ISOLATION) {
+                            trace("Filter module '%s' because not reachable on the module graph.", name);
+                        }
                         continue;
                     }
 
@@ -1950,10 +1965,8 @@ public final class Engine implements AutoCloseable {
                         continue;
                     }
 
-                    if (includedModules.contains(name)) {
-                        filteredList.add(module.p());
-                        break;
-                    }
+                    filteredList.add(module.p());
+                    break;
                 }
             }
 
