@@ -40,17 +40,23 @@
  */
 package com.oracle.truffle.regex.tregex.test;
 
+import java.util.Iterator;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
+import java.util.stream.Stream;
 
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.Assert;
+import org.junit.Ignore;
 import org.junit.Test;
 
-import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.tregex.parser.flavors.java.JavaFlags;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 import com.oracle.truffle.regex.util.EmptyArrays;
+
+import static org.graalvm.shadowed.com.ibm.icu.text.PluralRules.Operand.c;
 
 public class JavaUtilPatternTests extends RegexTestBase {
 
@@ -67,6 +73,344 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Test
     public void helloWorld() {
         test("[Hh]ello [Ww]orld!", 0, "hello World!");
+    }
+
+    @Test
+    public void documentationSummary() {
+        // Based on "Summary of regular-expression constructs" from
+        // https://download.java.net/java/early_access/jdk21/docs/api/java.base/java/util/regex/Pattern.html#lt
+
+        // Characters
+        test("a", 0, "a");
+        // test("\\\\", 0, "\\");
+        test("\\07", 0, "\u0007");
+        test("\\077", 0, "\u003f");
+        test("\\0377", 0, "\u0179");
+        test("\\xaa", 0, "\u00aa");
+        test("\\uaaaa", 0, "\uaaaa");
+        test("\\x{10ffff}", 0, new String(new int[]{0x10ffff}, 0, 1));
+        test("\\N{WHITE SMILING FACE}", 0, "\u263A");
+        test("\\t", 0, "\u0009");
+        test("\\n", 0, "\n");
+        test("\\r", 0, "\r");
+        test("\\f", 0, "\f");
+        test("\\a", 0, "\u0007");
+        test("\\e", 0, "\u001B");
+        test("\\c@", 0, "\u0000");
+
+        // Character classes
+        test("[abc]", 0, "a");
+        test("[^abc]", 0, "a");
+        test("[a-zA-Z]", 0, "B");
+        test("[a-d[m-p]]", 0, "o");
+        test("[a-z&&[def]]", 0, "e");
+        test("[a-z&&[^bc]]", 0, "b");
+        test("[a-z&&[^m-p]]", 0, "o");
+
+        // Predefined character classes
+        test(".", 0, "\u0a6b");
+        test("\\d", 0, "8");
+        test("\\D", 0, "a");
+        test("\\h", 0, "\u2000");
+        test("\\H", 0, "c");
+        test("\\s", 0, "\u000B");
+        test("\\S", 0, "a");
+        test("\\v", 0, "\\u2028");
+        test("\\V", 0, "a");
+        test("\\w", 0, "a");
+        test("\\W", 0, "-");
+
+        // POSIX character classes (US-ASCII only)
+        test("\\p{Lower}", 0, "b");
+        test("\\p{Upper}", 0, "B");
+        test("\\p{ASCII}", 0, "\u007A");
+        test("\\p{Alpha}", 0, "h");
+        test("\\p{Digit}", 0, "8");
+        test("\\p{Alnum}", 0, "6");
+        test("\\p{Punct}", 0, ">");
+        test("\\p{Graph}", 0, "@");
+        test("\\p{Print}", 0, "\u0020");
+        test("\\p{Blank}", 0, "\t");
+        test("\\p{Cntrl}", 0, "\u007F");
+        test("\\p{XDigit}", 0, "F");
+        test("\\p{Space}", 0, "\f");
+
+        // java.lang.Character classes (simple java character type)
+        test("\\p{javaLowerCase}", 0, "\u03ac");
+        test("\\p{javaUpperCase}", 0, "\u03dc");
+        test("\\p{javaWhitespace}", 0, " ");
+        test("\\p{javaMirrored}", 0, "∊");
+
+        // Classes for Unicode scripts, blocks, categories and binary properties
+        test("\\p{IsLatin}", 0, "b");
+        test("\\p{InGreek}", 0, "\u03A3");
+        test("\\p{Lu}", 0, "H");
+        test("\\p{IsAlphabetic}", 0, "j");
+        test("\\p{Sc}", 0, "$");
+        test("\\P{InGreek}", 0, "a");
+        test("[\\p{L}&&[^\\p{Lu}]]", 0, "l");
+
+        // Boundary matchers
+        test("^", 0, "");
+        test("$", 0, "");
+        test("\\b", 0, " a", 1);
+        // test("\\b{g}", 0, "");
+        test("\\B", 0, "b");
+        test("\\A", 0, "");
+        // test("\\G", 0, "");
+        test("\\Z", 0, "");
+        test("\\z", 0, "");
+
+        // Linebreak matcher
+        // test("\\R", 0, "\r\n");
+
+        // Unicode Extended Grapheme matcher
+        // test("\\X", 0, "e\u00b4");
+
+        // Greedy quantifiers
+        test("a?a", 0, "a");
+        test("a*a", 0, "aaaa");
+        test("a+a", 0, "aaaa");
+        test("a{5}", 0, "aaaaa");
+        test("a{5,}a", 0, "aaaaaaa");
+        test("a{5,10}", 0, "aaaaaaaaaa");
+
+        // Reluctant quantifiers
+        test("a??a", 0, "a");
+        test("a*?a", 0, "aaaa");
+        test("a+?a", 0, "aaaa");
+        test("a{5}?", 0, "aaaaa");
+        test("a{5,}?a", 0, "aaaaaaa");
+        test("a{5,10}?", 0, "aaaaaaaaaa");
+
+        // Possessive quantifiers // TODO engine does not support this
+        // test("a?+a", 0, "a");
+        // test("a*+a", 0, "aaaa");
+        // test("a++a", 0, "aaaa");
+        // test("a{5}+", 0, "aaaaa");
+        // test("a{5,}+a", 0, "aaaaaaa");
+        // test("a{5,10}+", 0, "aaaaaaaaaa");
+
+        // Logical operators
+        test("ab", 0, "ab");
+        test("a|b", 0, "b");
+        test("(abc)", 0, "abc");
+
+        // Back references
+        test("(.*)xxx\\1", 0, "abcxxxabc");
+        test("(?<name>.*)xxx\\1", 0, "abc");
+
+        // Quotation // TODO not implemented but should be relatively easy
+        test("\\*", 0, "*");
+        test("\\Q***\\E", 0, "***");
+
+        // Special constructs (named-capturing and non-capturing)
+        test("(?<name>abc)", 0, "abc");
+        test("(?:abc)", 0, "abc");
+        test("(?iu-xU)abc", 0, "aBc");
+        test("(?iu-xU:abc)  ", 0, "aBC");
+        test("(?=abc).*", 0, "abcde");
+        test("(?!abc).*", 0, "bcdef");
+        test(".*(?<=abc)", 0, "aaaaabc");
+        test(".*(?<!abc)", 0, "aaaab");
+        // test("(?>X)", 0, "X");
+
+        test("", 0, "");
+    }
+
+    @Test
+    public void characterClassAllowedContents() {
+        // Characters
+        test("a", 0, "a");
+        // test("\\\\", 0, "\\");
+        test("[\\07]", 0, "\u0007");
+        test("[\\077]", 0, "\u003f");
+        test("[\\0377]", 0, "\u0179");
+        test("[\\xaa]", 0, "\u00aa");
+        test("[\\uaaaa]", 0, "\uaaaa");
+        test("[\\x{10ffff}]", 0, new String(new int[]{0x10ffff}, 0, 1));
+        test("[\\N{WHITE SMILING FACE}]", 0, "\u263A");
+        test("[\\t]", 0, "\u0009");
+        test("[\\n]", 0, "\n");
+        test("[\\r]", 0, "\r");
+        test("[\\f]", 0, "\f");
+        test("[\\a]", 0, "\u0007");
+        test("[\\e]", 0, "\u001B");
+        test("[\\c@]", 0, "\u0000");
+
+        // Predefined character classes
+        test("[.]", 0, "\u0a6b");
+        test("[\\d]", 0, "8");
+        test("[\\D]", 0, "a");
+        test("[\\h]", 0, "\u2000");
+        test("[\\H]", 0, "c");
+        test("[\\s]", 0, "\u000B");
+        test("[\\S]", 0, "a");
+        test("[\\v]", 0, "\\u2028");
+        test("[\\V]", 0, "a");
+        test("[\\w]", 0, "a");
+        test("[\\W]", 0, "-");
+
+        // POSIX character classes (US-ASCII only)
+        test("[\\p{Lower}]", 0, "b");
+        test("[\\p{Upper}]", 0, "B");
+        test("[\\p{ASCII}]", 0, "\u007A");
+        test("[\\p{Alpha}]", 0, "h");
+        test("[\\p{Digit}]", 0, "8");
+        test("[\\p{Alnum}]", 0, "6");
+        test("[\\p{Punct}]", 0, ">");
+        test("[\\p{Graph}]", 0, "@");
+        test("[\\p{Print}]", 0, "\u0020");
+        test("[\\p{Blank}]", 0, "\t");
+        test("[\\p{Cntrl}]", 0, "\u007F");
+        test("[\\p{XDigit}]", 0, "F");
+        test("[\\p{Space}]", 0, "\f");
+
+        // java.lang.Character classes (simple java character type)
+        test("[\\p{javaLowerCase}]", 0, "\u03ac");
+        test("[\\p{javaUpperCase}]", 0, "\u03dc");
+        test("[\\p{javaWhitespace}]", 0, " ");
+        test("[\\p{javaMirrored}]", 0, "∊");
+
+        // Classes for Unicode scripts, blocks, categories and binary properties
+        test("[\\p{IsLatin}]", 0, "b");
+        test("[\\p{InGreek}]", 0, "\u03A3");
+        test("[\\p{Lu}]", 0, "H");
+        test("[\\p{IsAlphabetic}]", 0, "j");
+        test("[\\p{Sc}]", 0, "$");
+        test("[\\P{InGreek}]", 0, "a");
+        test("[[\\p{L}&&[^\\p{Lu}]]]", 0, "l");
+
+        // Boundary matchers
+        test("[^]", 0, "");
+        test("[$]", 0, "");
+        test("[\\b]", 0, " a", 1);
+        // test("\\b{g}", 0, "");
+        test("[\\B]", 0, "b");
+        test("[\\A]", 0, "");
+        // test("\\G", 0, "");
+        test("[\\Z]", 0, "");
+        test("[\\z]", 0, "");
+
+        // Linebreak matcher
+        test("\\R", 0, "\r\n");
+
+        // Unicode Extended Grapheme matcher
+        // test("\\X", 0, "e\u00b4");
+
+        // Greedy quantifiers
+        test("[a?a]", 0, "a");
+        test("[a*a]", 0, "aaaa");
+        test("[a+a]", 0, "aaaa");
+        test("[a{5}]", 0, "aaaaa");
+        test("[a{5,}a]", 0, "aaaaaaa");
+        test("[a{5,10}]", 0, "aaaaaaaaaa");
+
+        // Reluctant quantifiers
+        test("[a??a]", 0, "a");
+        test("[a*?a]", 0, "aaaa");
+        test("[a+?a]", 0, "aaaa");
+        test("[a{5}?]", 0, "aaaaa");
+        test("[a{5,}?a]", 0, "aaaaaaa");
+        test("[a{5,10}?]", 0, "aaaaaaaaaa");
+
+        // Possessive quantifiers
+        // test("a?+a", 0, "a");
+        // test("a*+a", 0, "aaaa");
+        // test("a++a", 0, "aaaa");
+        // test("a{5}+", 0, "aaaaa");
+        // test("a{5,}+a", 0, "aaaaaaa");
+        // test("a{5,10}+", 0, "aaaaaaaaaa");
+
+        // Logical operators
+        test("[ab]", 0, "ab");
+        test("[a|b]", 0, "b");
+        test("[(abc)]", 0, "abc");
+
+        // Back references
+        test("[(.*)xxx\\1]", 0, "abcxxxabc");
+        test("[(?<name>.*)xxx\\1]", 0, "abc");
+
+        // Quotation
+        test("[\\*]", 0, "*");
+        // test("[\\Q***\\E]", 0, "***");
+
+        // Special constructs (named-capturing and non-capturing)
+        test("[(?<name>abc)]", 0, "abc");
+        test("[(?:abc)]", 0, "abc");
+        test("[(?iu-xU)abc]", 0, "aBc");
+        test("[(?iu-xU:abc)  ]", 0, "aBC");
+        test("[(?=abc).*]", 0, "abcde");
+        test("[(?!abc).*]", 0, "bcdef");
+        test("[.*(?<=abc)]", 0, "aaaaabc");
+        test("[.*(?<!abc)]", 0, "aaaab");
+        test("[(?>X)]", 0, "X");
+
+        test("test(\"[(.*)xxx\\\\1]\", 0, \"abcxxxabc\")", 0, "");
+    }
+
+    @Test
+    public void backslashBEscape() {
+        //test("[\\b]", 0, "");
+        test("\\b", 0, " a");
+        test("\\B", 0, "aa ");
+        test("[\\b]", 0, "");
+        test("[\\B]", 0, "");
+        test("[\\b{g}]", 0, "");
+    }
+
+    @Test
+    public void quoting() {
+        test("\\Q^$a.[b\\E", 0, "^$a.[b");
+        test("\\Q^$a.[b\\E.*", 0, "^$a.[b7jàt");
+        test("\\Q^$a.[b\\Eabc", 0, "^$a.[babc");
+        test("\\Q^$a.[b\\...\\Q.*", 0, "^$a.[bxxx.*");
+        test("\\Q^$a.[b\\E", 0, "^$a.[");
+        test("\\Q\\E", 0, "");
+        test("\\Q\\E", 0, "a");
+        test("\\Q^$a.[b", 0, "^$a.[b");
+        test("abc\\Q", 0, "abc");
+        test("\\Q^$a.[b\\E", 0, "^$a.[b");
+    }
+
+    @Test
+    public void linebreak() {
+        test("\\R", 0, "\r\n");
+        test("\\R", 0, "\n");
+        test("\\R", 0, "\u000b");
+        test("\\R", 0, "\u000c");
+        test("\\R", 0, "\r");
+        test("\\R", 0, "\u0085");
+        test("\\R", 0, "\u2028");
+        test("\\R", 0, "\u2029");
+
+        test(".*\\Rab", 0, "abcd\r\nab");
+        test("\\R", 0, "\n\n");
+    }
+
+    @Test
+    public void unicodeWordBoundary() {
+        int[] flagsCombinations = new int[]{0, Pattern.UNICODE_CHARACTER_CLASS, Pattern.UNICODE_CHARACTER_CLASS | Pattern.UNICODE_CASE | Pattern.CASE_INSENSITIVE};
+        String[] patterns = new String[]{"\\w", "\\W", "\\b", "\\B"};
+        char[] words = new char[]{'a', 'α', '-', '\u212a', '\u017f'};
+
+        for (int flags: flagsCombinations) {
+            for (String pat: patterns) {
+                test(pat, flags, " ");
+                test("\\b", flags, "  ");
+
+                for (char ch: words) {
+                    test(pat, flags, "" + ch);
+
+                    test(pat, flags, ch + " ");
+                    test(pat, flags, " " + ch);
+
+                    test(pat, flags, "" + ch + ch);
+                    test(pat, flags, ch + " " + ch);
+                    test(pat, flags, "-" + ch + "-");
+                }
+            }
+        }
     }
 
     @Test
@@ -113,6 +457,66 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("\\x400", 0, "\u00400");
         test("\\x{400}", 0, "\u0400");
         test("\\x{10ffff}", 0, Character.toString(Character.MAX_CODE_POINT));
+        test("\\x{10FFff}", 0, Character.toString(Character.MAX_CODE_POINT));
+        test("\\u0400", 0, "\u0400");
+        test("\\u04GG", 0, "");
+        test("\\u04", 0, "");
+    }
+
+    @Test
+    public void hexEscapeErrors() {
+        test("\\x", 0, "");
+        test("\\x{", 0, "");
+        test("\\x{}", 0, "");
+        test("\\x{g}", 0, "");
+        test("\\x{11ffff}", 0, "");
+        test("\\x{fgff}", 0, "");
+    }
+
+    @Test
+    public void octalEscape() {
+        test("\\00", 0, "\u0000");
+        test("\\07", 0, "\u0007");
+        test("\\077", 0, "\u003f");
+        test("\\0377", 0, "\u0179");
+        test("\\0477", 0, "\u0179");
+        test("\\0477", 0, "\u00277");
+        test("\\0777", 0, "\u003f7");
+        test("\\0078", 0, "\u00078");
+        test("\\08", 0, "");
+
+        test("[\\07]*", 0, "\u0007\u0007\u0007\u0007");
+
+        test("[\\00-\\0377]*", 0, "abcd1234AAA");
+        test("[a&&\\0377]*", 0, "a");
+    }
+
+    @Test
+    public void controlEscape() {
+        test("\\c@", 0, "\u0000");
+        test("\\cA", 0, "\u0001");
+        test("\\c@", 0, "a");
+        test("\\c", 0, "");
+        test("\\c@abc", 0, "\u0000abc");
+    }
+
+    @Test
+    public void surrogatePairs() {
+        String s = "\udbea\udfcd";
+        test(".", 0, s);
+        test(String.format("[%s]", s), 0, s);
+        test(String.format("[%s]", s), 0, "" + s.charAt(0));
+        test(String.format("[%s]", s), 0, "" + s.charAt(1));
+        test(String.format("[\\%s]", s), 0, s);
+    }
+
+    @Test
+    public void backslashEscape() {
+        test("\\\\", 0, "\\");
+        test("\\^", 0, "^");
+        test("\\~", 0, "~");
+        test("\\j", 0, "");
+        test("\\\udbea\udfcd", 0, "\\udbea\\udfcd");
     }
 
     @Test
@@ -129,6 +533,11 @@ public class JavaUtilPatternTests extends RegexTestBase {
     @Test
     public void negatedCC() {
         test("[^a-d]", 0, "x");
+        test("[^ab[^cd]ef]", 0, "a");
+        test("[^ab[^cd]ef&&aa]", 0, "a");
+        test("[ab&&[^c]]", 0, "a");
+        test("[ab&&[^c]]&&^c", 0, "a");
+        test("[ab&&[^c]]&&^c", 0, "a");
     }
 
     @Test
@@ -209,7 +618,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
 
     @Test
     public void posix3CC() {
-        test("\\p{IsDigit}", 0, "1");
+        test("\\p{Letter}", 0, "1");
     }
 
     @Test
@@ -388,6 +797,393 @@ public class JavaUtilPatternTests extends RegexTestBase {
         test("a{1,", 0, "a{1,");
     }
 
+    @Test
+    public void characterClassSetIntersection() {
+        test("[a&&&]", 0, "a");
+        test("[a&&&]", 0, "&");
+
+        test("[a&&b]", 0, "a");
+        test("[a&&b]", 0, "b");
+        test("[a&&b]", 0, "&");
+
+        test("[a&b]", 0, "a");
+        test("[a&b]", 0, "b");
+        test("[a&b]", 0, "&");
+
+        test("[a&&&&]", 0, "a");
+        test("[a&&&&&]", 0, "a");
+        test("[a&&&&&&]", 0, "a");
+        test("[a&&&&&&&]", 0, "a");
+
+        test("[a&&&&]", 0, "&");
+        test("[a&&&&&]", 0, "&");
+        test("[a&&&&&&]", 0, "&");
+        test("[a&&&&&&&]", 0, "&");
+
+        test("[&]", 0, "&");
+
+        test("[a&&]", 0, "a");
+        test("[a&&]", 0, "&");
+        test("[&&a]", 0, "a");
+        test("[&&a]", 0, "&");
+        //test("[&", 0, "a");
+    }
+
+    @Test
+    public void characterClassSetRanges() {
+        test("a", 0, "a");
+        test("[a]", 0, "a");
+        test("[a-b]", 0, "a");
+        test("[a-d]", 0, "b");
+        test("[a-b]", 0, "b");
+        test("[a-b]", 0, "c");
+        test("[a-bd]", 0, "c");
+        test("[a-bd]", 0, "d");
+        test("[a-bd\\d]", 0, "2");
+        test("[a-]", 0, "a");
+        test("[a-]", 0, "-");
+        test("[a-b]", 0, "-");
+        test("[a-]", 0, "-");
+        test("[-a]", 0, "a");
+        test("[-a]", 0, "-");
+
+        for (char c = 'a'; c <= 'g'; c++) {
+            test("[a[b-d][e-f]]", 0, "" + c);
+        }
+    }
+
+    @Test
+    public void characterClassSetNested() {
+        for (char c = 'a'; c <= 'g'; c++) {
+            test("[a[b-d]&&[c-f]]", 0, "" + c);
+            test("[b-[c-d]]&&[a]&&[e-f]", 0, ""+ c);
+        }
+    }
+
+    @Test
+    public void characterClassSyntaxError() {
+        test("[&&]", 0, "&");
+        test("[b-a]", 0, "a");
+        test("[a", 0, "a");
+        test("[a-", 0, "a");
+        test("[[a-]", 0, "a");
+        test("[[a-b]&&", 0, "a");
+    }
+
+    @Test
+    public void characterClassEdgeCases() {
+        test("[]", 0, "");
+        test("[^]", 0, "");
+        test("[\\[]", 0, "");
+        test("[&", 0, "");
+        test("[a&&b]", 0, "");
+        test("[a&&b&&[[]]", 0, "");
+    }
+
+    private Stream<String> generateCases(List<Character> chars, int length) {
+        if (length == 0) return Stream.of("");
+        else return chars.stream().flatMap(pre -> generateCases(chars, length - 1).map(su -> pre + su));
+    }
+
+    @Test
+    public void flagStack() {
+        test("a", 0, "a");
+        test("a", 0, "A");
+
+        test("a", Pattern.CASE_INSENSITIVE, "a");
+        test("a", Pattern.CASE_INSENSITIVE, "A");
+
+        test("a(?i:a)", 0, "aa");
+        test("a(?i:a)", 0, "aA");
+        test("a(?i)(?i)(?i)A", 0, "aa");
+        test("a(?i)A", 0, "aA");
+
+        generateCases(List.of('a', 'A'), 3).forEach(s -> {
+            test("a(?i:a(a))", 0, s);
+            test("a(?i:a(?-i:a))", 0, s);
+            test("a(?i:a(a))", 0, s);
+        });
+
+        generateCases(List.of('a', 'A'), 3).forEach(s -> {
+            test("a(?i:a(?-i:a(?i:a)a)a)", 0, s);
+            test("a(?i)a(?-i)a(?i:a)a(?i)a", 0, s);
+            test("(?i:a(?-i:a(?i:a))a(?-i)a)a", 0, s);
+            test("a(?i:a(a(?-i)a(a)a))", 0, s);
+        });
+
+        test("(?)", 0, "");
+        test("(?-)", 0, "");
+        test("(?-:)", 0, "a");
+        test("(?-:a)", 0, "a");
+
+        test("(?i)", 0, "");
+        test("(?i-)", 0, "");
+        test("(?i-:)", 0, "a");
+        test("(?i-:a)", 0, "a");
+    }
+
+    @Test
+    public void unicodeCase() {
+        test("aà", Pattern.CASE_INSENSITIVE, "aà");
+        test("aa", Pattern.CASE_INSENSITIVE, "aA");
+        test("aa", Pattern.CASE_INSENSITIVE, "aÀ"); // should not match because Pattern.UNICODE_CASE is not set
+        test("aà", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "aÀ");
+
+        // unicode case should match 'K' with "kelvin K" (0x212A)
+        test("k", 0, "K");
+        test("k", Pattern.CASE_INSENSITIVE, "K");
+        test("k", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "K");
+        test("K", 0, "K");
+        test("K", Pattern.CASE_INSENSITIVE, "K");
+        test("K", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "K");
+        test("[a-z]", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "K");
+
+        // unicode case should match 'I' with 'İ'
+        test("i", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "İ");
+
+        // unicode case should not match 'A' with 'À'
+        test("a", 0, "À");
+        test("a", Pattern.CASE_INSENSITIVE, "À");
+        test("a", Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE, "À");
+    }
+
+    @Test
+    public void characterName() {
+        test("\\N{WHITE SMILING FACE}", 0, "\u263A");
+        test("\\N{whiTe SMilIng fACE}", 0, "\u263A");
+        test("\\N{WHITE SMILING FACE}abc", 0, "\u263Aabc");
+        test("\\N{WHITE SMILI}", 0, "\u263A");
+        test("\\N{WHITE SMILING FACE", 0, "\u263A");
+        test("\\N{}", 0, "\u263A");
+        test("\\N{", 0, "\u263A");
+        test("\\N", 0, "\u263A");
+        test("\\Na", 0, "\u263A");
+        test("\\Nabc{}", 0, "\u263A");
+    }
+
+    @Test
+    public void unicodeCharacterPropertyGeneralCategory() {
+        test("\\pL", 0, "A"); // no curly braces needed if single character
+        test("\\p{Lu}", 0, "A");
+        test("\\p{IsLu}", 0, "A");
+        test("\\p{gc=Lu}", 0, "A");
+        test("\\p{general_category=Lu}", 0, "A");
+
+        test("\\p{SomeUnknownCategory}", 0, "A");
+        test("\\p{IsSomeUnknownCategory}", 0, "A");
+        test("\\p{gc=IsSomeUnknownCategory}", 0, "A");
+    }
+
+    @Test
+    public void unicodeCharacterPropertyScript() {
+        test("\\p{IsLatin}", 0, "A");
+        test("\\p{sc=Latin}", 0, "A");
+        test("\\p{script=Latin}", 0, "A");
+
+        test("\\p{SomeUnknownScript}", 0, "A");
+        test("\\p{IsSomeUnknownScript}", 0, "A");
+        test("\\p{gc=SomeUnknownScript}", 0, "A");
+    }
+
+    @Test
+    public void unicodeCharacterPropertyBlock() {
+        // epsilon
+        test("\\p{InGreek}", 0, "ε");
+        test("\\p{blk=Greek}", 0, "ε");
+        test("\\p{block=Greek}", 0, "ε");
+
+        test("\\p{SomeUnknownBlock}", 0, "ε");
+        test("\\p{IsSomeUnknownBlock}", 0, "ε");
+        test("\\p{gc=SomeUnknownBlock}", 0, "ε");
+    }
+
+    @Test
+    public void unicodeCharacterPropertyErrors() {
+        test("\\p{abc", 0, "");
+        test("\\p{", 0, "");
+        test("\\p{}", 0, "");
+        test("\\p", 0, "");
+        test("\\p{unknown}", 0, "");
+        test("\\p{unknown=unknown}", 0, "");
+        test("\\p{blk=Non_Existent_Block}", 0, "");
+        test("\\p{sc=Non_Existent_Script}", 0, "");
+    }
+
+    @Test
+    @Ignore
+    public void unicodeProperties() {
+        String[] properties = new String[]{
+                "Cn",
+                "Lu",
+                "Ll",
+                "Lt",
+                "Lm",
+                "Lo",
+                "Mn",
+                "Me",
+                "Mc",
+                "Nd",
+                "Nl",
+                "No",
+                "Zs",
+                "Zl",
+                "Cc",
+                "Cf",
+                "Zp",
+                "Co",
+                "Cs",
+                "Pd",
+                "Ps",
+                "Pe",
+                "Pc",
+                "Po",
+                "Sm",
+                "Sc",
+                "Sk",
+                "So",
+                "Pi",
+                "Pf",
+                "L",
+                "M",
+                "N",
+                "Z",
+                "C",
+                "P",
+                "S",
+                "LC",
+                "LD",
+                "L1",
+                "all",
+                "ASCII",
+                "Alnum",
+                "Alpha",
+                "Blank",
+                "Cntrl",
+                "Digit",
+                "Graph",
+                "Lower",
+                "Print",
+                "Punct",
+                "Space",
+                "Upper",
+                "XDigit",
+                "javaLowerCase",
+                "javaUpperCase",
+                "javaAlphabetic",
+                "javaIdeographic",
+                "javaTitleCase",
+                "javaDigit",
+                "javaDefined",
+                "javaLetter",
+                "javaLetterOrDigit",
+                "javaJavaIdentifierStart",
+                "javaJavaIdentifierPart",
+                "javaUnicodeIdentifierStart",
+                "javaUnicodeIdentifierPart",
+                "javaIdentifierIgnorable",
+                "javaSpaceChar",
+                "javaWhitespace",
+                "javaISOControl",
+                "javaMirrored"
+        };
+
+
+        for (String prop: properties) {
+            for (int j = 0; j <= 0x10FFFF; j++) {
+                String s = new String(new int[]{j}, 0, 1);
+                test(String.format("\\p{%s}", prop), 0, s);
+                test(String.format("\\p{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
+                test(String.format("\\P{%s}", prop), 0, s);
+                test(String.format("\\P{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
+            }
+        }
+    }
+
+    @Test
+    @Ignore
+    public void unicodePOSIX() {
+        String[] properties = new String[]{
+                "ALPHA",
+                "LOWER",
+                "UPPER",
+                "SPACE",
+                "PUNCT",
+                "XDIGIT",
+                "ALNUM",
+                "CNTRL",
+                "DIGIT",
+                "BLANK",
+                "GRAPH",
+                "PRINT"
+        };
+
+        for (String prop: properties) {
+            for (int j = 0; j <= 0x10FFFF; j++) {
+                String s = new String(new int[]{j}, 0, 1);
+                test(String.format("\\p{Is%s}", prop), 0, s);
+                test(String.format("\\p{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
+                test(String.format("\\P{%s}", prop), 0, s);
+                test(String.format("\\P{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
+            }
+        }
+    }
+
+    @Test
+    @Ignore
+    public void unicodePredicates() {
+        String[] properties = new String[]{
+                "ALPHABETIC",
+                "ASSIGNED",
+                "CONTROL",
+                "EMOJI",
+                "EMOJI_PRESENTATION",
+                "EMOJI_MODIFIER",
+                "EMOJI_MODIFIER_BASE",
+                "EMOJI_COMPONENT",
+                "EXTENDED_PICTOGRAPHIC",
+                "HEXDIGIT",
+                "HEX_DIGIT",
+                "IDEOGRAPHIC",
+                "JOINCONTROL",
+                "JOIN_CONTROL",
+                "LETTER",
+                "LOWERCASE",
+                "NONCHARACTERCODEPOINT",
+                "NONCHARACTER_CODE_POINT",
+                "TITLECASE",
+                "PUNCTUATION",
+                "UPPERCASE",
+                "WHITESPACE",
+                "WHITE_SPACE",
+                "WORD"
+        };
+
+        for (String prop: properties) {
+            for (int j = 0; j <= 0x10FFFF; j++) {
+                String s = new String(new int[]{j}, 0, 1);
+                test(String.format("\\p{Is%s}", prop), 0, s);
+                test(String.format("\\p{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
+                test(String.format("\\P{%s}", prop), 0, s);
+                test(String.format("\\P{Is%s}", prop), Pattern.CASE_INSENSITIVE, s);
+            }
+        }
+    }
+
+    @Test
+    public void unsupportedOperations() {
+        Assert.assertTrue(compileRegex("(?>X)", "").isNull());
+        Assert.assertTrue(compileRegex("\\X", "").isNull());
+        Assert.assertTrue(compileRegex("\\G", "").isNull());
+        Assert.assertTrue(compileRegex("\\b{g}", "").isNull());
+        Assert.assertTrue(compileRegex("abc", "C").isNull());
+    }
+
+    @Test
+    public void badIntersectionSyntax() {
+        // this produces a specific error for some weird reason
+        // test("[\\u0100a&&]", 0, "");
+    }
+
     void test(String pattern, int flags, String input) {
         test(pattern, flags, input, 0);
     }
@@ -411,7 +1207,7 @@ public class JavaUtilPatternTests extends RegexTestBase {
         } catch (PatternSyntaxException javaPatternException) {
             try {
                 compileRegex(pattern, flags, "");
-            } catch (RegexSyntaxException tRegexException) {
+            } catch (PolyglotException tRegexException) { // TODO why do we need PolyglotException instead of RegexSyntaxException?
                 Assert.assertTrue(tRegexException.getMessage().contains(javaPatternException.getDescription()));
                 return;
             }

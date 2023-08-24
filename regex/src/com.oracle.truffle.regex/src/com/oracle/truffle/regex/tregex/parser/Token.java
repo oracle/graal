@@ -79,7 +79,9 @@ public class Token implements JsonConvertible {
         charClassEnd,
         classSet,
         inlineFlags,
-        conditionalBackreference
+        conditionalBackreference,
+        nop,
+        linebreak
     }
 
     private static final Token A = new Token(Kind.A);
@@ -100,6 +102,9 @@ public class Token implements JsonConvertible {
     private static final Token LOOK_BEHIND_ASSERTION_BEGIN = new LookBehindAssertionBegin(false);
     private static final Token NEGATIVE_LOOK_BEHIND_ASSERTION_BEGIN = new LookBehindAssertionBegin(true);
     private static final Token GROUP_END = new Token(Kind.groupEnd);
+    private static final Token NOP = new Token(Kind.nop);
+
+    private static final Token LINEBREAK = new Token(Kind.linebreak);
 
     public static Token createA() {
         return A;
@@ -155,6 +160,14 @@ public class Token implements JsonConvertible {
 
     public static Token createGroupEnd() {
         return GROUP_END;
+    }
+
+    public static Token createNop() {
+        return NOP;
+    }
+
+    public static Token createLineBreak() {
+        return LINEBREAK;
     }
 
     public static BackReference createBackReference(int groupNr, boolean namedReference) {

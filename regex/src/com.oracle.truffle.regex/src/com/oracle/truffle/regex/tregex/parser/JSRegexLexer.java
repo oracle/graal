@@ -341,10 +341,11 @@ public final class JSRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected void handleIncompleteEscapeX() {
+    protected int handleIncompleteEscapeX() {
         if (flags.isEitherUnicode()) {
             throw syntaxError(JsErrorMessages.INVALID_ESCAPE);
         }
+        return -1;
     }
 
     @Override

@@ -53,6 +53,7 @@ import com.oracle.truffle.api.source.SourceSection;
 public final class RegexSyntaxException extends AbstractTruffleException {
 
     private final SourceSection sourceSection;
+    private final int position;
 
     public static RegexSyntaxException createOptions(Source source, String msg, int position) {
         return new RegexSyntaxException(msg, source, position);
@@ -92,6 +93,7 @@ public final class RegexSyntaxException extends AbstractTruffleException {
     private RegexSyntaxException(String reason, Source src, int position) {
         super(reason);
         assert position <= src.getLength();
+        this.position = position;
         this.sourceSection = src.createSection(position, src.getLength() - position);
     }
 
@@ -110,6 +112,10 @@ public final class RegexSyntaxException extends AbstractTruffleException {
     @ExportMessage(name = "getSourceLocation")
     SourceSection getSourceSection() {
         return sourceSection;
+    }
+
+    public int getPosition() {
+        return position;
     }
 
     private static final long serialVersionUID = 1L;

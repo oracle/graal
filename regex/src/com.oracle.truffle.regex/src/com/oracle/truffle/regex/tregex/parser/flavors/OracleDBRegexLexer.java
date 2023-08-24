@@ -346,7 +346,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected void handleIncompleteEscapeX() {
+    protected int handleIncompleteEscapeX() {
         throw CompilerDirectives.shouldNotReachHere();
     }
 

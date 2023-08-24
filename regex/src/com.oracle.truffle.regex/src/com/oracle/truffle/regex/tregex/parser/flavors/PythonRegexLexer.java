@@ -469,7 +469,7 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected void handleIncompleteEscapeX() {
+    protected int handleIncompleteEscapeX() {
         throw syntaxError(PyErrorMessages.incompleteEscape(substring(2 + count(RegexLexer::isHexDigit))));
     }
 

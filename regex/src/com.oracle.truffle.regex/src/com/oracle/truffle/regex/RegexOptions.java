@@ -138,8 +138,9 @@ public final class RegexOptions {
     public static final String MUST_ADVANCE_NAME = "MustAdvance";
     private static final int GENERATE_INPUT = 1 << 11;
     public static final String GENERATE_INPUT_NAME = "GenerateInput";
+    private static final int JAVA_SEARCH = 1 << 12;
+    private static final String JAVA_SEARCH_NAME = "JavaMatch";
     public static final String COLLATION_NAME = "Collation";
-
     public static final String FLAVOR_NAME = "Flavor";
     public static final String FLAVOR_PYTHON = "Python";
     public static final String FLAVOR_RUBY = "Ruby";
@@ -308,6 +309,14 @@ public final class RegexOptions {
      */
     public boolean isGenerateInput() {
         return isBitSet(GENERATE_INPUT);
+    }
+
+    /**
+     * Use match mode with Java flavor. When this option is true, the matcher won't attempt to find a match
+     * starting from any subsequent position until it reaches the end of the string
+     */
+    public boolean isJavaMatch() {
+        return isBitSet(JAVA_MATCH);
     }
 
     public RegexFlavor getFlavor() {
@@ -494,6 +503,9 @@ public final class RegexOptions {
                         break;
                     case 'I':
                         parseBooleanOption(IGNORE_ATOMIC_GROUPS_NAME, IGNORE_ATOMIC_GROUPS);
+                        break;
+                    case 'J':
+                        i = parseBooleanOption(i, JAVA_MATCH_NAME, JAVA_MATCH);
                         break;
                     case 'M':
                         switch (lookAheadInKey(3)) {

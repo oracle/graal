@@ -49,6 +49,7 @@ import com.oracle.truffle.regex.RegexSyntaxException;
 import com.oracle.truffle.regex.UnsupportedRegexException;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.Constants;
+import com.oracle.truffle.regex.errors.JavaErrorMessages;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
 import com.oracle.truffle.regex.tregex.buffer.CompilationBuffer;
 import com.oracle.truffle.regex.tregex.parser.RegexASTBuilder;
@@ -88,7 +89,7 @@ public final class JavaRegexParser implements RegexParser {
     }
 
     public static RegexParser createParser(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) throws RegexSyntaxException {
-        return new JavaRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(false), true, compilationBuffer), compilationBuffer);
+        return new JavaRegexParser(source, new RegexASTBuilder(language, source, makeTRegexFlags(source.getOptions().isJavaMatch()), true, compilationBuffer), compilationBuffer);
     }
 
     public RegexAST parse() {
@@ -121,15 +122,15 @@ public final class JavaRegexParser implements RegexParser {
                     dollar();
                     break;
                 case wordBoundary:
-                    if (lexer.getLocalFlags().isUnicodeCase() && lexer.getLocalFlags().isCaseInsensitive()) {
-                        buildWordBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
+                    if (lexer.getLocalFlags().isUnicodeCharacterClass()) {
+                        buildWordBoundaryAssertion(JavaLexer.UNICODE_CHAR_CLASS_SETS.get('w'), JavaLexer.UNICODE_CHAR_CLASS_SETS.get('W'));
                     } else {
                         buildWordBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
                     }
                     break;
                 case nonWordBoundary:
-                    if (lexer.getLocalFlags().isUnicodeCase() && lexer.getLocalFlags().isCaseInsensitive()) {
-                        buildWordNonBoundaryAssertion(Constants.WORD_CHARS_UNICODE_IGNORE_CASE, Constants.NON_WORD_CHARS_UNICODE_IGNORE_CASE);
+                    if (lexer.getLocalFlags().isUnicodeCharacterClass()) {
+                        buildWordNonBoundaryAssertion(JavaLexer.UNICODE_CHAR_CLASS_SETS.get('w'), JavaLexer.UNICODE_CHAR_CLASS_SETS.get('W'));
                     } else {
                         buildWordNonBoundaryAssertion(Constants.WORD_CHARS, Constants.NON_WORD_CHARS);
                     }
@@ -157,42 +158,59 @@ public final class JavaRegexParser implements RegexParser {
                     if (!((Token.InlineFlags) token).isGlobal()) {
                         astBuilder.pushGroup(token);
                         astBuilder.getCurGroup().setLocalFlags(true);
+                        lexer.pushLocalFlags();
                     }
+                    lexer.applyFlags();
                     break;
                 case captureGroupBegin:
+                    lexer.pushLocalFlags();
                     astBuilder.pushCaptureGroup(token);
                     break;
                 case nonCaptureGroupBegin:
+                    lexer.pushLocalFlags();
                     astBuilder.pushGroup(token);
                     break;
                 case lookAheadAssertionBegin:
+                    lexer.pushLocalFlags();
                     astBuilder.pushLookAheadAssertion(token, ((Token.LookAheadAssertionBegin) token).isNegated());
                     break;
                 case lookBehindAssertionBegin:
+                    lexer.pushLocalFlags();
                     astBuilder.pushLookBehindAssertion(token, ((Token.LookBehindAssertionBegin) token).isNegated());
                     break;
                 case groupEnd:
                     if (astBuilder.getCurGroup().getParent() instanceof RegexASTRootNode) {
                         throw syntaxErrorHere(JsErrorMessages.UNMATCHED_RIGHT_PARENTHESIS);
                     }
-                    if (astBuilder.getCurGroup().isLocalFlags()) {
-                        lexer.popLocalFlags();
-                    }
+                    lexer.popLocalFlags();
                     astBuilder.popGroup(token);
                     break;
                 case charClass:
                     astBuilder.addCharClass((Token.CharacterClass) token);
                     break;
+                case classSet:
+                    astBuilder.addClassSet((Token.ClassSet) token, getFlags().isCaseInsensitive() ? JavaFlavor.getCaseFoldingAlgorithm(getFlags().isUnicodeCase()) : null);
+                    break;
+                case linebreak:
+                    pushGroup(); // (?:
+                    addCharClass(CodePointSet.create('\r'));
+                    addCharClass(CodePointSet.create('\n'));
+                    nextSequence(); // |
+                    addCharClass(CodePointSet.createNoDedup(
+                            0x000A, 0x000D, 0x0085, 0x0085, 0x2028, 0x2029
+                    ));
+                    popGroup(); // )
+                    break;
             }
         }
         if (!astBuilder.curGroupIsRoot()) {
-            throw syntaxErrorHere(JsErrorMessages.UNTERMINATED_GROUP);
+            throw syntaxErrorHere(JavaErrorMessages.UNCLOSED_GROUP);
         }
         return astBuilder.popRootGroup();
     }
 
     @Override
-    public AbstractRegexObject getFlags() {
+    public JavaFlags getFlags() {
         return lexer.getLocalFlags();
     }
 
