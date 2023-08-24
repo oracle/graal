@@ -25,6 +25,8 @@
  */
 package com.oracle.svm.core.reflect.serialize;
 
+import static com.oracle.svm.core.SubstrateOptions.ThrowMissingRegistrationErrors;
+
 import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
@@ -37,6 +39,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+
+import com.oracle.svm.core.util.VMError;
 
 public class SerializationSupport implements SerializationRegistry {
 
@@ -152,8 +156,14 @@ public class SerializationSupport implements SerializationRegistry {
             return constructorAccessor;
         } else {
             String targetConstructorClassName = targetConstructorClass.getName();
-            MissingSerializationRegistrationUtils.missingSerializationRegistration(declaringClass,
-                            "type " + declaringClass.getName() + " with target constructor class: " + targetConstructorClassName);
+            if (ThrowMissingRegistrationErrors.hasBeenSet()) {
+                MissingSerializationRegistrationUtils.missingSerializationRegistration(declaringClass,
+                                "type " + declaringClass.getName() + " with target constructor class: " + targetConstructorClassName);
+            } else {
+                throw VMError.unsupportedFeature("SerializationConstructorAccessor class not found for declaringClass: " + declaringClass.getName() +
+                                " (targetConstructorClass: " + targetConstructorClassName + "). Usually adding " + declaringClass.getName() +
+                                " to serialization-config.json fixes the problem.");
+            }
             return null;
         }
     }
