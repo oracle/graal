@@ -251,15 +251,18 @@ public class JfrThreadLocal implements ThreadListener {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isThreadExcluded(Thread thread) {
-        if (thread == null && Thread.currentThread() == null) {
-            return true;
-        } else if (thread == null) {
-            thread = Thread.currentThread();
+        Thread targetThread = thread;
+        if (thread == null) {
+            if (Thread.currentThread() == null) {
+                return true;
+            }
+            targetThread = Thread.currentThread();
         }
-        if (thread != Thread.currentThread() && !VMOperation.isInProgressAtSafepoint()) {
+        if (targetThread != Thread.currentThread() && !VMOperation.isInProgressAtSafepoint()) {
             return false;
         }
-        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
+
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(targetThread, Target_java_lang_Thread.class);
         return tjlt.jfrExcluded;
     }
 
