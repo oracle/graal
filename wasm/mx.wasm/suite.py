@@ -363,9 +363,18 @@ suite = {
     "WASM_GRAALVM_SUPPORT": {
       "native": True,
       "platformDependent": False,
-      "description": "Wasm support distribution for the GraalVM license files",
+      "description": "Wasm support distribution",
       "layout": {
         "./": "file:mx.wasm/native-image.properties",
+      },
+      "maven": False,
+    },
+
+    "WASM_GRAALVM_LICENSES": {
+      "native": True,
+      "platformDependent": False,
+      "description": "Wasm support distribution for the GraalVM license files",
+      "layout": {
         "LICENSE_WASM.txt": "file:LICENSE",
       },
       "maven": False,
