@@ -35,7 +35,9 @@ import java.lang.reflect.Method;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Supplier;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -100,7 +102,7 @@ public class MethodHandleFeature implements InternalFeature {
      * equivalent image heap object is not part of the table and subsequently fails a comparison.
      */
     private Object runtimeMethodTypeInternTable;
-    private Method concurrentWeakInternSetAdd;
+    private Method referencedKeySetAdd;
 
     private MethodHandleInvokerRenamingSubstitutionProcessor substitutionProcessor;
 
@@ -121,9 +123,22 @@ public class MethodHandleFeature implements InternalFeature {
         Class<?> arrayAccessorClass = access.findClassByName("java.lang.invoke.MethodHandleImpl$ArrayAccessor");
         typedAccessors = ReflectionUtil.lookupField(arrayAccessorClass, "TYPED_ACCESSORS");
 
-        Class<?> concurrentWeakInternSetClass = access.findClassByName("java.lang.invoke.MethodType$ConcurrentWeakInternSet");
-        runtimeMethodTypeInternTable = ReflectionUtil.newInstance(concurrentWeakInternSetClass);
-        concurrentWeakInternSetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
+        if (JavaVersionUtil.JAVA_SPEC >= 22) {
+            try {
+                Class<?> referencedKeySetClass = access.findClassByName("jdk.internal.util.ReferencedKeySet");
+                Method create = ReflectionUtil.lookupMethod(referencedKeySetClass, "create", boolean.class, boolean.class, Supplier.class);
+                // The following call must match the static initializer of MethodType#internTable.
+                runtimeMethodTypeInternTable = create.invoke(null,
+                                /* isSoft */ false, /* useNativeQueue */ true, (Supplier<Object>) () -> new ConcurrentHashMap<>(512));
+                referencedKeySetAdd = ReflectionUtil.lookupMethod(referencedKeySetClass, "add", Object.class);
+            } catch (ReflectiveOperationException e) {
+                throw VMError.shouldNotReachHere(e);
+            }
+        } else {
+            Class<?> concurrentWeakInternSetClass = access.findClassByName("java.lang.invoke.MethodType$ConcurrentWeakInternSet");
+            runtimeMethodTypeInternTable = ReflectionUtil.newInstance(concurrentWeakInternSetClass);
+            referencedKeySetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
+        }
 
         var accessImpl = (DuringSetupAccessImpl) access;
         substitutionProcessor = new MethodHandleInvokerRenamingSubstitutionProcessor(accessImpl.getBigBang());
@@ -315,7 +330,7 @@ public class MethodHandleFeature implements InternalFeature {
 
     public void registerHeapMethodType(MethodType methodType) {
         try {
-            concurrentWeakInternSetAdd.invoke(runtimeMethodTypeInternTable, methodType);
+            referencedKeySetAdd.invoke(runtimeMethodTypeInternTable, methodType);
         } catch (ReflectiveOperationException e) {
             throw VMError.shouldNotReachHere(e);
         }
