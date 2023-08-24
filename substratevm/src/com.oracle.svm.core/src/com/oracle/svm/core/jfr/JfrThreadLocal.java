@@ -251,19 +251,23 @@ public class JfrThreadLocal implements ThreadListener {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isThreadExcluded(Thread thread) {
-        Thread targetThread = thread;
         if (thread == null) {
-            if (Thread.currentThread() == null) {
-                return true;
-            }
-            targetThread = Thread.currentThread();
+            return true;
         }
-        if (targetThread != Thread.currentThread() && !VMOperation.isInProgressAtSafepoint()) {
+        if (thread != Thread.currentThread() && !VMOperation.isInProgressAtSafepoint()) {
             return false;
         }
 
-        Target_java_lang_Thread tjlt = SubstrateUtil.cast(targetThread, Target_java_lang_Thread.class);
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
         return tjlt.jfrExcluded;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isCurrentThreadExcluded() {
+        if (Thread.currentThread() == null) {
+            return true;
+        }
+        return isThreadExcluded(Thread.currentThread());
     }
 
     public static Target_jdk_jfr_internal_EventWriter getEventWriter() {

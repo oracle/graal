@@ -711,6 +711,11 @@ public class SubstrateJVM {
         return JfrThreadLocal.isThreadExcluded(thread);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean isCurrentThreadExcluded() {
+        return JfrThreadLocal.isCurrentThreadExcluded();
+    }
+
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
         JfrBeginRecordingOperation() {
             super(VMOperationInfos.get(JfrBeginRecordingOperation.class, "JFR begin recording", SystemEffect.SAFEPOINT));
