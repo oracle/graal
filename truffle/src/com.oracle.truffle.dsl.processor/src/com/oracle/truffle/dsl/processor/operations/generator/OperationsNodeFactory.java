@@ -120,9 +120,8 @@ public class OperationsNodeFactory implements ElementHelpers {
     private static final Name Uncached_Name = CodeNames.of("Uncached");
 
     public static final String USER_LOCALS_START_IDX = "USER_LOCALS_START_IDX";
-    public static final String FINALLY_TRY_EXCEPTION_IDX = "FINALLY_TRY_EXCEPTION_IDX";
     public static final String BASELINE_BCI_IDX = "BASELINE_BCI_IDX";
-    public static final String COROUTINE_FRAME_IDX = "COROUTIME_FRAME_IDX";
+    public static final String COROUTINE_FRAME_IDX = "COROUTINE_FRAME_IDX";
 
     private final ProcessorContext context = ProcessorContext.getInstance();
     private final TruffleTypes types = context.getTypes();
@@ -362,9 +361,6 @@ public class OperationsNodeFactory implements ElementHelpers {
     private List<CodeVariableElement> createFrameLayoutConstants() {
         List<CodeVariableElement> result = new ArrayList<>();
         int reserved = 0;
-
-        int finallyTryExceptionIndex = reserved++;
-        result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, FINALLY_TRY_EXCEPTION_IDX, finallyTryExceptionIndex + ""));
 
         int baselineBciIndex = -1;
         if (model.enableBaselineInterpreter) {
@@ -1815,7 +1811,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             builder.add(createBeginOperation());
             builder.add(createEndOperation());
-            builder.add(createBeginFinallyTryNoArgs());
             builder.add(createEmitOperationBegin());
             builder.add(createBeforeChild());
             builder.add(createAfterChild());
@@ -2506,15 +2501,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
         }
 
-        private CodeExecutableElement createBeginFinallyTryNoArgs() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "beginFinallyTry");
-            CodeTreeBuilder b = ex.createBuilder();
-
-            b.startStatement().startCall("beginFinallyTry").string("null").end(2);
-
-            return ex;
-        }
-
         private CodeExecutableElement createEndOperation() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "endOperation");
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "id"));
@@ -2638,7 +2624,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.statement("Object[] finallyTryData = (Object[]) operationStack[operationSp].data");
                     b.statement("OperationLocalImpl exceptionLocal = (OperationLocalImpl) finallyTryData[0]");
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) finallyTryData[1]");
-                    b.statement("short exceptionIndex = (exceptionLocal != null) ? (short) exceptionLocal.index : " + FINALLY_TRY_EXCEPTION_IDX);
+                    b.statement("short exceptionIndex = (short) exceptionLocal.index");
                     b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, curStack, exceptionIndex)");
                     b.lineComment("emit handler for normal completion case");
                     b.statement("doEmitFinallyHandler(ctx)");

@@ -55,7 +55,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
 
         RootCallTarget root = parse("finallyTryBasic", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
             emitAppend(b, 2);
 
             emitAppend(b, 1);
@@ -81,7 +81,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
 
         RootCallTarget root = parse("finallyTryException", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 emitAppend(b, 3);
 
                 b.beginBlock();
@@ -111,7 +111,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
 
         RootCallTarget root = parse("finallyTryReturn", b -> {
             b.beginRoot(LANGUAGE);
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 emitAppend(b, 1);
 
                 b.beginBlock();
@@ -251,7 +251,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 emitAppend(b, 3);
 
                 b.beginBlock();
@@ -291,7 +291,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
             b.beginRoot(LANGUAGE);
             OperationLabel lbl = b.createLabel();
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 2);
                     b.emitBranch(lbl);
@@ -357,7 +357,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
                 b.endBlock();
             b.endIfThen();
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 3);
                     b.emitBranch(lbl);
@@ -402,7 +402,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryBranchWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     OperationLabel lbl = b.createLabel();
                     emitAppend(b, 3);
@@ -445,7 +445,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryIfThenWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 3);
 
@@ -494,7 +494,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryIfThenElseWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 3);
 
@@ -543,7 +543,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryConditionalWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 3);
 
@@ -611,7 +611,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
 
             OperationLocal local = b.createLocal();
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 3);
 
@@ -676,7 +676,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryShortCircuitOpWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 3);
 
@@ -753,7 +753,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryNonThrowingTryCatchWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 3);
 
@@ -803,7 +803,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryThrowingTryCatchWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 3);
 
@@ -849,7 +849,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         parse("finallyTryBranchWithinHandlerNoLabel", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     OperationLabel lbl = b.createLabel();
 
@@ -882,7 +882,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         parse("finallyTryBranchIntoTry", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     OperationLabel lbl = b.createLabel();
 
@@ -917,7 +917,7 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         parse("finallyTryBranchIntoFinally", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     OperationLabel lbl = b.createLabel();
                     b.emitLabel(lbl);
@@ -961,11 +961,11 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         parse("finallyTryBranchIntoOuterFinally", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     OperationLabel lbl = b.createLabel();
 
-                    b.beginFinallyTry();
+                    b.beginFinallyTry(b.createLocal());
                         b.beginBlock();
                             emitAppend(b, 5);
                             b.emitBranch(lbl);
@@ -1031,14 +1031,14 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         parse("finallyTryBranchIntoOuterFinallyNestedInAnotherFinally", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry(); // a
+            b.beginFinallyTry(b.createLocal()); // a
                 b.beginBlock();
-                    b.beginFinallyTry(); // b
+                    b.beginFinallyTry(b.createLocal()); // b
                         b.beginBlock();
                             OperationLabel lbl = b.createLabel();
 
                             emitAppend(b, 5);
-                            b.beginFinallyTry(); // c
+                            b.beginFinallyTry(b.createLocal()); // c
                                 b.beginBlock();
                                     emitAppend(b, 8);
                                     b.emitBranch(lbl);
@@ -1103,11 +1103,11 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryBranchWhileInParentHandler", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 3);
 
-                    b.beginFinallyTry();
+                    b.beginFinallyTry(b.createLocal());
                         emitAppend(b, 7);
 
                         b.beginBlock();
@@ -1154,13 +1154,13 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryNestedTry", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 5);
                 b.endBlock();
 
                 b.beginBlock();
-                    b.beginFinallyTry();
+                    b.beginFinallyTry(b.createLocal());
                         b.beginBlock();
                             emitAppend(b, 3);
                         b.endBlock();
@@ -1202,8 +1202,8 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryNestedFinally", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
-                b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
+                b.beginFinallyTry(b.createLocal());
                     b.beginBlock();
                         emitAppend(b, 5);
                     b.endBlock();
@@ -1245,12 +1245,12 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryNestedTryThrow", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
                     emitAppend(b, 4);
                 b.endBlock();
 
-                b.beginFinallyTry();
+                b.beginFinallyTry(b.createLocal());
                     b.beginBlock();
                         emitAppend(b, 3);
                     b.endBlock();
@@ -1288,8 +1288,8 @@ public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
         RootCallTarget root = parse("finallyTryNestedFinallyThrow", b -> {
             b.beginRoot(LANGUAGE);
 
-            b.beginFinallyTry();
-                b.beginFinallyTry();
+            b.beginFinallyTry(b.createLocal());
+                b.beginFinallyTry(b.createLocal());
                     b.beginBlock();
                         emitAppend(b, 5);
                     b.endBlock();
