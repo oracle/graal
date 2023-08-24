@@ -48,7 +48,7 @@ public class ThreadAllocationStatisticsEvent {
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadAllocationStatistics);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putLong(data, Heap.getHeap().getThreadAllocatedMemory(isolateThread)); // Allocation
+            JfrNativeEventWriter.putLong(data, Heap.getHeap().getThreadAllocatedMemory(isolateThread));
             JfrNativeEventWriter.putThread(data, javaThread);
             JfrNativeEventWriter.endSmallEvent(data);
 
