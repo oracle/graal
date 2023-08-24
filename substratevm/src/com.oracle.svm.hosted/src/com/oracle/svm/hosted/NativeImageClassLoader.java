@@ -444,6 +444,8 @@ final class NativeImageClassLoader extends SecureClassLoader {
         LoadedModule loadedModule = findLoadedModule(cn);
         if (loadedModule != null) {
             c = findClassInModuleOrNull(loadedModule, cn);
+        } else {
+            c = findClassViaClassPath(cn);
         }
         if (c == null) {
             throw new ClassNotFoundException(cn);
@@ -619,6 +621,12 @@ final class NativeImageClassLoader extends SecureClassLoader {
         LoadedModule loadedModule = findLoadedModule(cn);
         if (loadedModule != null && loadedModule.name().equals(mn)) {
             c = findClassInModuleOrNull(loadedModule, cn);
+        } else {
+            try {
+                c = findClassViaClassPath(cn);
+            } catch (ClassNotFoundException ex) {
+                /* Ignored, return null. */
+            }
         }
         return c;
     }
