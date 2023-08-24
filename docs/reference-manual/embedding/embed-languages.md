@@ -769,7 +769,9 @@ module com.mycompany.app {
 IMPORTANT!!
 
 Whenever you change ANYTHING here, check if you need to reflect the changes
-back into our integration tests at tests/python/PythonEngineFactory.java!
+back into our integration tests at:
+* tests/python/PythonEngineFactory.java
+* https://github.com/oracle/truffleruby/blob/master/src/test-embedding/java/org/truffleruby/test/embedding/TruffleRubyEngineFactory.java
 
 -->
 
@@ -790,6 +792,9 @@ To use it, include a `META-INF/services/javax.script.ScriptEngineFactory` file i
 This will allow the default `javax.script.ScriptEngineManager` to discover the language automatically.
 Alternatively, the factory can be registerd via `javax.script.ScriptEngineManager#registerEngineName` or instantiated and used directly.
 
+It is best practice to close the `ScriptEngine` when no longer used rather than relying on finalizers.
+To close it, use `((AutoCloseable) scriptEngine).close();` since `ScriptEngine` does not have a `close()` method.
+
 Note that [Graal.js](../js/) provides [a ScriptEngine implementation](../js/ScriptEngine/) for users migrating from the Nashorn JavaScript engine that was deprecated in JDK 11, so this method here is not needed.
 
 <details>
@@ -805,7 +810,6 @@ import java.io.Reader;
 import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -815,6 +819,7 @@ import java.util.Set;
 import javax.script.Bindings;
 import javax.script.Compilable;
 import javax.script.CompiledScript;
+import javax.script.Invocable;
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineFactory;
@@ -910,13 +915,18 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         return new PolyglotEngine(this);
     }
 
-    private static final class PolyglotEngine implements ScriptEngine, Compilable {
+    private static final class PolyglotEngine implements ScriptEngine, Compilable, Invocable, AutoCloseable {
         private final ScriptEngineFactory factory;
         private PolyglotContext defaultContext;
 
         PolyglotEngine(ScriptEngineFactory factory) {
             this.factory = factory;
             this.defaultContext = new PolyglotContext(factory);
+        }
+
+        @Override
+        public void close() {
+            defaultContext.getContext().close();
         }
 
         @Override
@@ -967,7 +977,7 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
             if (context instanceof PolyglotContext) {
                 PolyglotContext c = (PolyglotContext) context;
                 try {
-                    return c.getContext().eval(src);
+                    return c.getContext().eval(src).as(Object.class);
                 } catch (PolyglotException e) {
                     throw new ScriptException(e);
                 }
@@ -1035,6 +1045,36 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         public ScriptEngineFactory getFactory() {
             return factory;
         }
+
+        @Override
+        public Object invokeMethod(Object thiz, String name, Object... args)
+                throws ScriptException, NoSuchMethodException {
+            try {
+                Value receiver = defaultContext.getContext().asValue(thiz);
+                if (receiver.canInvokeMember(name)) {
+                    return receiver.invokeMember(name, args).as(Object.class);
+                } else {
+                    throw new NoSuchMethodException(name);
+                }
+            } catch (PolyglotException e) {
+                throw new ScriptException(e);
+            }
+        }
+
+        @Override
+        public Object invokeFunction(String name, Object... args) throws ScriptException, NoSuchMethodException {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public <T> T getInterface(Class<T> interfaceClass) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public <T> T getInterface(Object thiz, Class<T> interfaceClass) {
+            return defaultContext.getContext().asValue(thiz).as(interfaceClass);
+        }
     }
 
     private static final class PolyglotContext implements ScriptContext {
@@ -1055,14 +1095,17 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         Context getContext() {
             if (context == null) {
                 Context.Builder builder = Context.newBuilder(LANGUAGE_ID)
-                    .in(this.in)
-                    .out(this.out)
-                    .err(this.err)
-                    .allowAllAccess(true);
-                for (Entry<String, Object> entry : getBindings(ScriptContext.GLOBAL_SCOPE).entrySet()) {
-                    Object value = entry.getValue();
-                    if (value instanceof String) {
-                        builder.option(entry.getKey(), (String) value);
+                        .in(this.in)
+                        .out(this.out)
+                        .err(this.err)
+                        .allowAllAccess(true);
+                Bindings globalBindings = getBindings(ScriptContext.GLOBAL_SCOPE);
+                if (globalBindings != null) {
+                    for (Entry<String, Object> entry : globalBindings.entrySet()) {
+                        Object value = entry.getValue();
+                        if (value instanceof String) {
+                            builder.option(entry.getKey(), (String) value);
+                        }
                     }
                 }
                 context = builder.build();
@@ -1076,7 +1119,8 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
                 if (context == null) {
                     globalBindings = bindings;
                 } else {
-                    throw new UnsupportedOperationException("Global bindings for Polyglot language can only be set before the context is initialized.");
+                    throw new UnsupportedOperationException(
+                            "Global bindings for Polyglot language can only be set before the context is initialized.");
                 }
             } else {
                 throw new UnsupportedOperationException("Bindings objects for Polyglot language is final.");
@@ -1223,9 +1267,10 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         @Override
         public Object eval(ScriptContext context) throws ScriptException {
             if (context instanceof PolyglotContext) {
-                return ((PolyglotContext) context).getContext().eval(source);
+                return ((PolyglotContext) context).getContext().eval(source).as(Object.class);
             }
-            throw new UnsupportedOperationException("Polyglot CompiledScript instances can only be evaluated in Polyglot.");
+            throw new UnsupportedOperationException(
+                    "Polyglot CompiledScript instances can only be evaluated in Polyglot.");
         }
 
         @Override
