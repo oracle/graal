@@ -206,7 +206,7 @@ public abstract class ExceptionUnwind {
                 try {
                     CodeInfo codeInfo = CodeInfoAccess.convert(untetheredInfo, tether);
 
-                    lookupCodeInfoInterruptible(codeInfo, ip, codeInfoQueryResult);
+                    CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), codeInfoQueryResult);
                     /*
                      * Frame could have been deoptimized during interruptible lookup above, check
                      * again.
@@ -265,8 +265,4 @@ public abstract class ExceptionUnwind {
         deoptFrame.takeException();
     }
 
-    @Uninterruptible(reason = "Wrap call to interruptible code.", calleeMustBe = false)
-    private static void lookupCodeInfoInterruptible(CodeInfo codeInfo, CodePointer ip, SimpleCodeInfoQueryResult codeInfoQueryResult) {
-        CodeInfoAccess.lookupCodeInfo(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip), codeInfoQueryResult);
-    }
 }
