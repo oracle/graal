@@ -573,21 +573,37 @@ abstract class CVSymbolSubrecord {
      */
     public static class CVSymbolGProc32Record extends CVSymbolSubrecord {
 
-        private final int pparent;
-        private final int pend;
-        private final int pnext;
-        private final int proclen;
-        private final int debugStart;
-        private final int debugEnd;
-        private final int typeIndex;
-        private final short segment;
-        private final byte flags;
-        private final String symbolName;
-        private final String displayName;
+        protected final int pparent;
+        protected final int pend;
+        protected final int pnext;
+        protected final int proclen;
+        protected final int debugStart;
+        protected final int debugEnd;
+        protected final int typeIndex;
+        protected final short segment;
+        protected final byte flags;
+        protected final String symbolName;
+        protected final String displayName;
 
         CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex,
                         short segment, byte flags) {
             super(cvDebugInfo, CVDebugConstants.S_GPROC32);
+            this.symbolName = symbolName;
+            this.displayName = displayName;
+            this.pparent = pparent;
+            this.pend = pend;
+            this.pnext = pnext;
+            this.proclen = proclen;
+            this.debugStart = debugStart;
+            this.debugEnd = debugEnd;
+            this.typeIndex = typeIndex;
+            this.segment = segment;
+            this.flags = flags;
+        }
+
+        protected CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, short cmd, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex,
+                                                short segment, byte flags) {
+            super(cvDebugInfo, cmd);
             this.symbolName = symbolName;
             this.displayName = displayName;
             this.pparent = pparent;
@@ -620,6 +636,21 @@ abstract class CVSymbolSubrecord {
         public String toString() {
             return String.format("S_GPROC32   name=%s/%s parent=%d debugstart=0x%x debugend=0x%x len=0x%x seg:offset=0x%x:0 type=0x%x flags=0x%x)", displayName, symbolName, pparent, debugStart,
                             debugEnd, proclen, segment, typeIndex, flags);
+        }
+    }
+
+    public static class CVSymbolGProc32IdRecord extends CVSymbolGProc32Record {
+
+        CVSymbolGProc32IdRecord(CVDebugInfo cvDebugInfo, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex,
+                              short segment, byte flags) {
+
+            super(cvDebugInfo, CVDebugConstants.S_GPROC32_ID, symbolName, displayName, pparent, pend, pnext, proclen, debugStart, debugEnd, typeIndex, segment, flags);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("S_GPROC32_ID name=%s/%s parent=%d debugstart=0x%x debugend=0x%x len=0x%x seg:offset=0x%x:0 type=0x%x flags=0x%x)", displayName, symbolName, pparent, debugStart,
+                    debugEnd, proclen, segment, typeIndex, flags);
         }
     }
 
@@ -703,7 +734,7 @@ abstract class CVSymbolSubrecord {
 
     public static class CVSymbolEndRecord extends CVSymbolSubrecord {
 
-        CVSymbolEndRecord(CVDebugInfo cvDebugInfo, short cmd) {
+        protected CVSymbolEndRecord(CVDebugInfo cvDebugInfo, short cmd) {
             super(cvDebugInfo, cmd);
         }
 
@@ -720,6 +751,18 @@ abstract class CVSymbolSubrecord {
         @Override
         public String toString() {
             return "S_END";
+        }
+    }
+
+    public static class CVSymbolProcIdEndRecord extends CVSymbolEndRecord {
+
+        CVSymbolProcIdEndRecord(CVDebugInfo cvDebugInfo) {
+            super(cvDebugInfo, CVDebugConstants.S_PROC_ID_END);
+        }
+
+        @Override
+        public String toString() {
+            return "S_PROC_ID_END";
         }
     }
 }

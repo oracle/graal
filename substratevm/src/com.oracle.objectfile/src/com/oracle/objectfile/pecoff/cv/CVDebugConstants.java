@@ -55,4 +55,7 @@ public abstract class CVDebugConstants {
     static final short S_DEFRANGE_SUBFIELD_REGISTER = 0x1143;
     static final short S_DEFRANGE_FRAMEPOINTER_REL_FULL_SCOPE = 0x1144;
     static final short S_DEFRANGE_REGISTER_REL = 0x1145;
+    static final short S_LPROC32_ID = 0x1146;
+    static final short S_GPROC32_ID = 0x1147;
+    static final short S_PROC_ID_END = 0x114f;
 }

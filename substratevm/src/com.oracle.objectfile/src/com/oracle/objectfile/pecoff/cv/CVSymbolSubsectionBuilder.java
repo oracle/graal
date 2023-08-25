@@ -130,8 +130,8 @@ final class CVSymbolSubsectionBuilder {
      */
     private void buildClass(ClassEntry classEntry) {
 
-        /* Define all the functions in this class all functions defined in this class. */
-        classEntry.compiledEntries().forEach(this::buildFunction);
+        /* Define all functions defined in this class. */
+        classEntry.compiledEntries().toList().forEach(this::buildFunction);
 
         /* Define the class itself. */
         addTypeRecords(classEntry);
@@ -164,6 +164,7 @@ final class CVSymbolSubsectionBuilder {
      * @param compiledEntry compiled method for this function
      */
     private void buildFunction(CompiledMethodEntry compiledEntry) {
+
         final Range primaryRange = compiledEntry.getPrimary();
 
         /* The name as it will appear in the debugger. */
@@ -175,17 +176,17 @@ final class CVSymbolSubsectionBuilder {
         /* add function definition. */
         final int functionTypeIndex = addTypeRecords(compiledEntry);
         final byte funcFlags = 0;
-        CVSymbolSubrecord.CVSymbolGProc32Record proc32 = new CVSymbolSubrecord.CVSymbolGProc32Record(cvDebugInfo, externalName, debuggerName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0,
+        CVSymbolSubrecord.CVSymbolGProc32IdRecord proc32 = new CVSymbolSubrecord.CVSymbolGProc32IdRecord(cvDebugInfo, externalName, debuggerName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0,
                         0, functionTypeIndex, (short) 0, funcFlags);
         addSymbolRecord(proc32);
 
-        final int frameFlags = FRAME_ASYNC_EH + FRAME_LOCAL_BP + FRAME_PARAM_BP;
+        final int frameFlags = FRAME_LOCAL_BP + FRAME_PARAM_BP;
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, compiledEntry.getFrameSize(), frameFlags));
 
         addLocals(compiledEntry);
 
-        /* S_END add end record. */
-        addSymbolRecord(new CVSymbolSubrecord.CVSymbolEndRecord(cvDebugInfo));
+        /* S_PROC_ID_END add end record. */
+        addSymbolRecord(new CVSymbolSubrecord.CVSymbolProcIdEndRecord(cvDebugInfo));
 
         /* Add line number records. */
         addLineNumberRecords(compiledEntry);
@@ -314,7 +315,7 @@ final class CVSymbolSubsectionBuilder {
     }
 
     /**
-     * Add type records for a class and all its members.
+     * Add type records for a method.
      *
      * @param entry compiled method containing entities whos type records must be added
      * @return type index of function type

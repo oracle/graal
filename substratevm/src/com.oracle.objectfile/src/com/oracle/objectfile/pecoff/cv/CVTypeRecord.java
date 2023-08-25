@@ -33,11 +33,13 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ARRAY;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_BCLASS;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_CLASS;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_FIELDLIST;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_FUNC_ID;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_INDEX;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_MEMBER;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_METHOD;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_METHODLIST;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_MFUNCTION;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_MFUNC_ID;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_MODIFIER;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ONEMETHOD;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_PAD1;
@@ -315,6 +317,95 @@ abstract class CVTypeRecord {
         }
     }
 
+    static final class CVTypeFuncIdRecord extends CVTypeRecord {
+
+        int scopeIdx;
+        int typeIdx;
+        String name;
+
+        CVTypeFuncIdRecord(int scopeIdx, int typeIdx, String name) {
+            super(LF_FUNC_ID);
+            this.scopeIdx = scopeIdx;
+            this.typeIdx = typeIdx;
+            this.name = name;
+        }
+
+        @Override
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(scopeIdx, buffer, initialPos);
+            pos = CVUtil.putInt(typeIdx, buffer, pos);
+            return CVUtil.putUTF8StringBytes(name, buffer, pos);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("LF_FUNC_ID 0x%04x scopeIdx=0x%x typeIdx=0x%x %s", getSequenceNumber(), scopeIdx, typeIdx, name);
+        }
+
+        @Override
+        public int hashCode() {
+            int h = type;
+            h = 31 * h + scopeIdx;
+            h = 31 * h + typeIdx;
+            h = 31 * h + name.hashCode();
+            return h;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!super.equals(obj)) {
+                return false;
+            }
+            CVTypeFuncIdRecord other = (CVTypeFuncIdRecord) obj;
+            return this.typeIdx == other.typeIdx && this.name.equals(other.name) && this.scopeIdx == other.scopeIdx;
+        }
+    }
+
+
+    static final class CVTypeMFuncIdRecord extends CVTypeRecord {
+
+        int parentTypeIdx;
+        int typeIdx;
+        String name;
+
+        CVTypeMFuncIdRecord(int parentTypeIdx, int typeIdx, String name) {
+            super(LF_MFUNC_ID);
+            this.parentTypeIdx = parentTypeIdx;
+            this.typeIdx = typeIdx;
+            this.name = name;
+        }
+
+        @Override
+        public int computeContents(byte[] buffer, int initialPos) {
+            int pos = CVUtil.putInt(parentTypeIdx, buffer, initialPos);
+            pos = CVUtil.putInt(typeIdx, buffer, pos);
+            return CVUtil.putUTF8StringBytes(name, buffer, pos);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("LF_MFUNC_ID 0x%04x parentTypeIdx=0x%x typeIdx=0x%x %s", getSequenceNumber(), parentTypeIdx, typeIdx, name);
+        }
+
+        @Override
+        public int hashCode() {
+            int h = type;
+            h = 31 * h + parentTypeIdx;
+            h = 31 * h + typeIdx;
+            h = 31 * h + name.hashCode();
+            return h;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (!super.equals(obj)) {
+                return false;
+            }
+            CVTypeMFuncIdRecord other = (CVTypeMFuncIdRecord) obj;
+            return this.typeIdx == other.typeIdx && this.name.equals(other.name) && this.parentTypeIdx == other.parentTypeIdx;
+        }
+    }
+
     static final class CVTypeStringIdRecord extends CVTypeRecord {
 
         String string;
@@ -542,6 +633,10 @@ abstract class CVTypeRecord {
 
         void setClassType(int classType) {
             this.classType = classType;
+        }
+
+        int getClassType() {
+            return classType;
         }
 
         void setThisType(int thisType) {
