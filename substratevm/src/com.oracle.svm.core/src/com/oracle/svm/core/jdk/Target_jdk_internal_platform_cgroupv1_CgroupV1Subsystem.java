@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Red Hat Inc.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk;
 
-// @formatter:off
-package com.oracle.svm.core.containers.cgroupv1;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.TargetClass;
 
-public class CgroupV1MemorySubSystemController extends CgroupV1SubsystemController {
-
-    private boolean hierarchical;
-
-    public CgroupV1MemorySubSystemController(String root, String mountPoint) {
-        super(root, mountPoint);
-    }
-
-    boolean isHierarchical() {
-        return hierarchical;
-    }
-
-    void setHierarchical(boolean hierarchical) {
-        this.hierarchical = hierarchical;
-    }
-
+@TargetClass(className = "jdk.internal.platform.cgroupv1.CgroupV1Subsystem", onlyWith = PlatformHasClass.class)
+final class Target_jdk_internal_platform_cgroupv1_CgroupV1Subsystem {
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private static volatile Target_jdk_internal_platform_cgroupv1_CgroupV1Subsystem INSTANCE;
 }

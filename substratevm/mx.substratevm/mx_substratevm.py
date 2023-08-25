@@ -1304,6 +1304,9 @@ libgraal_build_args = [
 
     # URLClassLoader causes considerable increase of the libgraal image size and should be excluded.
     '-H:ReportAnalysisForbiddenType=java.net.URLClassLoader',
+
+    # No need for container support in libgraal as HotSpot already takes care of it
+    '-H:-UseContainerSupport',
 ] + ([
    # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
    '-H:PageSize=64K'

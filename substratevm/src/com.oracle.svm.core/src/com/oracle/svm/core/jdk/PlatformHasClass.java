@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,16 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-// @formatter:off
-package com.oracle.svm.core.containers;
+package com.oracle.svm.core.jdk;
 
-/*
- * @author bobv
- * @since 11
- */
+import java.util.function.Predicate;
 
-public class Container {
+import com.oracle.svm.util.ReflectionUtil;
 
-    private Container() { }
-
-    /**
-     * Returns the platform specific Container Metrics class or
-     * null if not supported on this platform.
-     *
-     * @return Metrics instance or null if not supported
-     */
-    public static Metrics metrics() {
-        return Metrics.systemMetrics();
+/** A predicate to tell whether this platform includes the argument class. */
+final class PlatformHasClass implements Predicate<String> {
+    @Override
+    public boolean test(String className) {
+        return ReflectionUtil.lookupClass(true, className) != null;
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.core.jdk;
 
-import static com.oracle.svm.core.Containers.UNKNOWN;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
+import com.oracle.svm.core.annotate.TargetClass;
 
-import com.oracle.svm.core.containers.Container;
-import com.oracle.svm.core.containers.Metrics;
-
-/** JDK 8 version of {@link ContainerInfo}. */
-final class ContainerInfo {
-    private final Metrics metrics = Container.metrics();
-
-    boolean isContainerized() {
-        return metrics != null;
-    }
-
-    long getCpuQuota() {
-        return isContainerized() ? metrics.getCpuQuota() : UNKNOWN;
-    }
-
-    long getCpuPeriod() {
-        return isContainerized() ? metrics.getCpuPeriod() : UNKNOWN;
-    }
-
-    long getCpuShares() {
-        return isContainerized() ? metrics.getCpuShares() : UNKNOWN;
-    }
-
-    long getMemoryLimit() {
-        return isContainerized() ? metrics.getMemoryLimit() : UNKNOWN;
-    }
+@TargetClass(className = "jdk.internal.platform.cgroupv2.CgroupV2Subsystem", onlyWith = PlatformHasClass.class)
+final class Target_jdk_internal_platform_cgroupv2_CgroupV2Subsystem {
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private static volatile Target_jdk_internal_platform_cgroupv2_CgroupV2Subsystem INSTANCE;
 }
