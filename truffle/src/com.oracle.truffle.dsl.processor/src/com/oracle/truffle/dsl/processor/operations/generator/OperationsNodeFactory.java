@@ -3841,6 +3841,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             List<CodeExecutableElement> results = new ArrayList<>();
 
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(int.class), "continueAt");
+            ex.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_BytecodeInterpreterSwitch));
             ex.addParameter(new CodeVariableElement(operationNodeGen.asType(), "$this"));
             ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             if (model.enableYield) {
