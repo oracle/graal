@@ -167,6 +167,9 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
             jarFilePath = dep.get_path(False)
             srcFilePath = dep.get_source_path(False)
 
+            if srcFilePath is None:
+                return True, f'{dep} does not have a source path'
+
             input_ts = mx.TimeStampFile.newest([jarFilePath, srcFilePath])
             if input_ts is None or suite_py_ts.isNewerThan(input_ts):
                 input_ts = suite_py_ts
@@ -224,6 +227,9 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
         for dep in shadedDeps:
             jarFilePath = dep.get_path(True)
             srcFilePath = dep.get_source_path(True)
+
+            if srcFilePath is None:
+                mx.abort(f'Cannot shade {dep} without a source jar (missing sourceDigest?)')
 
             for zipFilePath, outDir in [(jarFilePath, binDir), (srcFilePath, srcDir)]:
                 with zipfile.ZipFile(zipFilePath, 'r') as zf:
