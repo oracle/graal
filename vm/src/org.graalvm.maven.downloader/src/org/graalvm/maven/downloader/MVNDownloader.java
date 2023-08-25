@@ -244,7 +244,11 @@ public class MVNDownloader {
             throw e;
         }
         LOGGER.info(String.format("using proxy '%s:%s'", host, port));
-
+        if (host.startsWith("http://")) {
+            host = host.substring("http://".length());
+        } else if (host.startsWith("https://")) {
+            host = host.substring("https://".length());
+        }
         InetSocketAddress address = InetSocketAddress.createUnresolved(host, port);
         return new Proxy(Proxy.Type.HTTP, address);
     }
