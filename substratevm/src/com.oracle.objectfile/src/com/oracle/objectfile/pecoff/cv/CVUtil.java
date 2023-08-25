@@ -26,14 +26,97 @@
 
 package com.oracle.objectfile.pecoff.cv;
 
+import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.io.Utf8;
+import jdk.vm.ci.amd64.AMD64;
 
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_AL;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_AX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_BL;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_BP;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_BPL;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_BX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_CL;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_CX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_DI;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_DIL;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_DL;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_DX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_EAX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_EBP;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_EBX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_ECX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_EDI;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_EDX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_ESI;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_ESP;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R10;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R10B;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R10D;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R10W;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R11;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R11B;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R11D;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R11W;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R12;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R12B;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R12D;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R12W;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R13;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R13B;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R13D;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R13W;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R14;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R14B;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R14D;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R14W;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R15;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R15B;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R15D;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R15W;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8B;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8D;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8W;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R9;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R9B;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R9D;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R9W;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RAX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RBP;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RBX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RCX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RDI;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RDX;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RSI;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RSP;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_SI;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_SIL;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_SP;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_SPL;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM0L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM0_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM1L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM1_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM2L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM2_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM3L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM3_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM4L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM4_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM5L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM5_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM6L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM6_0;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM7L;
+import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM7_0;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_CHAR;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_LONG;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_QUADWORD;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_SHORT;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_ULONG;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.LF_USHORT;
+
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 abstract class CVUtil {
@@ -184,5 +267,66 @@ abstract class CVUtil {
             pos++;
         }
         return pos;
+    }
+
+    /* First index is AMD64.(register).number, second is 1,2,4,8 bytes. */
+    private static final short[][] javaToCvRegisters = {
+            /* 8, 16, 32, 64 bits */
+            /* rax=0 */ { CV_AMD64_AL, CV_AMD64_AX, CV_AMD64_EAX, CV_AMD64_RAX },
+            /* rcx */ { CV_AMD64_CL, CV_AMD64_CX, CV_AMD64_ECX, CV_AMD64_RCX },
+            /* rdx */ { CV_AMD64_DL, CV_AMD64_DX, CV_AMD64_EDX, CV_AMD64_RDX },
+            /* rbx */ { CV_AMD64_BL, CV_AMD64_BX, CV_AMD64_EBX, CV_AMD64_RBX },
+            /* rsp */ { CV_AMD64_SPL, CV_AMD64_SP, CV_AMD64_ESP, CV_AMD64_RSP },
+            /* rbp */ { CV_AMD64_BPL, CV_AMD64_BP, CV_AMD64_EBP, CV_AMD64_RBP },
+            /* rsi */ { CV_AMD64_SIL, CV_AMD64_SI, CV_AMD64_ESI, CV_AMD64_RSI },
+            /* rdi */ { CV_AMD64_DIL, CV_AMD64_DI, CV_AMD64_EDI, CV_AMD64_RDI },
+            /* r8  */ { CV_AMD64_R8B, CV_AMD64_R8W, CV_AMD64_R8D, CV_AMD64_R8 },
+            /* r9  */ { CV_AMD64_R9B, CV_AMD64_R9W, CV_AMD64_R9D, CV_AMD64_R9 },
+            /* r10 */ { CV_AMD64_R10B, CV_AMD64_R10W, CV_AMD64_R10D, CV_AMD64_R10 },
+            /* r11 */ { CV_AMD64_R11B, CV_AMD64_R11W, CV_AMD64_R11D, CV_AMD64_R11 },
+            /* r12 */ { CV_AMD64_R12B, CV_AMD64_R12W, CV_AMD64_R12D, CV_AMD64_R12 },
+            /* r13  */ { CV_AMD64_R13B, CV_AMD64_R13W, CV_AMD64_R13D, CV_AMD64_R13 },
+            /* r14 */ { CV_AMD64_R14B, CV_AMD64_R14W, CV_AMD64_R14D, CV_AMD64_R14 },
+            /* r15  */ { CV_AMD64_R15B, CV_AMD64_R15W, CV_AMD64_R15D, CV_AMD64_R15 },
+
+            /* xmm0=16 */ { -1, -1, CV_AMD64_XMM0_0, CV_AMD64_XMM0L},
+            /* xmm1 */ { -1, -1, CV_AMD64_XMM1_0, CV_AMD64_XMM1L},
+            /* xmm2 */ { -1, -1, CV_AMD64_XMM2_0, CV_AMD64_XMM2L},
+            /* xmm3 */ { -1, -1, CV_AMD64_XMM3_0, CV_AMD64_XMM3L},
+            /* xmm4 */ { -1, -1, CV_AMD64_XMM4_0, CV_AMD64_XMM4L},
+            /* xmm5 */ { -1, -1, CV_AMD64_XMM5_0, CV_AMD64_XMM5L},
+            /* xmm6 */ { -1, -1, CV_AMD64_XMM6_0, CV_AMD64_XMM6L},
+            /* xmm7=23 */ { -1, -1, CV_AMD64_XMM7_0, CV_AMD64_XMM7L},
+    };
+
+    static short getCVRegister(int javaReg, TypeEntry typeEntry) {
+        assert 0 <= javaReg && javaReg <= AMD64.xmm7.number;
+        final int bytes;
+        if (typeEntry.isPrimitive()) {
+            switch (typeEntry.getSize()) {
+                case 1:
+                    bytes = 0;
+                    break;
+                case 2:
+                    bytes = 1;
+                    break;
+                case 4:
+                    bytes = 2;
+                    break;
+                case 8:
+                    bytes = 3;
+                    break;
+                default:
+                    bytes = -1;
+                    break;
+            }
+        } else {
+            /* Objects are represented by pointers. */
+            bytes = 3;
+        }
+        assert bytes >= 0 && bytes < javaToCvRegisters[javaReg].length;
+        short cvreg = javaToCvRegisters[javaReg][bytes];
+        assert cvreg != -1;
+        return cvreg;
     }
 }

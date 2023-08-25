@@ -32,59 +32,32 @@ import com.oracle.objectfile.debugentry.CompiledMethodEntry;
 import com.oracle.objectfile.debugentry.FieldEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 import com.oracle.objectfile.debugentry.MethodEntry;
-import com.oracle.objectfile.debugentry.PrimitiveTypeEntry;
 import com.oracle.objectfile.debugentry.range.Range;
+import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 
-import java.lang.reflect.Modifier;
+import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.meta.JavaConstant;
 
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_INTEGRAL;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugPrimitiveTypeInfo.FLAG_NUMERIC;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_CL;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_CX;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_DI;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_DIL;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_DL;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_DX;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_ECX;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_EDI;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_EDX;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_ESI;
+import java.lang.reflect.Modifier;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo.LocalKind.CONSTANT;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo.LocalKind.REGISTER;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo.LocalKind.STACKSLOT;
+
 import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8B;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8D;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8W;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R9;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R9B;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R9D;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R9W;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RCX;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RDI;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RDX;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_RSI;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_SI;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_SIL;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM0L;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM0_0;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM1L;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM1_0;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM2L;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM2_0;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM3L;
-import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_XMM3_0;
-import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_ASYNC_EH;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_LOCAL_BP;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_PARAM_BP;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_INT4;
+import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_INT8;
 
 final class CVSymbolSubsectionBuilder {
 
-    private static final short[] javaGP64registers = {CV_AMD64_RDX, CV_AMD64_R8, CV_AMD64_R9, CV_AMD64_RDI, CV_AMD64_RSI, CV_AMD64_RCX};
-    private static final short[] javaGP32registers = {CV_AMD64_EDX, CV_AMD64_R8D, CV_AMD64_R9D, CV_AMD64_EDI, CV_AMD64_ESI, CV_AMD64_ECX};
-    private static final short[] javaGP16registers = {CV_AMD64_DX, CV_AMD64_R8W, CV_AMD64_R9W, CV_AMD64_DI, CV_AMD64_SI, CV_AMD64_CX};
-    private static final short[] javaGP8registers = {CV_AMD64_DL, CV_AMD64_R8B, CV_AMD64_R9B, CV_AMD64_DIL, CV_AMD64_SIL, CV_AMD64_CL};
-    private static final short[] javaFP64registers = {CV_AMD64_XMM0L, CV_AMD64_XMM1L, CV_AMD64_XMM2L, CV_AMD64_XMM3L};
-    private static final short[] javaFP32registers = {CV_AMD64_XMM0_0, CV_AMD64_XMM1_0, CV_AMD64_XMM2_0, CV_AMD64_XMM3_0};
+    private static final int S_LOCAL_FLAGS_IS_PARAM = 1;
 
     private final CVDebugInfo cvDebugInfo;
     private final CVSymbolSubsection cvSymbolSubsection;
@@ -93,14 +66,20 @@ final class CVSymbolSubsectionBuilder {
     private final String heapName;
     private final short heapRegister;
 
+    /**
+     * Create a symbol section by iterating over all classes, emitting types and line numbers as we go.
+     * See substratevm/src/com.oracle.svm.core.graal.amd64/src/com/oracle/svm/core/graal/amd64/SubstrateAMD64RegisterConfig.java
+     *
+     * @param cvDebugInfo debugInfo container
+     */
     CVSymbolSubsectionBuilder(CVDebugInfo cvDebugInfo) {
         this.cvDebugInfo = cvDebugInfo;
         this.cvSymbolSubsection = new CVSymbolSubsection(cvDebugInfo);
         this.lineRecordBuilder = new CVLineRecordBuilder(cvDebugInfo);
         this.heapName = SectionName.SVM_HEAP.getFormatDependentName(cvDebugInfo.getCVSymbolSection().getOwner().getFormat());
         /* For isolates, Graal currently uses r14; this code will handle r8-r15. */
-        assert 8 <= cvDebugInfo.getHeapbaseRegister() && cvDebugInfo.getHeapbaseRegister() <= 15;
-        this.heapRegister = (short) (CV_AMD64_R8 + cvDebugInfo.getHeapbaseRegister() - 8);
+        assert AMD64.r8.number <= cvDebugInfo.getHeapbaseRegister() && cvDebugInfo.getHeapbaseRegister() <= AMD64.r15.number;
+        this.heapRegister = (short) (CV_AMD64_R8 + cvDebugInfo.getHeapbaseRegister() - AMD64.r8.number);
     }
 
     /**
@@ -183,7 +162,13 @@ final class CVSymbolSubsectionBuilder {
         final int frameFlags = FRAME_LOCAL_BP + FRAME_PARAM_BP;
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolFrameProcRecord(cvDebugInfo, compiledEntry.getFrameSize(), frameFlags));
 
-        addLocals(compiledEntry);
+        /* it's costly to compute this, so only compute it once */
+        HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap = primaryRange.getVarRangeMap();
+
+        if (primaryRange.getClassName().contains("ListDir")) {
+            addParameters(compiledEntry, varRangeMap);
+            /* IN the future:  addLocals(compiledEntry, varRangeMap); */
+        }
 
         /* S_PROC_ID_END add end record. */
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolProcIdEndRecord(cvDebugInfo));
@@ -192,87 +177,146 @@ final class CVSymbolSubsectionBuilder {
         addLineNumberRecords(compiledEntry);
     }
 
-    void addLocals(CompiledMethodEntry primaryEntry) {
+    void addParameters(CompiledMethodEntry primaryEntry, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap) {
         final Range primaryRange = primaryEntry.getPrimary();
         /* The name as exposed to the linker. */
         final String externalName = primaryRange.getSymbolName();
 
-        /* Add register parameters - only valid for the first instruction or two. */
-
-        MethodEntry method = primaryRange.getMethodEntry();
-        int gpRegisterIndex = 0;
-        int fpRegisterIndex = 0;
+        MethodEntry method = primaryRange.isPrimary() ? primaryRange.getMethodEntry() : primaryRange.getFirstCallee().getMethodEntry();
 
         /* define 'this' as a local just as we define other object pointers */
         if (!Modifier.isStatic(method.getModifiers())) {
-            final TypeEntry thisType = primaryEntry.getClassEntry();
+            final TypeEntry typeEntry = primaryEntry.getClassEntry();
             DebugInfoProvider.DebugLocalInfo thisparam = method.getThisParam();
-            final int typeIndex = cvDebugInfo.getCVTypeSection().getIndexForPointer(thisType);
-            addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, thisparam.name(), typeIndex, 1));
-            addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, javaGP64registers[gpRegisterIndex], externalName, 0, 8));
-            addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 0));
-            gpRegisterIndex++;
+            final int typeIndex = cvDebugInfo.getCVTypeSection().getIndexForPointer(typeEntry);
+            emitLocal(thisparam, varRangeMap, thisparam.name(), typeEntry, typeIndex, true, externalName, primaryRange);
         }
 
-        /* define function parameters (p1, p2...) according to the calling convention */
+        /* define function parameters */
         for (int i = 0; i < method.getParamCount(); i++) {
             final DebugInfoProvider.DebugLocalInfo paramInfo = method.getParam(i);
-            final TypeEntry paramType = method.getParamType(i);
-            final int typeIndex = cvDebugInfo.getCVTypeSection().addTypeRecords(paramType).getSequenceNumber();
-            if (paramType.isPrimitive()) {
-                /* simple primitive */
-                final PrimitiveTypeEntry primitiveTypeEntry = (PrimitiveTypeEntry) paramType;
-                final boolean isFloatingPoint = ((primitiveTypeEntry.getFlags() & FLAG_NUMERIC) != 0 && (primitiveTypeEntry.getFlags() & FLAG_INTEGRAL) == 0);
-                if (isFloatingPoint) {
-                    /* floating point primitive */
-                    if (fpRegisterIndex < javaFP64registers.length) {
-                        final short register = paramType.getSize() == Double.BYTES ? javaFP64registers[fpRegisterIndex] : javaFP32registers[fpRegisterIndex];
-                        addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramInfo.name(), typeIndex, 1));
-                        addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, register, externalName, 0, 8));
-                        addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 0));
-                        fpRegisterIndex++;
-                    } else {
-                        /* TODO: handle stack parameter; keep track of stack offset, etc. */
-                        break;
+            final TypeEntry typeEntry = method.getParamType(i);
+            final int typeIndex = cvDebugInfo.getCVTypeSection().addTypeRecords(typeEntry).getSequenceNumber();
+            emitLocal(paramInfo, varRangeMap, paramInfo.name(), typeEntry, typeIndex, true, externalName, primaryRange);
+        }
+    }
+
+    private int infoTypeToInt(DebugInfoProvider.DebugLocalValueInfo info) {
+        switch (info.localKind()) {
+            case REGISTER:
+                return info.regIndex();
+            case STACKSLOT:
+                /* TODO: are stack slots either 0 or negative? */
+                return -info.stackSlot();
+            default:
+                return 0;
+        }
+    }
+
+    void emitLocal(DebugInfoProvider.DebugLocalInfo info, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap, String name, TypeEntry typeEntry, int typeIndex, boolean isParam, String procName, Range range) {
+        int flags = isParam ? S_LOCAL_FLAGS_IS_PARAM : 0;
+        List<SubRange> ranges = varRangeMap.get(info);
+        addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, name, typeIndex, flags));
+        int currentHigh = Integer.MIN_VALUE;
+        int registerOrSlot = 0; /* -slot or +register or 0=unknown */
+        CVSymbolSubrecord.CVSymbolDefRangeBase currentRecord = null;
+        for (SubRange subrange : ranges) {
+            DebugInfoProvider.DebugLocalValueInfo value = subrange.lookupValue(info);
+            if (value != null) {
+                if (subrange.getLo() == currentHigh && registerOrSlot == infoTypeToInt(value)) {
+                    /* if we can, merge records */
+                    currentHigh = subrange.getHi();
+                    if (currentRecord != null) {
+                        currentRecord.range = (short) (currentHigh - currentRecord.procOffset);
                     }
-                } else if (gpRegisterIndex < javaGP64registers.length) {
-                    final short register;
-                    if (paramType.getSize() == 8) {
-                        register = javaGP64registers[gpRegisterIndex];
-                    } else if (paramType.getSize() == 4) {
-                        register = javaGP32registers[gpRegisterIndex];
-                    } else if (paramType.getSize() == 2) {
-                        register = javaGP16registers[gpRegisterIndex];
-                    } else if (paramType.getSize() == 1) {
-                        register = javaGP8registers[gpRegisterIndex];
-                    } else {
-                        register = 0; /* Avoid warning. */
-                        throw new RuntimeException("Unknown primitive (type" + paramType.getTypeName() + ") size:" + paramType.getSize());
-                    }
-                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramInfo.name(), typeIndex, 1));
-                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, register, externalName, 0, 8));
-                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 8));
-                    gpRegisterIndex++;
-                } else {
-                    /* TODO: handle stack parameter; keep track of stack offset, etc. */
-                    break;
+                    continue;
                 }
-            } else {
-                /* Java object. */
-                if (gpRegisterIndex < javaGP64registers.length) {
-                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, paramInfo.name(), typeIndex, 1));
-                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, javaGP64registers[gpRegisterIndex], externalName, 0, 8));
-                    addSymbolRecord(new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRelFullScope(cvDebugInfo, 0));
-                    gpRegisterIndex++;
+                currentHigh = subrange.getHi();
+                registerOrSlot = infoTypeToInt(value);
+                if (value.localKind() == REGISTER) {
+                    short cvreg = CVUtil.getCVRegister(value.regIndex(), typeEntry);
+                    currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()), cvreg);
+                    addSymbolRecord(currentRecord);
+                } else if (value.localKind() == STACKSLOT) {
+                    currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()), value.stackSlot());
+                    addSymbolRecord(currentRecord);
+                } else if (value.localKind() == CONSTANT) {
+                    /* For now, silently ifnore constant definitions an parameters. */
+                    /* JavaConstant constant = value.constantValue(); */
                 } else {
-                    /* TODO: handle stack parameter; keep track of stack offset, etc. */
-                    break;
+                    /* Unimplemented - this is a surprise. */
+                    assert(false);
                 }
             }
         }
-        /* TODO: add entries for stack parameters. */
-        /* TODO: add local variables, and their types. */
-        /* TODO: add block definitions. */
+    }
+
+    @SuppressWarnings("unused")
+    void addLocals(CompiledMethodEntry primaryEntry, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap) {
+        processVarMap(primaryEntry, varRangeMap);
+    }
+
+    @SuppressWarnings("unused")
+    void processVarMap(CompiledMethodEntry primaryEntry, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap) {
+        final Range primaryRange = primaryEntry.getPrimary();
+        /* The name as exposed to the linker. */
+        final String externalName = primaryRange.getSymbolName();
+        System.out.format("func %s:\n", externalName);
+        processRange(primaryRange);
+    }
+
+    @SuppressWarnings("unused")
+    void processRange(Range range) {
+        final String procName = range.getSymbolName();
+        HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varmap = range.getVarRangeMap();
+        for (Map.Entry<DebugInfoProvider.DebugLocalInfo, List<SubRange>> entry : varmap.entrySet()) {
+            DebugInfoProvider.DebugLocalInfo v = entry.getKey();
+            final int typeIndex = v.slotCount() == 1 ? T_INT4 : T_INT8;
+            System.out.format("  var %s jk=%s tn=%s vt=%s line=%d slot=%d n=%d\n", v.name(), v.javaKind(), v.typeName(), v.valueType(), v.line(), v.slot(), v.slotCount());
+            //addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, procName + "x", typeIndex, 1));
+            CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel rangeRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, range.getLo(), (short) (range.getHi() - range.getLo()), v.slot() + 4);
+            int low = Integer.MAX_VALUE;
+            int high = Integer.MIN_VALUE;
+            int currentLow = Integer.MAX_VALUE;
+            int currentHigh = Integer.MIN_VALUE;
+            List<SubRange> subRanges = entry.getValue();
+            for (SubRange sr : subRanges) {
+                //System.out.format("      subrange line=%d low=0x%x high=0x%x depth=%d\n", sr.getLine(), sr.getLo(), sr.getHi(), sr.getDepth());
+                high = sr.getHi();
+                if (currentLow == Integer.MAX_VALUE) {
+                    /* initial subrange */
+                    low = sr.getLo();
+                    currentLow = sr.getLo();
+                    currentHigh = sr.getHi();
+                } else if (sr.getLo() == currentHigh) {
+                    /* extend current subrange as the new one is contiguous */
+                    currentHigh = sr.getHi();
+                } else {
+                    /* non-contiguous; emit previous subrange */
+                    System.out.format("      xxsubrange low=0x%x high=0x%x slot=%d depth=%d\n", currentLow, currentHigh, v.slot(), 0);
+                    System.out.format("      xxgap low=0x%x len=0x%x\n", (currentHigh + 1) - low, sr.getLo() - 1 - low);
+                    rangeRecord.addGap((short) ((currentHigh + 1) - low), (short) (sr.getLo() - 1 - low));
+                    //emitLocalX(v.name(), typeIndex, (short) 0, v.slot(), procName, currentLow, currentHigh);
+                    currentLow = sr.getLo();
+                    currentHigh = sr.getHi();
+                }
+                /*
+                for (Map.Entry<DebugInfoProvider.DebugLocalInfo, List<SubRange>> subentry : varmap.entrySet()) {
+                    DebugInfoProvider.DebugLocalInfo v2 = subentry.getKey();
+                    List<SubRange> subRanges2 = subentry.getValue();
+                    System.out.format("         var %s jk=%s tn=%s vt=%s line=%d slot=%d n=%d\n", v2.name(), v2.javaKind(), v2.typeName(), v2.valueType(), v2.line(), v2.slot(), v2.slotCount());
+                    for (SubRange sr2 : subRanges2) {
+                        System.out.format("            subrange %d 0x%x 0x%x \n", sr2.getLine(), sr2.getLo(), sr2.getHi());
+                    }
+                }*/
+            }
+            if (currentLow != Integer.MAX_VALUE) {
+                /* clear out last subrange */
+                System.out.format("      xxsubrange low=0x%x high=0x%x depth=%d\n", currentLow, currentHigh, 0);
+                //emitLocalX(v.name(), typeIndex, (short) 0, v.slot(), procName, currentLow, currentHigh);
+            }
+            // addSymbolRecord(rageRecord);
+        }
     }
 
     private void addLineNumberRecords(CompiledMethodEntry compiledEntry) {

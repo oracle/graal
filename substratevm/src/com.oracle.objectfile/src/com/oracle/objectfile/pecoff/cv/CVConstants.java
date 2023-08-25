@@ -125,6 +125,15 @@ public abstract class CVConstants {
     static final short CV_AMD64_XMM6 = 160;
     static final short CV_AMD64_XMM7 = 161;
 
+    static final short CV_AMD64_XMM0_0 = 162;
+    static final short CV_AMD64_XMM1_0 = 166;
+    static final short CV_AMD64_XMM2_0 = 170;
+    static final short CV_AMD64_XMM3_0 = 174;
+    static final short CV_AMD64_XMM4_0 = 178;
+    static final short CV_AMD64_XMM5_0 = 182;
+    static final short CV_AMD64_XMM6_0 = 186;
+    static final short CV_AMD64_XMM7_0 = 190;
+
     static final short CV_AMD64_XMM0L = 194;
     static final short CV_AMD64_XMM1L = 195;
     static final short CV_AMD64_XMM2L = 196;
@@ -133,9 +142,4 @@ public abstract class CVConstants {
     static final short CV_AMD64_XMM5L = 199;
     static final short CV_AMD64_XMM6L = 200;
     static final short CV_AMD64_XMM7L = 201;
-
-    static final short CV_AMD64_XMM0_0 = 162;
-    static final short CV_AMD64_XMM1_0 = 166;
-    static final short CV_AMD64_XMM2_0 = 170;
-    static final short CV_AMD64_XMM3_0 = 174;
 }
