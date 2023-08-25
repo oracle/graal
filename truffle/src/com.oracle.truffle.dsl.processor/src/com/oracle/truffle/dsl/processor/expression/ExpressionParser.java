@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,11 @@ package com.oracle.truffle.dsl.processor.expression;
 
 import com.oracle.truffle.dsl.processor.expression.DSLExpression.*;
 
-import org.antlr.v4.runtime.atn.*;
-import org.antlr.v4.runtime.dfa.DFA;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.misc.*;
-import org.antlr.v4.runtime.tree.*;
+import org.graalvm.shadowed.org.antlr.v4.runtime.atn.*;
+import org.graalvm.shadowed.org.antlr.v4.runtime.dfa.DFA;
+import org.graalvm.shadowed.org.antlr.v4.runtime.*;
+import org.graalvm.shadowed.org.antlr.v4.runtime.misc.*;
+import org.graalvm.shadowed.org.antlr.v4.runtime.tree.*;
 import java.util.List;
 import java.util.Iterator;
 import java.util.ArrayList;

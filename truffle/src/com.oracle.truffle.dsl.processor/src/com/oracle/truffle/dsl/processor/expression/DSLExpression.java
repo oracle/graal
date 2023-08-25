@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,12 +62,12 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 
-import org.antlr.v4.runtime.BaseErrorListener;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
-import org.antlr.v4.runtime.TokenStream;
+import org.graalvm.shadowed.org.antlr.v4.runtime.BaseErrorListener;
+import org.graalvm.shadowed.org.antlr.v4.runtime.CharStreams;
+import org.graalvm.shadowed.org.antlr.v4.runtime.CommonTokenStream;
+import org.graalvm.shadowed.org.antlr.v4.runtime.RecognitionException;
+import org.graalvm.shadowed.org.antlr.v4.runtime.Recognizer;
+import org.graalvm.shadowed.org.antlr.v4.runtime.TokenStream;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
