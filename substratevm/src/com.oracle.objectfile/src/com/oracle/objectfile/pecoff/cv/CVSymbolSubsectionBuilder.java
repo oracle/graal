@@ -197,12 +197,11 @@ final class CVSymbolSubsectionBuilder {
         }
     }
 
-    private int infoTypeToInt(DebugInfoProvider.DebugLocalValueInfo info) {
+    private static int infoTypeToInt(DebugInfoProvider.DebugLocalValueInfo info) {
         switch (info.localKind()) {
             case REGISTER:
                 return info.regIndex();
             case STACKSLOT:
-                /* TODO: are stack slots either 0 or negative? */
                 return -info.stackSlot();
             default:
                 return 0;
