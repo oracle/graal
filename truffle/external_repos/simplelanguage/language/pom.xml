@@ -141,6 +141,12 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>org.graalvm.shadowed</groupId>
+      <artifactId>antlr4</artifactId>
+      <version>${graalvm.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>org.graalvm.truffle</groupId>
       <artifactId>truffle-tck</artifactId>
       <version>${graalvm.version}</version>
