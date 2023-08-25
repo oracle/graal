@@ -389,4 +389,16 @@ public class ArrayCopyIntrinsificationTest extends GraalCompilerTest {
         }
         return a;
     }
+
+    public static String[][] multiArrayArrayCopySnippet(Object[][] src) {
+        String[][] dest = new String[2][2];
+        System.arraycopy(src, 0, dest, 0, 2);
+        return dest;
+    }
+
+    @Test
+    public void testMultiArrayArrayCopy() {
+        String[][] a = new String[2][2];
+        test("multiArrayArrayCopySnippet", (Object) a);
+    }
 }
