@@ -105,6 +105,9 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     private static final Source SOURCE_MANUAL_NODED = Source.create("bm", NAME_MANUAL_NODED);
     private static final Source SOURCE_AST = Source.create("bm", NAME_AST);
 
+    // Keep the baseline interpreter around so we can manually reset its invocation threshold.
+    private static BMOperationRootNode operationBaselineRootNode;
+
     private static final int LOC_I = 4;
     private static final int LOC_SUM = 5;
     private static final int LOC_J = 6;
@@ -332,7 +335,8 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
             createSimpleLoop(lang, b);
         });
         BenchmarkLanguage.registerName(NAME_OPERATION_BASELINE, BMOperationRootNodeWithBaseline.class, (lang, b) -> {
-            createSimpleLoop(lang, b);
+            operationBaselineRootNode = createSimpleLoop(lang, b);
+            operationBaselineRootNode.setBaselineInterpreterThreshold(Integer.MAX_VALUE);
         });
         BenchmarkLanguage.registerName(NAME_OPERATION_UNSAFE, BMOperationRootNodeUnsafe.class, (lang, b) -> {
             createSimpleLoop(lang, b);
@@ -406,7 +410,7 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
         });
     }
 
-    private static void createSimpleLoop(BenchmarkLanguage lang, BMOperationRootNodeBuilder b) {
+    private static BMOperationRootNode createSimpleLoop(BenchmarkLanguage lang, BMOperationRootNodeBuilder b) {
         b.beginRoot(lang);
 
         OperationLocal iLoc = b.createLocal();
@@ -511,7 +515,7 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
         b.emitLoadLocal(sumLoc);
         b.endReturn();
 
-        b.endRoot();
+        return b.endRoot();
     }
 
     @Setup(Level.Trial)
@@ -522,6 +526,18 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     @Setup(Level.Iteration)
     public void enterContext() {
         context.enter();
+    }
+
+    @Setup(Level.Invocation)
+    public void resetThreshold() {
+        /**
+         * Ensure the invocation threshold does not get hit. The number of loop back-edges is
+         * several orders of magnitude less than this threshold, so it should never transition to
+         * the cached interpreter.
+         */
+        if (operationBaselineRootNode != null) {
+            operationBaselineRootNode.setBaselineInterpreterThreshold(Integer.MAX_VALUE);
+        }
     }
 
     @TearDown(Level.Iteration)
