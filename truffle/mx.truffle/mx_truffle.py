@@ -846,10 +846,6 @@ COPYRIGHT_HEADER_UPL = """\
 //@formatter:off
 {0}
 """
-PTRN_SUPPRESS_WARNINGS = re.compile("^@SuppressWarnings.*$", re.MULTILINE)
-PTRN_LOCALCTXT_CAST = re.compile(r"\(\([a-zA-Z_]*Context\)_localctx\)")
-PTRN_TOKEN_CAST = re.compile(r"\(Token\)_errHandler.recoverInline\(this\)")
-
 def create_dsl_parser(args=None, out=None):
     """create the DSL expression parser using antlr"""
     create_parser("com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.expression", "Expression", COPYRIGHT_HEADER_UPL, args, out)
@@ -858,7 +854,7 @@ def create_sl_parser(args=None, out=None):
     """create the SimpleLanguage parser using antlr"""
     create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", COPYRIGHT_HEADER_UPL, args, out)
 
-def create_parser(grammar_project, grammar_package, grammar_name, copyright_template, args=None, out=None, postprocess=None):
+def create_parser(grammar_project, grammar_package, grammar_name, copyright_template=None, args=None, out=None, postprocess=None, shaded=False):
     """create the DSL expression parser using antlr"""
     grammar_dir = os.path.join(mx.project(grammar_project).source_dirs()[0], *grammar_package.split(".")) + os.path.sep
     mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [grammar_dir + grammar_name + ".g4"], out=out)
@@ -868,12 +864,17 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
         # remove first line
         content = "\n".join(content.split("\n")[1:])
         # modify SuppressWarnings to remove useless entries
-        content = PTRN_SUPPRESS_WARNINGS.sub('@SuppressWarnings({"all", "this-escape"})', content)
+        content = re.compile("^@SuppressWarnings.*$", re.MULTILINE).sub('@SuppressWarnings({"all", "this-escape"})', content)
         # remove useless casts
-        content = PTRN_LOCALCTXT_CAST.sub('_localctx', content)
-        content = PTRN_TOKEN_CAST.sub('_errHandler.recoverInline(this)', content)
+        content = re.compile(r"\(\([a-zA-Z_]*Context\)_localctx\)").sub('_localctx', content)
+        content = re.compile(r"\(Token\)_errHandler.recoverInline\(this\)").sub('_errHandler.recoverInline(this)', content)
         # add copyright header
         content = copyright_template.format(content)
+        if shaded:
+            # replace qualified class names with shadowed package names
+            content = re.compile(r"\b(org\.antlr\.v4\.runtime(?:\.\w+)+)\b").sub(r'org.graalvm.shadowed.\1', content)
+            # replace imports with shadowed package names
+            content = re.compile(r"^import (org\.antlr\.v4\.runtime(?:\.\w+)*(?:\.\*)?);", re.MULTILINE).sub(r'import org.graalvm.shadowed.\1;', content)
         # user provided post-processing hook:
         if postprocess is not None:
             content = postprocess(content)
