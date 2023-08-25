@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
-import static com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils.throwMissingRegistrationErrors;
+import static com.oracle.svm.core.MissingRegistrationUtils.throwMissingRegistrationErrors;
 import static com.oracle.svm.core.reflect.ReflectionMetadataDecoder.NO_DATA;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CLASSES_FLAG;
 import static com.oracle.svm.core.reflect.target.ReflectionMetadataDecoderImpl.ALL_CONSTRUCTORS_FLAG;
@@ -102,6 +102,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK21OrLater;
+import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
@@ -256,6 +257,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private static final int CAN_INSTANTIATE_AS_INSTANCE_BIT = 1;
     /** Is the class a proxy class according to {@link java.lang.reflect.Proxy#isProxyClass}? */
     private static final int IS_PROXY_CLASS_BIT = 2;
+
+    private static final int IS_REGISTERED_FOR_SERIALIZATION = 3;
 
     /**
      * The {@link Modifier modifiers} of this class.
@@ -436,7 +439,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void setData(int layoutEncoding, int typeID, int monitorOffset, int optionalIdentityHashOffset, short typeCheckStart, short typeCheckRange, short typeCheckSlot,
-                    short[] typeCheckSlots, CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance, boolean isProxyClass) {
+                    short[] typeCheckSlots, CFunctionPointer[] vtable, long referenceMapIndex, boolean isInstantiated, boolean canInstantiateAsInstance, boolean isProxyClass,
+                    boolean isRegisteredForSerialization) {
         assert this.vtable == null : "Initialization must be called only once";
         assert !(!isInstantiated && canInstantiateAsInstance);
         if (LayoutEncoding.isPureInstance(layoutEncoding)) {
@@ -462,7 +466,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.referenceMapIndex = (int) referenceMapIndex;
         this.additionalFlags = NumUtil.safeToUByte(makeFlag(IS_INSTANTIATED_BIT, isInstantiated) |
                         makeFlag(CAN_INSTANTIATE_AS_INSTANCE_BIT, canInstantiateAsInstance) |
-                        makeFlag(IS_PROXY_CLASS_BIT, isProxyClass));
+                        makeFlag(IS_PROXY_CLASS_BIT, isProxyClass) |
+                        makeFlag(IS_REGISTERED_FOR_SERIALIZATION, isRegisteredForSerialization));
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -805,7 +810,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Substitute
     public InputStream getResourceAsStream(String resourceName) {
         String resolvedName = resolveName(resourceName);
-        return Resources.createInputStream(module, resolvedName);
+        return Resources.singleton().createInputStream(module, resolvedName);
     }
 
     @KeepOriginal
@@ -881,6 +886,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     public boolean isLambdaFormHidden() {
         return isFlagSet(flags, IS_LAMBDA_FORM_HIDDEN_BIT);
+    }
+
+    public boolean isRegisteredForSerialization() {
+        return isFlagSet(additionalFlags, IS_REGISTERED_FOR_SERIALIZATION);
     }
 
     @KeepOriginal
@@ -1348,6 +1357,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         return result;
     }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    public static native Class<?> forPrimitiveName(String primitiveName);
 
     @KeepOriginal
     private native Package getPackage();

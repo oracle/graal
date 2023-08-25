@@ -53,14 +53,14 @@ public final class DowncallStubsHolder {
      */
     @Platforms(Platform.HOSTED_ONLY.class)
     public static String stubName(NativeEntryPointInfo nep) {
-        StringBuilder builder = new StringBuilder("downcall_(");
-        for (var param : nep.nativeMethodType().parameterArray()) {
+        StringBuilder builder = new StringBuilder("downcall_");
+        for (var param : nep.methodType().parameterArray()) {
             builder.append(JavaKind.fromJavaClass(param).getTypeChar());
         }
-        builder.append(")");
-        builder.append(JavaKind.fromJavaClass(nep.nativeMethodType().returnType()).getTypeChar());
+        builder.append("_");
+        builder.append(JavaKind.fromJavaClass(nep.methodType().returnType()).getTypeChar());
 
-        if (nep.returnsAssignment() != null) {
+        if (nep.needsReturnBuffer()) {
             builder.append("_r");
         }
         if (nep.capturesCallState()) {

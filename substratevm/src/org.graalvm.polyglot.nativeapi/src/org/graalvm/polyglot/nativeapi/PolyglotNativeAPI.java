@@ -1964,24 +1964,27 @@ public final class PolyglotNativeAPI {
         nullCheck(callback, "callback");
         nullCheck(value, "value");
         Context c = fetchHandle(context);
-        ProxyExecutable executable = (Value... arguments) -> {
-            int frame = getHandles().pushFrame(DEFAULT_FRAME_CAPACITY);
-            try {
-                ObjectHandle[] handleArgs = new ObjectHandle[arguments.length];
-                for (int i = 0; i < arguments.length; i++) {
-                    handleArgs[i] = createHandle(arguments[i]);
+        ProxyExecutable executable = new ProxyExecutable() {
+            @Override
+            public Object execute(Value... arguments) {
+                int frame = getHandles().pushFrame(DEFAULT_FRAME_CAPACITY);
+                try {
+                    ObjectHandle[] handleArgs = new ObjectHandle[arguments.length];
+                    for (int i = 0; i < arguments.length; i++) {
+                        handleArgs[i] = createHandle(arguments[i]);
+                    }
+                    PolyglotCallbackInfo cbInfo = (PolyglotCallbackInfo) createHandle(new PolyglotCallbackInfoInternal(handleArgs, data));
+                    PolyglotValue result = callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), cbInfo);
+                    CallbackException ce = threadLocals.get().callbackException;
+                    if (ce != null) {
+                        throw ce;
+                    } else {
+                        return PolyglotNativeAPI.fetchHandle(result);
+                    }
+                } finally {
+                    threadLocals.get().callbackException = null;
+                    getHandles().popFramesIncluding(frame);
                 }
-                PolyglotCallbackInfo cbInfo = (PolyglotCallbackInfo) createHandle(new PolyglotCallbackInfoInternal(handleArgs, data));
-                PolyglotValue result = callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), cbInfo);
-                CallbackException ce = threadLocals.get().callbackException;
-                if (ce != null) {
-                    throw ce;
-                } else {
-                    return PolyglotNativeAPI.fetchHandle(result);
-                }
-            } finally {
-                threadLocals.get().callbackException = null;
-                getHandles().popFramesIncluding(frame);
             }
         };
         value.write(createHandle(c.asValue(executable)));

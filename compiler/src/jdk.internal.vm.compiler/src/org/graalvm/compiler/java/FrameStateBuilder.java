@@ -729,6 +729,9 @@ public final class FrameStateBuilder implements SideEffectsState {
         return false;
     }
 
+    /**
+     * @param liveIn true if live in, false if live out
+     */
     public void clearNonLiveLocals(BciBlock block, LocalLiveness liveness, boolean liveIn) {
         /*
          * Non-live local clearing is mandatory for the entry block of an OSR compilation so that
@@ -812,7 +815,7 @@ public final class FrameStateBuilder implements SideEffectsState {
         assert slotKind.getSlotCount() > 0;
 
         if (canVerifyKind) {
-            assert x.getStackKind() == slotKind.getStackKind();
+            GraalError.guarantee(x.getStackKind() == slotKind.getStackKind(), "x %s stack kind %s does not match slot kind %s", x, x.getStackKind(), slotKind);
         }
         return true;
     }

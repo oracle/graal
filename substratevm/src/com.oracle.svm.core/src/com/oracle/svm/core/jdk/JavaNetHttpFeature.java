@@ -89,7 +89,7 @@ class SimpleWebServerFeature implements InternalFeature {
         SimpleWebServerFeature.class.getModule().addReads(requiredModule().get());
 
         RuntimeClassInitializationSupport rci = ImageSingletons.lookup(RuntimeClassInitializationSupport.class);
-        rci.initializeAtRunTime("sun.net.httpserver.simpleserver.SimpleFileServerImpl", "Allocates InetAddress in class initializer");
+        rci.initializeAtRunTime("sun.net.httpserver.simpleserver", "Allocates InetAddress in class initializers");
     }
 
     @Override

@@ -199,6 +199,7 @@
     "gate-compiler-test-labsjdk-21-linux-aarch64": t("1:50:00"),
     "gate-compiler-test-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
     "gate-compiler-test-labsjdk-21-darwin-aarch64": t("1:00:00"),
+    "gate-compiler-test-labsjdk-21-windows-amd64": t("1:30:00"),
     "gate-compiler-test_zgc-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
     "gate-compiler-test_zgc-labsjdk-21-linux-aarch64": t("1:50:00"),
     "gate-compiler-test_zgc-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
@@ -231,8 +232,6 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local dailies = {
-    "daily-compiler-test-labsjdk-21-windows-amd64": {},
-
     "daily-compiler-ctw-labsjdk-21-linux-aarch64": {},
     "daily-compiler-ctw-labsjdk-21-darwin-amd64": {},
     "daily-compiler-ctw-labsjdk-21-darwin-aarch64": {},
@@ -266,10 +265,10 @@
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test_serialgc-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-21-linux-amd64": t("1:30:00") + c.mach5_target,
     "weekly-compiler-test_serialgc-labsjdk-21-linux-aarch64": t("1:50:00"),
-    "weekly-compiler-test_serialgc-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
-    "weekly-compiler-test_serialgc-labsjdk-21-darwin-aarch64": t("1:00:00"),
+    "weekly-compiler-test_serialgc-labsjdk-21-darwin-amd64": t("1:30:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-21-darwin-aarch64": t("1:30:00"),
 
     "weekly-compiler-truffle_xcomp_serialgc-labsjdk-21-linux-amd64": t("1:30:00"),
     "weekly-compiler-truffle_xcomp_serialgc-labsjdk-21-linux-aarch64": t("1:30:00"),

@@ -517,8 +517,8 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         }
     }
 
-    private void addDataHeader(int mode, int length, int globalIndex, long offsetAddress, int memoryIndex) {
-        assert globalIndex == -1 || offsetAddress == -1 : "data header does not allow global index and offset address";
+    private void addDataHeader(int mode, int length, byte[] offsetBytecode, long offsetAddress, int memoryIndex) {
+        assert offsetBytecode == null || offsetAddress == -1 : "data header does not allow offset bytecode and offset address";
         assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE : "invalid segment mode in data header";
         int firstByteLocation = location();
         add1(0);
@@ -533,18 +533,19 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             firstByteFlags |= BytecodeBitEncoding.DATA_SEG_LENGTH_I32;
             add4(length);
         }
-        if (globalIndex != -1) {
-            firstByteFlags |= BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX;
-            if (fitsIntoUnsignedByte(globalIndex)) {
+        if (offsetBytecode != null) {
+            firstByteFlags |= BytecodeBitEncoding.DATA_SEG_BYTECODE;
+            if (fitsIntoUnsignedByte(offsetBytecode.length)) {
                 firstByteFlags |= BytecodeBitEncoding.DATA_SEG_VALUE_U8;
-                add1(globalIndex);
-            } else if (fitsIntoUnsignedShort(globalIndex)) {
+                add1(offsetBytecode.length);
+            } else if (fitsIntoUnsignedShort(offsetBytecode.length)) {
                 firstByteFlags |= BytecodeBitEncoding.DATA_SEG_VALUE_U16;
-                add2(globalIndex);
+                add2(offsetBytecode.length);
             } else {
                 firstByteFlags |= BytecodeBitEncoding.DATA_SEG_VALUE_U32;
-                add4(globalIndex);
+                add4(offsetBytecode.length);
             }
+            addBytes(offsetBytecode, 0, offsetBytecode.length);
         }
         if (offsetAddress != -1) {
             firstByteFlags |= BytecodeBitEncoding.DATA_SEG_OFFSET;
@@ -592,11 +593,11 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * Adds the header of a data segment to the bytecode.
      * 
      * @param length The length of the data segment
-     * @param globalIndex The global index of the data segment, -1 if missing
+     * @param offsetBytecode The offset bytecode of the data segment, null if missing
      * @param offsetAddress The offset address of the data segment, -1 if missing
      */
-    public void addDataHeader(int length, int globalIndex, long offsetAddress, int memoryIndex) {
-        addDataHeader(SegmentMode.ACTIVE, length, globalIndex, offsetAddress, memoryIndex);
+    public void addDataHeader(int length, byte[] offsetBytecode, long offsetAddress, int memoryIndex) {
+        addDataHeader(SegmentMode.ACTIVE, length, offsetBytecode, offsetAddress, memoryIndex);
     }
 
     /**
@@ -607,7 +608,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      */
     public void addDataHeader(int mode, int length) {
         assert mode != SegmentMode.ACTIVE : "invalid active segment mode in passive data header";
-        addDataHeader(mode, length, -1, -1, -1);
+        addDataHeader(mode, length, null, -1, -1);
     }
 
     /**
@@ -645,12 +646,12 @@ public class RuntimeBytecodeGen extends BytecodeGen {
      * @param count The number of elements in the elem segment
      * @param elemType The type of the elements in the elem segment
      * @param tableIndex The table index of the elem segment
-     * @param globalIndex The global index of the elem segment, -1 if missing
+     * @param offsetBytecode The offset bytecode of the elem segment, null if missing
      * @param offsetAddress The offset address of the elem segment, -1 if missing
      * @return The location after the header in the bytecode
      */
-    public int addElemHeader(int mode, int count, byte elemType, int tableIndex, int globalIndex, int offsetAddress) {
-        assert globalIndex == -1 || offsetAddress == -1 : "elem header does not allow global index and offset address";
+    public int addElemHeader(int mode, int count, byte elemType, int tableIndex, byte[] offsetBytecode, int offsetAddress) {
+        assert offsetBytecode == null || offsetAddress == -1 : "elem header does not allow offset bytecode and offset address";
         assert mode == SegmentMode.ACTIVE || mode == SegmentMode.PASSIVE || mode == SegmentMode.DECLARATIVE : "invalid segment mode in elem header";
         assert elemType == WasmType.FUNCREF_TYPE || elemType == WasmType.EXTERNREF_TYPE : "invalid elem type in elem header";
         int location = location();
@@ -691,17 +692,18 @@ public class RuntimeBytecodeGen extends BytecodeGen {
                 add4(tableIndex);
             }
         }
-        if (globalIndex != -1) {
-            if (fitsIntoUnsignedByte(globalIndex)) {
-                flags |= BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U8;
-                add1(globalIndex);
-            } else if (fitsIntoUnsignedShort(globalIndex)) {
-                flags |= BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U16;
-                add2(globalIndex);
+        if (offsetBytecode != null) {
+            if (fitsIntoUnsignedByte(offsetBytecode.length)) {
+                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U8;
+                add1(offsetBytecode.length);
+            } else if (fitsIntoUnsignedShort(offsetBytecode.length)) {
+                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U16;
+                add2(offsetBytecode.length);
             } else {
-                flags |= BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_I32;
-                add4(globalIndex);
+                flags |= BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_I32;
+                add4(offsetBytecode.length);
             }
+            addBytes(offsetBytecode, 0, offsetBytecode.length);
         }
         if (offsetAddress != -1) {
             if (fitsIntoUnsignedByte(offsetAddress)) {

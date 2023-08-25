@@ -3,6 +3,7 @@ layout: ni-docs
 toc_group: how-to-guides
 link_title: Create a Heap Dump
 permalink: /reference-manual/native-image/guides/create-heap-dump/
+redirect_from: /reference-manual/native-image/NativeImageHeapdump/
 ---
 
 # Create a Heap Dump from a Native Executable

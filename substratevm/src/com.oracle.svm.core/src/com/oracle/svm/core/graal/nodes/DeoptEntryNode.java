@@ -37,24 +37,39 @@ import org.graalvm.compiler.nodes.DeoptimizingNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.UnreachableBeginNode;
 import org.graalvm.compiler.nodes.WithExceptionNode;
+import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.graal.lir.DeoptEntryOp;
 
+import jdk.vm.ci.code.BytecodeFrame;
+
 /**
  * A landing-pad for deoptimization. This node is generated in deoptimization target methods for all
  * deoptimization entry points.
  */
 @NodeInfo(allowedUsageTypes = InputType.Anchor, cycles = NodeCycles.CYCLES_0, size = NodeSize.SIZE_0)
-public final class DeoptEntryNode extends WithExceptionNode implements DeoptEntrySupport, DeoptimizingNode.DeoptAfter, SingleMemoryKill {
+public final class DeoptEntryNode extends WithExceptionNode implements DeoptEntrySupport, DeoptimizingNode.DeoptAfter, SingleMemoryKill, ControlFlowAnchored {
     public static final NodeClass<DeoptEntryNode> TYPE = NodeClass.create(DeoptEntryNode.class);
 
     @OptionalInput(InputType.State) protected FrameState stateAfter;
 
-    public DeoptEntryNode() {
+    private final int proxifiedInvokeBci;
+
+    protected DeoptEntryNode(int proxifiedInvokeBci) {
         super(TYPE, StampFactory.forVoid());
+        this.proxifiedInvokeBci = proxifiedInvokeBci;
+    }
+
+    public static DeoptEntryNode create(int proxifiedInvokeBci) {
+        assert proxifiedInvokeBci != BytecodeFrame.UNKNOWN_BCI;
+        return new DeoptEntryNode(proxifiedInvokeBci);
+    }
+
+    public static DeoptEntryNode create() {
+        return new DeoptEntryNode(BytecodeFrame.UNKNOWN_BCI);
     }
 
     @Override
@@ -98,5 +113,10 @@ public final class DeoptEntryNode extends WithExceptionNode implements DeoptEntr
     @Override
     public boolean hasSideEffect() {
         return true;
+    }
+
+    @Override
+    public int getProxifiedInvokeBci() {
+        return proxifiedInvokeBci;
     }
 }

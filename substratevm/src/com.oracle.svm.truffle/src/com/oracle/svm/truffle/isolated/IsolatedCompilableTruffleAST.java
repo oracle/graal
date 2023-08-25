@@ -170,9 +170,12 @@ final class IsolatedCompilableTruffleAST extends IsolatedObjectProxy<SubstrateCo
     private static void onCompilationFailed0(@SuppressWarnings("unused") ClientIsolateThread client, ClientHandle<SubstrateCompilableTruffleAST> compilableHandle,
                     CompilerHandle<Supplier<String>> serializedExceptionHandle, boolean silent, boolean bailout, boolean permanentBailout, boolean graphTooBig) {
 
-        Supplier<String> serializedException = () -> {
-            ClientHandle<String> resultHandle = getReasonAndStackTrace0(IsolatedCompileClient.get().getCompiler(), serializedExceptionHandle);
-            return IsolatedCompileClient.get().unhand(resultHandle);
+        Supplier<String> serializedException = new Supplier<>() {
+            @Override
+            public String get() {
+                ClientHandle<String> resultHandle = getReasonAndStackTrace0(IsolatedCompileClient.get().getCompiler(), serializedExceptionHandle);
+                return IsolatedCompileClient.get().unhand(resultHandle);
+            }
         };
         IsolatedCompileClient.get().unhand(compilableHandle).onCompilationFailed(serializedException, silent, bailout, permanentBailout, graphTooBig);
     }

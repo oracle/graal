@@ -34,11 +34,14 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Optional;
+import java.util.Set;
 import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.concurrent.Executors;
@@ -49,6 +52,8 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -61,6 +66,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.Timer;
 import com.oracle.graal.pointsto.util.TimerCollection;
+import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.BuildArtifacts.ArtifactType;
 import com.oracle.svm.core.SubstrateGCOptions;
@@ -70,7 +76,10 @@ import com.oracle.svm.core.VM;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.hub.ClassForNameSupport;
 import com.oracle.svm.core.jdk.Resources;
+import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
+import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.core.util.json.JsonWriter;
@@ -84,6 +93,7 @@ import com.oracle.svm.hosted.c.codegen.CCompilerInvoker;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.hosted.util.CPUType;
+import com.oracle.svm.hosted.util.DiagnosticUtils;
 import com.oracle.svm.hosted.util.VMErrorReporter;
 import com.oracle.svm.util.ImageBuildStatistics;
 
@@ -168,7 +178,8 @@ public class ProgressReporter {
         }
         jsonHelper = new ProgressReporterJsonHelper();
         usePrefix = SubstrateOptions.BuildOutputPrefix.getValue(options);
-        boolean enableColors = SubstrateOptions.BuildOutputColorful.getValue(options);
+
+        boolean enableColors = SubstrateOptions.hasColorsEnabled(options);
         colorStrategy = enableColors ? new ColorfulStrategy() : new ColorlessStrategy();
         stagePrinter = SubstrateOptions.BuildOutputProgress.getValue(options) ? new CharacterwiseStagePrinter() : new LinewiseStagePrinter();
         linkStrategy = SubstrateOptions.BuildOutputLinks.getValue(options) ? new LinkyStrategy() : new LinklessStrategy();
@@ -214,7 +225,7 @@ public class ProgressReporter {
         }
     }
 
-    public void printInitializeEnd(List<Feature> features) {
+    public void printInitializeEnd(List<Feature> features, ImageClassLoader classLoader) {
         stagePrinter.end(getTimer(TimerCollection.Registry.CLASSLIST).getTotalTime() + getTimer(TimerCollection.Registry.SETUP).getTotalTime());
         VM vm = ImageSingletons.lookup(VM.class);
         recordJsonMetric(GeneralInfo.JAVA_VERSION, vm.version);
@@ -241,8 +252,7 @@ public class ProgressReporter {
         l().a(" ").doclink("Garbage collector", "#glossary-gc").a(": ").a(gcName).a(" (").doclink("max heap size", "#glossary-gc-max-heap-size").a(": ").a(maxHeapValue).a(")").println();
 
         printFeatures(features);
-
-        l().printLineSeparator();
+        printExperimentalOptions(classLoader);
         printResourceInfo();
     }
 
@@ -273,6 +283,93 @@ public class ProgressReporter {
         printer.println();
     }
 
+    record ExperimentalOptionDetails(String alternatives, String origins) {
+        public String toSuffix() {
+            if (alternatives.isEmpty() && origins.isEmpty()) {
+                return "";
+            }
+            StringBuilder sb = new StringBuilder(" (");
+            if (!alternatives.isEmpty()) {
+                sb.append("alternative API option(s): ").append(alternatives);
+            }
+            if (!origins.isEmpty()) {
+                if (!alternatives.isEmpty()) {
+                    sb.append("; ");
+                }
+                sb.append("origin(s): ").append(origins);
+            }
+            sb.append(")");
+            return sb.toString();
+        }
+    }
+
+    private void printExperimentalOptions(ImageClassLoader classLoader) {
+        String hostedOptionPrefix = CommonOptionParser.HOSTED_OPTION_PREFIX;
+
+        Set<String> rawHostedOptionNamesFromDriver = new HashSet<>();
+        for (String arg : DiagnosticUtils.getBuilderArguments(classLoader)) {
+            if (!arg.startsWith(hostedOptionPrefix)) {
+                continue;
+            }
+            String rawOption = arg.split("=", 2)[0].split("@", 2)[0];
+            rawHostedOptionNamesFromDriver.add(rawOption);
+        }
+
+        Map<String, ExperimentalOptionDetails> experimentalOptions = new HashMap<>();
+        var hostedOptionValues = HostedOptionValues.singleton().getMap();
+
+        for (OptionKey<?> option : hostedOptionValues.getKeys()) {
+            if (option == SubstrateOptions.UnlockExperimentalVMOptions) {
+                continue;
+            }
+            if (option instanceof HostedOptionKey<?> hok && option.getDescriptor().getStability() == OptionStability.EXPERIMENTAL) {
+                String optionPrefix = hostedOptionPrefix;
+                String origins = "";
+                String alternatives = "";
+                Object value = option.getValueOrDefault(hostedOptionValues);
+                if (value instanceof LocatableMultiOptionValue<?> lmov) {
+                    if (lmov.getValuesWithOrigins().allMatch(o -> o.getRight().isStable())) {
+                        continue;
+                    } else {
+                        origins = lmov.getValuesWithOrigins().map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
+                        alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(hok, p.getLeft().toString())).filter(c -> !c.startsWith(hostedOptionPrefix))
+                                        .collect(Collectors.joining(", "));
+                    }
+                } else {
+                    OptionOrigin origin = hok.getLastOrigin();
+                    if (origin == null /* unknown */ || origin.isStable() || origin.isInternal()) {
+                        continue;
+                    }
+                    origins = origin.toString();
+                    String valueString;
+                    if (hok.getDescriptor().getOptionValueType() == Boolean.class) {
+                        valueString = Boolean.valueOf(value.toString()) ? "+" : "-";
+                        optionPrefix += valueString;
+                    } else {
+                        valueString = value.toString();
+                    }
+                    String command = SubstrateOptionsParser.commandArgument(hok, valueString);
+                    if (!command.startsWith(hostedOptionPrefix)) {
+                        alternatives = command;
+                    }
+                }
+                String rawHostedOptionName = optionPrefix + hok.getName();
+                if (rawHostedOptionNamesFromDriver.contains(rawHostedOptionName)) {
+                    experimentalOptions.put(rawHostedOptionName, new ExperimentalOptionDetails(alternatives, origins));
+                }
+            }
+        }
+        if (experimentalOptions.isEmpty()) {
+            return;
+        }
+        l().printLineSeparator();
+        l().yellowBold().a(" ").a(experimentalOptions.size()).a(" ").doclink("experimental option(s)", "#glossary-experimental-options").a(" unlocked").reset().a(":").println();
+
+        for (var optionAndDetails : experimentalOptions.entrySet()) {
+            l().a(" - '%s'%s", optionAndDetails.getKey(), optionAndDetails.getValue().toSuffix()).println();
+        }
+    }
+
     private void printResourceInfo() {
         Runtime runtime = Runtime.getRuntime();
         long maxMemory = runtime.maxMemory();
@@ -300,7 +397,8 @@ public class ProgressReporter {
             maxNumberOfThreadsSuffix = "set via '%s'".formatted(SubstrateOptionsParser.commandArgument(NativeImageOptions.NumberOfThreads, Integer.toString(maxNumberOfThreads)));
         }
 
-        l().a(" ").doclink("Build resources", "#glossary-build-resources").a(":").println();
+        l().printLineSeparator();
+        l().yellowBold().doclink("Build resources", "#glossary-build-resources").a(":").reset().println();
         l().a(" - %.2fGB of memory (%.1f%% of %.2fGB system memory, %s)",
                         ByteFormattingUtil.bytesToGiB(maxMemory), Utils.toPercentage(maxMemory, totalMemorySize), ByteFormattingUtil.bytesToGiB(totalMemorySize), maxHeapSuffix).println();
         l().a(" - %s thread(s) (%.1f%% of %s available processor(s), %s)",
@@ -453,6 +551,7 @@ public class ProgressReporter {
                         .doclink("other data", "#glossary-other-data").println();
         l().a("%9s in total", ByteFormattingUtil.bytesToHuman(imageFileSize)).println();
         printBreakdowns();
+        ImageSingletons.lookup(ProgressReporterFeature.class).afterBreakdowns();
         printRecommendations();
     }
 
@@ -659,9 +758,9 @@ public class ProgressReporter {
         double totalProcessTimeSeconds = Utils.millisToSeconds(System.currentTimeMillis() - ManagementFactory.getRuntimeMXBean().getStartTime());
         GCStats gcStats = GCStats.getCurrent();
         double gcSeconds = Utils.millisToSeconds(gcStats.totalTimeMillis);
-        CenteredTextPrinter p = new CenteredTextPrinter();
         recordJsonMetric(ResourceUsageKey.GC_COUNT, gcStats.totalCount);
         recordJsonMetric(ResourceUsageKey.GC_SECS, gcSeconds);
+        CenteredTextPrinter p = centered();
         p.a("%.1fs (%.1f%% of total time) in %d ", gcSeconds, gcSeconds / totalProcessTimeSeconds * 100, gcStats.totalCount)
                         .doclink("GCs", "#glossary-garbage-collections");
         long peakRSS = ProgressReporterCHelper.getPeakRSS();
@@ -836,65 +935,74 @@ public class ProgressReporter {
 
         public abstract T a(String text);
 
-        final T a(String text, Object... args) {
+        public final T a(String text, Object... args) {
             return a(String.format(text, args));
         }
 
-        final T a(int i) {
+        public final T a(int i) {
             return a(String.valueOf(i));
         }
 
-        final T a(long i) {
+        public final T a(long i) {
             return a(String.valueOf(i));
         }
 
-        final T bold() {
+        public final T bold() {
             colorStrategy.bold(this);
             return getThis();
         }
 
-        final T blue() {
+        public final T blue() {
             colorStrategy.blue(this);
             return getThis();
         }
 
-        final T blueBold() {
+        public final T blueBold() {
             colorStrategy.blueBold(this);
             return getThis();
         }
 
-        final T magentaBold() {
+        public final T magentaBold() {
             colorStrategy.magentaBold(this);
             return getThis();
         }
 
-        final T redBold() {
+        public final T red() {
+            colorStrategy.red(this);
+            return getThis();
+        }
+
+        public final T redBold() {
             colorStrategy.redBold(this);
             return getThis();
         }
 
-        final T yellowBold() {
+        public final T yellowBold() {
             colorStrategy.yellowBold(this);
             return getThis();
         }
 
-        final T dim() {
+        public final T dim() {
             colorStrategy.dim(this);
             return getThis();
         }
 
-        final T reset() {
+        public final T reset() {
             colorStrategy.reset(this);
             return getThis();
         }
 
-        final T link(String text, String url) {
+        public final T link(String text, String url) {
             linkStrategy.link(this, text, url);
             return getThis();
         }
 
-        final T link(Path path) {
-            linkStrategy.link(this, path);
+        public final T link(Path path) {
+            return link(path, false);
+        }
+
+        public final T link(Path path, boolean filenameOnly) {
+            linkStrategy.link(this, path, filenameOnly);
             return getThis();
         }
 
@@ -907,8 +1015,12 @@ public class ProgressReporter {
     /**
      * Start printing a new line.
      */
-    private DirectPrinter l() {
+    public DirectPrinter l() {
         return linePrinter.a(outputPrefix);
+    }
+
+    public CenteredTextPrinter centered() {
+        return new CenteredTextPrinter();
     }
 
     public final class DirectPrinter extends AbstractPrinter<DirectPrinter> {
@@ -923,7 +1035,7 @@ public class ProgressReporter {
             return this;
         }
 
-        void println() {
+        public void println() {
             ProgressReporter.this.println();
         }
 
@@ -931,12 +1043,12 @@ public class ProgressReporter {
             dim().a(HEADLINE_SEPARATOR).reset().println();
         }
 
-        void printLineSeparator() {
+        public void printLineSeparator() {
             dim().a(LINE_SEPARATOR).reset().println();
         }
     }
 
-    abstract class LinePrinter<T extends LinePrinter<T>> extends AbstractPrinter<T> {
+    public abstract class LinePrinter<T extends LinePrinter<T>> extends AbstractPrinter<T> {
         protected final List<String> lineParts = new ArrayList<>();
 
         @Override
@@ -1180,14 +1292,14 @@ public class ProgressReporter {
         }
     }
 
-    final class CenteredTextPrinter extends LinePrinter<CenteredTextPrinter> {
+    public final class CenteredTextPrinter extends LinePrinter<CenteredTextPrinter> {
         @Override
         CenteredTextPrinter getThis() {
             return this;
         }
 
         @Override
-        void flushln() {
+        public void flushln() {
             print(outputPrefix);
             String padding = Utils.stringFilledWith((Math.max(0, CHARACTERS_PER_LINE - getCurrentTextLength())) / 2, " ");
             print(padding);
@@ -1207,6 +1319,9 @@ public class ProgressReporter {
         }
 
         default void magentaBold(AbstractPrinter<?> printer) {
+        }
+
+        default void red(AbstractPrinter<?> printer) {
         }
 
         default void redBold(AbstractPrinter<?> printer) {
@@ -1250,6 +1365,11 @@ public class ProgressReporter {
         }
 
         @Override
+        public void red(AbstractPrinter<?> printer) {
+            printer.a(ANSI.RED);
+        }
+
+        @Override
         public void redBold(AbstractPrinter<?> printer) {
             printer.a(ANSI.RED_BOLD);
         }
@@ -1284,9 +1404,20 @@ public class ProgressReporter {
 
         String asDocLink(String text, String htmlAnchor);
 
-        default void link(AbstractPrinter<?> printer, Path path) {
+        default void link(AbstractPrinter<?> printer, Path path, boolean filenameOnly) {
             Path normalized = path.normalize();
-            link(printer, normalized.toString(), normalized.toUri().toString());
+            String name;
+            if (filenameOnly) {
+                Path filename = normalized.getFileName();
+                if (filename != null) {
+                    name = normalized.toString();
+                } else {
+                    throw VMError.shouldNotReachHere("filename should never be null, illegal path: " + path);
+                }
+            } else {
+                name = normalized.toString();
+            }
+            link(printer, name, normalized.toUri().toString());
         }
 
         default void doclink(AbstractPrinter<?> printer, String text, String htmlAnchor) {
@@ -1339,6 +1470,7 @@ public class ProgressReporter {
         static final String LINK_FORMAT = LINK_START + "%s" + LINK_TEXT + "%s" + LINK_END;
         static final String STRIP_LINKS = "\033]8;;https://\\S+\033\\\\([^\033]*)\033]8;;\033\\\\";
 
+        static final String RED = ESCAPE + "[0;31m";
         static final String BLUE = ESCAPE + "[0;34m";
 
         static final String RED_BOLD = ESCAPE + "[1;31m";

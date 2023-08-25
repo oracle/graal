@@ -25,12 +25,15 @@
  */
 package com.oracle.svm.core.reflect.serialize;
 
+import static com.oracle.svm.core.SubstrateOptions.ThrowMissingRegistrationErrors;
+
 import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.graalvm.compiler.java.LambdaUtils;
@@ -125,6 +128,19 @@ public class SerializationSupport implements SerializationRegistry {
         return constructorAccessors.putIfAbsent(key, constructorAccessor);
     }
 
+    @Platforms(Platform.HOSTED_ONLY.class) private final Set<Class<?>> classes = ConcurrentHashMap.newKeySet();
+
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public void registerSerializationTargetClass(Class<?> serializationTargetClass) {
+        classes.add(serializationTargetClass);
+    }
+
+    @Override
+    @Platforms(Platform.HOSTED_ONLY.class)
+    public boolean isRegisteredForSerialization(Class<?> cl) {
+        return classes.contains(cl);
+    }
+
     @Override
     public Object getSerializationConstructorAccessor(Class<?> rawDeclaringClass, Class<?> rawTargetConstructorClass) {
         Class<?> declaringClass = rawDeclaringClass;
@@ -140,9 +156,15 @@ public class SerializationSupport implements SerializationRegistry {
             return constructorAccessor;
         } else {
             String targetConstructorClassName = targetConstructorClass.getName();
-            throw VMError.unsupportedFeature("SerializationConstructorAccessor class not found for declaringClass: " + declaringClass.getName() +
-                            " (targetConstructorClass: " + targetConstructorClassName + "). Usually adding " + declaringClass.getName() +
-                            " to serialization-config.json fixes the problem.");
+            if (ThrowMissingRegistrationErrors.hasBeenSet()) {
+                MissingSerializationRegistrationUtils.missingSerializationRegistration(declaringClass,
+                                "type " + declaringClass.getName() + " with target constructor class: " + targetConstructorClassName);
+            } else {
+                throw VMError.unsupportedFeature("SerializationConstructorAccessor class not found for declaringClass: " + declaringClass.getName() +
+                                " (targetConstructorClass: " + targetConstructorClassName + "). Usually adding " + declaringClass.getName() +
+                                " to serialization-config.json fixes the problem.");
+            }
+            return null;
         }
     }
 }

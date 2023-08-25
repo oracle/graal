@@ -38,7 +38,9 @@ import org.graalvm.compiler.options.OptionType;
 public interface LoopPolicies {
 
     class Options {
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Boolean> PeelALot = new OptionKey<>(false);
+        @Option(help = "Stress test for the loop peeling optimization by applying it aggressively", type = OptionType.Debug) public static final OptionKey<Boolean> PeelALot = new OptionKey<>(false);
+        @Option(help = "Peel only the loop with the specific loop begin node ID for debugging purposes", type = OptionType.Debug) public static final OptionKey<Integer> PeelOnlyLoopWithNodeID = new OptionKey<>(
+                        -1);
     }
 
     boolean shouldPeel(LoopEx loop, ControlFlowGraph cfg, CoreProviders providers, int peelingIteration);

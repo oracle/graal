@@ -47,6 +47,7 @@ import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.EncodedGraph.EncodedNodeReference;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
+import org.graalvm.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 
 import jdk.vm.ci.code.Architecture;
 
@@ -216,8 +217,8 @@ public class GraphEncoder {
                     addObject(nodeClass.getData().get(node, i));
                 }
             }
-            if (node instanceof Invoke) {
-                addObject(((Invoke) node).getContextType());
+            if (node instanceof Invoke || node instanceof MethodHandleWithExceptionNode) {
+                addObject(((Invokable) node).getContextType());
             }
         }
     }
@@ -313,19 +314,24 @@ public class GraphEncoder {
                     writeOrderId(proxy, nodeOrder);
                 }
 
-            } else if (node instanceof Invoke) {
-                Invoke invoke = (Invoke) node;
-                assert invoke.stateDuring() == null : "stateDuring is not used in high-level graphs";
+            } else if (node instanceof Invoke || node instanceof MethodHandleWithExceptionNode) {
+                Node next;
+                if (node instanceof Invoke invoke) {
+                    assert invoke.stateDuring() == null : "stateDuring is not used in high-level graphs";
+                    writeOrderId(invoke.callTarget(), nodeOrder);
+                    next = invoke.next();
+                } else {
+                    next = ((MethodHandleWithExceptionNode) node).next();
+                }
 
-                writeObjectId(invoke.getContextType());
-                writeOrderId(invoke.callTarget(), nodeOrder);
-                writeOrderId(invoke.stateAfter(), nodeOrder);
-                writeOrderId(invoke.next(), nodeOrder);
-                if (invoke instanceof InvokeWithExceptionNode) {
-                    InvokeWithExceptionNode invokeWithExcpetion = (InvokeWithExceptionNode) invoke;
-                    ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) invokeWithExcpetion.exceptionEdge();
+                Invokable inv = (Invokable) node;
+                writeObjectId(inv.getContextType());
+                writeOrderId(((StateSplit) inv).stateAfter(), nodeOrder);
+                writeOrderId(next, nodeOrder);
+                if (inv instanceof WithExceptionNode withException) {
+                    ExceptionObjectNode exceptionEdge = (ExceptionObjectNode) withException.exceptionEdge();
 
-                    writeOrderId(invokeWithExcpetion.exceptionEdge(), nodeOrder);
+                    writeOrderId(withException.exceptionEdge(), nodeOrder);
                     writeOrderId(exceptionEdge.stateAfter(), nodeOrder);
                     writeOrderId(exceptionEdge.next(), nodeOrder);
                 }

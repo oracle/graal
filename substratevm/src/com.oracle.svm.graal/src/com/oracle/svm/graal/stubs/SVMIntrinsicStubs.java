@@ -40,10 +40,10 @@ import org.graalvm.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
 import org.graalvm.compiler.replacements.nodes.BigIntegerSquareToLenNode;
 import org.graalvm.compiler.replacements.nodes.CalcStringAttributesNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import org.graalvm.compiler.replacements.nodes.CountPositivesNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
 import org.graalvm.compiler.replacements.nodes.EncodeArrayNode;
 import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
-import org.graalvm.compiler.replacements.nodes.HasNegativesNode;
 import org.graalvm.compiler.replacements.nodes.MessageDigestNode.MD5Node;
 import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
@@ -61,7 +61,7 @@ import org.graalvm.compiler.replacements.nodes.VectorizedMismatchNode;
                 ArrayCopyWithConversionsNode.class,
                 StringUTF16CompressNode.class,
                 StringLatin1InflateNode.class,
-                HasNegativesNode.class,
+                CountPositivesNode.class,
                 EncodeArrayNode.class,
                 VectorizedMismatchNode.class,
                 VectorizedHashCodeNode.class,

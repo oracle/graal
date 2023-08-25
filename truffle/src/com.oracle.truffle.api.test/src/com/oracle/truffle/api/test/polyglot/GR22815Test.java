@@ -53,7 +53,7 @@ import com.oracle.truffle.sl.SLLanguage;
 public class GR22815Test {
 
     /*
-     * Referenced in reflection.json
+     * Referenced in reflect-config.json
      */
     @Export
     public static String log(String msg, Throwable thrown) {
@@ -61,7 +61,7 @@ public class GR22815Test {
     }
 
     /*
-     * Referenced in reflection.json
+     * Referenced in reflect-config.json
      */
     @Export
     public static String log(Throwable thrown, String msgSupplier) {

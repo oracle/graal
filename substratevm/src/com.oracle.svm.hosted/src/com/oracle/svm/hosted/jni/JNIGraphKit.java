@@ -214,8 +214,8 @@ public class JNIGraphKit extends HostedGraphKit {
         return createStaticInvoke("createArrayViewAndGetAddress", array, isCopy);
     }
 
-    public InvokeWithExceptionNode destroyArrayViewByAddress(ValueNode address, ValueNode mode) {
-        return createStaticInvoke("destroyArrayViewByAddress", address, mode);
+    public InvokeWithExceptionNode destroyNewestArrayViewByAddress(ValueNode address, ValueNode mode) {
+        return createStaticInvoke("destroyNewestArrayViewByAddress", address, mode);
     }
 
     public FixedWithNextNode getPrimitiveArrayRegionRetainException(JavaKind elementKind, ValueNode array, ValueNode start, ValueNode count, ValueNode buffer) {

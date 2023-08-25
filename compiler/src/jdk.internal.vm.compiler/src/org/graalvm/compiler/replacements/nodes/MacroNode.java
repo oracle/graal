@@ -121,6 +121,10 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
             return new MacroParams(b.getInvokeKind(), b.getMethod(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), arguments);
         }
 
+        public static MacroParams of(GraphBuilderContext b, ResolvedJavaMethod targetMethod, StampPair returnStamp, ValueNode... arguments) {
+            return new MacroParams(b.getInvokeKind(), b.getMethod(), targetMethod, b.bci(), returnStamp, arguments);
+        }
+
         public static MacroParams of(GraphBuilderContext b, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
             return new MacroParams(invokeKind, b.getMethod(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), arguments);
         }
@@ -283,5 +287,12 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         originalReturnStamp = methodHandle.originalReturnStamp;
         originalTargetMethod = methodHandle.originalTargetMethod;
         originalArguments.addAll(methodHandle.originalArguments);
+    }
+
+    /**
+     * Build a new copy of the {@link MacroParams} stored in this node.
+     */
+    public MacroParams copyParams() {
+        return new MacroParams(invokeKind, callerMethod, targetMethod, bci, returnStamp, toArgumentArray());
     }
 }

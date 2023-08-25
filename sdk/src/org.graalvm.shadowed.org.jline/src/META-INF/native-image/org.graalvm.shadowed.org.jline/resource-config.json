@@ -1,0 +1,15 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "org/graalvm/shadowed/org/jline/utils/.+\\.caps$"
+      },
+      {
+        "pattern": "org/graalvm/shadowed/org/jline/utils/.+\\.txt$"
+      },
+      {
+        "pattern": "org/graalvm/shadowed/org/jline/builtins/.+\\.txt$"
+      }
+    ]
+  }
+}

@@ -71,6 +71,7 @@ import org.graalvm.wasm.memory.WasmMemoryFactory;
  */
 public abstract class SymbolTable {
     private static final int INITIAL_GLOBALS_SIZE = 64;
+    private static final int INITIAL_GLOBALS_BYTECODE_SIZE = INITIAL_GLOBALS_SIZE / 4;
     private static final int INITIAL_TABLE_SIZE = 1;
     private static final int INITIAL_MEMORY_SIZE = 1;
     private static final int INITIAL_DATA_SIZE = 512;
@@ -309,6 +310,11 @@ public abstract class SymbolTable {
     @CompilationFinal(dimensions = 1) private long[] globalInitializers;
 
     /**
+     * The bytecodes used for initializing globals.
+     */
+    @CompilationFinal(dimensions = 2) private byte[][] globalInitializersBytecode;
+
+    /**
      * A mapping between the indices of the imported globals and their import specifiers.
      */
     @CompilationFinal private final EconomicMap<Integer, ImportDescriptor> importedGlobals;
@@ -322,6 +328,11 @@ public abstract class SymbolTable {
      * Number of globals in the module.
      */
     @CompilationFinal private int numGlobals;
+
+    /**
+     * Number of globals that need a bytecode initializer.
+     */
+    @CompilationFinal private int numGlobalInitializersBytecode;
 
     /**
      * The descriptor of the table of this module.
@@ -415,6 +426,7 @@ public abstract class SymbolTable {
         this.startFunctionIndex = -1;
         this.globalTypes = new byte[2 * INITIAL_GLOBALS_SIZE];
         this.globalInitializers = new long[INITIAL_GLOBALS_SIZE];
+        this.globalInitializersBytecode = new byte[INITIAL_GLOBALS_BYTECODE_SIZE][];
         this.importedGlobals = EconomicMap.create();
         this.exportedGlobals = EconomicMap.create();
         this.numGlobals = 0;
@@ -742,11 +754,19 @@ public abstract class SymbolTable {
         }
     }
 
+    private void ensureGlobalInitializersBytecodeCapacity(int index) {
+        while (index >= globalInitializersBytecode.length) {
+            final byte[][] nGlobalInitializersBytecode = new byte[globalInitializersBytecode.length * 2][];
+            System.arraycopy(globalInitializersBytecode, 0, nGlobalInitializersBytecode, 0, globalInitializersBytecode.length);
+            globalInitializersBytecode = nGlobalInitializersBytecode;
+        }
+    }
+
     /**
      * Allocates a global index in the symbol table, for a global variable that was already
      * allocated.
      */
-    void allocateGlobal(int index, byte valueType, byte mutability, boolean initialized, boolean functionOrNull, boolean imported, int existingIndex, long initialValue) {
+    void allocateGlobal(int index, byte valueType, byte mutability, boolean initialized, boolean isReference, boolean imported, byte[] initBytecode, long initialValue) {
         assert (valueType & 0xff) == valueType;
         checkNotParsed();
         ensureGlobalsCapacity(index);
@@ -762,17 +782,20 @@ public abstract class SymbolTable {
         if (initialized) {
             flags |= GLOBAL_INITIALIZED_BIT;
         }
-        if (functionOrNull) {
+        if (isReference) {
             flags |= GLOBAL_REFERENCE_BIT;
         }
         if (imported) {
             flags |= GLOBAL_IMPORTED_BIT;
         }
-        if (existingIndex == -1) {
+        if (initBytecode == null) {
             flags |= GLOBAL_FUNCTION_INITIALIZER_BIT;
             globalInitializers[index] = initialValue;
         } else {
-            globalInitializers[index] = existingIndex;
+            int initBytecodeIndex = numGlobalInitializersBytecode++;
+            ensureGlobalInitializersBytecodeCapacity(initBytecodeIndex);
+            globalInitializersBytecode[initBytecodeIndex] = initBytecode;
+            globalInitializers[index] = initBytecodeIndex;
         }
         globalTypes[2 * index] = valueType;
         globalTypes[2 * index + 1] = flags;
@@ -781,7 +804,7 @@ public abstract class SymbolTable {
     void declareExternalGlobal(int index, WasmGlobal global) {
         final byte valueType = global.getValueType().byteValue();
         final byte mutability = global.isMutable() ? GlobalModifier.MUTABLE : GlobalModifier.CONSTANT;
-        allocateGlobal(index, valueType, mutability, false, false, false, 0, 0);
+        allocateGlobal(index, valueType, mutability, false, false, false, null, 0);
         module().addLinkAction((context, instance) -> {
             final GlobalRegistry globals = context.globals();
             final int address = globals.allocateExternalGlobal(global);
@@ -789,8 +812,8 @@ public abstract class SymbolTable {
         });
     }
 
-    void declareGlobal(int index, byte valueType, byte mutability, boolean initialized, boolean functionOrNull, int existingIndex, long initialValue) {
-        allocateGlobal(index, valueType, mutability, initialized, functionOrNull, false, existingIndex, initialValue);
+    void declareGlobal(int index, byte valueType, byte mutability, boolean initialized, boolean isReference, byte[] initBytecode, long initialValue) {
+        allocateGlobal(index, valueType, mutability, initialized, isReference, false, initBytecode, initialValue);
         module().addLinkAction((context, instance) -> {
             final GlobalRegistry globals = context.globals();
             final int address = globals.allocateGlobal();
@@ -802,7 +825,7 @@ public abstract class SymbolTable {
         final ImportDescriptor descriptor = new ImportDescriptor(moduleName, globalName, ImportIdentifier.GLOBAL);
         importedGlobals.put(index, descriptor);
         importSymbol(descriptor);
-        allocateGlobal(index, valueType, mutability, false, false, true, 0, 0);
+        allocateGlobal(index, valueType, mutability, false, false, true, null, 0);
         module().addLinkAction((context, instance) -> instance.setGlobalAddress(index, UNINITIALIZED_ADDRESS));
         module().addLinkAction((context, instance) -> context.linker().resolveGlobalImport(context, instance, descriptor, index, valueType, mutability));
     }
@@ -844,15 +867,15 @@ public abstract class SymbolTable {
         return (globalTypes[2 * index + 1] & GLOBAL_INITIALIZED_BIT) != 0;
     }
 
-    public boolean globalFunctionOrNull(int index) {
+    public boolean globalIsReference(int index) {
         return (globalTypes[2 * index + 1] & GLOBAL_REFERENCE_BIT) != 0;
     }
 
-    public int globalExistingIndex(int index) {
+    public byte[] globalInitializerBytecode(int index) {
         if ((globalTypes[2 * index + 1] & GLOBAL_FUNCTION_INITIALIZER_BIT) != 0) {
-            return -1;
+            return null;
         } else {
-            return (int) globalInitializers[index];
+            return globalInitializersBytecode[(int) globalInitializers[index]];
         }
     }
 
@@ -899,7 +922,7 @@ public abstract class SymbolTable {
 
     public void declareExportedGlobalWithValue(String name, int index, byte valueType, byte mutability, long value) {
         checkNotParsed();
-        declareGlobal(index, valueType, mutability, true, false, 0, 0);
+        declareGlobal(index, valueType, mutability, true, false, null, 0);
         exportGlobal(name, index);
         module().addLinkAction((context, instance) -> {
             final int address = instance.globalAddress(index);
@@ -1123,7 +1146,7 @@ public abstract class SymbolTable {
         return memory.indexType64;
     }
 
-    boolean memoryIsShared(int index) {
+    public boolean memoryIsShared(int index) {
         final MemoryInfo memory = memories[index];
         return memory.shared;
     }

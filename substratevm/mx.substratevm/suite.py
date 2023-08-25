@@ -2,7 +2,7 @@
 suite = {
     "mxversion": "6.27.1",
     "name": "substratevm",
-    "version" : "23.1.0",
+    "version" : "24.0.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -271,6 +271,7 @@ suite = {
                     "jdk.internal.misc",
                     "jdk.internal.module",
                     "jdk.internal.perf",
+                    "jdk.internal.platform",
                     "jdk.internal.ref",
                     "jdk.internal.reflect",
                     "jdk.internal.vm",
@@ -305,21 +306,6 @@ suite = {
             "workingSets": "SVM",
             "jacoco" : "exclude",
         },
-
-        "com.oracle.svm.core.containers": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "javaCompliance" : "17+",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
-            "workingSets": "SVM",
-            "spotbugs": "false",
-            "jacoco" : "exclude",
-        },
-
 
         "com.oracle.svm.core.genscavenge": {
             "subDir": "src",
@@ -842,9 +828,27 @@ suite = {
             ],
             "dependencies": [
                 "com.oracle.svm.hosted",
+                "com.oracle.svm.driver.launcher",
             ],
             "requires" : [
                 "jdk.management",
+            ],
+            "checkstyle": "com.oracle.svm.hosted",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+                "compiler:GRAAL_PROCESSOR",
+                "SVM_PROCESSOR",
+            ],
+            "javaCompliance" : "17+",
+            "spotbugs": "false",
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.driver.launcher": {
+            "subDir": "src",
+            "sourceDirs": [
+                "src",
+                "resources"
             ],
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
@@ -1079,6 +1083,14 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
+            "workingSets": "SVM",
+            "jacoco" : "exclude",
+        },
+
+        "com.oracle.svm.truffle.nfi.none": {
+            "subDir": "src",
+            "sourceDirs": ["src"],
+            "javaCompliance" : "17+",
             "workingSets": "SVM",
             "jacoco" : "exclude",
         },
@@ -1360,7 +1372,6 @@ suite = {
                 "com.oracle.svm.core.posix",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
-                "com.oracle.svm.core.containers",
             ],
             "distDependencies": [
                 "sdk:NATIVEIMAGE",
@@ -1433,6 +1444,9 @@ suite = {
                 },
             },
             "noMavenJavadoc": True,
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "JVMTI_AGENT_BASE": {
@@ -1472,6 +1486,9 @@ suite = {
                     "* to org.graalvm.nativeimage.builder",
                 ],
             },
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "JUNIT_SUPPORT": {
@@ -1496,6 +1513,9 @@ suite = {
                     "static junit",
                     "static hamcrest",
                 ]
+            },
+            "maven": {
+                "tag": ["default", "public"],
             },
         },
 
@@ -1524,6 +1544,9 @@ suite = {
                   "jdk.internal.ref",
                 ],
               }
+            },
+            "maven": {
+                "tag": ["default", "public"],
             },
         },
 
@@ -1589,6 +1612,9 @@ suite = {
                 },
             },
             "noMavenJavadoc": True,
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "TRUFFLE_GRAALVM_SUPPORT" : {
@@ -1598,28 +1624,6 @@ suite = {
             "native-image.properties" : "file:mx.substratevm/macro-truffle.properties",
           },
           "maven" : False,
-        },
-
-        "TRUFFLE_REBUILD_IMAGES_GRAALVM_SUPPORT" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "Native Image support distribution for the GraalVM",
-            "os_arch" : {
-                "windows": {
-                    "<others>" : {
-                        "layout" : {
-                            "bin/" : "file:mx.substratevm/rebuild-images.cmd",
-                        },
-                    },
-                },
-                "<others>": {
-                    "<others>": {
-                        "layout" : {
-                            "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
-                        },
-                    },
-                },
-            },
         },
 
         "TRUFFLE_SVM_GRAALVM_SUPPORT" : {
@@ -1682,6 +1686,7 @@ suite = {
             "mainClass": "com.oracle.svm.driver.NativeImage",
             "dependencies": [
                 "com.oracle.svm.driver",
+                "com.oracle.svm.driver.launcher",
                 "svm-compiler-flags-builder",
             ],
             "distDependencies": [
@@ -1794,7 +1799,10 @@ suite = {
                     "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,org.graalvm.extraimage.builder,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                     "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                 ],
-            }
+            },
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "POINTSTO": {
@@ -1847,6 +1855,9 @@ suite = {
                 ],
               }
             },
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "STANDALONE_POINTSTO": {
@@ -1885,6 +1896,9 @@ suite = {
                         "org.graalvm.compiler.options"
                     ]
                 }
+            },
+            "maven": {
+                "tag": ["default", "public"],
             },
         },
 
@@ -1954,6 +1968,15 @@ suite = {
             },
         },
 
+        "SVM_NFI_NONE_JAR" : {
+            "description" : "Almost empty jar for the none NFI backend",
+            "subDir": "src",
+            "dependencies": [
+                "com.oracle.svm.truffle.nfi.none", # to avoid `MX_BUILD_EXPLODED=true mx build` failing
+            ],
+            "maven": False
+        },
+
         "SVM_NFI_GRAALVM_SUPPORT" : {
             "native" : True,
             "platformDependent" : True,
@@ -1969,8 +1992,8 @@ suite = {
                 ],
                 # The following files are intentionally left empty. The "none" backend is actually nothing, but we still
                 # need some files so native-image doesn't complain about missing files on the classpath.
-                "truffle-nfi-none.jar" : "string:",
-                "builder/svm-none.jar" : "string:",
+                "truffle-nfi-none.jar" : "dependency:SVM_NFI_NONE_JAR",
+                "builder/svm-none.jar" : "dependency:SVM_NFI_NONE_JAR",
                 "builder/clibraries-none/.empty.h" : "file:src/com.oracle.svm.libffi/include/empty.h",
             },
         },
@@ -2083,7 +2106,9 @@ suite = {
             "description" : "Truffle TCK",
             "dependencies" : ["com.oracle.svm.truffle.tck"],
             "distDependencies" : ["SVM", "truffle:TRUFFLE_RUNTIME"],
-            "maven" : True,
+            "maven" : {
+                "tag": ["default", "public"],
+            },
         },
     },
 }

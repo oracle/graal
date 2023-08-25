@@ -26,21 +26,51 @@ import java.util.LinkedList;
 import java.util.List;
 
 public final class SignatureBuilder extends AbstractCodeBuilder {
-    private final String name;
-    private final List<String> params = new LinkedList<>();
+    private String name;
+    private final List<VariableBuilder> params = new LinkedList<>();
 
-    public SignatureBuilder(String name) {
-        this.name = name;
+    public SignatureBuilder() {
+    }
+
+    public SignatureBuilder withName(String callName) {
+        this.name = callName;
+        return this;
     }
 
     public SignatureBuilder addParam(String param) {
-        params.add(param);
+        params.add(new VariableBuilder().withName(param));
+        return this;
+    }
+
+    public SignatureBuilder addParam(VariableBuilder variableBuilder) {
+        params.add(variableBuilder);
         return this;
     }
 
     @Override
     void buildImpl(IndentingStringBuilder sb) {
-        sb.append(name);
-        sb.append(PAREN_OPEN).join(", ", params).append(PAREN_CLOSE);
+        if (name != null) {
+            sb.append(name);
+        }
+        sb.append(PAREN_OPEN);
+
+        boolean first = true;
+        for (VariableBuilder v : params) {
+            if (first) {
+                first = false;
+            } else {
+                sb.appendSpace(',');
+            }
+            v.buildImpl(sb);
+        }
+
+        sb.append(PAREN_CLOSE);
+    }
+
+    @Override
+    public String toString() {
+        IndentingStringBuilder isb = new IndentingStringBuilder(0);
+        buildImpl(isb);
+        return isb.toString();
     }
 }

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -83,6 +84,7 @@ public class JfrThreadLocal implements ThreadListener {
     private static final FastThreadLocalWord<JfrBuffer> javaBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.javaBuffer");
     private static final FastThreadLocalWord<JfrBuffer> nativeBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.nativeBuffer");
     private static final FastThreadLocalWord<UnsignedWord> dataLost = FastThreadLocalFactory.createWord("JfrThreadLocal.dataLost");
+    private static final FastThreadLocalInt notified = FastThreadLocalFactory.createInt("JfrThreadLocal.notified");
 
     /* Stacktrace-related thread-locals. */
     private static final FastThreadLocalWord<SamplerBuffer> samplerBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.samplerBuffer");
@@ -354,10 +356,18 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static boolean isNotified() {
+        return notified.get() != 0;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void notifyEventWriter(IsolateThread thread) {
-        if (javaEventWriter.get(thread) != null) {
-            javaEventWriter.get(thread).notified = true;
-        }
+        notified.set(thread, 1);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static void clearNotification() {
+        notified.set(0);
     }
 
     /**

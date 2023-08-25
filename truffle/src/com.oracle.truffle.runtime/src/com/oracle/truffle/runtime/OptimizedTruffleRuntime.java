@@ -199,9 +199,10 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     private final UnmodifiableEconomicMap<String, Class<?>> lookupTypes;
     private final FloodControlHandler floodControlHandler;
     private final List<OptionDescriptors> runtimeOptionDescriptors;
-    private volatile OptionDescriptors engineOptions;
+    protected volatile OptionDescriptors engineOptions;
 
     protected final TruffleCompilationSupport compilationSupport;
+    private OptionDescriptors previousEngineCacheSupportOptions;
 
     @SuppressWarnings("this-escape")
     public OptimizedTruffleRuntime(TruffleCompilationSupport compilationSupport, Iterable<Class<?>> extraLookupTypes) {
@@ -211,6 +212,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         this.loopNodeFactory = loadGraalRuntimeServiceProvider(LoopNodeFactory.class, options, true);
         EngineCacheSupport support = loadEngineCacheSupport(options);
         this.engineCacheSupport = support == null ? new EngineCacheSupport.Disabled() : support;
+        this.previousEngineCacheSupportOptions = engineCacheSupport.getEngineOptions();
         options.add(OptimizedRuntimeOptions.getDescriptors());
         options.add(new CompilerOptionsDescriptors());
         this.runtimeOptionDescriptors = options;
@@ -218,10 +220,11 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
     }
 
     public final void initializeEngineCacheSupport(EngineCacheSupport support) {
-        if (this.engineCacheSupport instanceof EngineCacheSupport.Disabled) {
-            this.engineCacheSupport = support;
-            this.runtimeOptionDescriptors.add(support.getEngineOptions());
-        }
+        this.runtimeOptionDescriptors.remove(this.previousEngineCacheSupportOptions);
+        this.engineCacheSupport = support;
+        OptionDescriptors engineCacheOptions = support.getEngineOptions();
+        this.previousEngineCacheSupportOptions = engineCacheOptions;
+        this.runtimeOptionDescriptors.add(engineCacheOptions);
     }
 
     protected EngineCacheSupport loadEngineCacheSupport(List<OptionDescriptors> options) {

@@ -33,18 +33,17 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.LogicConstantNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.NodeView;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable.BinaryCommutative;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.options.OptionValues;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.TriState;
 
@@ -55,9 +54,11 @@ public final class FloatEqualsNode extends CompareNode implements BinaryCommutat
 
     public FloatEqualsNode(ValueNode x, ValueNode y) {
         super(TYPE, CanonicalCondition.EQ, false, x, y);
-        assert !x.getStackKind().isNumericInteger() && x.getStackKind() != JavaKind.Object;
-        assert !y.getStackKind().isNumericInteger() && y.getStackKind() != JavaKind.Object;
-        assert x.stamp(NodeView.DEFAULT).isCompatible(y.stamp(NodeView.DEFAULT));
+        Stamp xStamp = x.stamp(NodeView.DEFAULT);
+        Stamp yStamp = y.stamp(NodeView.DEFAULT);
+        assert xStamp.isFloatStamp() : "expected floating point x value: " + x;
+        assert yStamp.isFloatStamp() : "expected floating point y value: " + y;
+        assert xStamp.isCompatible(yStamp) : "expected compatible stamps: " + xStamp + " / " + yStamp;
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, NodeView view) {

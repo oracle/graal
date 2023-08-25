@@ -62,7 +62,6 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
-import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -3052,7 +3051,7 @@ final class HostObject implements TruffleObject {
                     return c.isInstance(otherHostObj);
                 }
             } else if (HostProxy.isProxyGuestObject(language, other)) {
-                Proxy otherHost = HostProxy.toProxyHostObject(language, other);
+                Object otherHost = HostProxy.toProxyHostObject(language, other);
                 return c.isInstance(otherHost);
             } else {
                 boolean canConvert = HostToTypeNode.canConvert(null, other, c, c,

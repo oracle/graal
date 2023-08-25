@@ -178,6 +178,7 @@ public class ServiceLoaderFeature implements InternalFeature {
             if (nullaryConstructor != null) {
                 RuntimeReflection.register(providerClass);
                 RuntimeReflection.register(nullaryConstructor);
+                RuntimeReflection.registerAllDeclaredMethods(providerClass);
                 registeredProviders.add(provider);
             }
         }

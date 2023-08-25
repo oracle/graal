@@ -190,6 +190,7 @@ local devkits = graal_common.devkits;
   },
 
   vm_darwin_aarch64: self.common_vm_darwin + graal_common.darwin_aarch64 + {
+    capabilities+: ['darwin_bigsur'],
     environment+: {
       # for compatibility with macOS BigSur
       MACOSX_DEPLOYMENT_TARGET: '11.0',
@@ -503,7 +504,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_linux_amd64(java_version): vm.check_structure + {
     run: $.patch_env('linux', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -522,7 +523,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_linux_aarch64(java_version): vm.check_structure + {
     run: $.patch_env('linux', 'aarch64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
@@ -549,7 +550,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_installables_darwin_amd64(java_version): vm.check_structure + {
     run: $.patch_env('darwin', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
@@ -571,7 +572,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_installables_darwin_aarch64(java_version): vm.check_structure + {
     run: $.patch_env('darwin', 'aarch64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
@@ -593,7 +594,7 @@ local devkits = graal_common.devkits;
   deploy_graalvm_installables_windows_amd64(java_version): vm.check_structure + {
     run: $.patch_env('windows', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build'],
+      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
       ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
@@ -610,6 +611,20 @@ local devkits = graal_common.devkits;
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.create_releaser_notifier_artifact,
     notify_groups:: ['deploy', 'ruby'],
+    timelimit: '1:45:00',
+  },
+
+  deploy_graalvm_espresso(os, arch, java_version): {
+    run: vm.collect_profiles() + (
+      if os == 'windows' then [
+        ['set-export', 'VM_ENV', "${VM_ENV}-win-espresso"],
+      ] else [
+        ['set-export', 'VM_ENV', "${VM_ENV}-espresso"],
+      ]
+    ) + $.build_base_graalvm_image + $.deploy_sdk_base(os, 'espresso') + [
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
+    ] + $.create_releaser_notifier_artifact,
+    notify_groups:: ['deploy'],
     timelimit: '1:45:00',
   },
 
@@ -643,6 +658,16 @@ local devkits = graal_common.devkits;
   deploy_vm_ruby_java21_linux_amd64: vm.vm_java_21 + self.ruby_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_ruby('linux', 'amd64', 'java21') + {name: 'daily-deploy-vm-ruby-java21-linux-amd64', notify_groups:: ["deploy"]},
   deploy_vm_ruby_java21_darwin_amd64: vm.vm_java_21 + self.ruby_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_ruby('darwin', 'amd64', 'java21') + {name: 'daily-deploy-vm-ruby-java21-darwin-amd64', notify_groups:: ["deploy"]},
   deploy_vm_ruby_java21_darwin_aarch64: vm.vm_java_21 + self.ruby_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_ruby('darwin', 'aarch64', 'java21') + {name: 'daily-deploy-vm-ruby-java21-darwin-aarch64', notify_groups:: ["deploy"]},
+
+  #
+  # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
+  #
+
+  deploy_vm_espresso_java21_linux_amd64: vm.vm_java_21 + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_espresso('linux', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-linux-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_espresso('linux', 'aarch64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-linux-aarch64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_darwin_amd64: vm.vm_java_21 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_espresso('darwin', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-darwin-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_espresso('darwin', 'aarch64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-darwin-aarch64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.deploy_build + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
 
   local builds = [
     #

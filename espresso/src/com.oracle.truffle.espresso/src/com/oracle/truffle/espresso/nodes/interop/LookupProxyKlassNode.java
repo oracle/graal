@@ -104,7 +104,7 @@ public abstract class LookupProxyKlassNode extends EspressoNode {
     }
 
     private static Klass lookupOrDefineInBindingsLoader(EspressoForeignProxyGenerator.GeneratedProxyBytes proxyBytes, EspressoContext context) {
-        ClassRegistry registry = context.getRegistries().getClassRegistry(context.getBindings().getBindingsLoader());
+        ClassRegistry registry = context.getRegistries().getClassRegistry(context.getBindingsLoader());
 
         Symbol<Symbol.Type> proxyName = context.getTypes().fromClassGetName(proxyBytes.name);
         Klass proxyKlass = registry.findLoadedKlass(context.getClassLoadingEnv(), proxyName);

@@ -7,6 +7,7 @@ permalink: /security-guide/native-image/
 # Security Considerations in Native Image
 
 The `native-image` builder generates a snapshot of an application after startup and bundles it in a binary executable.
+The security report section of the native image [build output](../reference-manual/native-image/BuildOutput.md#security-report) provides security relevant information about the native image build.
 
 ## Class Initialization
 
@@ -87,6 +88,8 @@ Native Image supports Serialization to help users deserialize the constructors f
 Unless picked up by native image analysis automatically, [these classes have to be pre-specified](../reference-manual/native-image/Reflection.md#manual-configuration), as classes not contained in a native executable cannot be deserialized.
 Native Image cannot prevent exploitation of deserialization vulnerabilities in isolation.
 The [serialization and deserialization Secure Coding Guidelines for Java SE](https://www.oracle.com/java/technologies/javase/seccodeguide.html#8) should be followed.
+
+The security report section of the native image [build output](../reference-manual/native-image/BuildOutput.md#security-report) provides information on whether deserialization code is part of a native image's attack surface or not.
 
 ## Miscellaneous
 

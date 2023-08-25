@@ -644,6 +644,11 @@ public final class Meta extends ContextAccessImpl {
             java_lang_System_initPhase3 = null;
         }
 
+        jdk_internal_loader_ClassLoaders$AppClassLoader = diff() //
+                        .klass(VERSION_8_OR_LOWER, Type.sun_misc_Launcher$AppClassLoader) //
+                        .klass(VERSION_9_OR_HIGHER, Type.jdk_internal_loader_ClassLoaders$AppClassLoader) //
+                        .klass();
+
         if (getJavaVersion().modulesEnabled()) {
             java_lang_Module = knownKlass(Type.java_lang_Module);
             java_lang_Module_name = java_lang_Module.requireDeclaredField(Name.name, Type.java_lang_String);
@@ -848,6 +853,7 @@ public final class Meta extends ContextAccessImpl {
         java_util_List_get = java_util_List.requireDeclaredMethod(Name.get, Signature.Object_int);
         java_util_List_set = java_util_List.requireDeclaredMethod(Name.set, Signature.Object_int_Object);
         java_util_List_size = java_util_List.requireDeclaredMethod(Name.size, Signature._int);
+        java_util_List_add = java_util_List.requireDeclaredMethod(Name.add, Signature._boolean_Object);
         assert java_util_List.isInterface();
 
         java_util_Set = knownKlass(Type.java_util_Set);
@@ -1155,6 +1161,7 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass jdk_internal_loader_ClassLoaders;
     public final Method jdk_internal_loader_ClassLoaders_platformClassLoader;
     public final ObjectKlass jdk_internal_loader_ClassLoaders$PlatformClassLoader;
+    public final ObjectKlass jdk_internal_loader_ClassLoaders$AppClassLoader;
 
     public final ObjectKlass java_lang_Module;
     public final Field java_lang_Module_name;
@@ -1549,6 +1556,7 @@ public final class Meta extends ContextAccessImpl {
     public final Method java_util_List_get;
     public final Method java_util_List_set;
     public final Method java_util_List_size;
+    public final Method java_util_List_add;
 
     public final ObjectKlass java_util_Set;
     public final Method java_util_Set_add;

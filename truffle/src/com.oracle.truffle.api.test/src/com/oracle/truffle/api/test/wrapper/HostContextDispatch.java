@@ -42,12 +42,10 @@ package com.oracle.truffle.api.test.wrapper;
 
 import java.time.Duration;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractSourceDispatch;
 
 import com.oracle.truffle.api.interop.TruffleObject;
 
@@ -65,7 +63,7 @@ public class HostContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public void setAPI(Object receiver, Context key) {
+    public void setAPI(Object receiver, Object key) {
     }
 
     @Override
@@ -79,11 +77,11 @@ public class HostContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public Value eval(Object receiver, String language, Source source) {
+    public Object eval(Object receiver, String language, Object source) {
         HostContext context = (HostContext) receiver;
         APIAccess apiAccess = polyglot.getAPIAccess();
-        AbstractSourceDispatch sourceDispatch = apiAccess.getDispatch(source);
-        Object sourceImpl = apiAccess.getReceiver(source);
+        AbstractSourceDispatch sourceDispatch = apiAccess.getSourceDispatch(source);
+        Object sourceImpl = apiAccess.getSourceReceiver(source);
         String languageId = sourceDispatch.getLanguage(sourceImpl);
         String characters = sourceDispatch.getCharacters(sourceImpl).toString();
 
@@ -92,7 +90,7 @@ public class HostContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public Value asValue(Object receiver, Object hostValue) {
+    public Object asValue(Object receiver, Object hostValue) {
         HostContext context = ((HostContext) receiver);
         if (hostValue instanceof TruffleObject) {
             throw new UnsupportedOperationException("TruffleObject not supported for remote contexts.");
@@ -109,7 +107,7 @@ public class HostContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public Value parse(Object receiver, String language, Source source) {
+    public Object parse(Object receiver, String language, Object source) {
         throw new UnsupportedOperationException();
     }
 

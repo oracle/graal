@@ -30,6 +30,7 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMUnsupportedSyscallNode;
@@ -96,7 +97,7 @@ final class WindowsAMD64PlatformCapability extends BasicAMD64PlatformCapability<
 
     @Override
     public OS getOS() {
-        return OS.Windows;
+        return OS.WINDOWS;
     }
 
     @Override

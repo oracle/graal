@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -77,7 +77,6 @@ _graalvm_hostvm_configs = [
     ('jvm-3-compiler-threads', [], ['--jvm', '--engine.CompilerThreads=3'], 50),
     ('native-3-compiler-threads', [], ['--native', '--engine.CompilerThreads=3'], 100)
 ]
-_known_vms = set()
 _base_jdk = None
 
 
@@ -198,7 +197,7 @@ class LibraryConfig(AbstractNativeImageConfig):
 
 
 class LanguageLibraryConfig(LibraryConfig):
-    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, **kwargs):
+    def __init__(self, jar_distributions, build_args, language, main_class=None, is_sdk_launcher=True, launchers=None, option_vars=None, default_vm_args=None, headers=False, set_default_relative_home_path=True, **kwargs):
         """
         :param str language
         :param str main_class
@@ -217,8 +216,9 @@ class LanguageLibraryConfig(LibraryConfig):
         self.default_vm_args = [] if default_vm_args is None else default_vm_args
         assert all(arg.startswith("--vm.") for arg in self.default_vm_args)
 
-        # Ensure the language launcher can always find the language home
-        self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
+        if set_default_relative_home_path:
+            # Ensure the language launcher can always find the language home
+            self.add_relative_home_path(language, relpath('.', dirname(self.destination)))
 
 class GraalVmComponent(object):
     def __init__(self,
@@ -252,7 +252,9 @@ class GraalVmComponent(object):
                  supported=None,
                  early_adopter=False,
                  stability=None,
-                 extra_installable_qualifiers=None):
+                 extra_installable_qualifiers=None,
+                 has_relative_home=True,
+                 jvm_configs=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -264,6 +266,11 @@ class GraalVmComponent(object):
         :param list[str | (str, str)] provided_executables: executables to be placed in the appropriate `bin` directory.
             In the list, strings represent a path inside the component (e.g., inside a support distribution).
             Tuples `(dist, exec)` represent an executable to be copied found in `dist`, at path `exec` (the same basename will be used).
+        :param jvm_configs: list of dicts that describe changes to the `lib/jvm.cfg` file. Example:
+            {
+                'configs': ['-truffle KNOWN'],
+                'priority': -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+            }
         :type license_files: list[str]
         :type third_party_license_files: list[str]
         :type polyglot_lib_build_args: list[str]
@@ -286,6 +293,8 @@ class GraalVmComponent(object):
         :type post_install_msg: str
         :type stability: str | None
         :type extra_installable_qualifiers: list[str] | None
+        :type has_relative_home: bool
+        :type jvm_configs: list[dict] or None
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -321,6 +330,8 @@ class GraalVmComponent(object):
         self.post_install_msg = post_install_msg
         self.installable_id = installable_id or self.dir_name
         self.extra_installable_qualifiers = extra_installable_qualifiers or []
+        self.has_relative_home = has_relative_home
+        self.jvm_configs = jvm_configs or []
 
         if supported is not None or early_adopter:
             if stability is not None:
@@ -526,12 +537,6 @@ def register_vm_config(config_name, components, suite, dist_name=None, env_file=
 
 def get_graalvm_hostvm_configs():
     return _graalvm_hostvm_configs
-
-
-def register_known_vm(name):
-    if name in _known_vms:
-        raise mx.abort("VM '{}' already registered".format(name))
-    _known_vms.add(name)
 
 
 def base_jdk():
@@ -781,7 +786,8 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
     """
     Gets the argument for the jlink ``--add-options`` flag.
 
-    :param bool default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
+    :param bool | str default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
+                    When set to 'lib' ensure the JVMCI compiler library is used.
     :return list: the list of VM options to cook into the image
     """
     vm_options = []
@@ -810,6 +816,8 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
                 vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
                 if threads is not None and threads != 1:
                     vm_options.append('-XX:JVMCIThreadsPerNativeLibraryRuntime=1')
+                if default_to_jvmci == 'lib':
+                    vm_options.append('-XX:+UseJVMCINativeLibrary')
                 vm_options.extend(['-XX:-UnlockExperimentalVMOptions'])
             else:
                 # Don't default to using JVMCI as JIT unless Graal is being updated in the image.
@@ -891,12 +899,14 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                      The choices are:
                        "create" - an empty module is created
                         "error" - raise an error
+                         "warn" - raise a warning
                            None - do nothing
     :param lambda with_source: returns True if the sources of a module distribution must be included in the new JDK
     :param dict vendor_info: values for the jlink vendor options added by JDK-8232080
     :param bool use_upgrade_module_path: if True, then instead of linking `module_dists` into the image, resolve
                      them via --upgrade-module-path at image runtime
-    :param bool default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules
+    :param bool | str default_to_jvmci: default to using JVMCI as JIT, without looking at the included modules.
+                     When set to 'lib' ensure the JVMCI compiler library is used.
     :return bool: False if use_upgrade_module_path == True and the existing image is up to date otherwise True
     """
     assert callable(with_source)
@@ -942,9 +952,9 @@ def jlink_new_jdk(jdk, dst_jdk_dir, module_dists, ignore_dists,
                     if target not in all_module_names and target not in ignore_module_names and target not in hashes:
                         target_requires.setdefault(target, set()).add(jmd.name)
         if target_requires and missing_export_target_action is not None:
-            if missing_export_target_action == 'error':
-                mx.abort('Target(s) of qualified exports cannot be resolved: ' + '.'.join(target_requires.keys()))
-            assert missing_export_target_action == 'create', 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
+            if missing_export_target_action in ('error', 'warn'):
+                mx.abort_or_warn('Target(s) of qualified exports cannot be resolved:\n* ' + '\n* '.join(f"{k} required by {v}" for k, v in target_requires.items()), missing_export_target_action == 'abort')
+            assert missing_export_target_action in ('create', 'warn'), 'invalid value for missing_export_target_action: ' + str(missing_export_target_action)
 
             for name, requires in sorted(target_requires.items()):
                 module_jar = join(build_dir, name + '.jar')
@@ -1239,6 +1249,3 @@ Expected component list:
 Actual component list:
 {}
 {}Did you forget to update the registration of the GraalVM config?""".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines + err.lines), sorted(components), got_components, diff))
-
-
-register_known_vm('truffle')

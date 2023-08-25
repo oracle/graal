@@ -598,7 +598,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 if (isWordTypeExpected && !isWordValue) {
                     throw UserError.abort("Expected Word but got Object for %s in %s", reason, method.asStackTraceElement(bci()));
                 } else if (!isWordTypeExpected && isWordValue) {
-                    throw UserError.abort("Expected Object but got Word for %s in %s", reason, method.asStackTraceElement(bci()));
+                    throw UserError.abort("Expected Object but got Word for %s in %s. One possible cause for this error is when word values are passed into lambdas as parameters " +
+                                    "or from variables in an enclosing scope, which is not supported, but can be solved by instead using explicit classes (including anonymous classes).",
+                                    reason, method.asStackTraceElement(bci()));
                 }
             }
         }
@@ -754,17 +756,24 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                 assert frameState.rethrowException();
             }
 
-            DeoptEntrySupport deoptNode = graph.add(deopt.isProxy() ? new DeoptProxyAnchorNode() : new DeoptEntryNode());
+            int proxifiedInvokeBci = deopt.proxifiedInvokeBci();
+            boolean isProxy = deopt.isProxy();
+            DeoptEntrySupport deoptNode;
+            if (isProxy) {
+                deoptNode = graph.add(new DeoptProxyAnchorNode(proxifiedInvokeBci));
+            } else {
+                boolean proxifysInvoke = deopt.proxifysInvoke();
+                deoptNode = graph.add(proxifysInvoke ? DeoptEntryNode.create(proxifiedInvokeBci) : DeoptEntryNode.create());
+            }
             FrameState stateAfter = frameState.create(deopt.frameStateBci(), deoptNode);
             deoptNode.setStateAfter(stateAfter);
             if (lastInstr != null) {
                 lastInstr.setNext(deoptNode.asFixedNode());
             }
 
-            if (deopt.isProxy()) {
+            if (isProxy) {
                 lastInstr = (DeoptProxyAnchorNode) deoptNode;
             } else {
-                assert !deopt.duringCall() : "Implicit deopt entries from invokes cannot have explicit deopt entries.";
                 DeoptEntryNode deoptEntryNode = (DeoptEntryNode) deoptNode;
                 deoptEntryNode.setNext(graph.add(new DeoptEntryBeginNode()));
 
@@ -772,7 +781,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
                  * DeoptEntries for positions not during an exception dispatch (rethrowException)
                  * also must be linked to their exception target.
                  */
-                if (!deopt.rethrowException()) {
+                if (!deopt.isExceptionDispatch()) {
                     /*
                      * Saving frameState so that different modifications can be made for next() and
                      * exceptionEdge().

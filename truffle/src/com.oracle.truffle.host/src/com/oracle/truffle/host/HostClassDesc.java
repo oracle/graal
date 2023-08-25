@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.host;
 
+import java.lang.invoke.MethodHandles;
 import java.lang.ref.Reference;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -121,6 +122,22 @@ final class HostClassDesc {
         }
     }
 
+    /**
+     * @return lookup for accessing the specified class, or <code>null</code> if the class is not
+     *         accessible.
+     */
+    static MethodHandles.Lookup getLookup(Class<?> clazz, HostClassCache hostAccess) {
+        try {
+            MethodHandles.Lookup lookup = hostAccess.getMethodLookup(clazz);
+            lookup.accessClass(clazz);
+            return lookup;
+        } catch (IllegalAccessException e) {
+            // unfortunately there is no better way to detect access to a class
+            // than by catching IllegalAccessException
+            return null;
+        }
+    }
+
     private static class Members {
         final Map<String, HostMethodDesc> methods;
         final Map<String, HostMethodDesc> staticMethods;
@@ -163,19 +180,28 @@ final class HostClassDesc {
             this.functionalMethod = functionalInterfaceMethodImpl;
         }
 
-        private static boolean isClassAccessible(Class<?> declaringClass, HostClassCache hostAccess) {
-            return Modifier.isPublic(declaringClass.getModifiers()) && HostContext.verifyModuleVisibility(hostAccess.getUnnamedModule(), declaringClass);
+        /**
+         * @return lookup for accessing the specified class, or <code>null</code> if the class is
+         *         not accessible or not public.
+         */
+        private static MethodHandles.Lookup getLookupForPublicClass(Class<?> declaringClass, HostClassCache hostAccess) {
+            if (Modifier.isPublic(declaringClass.getModifiers())) {
+                return getLookup(declaringClass, hostAccess);
+            } else {
+                return null;
+            }
         }
 
         private static HostMethodDesc collectPublicConstructors(HostClassCache hostAccess, Class<?> type) {
             HostMethodDesc ctor = null;
-            if (isClassAccessible(type, hostAccess) && !Modifier.isAbstract(type.getModifiers())) {
+            MethodHandles.Lookup lookup;
+            if ((lookup = getLookupForPublicClass(type, hostAccess)) != null && !Modifier.isAbstract(type.getModifiers())) {
                 for (Constructor<?> c : type.getConstructors()) {
                     if (!hostAccess.allowsAccess(c)) {
                         continue;
                     }
                     boolean scoped = hostAccess.methodScoped(c);
-                    SingleMethod overload = SingleMethod.unreflect(c, scoped);
+                    SingleMethod overload = SingleMethod.unreflect(lookup, c, scoped);
                     ctor = ctor == null ? overload : merge(ctor, overload);
                 }
             }
@@ -189,7 +215,7 @@ final class HostClassDesc {
         private static void collectPublicMethods(HostClassCache hostAccess, Class<?> type, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap,
                         Map<Object, Object> visited,
                         Class<?> startType) {
-            boolean isPublicType = isClassAccessible(type, hostAccess) && !Proxy.isProxyClass(type);
+            boolean isPublicType = getLookupForPublicClass(type, hostAccess) != null && !Proxy.isProxyClass(type);
             boolean includeInherited = hostAccess.allowsPublicAccess || hostAccess.allowsAccessInheritance;
             List<Method> bridgeMethods = null;
             /**
@@ -203,7 +229,7 @@ final class HostClassDesc {
                     if (Modifier.isStatic(m.getModifiers()) && (declaringClass != startType && Modifier.isInterface(declaringClass.getModifiers()))) {
                         // do not inherit static interface methods
                         continue;
-                    } else if (!isClassAccessible(declaringClass, hostAccess) && !Proxy.isProxyClass(declaringClass)) {
+                    } else if (getLookupForPublicClass(declaringClass, hostAccess) == null && !Proxy.isProxyClass(declaringClass)) {
                         // the declaring class and the method itself must be public and accessible
                         continue;
                     } else if (m.isBridge() && hostAccess.allowsAccess(m)) {
@@ -307,7 +333,7 @@ final class HostClassDesc {
         private static void putMethod(HostClassCache hostAccess, Method m, Map<String, HostMethodDesc> methodMap, Map<String, HostMethodDesc> staticMethodMap, boolean onlyVisibleFromJniName) {
             assert hostAccess.allowsAccess(m);
             boolean scoped = hostAccess.methodScoped(m);
-            SingleMethod method = SingleMethod.unreflect(m, scoped, onlyVisibleFromJniName);
+            SingleMethod method = SingleMethod.unreflect(hostAccess.getMethodLookup(m.getDeclaringClass()), m, scoped, onlyVisibleFromJniName);
             Map<String, HostMethodDesc> map = Modifier.isStatic(m.getModifiers()) ? staticMethodMap : methodMap;
             map.merge(m.getName(), method, MERGE);
         }
@@ -325,7 +351,8 @@ final class HostClassDesc {
         }
 
         private static void collectPublicFields(HostClassCache hostAccess, Class<?> type, Map<String, HostFieldDesc> fieldMap, Map<String, HostFieldDesc> staticFieldMap) {
-            if (isClassAccessible(type, hostAccess)) {
+            MethodHandles.Lookup lookup;
+            if ((lookup = getLookupForPublicClass(type, hostAccess)) != null) {
                 boolean inheritedPublicInstanceFields = false;
                 boolean inheritedPublicInaccessibleFields = false;
                 for (Field f : type.getFields()) {
@@ -333,10 +360,10 @@ final class HostClassDesc {
                         if (f.getDeclaringClass() == type) {
                             assert !fieldMap.containsKey(f.getName());
                             if (hostAccess.allowsAccess(f)) {
-                                fieldMap.put(f.getName(), HostFieldDesc.unreflect(f));
+                                fieldMap.put(f.getName(), HostFieldDesc.unreflect(lookup, f));
                             }
                         } else {
-                            if (isClassAccessible(f.getDeclaringClass(), hostAccess)) {
+                            if (getLookupForPublicClass(f.getDeclaringClass(), hostAccess) != null) {
                                 inheritedPublicInstanceFields = true;
                             } else {
                                 inheritedPublicInaccessibleFields = true;
@@ -345,7 +372,7 @@ final class HostClassDesc {
                     } else {
                         // do not inherit static fields
                         if (f.getDeclaringClass() == type && hostAccess.allowsAccess(f)) {
-                            staticFieldMap.put(f.getName(), HostFieldDesc.unreflect(f));
+                            staticFieldMap.put(f.getName(), HostFieldDesc.unreflect(lookup, f));
                         }
                     }
                 }
@@ -381,9 +408,10 @@ final class HostClassDesc {
                     if (mayHaveInaccessibleFields && !fieldNames.add(f.getName())) {
                         continue;
                     }
-                    if (isClassAccessible(f.getDeclaringClass(), hostAccess)) {
+                    MethodHandles.Lookup lookup;
+                    if ((lookup = getLookupForPublicClass(f.getDeclaringClass(), hostAccess)) != null) {
                         if (hostAccess.allowsAccess(f)) {
-                            fieldMap.putIfAbsent(f.getName(), HostFieldDesc.unreflect(f));
+                            fieldMap.putIfAbsent(f.getName(), HostFieldDesc.unreflect(lookup, f));
                         }
                     } else {
                         assert mayHaveInaccessibleFields;
@@ -397,7 +425,7 @@ final class HostClassDesc {
 
         private static Method findFunctionalInterfaceMethod(HostClassCache hostAccess, Class<?> clazz) {
             for (Class<?> iface : clazz.getInterfaces()) {
-                if (isClassAccessible(iface, hostAccess) && iface.isAnnotationPresent(FunctionalInterface.class)) {
+                if (getLookupForPublicClass(iface, hostAccess) != null && iface.isAnnotationPresent(FunctionalInterface.class)) {
                     for (Method m : iface.getMethods()) {
                         if (Modifier.isAbstract(m.getModifiers()) && !isObjectMethodOverride(m)) {
                             return m;

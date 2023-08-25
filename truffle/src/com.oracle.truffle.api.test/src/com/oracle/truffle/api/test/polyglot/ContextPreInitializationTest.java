@@ -1287,7 +1287,7 @@ public class ContextPreInitializationTest {
     @Test
     public void testFileSystemSwitch() throws Exception {
         setPatchable(FIRST);
-        Path tmpDir = Files.createTempDirectory("testFileSystemSwitch");
+        Path tmpDir = Files.createTempDirectory("testFileSystemSwitch").toRealPath();
         Path buildHome = tmpDir.resolve("build");
         Path execHome = tmpDir.resolve("exec");
         Files.createDirectories(buildHome);
@@ -2118,7 +2118,7 @@ public class ContextPreInitializationTest {
     }
 
     private void triggerPreinitialization(Engine engine) throws ReflectiveOperationException {
-        TestAPIAccessor.engineAccess().preinitializeContext(findImpl().getAPIAccess().getReceiver(engine));
+        TestAPIAccessor.engineAccess().preinitializeContext(findImpl().getAPIAccess().getEngineReceiver(engine));
     }
 
     AbstractPolyglotImpl findImpl() throws ReflectiveOperationException {

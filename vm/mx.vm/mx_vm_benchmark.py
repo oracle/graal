@@ -42,6 +42,7 @@ import mx
 import mx_benchmark
 import mx_sdk_vm
 import mx_sdk_vm_impl
+from mx_sdk_vm_impl import svm_experimental_options
 
 _suite = mx.suite('vm')
 _polybench_vm_registry = mx_benchmark.VmRegistry('PolyBench', 'polybench-vm')
@@ -175,43 +176,48 @@ class NativeImageVM(GraalVm):
             self.log_dir = self.output_dir
             self.base_image_build_args = [os.path.join(vm.home(), 'bin', 'native-image')]
             self.base_image_build_args += ['--no-fallback', '-g']
-            self.base_image_build_args += ['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode'] if vm.is_gate else []
+            self.base_image_build_args += svm_experimental_options(['-H:+VerifyGraalGraphs', '-H:+VerifyPhases', '--diagnostics-mode']) if vm.is_gate else []
             self.base_image_build_args += ['-H:+ReportExceptionStackTraces']
             self.base_image_build_args += bm_suite.build_assertions(self.benchmark_name, vm.is_gate)
 
             self.base_image_build_args += self.system_properties
             self.bundle_path = self.get_bundle_path_if_present()
+            self.bundle_create_path = self.get_bundle_create_path_if_present()
             if not self.bundle_path:
                 self.base_image_build_args += self.classpath_arguments
                 self.base_image_build_args += self.executable
-                self.base_image_build_args += ['-H:Path=' + self.output_dir]
-            self.base_image_build_args += ['-H:ConfigurationFileDirectories=' + self.config_dir]
-            self.base_image_build_args += ['-H:+PrintAnalysisStatistics']
-            self.base_image_build_args += ['-H:+PrintCallEdges']
-            self.base_image_build_args += ['-H:+CollectImageBuildStatistics']
+                self.base_image_build_args += svm_experimental_options(['-H:Path=' + self.output_dir])
+            self.base_image_build_args += svm_experimental_options([
+                '-H:ConfigurationFileDirectories=' + self.config_dir,
+                '-H:+PrintAnalysisStatistics',
+                '-H:+PrintCallEdges',
+                '-H:+CollectImageBuildStatistics',
+            ])
             self.image_build_reports_directory = os.path.join(self.output_dir, 'reports')
+            if self.bundle_create_path is not None:
+                self.image_build_reports_directory = os.path.join(self.output_dir, self.bundle_create_path)
             self.image_build_stats_file = os.path.join(self.image_build_reports_directory, 'image_build_statistics.json')
+
             if vm.is_quickbuild:
                 self.base_image_build_args += ['-Ob']
             if vm.use_string_inlining:
-                self.base_image_build_args += ['-H:+UseStringInlining']
+                self.base_image_build_args += svm_experimental_options(['-H:+UseStringInlining'])
             if vm.is_llvm:
-                self.base_image_build_args += ['-H:CompilerBackend=llvm', '-H:Features=org.graalvm.home.HomeFinderFeature', '-H:DeadlockWatchdogInterval=0']
+                self.base_image_build_args += ['--features=org.graalvm.home.HomeFinderFeature'] + svm_experimental_options(['-H:CompilerBackend=llvm', '-H:DeadlockWatchdogInterval=0'])
             if vm.gc:
-                self.base_image_build_args += ['--gc=' + vm.gc, '-H:+SpawnIsolates']
+                self.base_image_build_args += ['--gc=' + vm.gc] + svm_experimental_options(['-H:+SpawnIsolates'])
             if vm.native_architecture:
                 self.base_image_build_args += ['-march=native']
             if vm.analysis_context_sensitivity:
-                self.base_image_build_args += ['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows']
+                self.base_image_build_args += svm_experimental_options(['-H:AnalysisContextSensitivity=' + vm.analysis_context_sensitivity, '-H:-RemoveSaturatedTypeFlows', '-H:+AliasArrayTypeFlows'])
             if vm.no_inlining_before_analysis:
-                self.base_image_build_args += ['-H:-InlineBeforeAnalysis']
+                self.base_image_build_args += svm_experimental_options(['-H:-InlineBeforeAnalysis'])
             if vm.optimization_level:
                 self.base_image_build_args += ['-' + vm.optimization_level]
             if vm.async_sampler:
                 self.base_image_build_args += ['-R:+FlightRecorder',
                                                '-R:StartFlightRecording=filename=default.jfr',
-                                               '--enable-monitoring=jfr',
-                                               '-H:+SignalHandlerBasedExecutionSampler']
+                                               '--enable-monitoring=jfr']
                 for stage in ('instrument-image', 'instrument-run'):
                     if stage in self.stages:
                         self.stages.remove(stage)
@@ -232,6 +238,16 @@ class NativeImageVM(GraalVm):
             if len(bundle_arg) == 1:
                 bp = bundle_arg[0][len(bundle_apply_arg):]
                 return bp
+
+            return None
+
+        def get_bundle_create_path_if_present(self):
+            bundle_create_arg = "--bundle-create"
+            bundle_arg_idx = [idx for idx, arg in enumerate(self.extra_image_build_arguments) if arg.startswith(bundle_create_arg)]
+            if len(bundle_arg_idx) == 1:
+                bp = join(self.extra_image_build_arguments[bundle_arg_idx[0] + 1] + ".output", "default", "reports")
+                return bp
+
             return None
 
     def __init__(self, name, config_name, extra_java_args=None, extra_launcher_args=None, **kwargs):
@@ -906,12 +922,12 @@ class NativeImageVM(GraalVm):
                         zipf.write(os.path.join(root, file), os.path.relpath(os.path.join(root, file), os.path.join(path, '..')))
 
     def run_stage_instrument_image(self, config, stages, out, i, instrumentation_image_name, image_path, image_path_latest, instrumented_iterations):
-        executable_name_args = ['-H:Name=' + instrumentation_image_name]
+        executable_name_args = ['-o', instrumentation_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
-        pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
+        pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
         instrument_args = ['--pgo-instrument'] + ([] if i == 0 else pgo_args)
         if self.jdk_profiles_collect:
-            instrument_args += ['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}']
+            instrument_args += svm_experimental_options(['-H:+ProfilingEnabled', '-H:+AOTPriorityInline', '-H:-SamplingCollect', f'-H:ProfilingPackagePrefixes={self.generate_profiling_package_prefixes()}'])
 
         with stages.set_command(config.base_image_build_args + executable_name_args + instrument_args) as s:
             s.execute_command()
@@ -955,13 +971,15 @@ class NativeImageVM(GraalVm):
     def _print_binary_size(self, config, out):
         # The image size for benchmarks is tracked by printing on stdout and matching the rule.
         image_path = os.path.join(config.output_dir, config.final_image_name)
+        if config.bundle_create_path is not None:
+            image_path = os.path.join(config.output_dir, config.bundle_create_path[:-len("reports")], config.bundle_create_path.split(".")[0])
         image_size = os.stat(image_path).st_size
         out(f'The executed image size for benchmark {config.benchmark_suite_name}:{config.benchmark_name} is {image_size} B')
 
     def run_stage_image(self, config, stages, out):
-        executable_name_args = ['-H:Name=' + config.final_image_name]
+        executable_name_args = ['-o', config.final_image_name]
         pgo_args = ['--pgo=' + config.latest_profile_path]
-        pgo_args += ['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled']
+        pgo_args += svm_experimental_options(['-H:' + ('+' if self.pgo_context_sensitive else '-') + 'PGOContextSensitivityEnabled'])
         instrumented_iterations = self.pgo_instrumented_iterations if config.pgo_iteration_num is None else int(config.pgo_iteration_num)
         if self.adopted_jdk_pgo:
             # choose appropriate profiles
@@ -977,11 +995,11 @@ class NativeImageVM(GraalVm):
             else:
                 mx.warn(f'SubstrateVM Enterprise with JDK{jdk_version} does not contain JDK profiles.')
                 adopted_profile = join(mx.suite('substratevm-enterprise').mxDir, 'empty.iprof')
-            jdk_profiles_args = [f'-H:AdoptedPGOEnabled={adopted_profile}']
+            jdk_profiles_args = svm_experimental_options([f'-H:AdoptedPGOEnabled={adopted_profile}'])
         else:
             jdk_profiles_args = []
         if self.profile_inference_feature_extraction:
-            ml_args = ['-H:+MLGraphFeaturesExtraction', '-H:+ProfileInferenceDumpFeatures']
+            ml_args = svm_experimental_options(['-H:+MLGraphFeaturesExtraction', '-H:+ProfileInferenceDumpFeatures'])
             dump_file_flag = 'ProfileInferenceDumpFile'
             if dump_file_flag not in ''.join(config.base_image_build_args):
                 mx.warn("To dump the profile inference features to a specific location, please set the '{}' flag.".format(dump_file_flag))
@@ -1553,6 +1571,9 @@ def register_graalvm_vms():
     host_vm_names = [default_host_vm_name] + ([short_host_vm_name] if short_host_vm_name != default_host_vm_name else [])
     for host_vm_name in host_vm_names:
         for config_name, java_args, launcher_args, priority in mx_sdk_vm.get_graalvm_hostvm_configs():
+            if config_name.startswith("jvm"):
+                # needed for NFI CLinker benchmarks
+                launcher_args += ['--vm.-enable-preview']
             mx_benchmark.java_vm_registry.add_vm(GraalVm(host_vm_name, config_name, java_args, launcher_args), _suite, priority)
             for mode, mode_options in _polybench_modes:
                 _polybench_vm_registry.add_vm(PolyBenchVm(host_vm_name, config_name + "-" + mode, [], mode_options + launcher_args))

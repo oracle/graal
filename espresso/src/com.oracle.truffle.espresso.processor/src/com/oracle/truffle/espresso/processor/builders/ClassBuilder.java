@@ -38,7 +38,7 @@ public final class ClassBuilder extends AbstractCodeBuilder {
     private JavadocBuilder javaDoc;
     private ModifierBuilder modifierBuilder = new ModifierBuilder();
     private String superClass = null;
-    private final List<String> annotations = new ArrayList<>();
+    private final List<AnnotationBuilder> annotations = new ArrayList<>();
     private final Set<String> superInterfaces = new HashSet<>();
     private final List<AbstractCodeBuilder> members = new ArrayList<>();
 
@@ -63,8 +63,8 @@ public final class ClassBuilder extends AbstractCodeBuilder {
         return this;
     }
 
-    public ClassBuilder withAnnotation(String... annotationParts) {
-        annotations.add(String.join("", annotationParts));
+    public ClassBuilder withAnnotation(AnnotationBuilder annotation) {
+        annotations.add(annotation);
         return this;
     }
 
@@ -99,8 +99,8 @@ public final class ClassBuilder extends AbstractCodeBuilder {
             javaDoc.buildImpl(sb);
         }
 
-        for (String annotation : annotations) {
-            sb.appendLine(annotation);
+        for (AnnotationBuilder annotation : annotations) {
+            annotation.buildImpl(sb);
         }
 
         modifierBuilder.buildImpl(sb);

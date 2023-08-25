@@ -265,7 +265,9 @@ class ReflectionProcessor extends AbstractProcessor {
                 List<String> classNames = (List<String>) args.get(5);
                 @SuppressWarnings("unchecked")
                 List<String> locales = (List<String>) args.get(6);
-                resourceConfiguration.addBundle(condition, classNames, locales, baseName);
+                if (baseName != null) {
+                    resourceConfiguration.addBundle(condition, classNames, locales, baseName);
+                }
                 break;
             }
             case "allocateInstance": {

@@ -105,6 +105,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return selected;
     }
 
+    public final boolean ropProtection = access.getFieldValue("VM_Version::_rop_protection", Boolean.class, "bool", false);
+
     public final boolean cAssertions = getConstant("ASSERT", Boolean.class);
 
     public final int codeEntryAlignment = getFlag("CodeEntryAlignment", Integer.class);
@@ -140,7 +142,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final String onSpinWaitInst = getFlag("OnSpinWaitInst", String.class, "none", osArch.equals("aarch64"));
     public final int onSpinWaitInstCount = getFlag("OnSpinWaitInstCount", Integer.class, 0, osArch.equals("aarch64"));
 
-    public final boolean preserveFramePointer = getFlag("PreserveFramePointer", Boolean.class);
+    public final boolean preserveFramePointer = getFlag("PreserveFramePointer", Boolean.class) || ropProtection;
 
     public final int diagnoseSyncOnValueBasedClasses = getFlag("DiagnoseSyncOnValueBasedClasses", Integer.class);
 
@@ -223,6 +225,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int stackShadowPages = getFlag("StackShadowPages", Integer.class);
     public final int vmPageSize = getFieldValue("CompilerToVM::Data::vm_page_size", Integer.class, JDK >= 21 ? "size_t" : "int");
+
+    public final int softwarePrefetchHintDistance = getFlag("SoftwarePrefetchHintDistance", Integer.class, -1, "aarch64".equals(osArch));
 
     public final int markOffset = getFieldOffset("oopDesc::_mark", Integer.class, markWord);
     public final int hubOffset = getFieldOffset("oopDesc::_metadata._klass", Integer.class, "Klass*");
@@ -766,7 +770,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         int offset = -1;
         boolean isWord = false;
         if (JDK >= 20) {
-            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int64_t");
+            String cppType = JDK >= 22 ? "intx" : "int64_t";
+            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, cppType);
             isWord = true;
         }
         threadHeldMonitorCountOffset = offset;

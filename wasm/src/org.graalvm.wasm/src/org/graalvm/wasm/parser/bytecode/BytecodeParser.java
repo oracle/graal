@@ -48,7 +48,6 @@ import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.Linker;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.collection.ByteArrayList;
@@ -62,6 +61,7 @@ import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -69,7 +69,6 @@ import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
-import static org.graalvm.wasm.WasmType.I32_TYPE;
 
 /**
  * Allows to parse the runtime bytecode and reset modules.
@@ -87,20 +86,13 @@ public abstract class BytecodeParser {
             final int address = instance.globalAddress(i);
             final long value = module.globalInitialValue(i);
             if (module.globalInitialized(i)) {
-                if (module.globalFunctionOrNull(i)) {
+                if (module.globalIsReference(i)) {
                     globals.storeReference(address, WasmConstant.NULL);
                 } else {
                     globals.storeLong(address, value);
                 }
             } else {
-                if (module.globalFunctionOrNull(i)) {
-                    final int functionIndex = (int) value;
-                    final WasmFunctionInstance function = instance.functionInstance(functionIndex);
-                    globals.storeReference(address, function);
-                } else {
-                    final int existingAddress = instance.globalAddress(module.globalExistingIndex(i));
-                    globals.storeLong(address, globals.loadAsLong(existingAddress));
-                }
+                Linker.initializeGlobal(context, instance, i, module.globalInitializerBytecode(i));
             }
         }
     }
@@ -164,23 +156,19 @@ public abstract class BytecodeParser {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                final int offsetGlobalIndex;
+                final byte[] offsetBytecode;
                 long offsetAddress;
-                if ((flags & BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX) {
-                    offsetGlobalIndex = (int) value;
+                if ((flags & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE) {
+                    int offsetBytecodeLength = (int) value;
+                    offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                    effectiveOffset += offsetBytecodeLength;
                     offsetAddress = -1;
                 } else {
-                    offsetGlobalIndex = -1;
+                    offsetBytecode = null;
                     offsetAddress = value;
                 }
-                if (offsetGlobalIndex != -1) {
-                    int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
-                    byte globalType = instance.symbolTable().globalValueType(offsetGlobalIndex);
-                    if (globalType == I32_TYPE) {
-                        offsetAddress = context.globals().loadAsInt(offsetGlobalAddress);
-                    } else {
-                        offsetAddress = context.globals().loadAsLong(offsetGlobalAddress);
-                    }
+                if (offsetBytecode != null) {
+                    offsetAddress = ((Number) Linker.evalConstantExpression(context, instance, offsetBytecode)).longValue();
                 }
 
                 final int memoryIndex;
@@ -280,23 +268,32 @@ public abstract class BytecodeParser {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                final int offsetGlobalIndex;
-                switch (flags & BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_MASK) {
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_UNDEFINED:
-                        offsetGlobalIndex = -1;
+                final byte[] offsetBytecode;
+                switch (flags & BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_MASK) {
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_UNDEFINED:
+                        offsetBytecode = null;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U8:
-                        offsetGlobalIndex = rawPeekU8(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U8: {
+                        int offsetBytecodeLength = rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U16:
-                        offsetGlobalIndex = rawPeekU16(bytecode, effectiveOffset);
+                    }
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U16: {
+                        int offsetBytecodeLength = rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_I32:
-                        offsetGlobalIndex = rawPeekI32(bytecode, effectiveOffset);
+                    }
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_I32: {
+                        int offsetBytecodeLength = rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
+                    }
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
@@ -320,7 +317,7 @@ public abstract class BytecodeParser {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                linker.immediatelyResolveElemSegment(context, instance, tableIndex, i, offsetAddress, offsetGlobalIndex, effectiveOffset, elemCount);
+                linker.immediatelyResolveElemSegment(context, instance, tableIndex, offsetAddress, offsetBytecode, effectiveOffset, elemCount);
             } else if (elemMode == SegmentMode.PASSIVE) {
                 linker.immediatelyResolvePassiveElementSegment(context, instance, i, effectiveOffset, elemCount);
             }
@@ -810,6 +807,9 @@ public abstract class BytecodeParser {
                         break;
                     }
                     switch (atomicOpcode) {
+                        case Bytecode.ATOMIC_NOTIFY:
+                        case Bytecode.ATOMIC_WAIT32:
+                        case Bytecode.ATOMIC_WAIT64:
                         case Bytecode.ATOMIC_I32_LOAD:
                         case Bytecode.ATOMIC_I64_LOAD:
                         case Bytecode.ATOMIC_I32_LOAD8_U:

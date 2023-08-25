@@ -1,0 +1,22 @@
+This Native Image Bundle launcher allows running the bundled application.
+
+Usage: java -jar bundle-file [options] [bundle-application-options]
+
+where options include:
+
+    --with-native-image-agent[,update-bundle[=<new-bundle-name>]]
+                runs the application with a native-image-agent attached
+                'update-bundle' adds the agents output to the bundle-files classpath.
+                '=<new-bundle-name>' creates a new bundle with the agent output instead.
+                Note 'update-bundle' requires native-image to be installed
+
+    --container[=<container-tool>][,dockerfile=<Dockerfile>]
+                sets up a container image for execution and executes the bundled application
+                from inside that container. Requires podman or rootless docker to be installed.
+                If available, 'podman' is preferred and rootless 'docker' is the fallback. Specifying
+                one or the other as '=<container-tool>' forces the use of a specific tool.
+                'dockerfile=<Dockerfile>': Use a user-provided 'Dockerfile' instead of the Dockerfile
+                bundled with the application
+
+    --verbose   enable verbose output
+    --help      print this help message

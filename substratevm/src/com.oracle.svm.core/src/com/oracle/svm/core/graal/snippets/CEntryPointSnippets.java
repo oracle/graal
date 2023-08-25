@@ -90,6 +90,7 @@ import com.oracle.svm.core.graal.nodes.CEntryPointEnterNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointLeaveNode;
 import com.oracle.svm.core.graal.nodes.CEntryPointUtilityNode;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
@@ -231,13 +232,14 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             parameters.setReservedSpaceSize(WordFactory.unsigned(parsedArgs.read(IsolateArgumentParser.getOptionIndex(SubstrateGCOptions.ReservedAddressSpaceSize))));
         }
 
-        WordPointer isolate = StackValue.get(WordPointer.class);
-        int error = Isolates.create(isolate, parameters);
+        WordPointer isolatePtr = StackValue.get(WordPointer.class);
+        int error = Isolates.create(isolatePtr, parameters);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
+        Isolate isolate = isolatePtr.read();
         if (SpawnIsolates.getValue()) {
-            setHeapBase(Isolates.getHeapBase(isolate.read()));
+            setHeapBase(Isolates.getHeapBase(isolate));
         }
 
         return createIsolate0(parsedArgs, isolate, vmThreadSize);
@@ -245,9 +247,10 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
     @Uninterruptible(reason = "Thread state not yet set up.")
     @NeverInline(value = "Ensure this code cannot rise above where heap base is set.")
-    private static int createIsolate0(CLongPointer parsedArgs, WordPointer isolate, int vmThreadSize) {
+    private static int createIsolate0(CLongPointer parsedArgs, Isolate isolate, int vmThreadSize) {
+
         IsolateArgumentParser.singleton().persistOptions(parsedArgs);
-        IsolateListenerSupport.singleton().afterCreateIsolate(isolate.read());
+        IsolateListenerSupport.singleton().afterCreateIsolate(isolate);
 
         CodeInfoTable.prepareImageCodeInfo();
         if (MultiThreaded.getValue()) {
@@ -255,7 +258,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
             }
         }
-        int error = attachThread(isolate.read(), false, false, vmThreadSize, true);
+        int error = attachThread(isolate, false, false, vmThreadSize, true);
         if (error != CEntryPointErrors.NO_ERROR) {
             return error;
         }
@@ -304,6 +307,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
             }
         }
         Isolates.setCurrentIsFirstIsolate(firstIsolate);
+        Isolates.setCurrentStartTime();
 
         /*
          * The VM operation thread must be started early as no VM operations can be scheduled before
@@ -366,6 +370,9 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
 
         /* Adjust stack overflow boundary of main thread. */
         StackOverflowCheck.singleton().updateStackOverflowBoundary();
+
+        /* Initialize the physical memory size. */
+        PhysicalMemory.size();
 
         assert !isolateInitialized;
         isolateInitialized = true;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,11 +25,14 @@
 package org.graalvm.compiler.nodes.loop;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.Iterator;
+import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
+import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
@@ -69,6 +72,8 @@ public abstract class LoopFragment {
     protected NodeBitMap nodes;
     protected boolean nodesReady;
     private EconomicMap<Node, Node> duplicationMap;
+    protected List<PhiNode> introducedPhis;
+    protected List<MergeNode> introducedMerges;
 
     public LoopFragment(LoopEx loop) {
         this(loop, null);
@@ -94,6 +99,18 @@ public abstract class LoopFragment {
 
     public boolean contains(Node n) {
         return nodes().isMarkedAndGrow(n);
+    }
+
+    public UnmodifiableEconomicMap<Node, Node> duplicationMap() {
+        return this.duplicationMap;
+    }
+
+    public List<PhiNode> getIntroducedPhis() {
+        return this.introducedPhis;
+    }
+
+    public List<MergeNode> getIntroducedMerges() {
+        return this.introducedMerges;
     }
 
     @SuppressWarnings("unchecked")
@@ -468,6 +485,8 @@ public abstract class LoopFragment {
     protected void mergeEarlyExits() {
         assert isDuplicate();
         StructuredGraph graph = graph();
+        this.introducedPhis = new ArrayList<>();
+        this.introducedMerges = new ArrayList<>();
         for (AbstractBeginNode earlyExit : LoopFragment.toHirBlocks(original().loop().loop().getLoopExits())) {
             FixedNode next = earlyExit.next();
             if (earlyExit.isDeleted() || !this.original().contains(earlyExit)) {
@@ -491,6 +510,7 @@ public abstract class LoopFragment {
             earlyExit.setNext(originalEnd);
             newEarlyExit.setNext(newEnd);
             merge.setNext(next);
+            introducedMerges.add(merge);
 
             FrameState exitState = null;
             if (earlyExit instanceof LoopExitNode) {
@@ -538,6 +558,7 @@ public abstract class LoopFragment {
                         phi.setNodeSourcePosition(merge.getNodeSourcePosition());
                         phi.addInput(vpn);
                         phi.addInput(newVpn);
+                        introducedPhis.add(phi);
                         replaceWith = phi;
                     } else {
                         replaceWith = vpn.value();

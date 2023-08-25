@@ -153,7 +153,8 @@ public final class SimulateClassInitializerPolicy extends InlineBeforeAnalysisPo
     }
 
     @Override
-    protected AbstractPolicyScope openCalleeScope(ResolvedJavaMethod method, AbstractPolicyScope o) {
+    protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope o, AnalysisMetaAccess metaAccess,
+                    ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
         var outer = (SimulateClassInitializerInlineScope) o;
         return new SimulateClassInitializerInlineScope(outer.accumulativeCounters, outer.inliningDepth + 1);
     }

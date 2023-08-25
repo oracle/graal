@@ -25,6 +25,7 @@
 package org.graalvm.compiler.lir.gen;
 
 import static jdk.vm.ci.code.ValueUtil.asAllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
 import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
 import static jdk.vm.ci.code.ValueUtil.isIllegal;
 import static jdk.vm.ci.code.ValueUtil.isLegal;
@@ -671,7 +672,8 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public LIRInstruction zapArgumentSpace() {
         List<StackSlot> slots = null;
-        for (AllocatableValue arg : res.getCallingConvention().getArguments()) {
+        CallingConvention cc = res.getCallingConvention();
+        for (AllocatableValue arg : cc.getArguments()) {
             if (isStackSlot(arg)) {
                 if (slots == null) {
                     slots = new ArrayList<>();
@@ -681,7 +683,12 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
                 assert !isVirtualStackSlot(arg);
             }
         }
-        if (slots == null) {
+        if (slots != null && isStackSlot(cc.getReturn())) {
+            // Some calling conventions pass their return value through the stack so make sure not
+            // to kill the return value.
+            slots.remove(asStackSlot(cc.getReturn()));
+        }
+        if (slots == null || slots.size() == 0) {
             return null;
         }
         StackSlot[] zappedStack = slots.toArray(new StackSlot[slots.size()]);

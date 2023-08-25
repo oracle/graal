@@ -30,6 +30,8 @@
 package com.oracle.truffle.llvm.parser.factories;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.InternalResource.CPUArchitecture;
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.llvm.parser.factories.inlineasm.UnknownInlineAssemblyParser;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
@@ -86,6 +88,11 @@ final class UnknownBasicPlatformCapability extends BasicPlatformCapability<Unkno
 
     @Override
     public OS getOS() {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
+    public CPUArchitecture getArch() {
         throw CompilerDirectives.shouldNotReachHere();
     }
 

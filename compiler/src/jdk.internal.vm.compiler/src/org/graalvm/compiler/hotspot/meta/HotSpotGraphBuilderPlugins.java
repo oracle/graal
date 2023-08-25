@@ -113,6 +113,7 @@ import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnsignedRightShiftNode;
 import org.graalvm.compiler.nodes.calc.XorNode;
+import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
 import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
@@ -571,15 +572,30 @@ public class HotSpotGraphBuilderPlugins {
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode value, ValueNode srcBegin, ValueNode srcEnd, ValueNode dst,
                             ValueNode dstBegin) {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, vmConfig)) {
-                    ValueNode length = helper.sub(srcEnd, srcBegin);
-                    helper.intrinsicRangeCheck(srcBegin, Condition.LT, ConstantNode.forInt(0));
-                    helper.intrinsicRangeCheck(length, Condition.LT, ConstantNode.forInt(0));
-                    ValueNode srcLimit = helper.sub(helper.shr(helper.length(value), 1), length);
-                    helper.intrinsicRangeCheck(srcBegin, Condition.GT, srcLimit);
-                    ValueNode limit = helper.sub(helper.length(dst), length);
+                    // The required test is illustrated below. This is a flattened version of the
+                    // tests from the original sources
+                    //
+                    // @formatter:off
+                    // if (srcBegin >= srcEnd) {
+                    //   return;
+                    // }
+                    // int size = srcEnd - srcBegin;
+                    // int length = value.length >> 1;
+                    // if ((srcBegin | size) < 0 || size > length - srcBegin)
+                    //   throw exception
+                    // @formatter:on
+
+                    helper.emitReturnIf(srcBegin, Condition.GE, srcEnd, null, BranchProbabilityNode.SLOW_PATH_PROBABILITY);
+                    ValueNode size = helper.sub(srcEnd, srcBegin);
+                    ValueNode or = helper.or(srcBegin, size);
+                    helper.intrinsicRangeCheck(or, Condition.LT, ConstantNode.forInt(0));
+                    ValueNode srcLimit = helper.sub(helper.shr(helper.length(value), 1), srcBegin);
+                    helper.intrinsicRangeCheck(size, Condition.GT, srcLimit);
+                    ValueNode limit = helper.sub(helper.length(dst), size);
                     helper.intrinsicRangeCheck(dstBegin, Condition.GT, limit);
-                    b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, dst, dstBegin, length, JavaKind.Char, JavaKind.Byte, JavaKind.Char, false, true, true,
+                    b.add(new ArrayCopyCallNode(foreignCalls, wordTypes, value, srcBegin, dst, dstBegin, size, JavaKind.Char, JavaKind.Byte, JavaKind.Char, false, true, true,
                                     vmConfig.heapWordSize));
+                    helper.emitFinalReturn(JavaKind.Void, null);
                 }
                 return true;
             }

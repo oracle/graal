@@ -74,7 +74,6 @@ import com.oracle.truffle.espresso.redefinition.HotSwapClassInfo;
 import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.redefinition.RedefinitionNotSupportedException;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
-import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
 import com.oracle.truffle.espresso.threads.State;
 
 public final class JDWPContextImpl implements JDWPContext {
@@ -281,7 +280,7 @@ public final class JDWPContextImpl implements JDWPContext {
     public String getStringValue(Object object) {
         if (object instanceof StaticObject) {
             StaticObject staticObject = (StaticObject) object;
-            return (String) EspressoInterop.toDisplayString(staticObject, false);
+            return (String) InteropLibrary.getUncached().toDisplayString(staticObject, false);
         }
         return object.toString();
     }

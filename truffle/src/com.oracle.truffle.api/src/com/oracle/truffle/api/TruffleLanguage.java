@@ -93,6 +93,7 @@ import org.graalvm.polyglot.io.IOAccess;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.InternalResource.Id;
 import com.oracle.truffle.api.TruffleFile.FileSystemContext;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage.Env;
@@ -521,9 +522,13 @@ public abstract class TruffleLanguage<C> {
 
         /**
          * Declarative list of {@link InternalResource} classes that is associated with this
-         * language. To unpack all resources of a language embedders may use
-         * {@link Engine#copyResources(Path, String...)}.
+         * language. Use the {@code internalResources} attribute solely for registering required
+         * internal resources. Optional internal resources should provide the associated language
+         * identifier using the {@link Id#componentId()} method. To unpack all resources of a
+         * language embedders may use {@link Engine#copyResources(Path, String...)}.
          *
+         * @see InternalResource
+         * @see Id
          * @since 23.1
          */
         Class<? extends InternalResource>[] internalResources() default {};
@@ -2151,6 +2156,8 @@ public abstract class TruffleLanguage<C> {
          * {@link #lookupHostSymbol(String)} will lookup classes with this new entry. If the entry
          * was already added then calling this method again for the same entry has no effect. Given
          * entry must not be <code>null</code>.
+         * <p>
+         * Note that classes added by this method are in the unnamed module.
          *
          * @throws SecurityException if the file is not {@link TruffleFile#isReadable() readable}.
          * @since 19.0
@@ -3368,6 +3375,10 @@ public abstract class TruffleLanguage<C> {
          * be used to check if an object is an instance of this adapter class. See usage example
          * below.
          * <p>
+         * Please note that only classes from the unnamed module or classes exported to the unnamed
+         * module can be used in <code>types</code>. The generated host adapter class is also in the
+         * unnamed module.
+         * <p>
          * A host class is generated as follows:
          * <p>
          * For every protected or public constructor in the extended class, the adapter class will
@@ -3531,11 +3542,12 @@ public abstract class TruffleLanguage<C> {
          * resource. Unlike the {@link #getInternalResource(Class)}, this method can be used for
          * optional resources whose classes may not exist at runtime. In this case the optional
          * resource must be unpacked at build time, see
-         * {@link Engine#copyResources(Path, String...)}.
+         * {@link Engine#copyResources(Path, String...)}. If the resource with the specified
+         * {@code resourceId} is not associated to this language, the function returns {@code null}.
          *
          * @param resourceId unique id of the resource to be loaded
-         * @throws IllegalArgumentException if resource with the {@code resourceId} is not
-         *             associated with this language
+         * @return internal resource directory or {@code null} if resource with the
+         *         {@code resourceId} is not associated with this language
          * @throws IOException in case of IO error
          * @see #getInternalResource(Class)
          * @see Engine#copyResources(Path, String...)

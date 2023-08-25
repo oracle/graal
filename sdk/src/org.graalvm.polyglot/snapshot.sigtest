@@ -259,7 +259,7 @@ meth public java.lang.String toString()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder()
 meth public static org.graalvm.polyglot.HostAccess$Builder newBuilder(org.graalvm.polyglot.HostAccess)
 supr java.lang.Object
-hfds EMPTY,accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllInterfaceImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,impl,implementableAnnotations,implementableTypes,members,methodScopingDefault,name,targetMappings
+hfds EMPTY,accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllInterfaceImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,impl,implementableAnnotations,implementableTypes,members,methodLookup,methodScopingDefault,name,targetMappings
 
 CLSS public final org.graalvm.polyglot.HostAccess$Builder
  outer org.graalvm.polyglot.HostAccess
@@ -288,8 +288,9 @@ meth public org.graalvm.polyglot.HostAccess$Builder denyAccess(java.lang.Class<?
 meth public org.graalvm.polyglot.HostAccess$Builder disableMethodScoping(java.lang.reflect.Executable)
 meth public org.graalvm.polyglot.HostAccess$Builder disableMethodScopingAnnotatedBy(java.lang.Class<? extends java.lang.annotation.Annotation>)
 meth public org.graalvm.polyglot.HostAccess$Builder methodScoping(boolean)
+meth public org.graalvm.polyglot.HostAccess$Builder useModuleLookup(java.lang.invoke.MethodHandles$Lookup)
 supr java.lang.Object
-hfds accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,implementableTypes,implementationAnnotations,members,methodScopingDefault,name,targetMappings
+hfds accessAnnotations,allowAccessInheritance,allowAllClassImplementations,allowAllImplementations,allowArrayAccess,allowBigIntegerNumberAccess,allowBufferAccess,allowIterableAccess,allowIteratorAccess,allowListAccess,allowMapAccess,allowMutableTargetMappings,allowPublic,disableMethodScoping,disableMethodScopingAnnotations,excludeTypes,implementableTypes,implementationAnnotations,members,methodLookup,methodScopingDefault,name,targetMappings
 
 CLSS public abstract interface static !annotation org.graalvm.polyglot.HostAccess$DisableMethodScoping
  outer org.graalvm.polyglot.HostAccess
@@ -730,6 +731,7 @@ meth public java.util.Map<java.lang.String,java.lang.String> getEnvironment()
 meth public org.graalvm.polyglot.io.ProcessHandler$Redirect getErrorRedirect()
 meth public org.graalvm.polyglot.io.ProcessHandler$Redirect getInputRedirect()
 meth public org.graalvm.polyglot.io.ProcessHandler$Redirect getOutputRedirect()
+meth public static org.graalvm.polyglot.io.ProcessHandler$ProcessCommand create(java.util.List<java.lang.String>,java.lang.String,java.util.Map<java.lang.String,java.lang.String>,boolean,org.graalvm.polyglot.io.ProcessHandler$Redirect,org.graalvm.polyglot.io.ProcessHandler$Redirect,org.graalvm.polyglot.io.ProcessHandler$Redirect)
 supr java.lang.Object
 hfds cmd,cwd,environment,errorRedirect,inputRedirect,outputRedirect,redirectErrorStream
 
@@ -739,7 +741,9 @@ fld public final static org.graalvm.polyglot.io.ProcessHandler$Redirect INHERIT
 fld public final static org.graalvm.polyglot.io.ProcessHandler$Redirect PIPE
 meth public boolean equals(java.lang.Object)
 meth public int hashCode()
+meth public java.io.OutputStream getOutputStream()
 meth public java.lang.String toString()
+meth public static org.graalvm.polyglot.io.ProcessHandler$Redirect createRedirectToStream(java.io.OutputStream)
 supr java.lang.Object
 hfds stream,type
 hcls Type

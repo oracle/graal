@@ -56,15 +56,11 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.logging.Level;
 
-import org.graalvm.collections.UnmodifiableEconomicSet;
 import org.graalvm.options.OptionDescriptor;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.PolyglotAccess;
 import org.graalvm.polyglot.SandboxPolicy;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.LogHandler;
 import org.graalvm.polyglot.io.FileSystem;
-import org.graalvm.polyglot.io.IOAccess;
 import org.graalvm.polyglot.io.ProcessHandler;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -74,6 +70,7 @@ import com.oracle.truffle.polyglot.PolyglotImpl.VMObject;
 final class PolyglotContextConfig {
     private static final String[] EMPTY_STRING_ARRAY = new String[0];
 
+    final APIAccess api;
     final SandboxPolicy sandboxPolicy;
     final OutputStream out;
     final OutputStream err;
@@ -93,9 +90,9 @@ final class PolyglotContextConfig {
     @CompilationFinal FileSystemConfig fileSystemConfig;
     final Map<String, Level> logLevels;    // effectively final
     final LogHandler logHandler;
-    final PolyglotAccess polyglotAccess;
+    final Object polyglotAccess;
     final ProcessHandler processHandler;
-    final EnvironmentAccess environmentAccess;
+    final Object environmentAccess;
     final Map<String, String> customEnvironment;
     private volatile Map<String, String> resolvedEnvironment;
     final ZoneId timeZone;
@@ -103,7 +100,7 @@ final class PolyglotContextConfig {
     final ClassLoader hostClassLoader;
     private final List<PolyglotInstrument> configuredInstruments;
     private final Set<PolyglotLanguage> configuredLanguages;
-    final HostAccess hostAccess;
+    final Object hostAccess;
     final Boolean forceCodeSharing;
     final boolean allowValueSharing;
     final boolean useSystemExit;
@@ -118,11 +115,11 @@ final class PolyglotContextConfig {
      */
     static class FileSystemConfig {
 
-        final IOAccess ioAccess;
+        final Object ioAccess;
         final FileSystem fileSystem;
         final FileSystem internalFileSystem;
 
-        FileSystemConfig(IOAccess ioAccess, FileSystem publicFileSystem, FileSystem internalFileSystem) {
+        FileSystemConfig(Object ioAccess, FileSystem publicFileSystem, FileSystem internalFileSystem) {
             this.ioAccess = ioAccess;
             this.fileSystem = publicFileSystem;
             this.internalFileSystem = internalFileSystem;
@@ -154,7 +151,7 @@ final class PolyglotContextConfig {
         final boolean createThreadAllowed;
         final boolean createProcessAllowed;
         final Map<String, String> originalOptions;
-        final PolyglotAccess polyglotAccess;
+        final Object polyglotAccess;
         final ZoneId timeZone;
         final boolean allowValueSharing;
         final boolean useSystemExit;
@@ -168,7 +165,7 @@ final class PolyglotContextConfig {
             this.createThreadAllowed = false;
             this.createProcessAllowed = false;
             this.originalOptions = Collections.emptyMap();
-            this.polyglotAccess = PolyglotAccess.ALL; // TODO GR-14657 change this to NONE
+            this.polyglotAccess = null; // TODO GR-14657 change this to NONE
             this.timeZone = null;
             this.allowValueSharing = true;
             this.useSystemExit = false;
@@ -198,7 +195,7 @@ final class PolyglotContextConfig {
             this.createThreadAllowed = prev.createThreadAllowed == config.createThreadAllowed ? config.createThreadAllowed : DEFAULT.createThreadAllowed;
             this.createProcessAllowed = prev.createProcessAllowed == config.createProcessAllowed ? config.createProcessAllowed : DEFAULT.createProcessAllowed;
             this.originalOptions = Objects.equals(prev.originalOptions, config.originalOptions) ? config.originalOptions : computeCommonOptions(prev.originalOptions, config.originalOptions);
-            this.polyglotAccess = Objects.equals(prev.polyglotAccess, config.polyglotAccess) ? config.polyglotAccess : DEFAULT.polyglotAccess;
+            this.polyglotAccess = Objects.equals(prev.polyglotAccess, config.polyglotAccess) ? config.polyglotAccess : config.api.getPolyglotAccessAll();
             this.timeZone = Objects.equals(prev.timeZone, config.timeZone) ? config.timeZone : DEFAULT.timeZone;
             this.allowValueSharing = prev.allowValueSharing == config.allowValueSharing ? config.allowValueSharing : DEFAULT.allowValueSharing;
             this.useSystemExit = prev.useSystemExit == config.useSystemExit ? config.useSystemExit : DEFAULT.useSystemExit;
@@ -230,9 +227,9 @@ final class PolyglotContextConfig {
                         System.err,
                         System.in,
                         false,
-                        sharableConfig.polyglotAccess, // never any host lookup should be allowed in
-                                                       // context preinit
-                        sharableConfig.nativeAccessAllowed, // TODO GR-14657 change this to NONE
+                        // TODO GR-14657 change this to NONE
+                        sharableConfig.polyglotAccess == null ? engine.getAPIAccess().getPolyglotAccessAll() : sharableConfig.polyglotAccess,
+                        sharableConfig.nativeAccessAllowed,
                         sharableConfig.createThreadAllowed,
                         false,
                         false,
@@ -245,7 +242,7 @@ final class PolyglotContextConfig {
                         engine.logHandler,
                         sharableConfig.createProcessAllowed,
                         null,
-                        EnvironmentAccess.INHERIT,
+                        engine.getAPIAccess().getEnvironmentAccessInherit(),
                         null,
                         sharableConfig.timeZone,
                         null,
@@ -258,19 +255,20 @@ final class PolyglotContextConfig {
 
     PolyglotContextConfig(PolyglotEngineImpl engine, SandboxPolicy sandboxPolicy, Boolean forceSharing,
                     OutputStream out, OutputStream err, InputStream in,
-                    boolean hostLookupAllowed, PolyglotAccess polyglotAccess, boolean nativeAccessAllowed,
+                    boolean hostLookupAllowed, Object polyglotAccess, boolean nativeAccessAllowed,
                     boolean createThreadAllowed, boolean hostClassLoadingAllowed,
                     boolean contextOptionsAllowed, boolean allowExperimentalOptions,
                     Predicate<String> classFilter, Map<String, String[]> applicationArguments,
                     Set<String> onlyLanguages, Map<String, String> options, FileSystemConfig fileSystemConfig, LogHandler logHandler,
-                    boolean createProcessAllowed, ProcessHandler processHandler, EnvironmentAccess environmentAccess, Map<String, String> environment,
-                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, HostAccess hostAccess, boolean allowValueSharing, boolean useSystemExit,
+                    boolean createProcessAllowed, ProcessHandler processHandler, Object environmentAccess, Map<String, String> environment,
+                    ZoneId timeZone, PolyglotLimits limits, ClassLoader hostClassLoader, Object hostAccess, boolean allowValueSharing, boolean useSystemExit,
                     Map<String, Object> creatorArguments, Runnable onCancelled, Consumer<Integer> onExited, Runnable onClosed) {
         assert out != null;
         assert err != null;
         assert in != null;
         assert environmentAccess != null;
         assert sandboxPolicy != null;
+        this.api = engine.getAPIAccess();
         this.sandboxPolicy = sandboxPolicy;
         this.forceCodeSharing = forceSharing;
         this.out = out;
@@ -415,7 +413,7 @@ final class PolyglotContextConfig {
             }
         } else {
             // language access
-            if (polyglotAccess == PolyglotAccess.ALL) {
+            if (polyglotAccess == from.getAPIAccess().getPolyglotAccessAll()) {
                 if (allowedPublicLanguages.contains(to.info.getId())) {
                     return true;
                 }
@@ -423,7 +421,7 @@ final class PolyglotContextConfig {
                 if (from == to) {
                     return true;
                 }
-                UnmodifiableEconomicSet<String> configuredAccess = from.engine.getAPIAccess().getEvalAccess(polyglotAccess, from.getId());
+                Set<String> configuredAccess = from.engine.getAPIAccess().getEvalAccess(polyglotAccess, from.getId());
                 if (configuredAccess != null && configuredAccess.contains(to.getId())) {
                     return true;
                 }
@@ -477,9 +475,9 @@ final class PolyglotContextConfig {
             synchronized (this) {
                 result = resolvedEnvironment;
                 if (result == null) {
-                    if (environmentAccess == EnvironmentAccess.NONE) {
+                    if (environmentAccess == api.getEnvironmentAccessNone()) {
                         result = Collections.unmodifiableMap(customEnvironment);
-                    } else if (PolyglotEngineImpl.ALLOW_ENVIRONMENT_ACCESS && environmentAccess == EnvironmentAccess.INHERIT) {
+                    } else if (PolyglotEngineImpl.ALLOW_ENVIRONMENT_ACCESS && environmentAccess == api.getEnvironmentAccessInherit()) {
                         result = System.getenv();  // System.getenv returns unmodifiable map.
                         if (!customEnvironment.isEmpty()) {
                             result = new HashMap<>(result);

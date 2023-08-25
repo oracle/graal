@@ -42,6 +42,7 @@ public final class OptionDescriptor {
     private final OptionKey<?> optionKey;
     private final Class<?> declaringClass;
     private final String fieldName;
+    private final OptionStability stability;
     private final boolean deprecated;
     private final String deprecationMessage;
 
@@ -54,7 +55,7 @@ public final class OptionDescriptor {
                     Class<?> declaringClass,
                     String fieldName,
                     OptionKey<?> option) {
-        return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, declaringClass, fieldName, option, false, "");
+        return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, declaringClass, fieldName, option, OptionStability.EXPERIMENTAL, false, "");
     }
 
     public static OptionDescriptor create(String name,
@@ -64,9 +65,10 @@ public final class OptionDescriptor {
                     Class<?> declaringClass,
                     String fieldName,
                     OptionKey<?> option,
+                    OptionStability stability,
                     boolean deprecated,
                     String deprecationMessage) {
-        return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, declaringClass, fieldName, option, deprecated, deprecationMessage);
+        return create(name, optionType, optionValueType, help, NO_EXTRA_HELP, declaringClass, fieldName, option, stability, deprecated, deprecationMessage);
     }
 
     public static OptionDescriptor create(String name,
@@ -77,13 +79,14 @@ public final class OptionDescriptor {
                     Class<?> declaringClass,
                     String fieldName,
                     OptionKey<?> option,
+                    OptionStability stability,
                     boolean deprecated,
                     String deprecationMessage) {
         assert option != null : declaringClass + "." + fieldName;
         OptionDescriptor result = option.getDescriptor();
         if (result == null) {
             List<String> extraHelpList = extraHelp == null || extraHelp.length == 0 ? Collections.emptyList() : Collections.unmodifiableList(Arrays.asList(extraHelp));
-            result = new OptionDescriptor(name, optionType, optionValueType, help, extraHelpList, declaringClass, fieldName, option, deprecated, deprecationMessage);
+            result = new OptionDescriptor(name, optionType, optionValueType, help, extraHelpList, declaringClass, fieldName, option, stability, deprecated, deprecationMessage);
             option.setDescriptor(result);
         }
         assert result.name.equals(name) && result.optionValueType == optionValueType && result.declaringClass == declaringClass && result.fieldName.equals(fieldName) && result.optionKey == option;
@@ -98,6 +101,7 @@ public final class OptionDescriptor {
                     Class<?> declaringClass,
                     String fieldName,
                     OptionKey<?> optionKey,
+                    OptionStability stability,
                     boolean deprecated,
                     String deprecationMessage) {
         this.name = name;
@@ -108,6 +112,7 @@ public final class OptionDescriptor {
         this.optionKey = optionKey;
         this.declaringClass = declaringClass;
         this.fieldName = fieldName;
+        this.stability = stability;
         this.deprecated = deprecated || deprecationMessage != null && !deprecationMessage.isEmpty();
         this.deprecationMessage = deprecationMessage;
         assert !optionValueType.isPrimitive() : "must use boxed optionValueType instead of " + optionValueType;
@@ -174,6 +179,13 @@ public final class OptionDescriptor {
      */
     public String getLocation() {
         return getDeclaringClass().getName() + "." + getFieldName();
+    }
+
+    /**
+     * Returns the stability of this option.
+     */
+    public OptionStability getStability() {
+        return stability;
     }
 
     /**

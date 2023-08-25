@@ -50,6 +50,7 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -113,8 +114,19 @@ final class PolyglotLanguageInstance implements VMObject {
         return callTargetCache.computeIfAbsent(rootNode.getClass(), (r) -> rootNode.getCallTarget());
     }
 
+    @Override
     public PolyglotEngineImpl getEngine() {
         return language.engine;
+    }
+
+    @Override
+    public APIAccess getAPIAccess() {
+        return language.engine.apiAccess;
+    }
+
+    @Override
+    public PolyglotImpl getImpl() {
+        return language.engine.impl;
     }
 
     PolyglotValueDispatch lookupValueCache(PolyglotContextImpl context, Object guestValue) {

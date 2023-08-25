@@ -98,7 +98,7 @@ public class ScalaFeature implements InternalFeature {
 
         access.findSubclasses(scalaEnum).forEach(enumClass -> {
             /* this is based on implementation of scala.Enumeration.populateNamesMap */
-            RuntimeReflection.register(enumClass.getDeclaredFields());
+            RuntimeReflection.registerAllDeclaredFields(enumClass);
             // all method relevant for Enums
             Method[] relevantMethods = Arrays.stream(enumClass.getDeclaredMethods())
                             .filter(m -> m.getParameterTypes().length == 0 &&

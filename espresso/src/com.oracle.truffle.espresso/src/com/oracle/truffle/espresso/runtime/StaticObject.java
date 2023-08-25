@@ -42,7 +42,8 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.dispatch.BaseInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
+import com.oracle.truffle.espresso.runtime.dispatch.staticobject.SharedInterop;
 
 /**
  * Implementation of the Espresso object model.
@@ -100,8 +101,13 @@ public class StaticObject implements TruffleObject, Cloneable {
 
     @ExportMessage
     public final Class<?> dispatch() {
+        // BaseInterop is context independent. We can assign it directly for null and foreign
+        // objects.
         if (isNull(this) || isForeignObject()) {
             return BaseInterop.class;
+        }
+        if (getKlass().getContext().getLanguage().isShared()) {
+            return SharedInterop.class;
         }
         return getKlass().getDispatch();
     }

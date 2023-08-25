@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -47,11 +47,19 @@ public final class Configurations {
 
     private static final ConfigurationFactory<?>[] factories;
 
+    public static <S> Iterable<S> getService(Class<S> serviceClass) {
+        Module polyglotModule = serviceClass.getModule();
+        if (polyglotModule.isNamed()) {
+            return ServiceLoader.load(polyglotModule.getLayer(), serviceClass);
+        } else {
+            return ServiceLoader.load(serviceClass, serviceClass.getClassLoader());
+        }
+    }
+
     static {
         ArrayList<ConfigurationFactory<?>> cfgs = new ArrayList<>();
 
-        ClassLoader cl = LLVMLanguage.class.getClassLoader();
-        for (ConfigurationFactory<?> f : ServiceLoader.load(ConfigurationFactory.class, cl)) {
+        for (ConfigurationFactory<?> f : getService(ConfigurationFactory.class)) {
             cfgs.add(f);
         }
 

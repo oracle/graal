@@ -167,6 +167,8 @@ public final class EspressoContext {
     private final Assumption anyHierarchyChanges = Truffle.getRuntime().createAssumption();
     // endregion JDWP
 
+    @CompilationFinal private volatile LazyContextCaches lazyCaches;
+
     private Map<Class<? extends InternalRedefinitionPlugin>, InternalRedefinitionPlugin> redefinitionPlugins;
 
     // After a context is finalized, guest code cannot be executed.
@@ -189,6 +191,7 @@ public final class EspressoContext {
     @CompilationFinal private EspressoException outOfMemory;
 
     @CompilationFinal private EspressoBindings topBindings;
+    @CompilationFinal private StaticObject bindingsLoader;
     private final WeakHashMap<StaticObject, SignalHandler> hostSignalHandlers = new WeakHashMap<>();
     @CompilationFinal private DowncallStubs downcallStubs;
     @CompilationFinal private UpcallStubs upcallStubs;
@@ -425,6 +428,7 @@ public final class EspressoContext {
             this.shutdownManager = new EspressoShutdownHandler(this, espressoEnv.getThreadRegistry(), espressoEnv.getReferenceDrainer(), espressoEnv.SoftExit);
 
             this.interpreterToVM = new InterpreterToVM(this);
+            this.lazyCaches = new LazyContextCaches(this);
 
             try (DebugCloseable knownClassInit = KNOWN_CLASS_INIT.scope(espressoEnv.getTimers())) {
                 initializeKnownClass(Type.java_lang_Object);
@@ -520,8 +524,8 @@ public final class EspressoContext {
             try (DebugCloseable systemLoader = SYSTEM_CLASSLOADER.scope(espressoEnv.getTimers())) {
                 systemClassLoader = (StaticObject) meta.java_lang_ClassLoader_getSystemClassLoader.invokeDirect(null);
             }
-            StaticObject bindingsLoader = createBindingsLoader(systemClassLoader);
-            topBindings = new EspressoBindings(bindingsLoader,
+            bindingsLoader = createBindingsLoader(systemClassLoader);
+            topBindings = new EspressoBindings(
                             getEnv().getOptions().get(EspressoOptions.ExposeNativeJavaVM),
                             bindingsLoader != systemClassLoader);
 
@@ -618,11 +622,11 @@ public final class EspressoContext {
         if (init == null) {
             return systemClassLoader;
         }
-        StaticObject bindingsLoader = k.allocateInstance();
-        init.invokeDirect(bindingsLoader,
+        StaticObject loader = k.allocateInstance();
+        init.invokeDirect(loader,
                         /* URLs */ getMeta().java_net_URL.allocateReferenceArray(0),
                         /* parent */ systemClassLoader);
-        return bindingsLoader;
+        return loader;
     }
 
     private NativeAccess spawnNativeAccess() {
@@ -802,6 +806,15 @@ public final class EspressoContext {
 
     public EspressoException getOutOfMemory() {
         return outOfMemory;
+    }
+
+    public LazyContextCaches getLazyCaches() {
+        LazyContextCaches cache = this.lazyCaches;
+        if (cache == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            throw EspressoError.fatal("Accessing lazy context cache before context initialization");
+        }
+        return cache;
     }
 
     public void prepareDispose() {
@@ -1035,6 +1048,10 @@ public final class EspressoContext {
 
     public EspressoBindings getBindings() {
         return topBindings;
+    }
+
+    public StaticObject getBindingsLoader() {
+        return bindingsLoader;
     }
 
     public WeakHashMap<StaticObject, SignalHandler> getHostSignalHandlers() {

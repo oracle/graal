@@ -168,7 +168,7 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
             srcFilePath = dep.get_source_path(False)
 
             input_ts = mx.TimeStampFile.newest([jarFilePath, srcFilePath])
-            if suite_py_ts.isNewerThan(input_ts):
+            if input_ts is None or suite_py_ts.isNewerThan(input_ts):
                 input_ts = suite_py_ts
 
             for zipFilePath, outDir in [(srcFilePath, proj.source_gen_dir())]:

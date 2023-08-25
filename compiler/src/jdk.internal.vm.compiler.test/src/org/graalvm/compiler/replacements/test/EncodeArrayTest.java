@@ -52,7 +52,8 @@ public class EncodeArrayTest extends GraalCompilerTest {
                     "XMM-XMM-XMM-XMM+YMM-YMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-",
                     "XMM-XMM-XMM-XMM-YMM-YMM-YMM-YMM+ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-",
                     "XMM-XMM-XMM-XMM-YMM-YMM-YMM-YMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM-ZMM+",
-                    ""
+                    "",
+                    "\u0000" + "0".repeat(15) + "1".repeat(15) + "\u00ffsome-string",
     };
 
     private static Result executeCompiledMethod(InstalledCode compiledMethod, Object... args) {
@@ -105,23 +106,25 @@ public class EncodeArrayTest extends GraalCompilerTest {
 
         // Caller of the tested method should guarantee the indexes are within the range --
         // there is no need for boundary-value testing.
-        for (String input : testData) {
-            char[] value = input.toCharArray();
-            int len = value.length;
-            byte[] daExpected = new byte[len];
-            byte[] daActual = new byte[len];
-            int sp = 0;
-            int dp = 0;
-            while (sp < value.length) {
-                Result expected = executeExpected(method, null, value, sp, daExpected, dp, len);
-                Result actual = executeCompiledMethod(compiledMethod, value, sp, daActual, dp, len);
-                assertEquals(expected, actual);
-                assertDeepEquals(daExpected, daActual);
-                int ret = (int) actual.returnValue;
-                sp += ret;
-                dp += ret;
-                while (sp < value.length && value[sp++] > 0x7f) {
-                    dp++;
+        for (String inputOrig : testData) {
+            for (String input : new String[]{inputOrig, "_".repeat(31) + inputOrig, "_".repeat(63) + inputOrig}) {
+                char[] value = input.toCharArray();
+                int len = value.length;
+                byte[] daExpected = new byte[len];
+                byte[] daActual = new byte[len];
+                int sp = 0;
+                int dp = 0;
+                while (sp < value.length) {
+                    Result expected = executeExpected(method, null, value, sp, daExpected, dp, len - sp);
+                    Result actual = executeCompiledMethod(compiledMethod, value, sp, daActual, dp, len - sp);
+                    assertEquals(expected, actual);
+                    assertDeepEquals(daExpected, daActual);
+                    int ret = (int) actual.returnValue;
+                    sp += ret;
+                    dp += ret;
+                    while (sp < value.length && value[sp++] > 0x7f) {
+                        dp++;
+                    }
                 }
             }
         }

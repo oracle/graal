@@ -43,6 +43,7 @@ import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
+import com.oracle.svm.core.jfr.JfrJdkCompatibility;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.meta.SharedType;
@@ -122,7 +123,7 @@ public class JfrEventFeature implements InternalFeature {
                 FeatureImpl.CompilationAccessImpl accessImpl = ((FeatureImpl.CompilationAccessImpl) a);
                 Method getConfiguration = JVM.class.getDeclaredMethod("getConfiguration", Class.class);
                 for (var newEventClass : JfrJavaEvents.getAllEventClasses()) {
-                    Object ec = getConfiguration.invoke(JVM.getJVM(), newEventClass);
+                    Object ec = getConfiguration.invoke(JfrJdkCompatibility.getJVMOrNull(), newEventClass);
                     DynamicHub dynamicHub = accessImpl.getMetaAccess().lookupJavaType(newEventClass).getHub();
                     dynamicHub.setJrfEventConfiguration(ec);
                 }

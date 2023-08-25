@@ -229,26 +229,30 @@ def resolve_sl_dist_names(use_optimized_runtime=True, use_enterprise=True):
 def sl(args):
     """run an SL program"""
     vm_args, sl_args = mx.extract_VM_args(args)
-    return mx.run(_sl_command(vm_args, sl_args))
+    return mx.run(_sl_command(vm_args, sl_args, force_cp=False))
 
-def _sl_command(vm_args, sl_args, use_optimized_runtime=True, use_enterprise=True):
+def _sl_command(vm_args, sl_args, use_optimized_runtime=True, use_enterprise=True, force_cp=False):
     graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
     java_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('java'))
     dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
-    return [java_path] + vm_args + mx.get_runtime_jvm_args(names=dist_names) + ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"] + sl_args
+    if force_cp:
+        main_class = ["com.oracle.truffle.sl.launcher.SLMain"]
+    else:
+        main_class = ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"]
+    return [java_path] + vm_args + mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp) + main_class + sl_args
 
 def slnative(args):
     """build a native image of an SL program"""
     vm_args, sl_args = mx.extract_VM_args(args)
     target_dir = tempfile.mkdtemp()
-    image = _native_image_sl(vm_args, target_dir, use_optimized_runtime=True)
+    image = _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, force_cp=False)
     if not image:
         mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(mx_sdk_vm.graalvm_home(fatalIfMissing=True)))
     mx.log("Image build completed. Running {}".format(" ".join([image] + sl_args)))
     result = mx.run([image] + sl_args)
     return result
 
-def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True):
+def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, force_cp=False):
     graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
     native_image_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('native-image'))
     if not exists(native_image_path):
@@ -257,7 +261,14 @@ def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterp
             mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(graalvm_home))
             return None
     target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
-    mx.run([native_image_path] + vm_args + mx.get_runtime_jvm_args(names=resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)) + ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain", target_path])
+    dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
+
+    if not force_cp:
+        vm_args += ['-p', mx.classpath('TRUFFLE_NFI_LIBFFI')]
+
+    vm_args += mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp)
+    vm_args += ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain", target_path]
+    mx.run([native_image_path] + vm_args)
     return target_path
 
 def _truffle_gate_runner(args, tasks):
@@ -271,6 +282,15 @@ def _truffle_gate_runner(args, tasks):
         if t: sigtest(['--check', 'binary'])
     with Task('Truffle UnitTests', tasks) as t:
         if t: unittest(list(['--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25']))
+    if jdk.javaCompliance >= '21':
+        with Task('Truffle NFI tests with Panama Backend', tasks) as t:
+            if t:
+                testPath = mx.distribution('TRUFFLE_TEST_NATIVE').output
+                args = ['-Dnative.test.backend=panama', '-Dnative.test.path.panama=' + testPath]
+                # testlibArg = mx_subst.path_substitutions.substitute('-Dnative.test.path.panama=<path:TRUFFLE_TEST_NATIVE>')
+                if mx.project('com.oracle.truffle.nfi.backend.panama').javaPreviewNeeded:
+                    args += ['--enable-preview']
+                unittest(args + ['com.oracle.truffle.nfi.test', '--enable-timing', '--verbose'])
     with Task('TruffleString UnitTests without Java String Compaction', tasks) as t:
         if t: unittest(list(['-XX:-CompactStrings', '--suite', 'truffle', '--enable-timing', '--verbose', '--max-class-failures=25', 'com.oracle.truffle.api.strings.test']))
     if os.getenv('DISABLE_DSL_STATE_BITS_TESTS', 'false').lower() != 'true':
@@ -280,7 +300,23 @@ def _truffle_gate_runner(args, tasks):
     with Task('Validate parsers', tasks) as t:
         if t: validate_parsers()
 
-# invoked by vm gate runner in ce-unchained configuration
+# invoked by vm gate runner in unchained configuration
+def truffle_jvm_module_path_unit_tests_gate():
+    unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--verbose', '--max-class-failures=25']))
+
+# invoked by vm gate runner in unchained configuration
+def truffle_jvm_class_path_unit_tests_gate():
+    # unfortunately with class-path isolation we cannot run all the unit tests
+    # as many of the truffle unit tests expect no class loader isolation between polyglot and truffle
+    # as a starting point we list the tests we run in this mode
+    test_classes = [
+            "com.oracle.truffle.api.test.polyglot",
+            "com.oracle.truffle.api.test.examples",
+            "com.oracle.truffle.tck.tests",
+        ]
+    unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25'] + test_classes))
+
+# invoked by vm gate runner in unchained configuration
 def sl_jvm_gate_tests():
     def run_jvm_fallback(test_file):
         return _sl_command([], [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false'], use_optimized_runtime=False)
@@ -310,8 +346,8 @@ def sl_jvm_gate_tests():
         mx.log("Run SL JVM Optimized Immediately Test No Truffle Enterprise")
         _run_sl_tests(run_jvm_no_enterprise_optimized_immediately)
 
-# invoked by vm gate runner in ce-unchained configuration
 def sl_native_optimized_gate_tests():
+    # invoked by vm gate runner in ce-unchained configuration
     target_dir = tempfile.mkdtemp()
     image = _native_image_sl([], target_dir, use_optimized_runtime=True, use_enterprise=True)
 
@@ -346,8 +382,8 @@ def sl_native_optimized_gate_tests():
 
         shutil.rmtree(target_dir)
 
-# invoked by vm gate runner in ce-unchained configuration
 def sl_native_fallback_gate_tests():
+    # invoked by vm gate runner in ce-unchained configuration
     target_dir = tempfile.mkdtemp()
     image = _native_image_sl([], target_dir, use_optimized_runtime=False)
 
@@ -1022,6 +1058,7 @@ class LibffiBuildTask(mx.AbstractNativeBuildTask):
         mx.rmtree(self.subject.out_dir, ignore_errors=True)
 
 
+
 mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmTruffleLibrary(
     suite=_suite,
     name='Truffle API',
@@ -1110,7 +1147,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle NFI'],
-    truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI'],
+    truffle_jars=['truffle:TRUFFLE_NFI_LIBFFI', 'truffle:TRUFFLE_NFI_PANAMA'],
     installable=False,
     stability="supported",
 ))

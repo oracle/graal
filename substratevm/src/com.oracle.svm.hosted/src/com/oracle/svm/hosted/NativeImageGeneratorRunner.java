@@ -438,14 +438,15 @@ public class NativeImageGeneratorRunner {
                     } catch (ClassNotFoundException ex) {
                         throw UserError.abort(classLoader.getMainClassNotFoundErrorMessage(className));
                     } catch (UnsupportedClassVersionError ex) {
-                        if (ex.getMessage().startsWith("Preview features are not enabled")) {
-                            throw UserError.abort(ex.getMessage());
-                        } else {
+                        if (ex.getMessage().contains("compiled by a more recent version of the Java Runtime")) {
                             throw UserError.abort("Unable to load '%s' due to a Java version mismatch.%n" +
                                             "Please take one of the following actions:%n" +
                                             " 1) Recompile the source files for your application using Java %s, then try running native-image again%n" +
-                                            " 2) Use a version of native-image corresponding to the version of Java with which you compiled the source files for your application%n",
-                                            className, Runtime.version().feature());
+                                            " 2) Use a version of native-image corresponding to the version of Java with which you compiled the source files for your application%n%n" +
+                                            "Root cause: %s",
+                                            className, Runtime.version().feature(), ex);
+                        } else {
+                            throw UserError.abort(ex.getMessage());
                         }
                     }
                     String mainEntryPointName = SubstrateOptions.Method.getValue(parsedHostedOptions);
@@ -521,9 +522,18 @@ public class NativeImageGeneratorRunner {
                     mainEntryPointData = createMainEntryPointData(imageKind, mainEntryPoint);
                 }
 
-                int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(parsedHostedOptions);
-                analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
-                compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, maxConcurrentThreads);
+                /*
+                 * Since the main thread helps to process analysis and compilation tasks (see use of
+                 * awaitQuiescence() in CompletionExecutor), subtract one to determine the number of
+                 * dedicated threads in ForkJoinPools.
+                 */
+                final int numberOfHelpingThreads = 1; // main thread
+                int numberOfThreads = NativeImageOptions.NumberOfThreads.getValue(parsedHostedOptions);
+                int numberOfAnalysisThreads = NativeImageOptions.getNumberOfAnalysisThreads(numberOfThreads, parsedHostedOptions) - numberOfHelpingThreads;
+                int numberOfCompilationThreads = numberOfThreads - numberOfHelpingThreads;
+                analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, numberOfAnalysisThreads);
+                compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, numberOfCompilationThreads);
+
                 generator = createImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
                 generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
                                 compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames(), timerCollection);
@@ -703,9 +713,6 @@ public class NativeImageGeneratorRunner {
         }
         if (parsedHostedOptions != null && NativeImageOptions.ReportExceptionStackTraces.getValue(parsedHostedOptions)) {
             e.printStackTrace();
-        } else {
-            report.accept("Use " + SubstrateOptionsParser.commandArgument(NativeImageOptions.ReportExceptionStackTraces, "+") +
-                            " to print stacktrace of underlying exception");
         }
     }
 

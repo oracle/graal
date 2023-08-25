@@ -27,8 +27,11 @@ package org.graalvm.compiler.nodes.calc;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
 
+import java.util.Set;
+
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable;
 import org.graalvm.compiler.core.common.type.ArithmeticOpTable.BinaryOp;
+import org.graalvm.compiler.core.common.type.FloatStamp;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.debug.GraalError;
@@ -36,8 +39,6 @@ import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.iterators.NodePredicate;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ArithmeticOperation;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -47,11 +48,11 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.ValuePhiNode;
 import org.graalvm.compiler.nodes.extended.GuardedNode;
 import org.graalvm.compiler.nodes.spi.ArithmeticLIRLowerable;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import jdk.vm.ci.meta.Constant;
-
-import java.util.Set;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements ArithmeticOperation, ArithmeticLIRLowerable, Canonicalizable.Binary<ValueNode> {
@@ -135,30 +136,63 @@ public abstract class BinaryArithmeticNode<OP> extends BinaryNode implements Ari
     }
 
     public static ValueNode binaryIntegerOp(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view, BinaryOp<?> op) {
+        return graph.addOrUniqueWithInputs(binaryIntegerOp(v1, v2, view, op));
+    }
+
+    public static ValueNode binaryIntegerOp(ValueNode v1, ValueNode v2, NodeView view, BinaryOp<?> op) {
         if (IntegerStamp.OPS.getAdd().equals(op)) {
-            return add(graph, v1, v2, view);
+            return add(v1, v2, view);
         } else if (IntegerStamp.OPS.getSub().equals(op)) {
-            return sub(graph, v1, v2, view);
+            return sub(v1, v2, view);
         } else if (IntegerStamp.OPS.getMul().equals(op)) {
-            return mul(graph, v1, v2, view);
+            return mul(v1, v2, view);
         } else if (IntegerStamp.OPS.getRem().equals(op)) {
-            return rem(graph, v1, v2, view);
+            return rem(v1, v2, view);
         } else if (IntegerStamp.OPS.getAnd().equals(op)) {
-            return and(graph, v1, v2, view);
+            return and(v1, v2, view);
         } else if (IntegerStamp.OPS.getOr().equals(op)) {
-            return or(graph, v1, v2, view);
+            return or(v1, v2, view);
         } else if (IntegerStamp.OPS.getXor().equals(op)) {
-            return xor(graph, v1, v2, view);
+            return xor(v1, v2, view);
         } else if (IntegerStamp.OPS.getMax().equals(op)) {
-            return max(graph, v1, v2, view);
+            return max(v1, v2, view);
         } else if (IntegerStamp.OPS.getMin().equals(op)) {
-            return min(graph, v1, v2, view);
+            return min(v1, v2, view);
         } else if (IntegerStamp.OPS.getUMax().equals(op)) {
-            return umax(graph, v1, v2, view);
+            return umax(v1, v2, view);
         } else if (IntegerStamp.OPS.getUMin().equals(op)) {
-            return umin(graph, v1, v2, view);
+            return umin(v1, v2, view);
         } else if (Set.of(IntegerStamp.OPS.getBinaryOps()).contains(op)) {
             GraalError.unimplemented(String.format("creating %s via BinaryArithmeticNode#binaryIntegerOp is not implemented yet", op));
+        } else {
+            GraalError.shouldNotReachHere(String.format("%s is not a binary operation!", op));
+        }
+        return null;
+    }
+
+    public static ValueNode binaryFloatOp(StructuredGraph graph, ValueNode v1, ValueNode v2, NodeView view, BinaryOp<?> op) {
+        return graph.addOrUniqueWithInputs(binaryFloatOp(v1, v2, view, op));
+    }
+
+    public static ValueNode binaryFloatOp(ValueNode v1, ValueNode v2, NodeView view, BinaryOp<?> op) {
+        if (FloatStamp.OPS.getAdd().equals(op)) {
+            return add(v1, v2, view);
+        } else if (FloatStamp.OPS.getSub().equals(op)) {
+            return sub(v1, v2, view);
+        } else if (FloatStamp.OPS.getMul().equals(op)) {
+            return mul(v1, v2, view);
+        } else if (FloatStamp.OPS.getAnd().equals(op)) {
+            return and(v1, v2, view);
+        } else if (FloatStamp.OPS.getOr().equals(op)) {
+            return or(v1, v2, view);
+        } else if (FloatStamp.OPS.getXor().equals(op)) {
+            return xor(v1, v2, view);
+        } else if (FloatStamp.OPS.getMax().equals(op)) {
+            return max(v1, v2, view);
+        } else if (FloatStamp.OPS.getMin().equals(op)) {
+            return min(v1, v2, view);
+        } else if (Set.of(FloatStamp.OPS.getBinaryOps()).contains(op)) {
+            GraalError.unimplemented(String.format("creating %s via BinaryArithmeticNode#binaryFloatOp is not implemented yet", op));
         } else {
             GraalError.shouldNotReachHere(String.format("%s is not a binary operation!", op));
         }

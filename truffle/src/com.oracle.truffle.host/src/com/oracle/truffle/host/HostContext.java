@@ -53,8 +53,6 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
-import org.graalvm.polyglot.PolyglotException;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -193,19 +191,34 @@ final class HostContext {
             return primitiveType;
         }
         try {
-            ClassLoader classLoader = getClassloader();
-            Class<?> foundClass = classLoader.loadClass(className);
-            Object currentModule = getUnnamedModule(classLoader);
-            if (verifyModuleVisibility(currentModule, foundClass)) {
-                return foundClass;
-            } else {
-                throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
+            if (getHostClassCache().hasCustomNamedLookup()) {
+                try {
+                    return accessClass(getHostClassCache().getMethodLookup(null).findClass(className));
+                } catch (ClassNotFoundException | IllegalAccessException | LinkageError e) {
+                    // fallthrough to class loader lookup
+                }
             }
-        } catch (ClassNotFoundException e) {
-            throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
-        } catch (LinkageError e) {
-            throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
+            return accessClass(loadClassViaClassLoader(className));
+        } catch (ClassNotFoundException | LinkageError e) {
+            throw throwClassLoadException(className);
         }
+    }
+
+    private Class<?> accessClass(Class<?> clazz) {
+        if (HostClassDesc.getLookup(clazz, getHostClassCache()) != null) {
+            return clazz;
+        } else {
+            throw throwClassLoadException(clazz.getName());
+        }
+    }
+
+    private Class<?> loadClassViaClassLoader(String className) throws ClassNotFoundException {
+        ClassLoader classLoader = getClassloader();
+        return classLoader.loadClass(className);
+    }
+
+    private static HostLanguageException throwClassLoadException(String className) {
+        throw new HostLanguageException(String.format("Access to host class %s is not allowed or does not exist.", className));
     }
 
     void validateClass(String className) {
@@ -219,40 +232,6 @@ final class HostContext {
             return null;
         }
         return classLoader.getUnnamedModule();
-    }
-
-    static boolean verifyModuleVisibility(Object module, Class<?> memberClass) {
-        Module lookupModule = (Module) module;
-        if (lookupModule == null) {
-            /*
-             * This case may currently happen in AOT as the module support there is not complete.
-             * See GR-19155.
-             */
-            return true;
-        }
-        Module memberModule = memberClass.getModule();
-        if (lookupModule == memberModule) {
-            return true;
-        } else {
-            String pkg = memberClass.getPackageName();
-            if (lookupModule.isNamed()) {
-                if (memberModule.isNamed()) {
-                    // both modules are named. check whether they are exported.
-                    return memberModule.isExported(pkg, lookupModule);
-                } else {
-                    // no access from named modules to unnamed modules
-                    return false;
-                }
-            } else {
-                if (memberModule.isNamed()) {
-                    // unnamed modules see all exported packages
-                    return memberModule.isExported(pkg);
-                } else {
-                    // full access from unnamed modules to unnamed modules
-                    return true;
-                }
-            }
-        }
     }
 
     private static Class<?> getPrimitiveTypeByName(String className) {
@@ -304,9 +283,9 @@ final class HostContext {
 
         if (e instanceof ThreadDeath) {
             throw (ThreadDeath) e;
-        } else if (e instanceof PolyglotException) {
+        } else if (e instanceof RuntimeException r && access.isPolyglotException(r)) {
             // this will rethrow if the guest exception in the polyglot exception can be rethrown.
-            language.access.rethrowPolyglotException(internalContext, (PolyglotException) e);
+            language.access.rethrowPolyglotException(internalContext, r);
 
             // fall-through and treat it as any other host exception
         }
@@ -325,7 +304,7 @@ final class HostContext {
         return hostToGuestException(e, null);
     }
 
-    Value asValue(Node node, Object value) {
+    Object asValue(Node node, Object value) {
         // make language lookup fold if possible
         HostLanguage l = HostLanguage.get(node);
         return l.access.toValue(internalContext, value);

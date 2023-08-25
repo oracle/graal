@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 package org.graalvm.polyglot;
 
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
@@ -48,7 +50,6 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.MapCursor;
-import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicSet;
 
 /**
@@ -77,9 +78,6 @@ import org.graalvm.collections.UnmodifiableEconomicSet;
  * @since 19.0
  */
 public final class PolyglotAccess {
-
-    private static final UnmodifiableEconomicSet<String> EMPTY = EconomicSet.create();
-    private static final UnmodifiableEconomicMap<String, UnmodifiableEconomicSet<String>> EMPTY_EVAL_ACCESS = EconomicMap.create();
 
     private final EconomicMap<String, UnmodifiableEconomicSet<String>> evalAccess;
     private final EconomicSet<String> bindingsAccess;
@@ -149,42 +147,53 @@ public final class PolyglotAccess {
         return b.toString();
     }
 
-    UnmodifiableEconomicSet<String> getEvalAccess(String language) {
+    Set<String> getEvalAccess(String language) {
         if (allAccess) {
             return null;
         } else {
             if (evalAccess == null) {
-                return EMPTY;
+                return Set.of();
             } else {
                 UnmodifiableEconomicSet<String> a = evalAccess.get(language);
                 if (a == null) {
-                    return EMPTY;
+                    return Set.of();
                 }
-                return a;
+
+                return Set.of(a.toArray(new String[a.size()]));
             }
         }
     }
 
-    UnmodifiableEconomicMap<String, UnmodifiableEconomicSet<String>> getEvalAccess() {
+    Map<String, Set<String>> getEvalAccess() {
         if (allAccess) {
             return null;
         } else {
             if (evalAccess == null) {
-                return EMPTY_EVAL_ACCESS;
+                return Map.of();
             } else {
-                return evalAccess;
+                Map<String, Set<String>> map = new LinkedHashMap<>();
+                var mapCursor = evalAccess.getEntries();
+                while (mapCursor.advance()) {
+                    var set = mapCursor.getValue();
+                    Set<String> newSet = null;
+                    if (set != null) {
+                        newSet = Set.of(set.toArray(new String[set.size()]));
+                    }
+                    map.put(mapCursor.getKey(), newSet);
+                }
+                return map;
             }
         }
     }
 
-    UnmodifiableEconomicSet<String> getBindingsAccess() {
+    Set<String> getBindingsAccess() {
         if (allAccess) {
             return null;
         } else {
             if (bindingsAccess == null) {
-                return EMPTY;
+                return Set.of();
             } else {
-                return bindingsAccess;
+                return Set.of(bindingsAccess.toArray(new String[bindingsAccess.size()]));
             }
         }
     }

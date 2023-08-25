@@ -63,6 +63,7 @@ import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -149,8 +150,8 @@ public class WasmInstantiator {
                 module.addLinkAction((context, instance) -> context.linker().resolveGlobalImport(context, instance, globalDescriptor, globalIndex, globalValueType, globalMutability));
             } else {
                 final boolean initialized = module.globalInitialized(globalIndex);
-                final boolean functionOrNull = module.globalFunctionOrNull(globalIndex);
-                final int existingIndex = module.globalExistingIndex(globalIndex);
+                final boolean isReference = module.globalIsReference(globalIndex);
+                final byte[] initBytecode = module.globalInitializerBytecode(globalIndex);
                 final long initialValue = module.globalInitialValue(globalIndex);
                 module.addLinkAction((context, instance) -> {
                     final GlobalRegistry registry = context.globals();
@@ -161,7 +162,7 @@ public class WasmInstantiator {
                     final GlobalRegistry registry = context.globals();
                     final int address = instance.globalAddress(globalIndex);
                     if (initialized) {
-                        if (functionOrNull) {
+                        if (isReference) {
                             // Only null is possible
                             registry.storeReference(address, WasmConstant.NULL);
                         } else {
@@ -169,11 +170,7 @@ public class WasmInstantiator {
                         }
                         context.linker().resolveGlobalInitialization(instance, globalIndex);
                     } else {
-                        if (functionOrNull) {
-                            context.linker().resolveGlobalFunctionInitialization(context, instance, globalIndex, (int) initialValue);
-                        } else {
-                            context.linker().resolveGlobalInitialization(context, instance, globalIndex, existingIndex);
-                        }
+                        context.linker().resolveGlobalInitialization(context, instance, globalIndex, initBytecode);
                     }
                 });
             }
@@ -293,13 +290,15 @@ public class WasmInstantiator {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                final int dataGlobalIndex;
+                final byte[] dataOffsetBytecode;
                 final long dataOffsetAddress;
-                if ((encoding & BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX) {
-                    dataGlobalIndex = (int) value;
+                if ((encoding & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE) {
+                    int dataOffsetBytecodeLength = (int) value;
+                    dataOffsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + dataOffsetBytecodeLength);
+                    effectiveOffset += dataOffsetBytecodeLength;
                     dataOffsetAddress = -1;
                 } else {
-                    dataGlobalIndex = -1;
+                    dataOffsetBytecode = null;
                     dataOffsetAddress = value;
                 }
 
@@ -331,7 +330,7 @@ public class WasmInstantiator {
                 }
 
                 final int dataBytecodeOffset = effectiveOffset;
-                module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, dataIndex, memoryIndex, dataOffsetAddress, dataGlobalIndex, dataLength,
+                module.addLinkAction((context, instance) -> context.linker().resolveDataSegment(context, instance, dataIndex, memoryIndex, dataOffsetAddress, dataOffsetBytecode, dataLength,
                                 dataBytecodeOffset, instance.droppedDataInstanceOffset()));
             } else {
                 final int dataBytecodeOffset = effectiveOffset;
@@ -386,23 +385,32 @@ public class WasmInstantiator {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                final int offsetGlobalIndex;
-                switch (encoding & BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_MASK) {
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_UNDEFINED:
-                        offsetGlobalIndex = -1;
+                final byte[] offsetBytecode;
+                switch (encoding & BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_MASK) {
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_UNDEFINED:
+                        offsetBytecode = null;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U8:
-                        offsetGlobalIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U8: {
+                        int offsetBytecodeLength = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U16:
-                        offsetGlobalIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                    }
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U16: {
+                        int offsetBytecodeLength = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_I32:
-                        offsetGlobalIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                    }
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_I32: {
+                        int offsetBytecodeLength = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
+                    }
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
@@ -427,7 +435,7 @@ public class WasmInstantiator {
                         throw CompilerDirectives.shouldNotReachHere();
                 }
                 final int bytecodeOffset = effectiveOffset;
-                module.addLinkAction((context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, elemIndex, offsetAddress, offsetGlobalIndex, bytecodeOffset, elemCount));
+                module.addLinkAction((context, instance) -> context.linker().resolveElemSegment(context, instance, tableIndex, elemIndex, offsetAddress, offsetBytecode, bytecodeOffset, elemCount));
             } else {
                 final int bytecodeOffset = effectiveOffset;
                 module.addLinkAction((context, instance) -> context.linker().resolvePassiveElemSegment(context, instance, elemIndex, bytecodeOffset, elemCount));

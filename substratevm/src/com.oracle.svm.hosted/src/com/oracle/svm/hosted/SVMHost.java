@@ -902,6 +902,14 @@ public class SVMHost extends HostVM {
     }
 
     @Override
+    public boolean recordInlinedMethods(AnalysisMethod method) {
+        if (parsingSupport != null) {
+            return parsingSupport.recordInlinedMethods(method);
+        }
+        return super.recordInlinedMethods(method);
+    }
+
+    @Override
     public HostedProviders getProviders(MultiMethod.MultiMethodKey key) {
         if (parsingSupport != null) {
             HostedProviders providers = parsingSupport.getHostedProviders(key);

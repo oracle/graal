@@ -147,21 +147,19 @@ final class HostAdapterBytecodeGenerator {
 
     private static final Type OBJECT_TYPE = Type.getType(Object.class);
     private static final String OBJECT_TYPE_NAME = OBJECT_TYPE.getInternalName();
-    private static final Type POLYGLOT_VALUE_TYPE = Type.getType(Value.class);
-    private static final String POLYGLOT_VALUE_TYPE_DESCRIPTOR = POLYGLOT_VALUE_TYPE.getDescriptor();
     private static final String BOOLEAN_TYPE_DESCRIPTOR = BOOLEAN_TYPE.getDescriptor();
 
     private static final Type STRING_TYPE = Type.getType(String.class);
     private static final Type CLASS_LOADER_TYPE = Type.getType(ClassLoader.class);
     /** @see HostAdapterServices#hasMethod(Value, String) */
     private static final String HAS_METHOD_NAME = "hasMethod";
-    private static final String HAS_METHOD_DESCRIPTOR = Type.getMethodDescriptor(BOOLEAN_TYPE, POLYGLOT_VALUE_TYPE, STRING_TYPE);
+    private final String hasMethodDescriptor;
     /** @see HostAdapterServices#hasOwnMethod(Value, String) */
     private static final String HAS_OWN_METHOD_NAME = "hasOwnMethod";
-    private static final String HAS_OWN_METHOD_DESCRIPTOR = Type.getMethodDescriptor(BOOLEAN_TYPE, POLYGLOT_VALUE_TYPE, STRING_TYPE);
+    private final String hasOwnMethodDescriptor;
     /** @see HostAdapterServices#getClassOverrides(ClassLoader) */
     private static final String GET_CLASS_OVERRIDES_METHOD_NAME = "getClassOverrides";
-    private static final String GET_CLASS_OVERRIDES_METHOD_DESCRIPTOR = Type.getMethodDescriptor(POLYGLOT_VALUE_TYPE, CLASS_LOADER_TYPE);
+    private final String getClassOverridesMethodDescriptor;
 
     private static final Type RUNTIME_EXCEPTION_TYPE = Type.getType(RuntimeException.class);
     private static final Type THROWABLE_TYPE = Type.getType(Throwable.class);
@@ -237,6 +235,9 @@ final class HostAdapterBytecodeGenerator {
 
     private final ClassWriter cw;
 
+    private final Type polyglotValueType;
+    private final String polyglotValueTypeDescriptor;
+
     /**
      * Creates a generator for the bytecode for the adapter for the specified superclass and
      * interfaces.
@@ -262,6 +263,13 @@ final class HostAdapterBytecodeGenerator {
         this.hostClassCache = hostClassCache;
         this.classOverride = classOverride;
 
+        this.polyglotValueType = Type.getType(hostClassCache.apiAccess.getValueClass());
+        this.polyglotValueTypeDescriptor = polyglotValueType.getDescriptor();
+
+        this.hasMethodDescriptor = Type.getMethodDescriptor(BOOLEAN_TYPE, polyglotValueType, STRING_TYPE);
+        this.hasOwnMethodDescriptor = Type.getMethodDescriptor(BOOLEAN_TYPE, polyglotValueType, STRING_TYPE);
+        this.getClassOverridesMethodDescriptor = Type.getMethodDescriptor(polyglotValueType, CLASS_LOADER_TYPE);
+
         this.superClassName = Type.getInternalName(superClass);
         this.generatedClassName = getGeneratedClassName(superClass, interfaces);
 
@@ -279,7 +287,7 @@ final class HostAdapterBytecodeGenerator {
 
         cw.visit(Opcodes.V1_8, ACC_PUBLIC | ACC_SUPER, generatedClassName, null, superClassName, getInternalTypeNames(interfaces));
 
-        generatePrivateField(DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+        generatePrivateField(DELEGATE_FIELD_NAME, polyglotValueTypeDescriptor);
 
         this.hasPublicDelegateField = !classOverride;
         if (hasPublicDelegateField) {
@@ -308,7 +316,7 @@ final class HostAdapterBytecodeGenerator {
     }
 
     private void generatePublicDelegateField() {
-        FieldVisitor fw = cw.visitField(ACC_PUBLIC | ACC_FINAL, PUBLIC_DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR, null, null);
+        FieldVisitor fw = cw.visitField(ACC_PUBLIC | ACC_FINAL, PUBLIC_DELEGATE_FIELD_NAME, polyglotValueTypeDescriptor, null, null);
         fw.visitEnd();
     }
 
@@ -380,7 +388,7 @@ final class HostAdapterBytecodeGenerator {
         if (classOverride) {
             mv.visitLdcInsn(getGeneratedClassAsType());
             mv.invokevirtual(CLASS_TYPE_NAME, GET_CLASS_LOADER_NAME, GET_CLASS_LOADER_DESCRIPTOR, false);
-            mv.invokestatic(SERVICES_CLASS_TYPE_NAME, GET_CLASS_OVERRIDES_METHOD_NAME, GET_CLASS_OVERRIDES_METHOD_DESCRIPTOR, false);
+            mv.invokestatic(SERVICES_CLASS_TYPE_NAME, GET_CLASS_OVERRIDES_METHOD_NAME, getClassOverridesMethodDescriptor, false);
             // stack: [delegate]
 
             if (samName != null) {
@@ -390,7 +398,7 @@ final class HostAdapterBytecodeGenerator {
                 mv.putstatic(generatedClassName, IS_FUNCTION_FIELD_NAME, BOOLEAN_TYPE_DESCRIPTOR);
             }
 
-            mv.putstatic(generatedClassName, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+            mv.putstatic(generatedClassName, DELEGATE_FIELD_NAME, polyglotValueTypeDescriptor);
         }
 
         endInitMethod(mv);
@@ -495,7 +503,7 @@ final class HostAdapterBytecodeGenerator {
         final Type[] newArgTypes = new Type[argLen + 1];
 
         // Insert ScriptFunction|Object as the last argument to the constructor
-        final Type extraArgumentType = POLYGLOT_VALUE_TYPE;
+        final Type extraArgumentType = polyglotValueType;
         newArgTypes[argLen] = extraArgumentType;
         System.arraycopy(originalArgTypes, 0, newArgTypes, 0, argLen);
 
@@ -536,12 +544,12 @@ final class HostAdapterBytecodeGenerator {
 
         mv.visitVarInsn(ALOAD, 0);
         mv.visitVarInsn(ALOAD, offset); // delegate object
-        mv.putfield(generatedClassName, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+        mv.putfield(generatedClassName, DELEGATE_FIELD_NAME, polyglotValueTypeDescriptor);
 
         if (hasPublicDelegateField) {
             mv.visitVarInsn(ALOAD, 0);
             mv.visitVarInsn(ALOAD, offset); // delegate object
-            mv.putfield(generatedClassName, PUBLIC_DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+            mv.putfield(generatedClassName, PUBLIC_DELEGATE_FIELD_NAME, polyglotValueTypeDescriptor);
         }
 
         endInitMethod(mv);
@@ -644,7 +652,7 @@ final class HostAdapterBytecodeGenerator {
 
         final List<TryBlock> tryBlocks = new ArrayList<>();
 
-        loadField(mv, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+        loadField(mv, DELEGATE_FIELD_NAME, polyglotValueTypeDescriptor);
         // For the cases like scripted overridden methods invoked from super constructors get
         // adapter global/delegate fields as null, since we
         // cannot set these fields before invoking super constructor better solution is opt out of
@@ -663,7 +671,7 @@ final class HostAdapterBytecodeGenerator {
                 mv.ifeq(notFunction);
                 // stack: []
                 // If it's a SAM method, it'll load delegate as the "callee".
-                loadField(mv, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+                loadField(mv, DELEGATE_FIELD_NAME, polyglotValueTypeDescriptor);
                 // stack: [delegate]
 
                 // Load all parameters on the stack for dynamic invocation.
@@ -673,7 +681,8 @@ final class HostAdapterBytecodeGenerator {
                 mv.visitLabel(tryBlockStart);
 
                 // Invoke the target method handle
-                mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_EXECUTE | bootstrapFlags);
+                mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, hostClassCache.apiAccess.getValueClass()).toMethodDescriptorString(), BOOTSTRAP_HANDLE,
+                                BOOTSTRAP_VALUE_EXECUTE | bootstrapFlags);
 
                 final Label tryBlockEnd = new Label();
                 mv.visitLabel(tryBlockEnd);
@@ -691,7 +700,7 @@ final class HostAdapterBytecodeGenerator {
             }
         }
 
-        loadField(mv, DELEGATE_FIELD_NAME, POLYGLOT_VALUE_TYPE_DESCRIPTOR);
+        loadField(mv, DELEGATE_FIELD_NAME, polyglotValueTypeDescriptor);
         // stack: [delegate]
 
         if (name.equals("toString")) {
@@ -701,7 +710,7 @@ final class HostAdapterBytecodeGenerator {
             mv.dup();
             mv.visitLdcInsn(name);
             // stack: ["toString", delegate, delegate]
-            mv.invokestatic(SERVICES_CLASS_TYPE_NAME, HAS_OWN_METHOD_NAME, HAS_OWN_METHOD_DESCRIPTOR, false);
+            mv.invokestatic(SERVICES_CLASS_TYPE_NAME, HAS_OWN_METHOD_NAME, hasOwnMethodDescriptor, false);
             // stack: [hasOwnToString, delegate]
             mv.ifne(hasNoToString);
             mv.pop();
@@ -712,7 +721,7 @@ final class HostAdapterBytecodeGenerator {
 
         mv.dup();
         mv.visitLdcInsn(name);
-        mv.invokestatic(SERVICES_CLASS_TYPE_NAME, HAS_METHOD_NAME, HAS_METHOD_DESCRIPTOR, false);
+        mv.invokestatic(SERVICES_CLASS_TYPE_NAME, HAS_METHOD_NAME, hasMethodDescriptor, false);
         mv.ifne(hasMethod);
         // stack: [delegate]
 
@@ -742,7 +751,8 @@ final class HostAdapterBytecodeGenerator {
         mv.visitLabel(tryBlockStart);
 
         // Invoke the target method handle
-        mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, Value.class).toMethodDescriptorString(), BOOTSTRAP_HANDLE, BOOTSTRAP_VALUE_INVOKE_MEMBER | bootstrapFlags);
+        mv.visitInvokeDynamicInsn(name, type.insertParameterTypes(0, hostClassCache.apiAccess.getValueClass()).toMethodDescriptorString(), BOOTSTRAP_HANDLE,
+                        BOOTSTRAP_VALUE_INVOKE_MEMBER | bootstrapFlags);
 
         final Label tryBlockEnd = new Label();
         mv.visitLabel(tryBlockEnd);

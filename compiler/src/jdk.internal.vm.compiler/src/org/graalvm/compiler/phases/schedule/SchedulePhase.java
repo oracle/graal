@@ -89,6 +89,7 @@ import org.graalvm.compiler.nodes.memory.MultiMemoryKill;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
+import org.graalvm.compiler.nodes.virtual.AllocatedObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.word.LocationIdentity;
@@ -276,6 +277,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                             latestBlock = currentBlock;
                         }
 
+                        if (currentNode instanceof AllocatedObjectNode) {
+                            latestBlock = currentBlock;
+                        }
+
                         LocationIdentity constrainingLocation = null;
                         if (latestBlock == null && currentNode instanceof FloatingReadNode) {
                             // We are scheduling a floating read node => check memory
@@ -317,7 +322,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
         protected static void selectLatestBlock(Node currentNode, HIRBlock currentBlock, HIRBlock latestBlock, NodeMap<HIRBlock> currentNodeMap, BlockMap<ArrayList<FloatingReadNode>> watchListMap,
                         LocationIdentity constrainingLocation, BlockMap<List<Node>> latestBlockToNodesMap) {
             if (currentBlock != latestBlock) {
-                checkLatestEarliestRelation(currentNode, currentBlock, latestBlock);
+                checkLatestEarliestRelation(currentNode, currentBlock, latestBlock, null);
 
                 currentNodeMap.setAndGrow(currentNode, latestBlock);
 
@@ -332,9 +337,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             latestBlockToNodesMap.get(latestBlock).add(currentNode);
         }
 
-        private static void checkLatestEarliestRelation(Node currentNode, HIRBlock earliestBlock, HIRBlock latestBlock) {
+        private static void checkLatestEarliestRelation(Node currentNode, HIRBlock earliestBlock, HIRBlock latestBlock, Node currentUsage) {
             GraalError.guarantee(earliestBlock.dominates(latestBlock) || (currentNode instanceof FrameState && latestBlock == earliestBlock.getDominator()),
-                            "%s earliest block %s (%s) does not dominate latest block %s (%s)", currentNode, earliestBlock, earliestBlock.getBeginNode(), latestBlock, latestBlock.getBeginNode());
+                            "%s earliest block %s (%s) does not dominate latest block %s (%s), added usage %s", currentNode, earliestBlock, earliestBlock.getBeginNode(), latestBlock,
+                            latestBlock.getBeginNode(), currentUsage);
         }
 
         private static boolean verifySchedule(ControlFlowGraph cfg, BlockMap<List<Node>> blockToNodesMap, NodeMap<HIRBlock> nodeMap) {
@@ -579,6 +585,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                         continue;
                     }
                     latestBlock = calcBlockForUsage(currentNode, usage, latestBlock, currentNodeMap, moveInputsIntoDominator);
+                    checkLatestEarliestRelation(currentNode, earliestBlock, latestBlock, usage);
                 }
 
                 assert latestBlock != null : currentNode;
@@ -1193,6 +1200,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
             MicroBlock earliestBlock = startBlock;
             for (Node input : current.inputs()) {
+                GraalError.guarantee(input != current, "Cannot have direct cycles on schedulable nodes %s", current);
                 MicroBlock inputBlock = nodeToBlock.get(input);
                 if (inputBlock == null) {
                     earliestBlock = null;

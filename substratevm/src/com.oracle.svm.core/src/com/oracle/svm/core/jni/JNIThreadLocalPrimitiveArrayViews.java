@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.jni;
 
-import java.util.function.Predicate;
-
 import org.graalvm.word.PointerBase;
 
 import com.oracle.svm.core.handles.PrimitiveArrayView;
@@ -60,18 +58,11 @@ public class JNIThreadLocalPrimitiveArrayViews {
         return createArrayView(array).addressOfArrayElement(0);
     }
 
-    /**
-     * Removes the first referenced array in the list matching a predicate.
-     *
-     * @param p Predicate determining whether to destroy the array reference.
-     * @return {@code true} if an reference was remove, {@code false} if no array reference matched
-     *         the predicate.
-     */
-    private static boolean destroyFirstArrayView(Predicate<ReferencedObjectListNode> p, int mode) {
+    public static void destroyNewestArrayViewByAddress(PointerBase address, int mode) {
         ReferencedObjectListNode previous = null;
         ReferencedObjectListNode current = referencedObjectsListHead.get();
         while (current != null) {
-            if (p.test(current)) {
+            if (current.object.addressOfArrayElement(0) == address) {
                 if (previous != null) {
                     previous.next = current.next;
                 } else {
@@ -86,16 +77,11 @@ public class JNIThreadLocalPrimitiveArrayViews {
                 } else {
                     current.object.untrack();
                 }
-                return true;
+                return;
             }
             previous = current;
             current = current.next;
         }
-        return false;
-    }
-
-    public static boolean destroyArrayViewByAddress(PointerBase address, int mode) {
-        return destroyFirstArrayView(n -> n.object.addressOfArrayElement(0) == address, mode);
     }
 
     static int getCount() {
