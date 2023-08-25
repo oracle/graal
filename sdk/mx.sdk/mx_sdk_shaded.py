@@ -75,12 +75,12 @@ class ShadedLibraryProject(mx.JavaProject):
                 # a list of (re)source path patterns that should be excluded from the generated jar
                 "**/*.html",
             ],
-            "patch" : [
+            "patch" : {
                 # a list of (re)source path patterns that should be patched with regex substitutions
                 "pkg/name/my.properties" : {
                     "<pattern>" : "<replacement>",
                 },
-            ],
+            },
         }
     The build task then runs a Java program to shade the library and generates a .jar file.
     """
@@ -202,7 +202,7 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
         dist = self.subject
         shadedDeps = dist.shaded_deps()
         includedPaths = dist.included_paths()
-        patch = dist.shade.get('patch', [])
+        patch = dist.shade.get('patch', {})
         excludedPaths = dist.excluded_paths()
 
         binDir = dist.output_dir()
