@@ -356,7 +356,11 @@ suite = {
                 "ESPRESSO",
                 "ESPRESSO_LIBS_RESOURCES",
                 "ESPRESSO_RUNTIME_RESOURCES",
+                "truffle:TRUFFLE_NFI_LIBFFI",
                 "truffle:TRUFFLE_RUNTIME",
+                # sulong is not strictly required but it'll work out of the box in more cases if it's there
+                "sulong:SULONG_NFI",
+                "sulong:SULONG_NATIVE",
             ],
             "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "maven": {
