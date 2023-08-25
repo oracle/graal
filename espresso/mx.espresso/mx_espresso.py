@@ -330,6 +330,13 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                                                    },
                                                    path=None,
                                                    platformDependent=True,
+                                                   platforms=[
+                                                       "linux-amd64",
+                                                       "linux-aarch64",
+                                                       "darwin-amd64",
+                                                       "darwin-aarch64",
+                                                       "windows-amd64",
+                                                   ],
                                                    theLicense=None,
                                                    hashEntry="META-INF/resources/java/espresso-runtime/<os>/<arch>/sha256",
                                                    fileListEntry="META-INF/resources/java/espresso-runtime/<os>/<arch>/files",
