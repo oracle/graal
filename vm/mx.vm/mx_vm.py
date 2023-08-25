@@ -48,10 +48,10 @@ _suite = mx.suite('vm')
 gu_build_args = [] # externalized to simplify extensions
 
 
-@mx.command(_suite.name, "path-to-url")
-def path_to_url(args):
+@mx.command(_suite.name, "local-path-to-url")
+def local_path_to_url(args):
     """Print the url representation of a canonicalized path"""
-    parser = ArgumentParser(prog='mx path-to-url', description='Print the url representation of a canonicalized path')
+    parser = ArgumentParser(prog='mx local-path-to-url', description='Print the url representation of a canonicalized path')
     parser.add_argument('path', action='store', help='the path to canonicalize and return as url')
     args = parser.parse_args(args)
 
