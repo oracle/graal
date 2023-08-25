@@ -271,6 +271,7 @@ suite = {
                     "jdk.internal.misc",
                     "jdk.internal.module",
                     "jdk.internal.perf",
+                    "jdk.internal.platform",
                     "jdk.internal.ref",
                     "jdk.internal.reflect",
                     "jdk.internal.vm",
@@ -305,21 +306,6 @@ suite = {
             "workingSets": "SVM",
             "jacoco" : "exclude",
         },
-
-        "com.oracle.svm.core.containers": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "javaCompliance" : "17+",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
-            "workingSets": "SVM",
-            "spotbugs": "false",
-            "jacoco" : "exclude",
-        },
-
 
         "com.oracle.svm.core.genscavenge": {
             "subDir": "src",
@@ -1386,7 +1372,6 @@ suite = {
                 "com.oracle.svm.core.posix",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
-                "com.oracle.svm.core.containers",
             ],
             "distDependencies": [
                 "sdk:NATIVEIMAGE",

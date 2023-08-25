@@ -143,8 +143,8 @@ public class PhysicalMemory {
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Only called if allocation is allowed.")
     private static void doInitialize() {
         long memoryLimit = Containers.memoryLimitInBytes();
-        cachedSize = memoryLimit == Containers.UNKNOWN
-                        ? ImageSingletons.lookup(PhysicalMemorySupport.class).size()
-                        : WordFactory.unsigned(memoryLimit);
+        cachedSize = memoryLimit > 0
+                        ? WordFactory.unsigned(memoryLimit)
+                        : ImageSingletons.lookup(PhysicalMemorySupport.class).size();
     }
 }
