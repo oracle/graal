@@ -33,14 +33,14 @@ package com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr;
 
 // DO NOT MODIFY - generated from DebugExpression.g4 using "mx create-parsers"
 
-import org.antlr.v4.runtime.Lexer;
-import org.antlr.v4.runtime.CharStream;
-import org.antlr.v4.runtime.Token;
-import org.antlr.v4.runtime.TokenStream;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.atn.*;
-import org.antlr.v4.runtime.dfa.DFA;
-import org.antlr.v4.runtime.misc.*;
+import org.graalvm.shadowed.org.antlr.v4.runtime.Lexer;
+import org.graalvm.shadowed.org.antlr.v4.runtime.CharStream;
+import org.graalvm.shadowed.org.antlr.v4.runtime.Token;
+import org.graalvm.shadowed.org.antlr.v4.runtime.TokenStream;
+import org.graalvm.shadowed.org.antlr.v4.runtime.*;
+import org.graalvm.shadowed.org.antlr.v4.runtime.atn.*;
+import org.graalvm.shadowed.org.antlr.v4.runtime.dfa.DFA;
+import org.graalvm.shadowed.org.antlr.v4.runtime.misc.*;
 
 @SuppressWarnings({"all", "this-escape"})
 public class DebugExpressionLexer extends Lexer {
