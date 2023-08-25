@@ -133,9 +133,9 @@ The memory limit and number of threads used by the build process.
 
 More precisely, the memory limit of the Java heap, so actual memory consumption can be even higher.
 Please check the [peak RSS](#glossary-peak-rss) reported at the end of the build to understand how much memory was actually used.
-By default, the process will only use _available_ memory: memory that the operating system can make available without swapping out memory used by other processes.
-Therefore, consider freeing up memory if your build process is slow, for example, by closing applications that you do not need.
-Note that, by default, the build process will not use more than 32GB available memory.
+By default, the build process tries to only use free memory (to avoid memory pressure on the build machine), and never more than 32GB of memory.
+If less than 8GB of memory are free, the build process falls back to use 85% of total memory.
+Therefore, consider freeing up memory if your machine is slow during a build, for example, by closing applications that you do not need.
 
 By default, the build process uses all available CPU cores to maximize speed.
 Use the `--parallelism` option to set the number of threads explicitly (for example, `--parallelism=4`).
