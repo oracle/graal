@@ -58,9 +58,9 @@ class MemoryUtil {
                         "-XX:MaxRAMPercentage=" + determineReasonableMaxRAMPercentage(),
                         /*
                          * Optimize for throughput by increasing the goal of the total time for
-                         * garbage collection from 1% to 5% (N=19). This also reduces peak RSS.
+                         * garbage collection from 1% to 10% (N=9). This also reduces peak RSS.
                          */
-                        "-XX:GCTimeRatio=19", // 1/(1+N) time for GC
+                        "-XX:GCTimeRatio=9", // 1/(1+N) time for GC
                         /*
                          * Let builder exit on first OutOfMemoryError to provide for shorter
                          * feedback loops.
