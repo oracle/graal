@@ -21,7 +21,7 @@ Oracle GraalVM container images are published in two OCR repositories: **jdk** a
 Both repositories provide container images for AMD64 and AArch64 processor architectures, with a choice of Oracle Linux versions 7, 8, or 9.
 
 Oracle GraalVM is installed in `/usr/lib64/graalvm/graalvm-java<$FeatureVersion>` where `<$FeatureVersion>` is `17`, `20`, etc. 
-For instance, `Oracle GraalVM for JDK 17` is installed in `/usr/lib64/graalvm/graalvm-java17`. All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
+For instance, Oracle GraalVM for JDK 17 is installed in `/usr/lib64/graalvm/graalvm-java17`. All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
 
 ## Tags
 
@@ -105,7 +105,8 @@ The most-specific tag is unique and always points to the same image, while the l
     
     The output shows the installed Oracle GraalVM `native-image` utility version information.
     
-4. Calling `docker pull` without specifying a processor architecture pulls container images for the processor architecture that matches your docker client. To pull container images for a different platform architecture, specify the desired platform architecture with the `--platform` option and either `linux/amd64` or `linux/aarch64` as follows:
+4. Calling `docker pull` without specifying a processor architecture pulls container images for the processor architecture that matches your Docker client. 
+To pull container images for a different platform architecture, specify the desired platform architecture with the `--platform` option and either `linux/amd64` or `linux/aarch64` as follows:
 
     ```bash
     docker pull --platform linux/aarch64 container-registry.oracle.com/graalvm/native-image:17
