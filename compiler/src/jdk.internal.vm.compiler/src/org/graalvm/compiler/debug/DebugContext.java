@@ -2220,7 +2220,8 @@ public final class DebugContext implements AutoCloseable {
             return;
         }
         if (DebugOptions.MetricsFile.getValue(getOptions()) != null) {
-            Path metricsFile = GlobalMetrics.generateFileName(DebugOptions.MetricsFile.getValue(getOptions()));
+            Path metricsFilePath = GlobalMetrics.generateFileName(DebugOptions.MetricsFile.getValue(getOptions()));
+            String metricsFile = metricsFilePath.toString();
 
             // Use identity to distinguish methods that have been redefined
             // or loaded by different class loaders.
@@ -2230,12 +2231,12 @@ public final class DebugContext implements AutoCloseable {
             synchronized (PRINT_METRICS_LOCK) {
                 if (!metricsFileDeleteCheckPerformed) {
                     metricsFileDeleteCheckPerformed = true;
-                    if (Files.exists(metricsFile)) {
+                    if (PathUtilities.exists(metricsFile)) {
                         // This can return false in case something like /dev/stdout
                         // is specified. If the file is unwriteable, the file open
                         // below will fail.
                         try {
-                            Files.delete(metricsFile);
+                            PathUtilities.deleteFile(metricsFile);
                         } catch (IOException e) {
                         }
                     }
@@ -2254,7 +2255,7 @@ public final class DebugContext implements AutoCloseable {
             // This means `compilationNr` fields may show up out of order in the file.
             ByteArrayOutputStream baos = new ByteArrayOutputStream(metricsBufSize);
             PrintStream out = new PrintStream(baos);
-            if (metricsFile.toString().endsWith(".csv") || metricsFile.toString().endsWith(".CSV")) {
+            if (metricsFile.endsWith(".csv") || metricsFile.endsWith(".CSV")) {
                 printMetricsCSV(out, compilable, identity, compilationNr, desc.identifier);
             } else {
                 printMetrics(out, compilable, identity, compilationNr, desc.identifier);
@@ -2264,7 +2265,7 @@ public final class DebugContext implements AutoCloseable {
             synchronized (PRINT_METRICS_LOCK) {
                 metricsBufSize = Math.max(metricsBufSize, content.length);
                 try {
-                    Files.write(metricsFile, content, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                    Files.write(metricsFilePath, content, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
                 } catch (IOException e) {
                 }
             }
