@@ -46,7 +46,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -2220,8 +2219,9 @@ public final class DebugContext implements AutoCloseable {
         if (metricValues == null) {
             return;
         }
-        String metricsFile = DebugOptions.MetricsFile.getValue(getOptions());
-        if (metricsFile != null) {
+        if (DebugOptions.MetricsFile.getValue(getOptions()) != null) {
+            Path metricsFile = GlobalMetrics.generateFileName(DebugOptions.MetricsFile.getValue(getOptions()));
+
             // Use identity to distinguish methods that have been redefined
             // or loaded by different class loaders.
             Object compilable = desc.compilable;
@@ -2230,12 +2230,12 @@ public final class DebugContext implements AutoCloseable {
             synchronized (PRINT_METRICS_LOCK) {
                 if (!metricsFileDeleteCheckPerformed) {
                     metricsFileDeleteCheckPerformed = true;
-                    if (PathUtilities.exists(metricsFile)) {
+                    if (Files.exists(metricsFile)) {
                         // This can return false in case something like /dev/stdout
                         // is specified. If the file is unwriteable, the file open
                         // below will fail.
                         try {
-                            PathUtilities.deleteFile(metricsFile);
+                            Files.delete(metricsFile);
                         } catch (IOException e) {
                         }
                     }
@@ -2254,21 +2254,21 @@ public final class DebugContext implements AutoCloseable {
             // This means `compilationNr` fields may show up out of order in the file.
             ByteArrayOutputStream baos = new ByteArrayOutputStream(metricsBufSize);
             PrintStream out = new PrintStream(baos);
-            if (metricsFile.endsWith(".csv") || metricsFile.endsWith(".CSV")) {
+            if (metricsFile.toString().endsWith(".csv") || metricsFile.toString().endsWith(".CSV")) {
                 printMetricsCSV(out, compilable, identity, compilationNr, desc.identifier);
             } else {
                 printMetrics(out, compilable, identity, compilationNr, desc.identifier);
             }
 
             byte[] content = baos.toByteArray();
-            Path path = Paths.get(metricsFile);
             synchronized (PRINT_METRICS_LOCK) {
                 metricsBufSize = Math.max(metricsBufSize, content.length);
                 try {
-                    Files.write(path, content, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                    Files.write(metricsFile, content, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
                 } catch (IOException e) {
                 }
             }
+
         }
     }
 
