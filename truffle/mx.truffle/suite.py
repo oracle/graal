@@ -83,6 +83,7 @@ suite = {
     "ANTLR4": {
       "moduleName": "org.antlr.antlr4.runtime",
       "digest" : "sha512:4abb69a3c6895edeec64c11d61886fbeb68eda5ebb21094f596e4f7add8afa9ff049c05fa916264b9185ac9013b16d8eabf44fb65da0b6871997c8f1473a3771",
+      "sourceDigest" : "sha512:611840da04cf2768f234ef06d69d95ed6edb2c55a48c3cffdf96ab23e76fc3bdd03e900155e454d2dd23ce8b644d48882a980aa6f5a76905dbbad57320d1cce0",
       "maven" : {
         "groupId" : "org.antlr",
         "artifactId" : "antlr4-runtime",
@@ -1207,6 +1208,33 @@ suite = {
       "javac.lint.overrides" : 'none',
       "jacoco" : "exclude",
     },
+
+    "org.graalvm.shadowed.org.antlr.v4.runtime" : {
+      # shaded ANTLR4 (org.antlr:antlr4-runtime) library
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "forceJavac" : "true",
+      "spotbugs" : "false",
+      "shadedDependencies" : [
+        "truffle:ANTLR4",
+      ],
+      "class" : "ShadedLibraryProject",
+      "shade" : {
+        "packages" : {
+          "org.antlr.v4.runtime" : "org.graalvm.shadowed.org.antlr.v4.runtime",
+        },
+        "exclude" : [
+          "META-INF/MANIFEST.MF",
+          "META-INF/maven/**",
+          "main/dot/org/antlr/v4/runtime/atn/images/*"
+        ],
+      },
+      "description" : "ANTLR4 shaded library.",
+      "allowsJavadocWarnings": True,
+      "javac.lint.overrides" : 'none',
+      "jacoco" : "exclude",
+    },
   },
 
   "licenses" : {
@@ -2001,6 +2029,31 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.shadowed",
         "artifactId" : "json",
+        "tag": ["default", "public"],
+      },
+    },
+
+    "TRUFFLE_ANTLR4" : {
+      # shaded ANTLR4 (org.antlr:antlr4-runtime) library module
+      "moduleInfo" : {
+        "name" : "org.graalvm.shadowed.antlr4",
+        "exports" : [
+          "org.graalvm.shadowed.org.antlr.v4.runtime*",
+        ],
+      },
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "dependencies" : [
+        "org.graalvm.shadowed.org.antlr.v4.runtime",
+      ],
+      "description" : "ANTLR4 shaded module.",
+      "allowsJavadocWarnings" : True,
+      "license" : "BSD-new",
+      "maven" : {
+        "groupId" : "org.graalvm.shadowed",
+        "artifactId" : "antlr4",
         "tag": ["default", "public"],
       },
     },
