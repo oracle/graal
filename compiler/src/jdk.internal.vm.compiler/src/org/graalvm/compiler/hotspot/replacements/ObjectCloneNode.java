@@ -27,14 +27,14 @@ package org.graalvm.compiler.hotspot.replacements;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InliningLog;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -56,6 +56,7 @@ import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 import org.graalvm.compiler.replacements.nodes.MacroInvokable;
+import org.graalvm.compiler.replacements.nodes.ObjectClone;
 
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -68,19 +69,16 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
     public static final NodeClass<ObjectCloneNode> TYPE = NodeClass.create(ObjectCloneNode.class);
 
     public ObjectCloneNode(MacroParams p) {
-        super(TYPE, p);
+        this(p, null);
+    }
+
+    private ObjectCloneNode(MacroParams p, FrameState stateAfter) {
+        super(TYPE, p, stateAfter);
     }
 
     @Override
-    public Stamp computeStamp(ValueNode object) {
-        if (getConcreteType(object.stamp(NodeView.DEFAULT)) != null) {
-            return AbstractPointerStamp.pointerNonNull(object.stamp(NodeView.DEFAULT));
-        }
-        /*
-         * If this call can't be intrinsified don't report a non-null stamp, otherwise the stamp
-         * would change when this is lowered back to an invoke and we might lose a null check.
-         */
-        return AbstractPointerStamp.pointerMaybeNull(returnStamp.getTrustedStamp());
+    protected ObjectCloneNode duplicateWithNewStamp(ObjectStamp newStamp) {
+        return new ObjectCloneNode(copyParamsWithImprovedStamp(newStamp), stateAfter());
     }
 
     @Override
@@ -133,13 +131,13 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
                     }
 
                     assert snippetGraph != null : "ObjectCloneSnippets should be installed";
-                    assert getConcreteType(stamp(NodeView.DEFAULT)) != null;
+                    assert ObjectClone.getConcreteType(stamp(NodeView.DEFAULT)) != null;
                     return MacroInvokable.lowerReplacement(graph(), (StructuredGraph) snippetGraph.copy(getDebug()), tool);
                 }
                 GraalError.shouldNotReachHere("unhandled array type " + type.getComponentType().getJavaKind()); // ExcludeFromJacocoGeneratedReport
             } else {
                 Assumptions assumptions = graph().getAssumptions();
-                type = getConcreteType(getObject().stamp(NodeView.DEFAULT));
+                type = ObjectClone.getConcreteType(getObject().stamp(NodeView.DEFAULT));
                 if (type != null) {
                     StructuredGraph newGraph = new StructuredGraph.Builder(graph().getOptions(), graph().getDebug(), AllowAssumptions.ifNonNull(assumptions)).name("<clone>").build();
                     ParameterNode param = newGraph.addWithoutUnique(new ParameterNode(0, StampPair.createSingle(getObject().stamp(NodeView.DEFAULT))));
@@ -173,12 +171,12 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
                     commit.addLocks(Collections.emptyList());
                     commit.getEnsureVirtual().add(false);
                     assert commit.verify();
-                    assert getConcreteType(stamp(NodeView.DEFAULT)) != null;
+                    assert ObjectClone.getConcreteType(stamp(NodeView.DEFAULT)) != null;
                     return MacroInvokable.lowerReplacement(graph(), newGraph, tool);
                 }
             }
         }
-        assert getConcreteType(stamp(NodeView.DEFAULT)) == null;
+        assert ObjectClone.getConcreteType(stamp(NodeView.DEFAULT)) == null;
         return null;
     }
 
