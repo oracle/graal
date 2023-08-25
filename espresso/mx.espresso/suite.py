@@ -433,6 +433,13 @@ suite = {
             "type": "dir",
             "hashEntry": "META-INF/resources/java/espresso-libs/<os>/<arch>/sha256",
             "fileListEntry": "META-INF/resources/java/espresso-libs/<os>/<arch>/files",
+            "platforms": [
+                "linux-amd64",
+                "linux-aarch64",
+                "darwin-amd64",
+                "darwin-aarch64",
+                "windows-amd64",
+            ],
             "os_arch": {
                 "linux": {
                     "<others>": {
