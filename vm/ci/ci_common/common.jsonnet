@@ -566,7 +566,7 @@ local devkits = graal_common.devkits;
         # resource bundle
         ['set-export', 'VERSION_STRING', self.mx_cmd_base(os, arch) + ['--quiet', 'graalvm-version']],
         ['set-export', 'LOCAL_MAVEN_REPO_REL_PATH', 'maven-resource-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
-        ['set-export', 'LOCAL_MAVEN_REPO_URL', ['mx', '--quiet', 'path-to-url', '${LOCAL_MAVEN_REPO_REL_PATH}']],
+        ['set-export', 'LOCAL_MAVEN_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REPO_REL_PATH}']],
       ]
       + self.deploy(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
       + (
