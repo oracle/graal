@@ -67,7 +67,7 @@ def _espresso_standalone_command(args, use_optimized_runtime=False, with_sulong=
         + mx.get_runtime_jvm_args(distributions, jdk=mx.get_jdk())
         # We are not adding the truffle runtime
         + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-        # Workaround StaticShape generating classes in the unnamed module
+        # Workaround StaticShape generating classes in the unnamed module (GR-48132)
         + ['--add-exports=org.graalvm.espresso/com.oracle.truffle.espresso.runtime=ALL-UNNAMED']
         + [mx.distribution('ESPRESSO_LAUNCHER').mainClass] + args
     )
@@ -224,9 +224,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=['LICENSE_JAVAONTRUFFLE'],
     third_party_license_files=[],
     dependencies=['Truffle', 'nfi-libffi', 'ejvm'],
-    truffle_jars=[
-        'espresso:ESPRESSO',
-    ],
+    truffle_jars=['espresso:ESPRESSO'],
     support_distributions=['espresso:ESPRESSO_SUPPORT'],
     library_configs=[espresso_library_config],
     polyglot_lib_jar_dependencies=['espresso:LIB_JAVAVM'],
