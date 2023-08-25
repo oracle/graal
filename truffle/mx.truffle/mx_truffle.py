@@ -1148,7 +1148,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle'],
-    truffle_jars=['truffle:ANTLR4'],
+    truffle_jars=['truffle:TRUFFLE_ANTLR4'],
     support_distributions=['truffle:TRUFFLE_ANTLR4_GRAALVM_SUPPORT'],
     installable=True,
     standalone=False,
