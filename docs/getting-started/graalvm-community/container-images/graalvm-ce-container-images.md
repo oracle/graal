@@ -12,7 +12,7 @@ To support container-based development, GraalVM Community Edition container imag
 ## Repositories
 
 There are different GraalVM Community Edition container images provided depending on the architecture and the Java version.
-The container images for the latest GraalVM versions (GraalVM for JDK 17 and GraalVM for JDK 20) are named with the `-community` suffixs. 
+The container image repositories for the latest GraalVM versions (GraalVM for JDK 17 and GraalVM for JDK 20) have a `-community` suffix. 
 These are: **native-image-community**, **jdk-community**, **truffleruby-community**, **nodejs-community**, and **graalpy-community**.
 The images are multi-arch, for AMD64 and AArch64 processor architectures, with a choice of Oracle Linux versions 7, 8, or 9. 
 
@@ -46,29 +46,29 @@ The most-specific tag is unique and always points to the same image, while the l
 
 1. To pull the container image for GraalVM JDK for a specific JDK feature version, e.g, _17_, run:
     ```bash
-    docker pull ghcr.io/graalvm/graalvm/jdk-community:17
+    docker pull ghcr.io/graalvm/jdk-community:17
     ```
     
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     ```bash
-    FROM ghcr.io/graalvm/graalvm/jdk-community:17
+    FROM ghcr.io/graalvm/jdk-community:17
     ```
 
-    You have pulled a size compact GraalVM Community Edition container image with the GraalVM JDK pre-installed and the Graal compiler.
+    You have pulled a size compact GraalVM Community Edition container image with the GraalVM JDK and the Graal compiler pre-installed.
 
 2. To pull the container image with the `native-image` utility for a specific JDK feature version, e.g, _17_, run: 
     ```bash
-    docker pull ghcr.io/graalvm/graalvm/native-image-community:17
+    docker pull ghcr.io/graalvm/native-image-community:17
     ```
 
 	Alternatively, to pull the container image with the `native-image` utility with the `musl libc` toolchain to create fully statically linked executables, use:
     ```bash
-    docker pull ghcr.io/graalvm/graalvm/native-image-community:17-muslib
+    docker pull ghcr.io/graalvm/native-image-community:17-muslib
     ```
     
     Alternatively, to use the container image as the base image in your Dockerfile, use:
     ```bash
-    FROM ghcr.io/graalvm/graalvm/native-image-community:17-muslib
+    FROM ghcr.io/graalvm/native-image-community:17-muslib
     ```
 
 3. To verify, start the container and enter the Bash session:
@@ -93,13 +93,12 @@ The most-specific tag is unique and always points to the same image, while the l
     native-image --version
     ```
 
-4. Calling `docker pull` without specifying a processor architecture pulls container images for the processor architecture that matches your Docker client. 
-To pull container images for a different platform architecture, specify the desired platform architecture with the `--platform` option and either `linux/amd64` or `linux/aarch64` as follows:
+4. Calling `docker pull` without specifying a processor architecture pulls container images for the processor architecture that matches your Docker client. To pull container images for a different platform architecture, specify the desired platform architecture with the `--platform` option and either `linux/amd64` or `linux/aarch64` as follows:
     ```bash
     docker pull --platform linux/aarch64 ghcr.io/graalvm/native-image-community:17
     ```
 
-If you are looking for Oracle GraalVM container images, they are published in the [Oracle Container Registry](https://container-registry.oracle.com/ords/f?p=113:10::::::).
+If you are looking for Oracle GraalVM container images, they are published in the [Oracle Container Registry](https://container-registry.oracle.com).
 
 ### Learn More
 
