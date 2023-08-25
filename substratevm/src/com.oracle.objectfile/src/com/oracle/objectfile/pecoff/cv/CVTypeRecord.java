@@ -361,7 +361,6 @@ abstract class CVTypeRecord {
         }
     }
 
-
     static final class CVTypeMFuncIdRecord extends CVTypeRecord {
 
         int parentTypeIdx;

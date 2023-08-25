@@ -372,7 +372,8 @@ abstract class CVSymbolSubrecord {
         private static class Gap {
             public final short start;
             public final short length;
-            public Gap(short start, short length) {
+
+            Gap(short start, short length) {
                 this.start = start;
                 this.length = length;
             }
@@ -423,7 +424,7 @@ abstract class CVSymbolSubrecord {
             String s = "";
             if (gaps != null) {
                 for (Gap gap : gaps) {
-                    s = String.format("%s\n     - gap=0x%x len=0x%x last=0x%x", s, gap.start, gap.length, gap.start + gap.length - 1);
+                    s = String.format("%s%n     - gap=0x%x len=0x%x last=0x%x", s, gap.start, gap.length, gap.start + gap.length - 1);
                 }
             }
             return s;
@@ -631,8 +632,8 @@ abstract class CVSymbolSubrecord {
             this.flags = flags;
         }
 
-        protected CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, short cmd, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex,
-                                                short segment, byte flags) {
+        protected CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, short cmd, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd,
+                        int typeIndex, short segment, byte flags) {
             super(cvDebugInfo, cmd);
             this.symbolName = symbolName;
             this.displayName = displayName;
@@ -672,7 +673,7 @@ abstract class CVSymbolSubrecord {
     public static class CVSymbolGProc32IdRecord extends CVSymbolGProc32Record {
 
         CVSymbolGProc32IdRecord(CVDebugInfo cvDebugInfo, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd, int typeIndex,
-                              short segment, byte flags) {
+                        short segment, byte flags) {
 
             super(cvDebugInfo, CVDebugConstants.S_GPROC32_ID, symbolName, displayName, pparent, pend, pnext, proclen, debugStart, debugEnd, typeIndex, segment, flags);
         }
@@ -680,7 +681,7 @@ abstract class CVSymbolSubrecord {
         @Override
         public String toString() {
             return String.format("S_GPROC32_ID name=%s/%s parent=%d debugstart=0x%x debugend=0x%x len=0x%x seg:offset=0x%x:0 type=0x%x flags=0x%x)", displayName, symbolName, pparent, debugStart,
-                    debugEnd, proclen, segment, typeIndex, flags);
+                            debugEnd, proclen, segment, typeIndex, flags);
         }
     }
 
@@ -689,8 +690,7 @@ abstract class CVSymbolSubrecord {
         /* This may change in the presence of isolates. */
 
         /* Async exception handling (vc++ uses 1, clang uses 0). */
-        @SuppressWarnings("unused")
-        public static final int FRAME_ASYNC_EH = 1 << 9;
+        @SuppressWarnings("unused") public static final int FRAME_ASYNC_EH = 1 << 9;
 
         /* Local base pointer = SP (0=none, 1=sp, 2=bp 3=r13). */
         public static final int FRAME_LOCAL_BP = 1 << 14;

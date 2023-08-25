@@ -37,12 +37,10 @@ import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.meta.JavaConstant;
 
 import java.lang.reflect.Modifier;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo.LocalKind.CONSTANT;
 import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugLocalValueInfo.LocalKind.REGISTER;
@@ -52,8 +50,6 @@ import static com.oracle.objectfile.pecoff.cv.CVConstants.CV_AMD64_R8;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_LOCAL_BP;
 import static com.oracle.objectfile.pecoff.cv.CVSymbolSubrecord.CVSymbolFrameProcRecord.FRAME_PARAM_BP;
 import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.MAX_PRIMITIVE;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_INT4;
-import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_INT8;
 
 final class CVSymbolSubsectionBuilder {
 
@@ -67,8 +63,8 @@ final class CVSymbolSubsectionBuilder {
     private final short heapRegister;
 
     /**
-     * Create a symbol section by iterating over all classes, emitting types and line numbers as we go.
-     * See substratevm/src/com.oracle.svm.core.graal.amd64/src/com/oracle/svm/core/graal/amd64/SubstrateAMD64RegisterConfig.java
+     * Create a symbol section by iterating over all classes, emitting types and line numbers as we
+     * go. See SubstrateAMD64RegisterConfig.java
      *
      * @param cvDebugInfo debugInfo container
      */
@@ -155,8 +151,8 @@ final class CVSymbolSubsectionBuilder {
         /* add function definition. */
         final int functionTypeIndex = addTypeRecords(compiledEntry);
         final byte funcFlags = 0;
-        CVSymbolSubrecord.CVSymbolGProc32IdRecord proc32 = new CVSymbolSubrecord.CVSymbolGProc32IdRecord(cvDebugInfo, externalName, debuggerName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0,
-                        0, functionTypeIndex, (short) 0, funcFlags);
+        CVSymbolSubrecord.CVSymbolGProc32IdRecord proc32 = new CVSymbolSubrecord.CVSymbolGProc32IdRecord(cvDebugInfo, externalName, debuggerName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(),
+                        0, 0, functionTypeIndex, (short) 0, funcFlags);
         addSymbolRecord(proc32);
 
         final int frameFlags = FRAME_LOCAL_BP + FRAME_PARAM_BP;
@@ -165,10 +161,8 @@ final class CVSymbolSubsectionBuilder {
         /* it's costly to compute this, so only compute it once */
         HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap = primaryRange.getVarRangeMap();
 
-        if (primaryRange.getClassName().contains("ListDir")) {
-            addParameters(compiledEntry, varRangeMap);
-            /* IN the future:  addLocals(compiledEntry, varRangeMap); */
-        }
+        addParameters(compiledEntry, varRangeMap);
+        /* In the future: addLocals(compiledEntry, varRangeMap); */
 
         /* S_PROC_ID_END add end record. */
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolProcIdEndRecord(cvDebugInfo));
@@ -201,19 +195,19 @@ final class CVSymbolSubsectionBuilder {
         }
     }
 
-    private int infoTypeToInt(DebugInfoProvider.DebugLocalValueInfo info) {
+    private static int infoTypeToInt(DebugInfoProvider.DebugLocalValueInfo info) {
         switch (info.localKind()) {
             case REGISTER:
                 return info.regIndex();
             case STACKSLOT:
-                /* TODO: are stack slots either 0 or negative? */
                 return -info.stackSlot();
             default:
                 return 0;
         }
     }
 
-    void emitLocal(DebugInfoProvider.DebugLocalInfo info, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap, String name, TypeEntry typeEntry, int typeIndex, boolean isParam, String procName, Range range) {
+    void emitLocal(DebugInfoProvider.DebugLocalInfo info, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap, String name, TypeEntry typeEntry, int typeIndex, boolean isParam,
+                    String procName, Range range) {
         int flags = isParam ? S_LOCAL_FLAGS_IS_PARAM : 0;
         List<SubRange> ranges = varRangeMap.get(info);
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, name, typeIndex, flags));
@@ -238,84 +232,17 @@ final class CVSymbolSubsectionBuilder {
                     currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()), cvreg);
                     addSymbolRecord(currentRecord);
                 } else if (value.localKind() == STACKSLOT) {
-                    currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()), value.stackSlot());
+                    currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()),
+                                    value.stackSlot());
                     addSymbolRecord(currentRecord);
                 } else if (value.localKind() == CONSTANT) {
-                    /* For now, silently ifnore constant definitions an parameters. */
+                    /* For now, silently ignore constant definitions an parameters. */
                     /* JavaConstant constant = value.constantValue(); */
                 } else {
                     /* Unimplemented - this is a surprise. */
-                    assert(false);
+                    assert (false);
                 }
             }
-        }
-    }
-
-    @SuppressWarnings("unused")
-    void addLocals(CompiledMethodEntry primaryEntry, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap) {
-        processVarMap(primaryEntry, varRangeMap);
-    }
-
-    @SuppressWarnings("unused")
-    void processVarMap(CompiledMethodEntry primaryEntry, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap) {
-        final Range primaryRange = primaryEntry.getPrimary();
-        /* The name as exposed to the linker. */
-        final String externalName = primaryRange.getSymbolName();
-        System.out.format("func %s:\n", externalName);
-        processRange(primaryRange);
-    }
-
-    @SuppressWarnings("unused")
-    void processRange(Range range) {
-        final String procName = range.getSymbolName();
-        HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varmap = range.getVarRangeMap();
-        for (Map.Entry<DebugInfoProvider.DebugLocalInfo, List<SubRange>> entry : varmap.entrySet()) {
-            DebugInfoProvider.DebugLocalInfo v = entry.getKey();
-            final int typeIndex = v.slotCount() == 1 ? T_INT4 : T_INT8;
-            System.out.format("  var %s jk=%s tn=%s vt=%s line=%d slot=%d n=%d\n", v.name(), v.javaKind(), v.typeName(), v.valueType(), v.line(), v.slot(), v.slotCount());
-            //addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, procName + "x", typeIndex, 1));
-            CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel rangeRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, range.getLo(), (short) (range.getHi() - range.getLo()), v.slot() + 4);
-            int low = Integer.MAX_VALUE;
-            int high = Integer.MIN_VALUE;
-            int currentLow = Integer.MAX_VALUE;
-            int currentHigh = Integer.MIN_VALUE;
-            List<SubRange> subRanges = entry.getValue();
-            for (SubRange sr : subRanges) {
-                //System.out.format("      subrange line=%d low=0x%x high=0x%x depth=%d\n", sr.getLine(), sr.getLo(), sr.getHi(), sr.getDepth());
-                high = sr.getHi();
-                if (currentLow == Integer.MAX_VALUE) {
-                    /* initial subrange */
-                    low = sr.getLo();
-                    currentLow = sr.getLo();
-                    currentHigh = sr.getHi();
-                } else if (sr.getLo() == currentHigh) {
-                    /* extend current subrange as the new one is contiguous */
-                    currentHigh = sr.getHi();
-                } else {
-                    /* non-contiguous; emit previous subrange */
-                    System.out.format("      xxsubrange low=0x%x high=0x%x slot=%d depth=%d\n", currentLow, currentHigh, v.slot(), 0);
-                    System.out.format("      xxgap low=0x%x len=0x%x\n", (currentHigh + 1) - low, sr.getLo() - 1 - low);
-                    rangeRecord.addGap((short) ((currentHigh + 1) - low), (short) (sr.getLo() - 1 - low));
-                    //emitLocalX(v.name(), typeIndex, (short) 0, v.slot(), procName, currentLow, currentHigh);
-                    currentLow = sr.getLo();
-                    currentHigh = sr.getHi();
-                }
-                /*
-                for (Map.Entry<DebugInfoProvider.DebugLocalInfo, List<SubRange>> subentry : varmap.entrySet()) {
-                    DebugInfoProvider.DebugLocalInfo v2 = subentry.getKey();
-                    List<SubRange> subRanges2 = subentry.getValue();
-                    System.out.format("         var %s jk=%s tn=%s vt=%s line=%d slot=%d n=%d\n", v2.name(), v2.javaKind(), v2.typeName(), v2.valueType(), v2.line(), v2.slot(), v2.slotCount());
-                    for (SubRange sr2 : subRanges2) {
-                        System.out.format("            subrange %d 0x%x 0x%x \n", sr2.getLine(), sr2.getLo(), sr2.getHi());
-                    }
-                }*/
-            }
-            if (currentLow != Integer.MAX_VALUE) {
-                /* clear out last subrange */
-                System.out.format("      xxsubrange low=0x%x high=0x%x depth=%d\n", currentLow, currentHigh, 0);
-                //emitLocalX(v.name(), typeIndex, (short) 0, v.slot(), procName, currentLow, currentHigh);
-            }
-            // addSymbolRecord(rageRecord);
         }
     }
 
