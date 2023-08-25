@@ -56,12 +56,17 @@ def _java_truffle_command(args):
     return _espresso_command('java', ['-truffle'] + args)
 
 
-def _espresso_standalone_command(args):
+def _espresso_standalone_command(args, use_optimized_runtime=False, with_sulong=False):
     """Espresso standalone command from distribution jars + arguments"""
     vm_args, args = mx.extract_VM_args(args, useDoubleDash=True, defaultAllVMArgs=False)
+    distributions = ['ESPRESSO', 'ESPRESSO_LAUNCHER', 'ESPRESSO_LIBS_RESOURCES', 'ESPRESSO_RUNTIME_RESOURCES', 'TRUFFLE_NFI_LIBFFI']
+    if with_sulong:
+        distributions += ['SULONG_NFI', 'SULONG_NATIVE']
     return (
         vm_args
-        + mx.get_runtime_jvm_args(['ESPRESSO', 'ESPRESSO_LAUNCHER', 'ESPRESSO_LIBS_RESOURCES', 'ESPRESSO_RUNTIME_RESOURCES'], jdk=mx.get_jdk())
+        + mx.get_runtime_jvm_args(distributions, jdk=mx.get_jdk())
+        # We are not adding the truffle runtime
+        + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
         # Workaround StaticShape generating classes in the unnamed module
         + ['--add-exports=org.graalvm.espresso/com.oracle.truffle.espresso.runtime=ALL-UNNAMED']
         + [mx.distribution('ESPRESSO_LAUNCHER').mainClass] + args
@@ -90,7 +95,7 @@ def _run_espresso_launcher(args=None, cwd=None, nonZeroIsFatal=True, out=None, e
 
 def _run_espresso_standalone(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None):
     """Run standalone Espresso (not as part of GraalVM) from distribution jars"""
-    return mx.run_java(_espresso_standalone_command(args), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, on_timeout=_send_sigquit)
+    return mx.run_java(_espresso_standalone_command(args, with_sulong=True), cwd=cwd, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, timeout=timeout, on_timeout=_send_sigquit)
 
 
 def _run_java_truffle(args=None, cwd=None, nonZeroIsFatal=True, out=None, err=None, timeout=None):

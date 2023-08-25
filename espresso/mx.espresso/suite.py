@@ -342,9 +342,6 @@ suite = {
                 "truffle:TRUFFLE_API",
                 "truffle:TRUFFLE_NFI",
             ],
-            "javaProperties": {
-                "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
-            },
             "maven" : {
                 "artifactId" : "espresso-language",
                 "tag": ["default", "public"],

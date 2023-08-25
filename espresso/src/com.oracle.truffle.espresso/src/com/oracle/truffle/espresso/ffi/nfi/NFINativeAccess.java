@@ -281,7 +281,10 @@ public class NFINativeAccess implements NativeAccess {
                         break;
                 }
                 return ret;
-            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere("This can be caused by mixing native/ffi symbols with llvm signatures and vice-versa", e);
+            } catch (UnsupportedTypeException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
