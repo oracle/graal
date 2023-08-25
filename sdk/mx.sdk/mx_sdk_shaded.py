@@ -162,6 +162,8 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                 return True, f"{outDir} does not exist"
 
         suite_py_ts = mx.TimeStampFile.newest([self.subject.suite.suite_py(), __file__])
+        if newestInput is None or newestInput.isOlderThan(suite_py_ts):
+            newestInput = suite_py_ts
 
         for dep in proj.shaded_deps():
             jarFilePath = dep.get_path(False)
@@ -171,8 +173,27 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                 return True, f'{dep} does not have a source path'
 
             input_ts = mx.TimeStampFile.newest([jarFilePath, srcFilePath])
-            if input_ts is None or suite_py_ts.isNewerThan(input_ts):
-                input_ts = suite_py_ts
+            if input_ts is not None and newestInput.isOlderThan(input_ts):
+                newestInput = input_ts
+
+        return super().needsBuild(newestInput)
+
+    def _collect_files(self):
+        if self._javafiles is not None:
+            # already collected
+            return self
+
+        # collect project files first, then extend with shaded (re)sources
+        super()._collect_files()
+        javafiles = self._javafiles
+        non_javafiles = self._non_javafiles
+
+        proj = self.subject
+        binDir = proj.output_dir()
+        for dep in proj.shaded_deps():
+            srcFilePath = dep.get_source_path(True)
+            if srcFilePath is None:
+                continue
 
             for zipFilePath, outDir in [(srcFilePath, proj.source_gen_dir())]:
                 try:
@@ -182,24 +203,21 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                                 continue
 
                             old_filename = zi.filename
-                            if old_filename.endswith('.java'):
-                                filepath = PurePosixPath(old_filename)
-                                if any(glob_match(filepath, i) for i in proj.excluded_paths()):
-                                    continue
-                                new_filename = proj.substitute_path(old_filename)
-                                if old_filename != new_filename:
-                                    output_file = os.path.join(outDir, new_filename)
-                                    output_ts = mx.TimeStampFile(output_file)
-                                    if output_ts.isOlderThan(input_ts):
-                                        return True, f'{output_ts} is older than {input_ts}'
+                            filepath = PurePosixPath(old_filename)
+                            if any(glob_match(filepath, i) for i in proj.excluded_paths()):
+                                continue
+                            if filepath.suffix not in ['.java', '.class'] and not any(glob_match(filepath, i) for i in proj.included_paths()):
+                                continue
+
+                            new_filename = proj.substitute_path(old_filename)
+                            src_gen_path = os.path.join(outDir, new_filename)
+                            if filepath.suffix == '.java':
+                                javafiles.setdefault(src_gen_path, os.path.join(binDir, new_filename[:-len('.java')] + '.class'))
+                            else:
+                                non_javafiles.setdefault(src_gen_path, os.path.join(binDir, new_filename))
                 except FileNotFoundError:
-                    return True, f"{zipFilePath} does not exist"
-
-        return super().needsBuild(newestInput)
-
-    def prepare(self, daemons):
-        # delay prepare until build
-        self.daemons = daemons
+                    continue
+        return self
 
     def build(self):
         dist = self.subject
@@ -287,9 +305,6 @@ class ShadedLibraryBuildTask(mx.JavaBuildTask):
                                     dst.write(contents)
 
         # After generating (re)sources, run the normal Java build task.
-        if getattr(self, '_javafiles', None) == {}:
-            self._javafiles = None
-        super().prepare(self.daemons)
         super().build()
 
 def glob_match(path, pattern):
