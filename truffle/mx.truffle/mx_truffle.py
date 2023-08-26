@@ -346,8 +346,8 @@ def sl_jvm_gate_tests():
         mx.log("Run SL JVM Optimized Immediately Test No Truffle Enterprise")
         _run_sl_tests(run_jvm_no_enterprise_optimized_immediately)
 
-# invoked by vm gate runner in ce-unchained configuration
 def sl_native_optimized_gate_tests():
+    # invoked by vm gate runner in ce-unchained configuration
     target_dir = tempfile.mkdtemp()
     image = _native_image_sl([], target_dir, use_optimized_runtime=True, use_enterprise=True)
 
@@ -382,8 +382,8 @@ def sl_native_optimized_gate_tests():
 
         shutil.rmtree(target_dir)
 
-# invoked by vm gate runner in ce-unchained configuration
 def sl_native_fallback_gate_tests():
+    # invoked by vm gate runner in ce-unchained configuration
     target_dir = tempfile.mkdtemp()
     image = _native_image_sl([], target_dir, use_optimized_runtime=False)
 

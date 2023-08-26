@@ -1626,28 +1626,6 @@ suite = {
           "maven" : False,
         },
 
-        "TRUFFLE_REBUILD_IMAGES_GRAALVM_SUPPORT" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "Native Image support distribution for the GraalVM",
-            "os_arch" : {
-                "windows": {
-                    "<others>" : {
-                        "layout" : {
-                            "bin/" : "file:mx.substratevm/rebuild-images.cmd",
-                        },
-                    },
-                },
-                "<others>": {
-                    "<others>": {
-                        "layout" : {
-                            "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
-                        },
-                    },
-                },
-            },
-        },
-
         "TRUFFLE_SVM_GRAALVM_SUPPORT" : {
           "native" : True,
           "description" : "Truffle support distribution for SVM",
