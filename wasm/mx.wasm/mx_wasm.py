@@ -51,6 +51,7 @@ import mx_sdk_vm
 # noinspection PyUnresolvedReferences
 import mx_wasm_benchmark  # pylint: disable=unused-import
 from mx_gate import Task, add_gate_runner
+import mx_unittest
 from mx_unittest import unittest
 
 _suite = mx.suite("wasm")
@@ -134,6 +135,15 @@ def graal_wasm_gate_runner(args, tasks):
 
 
 add_gate_runner(_suite, graal_wasm_gate_runner)
+
+def _unittest_config_participant(config):
+    (vmArgs, mainClass, mainClassArgs) = config
+    # limit heap memory to 2G, unless otherwise specified
+    if not any(a.startswith('-Xm') for a in vmArgs):
+        vmArgs += ['-Xmx2g']
+    return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.add_config_participant(_unittest_config_participant)
 
 
 #
