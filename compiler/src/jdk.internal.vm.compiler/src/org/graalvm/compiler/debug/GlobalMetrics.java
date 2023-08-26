@@ -81,21 +81,26 @@ public class GlobalMetrics {
         if (metricsFile == null) {
             return DebugContext.getDefaultLogStream();
         } else {
-            long isolateID = IsolateUtil.getIsolateID();
-            Path path;
-            if (isolateID != 0L) {
-                int lastDot = metricsFile.lastIndexOf('.');
-                if (lastDot != -1) {
-                    path = Paths.get(metricsFile.substring(0, lastDot) + '@' + isolateID + metricsFile.substring(lastDot));
-                } else {
-                    path = Paths.get(metricsFile + isolateID);
-                }
-            } else {
-                path = Paths.get(metricsFile);
-            }
+            Path path = generateFileName(metricsFile);
             outPath[0] = path;
             return new PrintStream(Files.newOutputStream(path));
         }
+    }
+
+    static Path generateFileName(String metricsFile) {
+        long isolateID = IsolateUtil.getIsolateID();
+        Path path;
+        if (isolateID != 0L) {
+            int lastDot = metricsFile.lastIndexOf('.');
+            if (lastDot != -1) {
+                path = Paths.get(metricsFile.substring(0, lastDot) + '@' + isolateID + metricsFile.substring(lastDot));
+            } else {
+                path = Paths.get(metricsFile + isolateID);
+            }
+        } else {
+            path = Paths.get(metricsFile);
+        }
+        return path;
     }
 
     /**
