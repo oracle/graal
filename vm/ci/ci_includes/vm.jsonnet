@@ -174,17 +174,17 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       notify_groups:: ['deploy'],
     },
     # Windows/AMD64
-    vm_common.graalvm_complete_build_deps('ce', 'windows', 'amd64') + vm_common.deploy_build + vm_common.gate_vm_windows_amd64 + {
-      run: vm_common.maven_deploy_base_functions.run_block('windows', 'amd64', target='native_and_bundle', dry_run=true, remote_repo=$.maven_deploy_repository, local_repo='local'),
-      name: 'gate-vm-maven-dry-run-windows-amd64',
-      timelimit: '1:00:00',
-    },
-    vm_common.graalvm_complete_build_deps('ce', 'windows', 'amd64') + vm_common.deploy_build + vm_common.deploy_vm_windows_jdk21 + {
-      run: vm_common.maven_deploy_base_functions.run_block('windows', 'amd64', target='native_and_bundle', dry_run=false, remote_repo=$.maven_deploy_repository, local_repo='local'),
-      name: 'post-merge-deploy-vm-maven-windows-amd64',
-      timelimit: '1:00:00',
-      notify_groups:: ['deploy'],
-    },
+//    vm_common.graalvm_complete_build_deps('ce', 'windows', 'amd64') + vm_common.deploy_build + vm_common.gate_vm_windows_amd64 + {
+//      run: vm_common.maven_deploy_base_functions.run_block('windows', 'amd64', target='native_and_bundle', dry_run=true, remote_repo=$.maven_deploy_repository, local_repo='local'),
+//      name: 'gate-vm-maven-dry-run-windows-amd64',
+//      timelimit: '1:00:00',
+//    },
+//    vm_common.graalvm_complete_build_deps('ce', 'windows', 'amd64') + vm_common.deploy_build + vm_common.deploy_vm_windows_jdk21 + {
+//      run: vm_common.maven_deploy_base_functions.run_block('windows', 'amd64', target='native_and_bundle', dry_run=false, remote_repo=$.maven_deploy_repository, local_repo='local'),
+//      name: 'post-merge-deploy-vm-maven-windows-amd64',
+//      timelimit: '1:00:00',
+//      notify_groups:: ['deploy'],
+//    },
 
     #
     # Update the `stable` mx branch with the currently imported revision
