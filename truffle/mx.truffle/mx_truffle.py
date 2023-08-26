@@ -815,8 +815,6 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
     g4_filename = grammar_dir + grammar_name + ".g4"
     mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [g4_filename], out=out)
 
-    import datetime
-    year = datetime.date.today().year
     if copyright_template is None:
         # extract copyright header from .g4 file
         copyright_header = ''
@@ -842,8 +840,6 @@ def create_parser(grammar_project, grammar_package, grammar_name, copyright_temp
         content = re.compile(r"\(Token\)_errHandler.recoverInline\(this\)").sub('_errHandler.recoverInline(this)', content)
         # add copyright header
         content = copyright_template.format(content)
-        # update copyright year
-        content = re.compile(r"( \* Copyright \(c\) (?:\d{4}, )?)\d{4}(?=, \w)").sub(r'\g<1>{0}'.format(year), content, count=1)
         if shaded:
             # replace qualified class names with shadowed package names
             content = re.compile(r"\b(org\.antlr\.v4\.runtime(?:\.\w+)+)\b").sub(r'org.graalvm.shadowed.\1', content)
