@@ -45,10 +45,10 @@ import org.graalvm.polyglot.Engine;
 public final class HostEngine {
 
     final long remoteEngine;
-    Engine localEngine;
-    Engine api;
+    Object localEngine;
+    Object api;
 
-    HostEngine(long id, Engine localEngine) {
+    HostEngine(long id, Object localEngine) {
         this.remoteEngine = id;
         this.localEngine = localEngine;
     }

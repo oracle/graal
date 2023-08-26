@@ -54,6 +54,6 @@ public final class AllInstantiatedTypeFlow extends TypeFlow<AnalysisType> {
 
     @Override
     public String toString() {
-        return "AllInstantiated" + super.toString();
+        return "AllInstantiatedTypeFlow of type <" + declaredType.toJavaName() + ">";
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -156,19 +156,20 @@ public abstract class LLVMDLOpen extends LLVMIntrinsic {
 
         String filename = readStr.executeWithTarget(file);
         Path path = Paths.get(filename);
-        TruffleFile truffleFile;
-        if (filename.contains("/")) {
-            truffleFile = ctx.getEnv().getInternalTruffleFile(path.toUri());
-        } else {
-            truffleFile = ctx.getMainLibraryLocator().locate(ctx, filename, "<source library>");
-        }
+        Source source;
         try {
-            Source source = Source.newBuilder("llvm", truffleFile).build();
-            CallTarget callTarget = ctx.getEnv().parsePublic(source, String.valueOf(flag));
-            return callTarget.call(globalOrLocal);
+            if (filename.contains("/")) {
+                TruffleFile truffleFile = ctx.getEnv().getInternalTruffleFile(path.toUri());
+                source = Source.newBuilder("llvm", truffleFile).build();
+            } else {
+                source = ctx.getMainLibraryLocator().locateSource(ctx, filename, "<source library>");
+            }
         } catch (IOException e) {
             ctx.setDLError(1);
             throw new IllegalStateException(e);
         }
+
+        CallTarget callTarget = ctx.getEnv().parsePublic(source, String.valueOf(flag));
+        return callTarget.call(globalOrLocal);
     }
 }

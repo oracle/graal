@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import org.graalvm.polyglot.Language;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.SourceSection;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractStackFrameImpl;
 
 import com.oracle.truffle.api.TruffleFile;
@@ -50,18 +47,20 @@ import com.oracle.truffle.api.TruffleStackTraceElement;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
 
-    private final PolyglotLanguage language;
-    private final SourceSection sourceLocation;
+    final PolyglotLanguage language;
+    private final Object sourceLocation;
     private final String rootName;
     private final boolean host;
     private StackTraceElement stackTrace;
     private final String formattedSource;
 
     private PolyglotExceptionFrame(PolyglotExceptionImpl source, PolyglotLanguage language,
-                    SourceSection sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
+                    Object sourceLocation, String rootName, boolean isHost, StackTraceElement stackTrace) {
         super(source.polyglot);
         this.language = language;
         this.sourceLocation = sourceLocation;
@@ -69,19 +68,20 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
         this.host = isHost;
         this.stackTrace = stackTrace;
         if (!isHost) {
-            this.formattedSource = formatSource(sourceLocation, language != null ? source.getFileSystemContext(language) : null);
+            SourceSection sourceSection = sourceLocation != null ? (SourceSection) source.polyglot.getAPIAccess().getSourceSectionReceiver(sourceLocation) : null;
+            this.formattedSource = formatSource(sourceSection, language != null ? source.getFileSystemContext(language) : null);
         } else {
             this.formattedSource = null;
         }
     }
 
     @Override
-    public org.graalvm.polyglot.SourceSection getSourceLocation() {
+    public Object getSourceLocation() {
         return this.sourceLocation;
     }
 
     @Override
-    public Language getLanguage() {
+    public Object getLanguage() {
         return this.language.api;
     }
 
@@ -105,8 +105,9 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
                 declaringClass = "";
             }
             String methodName = rootName == null ? "" : rootName;
-            String fileName = sourceLocation != null ? sourceLocation.getSource().getName() : "Unknown";
-            int startLine = sourceLocation != null ? sourceLocation.getStartLine() : -1;
+            SourceSection sourceSection = sourceLocation != null ? (SourceSection) language.getAPIAccess().getSourceSectionReceiver(sourceLocation) : null;
+            String fileName = sourceSection != null ? sourceSection.getSource().getName() : "Unknown";
+            int startLine = sourceSection != null ? sourceSection.getStartLine() : -1;
             stackTrace = new StackTraceElement(declaringClass, methodName, fileName, startLine);
         }
         return stackTrace;
@@ -150,7 +151,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
 
         PolyglotEngineImpl engine = exception.engine;
         PolyglotLanguage language = null;
-        SourceSection location = null;
+        Object location = null;
         String rootName = targetRoot.getName();
         if (engine != null) {
             language = engine.idToLanguage.get(info.getId());
@@ -159,7 +160,7 @@ final class PolyglotExceptionFrame extends AbstractStackFrameImpl {
             if (callNode != null) {
                 com.oracle.truffle.api.source.SourceSection section = callNode.getEncapsulatingSourceSection();
                 if (section != null) {
-                    Source source = engine.getAPIAccess().newSource(exception.polyglot.getSourceDispatch(), section.getSource());
+                    Object source = engine.getAPIAccess().newSource(exception.polyglot.getSourceDispatch(), section.getSource());
                     location = engine.getAPIAccess().newSourceSection(source, exception.polyglot.getSourceSectionDispatch(), section);
                 } else {
                     location = null;

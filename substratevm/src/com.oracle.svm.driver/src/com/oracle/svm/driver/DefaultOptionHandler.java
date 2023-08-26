@@ -29,6 +29,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
+import com.oracle.svm.core.option.OptionOrigin;
 import com.oracle.svm.driver.NativeImage.ArgumentQueue;
 import com.oracle.svm.util.LogUtils;
 
@@ -84,9 +85,9 @@ class DefaultOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                 }
                 String[] mainClassModuleArgParts = mainClassModuleArg.split("/", 2);
                 if (mainClassModuleArgParts.length > 1) {
-                    nativeImage.addPlainImageBuilderArg(nativeImage.oHClass + mainClassModuleArgParts[1]);
+                    nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(nativeImage.oHClass + mainClassModuleArgParts[1], OptionOrigin.originDriver));
                 }
-                nativeImage.addPlainImageBuilderArg(nativeImage.oHModule + mainClassModuleArgParts[0]);
+                nativeImage.addPlainImageBuilderArg(NativeImage.injectHostedOptionOrigin(nativeImage.oHModule + mainClassModuleArgParts[0], OptionOrigin.originDriver));
                 nativeImage.setModuleOptionMode(true);
                 return true;
             case addModulesOption:

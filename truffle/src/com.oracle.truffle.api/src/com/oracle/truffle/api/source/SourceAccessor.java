@@ -112,10 +112,10 @@ final class SourceAccessor extends Accessor {
         }
 
         @Override
-        public org.graalvm.polyglot.Source getOrCreatePolyglotSource(Source source,
-                        Function<Source, org.graalvm.polyglot.Source> createSource) {
-            WeakReference<org.graalvm.polyglot.Source> ref = source.cachedPolyglotSource;
-            org.graalvm.polyglot.Source polyglotSource;
+        public Object getOrCreatePolyglotSource(Source source,
+                        Function<Source, Object> createSource) {
+            WeakReference<Object> ref = source.cachedPolyglotSource;
+            Object polyglotSource;
             if (ref == null) {
                 polyglotSource = null;
             } else {

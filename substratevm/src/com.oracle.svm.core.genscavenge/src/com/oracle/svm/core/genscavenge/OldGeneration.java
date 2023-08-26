@@ -56,8 +56,8 @@ public final class OldGeneration extends Generation {
     OldGeneration(String name) {
         super(name);
         int age = HeapParameters.getMaxSurvivorSpaces() + 1;
-        this.fromSpace = new Space("oldFromSpace", true, age);
-        this.toSpace = new Space("oldToSpace", false, age);
+        this.fromSpace = new Space("Old", "O", true, age);
+        this.toSpace = new Space("Old To", "O", false, age);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -120,12 +120,15 @@ public final class OldGeneration extends Generation {
     }
 
     @Override
-    public Log report(Log log, boolean traceHeapChunks) {
-        log.string("Old generation: ").indent(true);
-        getFromSpace().report(log, traceHeapChunks).newline();
-        getToSpace().report(log, traceHeapChunks).newline();
-        log.redent(false);
-        return log;
+    public void logUsage(Log log) {
+        getFromSpace().logUsage(log, true);
+        getToSpace().logUsage(log, false);
+    }
+
+    @Override
+    public void logChunks(Log log) {
+        getFromSpace().logChunks(log);
+        getToSpace().logChunks(log);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

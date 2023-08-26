@@ -1,7 +1,7 @@
 suite = {
     "name": "vm",
-    "version" : "23.1.0",
-    "mxversion": "6.27.1",
+    "version" : "24.0.0",
+    "mxversion": "6.41.0",
     "release" : False,
     "groupId" : "org.graalvm",
 
@@ -33,7 +33,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "f6fde42ae3b3c22a0f87bd5bdef0e24f94372722",
+                "version": "d0f359c29ec97722301997359ee878ea053da19e",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -42,14 +42,14 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "f6fde42ae3b3c22a0f87bd5bdef0e24f94372722",
+                "version": "d0f359c29ec97722301997359ee878ea053da19e",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
             },
             {
                 "name": "truffleruby",
-                "version": "82d3a4a5217bd1e97be37e993f0d2a54536265c2",
+                "version": "54e846c7056eca31085c78cfd363c26ca4bd547a",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/truffleruby.git", "kind": "git"},
@@ -65,7 +65,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "b9c5641fbb16d1031d61e27653d1ead5ca7a0a62",
+                "version": "a11219c24f39bd819a0580f979f8ef90b60d95e2",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -73,7 +73,7 @@ suite = {
             },
             {
                 "name": "polybenchmarks",
-                "version": "73b6ff3489f5c5fe173a6748a863ffe1a0842dcd",
+                "version": "9c11e267b9925f44e42b1187fee466b47c2ffcf3",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/polybenchmarks.git", "kind": "git"},

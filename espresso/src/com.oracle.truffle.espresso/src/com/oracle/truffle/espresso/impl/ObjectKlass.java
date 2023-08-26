@@ -49,6 +49,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.HostCompilerDirectives;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.espresso.analysis.hierarchy.ClassHierarchyAssumption;
@@ -1862,6 +1863,7 @@ public final class ObjectKlass extends Klass {
             return Modifier.isFinal(modifiers);
         }
 
+        @Idempotent
         public boolean isInterface() {
             return Modifier.isInterface(modifiers);
         }

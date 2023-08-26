@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -175,7 +175,7 @@ public final class PolyglotException extends RuntimeException {
      * @since 19.0
      */
     public SourceSection getSourceLocation() {
-        return dispatch.getSourceLocation(impl);
+        return (SourceSection) dispatch.getSourceLocation(impl);
     }
 
     /**
@@ -229,8 +229,9 @@ public final class PolyglotException extends RuntimeException {
      * @see StackFrame
      * @since 19.0
      */
+    @SuppressWarnings("unchecked")
     public Iterable<StackFrame> getPolyglotStackTrace() {
-        return dispatch.getPolyglotStackTrace(impl);
+        return (Iterable<StackFrame>) (Iterable<?>) dispatch.getPolyglotStackTrace(impl);
     }
 
     /**
@@ -377,7 +378,7 @@ public final class PolyglotException extends RuntimeException {
      * @since 19.0
      */
     public Value getGuestObject() {
-        return dispatch.getGuestObject(impl);
+        return (Value) dispatch.getGuestObject(impl);
     }
 
     /**
@@ -450,7 +451,7 @@ public final class PolyglotException extends RuntimeException {
          * @since 19.0
          */
         public SourceSection getSourceLocation() {
-            return impl.getSourceLocation();
+            return (SourceSection) impl.getSourceLocation();
         }
 
         /**
@@ -471,7 +472,7 @@ public final class PolyglotException extends RuntimeException {
          * @since 19.0
          */
         public Language getLanguage() {
-            return impl.getLanguage();
+            return (Language) impl.getLanguage();
         }
 
         /**

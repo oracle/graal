@@ -21,9 +21,9 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.27.1",
+    "mxversion": "6.41.0",
     "name": "espresso",
-    "version" : "23.1.0",
+    "version" : "24.0.0",
     "release" : False,
     "groupId" : "org.graalvm.espresso",
     "url" : "https://www.graalvm.org/reference-manual/java-on-truffle/",
@@ -316,7 +316,7 @@ suite = {
             "moduleInfo" : {
                 "name" : "org.graalvm.espresso",
             },
-            "description" : "Java on Truffle (aka Espresso): a Java bytecode interpreter",
+            "description" : "Core module of the Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "subDir": "src",
             "dependencies": [
                 "com.oracle.truffle.espresso",
@@ -328,7 +328,25 @@ suite = {
             "javaProperties": {
                 "org.graalvm.language.java.home": "<path:ESPRESSO_SUPPORT>",
             },
+            "maven" : {
+                "artifactId" : "espresso-language",
+                "tag": ["default", "public"],
+            },
             "noMavenJavadoc": True,
+        },
+
+        "JAVA_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
+                "ESPRESSO",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "description": "Java on Truffle (aka Espresso): a Java bytecode interpreter",
+            "maven": {
+                "groupId" : "org.graalvm.polyglot",
+                "artifactId": "java-community",
+                "tag": ["default", "public"],
+            },
         },
 
         "ESPRESSO_LAUNCHER": {
@@ -377,7 +395,6 @@ suite = {
                 "linux": {
                     "<others>": {
                         "layout": {
-                            "./": ["file:mx.espresso/reflectconfig.json"],
                             "./native-image.properties": ["file:mx.espresso/native-image-preinit.properties"],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
@@ -394,10 +411,7 @@ suite = {
                 "linux-musl": {
                     "<others>": {
                         "layout": {
-                            "./": [
-                                "file:mx.espresso/reflectconfig.json",
-                                "file:mx.espresso/native-image.properties",
-                            ],
+                            "./": ["file:mx.espresso/native-image.properties"],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
                                 "dependency:espresso:com.oracle.truffle.espresso.native/<lib:nespresso>",
@@ -412,10 +426,7 @@ suite = {
                 "<others>": {
                     "<others>": {
                         "layout": {
-                            "./": [
-                                "file:mx.espresso/native-image.properties",
-                                "file:mx.espresso/reflectconfig.json",
-                            ],
+                            "./": ["file:mx.espresso/native-image.properties"],
                             "LICENSE_JAVAONTRUFFLE": "file:LICENSE",
                             "lib/": [
                                 "dependency:espresso:com.oracle.truffle.espresso.eden/<lib:eden>",
@@ -460,6 +471,7 @@ suite = {
             },
             "maven": {
                 "artifactId": "polyglot",
+                "tag": ["default", "public"],
             }
         },
 
@@ -476,7 +488,10 @@ suite = {
                 "exports" : [
                     "com.oracle.truffle.espresso.hotswap",
                 ]
-            }
+            },
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         "DACAPO_SCALA_WARMUP": {

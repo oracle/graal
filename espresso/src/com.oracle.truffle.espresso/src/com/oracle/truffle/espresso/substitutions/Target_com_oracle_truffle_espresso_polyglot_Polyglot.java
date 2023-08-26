@@ -88,7 +88,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                 Meta meta = getMeta();
                 throw meta.throwException(meta.java_lang_NullPointerException);
             }
-            if (StaticObject.isNull(value) || instanceOfTarget.execute(value.getKlass())) {
+            if (StaticObject.isNull(value) || (!value.isForeignObject() && instanceOfTarget.execute(value.getKlass()))) {
                 return value;
             }
             reWrappingProfile.enter();
@@ -106,7 +106,7 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
             if (StaticObject.isNull(targetClass)) {
                 throw meta.throwException(meta.java_lang_NullPointerException);
             }
-            if (StaticObject.isNull(value) || instanceOfDynamic.execute(value.getKlass(), targetClass.getMirrorKlass(meta))) {
+            if (StaticObject.isNull(value) || (!value.isForeignObject() && instanceOfDynamic.execute(value.getKlass(), targetClass.getMirrorKlass(meta)))) {
                 return value;
             }
             return castImpl.execute(getContext(), targetClass.getMirrorKlass(meta), value);
@@ -240,10 +240,15 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                         Klass targetKlass,
                         @JavaType(Object.class) StaticObject value,
                         @Shared("value") @CachedLibrary(limit = "LIMIT") InteropLibrary interop,
+                        @Cached InstanceOf.Dynamic instanceOfDynamic,
                         @Cached ToReference.DynamicToReference toEspresso,
                         @Cached BranchProfile exceptionProfile) {
             Meta meta = context.getMeta();
             if (targetKlass.isAbstract()) {
+                // allow foreign objects of assignable type to be returned
+                if (instanceOfDynamic.execute(value.getKlass(), targetKlass)) {
+                    return value;
+                }
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, "Invalid cast to non-array abstract class");
             }
@@ -258,6 +263,11 @@ public final class Target_com_oracle_truffle_espresso_polyglot_Polyglot {
                     return toEspresso.execute(value.rawForeignObject(getLanguage()), targetKlass);
                 }
             } catch (UnsupportedTypeException e) {
+                // allow foreign objects of assignable type to be returned, but only after trying to
+                // convert to a guest value with ToEspresso
+                if (instanceOfDynamic.execute(value.getKlass(), targetKlass)) {
+                    return value;
+                }
                 exceptionProfile.enter();
                 throw meta.throwExceptionWithMessage(meta.java_lang_ClassCastException, e.getMessage());
             }

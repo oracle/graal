@@ -93,7 +93,7 @@ public class DefaultLoopPolicies implements LoopPolicies {
         @Option(help = "Maximum number of split successors before aborting unswitching.", type = OptionType.Expert)
         public static final OptionKey<Integer> MaxUnswitchSuccessors = new OptionKey<>(64);
 
-        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(400);
+        @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxNodes = new OptionKey<>(700);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollConstantCompareBoost = new OptionKey<>(15);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> FullUnrollMaxIterations = new OptionKey<>(600);
         @Option(help = "", type = OptionType.Expert) public static final OptionKey<Integer> ExactFullUnrollMaxNodes = new OptionKey<>(800);
@@ -173,29 +173,34 @@ public class DefaultLoopPolicies implements LoopPolicies {
      * should not be fully unrolled.
      */
     public FullUnrollability canFullUnroll(LoopEx loop) {
+        DebugContext debug = loop.loopBegin().graph().getDebug();
         if (!loop.isCounted() || !loop.counted().isConstantMaxTripCount() || !loop.counted().counterNeverOverflows()) {
+            debug.log(DebugContext.INFO_LEVEL, "Loop %s not fully unrolled, because it is not counted", loop);
             return FullUnrollability.NOT_COUNTED;
         }
         if (!loop.canDuplicateLoop()) {
+            debug.log(DebugContext.INFO_LEVEL, "Loop %s not fully unrolled, because it cannot be duplicated", loop);
             return FullUnrollability.MUST_NOT_DUPLICATE;
         }
         OptionValues options = loop.entryPoint().getOptions();
         CountedLoopInfo counted = loop.counted();
         UnsignedLong maxTrips = counted.constantMaxTripCount();
         if (maxTrips.equals(0)) {
+            debug.log(DebugContext.INFO_LEVEL, "Loop %s should be fully unrolled, because max trips equals 0", loop);
             return FullUnrollability.SHOULD_FULL_UNROLL;
         }
         if (maxTrips.isGreaterThan(FullUnrollMaxIterations.getValue(options))) {
+            debug.log(DebugContext.INFO_LEVEL, "Loop %s not fully unrolled, because of too many iterations", loop);
             return FullUnrollability.TOO_MANY_ITERATIONS;
         }
         int globalMax = MaximumDesiredSize.getValue(options) - loop.loopBegin().graph().getNodeCount();
         if (globalMax <= 0) {
+            debug.log(DebugContext.INFO_LEVEL, "Loop %s not fully unrolled, because the graph is too large: %d", loop, globalMax);
             return FullUnrollability.TOO_LARGE;
         }
         int maxNodes = counted.isExactTripCount() ? ExactFullUnrollMaxNodes.getValue(options) : FullUnrollMaxNodes.getValue(options);
         for (Node usage : counted.getLimitCheckedIV().valueNode().usages()) {
-            if (usage instanceof CompareNode) {
-                CompareNode compare = (CompareNode) usage;
+            if (usage instanceof CompareNode compare) {
                 if (compare.getY().isConstant()) {
                     maxNodes += FullUnrollConstantCompareBoost.getValue(options);
                 }
@@ -214,10 +219,13 @@ public class DefaultLoopPolicies implements LoopPolicies {
          *   - 1 <= size <= Integer.MAX_VALUE
          * @formatter:on
          */
-        if (maxTrips.minus(1).times(size).isLessOrEqualTo(maxNodes)) {
+        UnsignedLong estimated = maxTrips.minus(1).times(size);
+        if (estimated.isLessOrEqualTo(maxNodes)) {
             // check whether we're allowed to unroll this loop
+            debug.log(DebugContext.INFO_LEVEL, "Loop %s should be fully unrolled: estimated=%s, max=%d", loop, estimated, maxNodes);
             return FullUnrollability.SHOULD_FULL_UNROLL;
         } else {
+            debug.log(DebugContext.INFO_LEVEL, "Loop %s not fully unrolled, because size increase is too large: estimated=%s, max=%d", loop, estimated, maxNodes);
             return FullUnrollability.TOO_LARGE;
         }
     }

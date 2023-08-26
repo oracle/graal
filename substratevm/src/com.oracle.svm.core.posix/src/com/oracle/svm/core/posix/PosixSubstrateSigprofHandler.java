@@ -25,6 +25,7 @@
 
 package com.oracle.svm.core.posix;
 
+import static com.oracle.svm.core.posix.PosixSubstrateSigprofHandler.isSignalHandlerBasedExecutionSamplerEnabled;
 import static com.oracle.svm.core.posix.PosixSubstrateSigprofHandler.Options.SignalHandlerBasedExecutionSampler;
 
 import java.util.List;
@@ -52,11 +53,13 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.jfr.JfrFeature;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.option.HostedOptionKey;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.posix.headers.Signal;
 import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.sampler.SubstrateSigprofHandler;
 import com.oracle.svm.core.thread.ThreadListenerSupport;
 import com.oracle.svm.core.util.TimeUtils;
+import com.oracle.svm.core.util.UserError;
 
 public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
     private static final CEntryPointLiteral<Signal.AdvancedSignalDispatcher> advancedSignalDispatcher = CEntryPointLiteral.create(PosixSubstrateSigprofHandler.class,
@@ -116,9 +119,29 @@ public class PosixSubstrateSigprofHandler extends SubstrateSigprofHandler {
         updateInterval(0);
     }
 
-    public static class Options {
+    static boolean isSignalHandlerBasedExecutionSamplerEnabled() {
+        if (SignalHandlerBasedExecutionSampler.hasBeenSet()) {
+            return SignalHandlerBasedExecutionSampler.getValue();
+        } else {
+            return isPlatformSupported();
+        }
+    }
+
+    private static boolean isPlatformSupported() {
+        return Platform.includedIn(Platform.LINUX.class);
+    }
+
+    private static void validateSamplerOption(HostedOptionKey<Boolean> isSamplerEnabled) {
+        if (isSamplerEnabled.getValue()) {
+            UserError.guarantee(isPlatformSupported(),
+                            "The %s cannot be used to profile on this platform.",
+                            SubstrateOptionsParser.commandArgument(isSamplerEnabled, "+"));
+        }
+    }
+
+    static class Options {
         @Option(help = "Determines if JFR uses a signal handler for execution sampling.")//
-        public static final HostedOptionKey<Boolean> SignalHandlerBasedExecutionSampler = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> SignalHandlerBasedExecutionSampler = new HostedOptionKey<>(null, PosixSubstrateSigprofHandler::validateSamplerOption);
     }
 }
 
@@ -131,7 +154,7 @@ class PosixSubstrateSigProfHandlerFeature implements InternalFeature {
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        if (JfrFeature.isExecutionSamplerSupported() && Platform.includedIn(Platform.LINUX.class) && SignalHandlerBasedExecutionSampler.getValue()) {
+        if (JfrFeature.isExecutionSamplerSupported() && isSignalHandlerBasedExecutionSamplerEnabled()) {
             SubstrateSigprofHandler sampler = new PosixSubstrateSigprofHandler();
             ImageSingletons.add(JfrExecutionSampler.class, sampler);
             ImageSingletons.add(SubstrateSigprofHandler.class, sampler);

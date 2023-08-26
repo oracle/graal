@@ -43,12 +43,10 @@ package com.oracle.truffle.host;
 import java.lang.reflect.Type;
 import java.util.function.Predicate;
 
-import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.HostAccess.MutableTargetMapping;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostLanguageService;
-import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.TruffleFile;
@@ -56,6 +54,8 @@ import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.host.GuestToHostCodeCache.GuestToHostInvokeHandle;
+import com.oracle.truffle.host.GuestToHostCodeCache.GuestToHostInvokeReflect;
 import com.oracle.truffle.host.HostAdapterFactory.AdapterResult;
 import com.oracle.truffle.host.HostLanguage.HostLanguageException;
 import com.oracle.truffle.host.HostMethodDesc.SingleMethod;
@@ -78,13 +78,13 @@ public class HostLanguageService extends AbstractHostLanguageService {
     }
 
     @Override
-    public void initializeHostContext(Object internalContext, Object receiver, HostAccess hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
+    public void initializeHostContext(Object internalContext, Object receiver, Object hostAccess, ClassLoader cl, Predicate<String> clFilter, boolean hostCLAllowed, boolean hostLookupAllowed) {
         HostContext context = (HostContext) receiver;
         ClassLoader useCl = cl;
         if (useCl == null) {
             useCl = TruffleOptions.AOT ? null : Thread.currentThread().getContextClassLoader();
         }
-        language.initializeHostAccess(hostAccess, useCl);
+        language.initializeHostAccess(hostAccess);
         context.initialize(internalContext, useCl, clFilter, hostCLAllowed, hostLookupAllowed, hostAccess != null ? api.getMutableTargetMappings(hostAccess) : new MutableTargetMapping[0]);
     }
 
@@ -141,8 +141,8 @@ public class HostLanguageService extends AbstractHostLanguageService {
         assert validHostValue(hostValue, context) : "polyglot unboxing should be a no-op at this point.";
         if (HostContext.isGuestPrimitive(hostValue)) {
             return hostValue;
-        } else if (hostValue instanceof Proxy) {
-            return HostProxy.toProxyGuestObject(context, (Proxy) hostValue);
+        } else if (api.isProxy(hostValue)) {
+            return HostProxy.toProxyGuestObject(context, hostValue);
         } else if (!asValue && hostValue instanceof ScopedObject) {
             return ((ScopedObject) hostValue).unwrapForGuest();
         } else if (hostValue instanceof TruffleObject) {
@@ -325,6 +325,8 @@ public class HostLanguageService extends AbstractHostLanguageService {
         assert assertClassNameUnchanged(GuestToHostCalls.class, "com.oracle.truffle.host.HostObject$GuestToHostCalls");
         assert assertClassNameUnchanged(GuestToHostCodeCache.class, "com.oracle.truffle.host.GuestToHostCodeCache");
         assert assertClassNameUnchanged(SingleMethod.class, "com.oracle.truffle.host.HostMethodDesc$SingleMethod");
+        assert assertClassNameUnchanged(GuestToHostInvokeReflect.class, "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeReflect");
+        assert assertClassNameUnchanged(GuestToHostInvokeHandle.class, "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeHandle");
 
         switch (element.getClassName()) {
             case "com.oracle.truffle.host.HostMethodDesc$SingleMethod$MHBase":
@@ -333,8 +335,13 @@ public class HostLanguageService extends AbstractHostLanguageService {
                 return element.getMethodName().equals("reflectInvoke");
             case "com.oracle.truffle.host.HostObject$GuestToHostCalls":
                 return true;
+            case "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeReflect":
+            case "com.oracle.truffle.host.GuestToHostCodeCache$GuestToHostInvokeHandle":
+                return element.getMethodName().equals("executeImpl");
+            case "org.graalvm.polyglot.Engine$APIAccessImpl":
+                return element.getMethodName().startsWith("callProxy");
             default:
-                return element.getClassName().startsWith("com.oracle.truffle.host.GuestToHostCodeCache$") && element.getMethodName().equals("executeImpl");
+                return false;
         }
     }
 

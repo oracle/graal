@@ -71,6 +71,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvo
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.phases.tiers.Suites;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.truffle.compiler.host.InjectImmutableFrameFieldsPhase;
@@ -183,7 +184,7 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         @Option(help = "Automatically copy the necessary language resources to the resources/languages directory next to the produced image." +
                         "Language resources for each language are specified in the native-image-resources.filelist file located in the language home directory." +
-                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User)//
+                        "If there is no native-image-resources.filelist file in the language home directory or the file is empty, then no resources are copied.", type = User, stability = OptionStability.STABLE)//
         public static final HostedOptionKey<Boolean> CopyLanguageResources = new HostedOptionKey<>(true);
 
         @Option(help = "Check that context pre-initialization does not introduce absolute TruffleFiles into the image heap.")//
@@ -240,6 +241,8 @@ public final class TruffleBaseFeature implements InternalFeature {
 
     private static void initializeTruffleReflectively(ClassLoader imageClassLoader) {
         invokeStaticMethod("com.oracle.truffle.api.impl.Accessor", "getTVMCI", Collections.emptyList());
+        invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCache", "initializeNativeImageState",
+                        Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.polyglot.LanguageCache", "initializeNativeImageState",
                         Collections.singletonList(ClassLoader.class), imageClassLoader);
         invokeStaticMethod("com.oracle.truffle.polyglot.InstrumentCache", "initializeNativeImageState",
@@ -759,7 +762,7 @@ public final class TruffleBaseFeature implements InternalFeature {
                     UserError.abort("Detected an absolute TruffleFile %s in the image heap. " +
                                     "Files with an absolute path created during the context pre-initialization may not be valid at the image execution time. " +
                                     "This check can be disabled using -H:-TruffleCheckPreinitializedFiles." +
-                                    classInitializationSupport.objectInstantiationTraceMessage(object, ""),
+                                    classInitializationSupport.objectInstantiationTraceMessage(object, "", culprit -> ""),
                                     file.getPath());
                 }
             }
@@ -1350,6 +1353,32 @@ final class Target_com_oracle_truffle_polyglot_LanguageCache {
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private String languageHome;
+}
+
+@TargetClass(className = "com.oracle.truffle.polyglot.InternalResourceCache", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_InternalResourceCache {
+
+    /*
+     * The field is also reset explicitly in InternalResourceCache.resetFileSystemNativeImageState.
+     * However, the explicit reset comes too late for the String-must-not-contain-the-home-directory
+     * verification in DisallowedImageHeapObjectFeature, so we also do the implicit reset using a
+     * substitution.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private static volatile Pair<Path, Boolean> cacheRoot;
+}
+
+@TargetClass(className = "com.oracle.truffle.polyglot.InternalResourceCache$ResettableCachedRoot", onlyWith = TruffleBaseFeature.IsEnabled.class)
+final class Target_com_oracle_truffle_polyglot_InternalResourceCache_ResettableCachedRoot {
+
+    /*
+     * The field is also reset explicitly in InternalResourceCache.resetFileSystemNativeImageState.
+     * However, the explicit reset comes too late for the String-must-not-contain-the-home-directory
+     * verification in DisallowedImageHeapObjectFeature, so we also do the implicit reset using a
+     * substitution.
+     */
+    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
+    private volatile Path resourceCacheRoot;
 }
 
 @TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicObjectFieldLocation", onlyWith = TruffleBaseFeature.IsEnabled.class)

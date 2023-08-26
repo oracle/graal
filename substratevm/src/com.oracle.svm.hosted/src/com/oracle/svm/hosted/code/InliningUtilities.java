@@ -33,6 +33,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.ValueAnchorNode;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.spi.ValueProxy;
+import org.graalvm.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 
 import com.oracle.svm.core.SubstrateOptions;
 
@@ -45,7 +46,7 @@ public class InliningUtilities {
             if (n instanceof StartNode || n instanceof ParameterNode || n instanceof FullInfopointNode || n instanceof ValueProxy || n instanceof ValueAnchorNode || n instanceof FrameState) {
                 continue;
             }
-            if (n instanceof MethodCallTargetNode) {
+            if (n instanceof MethodCallTargetNode || n instanceof MethodHandleWithExceptionNode) {
                 numInvokes++;
             } else {
                 numOthers++;

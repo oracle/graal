@@ -249,7 +249,7 @@ public class SubstrateGraphKit extends GraphKit {
              * exception handlers and directly unwind.
              */
             int bci = invoke.stateAfter().bci;
-            appendWithUnwind(new DeoptEntryNode(), bci);
+            appendWithUnwind(DeoptEntryNode.create(invoke.bci()), bci);
         }
 
         ValueNode result = invoke;

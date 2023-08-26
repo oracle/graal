@@ -172,7 +172,7 @@ public abstract class Source {
      * If no one is referencing the polyglot source anymore we can assume that no one relies on the
      * identity of the original polyglot source. So we can just as well free it.
      */
-    volatile WeakReference<org.graalvm.polyglot.Source> cachedPolyglotSource;
+    volatile WeakReference<Object> cachedPolyglotSource;
 
     abstract Object getSourceId();
 

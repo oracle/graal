@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -40,7 +40,6 @@ import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.llvm.api.Toolchain;
-import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import com.oracle.truffle.llvm.tests.interop.values.StructObject;
 import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import org.junit.runner.RunWith;
@@ -48,9 +47,10 @@ import org.junit.runner.RunWith;
 import com.oracle.truffle.tck.TruffleRunner;
 import com.oracle.truffle.tck.TruffleRunner.Inject;
 import com.oracle.truffle.tck.TruffleRunner.RunWithPolyglotRule;
+
+import java.io.File;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
@@ -86,7 +86,9 @@ public class MultiContextBuiltinsTest {
     }
 
     public static Context.Builder getContextBuilder() {
-        return Context.newBuilder().allowAllAccess(true).engine(sharedEngine);
+        Context.Builder builder = Context.newBuilder().allowAllAccess(true).engine(sharedEngine);
+        InteropTestBase.updateContextBuilder(builder);
+        return builder;
     }
 
     @Rule public RunWithPolyglotRule runWithPolyglot = new RunWithPolyglotRule(getContextBuilder());
@@ -95,7 +97,7 @@ public class MultiContextBuiltinsTest {
     Object resolveHandle;
 
     @Before
-    public void load() throws IOException, InteropException {
+    public void load() throws InteropException {
         Env env = runWithPolyglot.getTruffleTestEnv();
         LanguageInfo llvm = env.getPublicLanguages().get("llvm");
         Toolchain toolchain = env.lookup(llvm, Toolchain.class);
@@ -103,19 +105,18 @@ public class MultiContextBuiltinsTest {
         // this test uses handle functions, which are only defined in native mode
         Assume.assumeThat("test only valid in native mode", toolchain.getIdentifier(), is("native"));
 
-        List<TruffleFile> paths = toolchain.getPaths("LD_LIBRARY_PATH");
-        String libname = NativeContextExtension.getNativeLibraryVersioned("graalvm-llvm", 1);
-        for (TruffleFile p : paths) {
-            TruffleFile libLlvm = p.resolve(libname);
-            if (libLlvm.exists()) {
-                Source s = Source.newBuilder("llvm", libLlvm).build();
-                Object builtinsLibrary = env.parsePublic(s).call();
-                createHandle = INTEROP.readMember(builtinsLibrary, "_graalvm_llvm_create_handle");
-                resolveHandle = INTEROP.readMember(builtinsLibrary, "_graalvm_llvm_resolve_handle");
-                return;
-            }
+        File file = InteropTestBase.getTestBitcodeFile(runWithPolyglot.getPolyglotContext(), "builtins.c");
+        TruffleFile tf = runWithPolyglot.getTruffleTestEnv().getPublicTruffleFile(file.toURI());
+        Source source;
+        try {
+            source = Source.newBuilder("llvm", tf).build();
+        } catch (IOException ex) {
+            throw new AssertionError(ex);
         }
-        Assert.fail(libname + " not found");
+
+        Object testLib = runWithPolyglot.getTruffleTestEnv().parsePublic(source).call();
+        createHandle = INTEROP.invokeMember(testLib, "getCreateHandleFn");
+        resolveHandle = INTEROP.invokeMember(testLib, "getResolveHandleFn");
     }
 
     public class InteropExecute extends RootNode {

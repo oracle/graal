@@ -48,4 +48,5 @@ fi
     --macro:truffle --no-fallback --initialize-at-build-time \
     -cp ../language/target/simplelanguage.jar:../language/target/jars/antlr-runtime.jar:../launcher/target/sl-launcher.jar \
     com.oracle.truffle.sl.launcher.SLMain \
-    slnative
+    slnative \
+    -H:-UseContainerSupport

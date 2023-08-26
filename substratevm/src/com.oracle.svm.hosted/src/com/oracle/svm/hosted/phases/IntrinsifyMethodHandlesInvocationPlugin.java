@@ -141,6 +141,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 /**
+ * Legacy code which will be replaced by the more general method handle intrinsification and
+ * inlining in {@link com.oracle.graal.pointsto.phases.InlineBeforeAnalysisGraphDecoder} once
+ * {@link com.oracle.svm.core.SubstrateOptions#parseOnce()} is always on, including when JIT
+ * compilation is enabled.
+ *
  * Support for method handles that can be reduced to a plain invocation. This is enough to support
  * the method handles used for Java 8 Lambda expressions. Support for arbitrary method handles is
  * not possible in the Substrate VM, for the same reasons that we cannot support arbitrary

@@ -27,7 +27,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public final class MethodBuilder extends AbstractCodeBuilder {
-    public static final String OVERRIDE = "@Override";
+    public static final String OVERRIDE = "Override";
     public static final char TEMPLATE_OPEN = '<';
     public static final char TEMPLATE_CLOSE = '>';
 
@@ -35,10 +35,12 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     private final String methodName;
     private String returnType = "void";
     private ModifierBuilder modifierBuilder = new ModifierBuilder();
-    private final List<String> annotations = new ArrayList<>();
+    private final List<AnnotationBuilder> annotations = new ArrayList<>();
     private final List<MethodBodyLine> body = new ArrayList<>();
     private final List<String> params = new ArrayList<>();
     private final List<String> templateParams = new ArrayList<>();
+    private final List<String> thrownExceptions = new ArrayList<>();
+    private SignatureBuilder signatureBuilder;
 
     public MethodBuilder(String methodName) {
         this.methodName = methodName;
@@ -68,18 +70,34 @@ public final class MethodBuilder extends AbstractCodeBuilder {
         return this;
     }
 
-    public MethodBuilder withAnnotation(String annotation) {
+    public MethodBuilder withAnnotation(AnnotationBuilder annotation) {
         annotations.add(annotation);
         return this;
     }
 
     public MethodBuilder withParams(String... ps) {
+        if (signatureBuilder != null) {
+            throw new IllegalStateException("Cannot declare both a params list and a signature.");
+        }
         params.addAll(Arrays.asList(ps));
+        return this;
+    }
+
+    public MethodBuilder withSignature(SignatureBuilder signature) {
+        if (!params.isEmpty()) {
+            throw new IllegalStateException("Cannot declare both a params list and a signature.");
+        }
+        signatureBuilder = signature;
         return this;
     }
 
     public MethodBuilder withTemplateParams(String... ps) {
         templateParams.addAll(Arrays.asList(ps));
+        return this;
+    }
+
+    public MethodBuilder withThrown(String thrown) {
+        this.thrownExceptions.add(thrown);
         return this;
     }
 
@@ -89,13 +107,13 @@ public final class MethodBuilder extends AbstractCodeBuilder {
     }
 
     public MethodBuilder withOverrideAnnotation() {
-        return withAnnotation(OVERRIDE);
+        return withAnnotation(new AnnotationBuilder(OVERRIDE).withLineBreak());
     }
 
     @Override
     void buildImpl(IndentingStringBuilder sb) {
-        for (String annotation : annotations) {
-            sb.appendLine(annotation);
+        for (AnnotationBuilder annotation : annotations) {
+            annotation.buildImpl(sb);
         }
         modifierBuilder.buildImpl(sb);
         if (templateParams.size() > 0) {
@@ -105,7 +123,16 @@ public final class MethodBuilder extends AbstractCodeBuilder {
             sb.appendSpace(returnType);
         }
         sb.append(methodName);
-        sb.append(PAREN_OPEN).join(", ", params).appendSpace(PAREN_CLOSE);
+        if (signatureBuilder != null) {
+            signatureBuilder.buildImpl(sb);
+        } else {
+            sb.append(PAREN_OPEN).join(", ", params).appendSpace(PAREN_CLOSE);
+        }
+
+        if (!thrownExceptions.isEmpty()) {
+            sb.appendSpace(" throws").join(", ", thrownExceptions);
+        }
+
         sb.appendLine(BLOCK_OPEN);
         sb.raiseIndentLevel();
         for (MethodBodyLine ln : body) {

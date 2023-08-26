@@ -75,7 +75,7 @@ final class ByteArrayWasmMemory extends WasmMemory {
     }
 
     @Override
-    public long size() {
+    public synchronized long size() {
         return byteArrayBuffer.size();
     }
 
@@ -952,6 +952,45 @@ final class ByteArrayWasmMemory extends WasmMemory {
         } catch (final IndexOutOfBoundsException e) {
             throw trapOutOfBounds(node, address, 8);
         }
+    }
+
+    @Override
+    @TruffleBoundary
+    public int atomic_notify(Node node, long address, int count) {
+        validateAtomicAddress(node, address, 4);
+        if (outOfBounds(address, 4)) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+        if (!this.isShared()) {
+            return 0;
+        }
+        return invokeNotifyCallback(address, count);
+    }
+
+    @Override
+    @TruffleBoundary
+    public int atomic_wait32(Node node, long address, int expected, long timeout) {
+        validateAtomicAddress(node, address, 4);
+        if (outOfBounds(address, 4)) {
+            throw trapOutOfBounds(node, address, 4);
+        }
+        if (!this.isShared()) {
+            throw trapUnsharedMemory(node);
+        }
+        return invokeWaitCallback(address, expected, timeout, false);
+    }
+
+    @Override
+    @TruffleBoundary
+    public int atomic_wait64(Node node, long address, long expected, long timeout) {
+        validateAtomicAddress(node, address, 8);
+        if (outOfBounds(address, 8)) {
+            throw trapOutOfBounds(node, address, 8);
+        }
+        if (!this.isShared()) {
+            throw trapUnsharedMemory(node);
+        }
+        return invokeWaitCallback(address, expected, timeout, true);
     }
 
     @Override

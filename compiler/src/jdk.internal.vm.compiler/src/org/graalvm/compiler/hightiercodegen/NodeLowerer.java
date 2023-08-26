@@ -86,6 +86,7 @@ import org.graalvm.compiler.nodes.java.AtomicReadAndAddNode;
 import org.graalvm.compiler.nodes.java.AtomicReadAndWriteNode;
 import org.graalvm.compiler.nodes.java.ClassIsAssignableFromNode;
 import org.graalvm.compiler.nodes.java.DynamicNewArrayNode;
+import org.graalvm.compiler.nodes.java.DynamicNewInstanceNode;
 import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.nodes.java.InstanceOfDynamicNode;
 import org.graalvm.compiler.nodes.java.InstanceOfNode;
@@ -333,6 +334,8 @@ public abstract class NodeLowerer {
             lower((IdentityHashCodeNode) node);
         } else if (node instanceof ClassIsAssignableFromNode) {
             lower((ClassIsAssignableFromNode) node);
+        } else if (node instanceof DynamicNewInstanceNode n) {
+            lower(n);
         } else {
             if (!isIgnored(node)) {
                 handleUnknownNodeType(node);
@@ -438,6 +441,8 @@ public abstract class NodeLowerer {
     protected abstract void lower(LoadFieldNode node);
 
     protected abstract void lower(NewInstanceNode node);
+
+    protected abstract void lower(DynamicNewInstanceNode node);
 
     protected abstract void lower(NotNode node);
 

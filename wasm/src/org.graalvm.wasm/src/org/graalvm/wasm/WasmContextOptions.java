@@ -53,6 +53,7 @@ public class WasmContextOptions {
     @CompilationFinal private boolean multiValue;
     @CompilationFinal private boolean bulkMemoryAndRefTypes;
     @CompilationFinal private boolean memory64;
+    @CompilationFinal private boolean extendedConstExpressions;
     @CompilationFinal private boolean multiMemory;
     @CompilationFinal private boolean unsafeMemory;
     @CompilationFinal private boolean threads;
@@ -79,6 +80,7 @@ public class WasmContextOptions {
         this.multiValue = readBooleanOption(WasmOptions.MultiValue);
         this.bulkMemoryAndRefTypes = readBooleanOption(WasmOptions.BulkMemoryAndRefTypes);
         this.memory64 = readBooleanOption(WasmOptions.Memory64);
+        this.extendedConstExpressions = readBooleanOption(WasmOptions.ExtendedConstExpressions);
         this.multiMemory = readBooleanOption(WasmOptions.MultiMemory);
         this.threads = readBooleanOption(WasmOptions.Threads);
         this.unsafeMemory = readBooleanOption(WasmOptions.UseUnsafeMemory);
@@ -125,6 +127,10 @@ public class WasmContextOptions {
         return memory64;
     }
 
+    public boolean supportExtendedConstExpressions() {
+        return extendedConstExpressions;
+    }
+
     public boolean supportMultiMemory() {
         return multiMemory;
     }
@@ -157,6 +163,7 @@ public class WasmContextOptions {
         hash = 53 * hash + (this.multiValue ? 1 : 0);
         hash = 53 * hash + (this.bulkMemoryAndRefTypes ? 1 : 0);
         hash = 53 * hash + (this.memory64 ? 1 : 0);
+        hash = 54 * hash + (this.extendedConstExpressions ? 1 : 0);
         hash = 53 * hash + (this.multiMemory ? 1 : 0);
         hash = 53 * hash + (this.unsafeMemory ? 1 : 0);
         hash = 53 * hash + (this.memoryOverheadMode ? 1 : 0);
@@ -190,6 +197,9 @@ public class WasmContextOptions {
             return false;
         }
         if (this.memory64 != other.memory64) {
+            return false;
+        }
+        if (this.extendedConstExpressions != other.extendedConstExpressions) {
             return false;
         }
         if (this.multiMemory != other.multiMemory) {

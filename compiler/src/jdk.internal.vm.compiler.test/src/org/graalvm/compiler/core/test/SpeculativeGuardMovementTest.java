@@ -53,6 +53,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
     public static void snippet01(int init, int limit, int offset) {
         for (int i = init; GraalDirectives.injectIterationCount(1000, i < limit); i++) {
             if (Integer.compareUnsigned(i + offset, Integer.MIN_VALUE + 5) > 0) {
+                GraalDirectives.controlFlowAnchor();
                 GraalDirectives.deoptimizeAndInvalidate();
                 throw new IndexOutOfBoundsException();
             }
@@ -89,6 +90,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
             if (counter >= 3) {
                 result += arr[i];
                 if (counter == 1222) {
+                    GraalDirectives.controlFlowAnchor();
                     continue;
                 }
                 return -1;
@@ -117,6 +119,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
             if (GraalDirectives.injectBranchProbability(0.0000000001, i > 12312)) {
                 Object o = optAway(a);
                 if (o instanceof B) {
+                    GraalDirectives.controlFlowAnchor();
                     GraalDirectives.blackhole(o);
                 }
             }
@@ -132,6 +135,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
             if (GraalDirectives.injectBranchProbability(0.01, i > 12312)) {
                 Object o = optAway(a);
                 if (o instanceof B) {
+                    GraalDirectives.controlFlowAnchor();
                     GraalDirectives.blackhole(o);
                 }
             }
@@ -220,6 +224,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
                     for (int i = 0; GraalDirectives.injectIterationCount(100000, i < bound); i++) {
                         if (GraalDirectives.injectBranchProbability(0.01, i > 12312)) {
                             if (a1 instanceof B) {
+                                GraalDirectives.controlFlowAnchor();
                                 GraalDirectives.blackhole(a1);
                             }
                         }
@@ -243,6 +248,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
                     for (int i = 0; GraalDirectives.injectIterationCount(100000, i < bound); i++) {
                         if (GraalDirectives.injectBranchProbability(0.01, i > 12312)) {
                             if (a instanceof B) {
+                                GraalDirectives.controlFlowAnchor();
                                 GraalDirectives.blackhole(a);
                             }
                         }
@@ -262,7 +268,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
         assertTrue(instanceOfGuardPresent("snippetInstanceOfLoopNest"), "Unexpected graph after parsing! InstanceOf guard expected.");
         assertTrue(instanceOfGuardPresent("snippetInstanceOfHoistedLoopNest"), "Unexpected graph after parsing! InstanceOf guard expected.");
 
-        OptionValues opt = new OptionValues(getInitialOptions(), GraalOptions.LoopPeeling, false, GraalOptions.PartialUnroll, false, GraalOptions.LoopUnswitch, false);
+        OptionValues opt = getInitialOptions();
 
         test(opt, "snippetInstanceOfLoopNest", 0, null);
         int deoptLoopDepth = findDeoptLoopDepth(DeoptimizationReason.TypeCheckedInliningViolated, lastCompiledGraph);
@@ -287,6 +293,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
         }
         for (int i = 0; GraalDirectives.injectIterationCount(100000, i < bound); i++) {
             GraalDirectives.sideEffect();
+            GraalDirectives.controlFlowAnchor();
             if (GraalDirectives.injectBranchProbability(0.0000000001, i > 12312)) {
                 int[] o = optAway(a);
                 if (a[i] == 42) {
@@ -302,6 +309,7 @@ public class SpeculativeGuardMovementTest extends GraalCompilerTest {
         }
         for (int i = 0; GraalDirectives.injectIterationCount(100000, i < bound); i++) {
             GraalDirectives.sideEffect();
+            GraalDirectives.controlFlowAnchor();
             if (GraalDirectives.injectBranchProbability(0.01, i > 12312)) {
                 int[] o = optAway(a);
                 if (a[i] == 42) {

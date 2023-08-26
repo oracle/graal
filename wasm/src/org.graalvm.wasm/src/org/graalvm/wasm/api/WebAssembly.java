@@ -107,6 +107,8 @@ public class WebAssembly extends Dictionary {
         addMember("mem_grow", new Executable(WebAssembly::memGrow));
         addMember("mem_set_grow_callback", new Executable(WebAssembly::memSetGrowCallback));
         addMember("mem_as_byte_buffer", new Executable(WebAssembly::memAsByteBuffer));
+        addMember("mem_set_notify_callback", new Executable(WebAssembly::memSetNotifyCallback));
+        addMember("mem_set_wait_callback", new Executable(WebAssembly::memSetWaitCallback));
 
         addMember("global_alloc", new Executable(this::globalAlloc));
         addMember("global_read", new Executable(WebAssembly::globalRead));
@@ -322,7 +324,8 @@ public class WebAssembly extends Dictionary {
             final Integer memoryIndex = module.exportedMemories().get(name);
 
             if (memoryIndex != null) {
-                list.add(new ModuleExportDescriptor(name, ImportExportKind.memory.name(), null));
+                String shared = module.memoryIsShared(memoryIndex) ? "shared" : "single";
+                list.add(new ModuleExportDescriptor(name, ImportExportKind.memory.name(), shared));
             } else if (tableIndex != null) {
                 list.add(new ModuleExportDescriptor(name, ImportExportKind.table.name(), TableKind.toString(module.tableElementType(tableIndex))));
             } else if (f != null) {
@@ -656,10 +659,20 @@ public class WebAssembly extends Dictionary {
         } else {
             maximumSize = -1;
         }
-        return memAlloc(initialSize, maximumSize);
+        final boolean shared;
+        if (args.length > 2) {
+            try {
+                shared = lib.asBoolean(args[2]);
+            } catch (UnsupportedMessageException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Shared flag must be convertible to boolean");
+            }
+        } else {
+            shared = false;
+        }
+        return memAlloc(initialSize, maximumSize, shared);
     }
 
-    public static WasmMemory memAlloc(int initial, int maximum) {
+    public static WasmMemory memAlloc(int initial, int maximum, boolean shared) {
         if (compareUnsigned(initial, maximum) > 0) {
             throw new WasmJsApiException(WasmJsApiException.Kind.RangeError, "Min memory size exceeds max memory size");
         } else if (Long.compareUnsigned(initial, JS_LIMITS.memoryInstanceSizeLimit()) > 0) {
@@ -667,7 +680,7 @@ public class WebAssembly extends Dictionary {
         }
         final long maxAllowedSize = minUnsigned(maximum, JS_LIMITS.memoryInstanceSizeLimit());
         final WasmContext context = WasmContext.get(null);
-        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, false, context.getContextOptions().useUnsafeMemory());
+        return WasmMemoryFactory.createMemory(initial, maximum, maxAllowedSize, false, shared, context.getContextOptions().useUnsafeMemory());
     }
 
     private static Object memGrow(Object[] args) {
@@ -718,6 +731,66 @@ public class WebAssembly extends Dictionary {
                 throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unable to call memory grow callback", e);
             }
         }
+    }
+
+    private static Object memSetNotifyCallback(Object[] args) {
+        InteropLibrary lib = InteropLibrary.getUncached();
+        if (!(args[0] instanceof WasmMemory)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        }
+        if (!lib.isExecutable(args[1])) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+        }
+        WasmMemory memory = (WasmMemory) args[0];
+        return memSetNotifyCallback(memory, args[1]);
+    }
+
+    private static Object memSetNotifyCallback(WasmMemory memory, Object callback) {
+        memory.setNotifyCallback(callback);
+        return WasmConstant.VOID;
+    }
+
+    public static int invokeMemNotifyCallback(WasmMemory memory, long address, int count) {
+        Object callback = memory.getNotifyCallback();
+        if (callback != null) {
+            InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                return (int) lib.execute(callback, memory, address, count);
+            } catch (InteropException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unable to call memory notify callback", e);
+            }
+        }
+        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Notify instruction used from Wasm not instantiated via JS.");
+    }
+
+    private static Object memSetWaitCallback(Object[] args) {
+        InteropLibrary lib = InteropLibrary.getUncached();
+        if (!(args[0] instanceof WasmMemory)) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "First argument must be wasm memory");
+        }
+        if (!lib.isExecutable(args[1])) {
+            throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Second argument must be executable");
+        }
+        WasmMemory memory = (WasmMemory) args[0];
+        return memSetWaitCallback(memory, args[1]);
+    }
+
+    private static Object memSetWaitCallback(WasmMemory memory, Object callback) {
+        memory.setWaitCallback(callback);
+        return WasmConstant.VOID;
+    }
+
+    public static int invokeMemWaitCallback(WasmMemory memory, long address, long expected, long timeout, boolean is64) {
+        Object callback = memory.getWaitCallback();
+        if (callback != null) {
+            InteropLibrary lib = InteropLibrary.getUncached();
+            try {
+                return (int) lib.execute(callback, memory, address, expected, timeout, is64);
+            } catch (InteropException e) {
+                throw new WasmJsApiException(WasmJsApiException.Kind.TypeError, "Unable to call memory wait callback", e);
+            }
+        }
+        throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Wait instruction used from Wasm not instantiated via JS.");
     }
 
     private static Object memAsByteBuffer(Object[] args) {

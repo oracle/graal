@@ -41,7 +41,7 @@
 suite = {
   "mxversion": "6.39.0",
   "name" : "sdk",
-  "version" : "23.1.0",
+  "version" : "24.0.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -229,6 +229,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "sdk:NATIVEIMAGE",
         "org.graalvm.options",
         "org.graalvm.collections",
         "org.graalvm.home",
@@ -236,11 +237,28 @@ suite = {
       "requires" : [
         "java.logging",
       ],
+      "annotationProcessors" : [
+          "sdk:POLYGLOT_PROCESSOR"
+      ],
       "checkstyle" : "org.graalvm.word",
       "javaCompliance" : "17+",
       "workingSets" : "API,SDK",
     },
-
+    "org.graalvm.polyglot.processor" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+          "NATIVEBRIDGE_PROCESSOR"
+      ],
+      "requires" : [
+        "java.compiler"
+      ],
+      "annotationProcessors" : [
+      ],
+      "checkstyle" : "org.graalvm.word",
+      "javaCompliance" : "17+",
+      "workingSets" : "API,Graal",
+    },
     "org.graalvm.sdk" : {
       "subDir" : "src",
       "sourceDirs" : ["src"],
@@ -577,7 +595,9 @@ suite = {
         ],
       },
       "description" : "Shared library",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "NATIVEIMAGE" : {
@@ -617,7 +637,18 @@ suite = {
         "opens" : [],
       },
       "description" : "A framework that allows to customize native image generation.",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
+    },
+
+    "POLYGLOT_PROCESSOR" : {
+      "subDir" : "src",
+      "dependencies" : [
+        "org.graalvm.polyglot.processor"
+      ],
+      "distDependencies" : ["sdk:NATIVEBRIDGE_PROCESSOR"],
+      "maven": False,
     },
 
     "POLYGLOT" : {
@@ -635,6 +666,12 @@ suite = {
             "org.graalvm.word",
             "org.graalvm.nativeimage",
             "org.graalvm.collections",
+            # needed for dynamically loading Truffle
+            "java.sql",
+            "java.management",
+            "jdk.unsupported",
+            "jdk.management",
+            "jdk.jfr",
         ],
         "exports" : [
           "org.graalvm.home",
@@ -657,6 +694,7 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.polyglot",
         "artifactId" : "polyglot",
+        "tag": ["default", "public"],
       }
     },
 
@@ -677,7 +715,9 @@ suite = {
         "opens" : [],
       },
       "description" : "A collections framework for GraalVM components.",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "WORD" : {
@@ -698,7 +738,9 @@ suite = {
         "opens" : [],
       },
       "description" : "A low-level framework for machine-word-sized values in Java.",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "SDK_TEST" : {
@@ -750,6 +792,7 @@ suite = {
       "maven": {
         "groupId": "org.graalvm.shadowed",
         "artifactId": "jline",
+        "tag": ["default", "public"],
       },
     },
     "LAUNCHER_COMMON" : {
@@ -769,6 +812,9 @@ suite = {
       ],
       "description" : "Common infrastructure to create language launchers using the Polyglot API.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
     "POLYGLOT_TCK" : {
       "subDir" : "src",
@@ -786,6 +832,9 @@ suite = {
       ],
       "javadocType": "api",
       "description" : """GraalVM TCK SPI""",
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
     "JNIUTILS" : {
       "moduleInfo" : {
@@ -799,6 +848,9 @@ suite = {
       "distDependencies" : ["COLLECTIONS", "NATIVEIMAGE"],
       "description" : "Utilities for JNI calls from within native-image.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
     "NATIVEBRIDGE" : {
       "moduleInfo" : {
@@ -812,6 +864,9 @@ suite = {
       "distDependencies" : ["JNIUTILS"],
       "description" : "API and utility classes for nativebridge.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
     "NATIVEBRIDGE_PROCESSOR" : {
       "subDir" : "src",

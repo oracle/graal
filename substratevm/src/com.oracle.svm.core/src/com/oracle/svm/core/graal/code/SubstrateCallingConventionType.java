@@ -50,8 +50,12 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
         outgoingTypes = new EnumMap<>(SubstrateCallingConventionKind.class);
         incomingTypes = new EnumMap<>(SubstrateCallingConventionKind.class);
         for (SubstrateCallingConventionKind kind : SubstrateCallingConventionKind.values()) {
-            outgoingTypes.put(kind, new SubstrateCallingConventionType(kind, true));
-            incomingTypes.put(kind, new SubstrateCallingConventionType(kind, false));
+            if (kind.isCustom()) {
+                // Custom conventions cannot be enumerated this way
+                continue;
+            }
+            outgoingTypes.put(kind, new SubstrateCallingConventionType(kind, true, null, null));
+            incomingTypes.put(kind, new SubstrateCallingConventionType(kind, false, null, null));
         }
     }
 
@@ -62,37 +66,34 @@ public final class SubstrateCallingConventionType implements CallingConvention.T
         this.returnSaving = returnSaving;
     }
 
-    private SubstrateCallingConventionType(SubstrateCallingConventionKind kind, boolean outgoing) {
-        this(kind, outgoing, null, null);
-    }
-
     /**
-     * Allows to manually assign which location (i.e. which register or stack location) to use for
-     * each argument.
+     * Create a calling convention with custom parameter/return assignment. The return value might
+     * get buffered, see {@link SubstrateCallingConventionType#usesReturnBuffer}.
+     *
+     * Methods using this calling convention should implement {@link CustomCallingConventionMethod}.
      */
-    public SubstrateCallingConventionType withParametersAssigned(AssignedLocation[] fixedRegisters) {
-        assert nativeABI();
-        return new SubstrateCallingConventionType(this.kind, this.outgoing, fixedRegisters, returnSaving);
-    }
-
-    /**
-     * Allows to retrieve the return of a function. When said return is more than one word long, we
-     * have no way of representing it as a value. Thus, this value will instead be stored from the
-     * registers containing it into a buffer provided (as a pointer) as a prefix argument to the
-     * function.
-     * <p>
-     * Note that, even if used in conjunction with
-     * {@link SubstrateCallingConventionType#withParametersAssigned}, the location of the extra
-     * argument (i.e. the pointer to the return buffer) should not be assigned to a location, as
-     * this will be handled by the backend.
-     */
-    public SubstrateCallingConventionType withReturnSaving(AssignedLocation[] newReturnSaving) {
-        assert nativeABI();
-        return new SubstrateCallingConventionType(this.kind, this.outgoing, this.fixedParameterAssignment, newReturnSaving);
+    public static SubstrateCallingConventionType makeCustom(boolean outgoing, AssignedLocation[] parameters, AssignedLocation[] returns) {
+        return new SubstrateCallingConventionType(SubstrateCallingConventionKind.Custom, outgoing, Objects.requireNonNull(parameters), Objects.requireNonNull(returns));
     }
 
     public boolean nativeABI() {
-        return kind == SubstrateCallingConventionKind.Native;
+        return kind == SubstrateCallingConventionKind.Native || customABI();
+    }
+
+    public boolean customABI() {
+        return kind == SubstrateCallingConventionKind.Custom;
+    }
+
+    /**
+     * In the case of an outgoing call with multiple returned values, or if the return is more than
+     * one quadword long, there is no way to represent them in Java and the returns need special
+     * treatment. This is done using an extra prefix argument which is interpreted as a pointer to
+     * buffer where the values will be stored.
+     *
+     * This is currently only allowed in custom conventions.
+     */
+    public boolean usesReturnBuffer() {
+        return outgoing && returnSaving != null && returnSaving.length >= 2;
     }
 
     @Override

@@ -56,13 +56,9 @@ This is resolved by running `mx ideinit` and cleaning the affected projects.
 IDE plugins can be helpful in adhering to style rules.
 Some examples are:
 
-* Eclipse Checkstyle Plugin: reports Checkstyle violations in Eclipse, making it unnecessary to run `mx checkstyle` manually.
-  https://checkstyle.github.io/eclipse-cs/
-* IntelliJ Eclipse Code Formatter: formats source files in IntelliJ according to Eclipse IntelliJ rules.
-This plugin is automatically configured by `mx ideinit`.
-  https://github.com/krasa/EclipseCodeFormatter
-* IntelliJ Save Actions to automatically format files before saving them.
-  https://github.com/dubreuia/intellij-plugin-save-actions
+* [Eclipse Checkstyle Plugin](https://checkstyle.github.io/eclipse-cs/): reports Checkstyle violations in Eclipse, making it unnecessary to run `mx checkstyle` manually.
+* [IntelliJ Eclipse Code Formatter](https://github.com/krasa/EclipseCodeFormatter): formats source files in IntelliJ according to Eclipse IntelliJ rules. This plugin is automatically configured by `mx ideinit`.
+* [IntelliJ Save Actions](https://github.com/dubreuia/intellij-plugin-save-actions) to automatically format files before saving them.
 
 See the [documentation on IDE integration](https://github.com/graalvm/mx/blob/master/docs/IDE.md) for further suggestions.
 

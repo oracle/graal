@@ -27,6 +27,7 @@ package org.graalvm.compiler.nodes.calc;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
+import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
@@ -53,8 +54,11 @@ public final class IntegerBelowNode extends IntegerLowerThanNode {
 
     public IntegerBelowNode(ValueNode x, ValueNode y) {
         super(TYPE, x, y, OP);
-        assert x.stamp(NodeView.DEFAULT).isIntegerStamp();
-        assert y.stamp(NodeView.DEFAULT).isIntegerStamp();
+        Stamp xStamp = x.stamp(NodeView.DEFAULT);
+        Stamp yStamp = y.stamp(NodeView.DEFAULT);
+        assert xStamp.isIntegerStamp() : "expected integer x value: " + x;
+        assert yStamp.isIntegerStamp() : "expected integer y value: " + y;
+        assert xStamp.isCompatible(yStamp) : "expected compatible stamps: " + xStamp + " / " + yStamp;
     }
 
     public static LogicNode create(ValueNode x, ValueNode y, NodeView view) {

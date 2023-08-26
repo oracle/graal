@@ -1,0 +1,9 @@
+{
+  "resources": {
+    "includes": [
+      {
+        "pattern": "com/oracle/truffle/sl/tck/resources/.*"
+      }
+    ]
+  }
+}

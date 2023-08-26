@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,7 +29,6 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
-import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.llvm.runtime.LLVMContext;
 import com.oracle.truffle.llvm.runtime.LLVMSyscallEntry;
 import com.oracle.truffle.llvm.runtime.PlatformCapability;
@@ -79,14 +78,12 @@ public abstract class PlatformCapabilityBase<S extends Enum<S> & LLVMSyscallEntr
     }
 
     @Override
-    public List<String> preprocessDependencies(LLVMContext ctx, TruffleFile file, List<String> dependencies) {
+    public List<String> preprocessDependencies(LLVMContext ctx, String libraryName, boolean isInternal, List<String> dependencies) {
         List<String> newDeps = null;
         boolean libSulongXXAdded = false;
         // inject libsulong++ dependency
-        if (file != null && ctx.isInternalLibraryFile(file)) {
-            Path path = Paths.get(file.getPath());
-            String remainder = ctx.getInternalLibraryPath().relativize(path).toString();
-            if (isCxxLibrary(remainder)) {
+        if (isInternal) {
+            if (isCxxLibrary(libraryName)) {
                 newDeps = new ArrayList<>(dependencies);
                 newDeps.add(getLibsulongxxFilename());
                 libSulongXXAdded = true;

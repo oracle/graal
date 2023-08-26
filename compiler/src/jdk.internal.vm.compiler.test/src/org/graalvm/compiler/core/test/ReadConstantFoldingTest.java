@@ -44,6 +44,7 @@ import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.Builder;
 import org.graalvm.compiler.nodes.extended.OpaqueNode;
+import org.graalvm.compiler.nodes.extended.OpaqueValueNode;
 import org.graalvm.compiler.nodes.extended.RawLoadNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.PhaseSuite;
@@ -204,7 +205,7 @@ public class ReadConstantFoldingTest extends GraalCompilerTest {
         StructuredGraph g = parseForCompile(installedCodeOwner, options);
         if (insertOpaque) {
             for (RawLoadNode node : g.getNodes().filter(RawLoadNode.class)) {
-                OpaqueNode opaque = new OpaqueNode(node.object());
+                OpaqueNode opaque = new OpaqueValueNode(node.object());
                 g.unique(opaque);
                 node.replaceFirstInput(node.object(), opaque);
             }

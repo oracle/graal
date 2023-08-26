@@ -593,10 +593,10 @@ def gate_substratevm(tasks, quickbuild=False):
                 '--language:nfi',
                 '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
                 '--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.impl=ALL-UNNAMED',
-                '-H:MaxRuntimeCompileMethods=5000',
                 '-R:MaxHeapSize=2g',
                 '--enable-url-protocols=jar',
-                '--enable-url-protocols=http'
+                '--enable-url-protocols=http',
+                '-H:MaxRuntimeCompileMethods=5000',
             ]
             truffle_without_compilation = truffle_with_compilation + [
                 '-Dtruffle.TruffleRuntime=com.oracle.truffle.api.impl.DefaultTruffleRuntime'
@@ -674,19 +674,22 @@ def _svm_truffle_tck(native_image, svm_suite, language_suite, language_id, langu
         report_file = join(svmbuild, "language_permissions.log")
         options = macro_options + [
             '--features=com.oracle.svm.truffle.tck.PermissionsFeature',
+        ] + mx_sdk_vm_impl.svm_experimental_options([
             '-H:ClassInitialization=:build_time',
             '-H:+EnforceMaxRuntimeCompileMethods',
             '-H:-InlineBeforeAnalysis',
             '-H:-ParseOnceJIT', #GR-47163
+            '-H:-VerifyDeoptimizationEntryPoints', #GR-47163
             '-cp',
             cp,
             '-H:-FoldSecurityManagerGetter',
             f'-H:TruffleTCKPermissionsReportFile={report_file}',
             f'-H:Path={svmbuild}',
+        ]) + [
             'com.oracle.svm.truffle.tck.MockMain'
         ]
         if excludes:
-            options.append(f"-H:TruffleTCKPermissionsExcludeFiles={','.join(excludes)}")
+            options += mx_sdk_vm_impl.svm_experimental_options([f"-H:TruffleTCKPermissionsExcludeFiles={','.join(excludes)}"])
         native_image(options)
         if isfile(report_file) and getsize(report_file) > 0:
             message = f"Failed: Language {language_id} performs following privileged calls:\n\n"
@@ -745,6 +748,16 @@ def gate_svm_truffle_tck_python(tasks):
 
 def gate_truffle_unchained(tasks):
     truffle_suite = mx.suite('truffle')
+    with Task('Truffle Unchained Truffle ModulePath Unit Tests', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.truffle_jvm_module_path_unit_tests_gate()
+    with Task('Truffle Unchained Truffle ClassPath Unit Tests', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
+        if t:
+            if not truffle_suite:
+                mx.abort("Cannot resolve truffle suite.")
+            mx_truffle.truffle_jvm_class_path_unit_tests_gate()
     with Task('Truffle Unchained SL JVM', tasks, tags=[VmGateTasks.truffle_unchained]) as t:
         if t:
             if not truffle_suite:
@@ -765,7 +778,7 @@ def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None,
     native_image_context, svm = graalvm_svm()
     with native_image_context(svm.IMAGE_ASSERTION_FLAGS) as native_image:
         import mx_compiler
-        build_options = ['-H:+GenerateBuildArtifactsFile'] + options
+        build_options = mx_sdk_vm_impl.svm_experimental_options(['-H:+GenerateBuildArtifactsFile']) + options
         if shared_lib:
             build_options = build_options + ['--shared']
         build_deps = []
@@ -816,9 +829,10 @@ def gate_svm_sl_tck(tasks):
                 options = [
                     '--macro:truffle',
                     '--tool:all',
-                    f'-H:Path={svmbuild}',
                     '-H:Class=org.junit.runner.JUnitCore',
-                ]
+                ] + mx_sdk_vm_impl.svm_experimental_options([
+                    f'-H:Path={svmbuild}',
+                ])
                 tests_image_path, tests_file = build_tests_image(svmbuild, options, ['com.oracle.truffle.tck.tests'], ['truffle:TRUFFLE_SL_TCK', 'truffle:TRUFFLE_TCK_INSTRUMENTATION'])
                 with open(tests_file) as f:
                     test_classes = [l.rstrip() for l in f.readlines()]

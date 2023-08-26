@@ -45,7 +45,6 @@ import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.word.LocationIdentity;
 
-import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -129,8 +128,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
                     // this is never a valid access of an arbitrary address.
                     if ((field != null && field.getJavaKind() == this.accessKind() &&
                                     !field.isInternal() /* Ensure this is a true java field. */)) {
-                        assert graph().isBeforeStage(StageFlag.FLOATING_READS) : "cannot add more precise memory location after floating read phase";
-                        return cloneAsFieldAccess(graph().getAssumptions(), field, getMemoryOrder());
+                        return cloneAsFieldAccess(field);
                     }
                 }
             }
@@ -152,7 +150,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
         return this;
     }
 
-    protected abstract ValueNode cloneAsFieldAccess(Assumptions assumptions, ResolvedJavaField field, MemoryOrderMode memOrder);
+    public abstract ValueNode cloneAsFieldAccess(ResolvedJavaField field);
 
     protected abstract ValueNode cloneAsArrayAccess(ValueNode location, LocationIdentity identity, MemoryOrderMode memOrder);
 
@@ -179,7 +177,7 @@ public abstract class UnsafeAccessNode extends FixedWithNextNode implements Cano
         return findStaticFieldWithOffset(staticReceiverType, offsetConstant.asLong(), accessKind);
     }
 
-    private static ResolvedJavaField findStaticFieldWithOffset(ResolvedJavaType type, long offset, JavaKind expectedEntryKind) {
+    public static ResolvedJavaField findStaticFieldWithOffset(ResolvedJavaType type, long offset, JavaKind expectedEntryKind) {
         try {
             ResolvedJavaField[] declaredFields = type.getStaticFields();
             return findFieldWithOffset(offset, expectedEntryKind, declaredFields);

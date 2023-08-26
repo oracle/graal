@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.core.option;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
 public class OptionClassFilter {
-    private final Set<OptionOrigin> reasonCommandLine = Collections.singleton(OptionOrigin.commandLineOptionOriginSingleton);
+    private final Set<OptionOrigin> reasonCommandLine = Set.of(OptionOrigin.commandLineAPIOptionOriginSingleton, OptionOrigin.commandLineNonAPIOptionOriginSingleton);
 
     private final Map<String, Set<OptionOrigin>> requireCompletePackageOrClass;
     private final Set<Module> requireCompleteModules;

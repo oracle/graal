@@ -48,8 +48,6 @@ import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Set;
 
-import org.graalvm.polyglot.Source;
-
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -611,7 +609,7 @@ final class PolyglotSharingLayer {
         return newOptions;
     }
 
-    public void listCachedSources(Set<Source> sources) {
+    public void listCachedSources(Set<Object> sources) {
         Shared s = this.shared;
         if (s != null) {
             s.sourceCache.listCachedSources(engine.getImpl(), sources);

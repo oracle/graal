@@ -86,7 +86,7 @@
 
   use_llvm:: task_spec({
       mxgate_config+::["llvm"],
-      mxgate_extra_args+: ["--extra-image-builder-arguments=-H:CompilerBackend=llvm"],
+      mxgate_extra_args+: ["--extra-image-builder-arguments=-H:+UnlockExperimentalVMOptions -H:CompilerBackend=llvm -H:-UnlockExperimentalVMOptions"],
   }),
 
   use_ecj:: task_spec({

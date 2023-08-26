@@ -148,6 +148,7 @@ class MxUnittestTestEngineConfigAction(argparse.Action):
 def _unittest_config_participant(config):
     (vmArgs, mainClass, mainClassArgs) = config
     vmArgs += get_test_distribution_path_properties(_suite)
+    vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
     vmArgs += ['-Dsulongtest.configRoot={}'.format(_sulongTestConfigRoot)]
     if MxUnittestTestEngineConfigAction.config:
         vmArgs += ['-Dsulongtest.config=' + MxUnittestTestEngineConfigAction.config]

@@ -816,8 +816,10 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static String toString(FrameState frameState) {
         StringBuilder sb = new StringBuilder();
+        sb.append("FrameState|").append(frameState.getId()).append(" ");
         String nl = CodeUtil.NEW_LINE;
         FrameState fs = frameState;
         while (fs != null) {

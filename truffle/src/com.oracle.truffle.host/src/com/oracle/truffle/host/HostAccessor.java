@@ -47,7 +47,6 @@ import java.util.function.Predicate;
 import org.graalvm.polyglot.HostAccess.TargetMappingPrecedence;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
-import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.InlineSupport.InlineTarget;
@@ -133,7 +132,7 @@ final class HostAccessor extends Accessor {
         }
 
         @Override
-        public Object toDisconnectedHostProxy(Proxy hostValue) {
+        public Object toDisconnectedHostProxy(Object hostValue) {
             return HostProxy.toProxyGuestObject(null, hostValue);
         }
 

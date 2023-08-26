@@ -78,7 +78,7 @@ public class SubstrateOptions {
     public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
     @Option(help = "When true, each compiler graph version (DeoptTarget, AOT, JIT) needed for runtime compilation will be separately analyzed during static analysis." +
                     "When false, only one version of the compiler graph (AOT) will be used in static analysis, and then three new versions will be parsed for compilation.")//
-    public static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(false);
+    public static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
@@ -98,7 +98,7 @@ public class SubstrateOptions {
     @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//
     public static final HostedOptionKey<String> Module = new HostedOptionKey<>("");
 
-    @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User)//
+    @Option(help = "Class containing the default entry point method. Optional if --shared is used.", type = OptionType.User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<String> Class = new HostedOptionKey<>("");
 
     @Option(help = "Name of the main entry point method. Optional if --shared is used.")//
@@ -115,6 +115,26 @@ public class SubstrateOptions {
     @APIOption(name = "static")//
     @Option(help = "Build statically linked executable (requires static libc and zlib)")//
     public static final HostedOptionKey<Boolean> StaticExecutable = new HostedOptionKey<>(false);
+
+    @APIOption(name = "libc")//
+    @Option(help = "Selects the libc implementation to use. Available implementations: glibc, musl, bionic")//
+    public static final HostedOptionKey<String> UseLibC = new HostedOptionKey<>(null) {
+        @Override
+        public String getValueOrDefault(UnmodifiableEconomicMap<OptionKey<?>, Object> values) {
+            if (!values.containsKey(this)) {
+                return Platform.includedIn(Platform.ANDROID.class)
+                                ? "bionic"
+                                : System.getProperty("substratevm.HostLibC", "glibc");
+            }
+            return (String) values.get(this);
+        }
+
+        @Override
+        public String getValue(OptionValues values) {
+            assert checkDescriptorExists();
+            return getValueOrDefault(values.getMap());
+        }
+    };
 
     @APIOption(name = "target")//
     @Option(help = "Selects native-image compilation target (in <OS>-<architecture> format). Defaults to host's OS-architecture pair.")//
@@ -314,7 +334,7 @@ public class SubstrateOptions {
     @Option(help = "Track NodeSourcePositions during runtime-compilation")//
     public static final HostedOptionKey<Boolean> IncludeNodeSourcePositions = new HostedOptionKey<>(false);
 
-    @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)")//
+    @Option(help = "Search path for C libraries passed to the linker (list of comma-separated directories)", stability = OptionStability.STABLE)//
     @BundleMember(role = BundleMember.Role.Input)//
     public static final HostedOptionKey<LocatableMultiOptionValue.Paths> CLibraryPath = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 
@@ -357,6 +377,8 @@ public class SubstrateOptions {
             }
         }
     };
+    @Option(help = "Physical memory size (in bytes). By default, the value is queried from the OS/container during VM startup.", type = OptionType.Expert)//
+    public static final RuntimeOptionKey<Long> MaxRAM = new RuntimeOptionKey<>(0L, Immutable);
 
     @Option(help = "The size of each thread stack at run-time, in bytes.", type = OptionType.User)//
     public static final RuntimeOptionKey<Long> StackSize = new RuntimeOptionKey<>(0L);
@@ -416,7 +438,7 @@ public class SubstrateOptions {
     @Option(help = "Prefix that is added to the names of entry point methods.")//
     public static final HostedOptionKey<String> EntryPointNamePrefix = new HostedOptionKey<>("");
 
-    @Option(help = "Prefix that is added to the names of API functions.")//
+    @Option(help = "Prefix that is added to the names of API functions.", stability = OptionStability.STABLE)//
     public static final HostedOptionKey<String> APIFunctionPrefix = new HostedOptionKey<>("graal_");
 
     @APIOption(name = "enable-http", fixedValue = "http", customHelp = "enable http support in the generated image")//
@@ -453,6 +475,28 @@ public class SubstrateOptions {
     /*
      * Build output options.
      */
+
+    @APIOption(name = "color")//
+    @Option(help = "Color build output ('always', 'never', or 'auto')", type = OptionType.User)//
+    public static final HostedOptionKey<String> Color = new HostedOptionKey<>("auto");
+
+    public static final boolean hasColorsEnabled(OptionValues values) {
+        if (Color.hasBeenSet(values)) {
+            String value = Color.getValue(values);
+            return switch (value) {
+                case "always" -> true;
+                case "auto" -> {
+                    /* Fail only when assertions are enabled. */
+                    assert false : "'auto' value should have been resolved in the driver";
+                    yield false;
+                }
+                case "never" -> false;
+                default -> throw UserError.abort("Unsupported value '%s' for '--color' option. Only 'always', 'never', and 'auto' are accepted.", value);
+            };
+        }
+        return false;
+    }
+
     @APIOption(name = "silent")//
     @Option(help = "Silence build output", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputSilent = new HostedOptionKey<>(false);
@@ -460,7 +504,7 @@ public class SubstrateOptions {
     @Option(help = "Prefix build output with '<pid>:<image name>'", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> BuildOutputPrefix = new HostedOptionKey<>(false);
 
-    @Option(help = "Colorize build output (enabled by default if colors are supported by terminal)", type = OptionType.User)//
+    @Option(help = "Color build output (enabled by default if colors are supported by terminal)", type = OptionType.User, deprecated = true, deprecationMessage = "Please use '--color' instead.")//
     public static final HostedOptionKey<Boolean> BuildOutputColorful = new HostedOptionKey<>(false);
 
     @Option(help = "Show links in build output (defaults to the value of BuildOutputColorful)", type = OptionType.User)//
@@ -651,7 +695,7 @@ public class SubstrateOptions {
     @Option(help = "Provide java.lang.Terminator exit handlers", type = User)//
     public static final HostedOptionKey<Boolean> InstallExitHandlers = new HostedOptionKey<>(false);
 
-    @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User)//
+    @Option(help = "When set to true, the image generator verifies that the image heap does not contain a home directory as a substring", type = User, stability = OptionStability.STABLE)//
     public static final HostedOptionKey<Boolean> DetectUserDirectoriesInImageHeap = new HostedOptionKey<>(false);
 
     @Option(help = "Determines if a null region is present between the heap base and the image heap.", type = Expert)//
@@ -680,7 +724,7 @@ public class SubstrateOptions {
 
     @APIOption(name = "-g", fixedValue = "2", customHelp = "generate debugging information")//
     @Option(help = "Insert debug info into the generated native image or library")//
-    static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
+    public static final HostedOptionKey<Integer> GenerateDebugInfo = new HostedOptionKey<>(0, SubstrateOptions::validateGenerateDebugInfo) {
         @Override
         protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Integer oldValue, Integer newValue) {
             if (OS.WINDOWS.isCurrent()) {
@@ -964,4 +1008,10 @@ public class SubstrateOptions {
 
     @Option(help = "Emit indirect branch target marker instructions.", type = OptionType.Expert) //
     public static final HostedOptionKey<Boolean> IndirectBranchTargetMarker = new HostedOptionKey<>(false);
+
+    @Option(help = "Enable and disable normal processing of flags relating to experimental options.", type = OptionType.Expert, stability = OptionStability.EXPERIMENTAL) //
+    public static final HostedOptionKey<Boolean> UnlockExperimentalVMOptions = new HostedOptionKey<>(false);
+
+    @Option(help = "Force using legacy method handle intrinsics.", type = Expert) //
+    public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
 }

@@ -41,7 +41,7 @@
 suite = {
   "mxversion": "6.39.0",
   "name" : "truffle",
-  "version" : "23.1.0",
+  "version" : "24.0.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -69,15 +69,6 @@ suite = {
   "libraries" : {
 
     # ------------- Libraries -------------
-
-    "JLINE" : {
-      "digest" : "sha512:27f6e2523e539383cede51d8eae7e97d49038c5a66cb4a94a9ce85165f16e7382b937a238cdb0c92e1136af56c5f57bcc6c04435a370c5d49f7e4bd32f0d9194",
-      "maven" : {
-        "groupId" : "jline",
-        "artifactId" : "jline",
-        "version" : "2.14.6",
-      }
-    },
 
     "LIBFFI_SOURCES" : {
       "resource" : True,
@@ -311,7 +302,6 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:POLYGLOT",
         "com.oracle.truffle.api.exception",
         "truffle:TRUFFLE_ASM_9.5",
       ],
@@ -323,6 +313,30 @@ suite = {
       "checkstyle" : "com.oracle.truffle.api",
       "javaCompliance" : "17+",
       "workingSets" : "API,Truffle",
+    },
+
+    "com.oracle.truffle.api.modularized.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "com.oracle.truffle.api.modularized.test.separate.module.test",
+        "TRUFFLE_API",
+        "sdk:POLYGLOT",
+        "mx:JUNIT",
+      ],
+      "checkstyle" : "com.oracle.truffle.dsl.processor",
+      "javaCompliance" : "17+",
+      "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
+      "workingSets" : "API,Truffle,Test",
+      "jacoco" : "exclude",
+    },
+
+    "com.oracle.truffle.api.modularized.test.separate.module.test" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "workingSets" : "API,Truffle,Test",
+      "jacoco" : "exclude",
     },
 
     "com.oracle.truffle.api.test" : {
@@ -1214,6 +1228,54 @@ suite = {
       }
     },
 
+    "TRUFFLE_MODULARIZED_TEST" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "com.oracle.trufflemodtest",
+        "exports" : [
+          # Unqualified exports
+          "com.oracle.truffle.api.modularized.test",
+        ],
+      },
+      "subDir" : "src",
+      "javaCompliance" : "17+",
+      "dependencies" : [
+        "com.oracle.truffle.api.modularized.test",
+      ],
+      "distDependencies" : [
+        "sdk:POLYGLOT",
+        "TRUFFLE_API",
+        "TRUFFLE_RUNTIME",
+        "TRUFFLE_SL",
+        "TRUFFLE_MODULARIZED_TEST_SEPARATE_MODULE_TEST",
+      ],
+      "exclude" : [
+        "mx:JUNIT",
+      ],
+      "useModulePath": True,
+      "description" : "Module with JUnit tests for testing Truffle API in modular applications.",
+      "maven": False,
+    },
+
+    "TRUFFLE_MODULARIZED_TEST_SEPARATE_MODULE_TEST" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "com.oracle.trufflemodtestseparate",
+        "exports" : [
+          # Qualified exports
+          "com.oracle.truffle.api.modularized.test.separate.module.test to com.oracle.trufflemodtest",
+        ],
+      },
+      "subDir" : "src",
+      "javaCompliance" : "17+",
+      "dependencies" : [
+        "com.oracle.truffle.api.modularized.test.separate.module.test",
+      ],
+      "useModulePath": True,
+      "description" : "Separate test module for testing Truffle API in modular applications.",
+      "maven": False,
+    },
+
     "TRUFFLE_COMPILER" : {
       # This distribution defines a module.
       "moduleInfo" : {
@@ -1247,7 +1309,9 @@ suite = {
       "distDependencies" : [
       ],
       "description" : "Truffle compiler API.",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_RUNTIME" : {
@@ -1297,7 +1361,10 @@ suite = {
       ],
       "description" : "Truffle runtime distribution.",
       "useModulePath": True,
-      "maven": True,
+      "maven": {
+          "artifactId": "truffle-runtime",
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_API" : {
@@ -1346,6 +1413,7 @@ suite = {
           "java.nio.file.spi.FileTypeDetector",
           "com.oracle.truffle.api.impl.TruffleLocator",
           "com.oracle.truffle.api.provider.TruffleLanguageProvider",
+          "com.oracle.truffle.api.provider.InternalResourceProvider",
           "com.oracle.truffle.api.library.provider.DefaultExportProvider",
           "com.oracle.truffle.api.library.provider.EagerExportProvider",
           "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
@@ -1390,7 +1458,9 @@ suite = {
       ],
       "description" : "Truffle is a multi-language framework for executing dynamic languages\nthat achieves high performance when combined with Graal.",
       "javadocType": "api",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
       "useModulePath": True,
       # We do no longer deploy a closed module to graalvm because there are known bugs
       # when a JDK boot module exports itself at runtime to a language at runtime.
@@ -1441,10 +1511,12 @@ suite = {
       ],
       "distDependencies" : [
         "TRUFFLE_API",
-        "TRUFFLE_NFI_NATIVE",
       ],
       "description" : """Native function interface for the Truffle framework.""",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_NFI_LIBFFI" : {
@@ -1463,13 +1535,15 @@ suite = {
       ],
       "distDependencies" : [
         "TRUFFLE_NFI",
-        "TRUFFLE_NFI_NATIVE",
       ],
       "javaProperties" : {
           "truffle.nfi.library" : "<path:TRUFFLE_NFI_NATIVE>/bin/<lib:trufflenfi>"
       },
       "description" : """Implementation of the Truffle NFI using libffi.""",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_NFI_PANAMA" : {
@@ -1505,7 +1579,9 @@ suite = {
       },
       "include_dirs" : ["include"],
       "description" : "Contains the NFI headers, and the native library needed by the libffi NFI backend.",
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_NFI_RESOURCES" : {
@@ -1541,6 +1617,9 @@ suite = {
       "exclude" : ["mx:JUNIT"],
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_TCK_COMMON" : {
@@ -1554,6 +1633,9 @@ suite = {
       ],
       "description" : "Common types for TCK Tests and Instruments.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_TCK_TESTS" : {
@@ -1570,7 +1652,9 @@ suite = {
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
       "allowsJavadocWarnings": True,
       "testDistribution" : False,
-      "maven": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_TCK_TESTS_LANGUAGE" : {
@@ -1601,6 +1685,9 @@ suite = {
       "exclude" : ["mx:JUNIT"],
       "description" : "Instruments used by the Truffle TCK.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_DSL_PROCESSOR" : {
@@ -1610,6 +1697,9 @@ suite = {
       "distDependencies" : [],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_LIBGRAAL_PROCESSOR" : {
@@ -1618,6 +1708,9 @@ suite = {
       "distDependencies" : [],
       "description" : "The Truffle libgraal processor is shared across Truffle and the compiler to generate code for the compiler bridge.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_SL" : {
@@ -1638,6 +1731,9 @@ suite = {
       "useModulePath": True,
       "description" : "Truffle SL is an example language implemented using the Truffle API.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_SL_LAUNCHER" : {
@@ -1655,6 +1751,9 @@ suite = {
       "useModulePath": True,
       "description" : "Truffle SL launchers using the polyglot API.",
       "allowsJavadocWarnings": True,
+      "maven": {
+          "tag": ["default", "public"],
+      },
     },
 
     "TRUFFLE_SL_TEST" : {
@@ -1758,6 +1857,7 @@ suite = {
          "TRUFFLE_DSL_PROCESSOR",
          "TRUFFLE_TEST_NATIVE",
          "TRUFFLE_TCK",
+         "TRUFFLE_TCK_INSTRUMENTATION",
       ],
       "maven" : False,
      },
@@ -1850,6 +1950,7 @@ suite = {
           "org.graalvm.shadowed.com.ibm.icu.text to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.util to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.charset to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.impl to org.graalvm.js, org.graalvm.py",
         ],
       },
       "subDir" : "src",
@@ -1869,6 +1970,7 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.shadowed",
         "artifactId" : "icu4j",
+        "tag": ["default", "public"],
       },
     },
 
@@ -1899,6 +2001,7 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.shadowed",
         "artifactId" : "json",
+        "tag": ["default", "public"],
       },
     },
   },

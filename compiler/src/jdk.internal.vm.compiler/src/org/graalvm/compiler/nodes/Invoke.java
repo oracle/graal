@@ -110,20 +110,6 @@ public interface Invoke extends StateSplit, Lowerable, SingleMemoryKill, Deoptim
         return state.getMethod();
     }
 
-    /**
-     * Returns the {@linkplain ResolvedJavaType type} from which this invoke is executed. This is
-     * the declaring type of the caller method.
-     *
-     * @return the type from which this invoke is executed.
-     */
-    default ResolvedJavaType getContextType() {
-        ResolvedJavaMethod contextMethod = getContextMethod();
-        if (contextMethod == null) {
-            return null;
-        }
-        return contextMethod.getDeclaringClass();
-    }
-
     @Override
     default void computeStateDuring(FrameState stateAfter) {
         FrameState newStateDuring = stateAfter.duplicateModifiedDuringCall(bci(), asNode().getStackKind());

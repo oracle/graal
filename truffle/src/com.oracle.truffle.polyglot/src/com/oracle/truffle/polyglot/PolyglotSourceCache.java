@@ -84,7 +84,7 @@ final class PolyglotSourceCache {
         return target;
     }
 
-    void listCachedSources(PolyglotImpl polyglot, Collection<org.graalvm.polyglot.Source> source) {
+    void listCachedSources(PolyglotImpl polyglot, Collection<Object> source) {
         strongCache.listSources(polyglot, source);
         weakCache.listSources(polyglot, source);
     }
@@ -170,7 +170,7 @@ final class PolyglotSourceCache {
 
         abstract CallTarget lookup(PolyglotLanguageContext context, Source source, String[] argumentNames, boolean parse);
 
-        abstract void listSources(PolyglotImpl polyglot, Collection<org.graalvm.polyglot.Source> source);
+        abstract void listSources(PolyglotImpl polyglot, Collection<Object> source);
     }
 
     private static final class StrongCache extends Cache {
@@ -197,7 +197,7 @@ final class PolyglotSourceCache {
         }
 
         @Override
-        void listSources(PolyglotImpl polyglot, Collection<org.graalvm.polyglot.Source> sources) {
+        void listSources(PolyglotImpl polyglot, Collection<Object> sources) {
             for (SourceKey key : sourceCache.keySet()) {
                 sources.add(PolyglotImpl.getOrCreatePolyglotSource(polyglot, (Source) key.key));
             }
@@ -240,7 +240,7 @@ final class PolyglotSourceCache {
         }
 
         @Override
-        void listSources(PolyglotImpl polyglot, Collection<org.graalvm.polyglot.Source> sources) {
+        void listSources(PolyglotImpl polyglot, Collection<Object> sources) {
             cleanupStaleEntries();
             for (WeakCacheValue value : sourceCache.values()) {
                 sources.add(PolyglotImpl.getOrCreatePolyglotSource(polyglot, value.source));

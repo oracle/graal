@@ -207,6 +207,7 @@ public final class Method extends Member<Signature> implements TruffleObject, Co
     }
 
     @Override
+    @Idempotent
     public ObjectKlass getDeclaringKlass() {
         return declaringKlass;
     }

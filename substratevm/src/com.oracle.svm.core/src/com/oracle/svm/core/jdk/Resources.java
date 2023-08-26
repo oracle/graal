@@ -42,6 +42,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -55,7 +56,7 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationError;
 import com.oracle.svm.core.jdk.resources.MissingResourceRegistrationUtils;
 import com.oracle.svm.core.jdk.resources.NativeImageResourcePath;
-import com.oracle.svm.core.jdk.resources.ResourceException;
+import com.oracle.svm.core.jdk.resources.ResourceExceptionEntry;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntry;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.jdk.resources.ResourceURLConnection;
@@ -87,7 +88,10 @@ public final class Resources {
      * com.oracle.svm.hosted.ModuleLayerFeature}.
      */
     private final EconomicMap<Pair<Module, String>, ResourceStorageEntryBase> resources = ImageHeapMap.create();
-    private final List<Pair<String, String>> includePatterns = new ArrayList<>();
+    private final EconomicSet<ModuleResourcePair> includePatterns = EconomicSet.create();
+
+    public record ModuleResourcePair(String module, String resource) {
+    }
 
     /**
      * The object used to mark a resource as reachable according to the metadata. It can be obtained
@@ -252,7 +256,7 @@ public final class Resources {
         Pair<Module, String> key = createStorageKey(module, resourceName);
         synchronized (resources) {
             updateTimeStamp();
-            resources.put(key, new ResourceException(e));
+            resources.put(key, new ResourceExceptionEntry(e));
         }
     }
 
@@ -276,7 +280,7 @@ public final class Resources {
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
         synchronized (includePatterns) {
             updateTimeStamp();
-            includePatterns.add(Pair.create(module, pattern));
+            includePatterns.add(new ModuleResourcePair(module, pattern));
         }
     }
 
@@ -317,8 +321,9 @@ public final class Resources {
         ResourceStorageEntryBase entry = resources.get(createStorageKey(module, canonicalResourceName));
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                for (Pair<String, String> pattern : includePatterns) {
-                    if (Objects.equals(moduleName, pattern.getLeft()) && (matchResource(pattern.getRight(), resourceName) || matchResource(pattern.getRight(), canonicalResourceName))) {
+                for (ModuleResourcePair moduleResourcePair : includePatterns) {
+                    if (Objects.equals(moduleName, moduleResourcePair.module) &&
+                                    (matchResource(moduleResourcePair.resource, resourceName) || matchResource(moduleResourcePair.resource, canonicalResourceName))) {
                         return null;
                     }
                 }

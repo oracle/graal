@@ -72,7 +72,7 @@ public class PolyglotTypeMappings {
         // resolve interface mappings
         if (hasInterfaceMappings) {
             EconomicMap<String, ObjectKlass> temp = EconomicMap.create(interfaceMappings.size());
-            StaticObject bindingsLoader = context.getBindings().getBindingsLoader();
+            StaticObject bindingsLoader = context.getBindingsLoader();
 
             for (String mapping : interfaceMappings) {
                 Klass parent = context.getMeta().loadKlassOrNull(context.getTypes().fromClassGetName(mapping), bindingsLoader, StaticObject.NULL);
@@ -89,7 +89,7 @@ public class PolyglotTypeMappings {
         Set<Map.Entry<String, String>> converters = typeConverters.entrySet();
         if (!converters.isEmpty()) {
             EconomicMap<String, TypeConverter> temp = EconomicMap.create(converters.size());
-            StaticObject bindingsLoader = context.getBindings().getBindingsLoader();
+            StaticObject bindingsLoader = context.getBindingsLoader();
 
             Symbol<Symbol.Name> name = Symbol.Name.toGuest;
             Symbol<Symbol.Signature> desc = Symbol.Signature.Object_Object;

@@ -26,6 +26,7 @@
 package com.oracle.svm.core.jdk.localization;
 
 import java.nio.charset.Charset;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.IllformedLocaleException;
 import java.util.Locale;
@@ -41,9 +42,11 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
+import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
 
 import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -94,33 +97,20 @@ public class LocalizationSupport {
         throw VMError.unsupportedFeature("Resource bundle lookup must be loaded during native image generation: " + bundle.getClass());
     }
 
-    @SuppressWarnings("deprecation")
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String bundleName, ResourceBundle bundle, Locale locale) {
-        // The bundles are currently added twice to the resources because we transition from Regex
-        // to simpler patterns. The Regex will be removed once the transition will be complete.
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), getBundleName(bundleName, Locale.ROOT) + ".properties");
-        ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), getResultingPattern(bundleName, Locale.ROOT) + "\\.properties");
-        if (locale != null) {
-            if (!locale.getLanguage().isEmpty()) {
-                ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), getBundleName(bundleName, new Locale(locale.getLanguage())) + ".properties");
-                ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(),
-                                getResultingPattern(bundleName, new Locale(locale.getLanguage())) + "\\.properties");
-                if (!locale.getCountry().isEmpty()) {
-                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), getBundleName(bundleName, locale) + ".properties");
-                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), getResultingPattern(bundleName, locale) + "\\.properties");
-                }
+        if (bundle instanceof PropertyResourceBundle) {
+            String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
+            String resultingPattern;
+            if (bundleNameWithModule.length < 2) {
+                resultingPattern = control.toBundleName(bundleName, locale).replace('.', '/');
+            } else {
+                String patternWithLocale = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
+                resultingPattern = bundleNameWithModule[0] + ':' + patternWithLocale;
             }
-        }
-        if (!(bundle instanceof PropertyResourceBundle)) {
-            if ((bundle.getLocale() == null || bundle.getLocale().toString().isEmpty()) && locale != null) {
-                if (!locale.getLanguage().isEmpty()) {
-                    RuntimeReflection.registerClassLookup(bundleName + "_" + locale.getLanguage());
-                    if (!locale.getCountry().isEmpty()) {
-                        RuntimeReflection.registerClassLookup(bundleName + "_" + locale.getLanguage() + "_" + locale.getCountry());
-                    }
-                }
-            }
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResources(ConfigurationCondition.alwaysTrue(), resultingPattern + "\\.properties");
+        } else {
+            registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale));
             RuntimeReflection.register(bundle.getClass());
             RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());
             onBundlePrepared(bundle);
@@ -139,6 +129,29 @@ public class LocalizationSupport {
         } else {
             String patternWithLocale = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
             return bundleNameWithModule[0] + ':' + patternWithLocale;
+        }
+    }
+
+    public void registerRequiredReflectionAndResourcesForBundle(String baseName, Collection<Locale> wantedLocales) {
+        int i = baseName.lastIndexOf('.');
+        if (i > 0) {
+            String name = baseName.substring(i + 1) + "Provider";
+            String providerName = baseName.substring(0, i) + ".spi." + name;
+            ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), providerName);
+        }
+
+        ImageSingletons.lookup(RuntimeReflectionSupport.class).registerClassLookup(ConfigurationCondition.alwaysTrue(), baseName);
+
+        for (Locale locale : wantedLocales) {
+            registerRequiredReflectionAndResourcesForBundleAndLocale(baseName, locale);
+        }
+    }
+
+    private void registerRequiredReflectionAndResourcesForBundleAndLocale(String baseName, Locale baseLocale) {
+        for (Locale locale : control.getCandidateLocales(baseName, baseLocale)) {
+            String bundleWithLocale = control.toBundleName(baseName, locale);
+            RuntimeReflection.registerClassLookup(bundleWithLocale);
+            Resources.singleton().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
         }
     }
 
@@ -165,6 +178,11 @@ public class LocalizationSupport {
     @SuppressWarnings("unused")
     public void prepareNonCompliant(Class<?> clazz) throws ReflectiveOperationException {
         /*- By default, there is nothing to do */
+    }
+
+    @SuppressWarnings("unused")
+    public boolean isNotIncluded(String bundleName) {
+        return false;
     }
 
     /**

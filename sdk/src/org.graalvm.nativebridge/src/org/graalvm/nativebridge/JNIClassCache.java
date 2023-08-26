@@ -40,15 +40,16 @@
  */
 package org.graalvm.nativebridge;
 
+import java.util.Iterator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
+
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIUtil;
 import org.graalvm.word.WordFactory;
-
-import java.util.Iterator;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Support class for {@link JClass} lookup. JClass instances are cached as JNI globals. The cached
@@ -84,16 +85,17 @@ public final class JNIClassCache {
     }
 
     private static JClass lookupClassImpl(JNIEnv env, String className, boolean required) {
-        return classesByName.computeIfAbsent(className, (cn) -> {
-            JClass jClass = JNIUtil.findClass(env, WordFactory.nullPointer(), JNIUtil.getBinaryName(className), required);
-            JNIClassData res;
-            if (jClass.isNull()) {
-                res = JNIClassData.INVALID;
-            } else {
-                res = new JNIClassData(JNIUtil.NewGlobalRef(env, jClass, "Class<" + className + ">"));
+        Function<String, JNIClassData> createClassData = new Function<>() {
+            @Override
+            public JNIClassData apply(String cn) {
+                JClass jClass = JNIUtil.findClass(env, WordFactory.nullPointer(), JNIUtil.getBinaryName(className), required);
+                if (jClass.isNull()) {
+                    return JNIClassData.INVALID;
+                }
+                return new JNIClassData(JNIUtil.NewGlobalRef(env, jClass, "Class<" + className + ">"));
             }
-            return res;
-        }).jClassGlobal;
+        };
+        return classesByName.computeIfAbsent(className, createClassData).jClassGlobal;
     }
 
     /**

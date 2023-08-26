@@ -43,7 +43,7 @@ suite = {
 
   "name" : "regex",
 
-  "version" : "23.1.0",
+  "version" : "24.0.0",
   "release" : False,
   "groupId" : "org.graalvm.regex",
   "url" : "http://www.graalvm.org/",
@@ -152,6 +152,7 @@ suite = {
       ],
       "maven" : {
         "artifactId" : "regex",
+        "tag": ["default", "public"],
       },
       "description" : "Truffle regular expressions language.",
       "allowsJavadocWarnings": True,

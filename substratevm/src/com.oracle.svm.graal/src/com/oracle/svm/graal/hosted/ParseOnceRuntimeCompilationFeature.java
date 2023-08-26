@@ -68,6 +68,7 @@ import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
@@ -102,6 +103,8 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.nodes.DeoptEntryNode;
+import com.oracle.svm.core.graal.nodes.DeoptEntrySupport;
+import com.oracle.svm.core.graal.nodes.DeoptProxyAnchorNode;
 import com.oracle.svm.core.graal.nodes.InlinedInvokeArgumentsNode;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -127,6 +130,7 @@ import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils.Accumulative
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils.AlwaysInlineScope;
 import com.oracle.svm.hosted.phases.StrengthenStampsPhase;
 
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -139,12 +143,8 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeature implements Feature, RuntimeCompilationSupport {
 
     public static class Options {
-        /*
-         * Note this phase is currently overly aggressive and can illegally remove proxies. This
-         * will be fixed in GR-44459.
-         */
         @Option(help = "Remove Deopt(Entries,Anchors,Proxies) determined to be unneeded after the runtime compiled graphs have been finalized.")//
-        public static final HostedOptionKey<Boolean> RemoveUnneededDeoptSupport = new HostedOptionKey<>(false);
+        public static final HostedOptionKey<Boolean> RemoveUnneededDeoptSupport = new HostedOptionKey<>(true);
 
         @Option(help = "Perform InlineBeforeAnalysis on runtime compiled methods")//
         public static final HostedOptionKey<Boolean> RuntimeCompilationInlineBeforeAnalysis = new HostedOptionKey<>(true);
@@ -1054,13 +1054,14 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         @Override
-        protected AbstractPolicyScope openCalleeScope(ResolvedJavaMethod method, AbstractPolicyScope outer) {
+        protected AbstractPolicyScope openCalleeScope(AbstractPolicyScope outer, AnalysisMetaAccess metaAccess,
+                        ResolvedJavaMethod method, boolean[] constArgsWithReceiver, boolean intrinsifiedMethodHandle) {
             if (outer instanceof AccumulativeInlineScope accOuter) {
                 /*
                  * once the accumulative policy is activated, then we cannot return to the trivial
                  * policy
                  */
-                return InlineBeforeAnalysisPolicyUtils.createAccumulativeInlineScope(accOuter, inliningUtils);
+                return inliningUtils.createAccumulativeInlineScope(accOuter, metaAccess, method, constArgsWithReceiver, intrinsifiedMethodHandle);
             }
 
             assert outer == null || outer instanceof AlwaysInlineScope : "unexpected outer scope: " + outer;
@@ -1072,7 +1073,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                 return new AlwaysInlineScope(inliningDepth);
             } else {
                 // start with a new accumulative inline scope
-                return InlineBeforeAnalysisPolicyUtils.createAccumulativeInlineScope(null, inliningUtils);
+                return inliningUtils.createAccumulativeInlineScope(null, metaAccess, method, constArgsWithReceiver, intrinsifiedMethodHandle);
             }
         }
     }
@@ -1226,58 +1227,103 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     }
 
     /**
-     * Removes Deoptimizations Entrypoints which are deemed to be unnecessary after the runtime
-     * compilation methods are optimized.
+     * Removes {@link DeoptEntryNode}s, {@link DeoptProxyAnchorNode}s, and {@link DeoptProxyNode}s
+     * which are determined to be unnecessary after the runtime compilation methods are optimized.
      */
     static class RemoveUnneededDeoptSupport extends Phase {
+        enum RemovalDecision {
+            KEEP,
+            PROXIFY,
+            REMOVE
+        }
 
         @Override
         protected void run(StructuredGraph graph) {
-            EconomicMap<StateSplit, Boolean> decisionCache = EconomicMap.create();
+            EconomicMap<StateSplit, RemovalDecision> decisionCache = EconomicMap.create();
 
             // First go through and delete all unneeded proxies
             for (DeoptProxyNode proxyNode : graph.getNodes(DeoptProxyNode.TYPE).snapshot()) {
                 ValueNode proxyPoint = proxyNode.getProxyPoint();
                 if (proxyPoint instanceof StateSplit) {
-                    if (proxyPoint instanceof DeoptEntryNode && shouldRemove((StateSplit) proxyPoint, decisionCache)) {
+                    if (getDecision((StateSplit) proxyPoint, decisionCache) == RemovalDecision.REMOVE) {
                         proxyNode.replaceAtAllUsages(proxyNode.getOriginalNode(), true);
                         proxyNode.safeDelete();
                     }
                 }
             }
 
-            // Next remove all unneeded DeoptEntryNodes
+            // Next, remove all unneeded DeoptEntryNodes
             for (DeoptEntryNode deoptEntry : graph.getNodes().filter(DeoptEntryNode.class).snapshot()) {
-                if (shouldRemove(deoptEntry, decisionCache)) {
-                    deoptEntry.killExceptionEdge();
-                    graph.removeSplit(deoptEntry, deoptEntry.getPrimarySuccessor());
+                switch (getDecision(deoptEntry, decisionCache)) {
+                    case REMOVE -> {
+                        deoptEntry.killExceptionEdge();
+                        graph.removeSplit(deoptEntry, deoptEntry.getPrimarySuccessor());
+                    }
+                    case PROXIFY -> {
+                        deoptEntry.killExceptionEdge();
+                        DeoptProxyAnchorNode newAnchor = graph.add(new DeoptProxyAnchorNode(deoptEntry.getProxifiedInvokeBci()));
+                        newAnchor.setStateAfter(deoptEntry.stateAfter());
+                        graph.replaceSplitWithFixed(deoptEntry, newAnchor, deoptEntry.getPrimarySuccessor());
+                    }
+                }
+            }
+
+            // Finally, remove all unneeded DeoptProxyAnchorNodes
+            for (DeoptProxyAnchorNode proxyAnchor : graph.getNodes().filter(DeoptProxyAnchorNode.class).snapshot()) {
+                if (getDecision(proxyAnchor, decisionCache) == RemovalDecision.REMOVE) {
+                    graph.removeFixed(proxyAnchor);
                 }
             }
         }
 
-        boolean shouldRemove(StateSplit node, EconomicMap<StateSplit, Boolean> decisionCache) {
-            Boolean cached = decisionCache.get(node);
+        RemovalDecision getDecision(StateSplit node, EconomicMap<StateSplit, RemovalDecision> decisionCache) {
+            RemovalDecision cached = decisionCache.get(node);
             if (cached != null) {
                 return cached;
             }
 
-            var directive = SubstrateCompilationDirectives.singleton();
-            FrameState state = node.stateAfter();
-            HostedMethod method = (HostedMethod) state.getMethod();
+            DeoptEntrySupport proxyNode;
+            if (node instanceof ExceptionObjectNode exceptionObject) {
+                /*
+                 * For the exception edge of a DeoptEntryNode, we insert the proxies on the
+                 * exception object.
+                 */
+                proxyNode = (DeoptEntrySupport) exceptionObject.predecessor();
+            } else {
+                proxyNode = (DeoptEntrySupport) node;
+            }
 
-            boolean result = true;
-            if (directive.isRegisteredDeoptTarget(method)) {
-                result = !directive.isDeoptEntry(method, state.bci, state.duringCall(), state.rethrowException());
+            RemovalDecision decision = RemovalDecision.REMOVE;
+            var directive = SubstrateCompilationDirectives.singleton();
+            FrameState state = proxyNode.stateAfter();
+            HostedMethod method = (HostedMethod) state.getMethod();
+            if (proxyNode instanceof DeoptEntryNode) {
+                if (directive.isDeoptEntry(method, state.bci, state.duringCall(), state.rethrowException())) {
+                    // must keep all deopt entries which are still guarding nodes
+                    decision = RemovalDecision.KEEP;
+                }
+            }
+
+            if (decision == RemovalDecision.REMOVE) {
+                // now check for any implicit deopt entry being protected against
+                int proxifiedInvokeBci = proxyNode.getProxifiedInvokeBci();
+                if (proxifiedInvokeBci != BytecodeFrame.UNKNOWN_BCI && directive.isDeoptEntry(method, proxifiedInvokeBci, true, false)) {
+                    // must keep still keep a proxy for nodes which are "proxifying" an invoke
+                    decision = proxyNode instanceof DeoptEntryNode ? RemovalDecision.PROXIFY : RemovalDecision.KEEP;
+                }
             }
 
             // cache the decision
-            decisionCache.put(node, result);
-            return result;
+            decisionCache.put(node, decision);
+            if (proxyNode != node) {
+                decisionCache.put(proxyNode, decision);
+            }
+            return decision;
         }
 
         @Override
         public CharSequence getName() {
-            return "RemoveDeoptEntries";
+            return "RemoveUnneededDeoptSupport";
         }
     }
 }

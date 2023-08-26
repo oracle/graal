@@ -82,7 +82,7 @@ public final class ModulesSupport {
                  */
                 exportJVMCI(ModulesSupport.class);
             }
-            return "Truffle was loaded from the class-path. Use Truffle from the module-path instead.";
+            return "Truffle was loaded from the class-path. Use Truffle from the module-path instead. Did you disable polyglot class-path isolation?";
         }
 
         Module jvmciModule = layer.findModule("jdk.internal.vm.ci").orElse(null);

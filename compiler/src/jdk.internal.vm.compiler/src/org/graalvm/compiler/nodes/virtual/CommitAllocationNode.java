@@ -123,7 +123,13 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
 
     @Override
     public LocationIdentity getKilledLocationIdentity() {
-        return locks.isEmpty() ? LocationIdentity.init() : LocationIdentity.any();
+        if (locks == null) { // possible if inspected during initialization in GraphDecoder
+            return null;
+        }
+        if (locks.isEmpty()) {
+            return LocationIdentity.init();
+        }
+        return LocationIdentity.any();
     }
 
     @Override
@@ -160,6 +166,9 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
     @Override
     public Map<Object, Object> getDebugProperties(Map<Object, Object> map) {
         Map<Object, Object> properties = super.getDebugProperties(map);
+        if (virtualObjects == null) { // possible if inspected during initialization in GraphDecoder
+            return properties;
+        }
         int valuePos = 0;
         for (int objIndex = 0; objIndex < virtualObjects.size(); objIndex++) {
             VirtualObjectNode virtual = virtualObjects.get(objIndex);
@@ -254,14 +263,9 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
 
     @Override
     public NodeCycles estimatedNodeCycles() {
-        List<VirtualObjectNode> v = getVirtualObjects();
-        int fieldWriteCount = 0;
-        for (int i = 0; i < v.size(); i++) {
-            VirtualObjectNode node = v.get(i);
-            if (node == null) {
-                return CYCLES_UNKNOWN;
-            }
-            fieldWriteCount += node.entryCount();
+        int fieldWriteCount = getFieldWriteCount();
+        if (fieldWriteCount == -1) {
+            return CYCLES_UNKNOWN;
         }
         int rawValueWrites = NodeCycles.compute(WriteNode.TYPE.cycles(), fieldWriteCount).value;
         int rawValuesTlabBumps = AbstractNewObjectNode.TYPE.cycles().value;
@@ -270,20 +274,28 @@ public final class CommitAllocationNode extends FixedWithNextNode implements Vir
 
     @Override
     protected NodeSize dynamicNodeSizeEstimate() {
+        int fieldWriteCount = getFieldWriteCount();
+        if (fieldWriteCount == -1) {
+            return SIZE_UNKNOWN;
+        }
+        int rawValueWrites = NodeSize.compute(WriteNode.TYPE.size(), fieldWriteCount).value;
+        int rawValuesTlabBumps = AbstractNewObjectNode.TYPE.size().value;
+        return NodeSize.compute(rawValueWrites + rawValuesTlabBumps);
+    }
+
+    private int getFieldWriteCount() {
         List<VirtualObjectNode> v = getVirtualObjects();
         if (v == null) {
-            return SIZE_UNKNOWN;
+            return -1;
         }
         int fieldWriteCount = 0;
         for (int i = 0; i < v.size(); i++) {
             VirtualObjectNode node = v.get(i);
             if (node == null) {
-                return SIZE_UNKNOWN;
+                return -1;
             }
             fieldWriteCount += node.entryCount();
         }
-        int rawValueWrites = NodeSize.compute(WriteNode.TYPE.size(), fieldWriteCount).value;
-        int rawValuesTlabBumps = AbstractNewObjectNode.TYPE.size().value;
-        return NodeSize.compute(rawValueWrites + rawValuesTlabBumps);
+        return fieldWriteCount;
     }
 }

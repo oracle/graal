@@ -42,9 +42,6 @@ package com.oracle.truffle.polyglot;
 
 import java.time.Duration;
 
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Source;
-import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractContextDispatch;
 
 final class PolyglotContextDispatch extends AbstractContextDispatch {
@@ -59,12 +56,12 @@ final class PolyglotContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public Value eval(Object receiver, String language, Source source) {
+    public Object eval(Object receiver, String language, Object source) {
         return ((PolyglotContextImpl) receiver).eval(language, source);
     }
 
     @Override
-    public Value parse(Object receiver, String language, Source source) {
+    public Object parse(Object receiver, String language, Object source) {
         return ((PolyglotContextImpl) receiver).parse(language, source);
     }
 
@@ -79,7 +76,7 @@ final class PolyglotContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public Value asValue(Object receiver, Object hostValue) {
+    public Object asValue(Object receiver, Object hostValue) {
         return ((PolyglotContextImpl) receiver).asValue(hostValue);
     }
 
@@ -94,12 +91,12 @@ final class PolyglotContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public Value getBindings(Object receiver, String language) {
+    public Object getBindings(Object receiver, String language) {
         return ((PolyglotContextImpl) receiver).getBindings(language);
     }
 
     @Override
-    public Value getPolyglotBindings(Object receiver) {
+    public Object getPolyglotBindings(Object receiver) {
         return ((PolyglotContextImpl) receiver).getPolyglotBindings();
     }
 
@@ -114,7 +111,7 @@ final class PolyglotContextDispatch extends AbstractContextDispatch {
     }
 
     @Override
-    public void setAPI(Object receiver, Context context) {
+    public void setAPI(Object receiver, Object context) {
         ((PolyglotContextImpl) receiver).api = context;
     }
 

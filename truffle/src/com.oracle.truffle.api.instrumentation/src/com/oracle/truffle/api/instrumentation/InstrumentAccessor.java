@@ -67,6 +67,7 @@ import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 final class InstrumentAccessor extends Accessor {
 
@@ -301,9 +302,9 @@ final class InstrumentAccessor extends Accessor {
         }
 
         @Override
-        public org.graalvm.polyglot.SourceSection createSourceSection(Object instrumentEnv, org.graalvm.polyglot.Source source, com.oracle.truffle.api.source.SourceSection ss) {
+        public Object createPolyglotSourceSection(Object instrumentEnv, Object polyglotSource, SourceSection ss) {
             TruffleInstrument.Env env = (TruffleInstrument.Env) instrumentEnv;
-            return engineAccess().createSourceSection(env.getPolyglotInstrument(), source, ss);
+            return engineAccess().createPolyglotSourceSection(env.getPolyglotInstrument(), polyglotSource, ss);
         }
 
         @Override

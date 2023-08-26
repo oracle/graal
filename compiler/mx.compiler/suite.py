@@ -4,7 +4,7 @@ suite = {
   "sourceinprojectwhitelist" : [],
 
   "groupId" : "org.graalvm.compiler",
-  "version" : "23.1.0",
+  "version" : "24.0.0",
   "release" : False,
   "url" : "http://www.graalvm.org/",
   "developer" : {
@@ -536,6 +536,7 @@ suite = {
       "description":  "The GraalVM compiler and the Graal-truffle optimizer.",
       "maven" : {
         "artifactId" : "compiler",
+        "tag": ["default", "public"],
       },
     },
 
@@ -555,6 +556,7 @@ suite = {
       "description":  "The GraalVM compiler Management Bean.",
       "maven" : {
         "artifactId" : "compiler-management",
+        "tag": ["default", "public"],
       },
     },
 
