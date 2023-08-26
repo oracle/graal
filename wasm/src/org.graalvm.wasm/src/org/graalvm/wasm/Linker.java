@@ -123,7 +123,6 @@ public class Linker {
         } else if (instance.isNonLinked()) {
             // TODO: Once we support multi-threading, add adequate synchronization here.
             tryLinkOutsidePartialEvaluation(instance);
-            CompilerDirectives.transferToInterpreterAndInvalidate();
         }
     }
 
