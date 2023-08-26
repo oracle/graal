@@ -127,60 +127,60 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
     # Linux/AMD64
     vm_common.graalvm_complete_build_deps('ce', 'linux', 'amd64') + vm_common.linux_deploy + vm_common.gate_vm_linux_amd64 + {
-      run: vm_common.maven_deploy_base_functions.run_block('linux', 'amd64', target='all', dry_run=true, remote_repo=$.maven_deploy_repository, local_repo='local'),
+      run: vm_common.maven_deploy_base_functions.run_block('linux', 'amd64', target='all', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local'),
       name: 'gate-vm-maven-dry-run-linux-amd64',
       timelimit: '1:00:00',
     },
     vm_common.graalvm_complete_build_deps('ce', 'linux', 'amd64') + vm_common.linux_deploy + vm_common.deploy_vm_linux_amd64 + {
-      run: vm_common.maven_deploy_base_functions.run_block('linux', 'amd64', target='all', dry_run=false, remote_repo=$.maven_deploy_repository, local_repo='local'),
+      run: vm_common.maven_deploy_base_functions.run_block('linux', 'amd64', target='all', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local'),
       name: 'post-merge-deploy-vm-maven-linux-amd64',
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
     },
     # Linux/AARCH64
     vm_common.graalvm_complete_build_deps('ce', 'linux', 'aarch64') + vm_common.linux_deploy + vm_common.gate_vm_linux_aarch64 + {
-      run: vm_common.maven_deploy_base_functions.run_block('linux', 'aarch64', target='native_and_bundle', dry_run=true, remote_repo=$.maven_deploy_repository, local_repo='local'),
+      run: vm_common.maven_deploy_base_functions.run_block('linux', 'aarch64', target='native_and_bundle', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local'),
       name: 'gate-vm-maven-dry-run-linux-aarch64',
       timelimit: '1:00:00',
     },
     vm_common.graalvm_complete_build_deps('ce', 'linux', 'aarch64') + vm_common.linux_deploy + vm_common.deploy_vm_linux_aarch64 + {
-      run: vm_common.maven_deploy_base_functions.run_block('linux', 'aarch64', target='native_and_bundle', dry_run=false, remote_repo=$.maven_deploy_repository, local_repo='local'),
+      run: vm_common.maven_deploy_base_functions.run_block('linux', 'aarch64', target='native_and_bundle', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local'),
       name: 'post-merge-deploy-vm-maven-linux-aarch64',
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
     },
     # Darwin/AMD64
     vm_common.graalvm_complete_build_deps('ce', 'darwin', 'amd64') + vm_common.darwin_deploy + vm_common.gate_vm_darwin_amd64 + {
-      run: vm_common.maven_deploy_base_functions.run_block('darwin', 'amd64', target='native_and_bundle', dry_run=true, remote_repo=$.maven_deploy_repository, local_repo='local'),
+      run: vm_common.maven_deploy_base_functions.run_block('darwin', 'amd64', target='native_and_bundle', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local'),
       name: 'gate-vm-maven-dry-run-darwin-amd64',
       timelimit: '1:00:00',
     },
     vm_common.graalvm_complete_build_deps('ce', 'darwin', 'amd64') + vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_amd64 + {
-      run: vm_common.maven_deploy_base_functions.run_block('darwin', 'amd64', target='native_and_bundle', dry_run=false, remote_repo=$.maven_deploy_repository, local_repo='local'),
+      run: vm_common.maven_deploy_base_functions.run_block('darwin', 'amd64', target='native_and_bundle', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local'),
       name: 'daily-deploy-vm-maven-darwin-amd64',
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
     },
     # Darwin/AARCH64
     vm_common.graalvm_complete_build_deps('ce', 'darwin', 'aarch64') + vm_common.darwin_deploy + vm_common.gate_vm_darwin_aarch64 + {
-      run: vm_common.maven_deploy_base_functions.run_block('darwin', 'aarch64', target='native_and_bundle', dry_run=true, remote_repo=$.maven_deploy_repository, local_repo='local'),
+      run: vm_common.maven_deploy_base_functions.run_block('darwin', 'aarch64', target='native_and_bundle', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local'),
       name: 'gate-vm-maven-dry-run-darwin-aarch64',
       timelimit: '1:00:00',
     },
     vm_common.graalvm_complete_build_deps('ce', 'darwin', 'aarch64') + vm_common.darwin_deploy + vm_common.deploy_daily_vm_darwin_aarch64 + {
-      run: vm_common.maven_deploy_base_functions.run_block('darwin', 'aarch64', target='native_and_bundle', dry_run=false, remote_repo=$.maven_deploy_repository, local_repo='local'),
+      run: vm_common.maven_deploy_base_functions.run_block('darwin', 'aarch64', target='native_and_bundle', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local'),
       name: 'daily-deploy-vm-maven-darwin-aarch64',
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
     },
     # Windows/AMD64
 //    vm_common.graalvm_complete_build_deps('ce', 'windows', 'amd64') + vm_common.deploy_build + vm_common.gate_vm_windows_amd64 + {
-//      run: vm_common.maven_deploy_base_functions.run_block('windows', 'amd64', target='native_and_bundle', dry_run=true, remote_repo=$.maven_deploy_repository, local_repo='local'),
+//      run: vm_common.maven_deploy_base_functions.run_block('windows', 'amd64', target='native_and_bundle', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local'),
 //      name: 'gate-vm-maven-dry-run-windows-amd64',
 //      timelimit: '1:00:00',
 //    },
 //    vm_common.graalvm_complete_build_deps('ce', 'windows', 'amd64') + vm_common.deploy_build + vm_common.deploy_daily_vm_windows_jdk21 + {
-//      run: vm_common.maven_deploy_base_functions.run_block('windows', 'amd64', target='native_and_bundle', dry_run=false, remote_repo=$.maven_deploy_repository, local_repo='local'),
+//      run: vm_common.maven_deploy_base_functions.run_block('windows', 'amd64', target='native_and_bundle', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local'),
 //      name: 'daily-deploy-vm-maven-windows-amd64',
 //      timelimit: '1:00:00',
 //      notify_groups:: ['deploy'],

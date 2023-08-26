@@ -550,14 +550,14 @@ local devkits = graal_common.devkits;
       + repo_strings,
     ],
 
-    run_block(os, arch, target, dry_run, remote_repo, local_repo)::
+    run_block(os, arch, target, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo)::
       # we always need a full build for the local deployment of resource bundles, even when `type==only_native`
       self.build(os, arch)
       + (
         if (target=='all') then
-          self.deploy(os, arch, dry_run, [remote_repo])
+          self.deploy(os, arch, dry_run, [remote_mvn_repo])
         else if (target == 'native_and_bundle') then
-          self.deploy_only_native(os, arch, dry_run, [remote_repo])
+          self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
         else if (target == 'bundle') then
           [['echo', 'Deploying only the resource bundles']]
         else
@@ -575,7 +575,7 @@ local devkits = graal_common.devkits;
         else [
           ['set-export', 'MAVEN_RESOURCE_BUNDLE', '${LOCAL_MAVEN_REPO_REL_PATH}'],
           ['mx', 'build', '--dependencies', 'MAVEN_RESOURCE_BUNDLE'],
-          ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_repo],
+          ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
         ]
       ),
   },
