@@ -36,7 +36,9 @@ import mx_sdk_vm, mx_sdk_vm_impl
 import mx_vm_benchmark
 import mx_vm_gate
 
+from argparse import ArgumentParser
 import os
+import pathlib
 from os.path import basename, isdir, join, relpath
 
 _suite = mx.suite('vm')
@@ -44,6 +46,16 @@ _suite = mx.suite('vm')
 
 
 gu_build_args = [] # externalized to simplify extensions
+
+
+@mx.command(_suite.name, "local-path-to-url")
+def local_path_to_url(args):
+    """Print the url representation of a canonicalized path"""
+    parser = ArgumentParser(prog='mx local-path-to-url', description='Print the url representation of a canonicalized path')
+    parser.add_argument('path', action='store', help='the path to canonicalize and return as url')
+    args = parser.parse_args(args)
+
+    print(pathlib.Path(os.path.realpath(args.path)).as_uri())
 
 
 gu_component = mx_sdk_vm.GraalVmJdkComponent(
@@ -441,6 +453,20 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         register_community_tools_distribution(_suite, register_distribution)
         register_community_languages_distribution(_suite, register_distribution)
 
+    maven_resource_bundle = mx.get_env('MAVEN_RESOURCE_BUNDLE')
+    if register_distribution and maven_resource_bundle is not None:
+        register_distribution(mx.LayoutTARDistribution(_suite, 'MAVEN_RESOURCE_BUNDLE', [], {
+            './': 'file:' + os.path.realpath(maven_resource_bundle)
+        }, None, True, None, maven={
+            'groupId': 'org.graalvm.polyglot',
+            'artifactId': 'maven-{edition}-resource-bundle-{os}-{arch}'.format(
+                edition='ee' if mx.suite('vm-enterprise', fatalIfMissing=False) else 'ce',
+                os=mx.get_os(),
+                arch=mx.get_arch()
+            ),
+            'version': mx_sdk_vm_impl.graalvm_version('graalvm'),
+            'tag': 'resource-bundle',
+        }))
 
 class GraalVmSymlinks(mx.Project):
     def __init__(self, **kw_args):

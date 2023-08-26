@@ -1674,7 +1674,9 @@ suite = {
                 ],
             },
             "description" : "SubstrateVM image builder native components",
-            "maven": True
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         #
