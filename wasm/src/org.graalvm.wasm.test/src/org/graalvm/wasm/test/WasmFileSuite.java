@@ -245,7 +245,6 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 }
             }
         } finally {
-            System.setOut(System.out);
             context.close(true);
         }
     }
