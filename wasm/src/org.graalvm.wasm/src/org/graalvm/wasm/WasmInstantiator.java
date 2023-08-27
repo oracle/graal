@@ -463,10 +463,11 @@ public class WasmInstantiator {
 
     private void instantiateCodeEntry(WasmContext context, WasmInstance instance, CodeEntry codeEntry) {
         final int functionIndex = codeEntry.functionIndex();
-        final WasmFunction function = instance.module().symbolTable().function(functionIndex);
-        WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, instance.module().bytecode(), codeEntry.localTypes(), codeEntry.resultTypes());
+        final WasmModule module = instance.module();
+        final WasmFunction function = module.symbolTable().function(functionIndex);
+        final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxStackSize());
-        final WasmInstrumentableFunctionNode functionNode = instantiateFunctionNode(instance, wasmCodeEntry, codeEntry);
+        final WasmInstrumentableFunctionNode functionNode = instantiateFunctionNode(module, wasmCodeEntry, codeEntry);
         final WasmRootNode rootNode;
         if (context.getContextOptions().memoryOverheadMode()) {
             rootNode = new WasmMemoryOverheadModeRootNode(language, frameDescriptor, functionNode);
@@ -476,8 +477,8 @@ public class WasmInstantiator {
         instance.setTarget(codeEntry.functionIndex(), rootNode.getCallTarget());
     }
 
-    private static WasmInstrumentableFunctionNode instantiateFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, CodeEntry entry) {
-        final WasmFunctionNode currentFunction = new WasmFunctionNode(instance, codeEntry, entry.bytecodeStartOffset(), entry.bytecodeEndOffset());
+    private static WasmInstrumentableFunctionNode instantiateFunctionNode(WasmModule module, WasmCodeEntry codeEntry, CodeEntry entry) {
+        final WasmFunctionNode currentFunction = new WasmFunctionNode(module, codeEntry, entry.bytecodeStartOffset(), entry.bytecodeEndOffset());
         List<CallNode> childNodeList = entry.callNodes();
         Node[] callNodes = new Node[childNodeList.size()];
         int childIndex = 0;
@@ -493,15 +494,15 @@ public class WasmInstantiator {
                 // Therefore, the call node will be created lazily during linking,
                 // after the call target from the other module exists.
 
-                final WasmFunction function = instance.module().function(callNode.getFunctionIndex());
+                final WasmFunction function = module.function(callNode.getFunctionIndex());
                 child = new WasmCallStubNode(function);
                 final int stubIndex = childIndex;
-                instance.module().addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, function));
+                module.addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, function));
             }
             callNodes[childIndex++] = child;
         }
         currentFunction.initializeCallNodes(callNodes);
-        final int sourceCodeLocation = instance.module().functionSourceCodeStartOffset(codeEntry.functionIndex());
-        return new WasmInstrumentableFunctionNode(instance, codeEntry, currentFunction, sourceCodeLocation);
+        final int sourceCodeLocation = module.functionSourceCodeStartOffset(codeEntry.functionIndex());
+        return new WasmInstrumentableFunctionNode(module, codeEntry, currentFunction, sourceCodeLocation);
     }
 }

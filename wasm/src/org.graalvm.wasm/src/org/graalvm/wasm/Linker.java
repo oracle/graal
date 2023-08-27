@@ -354,9 +354,11 @@ public class Linker {
     }
 
     void resolveCallsite(WasmInstance instance, WasmFunctionNode functionNode, int controlTableOffset, WasmFunction function) {
-        final Runnable resolveAction = () -> functionNode.resolveCallNode(controlTableOffset);
+        final Runnable resolveAction = () -> functionNode.resolveCallNode(instance, controlTableOffset);
         final Sym[] dependencies = new Sym[]{
-                        function.isImported() ? new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index()) : new CodeEntrySym(instance.name(), function.index())};
+                        function.isImported()
+                                        ? new ImportFunctionSym(instance.name(), function.importDescriptor(), function.index())
+                                        : new CodeEntrySym(instance.name(), function.index())};
         resolutionDag.resolveLater(new CallsiteSym(instance.name(), functionNode.startOffset(), controlTableOffset), dependencies, resolveAction);
     }
 
