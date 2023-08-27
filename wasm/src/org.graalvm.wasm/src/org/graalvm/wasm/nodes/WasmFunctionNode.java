@@ -70,6 +70,7 @@ import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmMath;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.constants.Bytecode;
@@ -133,7 +134,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         assert Integer.bitCount(REPORT_LOOP_STRIDE) == 1 : "must be a power of 2";
     }
 
-    private final WasmInstance instance;
+    private final WasmModule module;
     private final WasmCodeEntry codeEntry;
 
     @Children private Node[] callNodes;
@@ -144,8 +145,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @CompilationFinal(dimensions = 1) private byte[] bytecode;
     @CompilationFinal private WasmNotifyFunction notifyFunction;
 
-    public WasmFunctionNode(WasmInstance instance, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset) {
-        this.instance = instance;
+    public WasmFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset) {
+        this.module = module;
         this.codeEntry = codeEntry;
         this.bytecodeStartOffset = bytecodeStartOffset;
         this.bytecodeEndOffset = bytecodeEndOffset;
@@ -171,6 +172,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.bytecodeStartOffset = bytecodeStartOffset;
         this.bytecodeEndOffset = bytecodeEndOffset;
         this.notifyFunction = notifyFunction;
+    }
+
+    @TruffleBoundary
+    private WasmInstance instance(WasmContext context) {
+        return context.moduleInstances().get(module.name());
     }
 
     // region OSR support
@@ -235,6 +241,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int stackPointer = startStackPointer;
         int line = startLine;
 
+        final WasmInstance instance = instance(context);
         final WasmMemory zeroMemory = instance.memory(0);
 
         check(bytecode.length, (1 << 31) - 1);
@@ -470,13 +477,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         offset += 8;
                     }
 
-                    WasmFunction function = instance.symbolTable().function(functionIndex);
+                    WasmFunction function = module.symbolTable().function(functionIndex);
                     int paramCount = function.paramCount();
 
                     Object[] args = createArgumentsForCall(frame, function.typeIndex(), paramCount, stackPointer);
                     stackPointer -= args.length;
 
-                    Object result = executeDirectCall(callNodeIndex, function, args);
+                    Object result = executeDirectCall(instance, callNodeIndex, function, args);
 
                     final int resultCount = function.resultCount();
                     CompilerAsserts.partialEvaluationConstant(resultCount);
@@ -517,7 +524,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         }
                         break;
                     } else {
-                        extractMultiValueResult(frame, stackPointer, result, resultCount, function.typeIndex());
+                        extractMultiValueResult(context, frame, stackPointer, result, resultCount, function.typeIndex());
                         stackPointer += resultCount;
                         break;
                     }
@@ -526,7 +533,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.CALL_INDIRECT_I32: {
                     // Extract the function object.
                     stackPointer--;
-                    final SymbolTable symtab = instance.symbolTable();
+                    final SymbolTable symtab = module.symbolTable();
 
                     final int callNodeIndex;
                     final int expectedFunctionTypeIndex;
@@ -596,7 +603,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     }
 
                     // Invoke the resolved function.
-                    int paramCount = instance.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
+                    int paramCount = module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
                     Object[] args = createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, stackPointer);
                     stackPointer -= args.length;
 
@@ -621,12 +628,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         }
                     }
 
-                    final int resultCount = instance.symbolTable().functionTypeResultCount(expectedFunctionTypeIndex);
+                    final int resultCount = module.symbolTable().functionTypeResultCount(expectedFunctionTypeIndex);
                     CompilerAsserts.partialEvaluationConstant(resultCount);
                     if (resultCount == 0) {
                         break;
                     } else if (resultCount == 1) {
-                        final byte resultType = instance.symbolTable().functionTypeResultTypeAt(expectedFunctionTypeIndex, 0);
+                        final byte resultType = module.symbolTable().functionTypeResultTypeAt(expectedFunctionTypeIndex, 0);
                         CompilerAsserts.partialEvaluationConstant(resultType);
                         switch (resultType) {
                             case WasmType.I32_TYPE: {
@@ -661,7 +668,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         }
                         break;
                     } else {
-                        extractMultiValueResult(frame, stackPointer, result, resultCount, expectedFunctionTypeIndex);
+                        extractMultiValueResult(context, frame, stackPointer, result, resultCount, expectedFunctionTypeIndex);
                         stackPointer += resultCount;
                         break;
                     }
@@ -779,14 +786,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.GLOBAL_GET_U8: {
                     final int index = rawPeekU8(bytecode, offset);
                     offset++;
-                    global_get(context, frame, stackPointer, index);
+                    global_get(context, instance, frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
                 case Bytecode.GLOBAL_GET_I32: {
                     final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
-                    global_get(context, frame, stackPointer, index);
+                    global_get(context, instance, frame, stackPointer, index);
                     stackPointer++;
                     break;
                 }
@@ -794,14 +801,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int index = rawPeekU8(bytecode, offset);
                     offset++;
                     stackPointer--;
-                    global_set(context, frame, stackPointer, index);
+                    global_set(context, instance, frame, stackPointer, index);
                     break;
                 }
                 case Bytecode.GLOBAL_SET_I32: {
                     final int index = rawPeekI32(bytecode, offset);
                     offset += 4;
                     stackPointer--;
-                    global_set(context, frame, stackPointer, index);
+                    global_set(context, instance, frame, stackPointer, index);
                     break;
                 }
                 case Bytecode.I32_LOAD:
@@ -1562,7 +1569,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 case Bytecode.REF_FUNC:
                     final int functionIndex = rawPeekI32(bytecode, offset);
-                    final WasmFunction function = instance.symbolTable().function(functionIndex);
+                    final WasmFunction function = module.symbolTable().function(functionIndex);
                     final WasmFunctionInstance functionInstance = instance.functionInstance(function);
                     pushReference(frame, stackPointer, functionInstance);
                     stackPointer++;
@@ -1570,13 +1577,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     break;
                 case Bytecode.TABLE_GET: {
                     final int tableIndex = rawPeekI32(bytecode, offset);
-                    table_get(context, frame, stackPointer, tableIndex);
+                    table_get(context, instance, frame, stackPointer, tableIndex);
                     offset += 4;
                     break;
                 }
                 case Bytecode.TABLE_SET: {
                     final int tableIndex = rawPeekI32(bytecode, offset);
-                    table_set(context, frame, stackPointer, tableIndex);
+                    table_set(context, instance, frame, stackPointer, tableIndex);
                     stackPointer -= 2;
                     offset += 4;
                     break;
@@ -1616,14 +1623,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.MEMORY64_INIT_UNSAFE: {
                             final int dataIndex = rawPeekI32(bytecode, offset);
                             final int memoryIndex = rawPeekI32(bytecode, offset + 4);
-                            executeMemoryInit(frame, stackPointer, miscOpcode, memoryIndex, dataIndex);
+                            executeMemoryInit(instance, frame, stackPointer, miscOpcode, memoryIndex, dataIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
                         }
                         case Bytecode.DATA_DROP: {
                             final int dataIndex = rawPeekI32(bytecode, offset);
-                            data_drop(dataIndex);
+                            data_drop(instance, dataIndex);
                             offset += 4;
                             break;
                         }
@@ -1633,7 +1640,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.MEMORY64_COPY_D32_S64: {
                             final int destMemoryIndex = rawPeekI32(bytecode, offset);
                             final int srcMemoryIndex = rawPeekI32(bytecode, offset + 4);
-                            executeMemoryCopy(frame, stackPointer, miscOpcode, destMemoryIndex, srcMemoryIndex);
+                            executeMemoryCopy(instance, frame, stackPointer, miscOpcode, destMemoryIndex, srcMemoryIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -1641,7 +1648,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.MEMORY_FILL:
                         case Bytecode.MEMORY64_FILL: {
                             final int memoryIndex = rawPeekI32(bytecode, offset);
-                            executeMemoryFill(frame, stackPointer, miscOpcode, memoryIndex);
+                            executeMemoryFill(instance, frame, stackPointer, miscOpcode, memoryIndex);
                             stackPointer -= 3;
                             offset += 4;
                             break;
@@ -1653,7 +1660,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int n = popInt(frame, stackPointer - 1);
                             final int src = popInt(frame, stackPointer - 2);
                             final int dst = popInt(frame, stackPointer - 3);
-                            table_init(context, n, src, dst, tableIndex, elementIndex);
+                            table_init(context, instance, n, src, dst, tableIndex, elementIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -1671,7 +1678,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int n = popInt(frame, stackPointer - 1);
                             final int src = popInt(frame, stackPointer - 2);
                             final int dst = popInt(frame, stackPointer - 3);
-                            table_copy(context, n, src, dst, srcIndex, dstIndex);
+                            table_copy(context, instance, n, src, dst, srcIndex, dstIndex);
                             stackPointer -= 3;
                             offset += 8;
                             break;
@@ -1682,7 +1689,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int n = popInt(frame, stackPointer - 1);
                             final Object val = popReference(frame, stackPointer - 2);
 
-                            final int res = table_grow(context, n, val, tableIndex);
+                            final int res = table_grow(context, instance, n, val, tableIndex);
                             pushInt(frame, stackPointer - 2, res);
                             stackPointer--;
                             offset += 4;
@@ -1690,7 +1697,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         }
                         case Bytecode.TABLE_SIZE: {
                             final int tableIndex = rawPeekI32(bytecode, offset);
-                            table_size(context, frame, stackPointer, tableIndex);
+                            table_size(context, instance, frame, stackPointer, tableIndex);
                             stackPointer++;
                             offset += 4;
                             break;
@@ -1701,14 +1708,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                             final int n = popInt(frame, stackPointer - 1);
                             final Object val = popReference(frame, stackPointer - 2);
                             final int i = popInt(frame, stackPointer - 3);
-                            table_fill(context, n, val, i, tableIndex);
+                            table_fill(context, instance, n, val, i, tableIndex);
                             stackPointer -= 3;
                             offset += 4;
                             break;
                         }
                         case Bytecode.DATA_DROP_UNSAFE: {
                             final int dataIndex = rawPeekI32(bytecode, offset);
-                            data_drop_unsafe(dataIndex);
+                            data_drop_unsafe(instance, dataIndex);
                             offset += 4;
                             break;
                         }
@@ -1787,7 +1794,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private void failFunctionTypeCheck(WasmFunction function, int expectedFunctionTypeIndex) {
         throw WasmException.format(Failure.INDIRECT_CALL_TYPE__MISMATCH, this,
                         "Actual (type %d of function %s) and expected (type %d in module %s) types differ in the indirect call.",
-                        function.typeIndex(), function.name(), expectedFunctionTypeIndex, instance.name());
+                        function.typeIndex(), function.name(), expectedFunctionTypeIndex, module.name());
     }
 
     private void check(int v, int limit) {
@@ -1798,11 +1805,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private Object executeDirectCall(int callNodeIndex, WasmFunction function, Object[] args) {
+    private Object executeDirectCall(WasmInstance instance, int callNodeIndex, WasmFunction function, Object[] args) {
         final boolean imported = function.isImported();
         CompilerAsserts.partialEvaluationConstant(imported);
         DirectCallNode callNode = (DirectCallNode) callNodes[callNodeIndex];
-        assert assertDirectCall(function, callNode);
+        assert assertDirectCall(instance, function, callNode);
         if (imported) {
             WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
             TruffleContext truffleContext = functionInstance.getTruffleContext();
@@ -1817,7 +1824,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private boolean assertDirectCall(WasmFunction function, DirectCallNode callNode) {
+    private boolean assertDirectCall(WasmInstance instance, WasmFunction function, DirectCallNode callNode) {
         WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
         // functionInstance may be null for calls between functions of the same module.
         if (functionInstance == null) {
@@ -2030,7 +2037,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void executeMemoryInit(VirtualFrame frame, int stackPointer, int opcode, int memoryIndex, int dataIndex) {
+    private void executeMemoryInit(WasmInstance instance, VirtualFrame frame, int stackPointer, int opcode, int memoryIndex, int dataIndex) {
         final int n;
         final int src;
         final long dst;
@@ -2039,28 +2046,28 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 n = popInt(frame, stackPointer - 1);
                 src = popInt(frame, stackPointer - 2);
                 dst = popInt(frame, stackPointer - 3);
-                memory_init(n, src, dst, dataIndex, memoryIndex);
+                memory_init(instance, n, src, dst, dataIndex, memoryIndex);
                 break;
             }
             case Bytecode.MEMORY64_INIT: {
                 n = popInt(frame, stackPointer - 1);
                 src = popInt(frame, stackPointer - 2);
                 dst = popLong(frame, stackPointer - 3);
-                memory_init(n, src, dst, dataIndex, memoryIndex);
+                memory_init(instance, n, src, dst, dataIndex, memoryIndex);
                 break;
             }
             case Bytecode.MEMORY_INIT_UNSAFE: {
                 n = popInt(frame, stackPointer - 1);
                 src = popInt(frame, stackPointer - 2);
                 dst = popInt(frame, stackPointer - 3);
-                memory_init_unsafe(n, src, dst, dataIndex, memoryIndex);
+                memory_init_unsafe(instance, n, src, dst, dataIndex, memoryIndex);
                 break;
             }
             case Bytecode.MEMORY64_INIT_UNSAFE: {
                 n = popInt(frame, stackPointer - 1);
                 src = popInt(frame, stackPointer - 2);
                 dst = popLong(frame, stackPointer - 3);
-                memory_init_unsafe(n, src, dst, dataIndex, memoryIndex);
+                memory_init_unsafe(instance, n, src, dst, dataIndex, memoryIndex);
                 break;
             }
             default:
@@ -2068,7 +2075,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void executeMemoryCopy(VirtualFrame frame, int stackPointer, int opcode, int destMemoryIndex, int srcMemoryIndex) {
+    private void executeMemoryCopy(WasmInstance instance, VirtualFrame frame, int stackPointer, int opcode, int destMemoryIndex, int srcMemoryIndex) {
         final long n;
         final long src;
         final long dst;
@@ -2100,10 +2107,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
-        memory_copy(n, src, dst, destMemoryIndex, srcMemoryIndex);
+        memory_copy(instance, n, src, dst, destMemoryIndex, srcMemoryIndex);
     }
 
-    private void executeMemoryFill(VirtualFrame frame, int stackPointer, int opcode, int memoryIndex) {
+    private void executeMemoryFill(WasmInstance instance, VirtualFrame frame, int stackPointer, int opcode, int memoryIndex) {
         final int val;
         final long n;
         final long dst;
@@ -2123,7 +2130,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             default:
                 throw CompilerDirectives.shouldNotReachHere();
         }
-        memory_fill(n, val, dst, memoryIndex);
+        memory_fill(instance, n, val, dst, memoryIndex);
     }
 
     private int executeAtomic(VirtualFrame frame, int stackPointer, int opcode, WasmMemory memory, long memOffset, int indexType64) {
@@ -2659,8 +2666,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     // Checkstyle: stop method name check
 
-    private void global_set(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
-        byte type = instance.symbolTable().globalValueType(index);
+    private void global_set(WasmContext context, WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
+        byte type = module.symbolTable().globalValueType(index);
         CompilerAsserts.partialEvaluationConstant(type);
         // For global.set, we don't need to make sure that the referenced global is
         // mutable.
@@ -2687,8 +2694,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         }
     }
 
-    private void global_get(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
-        byte type = instance.symbolTable().globalValueType(index);
+    private void global_get(WasmContext context, WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
+        byte type = module.symbolTable().globalValueType(index);
         CompilerAsserts.partialEvaluationConstant(type);
         switch (type) {
             case WasmType.I32_TYPE:
@@ -3726,7 +3733,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    private void table_init(WasmContext context, int length, int source, int destination, int tableIndex, int elementIndex) {
+    private void table_init(WasmContext context, WasmInstance instance, int length, int source, int destination, int tableIndex, int elementIndex) {
         final WasmTable table = context.tables().table(instance.tableAddress(tableIndex));
         final Object[] elementInstance = instance.elemInstance(elementIndex);
         final int elementInstanceLength;
@@ -3745,7 +3752,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         table.initialize(elementInstance, source, destination, length);
     }
 
-    private void table_get(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
+    private void table_get(WasmContext context, WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
         final WasmTable table = context.tables().table(instance.tableAddress(index));
         final int i = popInt(frame, stackPointer - 1);
         if (i < 0 || i >= table.size()) {
@@ -3756,7 +3763,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         pushReference(frame, stackPointer - 1, value);
     }
 
-    private void table_set(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
+    private void table_set(WasmContext context, WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
         final WasmTable table = context.tables().table(instance.tableAddress(index));
         final Object value = popReference(frame, stackPointer - 1);
         final int i = popInt(frame, stackPointer - 2);
@@ -3767,19 +3774,19 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         table.set(i, value);
     }
 
-    private void table_size(WasmContext context, VirtualFrame frame, int stackPointer, int index) {
+    private static void table_size(WasmContext context, WasmInstance instance, VirtualFrame frame, int stackPointer, int index) {
         final WasmTable table = context.tables().table(instance.tableAddress(index));
         pushInt(frame, stackPointer, table.size());
     }
 
     @TruffleBoundary
-    private int table_grow(WasmContext context, int length, Object value, int index) {
+    private static int table_grow(WasmContext context, WasmInstance instance, int length, Object value, int index) {
         final WasmTable table = context.tables().table(instance.tableAddress(index));
         return table.grow(length, value);
     }
 
     @TruffleBoundary
-    private void table_copy(WasmContext context, int length, int source, int destination, int sourceTableIndex, int destinationTableIndex) {
+    private void table_copy(WasmContext context, WasmInstance instance, int length, int source, int destination, int sourceTableIndex, int destinationTableIndex) {
         final WasmTable sourceTable = context.tables().table(instance.tableAddress(sourceTableIndex));
         final WasmTable destinationTable = context.tables().table(instance.tableAddress(destinationTableIndex));
         if (checkOutOfBounds(source, length, sourceTable.size()) || checkOutOfBounds(destination, length, destinationTable.size())) {
@@ -3793,7 +3800,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    private void table_fill(WasmContext context, int length, Object value, int offset, int index) {
+    private void table_fill(WasmContext context, WasmInstance instance, int length, Object value, int offset, int index) {
         final WasmTable table = context.tables().table(instance.tableAddress(index));
         if (checkOutOfBounds(offset, length, table.size())) {
             enterErrorBranch();
@@ -3806,7 +3813,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    private void memory_init(int length, int source, long destination, int dataIndex, int memoryIndex) {
+    private void memory_init(WasmInstance instance, int length, int source, long destination, int dataIndex, int memoryIndex) {
         final WasmMemory memory = instance.memory(memoryIndex);
         final int dataOffset = instance.dataInstanceOffset(dataIndex);
         final int dataLength = instance.dataInstanceLength(dataIndex);
@@ -3821,7 +3828,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    private void memory_init_unsafe(int length, int source, long destination, int dataIndex, int memoryIndex) {
+    private void memory_init_unsafe(WasmInstance instance, int length, int source, long destination, int dataIndex, int memoryIndex) {
         final WasmMemory memory = instance.memory(memoryIndex);
         final long dataAddress = instance.dataInstanceAddress(dataIndex);
         final int dataLength = instance.dataInstanceLength(dataIndex);
@@ -3836,17 +3843,17 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    private void data_drop(int dataIndex) {
+    private static void data_drop(WasmInstance instance, int dataIndex) {
         instance.dropDataInstance(dataIndex);
     }
 
     @TruffleBoundary
-    private void data_drop_unsafe(int dataIndex) {
+    private static void data_drop_unsafe(WasmInstance instance, int dataIndex) {
         instance.dropUnsafeDataInstance(dataIndex);
     }
 
     @TruffleBoundary
-    private void memory_fill(long length, int value, long offset, int memoryIndex) {
+    private void memory_fill(WasmInstance instance, long length, int value, long offset, int memoryIndex) {
         final WasmMemory memory = instance.memory(memoryIndex);
         if (checkOutOfBounds(offset, length, memory.byteSize())) {
             enterErrorBranch();
@@ -3859,7 +3866,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    private void memory_copy(long length, long source, long destination, int destMemoryIndex, int srcMemoryIndex) {
+    private void memory_copy(WasmInstance instance, long length, long source, long destination, int destMemoryIndex, int srcMemoryIndex) {
         final WasmMemory destMemory = instance.memory(destMemoryIndex);
         final WasmMemory srcMemory = instance.memory(srcMemoryIndex);
         if (checkOutOfBounds(source, length, srcMemory.byteSize()) || checkOutOfBounds(destination, length, destMemory.byteSize())) {
@@ -3883,7 +3890,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     @TruffleBoundary
-    public void resolveCallNode(int callNodeIndex) {
+    public void resolveCallNode(WasmInstance instance, int callNodeIndex) {
         final WasmFunction function = ((WasmCallStubNode) callNodes[callNodeIndex]).function();
         final CallTarget target = instance.target(function.index());
         callNodes[callNodeIndex] = DirectCallNode.create(target);
@@ -3896,7 +3903,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int stackPointer = stackPointerOffset;
         for (int i = numArgs - 1; i >= 0; --i) {
             stackPointer--;
-            byte type = instance.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
+            byte type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(type);
             switch (type) {
                 case WasmType.I32_TYPE:
@@ -4058,13 +4065,13 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * @param functionTypeIndex The function type index of the called function.
      */
     @ExplodeLoop
-    private void extractMultiValueResult(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex) {
+    private void extractMultiValueResult(WasmContext context, VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex) {
         CompilerAsserts.partialEvaluationConstant(resultCount);
         if (result == WasmConstant.MULTI_VALUE) {
-            final long[] multiValueStack = instance.context().primitiveMultiValueStack();
-            final Object[] referenceMultiValueStack = instance.context().referenceMultiValueStack();
+            final long[] multiValueStack = context.primitiveMultiValueStack();
+            final Object[] referenceMultiValueStack = context.referenceMultiValueStack();
             for (int i = 0; i < resultCount; i++) {
-                final byte resultType = instance.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
+                final byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
                 switch (resultType) {
                     case WasmType.I32_TYPE:
@@ -4102,7 +4109,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     throw WasmException.create(Failure.INVALID_MULTI_VALUE_ARITY);
                 }
                 for (int i = 0; i < size; i++) {
-                    byte resultType = instance.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
+                    byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                     Object value = lib.readArrayElement(result, i);
                     switch (resultType) {
                         case WasmType.I32_TYPE:
