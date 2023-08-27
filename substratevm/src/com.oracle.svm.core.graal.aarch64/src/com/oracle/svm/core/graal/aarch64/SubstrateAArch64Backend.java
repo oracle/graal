@@ -539,15 +539,31 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
         protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
+            Value exceptionTemp = getExceptionTemp(info != null && info.exceptionEdge != null);
+
             if (shouldEmitOnlyIndirectCalls()) {
                 RegisterValue targetRegister = AArch64.lr.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
                 emitMove(targetRegister, targetAddress);
                 append(new SubstrateAArch64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL,
-                                getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
+                                getDestroysCallerSavedRegisters(targetMethod), exceptionTemp));
             } else {
                 assert targetAddress == null;
                 append(new SubstrateAArch64DirectCallOp(targetMethod, result, arguments, temps, info, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL,
-                                getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
+                                getDestroysCallerSavedRegisters(targetMethod), exceptionTemp));
+            }
+        }
+
+        /**
+         * For invokes that have an exception handler, the register used for the incoming exception
+         * is destroyed at the call site even when registers are caller saved. The normal object
+         * return register is used in {@link NodeLIRBuilder#emitReadExceptionObject} also for the
+         * exception.
+         */
+        private Value getExceptionTemp(boolean hasExceptionEdge) {
+            if (hasExceptionEdge) {
+                return getRegisterConfig().getReturnRegister(JavaKind.Object).asValue();
+            } else {
+                return Value.ILLEGAL;
             }
         }
 
@@ -709,11 +725,7 @@ public class SubstrateAArch64Backend extends SubstrateBackend implements LIRGene
          * exception.
          */
         private Value getExceptionTemp(CallTargetNode callTarget) {
-            if (callTarget.invoke() instanceof InvokeWithExceptionNode) {
-                return gen.getRegisterConfig().getReturnRegister(JavaKind.Object).asValue();
-            } else {
-                return Value.ILLEGAL;
-            }
+            return ((SubstrateAArch64LIRGenerator) gen).getExceptionTemp(callTarget.invoke() instanceof InvokeWithExceptionNode);
         }
 
         @Override

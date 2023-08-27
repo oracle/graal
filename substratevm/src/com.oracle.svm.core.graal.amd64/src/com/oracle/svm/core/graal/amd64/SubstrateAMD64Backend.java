@@ -629,17 +629,32 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
         protected void emitForeignCallOp(ForeignCallLinkage linkage, Value targetAddress, Value result, Value[] arguments, Value[] temps, LIRFrameState info) {
             SubstrateForeignCallLinkage callTarget = (SubstrateForeignCallLinkage) linkage;
             SharedMethod targetMethod = (SharedMethod) callTarget.getMethod();
-            vzeroupperBeforeCall(this, arguments, info, targetMethod);
+            Value exceptionTemp = getExceptionTemp(info != null && info.exceptionEdge != null);
 
+            vzeroupperBeforeCall(this, arguments, info, targetMethod);
             if (shouldEmitOnlyIndirectCalls()) {
                 AllocatableValue targetRegister = AMD64.rax.asValue(FrameAccess.getWordStamp().getLIRKind(getLIRKindTool()));
                 emitMove(targetRegister, targetAddress);
                 append(new SubstrateAMD64IndirectCallOp(targetMethod, result, arguments, temps, targetRegister, info,
-                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
+                                Value.ILLEGAL, Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp));
             } else {
                 assert targetAddress == null;
                 append(new SubstrateAMD64DirectCallOp(targetMethod, result, arguments, temps, info, Value.ILLEGAL,
-                                Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), Value.ILLEGAL));
+                                Value.ILLEGAL, StatusSupport.STATUS_ILLEGAL, getDestroysCallerSavedRegisters(targetMethod), exceptionTemp));
+            }
+        }
+
+        /**
+         * For invokes that have an exception handler, the register used for the incoming exception
+         * is destroyed at the call site even when registers are caller saved. The normal object
+         * return register is used in {@link NodeLIRBuilder#emitReadExceptionObject} also for the
+         * exception.
+         */
+        private Value getExceptionTemp(boolean hasExceptionEdge) {
+            if (hasExceptionEdge) {
+                return getRegisterConfig().getReturnRegister(JavaKind.Object).asValue();
+            } else {
+                return Value.ILLEGAL;
             }
         }
 
@@ -903,11 +918,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
          * exception.
          */
         private Value getExceptionTemp(CallTargetNode callTarget) {
-            if (callTarget.invoke() instanceof InvokeWithExceptionNode) {
-                return gen.getRegisterConfig().getReturnRegister(JavaKind.Object).asValue();
-            } else {
-                return Value.ILLEGAL;
-            }
+            return ((SubstrateAMD64LIRGenerator) gen).getExceptionTemp(callTarget.invoke() instanceof InvokeWithExceptionNode);
         }
 
         @Override
