@@ -47,7 +47,6 @@ import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
@@ -85,31 +84,27 @@ public class MultiInstantiationSuite {
     private static void test(Function<WebAssembly, byte[]> sourceFun, Function<WebAssembly, Object> importFun, BiConsumer<WebAssembly, WasmInstance> check) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
-        final Context context = contextBuilder.build();
-        Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
-        Source source = sourceBuilder.build();
-        context.eval(source);
-        Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
-        main.execute();
-        Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
-        run.execute(new GuestCode(c -> {
-            WebAssembly wasm = new WebAssembly(c);
-            WasmModule module = wasm.moduleDecode(sourceFun.apply(wasm));
-            WasmInstance instance1 = wasm.moduleInstantiate(module, importFun.apply(wasm));
-            Value v1 = Value.asValue(instance1);
-            // link module
-            v1.getMember("main");
-            try {
+        try (Context context = contextBuilder.build()) {
+            Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
+            Source source = sourceBuilder.build();
+            context.eval(source);
+            Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            main.execute();
+            Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+            run.execute(new GuestCode(c -> {
+                WebAssembly wasm = new WebAssembly(c);
+                WasmModule module = wasm.moduleDecode(sourceFun.apply(wasm));
+                WasmInstance instance1 = wasm.moduleInstantiate(module, importFun.apply(wasm));
+                Value v1 = Value.asValue(instance1);
+                // link module
+                v1.getMember("main");
                 WasmInstance instance2 = wasm.moduleInstantiate(module, importFun.apply(wasm));
                 Value v2 = Value.asValue(instance2);
                 // link module
                 v2.getMember("main");
                 check.accept(wasm, instance2);
-            } catch (PolyglotException ex) {
-                throw new RuntimeException(ex);
-            }
-        }));
-        context.close();
+            }));
+        }
     }
 
     private static final class GuestCode implements Consumer<WasmContext>, TruffleObject {

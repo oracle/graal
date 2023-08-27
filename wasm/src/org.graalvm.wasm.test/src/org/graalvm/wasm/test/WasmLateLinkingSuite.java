@@ -89,98 +89,101 @@ public class WasmLateLinkingSuite {
 
     @Test
     public void linkingFailureInvertedOnlyAux() throws IOException, InterruptedException {
-        final Context context = Context.newBuilder(WasmLanguage.ID).build();
-        final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func))"));
-        final ByteSequence binaryMain = ByteSequence.create(compileWat("file2", "(func (export \"g\") (result i32) (i32.const 42))"));
-        final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "module1").build();
-        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "module2").build();
-        context.eval(sourceAux);
-        final Value module2Instance = context.eval(sourceMain);
+        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
+            final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func))"));
+            final ByteSequence binaryMain = ByteSequence.create(compileWat("file2", "(func (export \"g\") (result i32) (i32.const 42))"));
+            final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "module1").build();
+            final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "module2").build();
+            context.eval(sourceAux);
+            final Value module2Instance = context.eval(sourceMain);
 
-        // Fails: "the module 'non_existing',
-        // referenced by the import 'f' in the module 'module1',
-        // does not exist."
-        try {
-            final Value g = module2Instance.getMember("g");
-            g.execute();
-            Assert.assertFalse("Should not reach here.", true);
-        } catch (Throwable e) {
-            // We can later refine these semantics, and avoid a failure here.
-            // To do this, we should only lazily link exactly the required modules, instead of
-            // linking all of them.
-            Assert.assertTrue("Should fail due to unresolved import in the other module, got: " + e.getMessage(),
-                            e.getMessage().contains("module 'non_existing', referenced by the import 'f' in the module 'main', does not exist"));
-        }
+            // Fails: "the module 'non_existing',
+            // referenced by the import 'f' in the module 'module1',
+            // does not exist."
+            try {
+                final Value g = module2Instance.getMember("g");
+                g.execute();
+                Assert.assertFalse("Should not reach here.", true);
+            } catch (Throwable e) {
+                // We can later refine these semantics, and avoid a failure here.
+                // To do this, we should only lazily link exactly the required modules, instead of
+                // linking all of them.
+                Assert.assertTrue("Should fail due to unresolved import in the other module, got: " + e.getMessage(),
+                                e.getMessage().contains("module 'non_existing', referenced by the import 'f' in the module 'main', does not exist"));
+            }
 
-        try {
-            final Value g2 = module2Instance.getMember("g");
-            final Value result2 = g2.execute();
-            Assert.assertEquals(42, result2.asInt());
-        } catch (Throwable e) {
-            Assert.assertFalse("Should not reach here, got: " + e.getMessage(), true);
+            try {
+                final Value g2 = module2Instance.getMember("g");
+                final Value result2 = g2.execute();
+                Assert.assertEquals(42, result2.asInt());
+            } catch (Throwable e) {
+                Assert.assertFalse("Should not reach here, got: " + e.getMessage(), true);
+            }
         }
     }
 
     @Test
     public void linkingFailureOnlyAux() throws IOException, InterruptedException {
-        final Context context = Context.newBuilder(WasmLanguage.ID).build();
-        final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func))"));
-        final ByteSequence binaryMain = ByteSequence.create(compileWat("file2", "(func (export \"g\") (result i32) (i32.const 42))"));
-        final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "module1").build();
-        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "module2").build();
-        final Value module2Instance = context.eval(sourceMain);
-        context.eval(sourceAux);
+        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
+            final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func))"));
+            final ByteSequence binaryMain = ByteSequence.create(compileWat("file2", "(func (export \"g\") (result i32) (i32.const 42))"));
+            final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "module1").build();
+            final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "module2").build();
+            final Value module2Instance = context.eval(sourceMain);
+            context.eval(sourceAux);
 
-        // Fails: "the module 'non_existing',
-        // referenced by the import 'f' in the module 'module1',
-        // does not exist."
-        try {
-            final Value g = module2Instance.getMember("g");
-            g.execute();
-            Assert.assertFalse("Should not reach here.", true);
-        } catch (Throwable e) {
-            // We can later refine these semantics, and avoid a failure here.
-            // To do this, we should only lazily link exactly the required modules, instead of
-            // linking all of them.
-            Assert.assertTrue("Should fail due to unresolved import in the other module, got: " + e.getMessage(),
-                            e.getMessage().contains("module 'non_existing', referenced by the import 'f' in the module 'module1', does not exist"));
-        }
+            // Fails: "the module 'non_existing',
+            // referenced by the import 'f' in the module 'module1',
+            // does not exist."
+            try {
+                final Value g = module2Instance.getMember("g");
+                g.execute();
+                Assert.assertFalse("Should not reach here.", true);
+            } catch (Throwable e) {
+                // We can later refine these semantics, and avoid a failure here.
+                // To do this, we should only lazily link exactly the required modules, instead of
+                // linking all of them.
+                Assert.assertTrue("Should fail due to unresolved import in the other module, got: " + e.getMessage(),
+                                e.getMessage().contains("module 'non_existing', referenced by the import 'f' in the module 'module1', does not exist"));
+            }
 
-        try {
-            final Value g2 = module2Instance.getMember("g");
-            final Value result2 = g2.execute();
-            Assert.assertEquals(42, result2.asInt());
-        } catch (Throwable e) {
-            Assert.assertFalse("Should not reach here, got: " + e.getMessage(), true);
+            try {
+                final Value g2 = module2Instance.getMember("g");
+                final Value result2 = g2.execute();
+                Assert.assertEquals(42, result2.asInt());
+            } catch (Throwable e) {
+                Assert.assertFalse("Should not reach here, got: " + e.getMessage(), true);
+            }
         }
     }
 
     @Test
     public void linkingFailureDueToDependency() throws IOException, InterruptedException {
-        final Context context = Context.newBuilder(WasmLanguage.ID).build();
-        final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func)) (func (export \"h\") (result i32) (i32.const 42))"));
-        final ByteSequence binaryMain = ByteSequence.create(compileWat("file2", "(import \"main\" \"h\" (func)) (func (export \"g\") (result i32) (i32.const 42))"));
-        final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "module1").build();
-        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "module2").build();
-        context.eval(sourceAux);
-        final Value module2Instance = context.eval(sourceMain);
+        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
+            final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func)) (func (export \"h\") (result i32) (i32.const 42))"));
+            final ByteSequence binaryMain = ByteSequence.create(compileWat("file2", "(import \"main\" \"h\" (func)) (func (export \"g\") (result i32) (i32.const 42))"));
+            final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "module1").build();
+            final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "module2").build();
+            context.eval(sourceAux);
+            final Value module2Instance = context.eval(sourceMain);
 
-        try {
-            final Value g = module2Instance.getMember("g");
-            g.execute();
-            Assert.assertFalse("Should not reach here.", true);
-        } catch (Throwable e) {
-            Assert.assertTrue("Should fail due to unresolved import in the other module, got: " + e.getMessage(),
-                            e.getMessage().contains("module 'non_existing', referenced by the import 'f' in the module 'main', does not exist"));
-        }
+            try {
+                final Value g = module2Instance.getMember("g");
+                g.execute();
+                Assert.assertFalse("Should not reach here.", true);
+            } catch (Throwable e) {
+                Assert.assertTrue("Should fail due to unresolved import in the other module, got: " + e.getMessage(),
+                                e.getMessage().contains("module 'non_existing', referenced by the import 'f' in the module 'main', does not exist"));
+            }
 
-        try {
-            final Value g2 = module2Instance.getMember("g");
-            g2.execute();
-            Assert.assertFalse("Should not reach here.", true);
-        } catch (Throwable e) {
-            Assert.assertTrue("Should fail due to both modules being in a failed linking state, got: " + e.getMessage(),
-                            e.getMessage().contains("Linking of module wasm-module(module2) previously failed"));
+            try {
+                final Value g2 = module2Instance.getMember("g");
+                g2.execute();
+                Assert.assertFalse("Should not reach here.", true);
+            } catch (Throwable e) {
+                Assert.assertTrue("Should fail due to both modules being in a failed linking state, got: " + e.getMessage(),
+                                e.getMessage().contains("Linking of module wasm-module(module2) previously failed"));
+            }
         }
     }
 
@@ -203,27 +206,29 @@ public class WasmLateLinkingSuite {
                         "(export \"testFunc\" (func 0))" +
                         ")");
 
-        final Context context = Context.newBuilder(WasmLanguage.ID).build();
-        final ByteSequence exportByteSeq = ByteSequence.create(exportBytes);
-        final ByteSequence importByteSeq = ByteSequence.create(importBytes);
-        final Source exportSource = Source.newBuilder(WasmLanguage.ID, exportByteSeq, "exportModule").build();
-        final Source importSource = Source.newBuilder(WasmLanguage.ID, importByteSeq, "importModule").build();
-        final Value exportModuleInstance = context.eval(exportSource);
-        exportModuleInstance.getMember("table");
-        // Linking of the first module was triggered by this point.
-        final Value importModuleInstance = context.eval(importSource);
-        importModuleInstance.getMember("testFunc").execute(0);
-        // Linking of the second module was triggered by this point.
+        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
+            final ByteSequence exportByteSeq = ByteSequence.create(exportBytes);
+            final ByteSequence importByteSeq = ByteSequence.create(importBytes);
+            final Source exportSource = Source.newBuilder(WasmLanguage.ID, exportByteSeq, "exportModule").build();
+            final Source importSource = Source.newBuilder(WasmLanguage.ID, importByteSeq, "importModule").build();
+            final Value exportModuleInstance = context.eval(exportSource);
+            exportModuleInstance.getMember("table");
+            // Linking of the first module was triggered by this point.
+            final Value importModuleInstance = context.eval(importSource);
+            importModuleInstance.getMember("testFunc").execute(0);
+            // Linking of the second module was triggered by this point.
+        }
     }
 
     private static void runTest(byte[] firstBinary, Consumer<Context> testCase) throws IOException {
         final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
-        final Context context = contextBuilder.build();
-        Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(firstBinary), "main");
-        Source source = sourceBuilder.build();
-        context.eval(source);
-        testCase.accept(context);
+        try (Context context = contextBuilder.build()) {
+            Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(firstBinary), "main");
+            Source source = sourceBuilder.build();
+            context.eval(source);
+            testCase.accept(context);
+        }
     }
 
     // (module
