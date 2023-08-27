@@ -99,14 +99,12 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         this.instrumentation = node.instrumentation;
     }
 
-    @TruffleBoundary
     WasmInstance instance(WasmContext context) {
-        WasmInstance instance = context.moduleInstances().get(module.name());
+        WasmInstance instance = context.lookupModuleInstance(module);
         assert instance != null && instance.module() == module;
         return instance;
     }
 
-    @TruffleBoundary
     private WasmInstance instance() {
         return instance(WasmContext.get(this));
     }
