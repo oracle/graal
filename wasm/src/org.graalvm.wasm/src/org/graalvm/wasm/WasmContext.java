@@ -50,6 +50,7 @@ import org.graalvm.wasm.parser.bytecode.BytecodeParser;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -67,6 +68,7 @@ public final class WasmContext {
     private int moduleNameCount;
     private final FdManager filesManager;
     private final WasmContextOptions contextOptions;
+    private boolean firstModule = true;
 
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
@@ -133,6 +135,16 @@ public final class WasmContext {
         return moduleInstances;
     }
 
+    @TruffleBoundary
+    public WasmInstance lookupModuleInstance(WasmModule module) {
+        return moduleInstances.get(module.name());
+    }
+
+    @TruffleBoundary
+    public WasmInstance lookupMainModule() {
+        return moduleInstances.get("main");
+    }
+
     public void register(WasmInstance instance) {
         if (moduleInstances.containsKey(instance.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Context already contains an instance named '" + instance.name() + "'.");
@@ -174,6 +186,7 @@ public final class WasmContext {
         return module;
     }
 
+    @TruffleBoundary
     public WasmInstance readInstance(WasmModule module) {
         if (moduleInstances.containsKey(module.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
@@ -233,10 +246,16 @@ public final class WasmContext {
      * Updates the size of the multi-value stack if needed. In case of a resize, the values are not
      * copied. Therefore, resizing should occur before any call to a function that uses the
      * multi-value stack.
-     * 
+     *
      * @param expectedSize The minimum expected size.
      */
     public void resizeMultiValueStack(int expectedSize) {
         language.multiValueStack().resize(expectedSize);
+    }
+
+    public boolean isFirstModule() {
+        boolean wasFirst = firstModule;
+        firstModule = false;
+        return wasFirst;
     }
 }

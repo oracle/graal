@@ -174,9 +174,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.notifyFunction = notifyFunction;
     }
 
-    @TruffleBoundary
     private WasmInstance instance(WasmContext context) {
-        return context.moduleInstances().get(module.name());
+        return context.lookupModuleInstance(module);
     }
 
     // region OSR support

@@ -57,6 +57,7 @@ import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
 @Registration(id = WasmLanguage.ID, //
                 name = WasmLanguage.NAME, //
@@ -75,7 +76,6 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     private static final LanguageReference<WasmLanguage> REFERENCE = LanguageReference.create(WasmLanguage.class);
 
-    private boolean isFirst = true;
     @CompilationFinal private volatile boolean isMultiContext;
 
     private final ContextThreadLocal<MultiValueStack> multiValueStackThreadLocal = locals.createContextThreadLocal(((context, thread) -> new MultiValueStack()));
@@ -92,18 +92,37 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     @Override
     protected CallTarget parse(ParsingRequest request) {
         final WasmContext context = WasmContext.get(null);
-        final String moduleName = isFirst ? "main" : request.getSource().getName();
-        isFirst = false;
         final Source source = request.getSource();
+        final String moduleName = context.isFirstModule() ? "main" : source.getName();
         final byte[] data = source.getBytes().toByteArray();
         final WasmModule module = context.readModule(moduleName, data, null);
-        final WasmInstance instance = context.readInstance(module);
-        return new RootNode(this) {
-            @Override
-            public WasmInstance execute(VirtualFrame frame) {
-                return instance;
+        return new ParsedWasmModuleRootNode(this, module, source).getCallTarget();
+    }
+
+    private static final class ParsedWasmModuleRootNode extends RootNode {
+        private final WasmModule module;
+        private final Source source;
+
+        private ParsedWasmModuleRootNode(WasmLanguage language, WasmModule module, Source source) {
+            super(language);
+            this.module = module;
+            this.source = source;
+        }
+
+        @Override
+        public WasmInstance execute(VirtualFrame frame) {
+            final WasmContext context = WasmContext.get(this);
+            WasmInstance instance = context.lookupModuleInstance(module);
+            if (instance == null) {
+                instance = context.readInstance(module);
             }
-        }.getCallTarget();
+            return instance;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return source.createUnavailableSection();
+        }
     }
 
     @Override
