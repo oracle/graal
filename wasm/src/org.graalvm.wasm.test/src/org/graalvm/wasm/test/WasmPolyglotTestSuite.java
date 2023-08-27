@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,11 +76,12 @@ public class WasmPolyglotTestSuite {
                         ByteSequence.create(binaryReturnConst),
                         "main");
         Source source = sourceBuilder.build();
-        Context context = contextBuilder.build();
-        context.eval(source);
-        Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
-        Value result = mainFunction.execute();
-        Assert.assertEquals("Should be equal: ", 42, result.asInt());
+        try (Context context = contextBuilder.build()) {
+            context.eval(source);
+            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value result = mainFunction.execute();
+            Assert.assertEquals("Should be equal: ", 42, result.asInt());
+        }
     }
 
     @Test
@@ -110,11 +111,12 @@ public class WasmPolyglotTestSuite {
         Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, test, "main");
         Source source = sourceBuilder.build();
-        Context context = contextBuilder.build();
-        context.eval(source);
-        Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
-        Value result = mainFunction.execute();
-        Assert.assertEquals("Should be equal: ", 11, result.asInt());
+        try (Context context = contextBuilder.build()) {
+            context.eval(source);
+            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value result = mainFunction.execute();
+            Assert.assertEquals("Should be equal: ", 11, result.asInt());
+        }
     }
 
     @Test

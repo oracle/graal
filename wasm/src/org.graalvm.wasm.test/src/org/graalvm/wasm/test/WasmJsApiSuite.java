@@ -2175,15 +2175,15 @@ public class WasmJsApiSuite {
             options.accept(contextBuilder);
         }
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
-        final Context context = contextBuilder.build();
-        Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
-        Source source = sourceBuilder.build();
-        context.eval(source);
-        Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
-        main.execute();
-        Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
-        run.execute(new GuestCode(testCase));
-        context.close();
+        try (Context context = contextBuilder.build()) {
+            Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
+            Source source = sourceBuilder.build();
+            context.eval(source);
+            Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            main.execute();
+            Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+            run.execute(new GuestCode(testCase));
+        }
     }
 
     private static final class GuestCode implements Consumer<WasmContext>, TruffleObject {
