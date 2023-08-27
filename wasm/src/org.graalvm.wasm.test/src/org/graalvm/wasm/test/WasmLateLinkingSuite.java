@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,15 +75,16 @@ public class WasmLateLinkingSuite {
 
     @Test
     public void linkingTooLate() throws IOException, InterruptedException {
-        final Context context = Context.newBuilder(WasmLanguage.ID).build();
         final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", textWithExportFun));
         final ByteSequence binaryMain = ByteSequence.create(compileWat("file1", textWithImportFunExportFun));
         final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "m1").build();
         final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "m2").build();
-        context.parse(sourceMain); // main
-        context.parse(sourceAux); // m1
-        final Value g = context.getBindings(WasmLanguage.ID).getMember("main").getMember("g");
-        Assert.assertEquals(42, g.execute().asInt());
+        try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
+            context.eval(sourceMain); // main
+            context.eval(sourceAux); // m1
+            final Value g = context.getBindings(WasmLanguage.ID).getMember("main").getMember("g");
+            Assert.assertEquals(42, g.execute().asInt());
+        }
     }
 
     @Test
