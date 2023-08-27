@@ -206,7 +206,7 @@ public class WasmJsApiSuite {
                                             "defaultTable", table
                             }),
             });
-            wasm.tableWrite(table, 0, new WasmFunctionInstance(context, null,
+            wasm.tableWrite(table, 0, new WasmFunctionInstance(context,
                             new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
@@ -413,7 +413,7 @@ public class WasmJsApiSuite {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmGlobal global = wasm.globalAlloc(ValueType.i32, true, 0);
             try {
-                wasm.globalWrite(global, new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                wasm.globalWrite(global, new WasmFunctionInstance(context, new RootNode(context.language()) {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         return 0;
@@ -600,7 +600,7 @@ public class WasmJsApiSuite {
             final WasmInstance instance = moduleInstantiate(wasm, exportMemoryTwice, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
-                final Object f = new WasmFunctionInstance(context, null,
+                final Object f = new WasmFunctionInstance(context,
                                 new RootNode(context.language()) {
                                     @Override
                                     public Object execute(VirtualFrame frame) {
@@ -889,7 +889,6 @@ public class WasmJsApiSuite {
             WasmContext wasmContext = WasmContext.get(null);
             final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
                             wasmContext,
-                            null,
                             new RootNode(wasmContext.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
@@ -1288,13 +1287,13 @@ public class WasmJsApiSuite {
                         "))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmFunctionInstance func = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final WasmFunctionInstance func = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return 0;
                 }
             }.getCallTarget());
-            final WasmFunctionInstance f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final WasmFunctionInstance f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     final Object[] result = new Object[2];
@@ -1626,7 +1625,7 @@ public class WasmJsApiSuite {
 
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     final Object[] arr = {1, 2, 3};
@@ -1662,7 +1661,7 @@ public class WasmJsApiSuite {
                         "(export \"f\" (func $f)))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return 0;
@@ -1701,7 +1700,7 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
 
-            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return InteropArray.create(new Object[]{1, 2});
@@ -1740,7 +1739,7 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
 
-            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return InteropArray.create(new Object[]{0, 1.1, 2});
@@ -1801,7 +1800,7 @@ public class WasmJsApiSuite {
                         "(export \"f\" (func $i)))");
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     final Object[] arr = {1, 2, 3};

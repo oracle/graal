@@ -104,6 +104,11 @@ public final class WasmInstance extends RuntimeState implements TruffleObject {
         WasmContext.get(null).linker().tryLink(this);
     }
 
+    @Override
+    protected WasmInstance instance() {
+        return this;
+    }
+
     @ExportMessage
     boolean hasMembers() {
         return true;

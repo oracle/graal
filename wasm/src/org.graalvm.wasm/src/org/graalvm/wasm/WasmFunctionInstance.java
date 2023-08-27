@@ -58,6 +58,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 @ExportLibrary(InteropLibrary.class)
 public final class WasmFunctionInstance extends EmbedderDataHolder implements TruffleObject {
     private final WasmContext context;
+    private final WasmInstance moduleInstance;
     private final WasmFunction function;
     private final CallTarget target;
     private final TruffleContext truffleContext;
@@ -67,9 +68,21 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
      * <p>
      * If the function is imported, then context UID and the function are set to {@code null}.
      */
-    public WasmFunctionInstance(WasmContext context, WasmFunction function, CallTarget target) {
+    public WasmFunctionInstance(WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
+        this(moduleInstance.context(), moduleInstance, function, target);
+    }
+
+    /**
+     * Constructor for custom (test) functions not defined in a wasm module.
+     */
+    public WasmFunctionInstance(WasmContext context, CallTarget target) {
+        this(context, null, null, target);
+    }
+
+    private WasmFunctionInstance(WasmContext context, WasmInstance moduleInstance, WasmFunction function, CallTarget target) {
         Assert.assertNotNull(target, "Call target must be non-null", Failure.UNSPECIFIED_INTERNAL);
         this.context = context;
+        this.moduleInstance = moduleInstance;
         this.function = function;
         this.target = target;
         this.truffleContext = context.environment().getContext();
@@ -82,6 +95,10 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
 
     public WasmContext context() {
         return context;
+    }
+
+    public WasmInstance moduleInstance() {
+        return moduleInstance;
     }
 
     public String name() {
