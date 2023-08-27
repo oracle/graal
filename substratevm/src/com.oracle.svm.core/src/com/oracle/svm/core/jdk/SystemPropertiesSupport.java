@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.jdk;
 
+import java.io.File;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -35,10 +36,15 @@ import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.nativeimage.impl.ProcessPropertiesSupport;
 import org.graalvm.nativeimage.impl.RuntimeSystemPropertiesSupport;
 
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.util.VMError;
 
 /**
@@ -134,6 +140,7 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         lazyRuntimeValues.put("user.name", this::userName);
         lazyRuntimeValues.put("user.home", this::userHome);
         lazyRuntimeValues.put("user.dir", this::userDir);
+        lazyRuntimeValues.put("java.home", this::javaHomeDir);
         lazyRuntimeValues.put("java.io.tmpdir", this::javaIoTmpDir);
         lazyRuntimeValues.put("java.library.path", this::javaLibraryPath);
         lazyRuntimeValues.put("os.version", this::osVersionValue);
@@ -268,6 +275,15 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
         return cachedUserDir;
     }
 
+    private String cachedJavaHomeDir;
+
+    String javaHomeDir() {
+        if (cachedJavaHomeDir == null) {
+            cachedJavaHomeDir = javaHomeDirValue();
+        }
+        return cachedJavaHomeDir;
+    }
+
     private String cachedJavaIoTmpdir;
 
     String javaIoTmpDir() {
@@ -293,6 +309,20 @@ public abstract class SystemPropertiesSupport implements RuntimeSystemProperties
     protected abstract String userHomeValue();
 
     protected abstract String userDirValue();
+
+    /** Returns the directory containing the native image, or {@code null}. */
+    @NeverInline("Reads the return address.")
+    protected String javaHomeDirValue() {
+        /*
+         * While one might expect code for shared libraries to work for executables as well, this is
+         * not necessarily the case. For example, `dladdr` on Linux returns `argv[0]` for
+         * executables, which is completely useless when running an executable from `$PATH`, since
+         * then `argv[0]` contains only the name of the executable.
+         */
+        String image = !SubstrateOptions.SharedLibrary.getValue() ? ProcessProperties.getExecutableName()
+                        : ImageSingletons.lookup(ProcessPropertiesSupport.class).getObjectFile(KnownIntrinsics.readReturnAddress());
+        return image != null ? new File(image).getParent() : null;
+    }
 
     protected String javaIoTmpdirValue() {
         return tmpdirValue();
