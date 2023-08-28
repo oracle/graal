@@ -60,6 +60,8 @@ public class Isolates {
     public static final CGlobalData<Word> IMAGE_HEAP_WRITABLE_END = CGlobalDataFactory.forSymbol(IMAGE_HEAP_WRITABLE_END_SYMBOL_NAME);
 
     private static Boolean isCurrentFirst;
+    private static long startTimeMillis;
+    private static long startNanoTime;
 
     /**
      * Indicates if the current isolate is the first isolate in this process. If so, it can be
@@ -75,6 +77,31 @@ public class Isolates {
     public static void setCurrentIsFirstIsolate(boolean value) {
         VMError.guarantee(isCurrentFirst == null);
         isCurrentFirst = value;
+    }
+
+    public static void setCurrentStartTime() {
+        assert startTimeMillis == 0;
+        assert startNanoTime == 0;
+        startTimeMillis = System.currentTimeMillis();
+        startNanoTime = System.nanoTime();
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getCurrentStartTimeMillis() {
+        assert startTimeMillis != 0;
+        return startTimeMillis;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getCurrentUptimeMillis() {
+        assert startTimeMillis != 0;
+        return System.currentTimeMillis() - startTimeMillis;
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static long getCurrentStartNanoTime() {
+        assert startNanoTime != 0;
+        return startNanoTime;
     }
 
     @Uninterruptible(reason = "Thread state not yet set up.")
