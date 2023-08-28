@@ -396,6 +396,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "sdk:NATIVEIMAGE",
         "truffle:TRUFFLE_API",
         "sulong:SULONG_API",
       ],
@@ -1710,10 +1711,14 @@ suite = {
       "description" : "Module that contains resources needed by Sulong Native mode.",
       "moduleInfo" : {
         "name" : "org.graalvm.llvm.nativemode.resources",
+        "requires" : [
+          "static org.graalvm.nativeimage",
+        ],
       },
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.nativemode.resources"],
       "distDependencies" : [
+        "sdk:NATIVEIMAGE",
         "truffle:TRUFFLE_API",
         "SULONG_API",
         "SULONG_NATIVE_LIB_RESOURCES",
