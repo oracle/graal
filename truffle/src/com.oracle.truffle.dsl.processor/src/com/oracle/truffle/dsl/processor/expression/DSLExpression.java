@@ -62,12 +62,12 @@ import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.type.TypeVariable;
 
-import org.graalvm.shadowed.org.antlr.v4.runtime.BaseErrorListener;
-import org.graalvm.shadowed.org.antlr.v4.runtime.CharStreams;
-import org.graalvm.shadowed.org.antlr.v4.runtime.CommonTokenStream;
-import org.graalvm.shadowed.org.antlr.v4.runtime.RecognitionException;
-import org.graalvm.shadowed.org.antlr.v4.runtime.Recognizer;
-import org.graalvm.shadowed.org.antlr.v4.runtime.TokenStream;
+import org.antlr.v4.runtime.BaseErrorListener;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.RecognitionException;
+import org.antlr.v4.runtime.Recognizer;
+import org.antlr.v4.runtime.TokenStream;
 
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleSuppressedWarnings;
