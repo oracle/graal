@@ -245,7 +245,7 @@ public class Linker {
         final String importedGlobalName = importDescriptor.memberName;
         final String importedModuleName = importDescriptor.moduleName;
         final Runnable resolveAction = () -> {
-            final WasmInstance importedInstance = context.moduleInstances().get(importedModuleName);
+            final WasmInstance importedInstance = context.lookupModuleInstance(importedModuleName);
 
             if (importedInstance == null) {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, "Module '" + importedModuleName + "', referenced in the import of global variable '" +
@@ -323,7 +323,7 @@ public class Linker {
 
     void resolveFunctionImport(WasmContext context, WasmInstance instance, WasmFunction function) {
         final Runnable resolveAction = () -> {
-            final WasmInstance importedInstance = context.moduleInstances().get(function.importedModuleName());
+            final WasmInstance importedInstance = context.lookupModuleInstance(function.importedModuleName());
             if (importedInstance == null) {
                 throw WasmException.create(
                                 Failure.UNKNOWN_IMPORT,
@@ -374,7 +374,7 @@ public class Linker {
         final String importedModuleName = importDescriptor.moduleName;
         final String importedMemoryName = importDescriptor.memberName;
         final Runnable resolveAction = () -> {
-            final WasmInstance importedInstance = context.moduleInstances().get(importedModuleName);
+            final WasmInstance importedInstance = context.lookupModuleInstance(importedModuleName);
             if (importedInstance == null) {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("The module '%s', referenced in the import of memory '%s' in module '%s', does not exist",
                                 importedModuleName, importedMemoryName, instance.name()));
@@ -663,7 +663,7 @@ public class Linker {
 
     void resolveTableImport(WasmContext context, WasmInstance instance, ImportDescriptor importDescriptor, int tableIndex, int declaredMinSize, int declaredMaxSize, byte elemType) {
         final Runnable resolveAction = () -> {
-            final WasmInstance importedInstance = context.moduleInstances().get(importDescriptor.moduleName);
+            final WasmInstance importedInstance = context.lookupModuleInstance(importDescriptor.moduleName);
             final String importedModuleName = importDescriptor.moduleName;
             if (importedInstance == null) {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("Imported module '%s', referenced in module '%s', does not exist.", importedModuleName, instance.name()));
@@ -869,7 +869,7 @@ public class Linker {
             }
 
             public WasmInstance instance(WasmContext context) {
-                return context.moduleInstances().get(moduleName());
+                return context.lookupModuleInstance(moduleName);
             }
         }
 
