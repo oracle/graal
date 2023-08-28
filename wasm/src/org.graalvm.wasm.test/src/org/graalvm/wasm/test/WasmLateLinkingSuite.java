@@ -241,21 +241,25 @@ public class WasmLateLinkingSuite {
     @Test
     public void lazyLinkEquivalenceClasses() throws IOException, InterruptedException {
         // Exports table with a function
-        final byte[] exportBytes = compileWat("exportTable", "(module" +
-                        "(func $f0 (result i32) i32.const 42)" +
-                        "(table 1 1 funcref)" +
-                        "(export \"table\" (table 0))" +
-                        "(elem (i32.const 0) $f0)" +
-                        ")");
+        final byte[] exportBytes = compileWat("exportTable", """
+                        (module
+                        (func $f0 (result i32) i32.const 42)
+                        (table 1 1 funcref)
+                        (export "table" (table 0))
+                        (elem (i32.const 0) $f0)
+                        )
+                        """);
 
         // Imports table and exports function that invokes functions from the table
-        final byte[] importBytes = compileWat("importTable", "(module" +
-                        "(type (func (param i32) (result i32)))" +
-                        "(type (func (result i32)))" +
-                        "(import \"main\" \"table\" (table 1 1 funcref))" +
-                        "(func (type 0) (param i32) (result i32) local.get 0 call_indirect (type 1))" +
-                        "(export \"testFunc\" (func 0))" +
-                        ")");
+        final byte[] importBytes = compileWat("importTable", """
+                        (module
+                        (type (func (param i32) (result i32)))
+                        (type (func (result i32)))
+                        (import "main" "table" (table 1 1 funcref))
+                        (func (type 0) (param i32) (result i32) local.get 0 call_indirect (type 1))
+                        (export "testFunc" (func 0))
+                        )
+                        """);
 
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
             final ByteSequence exportByteSeq = ByteSequence.create(exportBytes);
@@ -330,19 +334,22 @@ public class WasmLateLinkingSuite {
                     (byte) 0x5a, (byte) 0x65, (byte) 0x72, (byte) 0x6f, (byte) 0x02, (byte) 0x03, (byte) 0x01, (byte) 0x00, (byte) 0x00,
     };
 
-    private static final String textWithExportFun = "" +
-                    "(func $f (result i32) (i32.const 42))\n" +
-                    "(export \"f\" (func $f))";
+    private static final String textWithExportFun = """
+                    (func $f (result i32) (i32.const 42))
+                    (export "f" (func $f))
+                    """;
 
-    private static final String textWithExportFun2 = "" +
-                    "(func $f (result i32) (i32.const 43))\n" +
-                    "(export \"f\" (func $f))";
+    private static final String textWithExportFun2 = """
+                    (func $f (result i32) (i32.const 43))
+                    (export "f" (func $f))
+                    """;
 
-    private static final String textWithImportFunExportFun = "" +
-                    "(import \"m1\" \"f\" (func $f (result i32)))\n" +
-                    "(memory (;0;) 4)\n" +
-                    "(func $h (result i32) (i32.const 43))\n" +
-                    "(export \"memory\" (memory 0))\n" +
-                    "(export \"g\" (func $f))\n" +
-                    "(export \"h\" (func $h))";
+    private static final String textWithImportFunExportFun = """
+                    (import "m1" "f" (func $f (result i32)))
+                    (memory (;0;) 4)
+                    (func $h (result i32) (i32.const 43))
+                    (export "memory" (memory 0))
+                    (export "g" (func $f))
+                    (export "h" (func $h))
+                    """;
 }
