@@ -1814,6 +1814,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             TruffleContext truffleContext = functionInstance.getTruffleContext();
             Object prev = truffleContext.enter(this);
             try {
+                assert callNode.getCallTarget() == functionInstance.target();
                 return callNode.call(args);
             } finally {
                 truffleContext.leave(this, prev);
