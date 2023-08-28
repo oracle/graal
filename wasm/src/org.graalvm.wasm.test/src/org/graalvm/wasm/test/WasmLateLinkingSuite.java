@@ -40,6 +40,12 @@
  */
 package org.graalvm.wasm.test;
 
+import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
+import static org.hamcrest.CoreMatchers.containsString;
+
+import java.io.IOException;
+import java.util.function.Consumer;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
@@ -48,11 +54,6 @@ import org.graalvm.polyglot.io.ByteSequence;
 import org.graalvm.wasm.WasmLanguage;
 import org.junit.Assert;
 import org.junit.Test;
-
-import java.io.IOException;
-import java.util.function.Consumer;
-
-import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 public class WasmLateLinkingSuite {
     private static final int N_CONTEXTS = 3;
@@ -131,8 +132,8 @@ public class WasmLateLinkingSuite {
                 // We can later refine these semantics, and avoid a failure here.
                 // To do this, we should only lazily link exactly the required modules, instead of
                 // linking all of them.
-                Assert.assertTrue("Should fail due to unresolved import in the other module, got: " + e.getMessage(),
-                                e.getMessage().contains("module 'non_existing', referenced by the import 'f' in the module 'main', does not exist"));
+                Assert.assertThat("Should fail due to unresolved import in the other module.", e.getMessage(),
+                                containsString("module 'non_existing', referenced by the import 'f' in the module 'module1', does not exist"));
             }
 
             try {
@@ -166,8 +167,8 @@ public class WasmLateLinkingSuite {
                 // We can later refine these semantics, and avoid a failure here.
                 // To do this, we should only lazily link exactly the required modules, instead of
                 // linking all of them.
-                Assert.assertTrue("Should fail due to unresolved import in the other module, got: " + e.getMessage(),
-                                e.getMessage().contains("module 'non_existing', referenced by the import 'f' in the module 'module1', does not exist"));
+                Assert.assertThat("Should fail due to unresolved import in the other module.", e.getMessage(),
+                                containsString("module 'non_existing', referenced by the import 'f' in the module 'module1', does not exist"));
             }
 
             try {
@@ -193,19 +194,19 @@ public class WasmLateLinkingSuite {
             try {
                 final Value g = module2Instance.getMember("g");
                 g.execute();
-                Assert.assertFalse("Should not reach here.", true);
+                Assert.fail("Should not reach here.");
             } catch (Throwable e) {
-                Assert.assertTrue("Should fail due to unresolved import in the other module, got: " + e.getMessage(),
-                                e.getMessage().contains("module 'non_existing', referenced by the import 'f' in the module 'main', does not exist"));
+                Assert.assertThat("Should fail due to unresolved import in the other module.", e.getMessage(),
+                                containsString("module 'non_existing', referenced by the import 'f' in the module 'module1', does not exist"));
             }
 
             try {
                 final Value g2 = module2Instance.getMember("g");
                 g2.execute();
-                Assert.assertFalse("Should not reach here.", true);
+                Assert.fail("Should not reach here.");
             } catch (Throwable e) {
-                Assert.assertTrue("Should fail due to both modules being in a failed linking state, got: " + e.getMessage(),
-                                e.getMessage().contains("Linking of module wasm-module(module2) previously failed"));
+                Assert.assertThat("Should fail due to both modules being in a failed linking state.", e.getMessage(),
+                                containsString("Linking of module wasm-module(module2) previously failed"));
             }
         }
     }
