@@ -141,26 +141,14 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         final Object[] values = new Object[resultCount];
         for (int i = 0; i < resultCount; i++) {
             byte resultType = function.resultTypeAt(i);
-            switch (resultType) {
-                case WasmType.I32_TYPE:
-                    values[i] = (int) multiValueStack[i];
-                    break;
-                case WasmType.I64_TYPE:
-                    values[i] = multiValueStack[i];
-                    break;
-                case WasmType.F32_TYPE:
-                    values[i] = Float.intBitsToFloat((int) multiValueStack[i]);
-                    break;
-                case WasmType.F64_TYPE:
-                    values[i] = Double.longBitsToDouble(multiValueStack[i]);
-                    break;
-                case WasmType.FUNCREF_TYPE:
-                case WasmType.EXTERNREF_TYPE:
-                    values[i] = referenceMultiValueStack[i];
-                    break;
-                default:
-                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
-            }
+            values[i] = switch (resultType) {
+                case WasmType.I32_TYPE -> (int) multiValueStack[i];
+                case WasmType.I64_TYPE -> multiValueStack[i];
+                case WasmType.F32_TYPE -> Float.intBitsToFloat((int) multiValueStack[i]);
+                case WasmType.F64_TYPE -> Double.longBitsToDouble(multiValueStack[i]);
+                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> referenceMultiValueStack[i];
+                default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
+            };
         }
         return InteropArray.create(values);
     }
