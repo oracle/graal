@@ -39,7 +39,7 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.39.0",
+  "mxversion": "6.44.1",
   "name" : "truffle",
   "version" : "24.0.0",
   "release" : False,
@@ -196,9 +196,6 @@ suite = {
         "java.logging",
         "jdk.unsupported", # sun.misc.Unsafe
       ],
-      # We need to force javac as JDT has a bug that JDT ignores SuppressWarnings
-      # if warnings as errors is enabled. See GR-14683.
-      "forceJavac" : "true",
       "javaCompliance" : "17+",
       "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,Truffle",
@@ -1181,7 +1178,9 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "forceJavac" : "true",
+      # We need to force javac because the generated sources in this project
+      # produce warnings in JDT.
+      "forceJavac": True,
       "spotbugs" : "false",
       "requires" : [
       ],
