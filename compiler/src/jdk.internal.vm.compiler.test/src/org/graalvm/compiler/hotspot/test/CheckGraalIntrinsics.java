@@ -187,7 +187,7 @@ public class CheckGraalIntrinsics extends GraalTest {
                     mischaracterizedAsToBeInvestigated.add(m + " [plugin: " + plugin + "]");
                 } else if (unimplementedGraalIntrinsics.isIgnored(m)) {
                     mischaracterizedAsIgnored.add(m + " [plugin: " + plugin + "]");
-                } else if (!isIntrinsicAvailable(intrinsic)) {
+                } else if (!isIntrinsicAvailable(intrinsic) && !plugin.isGraalOnly()) {
                     notAvailableYetIntrinsified.add(m + " [plugin: " + plugin + "]");
                 }
             }

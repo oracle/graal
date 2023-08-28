@@ -69,7 +69,7 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
     private final List<Predicate<ResolvedJavaType>> intrinsificationPredicates = new ArrayList<>();
 
     record MethodKey(String name, String descriptor) {
-    };
+    }
 
     private final EconomicMap<String, EconomicSet<MethodKey>> disabledIntrinsics = EconomicMap.create();
 
@@ -155,10 +155,17 @@ final class HotSpotInvocationPlugins extends InvocationPlugins {
             EconomicSet<MethodKey> disabledIntrinsicsSet = disabledIntrinsics.get(method.getDeclaringClass().getName());
             if (disabledIntrinsicsSet != null && disabledIntrinsicsSet.contains(new MethodKey(method.getName(), method.getSignature().toMethodDescriptor()))) {
                 if (invocationPlugin.canBeDisabled()) {
-                    if (shouldLogDisabledIntrinsics(options)) {
-                        TTY.println("[Warning] Intrinsic for %s is disabled by HotSpot runtime.", method.format("%H.%n(%p)"));
+                    if (invocationPlugin.isGraalOnly()) {
+                        if (shouldLogDisabledIntrinsics(options)) {
+                            TTY.println("[Warning] Intrinsic for %s is only implemented in Graal and cannot be disabled via HotSpot flags. Use -Dgraal.DisableIntrinsics= instead.",
+                                            method.format("%H.%n(%p)"));
+                        }
+                    } else {
+                        if (shouldLogDisabledIntrinsics(options)) {
+                            TTY.println("[Warning] Intrinsic for %s is disabled by HotSpot runtime.", method.format("%H.%n(%p)"));
+                        }
+                        return null;
                     }
-                    return null;
                 } else {
                     if (shouldLogDisabledIntrinsics(options)) {
                         TTY.println("[Warning] Intrinsic for %s cannot be disabled.", method.format("%H.%n(%p)"));

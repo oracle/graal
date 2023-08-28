@@ -854,6 +854,13 @@ public class StandardGraphBuilderPlugins {
                 b.addPush(JavaKind.Boolean, ConditionalNode.create(isDigit, NodeView.DEFAULT));
                 return true;
             }
+
+            @Override
+            public boolean isGraalOnly() {
+                // On X64/AArch64 HotSpot, this intrinsic is not implemented and
+                // UseCharacterCompareIntrinsics defaults to false
+                return true;
+            }
         });
     }
 
