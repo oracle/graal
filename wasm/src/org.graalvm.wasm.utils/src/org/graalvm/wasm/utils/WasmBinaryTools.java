@@ -50,9 +50,13 @@ import java.nio.file.Files;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+
+import org.graalvm.collections.Pair;
 
 public class WasmBinaryTools {
     public enum WabtOption {
@@ -133,7 +137,13 @@ public class WasmBinaryTools {
         return binary;
     }
 
-    public static byte[] compileWat(String name, String program, EnumSet<WabtOption> options) throws IOException, InterruptedException {
+    public static synchronized byte[] compileWat(String name, String program, EnumSet<WabtOption> options) throws IOException, InterruptedException {
+        var cacheKey = Pair.create(program, options);
+        byte[] cachedBytes = wat2wasmCache.get(cacheKey);
+        if (cachedBytes != null) {
+            return cachedBytes;
+        }
+
         // create two temporary files for the text and the binary, write the given program to the
         // first one
         File watFile = File.createTempFile(name + "-wasm-text-", ".wat");
@@ -143,10 +153,13 @@ public class WasmBinaryTools {
         byte[] binary = wat2wasm(watFile, wasmFile, options);
         watFile.deleteOnExit();
         wasmFile.deleteOnExit();
+        wat2wasmCache.putIfAbsent(cacheKey, binary);
         return binary;
     }
 
     public static byte[] compileWat(String name, String program) throws IOException, InterruptedException {
         return compileWat(name, program, EnumSet.noneOf(WabtOption.class));
     }
+
+    private static Map<Pair<String, EnumSet<WabtOption>>, byte[]> wat2wasmCache = new HashMap<>();
 }
