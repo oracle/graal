@@ -1621,7 +1621,7 @@ suite = {
         "truffle:ANTLR4",
       ],
       "javaProperties" : {
-        "org.graalvm.language.llvm.home": "<sulong_home>",
+        "org.graalvm.language.llvm.home": "<path:SULONG_HOME>",
       },
       "maven": {
         "artifactId": "llvm-language",
@@ -1844,7 +1844,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-    "SULONG_HOME" : {
+    "SULONG_HOME_NATIVEMODE" : {
       "description" : "Only used as build dependency.",
       "native" : True,
       "relpath" : False,
