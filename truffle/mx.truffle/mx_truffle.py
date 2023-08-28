@@ -803,7 +803,7 @@ def check_filename_length(args):
 
 def create_dsl_parser(args=None, out=None):
     """create the DSL expression parser using antlr"""
-    create_parser("com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.expression", "Expression", args=args, out=out, shaded=True)
+    create_parser("com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.expression", "Expression", args=args, out=out)
 
 def create_sl_parser(args=None, out=None):
     """create the SimpleLanguage parser using antlr"""

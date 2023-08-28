@@ -474,7 +474,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "truffle:TRUFFLE_ANTLR4"
+        "truffle:ANTLR4"
       ],
       "requires" : [
         "java.compiler",
@@ -1167,7 +1167,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "truffle:TRUFFLE_ANTLR4"
+        "truffle:ANTLR4"
       ],
       "requires" : [
         "java.compiler",
@@ -1723,9 +1723,7 @@ suite = {
       "dependencies" : [
         "com.oracle.truffle.dsl.processor",
       ],
-      "distDependencies" : [
-        "TRUFFLE_ANTLR4",
-      ],
+      "distDependencies" : [],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,
       "maven": {
@@ -1736,9 +1734,7 @@ suite = {
     "TRUFFLE_LIBGRAAL_PROCESSOR" : {
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.libgraal.processor"],
-      "distDependencies" : [
-        "TRUFFLE_ANTLR4",
-      ],
+      "distDependencies" : [],
       "description" : "The Truffle libgraal processor is shared across Truffle and the compiler to generate code for the compiler bridge.",
       "allowsJavadocWarnings": True,
       "maven": {
