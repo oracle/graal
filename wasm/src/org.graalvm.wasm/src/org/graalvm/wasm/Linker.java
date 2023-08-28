@@ -640,9 +640,16 @@ public class Linker {
             }
             if (context.getContextOptions().useUnsafeMemory()) {
                 final byte[] bytecode = instance.module().bytecode();
-                final int length = bytecode[bytecodeOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
-                final long address = NativeDataInstanceUtil.allocateNativeInstance(instance.module().bytecode(), bytecodeOffset + length + 9, bytecodeLength);
-                BinaryStreamParser.writeI64(bytecode, bytecodeOffset + length + 1, address);
+                final int length = switch (bytecode[bytecodeOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) {
+                    case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE -> 0;
+                    case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8 -> 1;
+                    case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16 -> 2;
+                    case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32 -> 4;
+                    default -> throw CompilerDirectives.shouldNotReachHere();
+                };
+                final long address = NativeDataInstanceUtil.allocateNativeInstance(instance.module().bytecode(),
+                                bytecodeOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length + BytecodeBitEncoding.DATA_SEG_RUNTIME_UNSAFE_ADDRESS_LENGTH, bytecodeLength);
+                BinaryStreamParser.writeI64(bytecode, bytecodeOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length, address);
             }
             instance.setDataInstance(dataSegmentId, bytecodeOffset);
         };
