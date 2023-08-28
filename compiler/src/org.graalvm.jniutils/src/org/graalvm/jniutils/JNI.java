@@ -364,6 +364,9 @@ public final class JNI {
         @CField("NewWeakGlobalRef")
         NewWeakGlobalRef getNewWeakGlobalRef();
 
+        @CField("NewLocalRef")
+        NewLocalRef getNewLocalRef();
+
         @CField("DeleteWeakGlobalRef")
         DeleteWeakGlobalRef getDeleteWeakGlobalRef();
 
@@ -819,6 +822,11 @@ public final class JNI {
     public interface NewWeakGlobalRef extends CFunctionPointer {
         @InvokeCFunctionPointer
         JWeak call(JNIEnv env, JObject lobj);
+    }
+
+    public interface NewLocalRef extends CFunctionPointer {
+        @InvokeCFunctionPointer
+        JObject call(JNIEnv env, JObject obj);
     }
 
     public interface NewObjectA extends CFunctionPointer {
