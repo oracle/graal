@@ -36,6 +36,11 @@ import org.junit.Test;
 
 import jdk.vm.ci.aarch64.AArch64;
 
+/**
+ * Checks that the HotSpot flags related to intrinsics implemented only by Graal are off by default.
+ * Failure of this test indicates the intrinsic may have been implemented in HotSpot and Graal needs
+ * to respect the related HotSpot flags.
+ */
 public class GraalOnlyIntrinsicsTest extends SubprocessTest {
 
     public final HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
