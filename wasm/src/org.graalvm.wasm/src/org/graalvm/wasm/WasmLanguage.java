@@ -93,7 +93,7 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     protected CallTarget parse(ParsingRequest request) {
         final WasmContext context = WasmContext.get(null);
         final Source source = request.getSource();
-        final String moduleName = context.isFirstModule() ? "main" : source.getName();
+        final String moduleName = source.getName();
         final byte[] data = source.getBytes().toByteArray();
         final WasmModule module = context.readModule(moduleName, data, null);
         return new ParsedWasmModuleRootNode(this, module, source).getCallTarget();

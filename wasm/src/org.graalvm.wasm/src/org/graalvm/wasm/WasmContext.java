@@ -65,10 +65,10 @@ public final class WasmContext {
     private final TableRegistry tableRegistry;
     private final Linker linker;
     private final Map<String, WasmInstance> moduleInstances;
+    private WasmInstance mainModuleInstance;
     private int moduleNameCount;
     private final FdManager filesManager;
     private final WasmContextOptions contextOptions;
-    private boolean firstModule = true;
 
     public WasmContext(Env env, WasmLanguage language) {
         this.env = env;
@@ -140,9 +140,12 @@ public final class WasmContext {
         return moduleInstances.get(module.name());
     }
 
-    @TruffleBoundary
     public WasmInstance lookupMainModule() {
-        return moduleInstances.get("main");
+        return mainModuleInstance;
+    }
+
+    public boolean hasMainModule() {
+        return lookupMainModule() != null;
     }
 
     public void register(WasmInstance instance) {
@@ -150,6 +153,9 @@ public final class WasmContext {
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Context already contains an instance named '" + instance.name() + "'.");
         }
         moduleInstances.put(instance.name(), instance);
+        if (mainModuleInstance == null && !instance.isBuiltin()) {
+            mainModuleInstance = instance;
+        }
     }
 
     private void instantiateBuiltinInstances() {
@@ -251,11 +257,5 @@ public final class WasmContext {
      */
     public void resizeMultiValueStack(int expectedSize) {
         language.multiValueStack().resize(expectedSize);
-    }
-
-    public boolean isFirstModule() {
-        boolean wasFirst = firstModule;
-        firstModule = false;
-        return wasFirst;
     }
 }
