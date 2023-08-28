@@ -978,6 +978,11 @@ public class SVMHost extends HostVM {
     }
 
     @Override
+    public boolean addImplicitTypeflowNullChecks(AnalysisMethod method) {
+        return SubstrateCompilationDirectives.isRuntimeCompiledMethod(method);
+    }
+
+    @Override
     public FieldValueComputer createFieldValueComputer(AnalysisField field) {
         UnknownObjectField unknownObjectField = field.getAnnotation(UnknownObjectField.class);
         if (unknownObjectField != null) {
