@@ -121,7 +121,7 @@ public final class WasmContext {
 
     @SuppressWarnings("unused")
     public Object getScope() {
-        return new WasmScope(moduleInstances);
+        return new WasmScope(this);
     }
 
     public FdManager fdManager() {
