@@ -112,6 +112,33 @@ public class WasmLateLinkingSuite {
     }
 
     @Test
+    public void linkingTooLateDifferentImportedFunctions() throws IOException, InterruptedException {
+        final ByteSequence binaryMain = ByteSequence.create(compileWat("file0", textWithImportFunExportFun));
+        final ByteSequence binaryAux1 = ByteSequence.create(compileWat("file1", textWithExportFun));
+        final ByteSequence binaryAux2 = ByteSequence.create(compileWat("file1", textWithExportFun2));
+        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "m0").build();
+        final Source sourceAux1 = Source.newBuilder(WasmLanguage.ID, binaryAux1, "m1").build();
+        final Source sourceAux2 = Source.newBuilder(WasmLanguage.ID, binaryAux2, "m1").build();
+        try (Engine engine = Engine.create()) {
+            for (int i = 0; i < N_CONTEXTS; i++) {
+                try (Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
+                    context.eval(sourceMain); // main
+                    int expected;
+                    if (i < N_CONTEXTS - 1) {
+                        context.eval(sourceAux1); // m1
+                        expected = 42;
+                    } else {
+                        context.eval(sourceAux2); // m1'
+                        expected = 43;
+                    }
+                    final Value g = context.getBindings(WasmLanguage.ID).getMember("main").getMember("g");
+                    Assert.assertEquals(expected, g.execute().asInt());
+                }
+            }
+        }
+    }
+
+    @Test
     public void linkingFailureInvertedOnlyAux() throws IOException, InterruptedException {
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
             final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", "(import \"non_existing\" \"f\" (func))"));
@@ -305,6 +332,10 @@ public class WasmLateLinkingSuite {
 
     private static final String textWithExportFun = "" +
                     "(func $f (result i32) (i32.const 42))\n" +
+                    "(export \"f\" (func $f))";
+
+    private static final String textWithExportFun2 = "" +
+                    "(func $f (result i32) (i32.const 43))\n" +
                     "(export \"f\" (func $f))";
 
     private static final String textWithImportFunExportFun = "" +
