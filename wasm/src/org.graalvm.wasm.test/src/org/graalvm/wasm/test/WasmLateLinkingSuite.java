@@ -41,6 +41,7 @@
 package org.graalvm.wasm.test;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.ByteSequence;
@@ -54,6 +55,8 @@ import java.util.function.Consumer;
 import static org.graalvm.wasm.utils.WasmBinaryTools.compileWat;
 
 public class WasmLateLinkingSuite {
+    private static final int N_CONTEXTS = 3;
+
     @Test
     public void testLateMemoryLink() throws IOException {
         runTest(binaryWithMemoryExport, context -> {
@@ -84,6 +87,26 @@ public class WasmLateLinkingSuite {
             context.eval(sourceAux); // m1
             final Value g = context.getBindings(WasmLanguage.ID).getMember("main").getMember("g");
             Assert.assertEquals(42, g.execute().asInt());
+        }
+    }
+
+    @Test
+    public void linkingTooLateShared() throws IOException, InterruptedException {
+        final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", textWithExportFun));
+        final ByteSequence binaryMain = ByteSequence.create(compileWat("file1", textWithImportFunExportFun));
+        final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "m1").build();
+        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "m2").build();
+        try (Engine engine = Engine.create()) {
+            for (int i = 0; i < N_CONTEXTS; i++) {
+                try (Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
+                    Value main = context.eval(sourceMain); // main
+                    Value main2 = context.eval(sourceMain); // main
+                    Assert.assertEquals(main, main2);
+                    context.eval(sourceAux); // m1
+                    final Value g = context.getBindings(WasmLanguage.ID).getMember("main").getMember("g");
+                    Assert.assertEquals(42, g.execute().asInt());
+                }
+            }
         }
     }
 
