@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,34 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core;
+package com.oracle.svm.core.heap.dump;
 
 import java.io.IOException;
 
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.heap.dump.HeapDumping;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.log.Log;
 
 import jdk.internal.misc.Signal;
 
-@AutomaticallyRegisteredFeature
-public class DumpHeapOnSignalFeature implements InternalFeature {
-
-    @Override
-    public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return VMInspectionOptions.hasHeapDumpSupport();
-    }
-
-    @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
-        RuntimeSupport.getRuntimeSupport().addInitializationHook(new DumpHeapStartupHook());
-        RuntimeSupport.getRuntimeSupport().addTearDownHook(new DumpHeapTeardownHook());
-    }
-}
-
-final class DumpHeapStartupHook implements RuntimeSupport.Hook {
+public class HeapDumpStartupHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
         if (isFirstIsolate && SubstrateOptions.EnableSignalHandling.getValue()) {
@@ -59,14 +42,6 @@ final class DumpHeapStartupHook implements RuntimeSupport.Hook {
         if (SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue()) {
             HeapDumping.singleton().initializeDumpHeapOnOutOfMemoryError();
         }
-    }
-}
-
-final class DumpHeapTeardownHook implements RuntimeSupport.Hook {
-    @Override
-    public void execute(boolean isFirstIsolate) {
-        /* Do this unconditionally, the runtime option could have changed in the meanwhile. */
-        HeapDumping.singleton().teardownDumpHeapOnOutOfMemoryError();
     }
 }
 
