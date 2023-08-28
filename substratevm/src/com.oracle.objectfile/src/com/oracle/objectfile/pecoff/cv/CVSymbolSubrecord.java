@@ -373,7 +373,7 @@ abstract class CVSymbolSubrecord {
             public final short start;
             public final short length;
 
-            public Gap(short start, short length) {
+            Gap(short start, short length) {
                 this.start = start;
                 this.length = length;
             }
