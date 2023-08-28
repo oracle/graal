@@ -543,15 +543,18 @@ local devkits = graal_common.devkits;
 
     only_native_dists:: 'TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE',
 
-    build(os, arch):: [
-      self.mx_cmd_base(os, arch) + ['build'],
+    build(os, arch, mx_args=[], build_args=[]):: [
+      self.mx_cmd_base(os, arch) + mx_args + ['build'] + build_args,
     ],
-    build_only_native(os, arch):: [
-      self.mx_cmd_base_only_native(os, arch) + ['build', '--dependencies', self.only_native_dists],
-    ],
+
+    pd_layouts_archive_name(os, arch):: 'pd_layouts_' + os + '_' + arch + '.tar.gz',
+
+    pd_layouts_artifact_name(platform, dry_run):: 'pd-layouts-' + (if dry_run then 'dry-run-' else '') + platform,
 
     mvn_args: ['maven-deploy', '--tags=public', '--all-distribution-types', '--validate=full', '--version-suite=vm'],
     mvn_args_only_native: self.mvn_args + ['--all-suites', '--only', self.only_native_dists],
+
+    is_main_platform(os, arch):: os == 'linux' && arch == 'amd64',
 
     deploy(os, arch, dry_run, repo_strings):: [
       self.mx_cmd_base(os, arch)
@@ -570,34 +573,64 @@ local devkits = graal_common.devkits;
       + repo_strings,
     ],
 
-    run_block(os, arch, target, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo)::
-      # we always need a full build for the local deployment of resource bundles, even when `type==only_native`
-      self.build(os, arch)
-      + (
-        if (target=='all') then
-          self.deploy(os, arch, dry_run, [remote_mvn_repo])
-        else if (target == 'native_and_bundle') then
-          self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
-        else if (target == 'bundle') then
-          [['echo', 'Deploying only the resource bundles']]
-        else
-          error "Unknown target " + target
-      ) + [
-        # resource bundle
-        ['set-export', 'VERSION_STRING', self.mx_cmd_base(os, arch) + ['--quiet', 'graalvm-version']],
-        ['set-export', 'LOCAL_MAVEN_REPO_REL_PATH', 'maven-resource-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
-        ['set-export', 'LOCAL_MAVEN_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REPO_REL_PATH}']],
-      ]
-      + self.deploy(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
-      + (
-        if (dry_run) then
-          [['echo', 'Skipping the archiving and the final maven deployment']]
-        else [
-          ['set-export', 'MAVEN_RESOURCE_BUNDLE', '${LOCAL_MAVEN_REPO_REL_PATH}'],
-          ['mx', 'build', '--dependencies', 'MAVEN_RESOURCE_BUNDLE'],
-          ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
+    run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo)::
+      if (self.is_main_platform(os, arch)) then (
+        [
+          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name('linux', 'aarch64')],
+          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name('darwin', 'amd64')],
+          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name('darwin', 'aarch64')],
+          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name('windows', 'amd64')],
         ]
+        + self.build(os, arch, mx_args=['-multi-platform-layout-directories=all'])
+        + self.deploy(os, arch, dry_run, [remote_mvn_repo])
+        + [
+          # resource bundle
+          ['set-export', 'VERSION_STRING', self.mx_cmd_base(os, arch) + ['--quiet', 'graalvm-version']],
+          ['set-export', 'LOCAL_MAVEN_REPO_REL_PATH', 'maven-resource-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
+          ['set-export', 'LOCAL_MAVEN_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REPO_REL_PATH}']],
+        ]
+        + self.deploy(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+        + (
+          if (dry_run) then
+            [['echo', 'Skipping the archiving and the final maven deployment']]
+          else [
+            ['set-export', 'MAVEN_RESOURCE_BUNDLE', '${LOCAL_MAVEN_REPO_REL_PATH}'],
+            ['mx', 'build', '--dependencies', 'MAVEN_RESOURCE_BUNDLE'],
+            ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
+          ]
+        )
+      ) else (
+        self.build(os, arch, build_args=['--dependencies', self.only_native_dists + ',{PLATFORM_DEPENDENT_LAYOUT_DIR_DISTRIBUTIONS}'])
+        + self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
+        + (
+          if (dry_run) then [
+            ['echo', 'Dry runs skip the archiving of platform-specific layout dirs']
+          ] else [
+            self.mx_cmd_base(os, arch) + ['archive-pd-layouts', self.pd_layouts_archive_name(os, arch)],
+          ]
+        )
       ),
+
+    base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo):: {
+      run: $.maven_deploy_base_functions.run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo),
+    } + if (self.is_main_platform(os, arch)) then {
+       requireArtifacts+: [
+         {
+           name: $.maven_deploy_base_functions.pd_layouts_artifact_name(platform, dry_run),
+           dir: vm.vm_dir,
+           autoExtract: false,
+         } for platform in ['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64']
+       ],
+     }
+    else {
+      publishArtifacts+: [
+        {
+           name: $.maven_deploy_base_functions.pd_layouts_artifact_name(os + '-' + arch, dry_run),
+           dir: vm.vm_dir,
+           patterns: [$.maven_deploy_base_functions.pd_layouts_archive_name(os, arch)],
+        },
+      ],
+    },
   },
 
   deploy_build: {
