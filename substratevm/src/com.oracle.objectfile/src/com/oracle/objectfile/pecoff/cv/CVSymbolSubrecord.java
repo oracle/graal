@@ -424,7 +424,7 @@ abstract class CVSymbolSubrecord {
             String s = "";
             if (gaps != null) {
                 for (Gap gap : gaps) {
-                    s = String.format("%s\n     - gap=0x%x len=0x%x last=0x%x", s, gap.start, gap.length, gap.start + gap.length - 1);
+                    s = String.format("%s%n     - gap=0x%x len=0x%x last=0x%x", s, gap.start, gap.length, gap.start + gap.length - 1);
                 }
             }
             return s;
