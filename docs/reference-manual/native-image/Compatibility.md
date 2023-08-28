@@ -3,7 +3,9 @@ layout: docs
 toc_group: metadata
 link_title: Compatibility Guide
 permalink: /reference-manual/native-image/metadata/Compatibility/
-redirect_from: /reference-manual/native-image/Limitations/
+redirect_from: 
+- /reference-manual/native-image/Limitations/
+- /reference-manual/native-image/ARM64/
 ---
 
 # Native Image Compatibility Guide

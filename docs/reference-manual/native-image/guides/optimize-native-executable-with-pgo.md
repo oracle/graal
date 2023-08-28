@@ -3,6 +3,7 @@ layout: ni-docs
 toc_group: how-to-guides
 link_title: Optimize a Native Executable with PGO
 permalink: /reference-manual/native-image/guides/optimize-native-executable-with-pgo/
+redirect_from: /reference-manual/native-image/PGO/
 ---
 
 # Optimize a Native Executable with Profile-Guided Optimizations
