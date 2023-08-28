@@ -230,14 +230,15 @@ public final class ThreadLocalAllocation {
     private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub) {
         DeoptTester.disableDeoptTesting();
         long startTicks = JfrTicks.elapsedTicks();
+        UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewInstanceWithoutAllocating", DynamicHub.toClass(hub).getName());
-            GCImpl.getGCImpl().maybeCollectOnAllocation();
+            GCImpl.getGCImpl().maybeCollectOnAllocation(size);
 
             AlignedHeader newTlab = HeapImpl.getChunkProvider().produceAlignedChunk();
             return allocateInstanceInNewTlab(hub, newTlab);
         } finally {
-            ObjectAllocationInNewTLABEvent.emit(startTicks, hub, LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()), HeapParameters.getAlignedHeapChunkSize());
+            ObjectAllocationInNewTLABEvent.emit(startTicks, hub, size, HeapParameters.getAlignedHeapChunkSize());
             DeoptTester.enableDeoptTesting();
         }
     }
@@ -296,7 +297,7 @@ public final class ThreadLocalAllocation {
         UnsignedWord tlabSize = HeapParameters.getAlignedHeapChunkSize();
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewArrayOrPodWithoutAllocating", DynamicHub.toClass(hub).getName());
-            GCImpl.getGCImpl().maybeCollectOnAllocation();
+            GCImpl.getGCImpl().maybeCollectOnAllocation(size);
 
             if (size.aboveOrEqual(HeapParameters.getLargeArrayThreshold())) {
                 /* Large arrays go into their own unaligned chunk. */

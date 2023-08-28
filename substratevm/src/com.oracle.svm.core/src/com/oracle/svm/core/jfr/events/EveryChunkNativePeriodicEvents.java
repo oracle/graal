@@ -27,6 +27,7 @@ package com.oracle.svm.core.jfr.events;
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadMXBean;
 
+//import com.oracle.svm.core.genscavenge.HeapParameters;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -50,6 +51,7 @@ public class EveryChunkNativePeriodicEvents extends Event {
                         threadMXBean.getTotalStartedThreadCount(), threadMXBean.getPeakThreadCount());
 
         emitPhysicalMemory(com.oracle.svm.core.heap.PhysicalMemory.size().rawValue(), 0);
+// emitGCTLABConfiguration();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -81,4 +83,18 @@ public class EveryChunkNativePeriodicEvents extends Event {
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }
+// @Uninterruptible(reason = "Accesses a JFR buffer.")
+// private static void emitGCTLABConfiguration() {
+// if (JfrEvent.GCTLABConfiguration.shouldEmit()) {
+// JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
+// JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+//
+// JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.GCTLABConfiguration);
+// JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
+// JfrNativeEventWriter.putLong(data, HeapParameters.getAlignedHeapChunkSize());
+// JfrNativeEventWriter.putLong(data, 0);
+// JfrNativeEventWriter.putBoolean(data, true);
+// JfrNativeEventWriter.endSmallEvent(data);
+// }
+// }
 }
