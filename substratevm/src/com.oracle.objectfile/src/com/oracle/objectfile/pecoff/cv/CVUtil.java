@@ -280,14 +280,14 @@ abstract class CVUtil {
                     {CV_AMD64_BPL, CV_AMD64_BP, CV_AMD64_EBP, CV_AMD64_RBP}, /* rbp */
                     {CV_AMD64_SIL, CV_AMD64_SI, CV_AMD64_ESI, CV_AMD64_RSI}, /* rsi */
                     {CV_AMD64_DIL, CV_AMD64_DI, CV_AMD64_EDI, CV_AMD64_RDI}, /* rdi */
-                    {CV_AMD64_R8B, CV_AMD64_R8W, CV_AMD64_R8D, CV_AMD64_R8}, /* r8  */
-                    {CV_AMD64_R9B, CV_AMD64_R9W, CV_AMD64_R9D, CV_AMD64_R9}, /* r9  */
+                    {CV_AMD64_R8B, CV_AMD64_R8W, CV_AMD64_R8D, CV_AMD64_R8}, /* r8 */
+                    {CV_AMD64_R9B, CV_AMD64_R9W, CV_AMD64_R9D, CV_AMD64_R9}, /* r9 */
                     {CV_AMD64_R10B, CV_AMD64_R10W, CV_AMD64_R10D, CV_AMD64_R10}, /* r10 */
                     {CV_AMD64_R11B, CV_AMD64_R11W, CV_AMD64_R11D, CV_AMD64_R11}, /* r11 */
                     {CV_AMD64_R12B, CV_AMD64_R12W, CV_AMD64_R12D, CV_AMD64_R12}, /* r12 */
-                    {CV_AMD64_R13B, CV_AMD64_R13W, CV_AMD64_R13D, CV_AMD64_R13}, /* r13  */
+                    {CV_AMD64_R13B, CV_AMD64_R13W, CV_AMD64_R13D, CV_AMD64_R13}, /* r13 */
                     {CV_AMD64_R14B, CV_AMD64_R14W, CV_AMD64_R14D, CV_AMD64_R14}, /* r14 */
-                    {CV_AMD64_R15B, CV_AMD64_R15W, CV_AMD64_R15D, CV_AMD64_R15}, /* r15  */
+                    {CV_AMD64_R15B, CV_AMD64_R15W, CV_AMD64_R15D, CV_AMD64_R15}, /* r15 */
 
                     {-1, -1, CV_AMD64_XMM0_0, CV_AMD64_XMM0L}, /* xmm0=16 */
                     {-1, -1, CV_AMD64_XMM1_0, CV_AMD64_XMM1L}, /* xmm1 */
