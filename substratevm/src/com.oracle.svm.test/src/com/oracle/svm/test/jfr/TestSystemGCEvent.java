@@ -40,9 +40,7 @@ public class TestSystemGCEvent extends JfrRecordingTest {
     public void test() throws Throwable {
         String[] events = new String[]{"jdk.SystemGC"};
         Recording recording = startRecording(events);
-
         System.gc();
-
         stopRecording(recording, TestSystemGCEvent::validateEvents);
     }
 

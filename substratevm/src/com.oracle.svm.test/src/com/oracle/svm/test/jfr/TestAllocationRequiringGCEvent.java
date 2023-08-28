@@ -47,7 +47,7 @@ public class TestAllocationRequiringGCEvent extends JfrRecordingTest {
         Recording recording = startRecording(events);
         final int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
 
-        // 256MB is max eden size specified by getMaximumYoungGenerationSize()
+        // 256MB is the max possible eden size
         allocateByteArray(MAX_YOUNG_SIZE);
         allocateByteArray(alignedHeapChunkSize * 2);
 
