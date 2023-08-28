@@ -1066,6 +1066,10 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src,
                             ValueNode sp, ValueNode sl, ValueNode dst, ValueNode dp, ValueNode isURL) {
+                if (receiver != null) {
+                    // Side effect of call below is to add a receiver null check if required
+                    receiver.get();
+                }
                 int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
                 ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
                 ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
@@ -1081,6 +1085,10 @@ public class HotSpotGraphBuilderPlugins {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src,
                                     ValueNode sp, ValueNode sl, ValueNode dst, ValueNode dp, ValueNode isURL, ValueNode isMime) {
+                        if (receiver != null) {
+                            // Side effect of call below is to add a receiver null check if required
+                            receiver.get();
+                        }
                         int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
                         ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
                         ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
@@ -1094,6 +1102,10 @@ public class HotSpotGraphBuilderPlugins {
                     @Override
                     public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode src,
                                     ValueNode sp, ValueNode sl, ValueNode dst, ValueNode dp, ValueNode isURL) {
+                        if (receiver != null) {
+                            // Side effect of call below is to add a receiver null check if required
+                            receiver.get();
+                        }
                         int byteArrayBaseOffset = metaAccess.getArrayBaseOffset(JavaKind.Byte);
                         ComputeObjectAddressNode srcAddress = b.add(new ComputeObjectAddressNode(src, ConstantNode.forInt(byteArrayBaseOffset)));
                         ComputeObjectAddressNode dstAddress = b.add(new ComputeObjectAddressNode(dst, ConstantNode.forInt(byteArrayBaseOffset)));
