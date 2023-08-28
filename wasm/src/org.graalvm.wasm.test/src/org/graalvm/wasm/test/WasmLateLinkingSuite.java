@@ -122,7 +122,7 @@ public class WasmLateLinkingSuite {
         try (Engine engine = Engine.create()) {
             for (int i = 0; i < N_CONTEXTS; i++) {
                 try (Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
-                    context.eval(sourceMain); // main
+                    Value mainModule = context.eval(sourceMain); // main
                     int expected;
                     if (i < N_CONTEXTS - 1) {
                         context.eval(sourceAux1); // m1
@@ -131,8 +131,12 @@ public class WasmLateLinkingSuite {
                         context.eval(sourceAux2); // m1'
                         expected = 43;
                     }
-                    final Value g = context.getBindings(WasmLanguage.ID).getMember("main").getMember("g");
+                    // call g(), which is the reexported f() from m1.
+                    final Value g = mainModule.getMember("g");
                     Assert.assertEquals(expected, g.execute().asInt());
+                    // call f() via call_f() function in main module.
+                    final Value f = mainModule.getMember("call_f");
+                    Assert.assertEquals(expected, f.execute().asInt());
                 }
             }
         }
@@ -348,8 +352,10 @@ public class WasmLateLinkingSuite {
                     (import "m1" "f" (func $f (result i32)))
                     (memory (;0;) 4)
                     (func $h (result i32) (i32.const 43))
+                    (func $call_f (result i32) (call $f))
                     (export "memory" (memory 0))
                     (export "g" (func $f))
                     (export "h" (func $h))
+                    (export "call_f" (func $call_f))
                     """;
 }
