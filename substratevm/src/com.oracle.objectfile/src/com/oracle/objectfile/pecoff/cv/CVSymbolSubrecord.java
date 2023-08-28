@@ -633,7 +633,7 @@ abstract class CVSymbolSubrecord {
         }
 
         protected CVSymbolGProc32Record(CVDebugInfo cvDebugInfo, short cmd, String symbolName, String displayName, int pparent, int pend, int pnext, int proclen, int debugStart, int debugEnd,
-                                        int typeIndex, short segment, byte flags) {
+                        int typeIndex, short segment, byte flags) {
             super(cvDebugInfo, cmd);
             this.symbolName = symbolName;
             this.displayName = displayName;

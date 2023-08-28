@@ -272,31 +272,31 @@ abstract class CVUtil {
     /* First index is AMD64.(register).number, second is 1,2,4,8 bytes. */
     private static final short[][] javaToCvRegisters = {
                     /* 8, 16, 32, 64 bits */
-                    { CV_AMD64_AL, CV_AMD64_AX, CV_AMD64_EAX, CV_AMD64_RAX }, /* rax=0 */
-                    { CV_AMD64_CL, CV_AMD64_CX, CV_AMD64_ECX, CV_AMD64_RCX }, /* rcx */
-                    { CV_AMD64_DL, CV_AMD64_DX, CV_AMD64_EDX, CV_AMD64_RDX }, /* rdx */
-                    { CV_AMD64_BL, CV_AMD64_BX, CV_AMD64_EBX, CV_AMD64_RBX }, /* rbx */
-                    { CV_AMD64_SPL, CV_AMD64_SP, CV_AMD64_ESP, CV_AMD64_RSP }, /* rsp */
-                    { CV_AMD64_BPL, CV_AMD64_BP, CV_AMD64_EBP, CV_AMD64_RBP }, /* rbp */
-                    { CV_AMD64_SIL, CV_AMD64_SI, CV_AMD64_ESI, CV_AMD64_RSI }, /* rsi */
-                    { CV_AMD64_DIL, CV_AMD64_DI, CV_AMD64_EDI, CV_AMD64_RDI }, /* rdi */
-                    { CV_AMD64_R8B, CV_AMD64_R8W, CV_AMD64_R8D, CV_AMD64_R8 }, /* r8  */
-                    { CV_AMD64_R9B, CV_AMD64_R9W, CV_AMD64_R9D, CV_AMD64_R9 }, /* r9  */
-                    { CV_AMD64_R10B, CV_AMD64_R10W, CV_AMD64_R10D, CV_AMD64_R10 }, /* r10 */
-                    { CV_AMD64_R11B, CV_AMD64_R11W, CV_AMD64_R11D, CV_AMD64_R11 }, /* r11 */
-                    { CV_AMD64_R12B, CV_AMD64_R12W, CV_AMD64_R12D, CV_AMD64_R12 }, /* r12 */
-                    { CV_AMD64_R13B, CV_AMD64_R13W, CV_AMD64_R13D, CV_AMD64_R13 }, /* r13  */
-                    { CV_AMD64_R14B, CV_AMD64_R14W, CV_AMD64_R14D, CV_AMD64_R14 }, /* r14 */
-                    { CV_AMD64_R15B, CV_AMD64_R15W, CV_AMD64_R15D, CV_AMD64_R15 }, /* r15  */
+                    {CV_AMD64_AL, CV_AMD64_AX, CV_AMD64_EAX, CV_AMD64_RAX}, /* rax=0 */
+                    {CV_AMD64_CL, CV_AMD64_CX, CV_AMD64_ECX, CV_AMD64_RCX}, /* rcx */
+                    {CV_AMD64_DL, CV_AMD64_DX, CV_AMD64_EDX, CV_AMD64_RDX}, /* rdx */
+                    {CV_AMD64_BL, CV_AMD64_BX, CV_AMD64_EBX, CV_AMD64_RBX}, /* rbx */
+                    {CV_AMD64_SPL, CV_AMD64_SP, CV_AMD64_ESP, CV_AMD64_RSP}, /* rsp */
+                    {CV_AMD64_BPL, CV_AMD64_BP, CV_AMD64_EBP, CV_AMD64_RBP}, /* rbp */
+                    {CV_AMD64_SIL, CV_AMD64_SI, CV_AMD64_ESI, CV_AMD64_RSI}, /* rsi */
+                    {CV_AMD64_DIL, CV_AMD64_DI, CV_AMD64_EDI, CV_AMD64_RDI}, /* rdi */
+                    {CV_AMD64_R8B, CV_AMD64_R8W, CV_AMD64_R8D, CV_AMD64_R8}, /* r8  */
+                    {CV_AMD64_R9B, CV_AMD64_R9W, CV_AMD64_R9D, CV_AMD64_R9}, /* r9  */
+                    {CV_AMD64_R10B, CV_AMD64_R10W, CV_AMD64_R10D, CV_AMD64_R10}, /* r10 */
+                    {CV_AMD64_R11B, CV_AMD64_R11W, CV_AMD64_R11D, CV_AMD64_R11}, /* r11 */
+                    {CV_AMD64_R12B, CV_AMD64_R12W, CV_AMD64_R12D, CV_AMD64_R12}, /* r12 */
+                    {CV_AMD64_R13B, CV_AMD64_R13W, CV_AMD64_R13D, CV_AMD64_R13}, /* r13  */
+                    {CV_AMD64_R14B, CV_AMD64_R14W, CV_AMD64_R14D, CV_AMD64_R14}, /* r14 */
+                    {CV_AMD64_R15B, CV_AMD64_R15W, CV_AMD64_R15D, CV_AMD64_R15}, /* r15  */
 
-                    { -1, -1, CV_AMD64_XMM0_0, CV_AMD64_XMM0L}, /* xmm0=16 */
-                    { -1, -1, CV_AMD64_XMM1_0, CV_AMD64_XMM1L}, /* xmm1 */
-                    { -1, -1, CV_AMD64_XMM2_0, CV_AMD64_XMM2L}, /* xmm2 */
-                    { -1, -1, CV_AMD64_XMM3_0, CV_AMD64_XMM3L}, /* xmm3 */
-                    { -1, -1, CV_AMD64_XMM4_0, CV_AMD64_XMM4L}, /* xmm4 */
-                    { -1, -1, CV_AMD64_XMM5_0, CV_AMD64_XMM5L}, /* xmm5 */
-                    { -1, -1, CV_AMD64_XMM6_0, CV_AMD64_XMM6L}, /* xmm6 */
-                    { -1, -1, CV_AMD64_XMM7_0, CV_AMD64_XMM7L}, /* xmm7=23 */
+                    {-1, -1, CV_AMD64_XMM0_0, CV_AMD64_XMM0L}, /* xmm0=16 */
+                    {-1, -1, CV_AMD64_XMM1_0, CV_AMD64_XMM1L}, /* xmm1 */
+                    {-1, -1, CV_AMD64_XMM2_0, CV_AMD64_XMM2L}, /* xmm2 */
+                    {-1, -1, CV_AMD64_XMM3_0, CV_AMD64_XMM3L}, /* xmm3 */
+                    {-1, -1, CV_AMD64_XMM4_0, CV_AMD64_XMM4L}, /* xmm4 */
+                    {-1, -1, CV_AMD64_XMM5_0, CV_AMD64_XMM5L}, /* xmm5 */
+                    {-1, -1, CV_AMD64_XMM6_0, CV_AMD64_XMM6L}, /* xmm6 */
+                    {-1, -1, CV_AMD64_XMM7_0, CV_AMD64_XMM7L}, /* xmm7=23 */
     };
 
     static short getCVRegister(int javaReg, TypeEntry typeEntry) {

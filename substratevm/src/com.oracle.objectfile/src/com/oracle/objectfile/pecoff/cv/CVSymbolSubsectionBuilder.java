@@ -63,8 +63,8 @@ final class CVSymbolSubsectionBuilder {
     private final short heapRegister;
 
     /**
-     * Create a symbol section by iterating over all classes, emitting types and line numbers as we go.
-     * See substratevm/src/com.oracle.svm.core.graal.amd64/src/com/oracle/svm/core/graal/amd64/SubstrateAMD64RegisterConfig.java
+     * Create a symbol section by iterating over all classes, emitting types and line numbers as we
+     * go. See SubstrateAMD64RegisterConfig.java
      *
      * @param cvDebugInfo debugInfo container
      */
@@ -151,8 +151,8 @@ final class CVSymbolSubsectionBuilder {
         /* add function definition. */
         final int functionTypeIndex = addTypeRecords(compiledEntry);
         final byte funcFlags = 0;
-        CVSymbolSubrecord.CVSymbolGProc32IdRecord proc32 = new CVSymbolSubrecord.CVSymbolGProc32IdRecord(cvDebugInfo, externalName, debuggerName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(), 0,
-                        0, functionTypeIndex, (short) 0, funcFlags);
+        CVSymbolSubrecord.CVSymbolGProc32IdRecord proc32 = new CVSymbolSubrecord.CVSymbolGProc32IdRecord(cvDebugInfo, externalName, debuggerName, 0, 0, 0, primaryRange.getHi() - primaryRange.getLo(),
+                        0, 0, functionTypeIndex, (short) 0, funcFlags);
         addSymbolRecord(proc32);
 
         final int frameFlags = FRAME_LOCAL_BP + FRAME_PARAM_BP;
@@ -161,10 +161,8 @@ final class CVSymbolSubsectionBuilder {
         /* it's costly to compute this, so only compute it once */
         HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap = primaryRange.getVarRangeMap();
 
-        if (primaryRange.getClassName().contains("ListDir")) {
-            addParameters(compiledEntry, varRangeMap);
-            /* IN the future:  addLocals(compiledEntry, varRangeMap); */
-        }
+        addParameters(compiledEntry, varRangeMap);
+        /* In the future: addLocals(compiledEntry, varRangeMap); */
 
         /* S_PROC_ID_END add end record. */
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolProcIdEndRecord(cvDebugInfo));
@@ -208,7 +206,8 @@ final class CVSymbolSubsectionBuilder {
         }
     }
 
-    void emitLocal(DebugInfoProvider.DebugLocalInfo info, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap, String name, TypeEntry typeEntry, int typeIndex, boolean isParam, String procName, Range range) {
+    void emitLocal(DebugInfoProvider.DebugLocalInfo info, HashMap<DebugInfoProvider.DebugLocalInfo, List<SubRange>> varRangeMap, String name, TypeEntry typeEntry, int typeIndex, boolean isParam,
+                    String procName, Range range) {
         int flags = isParam ? S_LOCAL_FLAGS_IS_PARAM : 0;
         List<SubRange> ranges = varRangeMap.get(info);
         addSymbolRecord(new CVSymbolSubrecord.CVSymbolLocalRecord(cvDebugInfo, name, typeIndex, flags));
@@ -233,14 +232,15 @@ final class CVSymbolSubsectionBuilder {
                     currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeRegisterRecord(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()), cvreg);
                     addSymbolRecord(currentRecord);
                 } else if (value.localKind() == STACKSLOT) {
-                    currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()), value.stackSlot());
+                    currentRecord = new CVSymbolSubrecord.CVSymbolDefRangeFramepointerRel(cvDebugInfo, procName, subrange.getLo() - range.getLo(), (short) (subrange.getHi() - subrange.getLo()),
+                                    value.stackSlot());
                     addSymbolRecord(currentRecord);
                 } else if (value.localKind() == CONSTANT) {
                     /* For now, silently ignore constant definitions an parameters. */
                     /* JavaConstant constant = value.constantValue(); */
                 } else {
                     /* Unimplemented - this is a surprise. */
-                    assert(false);
+                    assert (false);
                 }
             }
         }
