@@ -47,18 +47,25 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 
 public class WasmBinaryTools {
+    private static final String WAT_TO_WASM_EXECUTABLE_NAME = "wat2wasm";
+
+    static String resolvedWat2WasmExecutable;
+
     public enum WabtOption {
         MULTI_MEMORY,
         THREADS
@@ -95,17 +102,13 @@ public class WasmBinaryTools {
         Supplier<String> stderr = asyncReadInputStream(process.getErrorStream());
         int exitCode = process.waitFor();
         if (exitCode != 0) {
-            Assert.fail(Assert.format("%s ('%s', exit code %d)\nstderr:\n%s\nstdout:\n%s", message, String.join(" ", commandLine), exitCode, stderr.get(), stdout.get()));
+            Assert.fail(String.format("%s ('%s', exit code %d)\nstderr:\n%s\nstdout:\n%s", message, String.join(" ", commandLine), exitCode, stderr.get(), stdout.get()));
         }
     }
 
     private static byte[] wat2wasm(File input, File output, EnumSet<WabtOption> options) throws IOException, InterruptedException {
-        Assert.assertNotNull(
-                        Assert.format("The %s property must be set in order to be able to compile .wat to .wasm", SystemProperties.WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME),
-                        SystemProperties.WAT_TO_WASM_EXECUTABLE);
-
         List<String> commandLine = new ArrayList<>();
-        commandLine.add(SystemProperties.WAT_TO_WASM_EXECUTABLE);
+        commandLine.add(wat2wasmExecutable());
         commandLine.add(input.getPath());
         // This option is needed so that wat2wasm agrees to generate
         // invalid wasm files.
@@ -128,6 +131,33 @@ public class WasmBinaryTools {
         runExternalToolAndVerify("wat2wasm compilation failed", commandLine.toArray(new String[0]));
         // read the resulting binary, delete the temporary files and return
         return Files.readAllBytes(output.toPath());
+    }
+
+    private static synchronized String wat2wasmExecutable() {
+        if (resolvedWat2WasmExecutable != null) {
+            return resolvedWat2WasmExecutable;
+        } else {
+            return resolvedWat2WasmExecutable = findWat2WasmExecutable();
+        }
+    }
+
+    private static String findWat2WasmExecutable() {
+        String executable = SystemProperties.WAT_TO_WASM_EXECUTABLE;
+        if (executable == null) {
+            String envPath = System.getenv().getOrDefault("PATH", "");
+            Optional<Path> executableInPath = Pattern.compile(Pattern.quote(File.pathSeparator)).splitAsStream(envPath).//
+                            map(Path::of).map(p -> p.resolve(WAT_TO_WASM_EXECUTABLE_NAME)).filter(Files::isExecutable).findFirst();
+            if (executableInPath.isPresent()) {
+                String pathAsString = executableInPath.get().toString();
+                System.err.println(String.format("Using %s from %s", WAT_TO_WASM_EXECUTABLE_NAME, pathAsString));
+                return pathAsString;
+            }
+        }
+
+        Assert.assertNotNull(
+                        String.format("The %s property must be set in order to be able to compile .wat to .wasm", SystemProperties.WAT_TO_WASM_EXECUTABLE_PROPERTY_NAME),
+                        executable);
+        return executable;
     }
 
     public static byte[] compileWat(File watFile, EnumSet<WabtOption> options) throws IOException, InterruptedException {
