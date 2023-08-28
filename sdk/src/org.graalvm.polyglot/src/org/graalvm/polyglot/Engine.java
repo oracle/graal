@@ -1632,6 +1632,11 @@ public final class Engine implements AutoCloseable {
         Collections.sort(impls, Comparator.comparing(AbstractPolyglotImpl::getPriority));
         AbstractPolyglotImpl prev = null;
         for (AbstractPolyglotImpl impl : impls) {
+            if (impl.getPriority() == Integer.MIN_VALUE) {
+                // disabled
+                continue;
+            }
+
             impl.setNext(prev);
             try {
                 impl.setConstructors(APIAccessImpl.INSTANCE);
