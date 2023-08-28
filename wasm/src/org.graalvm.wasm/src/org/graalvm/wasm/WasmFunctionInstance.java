@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,41 +123,45 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
             // At this point the multi-value stack has already been populated, therefore, we don't
             // have to check the size of the multi-value stack.
             if (result == WasmConstant.MULTI_VALUE) {
-                final long[] multiValueStack = context.primitiveMultiValueStack();
-                final Object[] referenceMultiValueStack = context().referenceMultiValueStack();
-                final int resultCount = function.resultCount();
-                CompilerAsserts.partialEvaluationConstant(resultCount);
-                assert multiValueStack.length >= resultCount;
-                assert referenceMultiValueStack.length >= resultCount;
-                final Object[] values = new Object[resultCount];
-                for (int i = 0; i < resultCount; i++) {
-                    byte resultType = function.resultTypeAt(i);
-                    switch (resultType) {
-                        case WasmType.I32_TYPE:
-                            values[i] = (int) multiValueStack[i];
-                            break;
-                        case WasmType.I64_TYPE:
-                            values[i] = multiValueStack[i];
-                            break;
-                        case WasmType.F32_TYPE:
-                            values[i] = Float.intBitsToFloat((int) multiValueStack[i]);
-                            break;
-                        case WasmType.F64_TYPE:
-                            values[i] = Double.longBitsToDouble(multiValueStack[i]);
-                            break;
-                        case WasmType.FUNCREF_TYPE:
-                        case WasmType.EXTERNREF_TYPE:
-                            values[i] = referenceMultiValueStack[i];
-                            break;
-                        default:
-                            throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
-                    }
-                }
-                return InteropArray.create(values);
+                return multiValueStackAsArray();
             }
             return result;
         } finally {
             c.leave(self, prev);
         }
+    }
+
+    private Object multiValueStackAsArray() {
+        final long[] multiValueStack = context().primitiveMultiValueStack();
+        final Object[] referenceMultiValueStack = context().referenceMultiValueStack();
+        final int resultCount = function.resultCount();
+        CompilerAsserts.partialEvaluationConstant(resultCount);
+        assert multiValueStack.length >= resultCount;
+        assert referenceMultiValueStack.length >= resultCount;
+        final Object[] values = new Object[resultCount];
+        for (int i = 0; i < resultCount; i++) {
+            byte resultType = function.resultTypeAt(i);
+            switch (resultType) {
+                case WasmType.I32_TYPE:
+                    values[i] = (int) multiValueStack[i];
+                    break;
+                case WasmType.I64_TYPE:
+                    values[i] = multiValueStack[i];
+                    break;
+                case WasmType.F32_TYPE:
+                    values[i] = Float.intBitsToFloat((int) multiValueStack[i]);
+                    break;
+                case WasmType.F64_TYPE:
+                    values[i] = Double.longBitsToDouble(multiValueStack[i]);
+                    break;
+                case WasmType.FUNCREF_TYPE:
+                case WasmType.EXTERNREF_TYPE:
+                    values[i] = referenceMultiValueStack[i];
+                    break;
+                default:
+                    throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
+            }
+        }
+        return InteropArray.create(values);
     }
 }
