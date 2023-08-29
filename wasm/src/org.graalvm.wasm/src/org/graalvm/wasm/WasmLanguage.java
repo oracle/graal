@@ -41,10 +41,14 @@
 package org.graalvm.wasm;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.BuiltinModule;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -79,6 +83,8 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     @CompilationFinal private volatile boolean isMultiContext;
 
     private final ContextThreadLocal<MultiValueStack> multiValueStackThreadLocal = locals.createContextThreadLocal(((context, thread) -> new MultiValueStack()));
+
+    private final Map<BuiltinModule, WasmModule> builtinModules = new ConcurrentHashMap<>();
 
     @Override
     protected WasmContext createContext(Env env) {
@@ -165,6 +171,10 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     public static WasmLanguage get(Node node) {
         return REFERENCE.get(node);
+    }
+
+    public WasmModule getOrCreateBuiltinModule(BuiltinModule builtinModule, Function<? super BuiltinModule, ? extends WasmModule> factory) {
+        return builtinModules.computeIfAbsent(builtinModule, factory);
     }
 
     public MultiValueStack multiValueStack() {

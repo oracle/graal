@@ -40,15 +40,16 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import java.util.Random;
+
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
-import java.util.Random;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 /**
  * WASI random_get for testing purposes.
@@ -56,8 +57,8 @@ import java.util.Random;
 public class WasiConstantRandomGetNode extends WasmBuiltinRootNode {
     private static final int SEED = 12345;
 
-    public WasiConstantRandomGetNode(WasmLanguage language, WasmInstance instance) {
-        super(language, instance);
+    public WasiConstantRandomGetNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override

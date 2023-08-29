@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,17 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
+
 public class EmscriptenNotifyMemoryGrowthNode extends WasmBuiltinRootNode {
-    public EmscriptenNotifyMemoryGrowthNode(WasmLanguage language, WasmInstance instance) {
-        super(language, instance);
+    public EmscriptenNotifyMemoryGrowthNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override

@@ -606,7 +606,7 @@ public abstract class SymbolTable {
         this.startFunctionIndex = functionIndex;
     }
 
-    int numFunctions() {
+    public int numFunctions() {
         return numFunctions;
     }
 
