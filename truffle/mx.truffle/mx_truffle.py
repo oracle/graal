@@ -801,79 +801,50 @@ def check_filename_length(args):
             mx.log_error(x)
         mx.abort("File names that are too long where found. Ensure all file names are under %d characters long." % max_length)
 
-COPYRIGHT_HEADER_UPL = """\
-/*
- * Copyright (c) 2012, 2021, Oracle and/or its affiliates. All rights reserved.
- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
- *
- * The Universal Permissive License (UPL), Version 1.0
- *
- * Subject to the condition set forth below, permission is hereby granted to any
- * person obtaining a copy of this software, associated documentation and/or
- * data (collectively the "Software"), free of charge and under any and all
- * copyright rights in the Software, and any and all patent rights owned or
- * freely licensable by each licensor hereunder covering either (i) the
- * unmodified Software as contributed to or provided by such licensor, or (ii)
- * the Larger Works (as defined below), to deal in both
- *
- * (a) the Software, and
- *
- * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
- * one is included with the Software each a "Larger Work" to which the Software
- * is contributed by such licensors),
- *
- * without restriction, including without limitation the rights to copy, create
- * derivative works of, display, perform, and distribute the Software and make,
- * use, sell, offer for sale, import, export, have made, and have sold the
- * Software and the Larger Work(s), and to sublicense the foregoing rights on
- * either these or other terms.
- *
- * This license is subject to the following condition:
- *
- * The above copyright notice and either this complete permission notice or at a
- * minimum a reference to the UPL must be included in all copies or substantial
- * portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-// Checkstyle: stop
-//@formatter:off
-{0}
-"""
-PTRN_SUPPRESS_WARNINGS = re.compile("^@SuppressWarnings.*$", re.MULTILINE)
-PTRN_LOCALCTXT_CAST = re.compile(r"\(\([a-zA-Z_]*Context\)_localctx\)")
-PTRN_TOKEN_CAST = re.compile(r"\(Token\)_errHandler.recoverInline\(this\)")
-
 def create_dsl_parser(args=None, out=None):
     """create the DSL expression parser using antlr"""
-    create_parser("com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.expression", "Expression", COPYRIGHT_HEADER_UPL, args, out)
+    create_parser("com.oracle.truffle.dsl.processor", "com.oracle.truffle.dsl.processor.expression", "Expression", args=args, out=out)
 
 def create_sl_parser(args=None, out=None):
     """create the SimpleLanguage parser using antlr"""
-    create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", COPYRIGHT_HEADER_UPL, args, out)
+    create_parser("com.oracle.truffle.sl", "com.oracle.truffle.sl.parser", "SimpleLanguage", None, args, out)
 
-def create_parser(grammar_project, grammar_package, grammar_name, copyright_template, args=None, out=None, postprocess=None):
+def create_parser(grammar_project, grammar_package, grammar_name, copyright_template=None, args=None, out=None, postprocess=None, shaded=False):
     """create the DSL expression parser using antlr"""
     grammar_dir = os.path.join(mx.project(grammar_project).source_dirs()[0], *grammar_package.split(".")) + os.path.sep
-    mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [grammar_dir + grammar_name + ".g4"], out=out)
+    g4_filename = grammar_dir + grammar_name + ".g4"
+    mx.run_java(mx.get_runtime_jvm_args(['ANTLR4_COMPLETE']) + ["org.antlr.v4.Tool", "-package", grammar_package, "-no-listener"] + args + [g4_filename], out=out)
+
+    if copyright_template is None:
+        # extract copyright header from .g4 file
+        copyright_header = ''
+        with open(g4_filename) as g:
+            for line in g:
+                copyright_header += line
+                if line == ' */\n':
+                    break
+        assert copyright_header.startswith('/*\n * Copyright (c)') and copyright_header.endswith(' */\n'), copyright_header
+        copyright_header += '// Checkstyle: stop\n'
+        copyright_header += '//@formatter:off\n'
+        copyright_template = copyright_header + '{0}\n'
+
     for filename in [grammar_dir + grammar_name + "Lexer.java", grammar_dir + grammar_name + "Parser.java"]:
         with open(filename, 'r') as content_file:
             content = content_file.read()
         # remove first line
         content = "\n".join(content.split("\n")[1:])
         # modify SuppressWarnings to remove useless entries
-        content = PTRN_SUPPRESS_WARNINGS.sub('@SuppressWarnings({"all", "this-escape"})', content)
+        content = re.compile("^@SuppressWarnings.*$", re.MULTILINE).sub('@SuppressWarnings({"all", "this-escape"})', content)
         # remove useless casts
-        content = PTRN_LOCALCTXT_CAST.sub('_localctx', content)
-        content = PTRN_TOKEN_CAST.sub('_errHandler.recoverInline(this)', content)
+        content = re.compile(r"\(\([a-zA-Z_]*Context\)_localctx\)").sub('_localctx', content)
+        content = re.compile(r"\(Token\)_errHandler.recoverInline\(this\)").sub('_errHandler.recoverInline(this)', content)
         # add copyright header
         content = copyright_template.format(content)
+        if shaded:
+            # replace qualified class names with shadowed package names
+            content = re.compile(r"\b(org\.antlr\.v4\.runtime(?:\.\w+)+)\b").sub(r'org.graalvm.shadowed.\1', content)
+            # replace imports with shadowed package names
+            content = re.compile(r"^import (org\.antlr\.v4\.runtime(?:\.\w+)*(?:\.\*)?);", re.MULTILINE).sub(r'import org.graalvm.shadowed.\1;', content)
         # user provided post-processing hook:
         if postprocess is not None:
             content = postprocess(content)
@@ -1177,7 +1148,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle'],
-    truffle_jars=['truffle:ANTLR4'],
+    truffle_jars=['truffle:ANTLR4', 'truffle:TRUFFLE_ANTLR4'],
     support_distributions=['truffle:TRUFFLE_ANTLR4_GRAALVM_SUPPORT'],
     installable=True,
     standalone=False,
