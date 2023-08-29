@@ -468,8 +468,10 @@ public class WasmInstantiator {
     private CallTarget instantiateCodeEntry(WasmContext context, WasmModule module, CodeEntry codeEntry) {
         final int functionIndex = codeEntry.functionIndex();
         final WasmFunction function = module.symbolTable().function(functionIndex);
-        if (function.target() != null) {
-            return function.target();
+        var cachedTarget = function.target();
+        if (cachedTarget != null) {
+            assert context.language().isMultiContext();
+            return cachedTarget;
         }
         final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxStackSize());
@@ -481,7 +483,9 @@ public class WasmInstantiator {
             rootNode = new WasmRootNode(language, frameDescriptor, functionNode);
         }
         var callTarget = rootNode.getCallTarget();
-        function.setTarget(callTarget);
+        if (context.language().isMultiContext()) {
+            function.setTarget(callTarget);
+        }
         return callTarget;
     }
 
