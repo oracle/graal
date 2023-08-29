@@ -152,32 +152,33 @@ public class MultiInstantiationSuite {
 
     @Test
     public void testImportsAndExports() throws IOException, InterruptedException {
-        final byte[] source = WasmBinaryTools.compileWat("main", "" +
-                        "(module " +
-                        "   (type (;0;) (func (result i32)))" +
-                        "   (import \"a\" \"f\" (func (type 0)))" +
-                        "   (import \"a\" \"t\" (table 2 2 funcref))" +
-                        "   (import \"a\" \"m\" (memory 1 1))" +
-                        "   (import \"a\" \"g\" (global i32))" +
-                        "   (func (type 0) i32.const 13)" +
-                        "   (func (export \"main\") (type 0) i32.const 0)" +
-                        "   (func (export \"test\") (type 0)" +
-                        "       call 0" +
-                        "       i32.const 1" +
-                        "       call_indirect (type 0)" +
-                        "       i32.add" +
-                        "       global.get 0" +
-                        "       i32.add" +
-                        "       i32.const 0" +
-                        "       i32.load" +
-                        "       i32.add" +
-                        "   )" +
-                        "   (export \"f\" (func 0))" +
-                        "   (export \"t\" (table 0))" +
-                        "   (export \"m\" (memory 0))" +
-                        "   (export \"g\" (global 0))" +
-                        "   (elem (i32.const 1) func 1)" +
-                        ")");
+        final byte[] source = WasmBinaryTools.compileWat("main", """
+                        (module
+                           (type (;0;) (func (result i32)))
+                           (import "a" "f" (func (type 0)))
+                           (import "a" "t" (table 2 2 funcref))
+                           (import "a" "m" (memory 1 1))
+                           (import "a" "g" (global i32))
+                           (func (type 0) i32.const 13)
+                           (func (export "main") (type 0) i32.const 0)
+                           (func (export "test") (type 0)
+                               call 0
+                               i32.const 1
+                               call_indirect (type 0)
+                               i32.add
+                               global.get 0
+                               i32.add
+                               i32.const 0
+                               i32.load
+                               i32.add
+                           )
+                           (export "f" (func 0))
+                           (export "t" (table 0))
+                           (export "m" (memory 0))
+                           (export "g" (global 0))
+                           (elem (i32.const 1) func 1)
+                        )
+                        """);
         final Executable tableFun = new Executable(args -> 13);
         test(wasm -> source, wasm -> {
             final Dictionary imports = new Dictionary();
@@ -229,17 +230,18 @@ public class MultiInstantiationSuite {
 
     @Test
     public void testGlobalInitialization() throws IOException, InterruptedException {
-        final byte[] source = WasmBinaryTools.compileWat("main", "" +
-                        "(module" +
-                        "   (import \"a\" \"g\" (global i32))" +
-                        "   (func (export \"main\") (result i32) i32.const 0)" +
-                        "   (global (export \"g1\") i32 (i32.const 13))" +
-                        "   (global (export \"g2\") i32 (global.get 0))" +
-                        "   (global (export \"g3\") (mut i32) (i32.const 42))" +
-                        "   (global (export \"g4\") (mut i32) (global.get 0))" +
-                        "   (global (export \"g5\") funcref (ref.null func))" +
-                        "   (global (export \"g6\") (mut funcref) (ref.func 0))" +
-                        ")");
+        final byte[] source = WasmBinaryTools.compileWat("main", """
+                        (module
+                           (import "a" "g" (global i32))
+                           (func (export "main") (result i32) i32.const 0)
+                           (global (export "g1") i32 (i32.const 13))
+                           (global (export "g2") i32 (global.get 0))
+                           (global (export "g3") (mut i32) (i32.const 42))
+                           (global (export "g4") (mut i32) (global.get 0))
+                           (global (export "g5") funcref (ref.null func))
+                           (global (export "g6") (mut funcref) (ref.func 0))
+                        )
+                        """);
         test(wasm -> source, wasm -> {
             WasmGlobal g = wasm.globalAlloc(ValueType.i32, false, 16);
             return Dictionary.create(new Object[]{"a", Dictionary.create(new Object[]{"g", g})});
@@ -305,12 +307,13 @@ public class MultiInstantiationSuite {
 
     @Test
     public void testTableInitialization() throws IOException, InterruptedException {
-        final byte[] source = WasmBinaryTools.compileWat("main", "" +
-                        "(module" +
-                        "   (func (export \"main\") (result i32) i32.const 0)" +
-                        "   (table (export \"t\") 2 2 funcref)" +
-                        "   (elem (i32.const 0) func 0)" +
-                        ")");
+        final byte[] source = WasmBinaryTools.compileWat("main", """
+                        (module
+                           (func (export "main") (result i32) i32.const 0)
+                           (table (export "t") 2 2 funcref)
+                           (elem (i32.const 0) func 0)
+                        )
+                        """);
         test(wasm -> source, wasm -> null, (wasm, i) -> {
             InteropLibrary lib = InteropLibrary.getUncached();
             try {
@@ -336,12 +339,13 @@ public class MultiInstantiationSuite {
 
     @Test
     public void testMemoryInitialization() throws IOException, InterruptedException {
-        final byte[] source = WasmBinaryTools.compileWat("main", "" +
-                        "(module" +
-                        "   (func (export \"main\") (result i32) i32.const 0)" +
-                        "   (memory (export \"m\") 1 1)" +
-                        "   (data (i32.const 0) \"\\01\\02\\03\\04\")" +
-                        ")");
+        final byte[] source = WasmBinaryTools.compileWat("main", """
+                        (module
+                           (func (export "main") (result i32) i32.const 0)
+                           (memory (export "m") 1 1)
+                           (data (i32.const 0) "\\01\\02\\03\\04")
+                        )
+                        """);
         test(wasm -> source, wasm -> null, (wasm, i) -> {
             final Value m = Value.asValue(WebAssembly.instanceExport(i, "m"));
 
@@ -363,21 +367,22 @@ public class MultiInstantiationSuite {
 
     @Test
     public void testDataSections() throws IOException, InterruptedException {
-        final byte[] source = WasmBinaryTools.compileWat("main", "" +
-                        "(module" +
-                        "   (func (export \"main\") (result i32) i32.const 0)" +
-                        "   (func (export \"test\")" +
-                        "       i32.const 256" +
-                        "       i32.const 0" +
-                        "       i32.const 4" +
-                        "       memory.init 2" +
-                        "       data.drop 2" +
-                        "   )" +
-                        "   (memory (export \"m\") 2 2)" +
-                        "   (data (i32.const 0) \"\\00\\01\\02\\03\")" +
-                        "   (data (i32.const 65536) \"\\04\\05\\06\\07\")" +
-                        "   (data \"\\08\\09\\0A\\0B\")" +
-                        ")");
+        final byte[] source = WasmBinaryTools.compileWat("main", """
+                        (module
+                           (func (export "main") (result i32) i32.const 0)
+                           (func (export "test")
+                               i32.const 256
+                               i32.const 0
+                               i32.const 4
+                               memory.init 2
+                               data.drop 2
+                           )
+                           (memory (export "m") 2 2)
+                           (data (i32.const 0) "\\00\\01\\02\\03")
+                           (data (i32.const 65536) "\\04\\05\\06\\07")
+                           (data "\\08\\09\\0A\\0B")
+                        )
+                        """);
         test(wasm -> source, wasm -> null, (wasm, i) -> {
             final Value m = Value.asValue(WebAssembly.instanceExport(i, "m"));
 
@@ -424,29 +429,30 @@ public class MultiInstantiationSuite {
 
     @Test
     public void testElemSections() throws IOException, InterruptedException {
-        final byte[] source = WasmBinaryTools.compileWat("main", "" +
-                        "(module" +
-                        "   (type (;0;) (func (result i32)))" +
-                        "   (type (;1;) (func))" +
-                        "   (func (;0;) (type 0) i32.const 1)" +
-                        "   (func (;1;) (type 0) i32.const 2)" +
-                        "   (func (;2;) (type 0) i32.const 3)" +
-                        "   (func (;3;) (type 0) i32.const 4)" +
-                        "   (func (export \"main\") (type 0) i32.const 0)" +
-                        "   (func (export \"test\") (type 1)" +
-                        "       i32.const 2" +
-                        "       i32.const 0" +
-                        "       i32.const 4" +
-                        "       table.init 2" +
-                        "       elem.drop 2" +
-                        "       ref.func 5" +
-                        "       drop" +
-                        "   )" +
-                        "   (table (export \"t\") 6 6 funcref)" +
-                        "   (elem (i32.const 1) func 4)" +
-                        "   (elem declare func 5)" +
-                        "   (elem func 0 1 2 3)" +
-                        ")");
+        final byte[] source = WasmBinaryTools.compileWat("main", """
+                        (module
+                           (type (;0;) (func (result i32)))
+                           (type (;1;) (func))
+                           (func (;0;) (type 0) i32.const 1)
+                           (func (;1;) (type 0) i32.const 2)
+                           (func (;2;) (type 0) i32.const 3)
+                           (func (;3;) (type 0) i32.const 4)
+                           (func (export "main") (type 0) i32.const 0)
+                           (func (export "test") (type 1)
+                               i32.const 2
+                               i32.const 0
+                               i32.const 4
+                               table.init 2
+                               elem.drop 2
+                               ref.func 5
+                               drop
+                           )
+                           (table (export "t") 6 6 funcref)
+                           (elem (i32.const 1) func 4)
+                           (elem declare func 5)
+                           (elem func 0 1 2 3)
+                        )
+                        """);
         test(wasm -> source, wasm -> null, (wasm, i) -> {
             InteropLibrary lib = InteropLibrary.getUncached();
             try {
