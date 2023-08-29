@@ -527,7 +527,7 @@ local devkits = graal_common.devkits;
       self.mx_cmd_base(os, arch) + mx_args + ['build'] + build_args,
     ],
 
-    pd_layouts_archive_name(os, arch):: 'pd_layouts_' + os + '_' + arch + '.tar.gz',
+    pd_layouts_archive_name(os, arch):: 'pd_layouts_' + os + '_' + arch + '.tgz',
 
     pd_layouts_artifact_name(platform, dry_run):: 'pd-layouts-' + (if dry_run then 'dry-run-' else '') + platform,
 
