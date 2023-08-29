@@ -155,6 +155,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     @SuppressWarnings("hiding")
     public void initializeCallNodes(Node[] callNodes) {
+        assert this.callNodes == null;
         this.callNodes = callNodes;
     }
 
@@ -1807,20 +1808,21 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     private Object executeDirectCall(WasmInstance instance, int callNodeIndex, WasmFunction function, Object[] args) {
         final boolean imported = function.isImported();
         CompilerAsserts.partialEvaluationConstant(imported);
-        DirectCallNode callNode = (DirectCallNode) callNodes[callNodeIndex];
-        assert assertDirectCall(instance, function, callNode);
+        Node callNode = callNodes[callNodeIndex];
         if (imported) {
+            WasmIndirectCallNode indirectCallNode = (WasmIndirectCallNode) callNode;
             WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
             TruffleContext truffleContext = functionInstance.getTruffleContext();
             Object prev = truffleContext.enter(this);
             try {
-                assert callNode.getCallTarget() == functionInstance.target();
-                return callNode.call(args);
+                return indirectCallNode.execute(instance.target(function.index()), args);
             } finally {
                 truffleContext.leave(this, prev);
             }
         } else {
-            return callNode.call(args);
+            DirectCallNode directCallNode = (DirectCallNode) callNode;
+            assert assertDirectCall(instance, function, directCallNode);
+            return directCallNode.call(args);
         }
     }
 
@@ -3891,9 +3893,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     @TruffleBoundary
     public void resolveCallNode(WasmInstance instance, int callNodeIndex) {
-        final WasmFunction function = ((WasmCallStubNode) callNodes[callNodeIndex]).function();
-        final CallTarget target = instance.target(function.index());
-        callNodes[callNodeIndex] = DirectCallNode.create(target);
+        Node unresolvedCallNode = callNodes[callNodeIndex];
+        if (unresolvedCallNode instanceof WasmCallStubNode) {
+            final WasmFunction function = ((WasmCallStubNode) unresolvedCallNode).function();
+            final CallTarget target = instance.target(function.index());
+            callNodes[callNodeIndex] = DirectCallNode.create(target);
+        } else {
+            assert unresolvedCallNode instanceof WasmIndirectCallNode : unresolvedCallNode;
+        }
     }
 
     @ExplodeLoop

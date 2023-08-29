@@ -494,10 +494,14 @@ public class WasmInstantiator {
                 // Therefore, the call node will be created lazily during linking,
                 // after the call target from the other module exists.
 
-                final WasmFunction function = module.function(callNode.getFunctionIndex());
-                child = new WasmCallStubNode(function);
+                final WasmFunction resolvedFunction = module.function(callNode.getFunctionIndex());
+                if (resolvedFunction.isImported()) {
+                    child = WasmIndirectCallNode.create();
+                } else {
+                    child = new WasmCallStubNode(resolvedFunction);
+                }
                 final int stubIndex = childIndex;
-                module.addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, function));
+                module.addLinkAction((ctx, inst) -> ctx.linker().resolveCallsite(inst, currentFunction, stubIndex, resolvedFunction));
             }
             callNodes[childIndex++] = child;
         }
