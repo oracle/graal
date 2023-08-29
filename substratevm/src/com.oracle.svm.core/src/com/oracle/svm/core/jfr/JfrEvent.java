@@ -93,13 +93,9 @@ public final class JfrEvent {
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean shouldEmit() {
         assert !hasDuration;
-        return shouldEmit0() && !SubstrateJVM.get().isCurrentThreadExcluded();
+        return shouldEmit0() && !SubstrateJVM.get().isExcluded(Thread.currentThread());
     }
 
-    /**
-     * This can be called during a VMOperation where one thread may be emitting events on behalf of
-     * many other threads.
-     */
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean shouldEmit(Thread thread) {
         assert !hasDuration;
@@ -109,7 +105,7 @@ public final class JfrEvent {
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean shouldEmit(long durationTicks) {
         assert hasDuration;
-        return shouldEmit0() && durationTicks >= SubstrateJVM.get().getThresholdTicks(this) && !SubstrateJVM.get().isCurrentThreadExcluded();
+        return shouldEmit0() && durationTicks >= SubstrateJVM.get().getThresholdTicks(this) && !SubstrateJVM.get().isExcluded(Thread.currentThread());
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)

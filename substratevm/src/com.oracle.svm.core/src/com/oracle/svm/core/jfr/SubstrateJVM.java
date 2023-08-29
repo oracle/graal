@@ -703,17 +703,7 @@ public class SubstrateJVM {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isExcluded(Thread thread) {
-        /*
-         * Only the current thread is passed to this method in JDK 17, 19, and 20. Eventually, we
-         * will need to implement that in a more general way though, see GR-44616. It can also be
-         * called from internal SVM JFR code upon event emission.
-         */
         return JfrThreadLocal.isThreadExcluded(thread);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isCurrentThreadExcluded() {
-        return JfrThreadLocal.isCurrentThreadExcluded();
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {

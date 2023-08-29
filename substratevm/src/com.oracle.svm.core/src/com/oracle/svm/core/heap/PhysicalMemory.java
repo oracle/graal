@@ -29,6 +29,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Containers;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.graal.snippets.CEntryPointSnippets;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.stack.StackOverflowCheck;
@@ -122,6 +123,7 @@ public class PhysicalMemory {
      * Returns true if the memory size has been queried from the OS, i.e., if
      * {@link #getCachedSize()} can be called.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInitialized() {
         return cachedSize != UNSET_SENTINEL;
     }
@@ -130,6 +132,7 @@ public class PhysicalMemory {
      * Returns the size of physical memory in bytes that has been previously cached. This method
      * must not be called if {@link #isInitialized()} is still false.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static UnsignedWord getCachedSize() {
         VMError.guarantee(isInitialized(), "Cached physical memory size is not available");
         return cachedSize;

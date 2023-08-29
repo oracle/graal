@@ -24,23 +24,22 @@
  */
 package com.oracle.svm.core.jfr.events;
 
-import java.lang.management.ManagementFactory;
-import java.lang.management.ThreadMXBean;
-
-import org.graalvm.nativeimage.StackValue;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.heap.VMOperationInfos;
+import com.oracle.svm.core.jdk.management.SubstrateThreadMXBean;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.VMThreads;
 
 import jdk.jfr.Event;
 import jdk.jfr.Name;
@@ -51,79 +50,74 @@ import jdk.jfr.Period;
 public class EveryChunkNativePeriodicEvents extends Event {
 
     public static void emit() {
-        ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
-        emitJavaThreadStats(threadMXBean.getThreadCount(), threadMXBean.getDaemonThreadCount(),
-                        threadMXBean.getTotalStartedThreadCount(), threadMXBean.getPeakThreadCount());
-
-        emitPhysicalMemory(PhysicalMemory.size().rawValue(), 0);
-        emitClassLoadingStatistics(Heap.getHeap().getClassCount());
-        emitPerThreadEveryChunkEvents();
+        emitJavaThreadStats();
+        emitPhysicalMemory();
+        emitClassLoadingStatistics();
+        emitPerThreadEvents();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emitJavaThreadStats(long activeCount, long daemonCount, long accumulatedCount, long peakCount) {
+    private static void emitJavaThreadStats() {
         if (JfrEvent.JavaThreadStatistics.shouldEmit()) {
+            SubstrateThreadMXBean threadMXBean = ImageSingletons.lookup(SubstrateThreadMXBean.class);
+
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.JavaThreadStatistics);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putLong(data, activeCount);
-            JfrNativeEventWriter.putLong(data, daemonCount);
-            JfrNativeEventWriter.putLong(data, accumulatedCount);
-            JfrNativeEventWriter.putLong(data, peakCount);
+            JfrNativeEventWriter.putLong(data, threadMXBean.getThreadCount());
+            JfrNativeEventWriter.putLong(data, threadMXBean.getDaemonThreadCount());
+            JfrNativeEventWriter.putLong(data, threadMXBean.getTotalStartedThreadCount());
+            JfrNativeEventWriter.putLong(data, threadMXBean.getPeakThreadCount());
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emitPhysicalMemory(long totalSize, long usedSize) {
+    private static void emitPhysicalMemory() {
         if (JfrEvent.PhysicalMemory.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.PhysicalMemory);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putLong(data, totalSize);
-            JfrNativeEventWriter.putLong(data, usedSize);
+            JfrNativeEventWriter.putLong(data, PhysicalMemory.getCachedSize().rawValue());
+            JfrNativeEventWriter.putLong(data, 0); /* used size */
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emitClassLoadingStatistics(long loadedClassCount) {
+    private static void emitClassLoadingStatistics() {
         if (JfrEvent.ClassLoadingStatistics.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ClassLoadingStatistics);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-            JfrNativeEventWriter.putLong(data, loadedClassCount);
+            JfrNativeEventWriter.putLong(data, Heap.getHeap().getClassCount());
             JfrNativeEventWriter.putLong(data, 0); /* unloadedClassCount */
             JfrNativeEventWriter.endSmallEvent(data);
         }
     }
 
-    /**
-     * This is responsible for handling the emission of all per thread events. This allows for a
-     * single VM operation to iterate the running threads.
-     */
-    private static void emitPerThreadEveryChunkEvents() {
-        if (shouldEmitUnsafe()) {
-            EmitPerThreadEveryChunkEventsOperation vmOp = new EmitPerThreadEveryChunkEventsOperation();
+    private static void emitPerThreadEvents() {
+        if (needsVMOperation()) {
+            EmitPeriodicPerThreadEventsOperation vmOp = new EmitPeriodicPerThreadEventsOperation();
             vmOp.enqueue();
         }
     }
 
     @Uninterruptible(reason = "Used to avoid the VM operation if it is not absolutely needed.")
-    private static boolean shouldEmitUnsafe() {
+    private static boolean needsVMOperation() {
         /* The returned value is racy. */
         return JfrEvent.ThreadCPULoad.shouldEmit() || JfrEvent.ThreadAllocationStatistics.shouldEmit();
     }
 
-    private static final class EmitPerThreadEveryChunkEventsOperation extends JavaVMOperation {
-        EmitPerThreadEveryChunkEventsOperation() {
-            super(VMOperationInfos.get(EmitPerThreadEveryChunkEventsOperation.class, "Emit per thread every chunk events", SystemEffect.SAFEPOINT));
+    private static final class EmitPeriodicPerThreadEventsOperation extends JavaVMOperation {
+        EmitPeriodicPerThreadEventsOperation() {
+            super(VMOperationInfos.get(EmitPeriodicPerThreadEventsOperation.class, "Emit periodic JFR events", SystemEffect.SAFEPOINT));
         }
 
         @Override

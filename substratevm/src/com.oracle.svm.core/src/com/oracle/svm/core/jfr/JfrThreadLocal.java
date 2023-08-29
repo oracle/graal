@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -49,6 +48,7 @@ import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
@@ -243,9 +243,9 @@ public class JfrThreadLocal implements ThreadListener {
 
     /**
      * Allocation JFR events can be emitted along the allocation slow path. In some cases, when the
-     * slow path may be taken, a {@link Thread} object may not yet be assigned to the current thread
-     * See {@link PlatformThreads#ensureCurrentAssigned(String, ThreadGroup, boolean)} where a
-     * {@link Thread} object must be created before it can be assigned to the current thread. This
+     * slow path may be taken, a {@link Thread} object may not yet be assigned to the current
+     * thread, see {@link PlatformThreads#ensureCurrentAssigned(String, ThreadGroup, boolean)} where
+     * a {@link Thread} object must be created before it can be assigned to the current thread. This
      * may happen during shutdown in {@link JavaMainWrapper}. Therefore, this method must account
      * for the case where {@link Thread#currentThread()} returns null.
      */
@@ -254,20 +254,8 @@ public class JfrThreadLocal implements ThreadListener {
         if (thread == null) {
             return true;
         }
-        if (thread != Thread.currentThread() && !VMOperation.isInProgressAtSafepoint()) {
-            return false;
-        }
-
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
         return tjlt.jfrExcluded;
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static boolean isCurrentThreadExcluded() {
-        if (Thread.currentThread() == null) {
-            return true;
-        }
-        return isThreadExcluded(Thread.currentThread());
     }
 
     public static Target_jdk_jfr_internal_EventWriter getEventWriter() {

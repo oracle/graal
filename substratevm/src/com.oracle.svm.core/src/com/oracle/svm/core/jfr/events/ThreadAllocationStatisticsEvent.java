@@ -26,32 +26,31 @@
 
 package com.oracle.svm.core.jfr.events;
 
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.IsolateThread;
+import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.thread.PlatformThreads;
 
 public class ThreadAllocationStatisticsEvent {
-
     @Uninterruptible(reason = "Accesses a JFR buffer.")
     public static void emit(IsolateThread isolateThread) {
-        Thread javaThread = PlatformThreads.fromVMThread(isolateThread);
-        if (javaThread != null && JfrEvent.ThreadAllocationStatistics.shouldEmit(javaThread)) {
+        Thread thread = PlatformThreads.fromVMThread(isolateThread);
+        if (JfrEvent.ThreadAllocationStatistics.shouldEmit(thread)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadAllocationStatistics);
             JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putLong(data, Heap.getHeap().getThreadAllocatedMemory(isolateThread));
-            JfrNativeEventWriter.putThread(data, javaThread);
+            JfrNativeEventWriter.putThread(data, thread);
             JfrNativeEventWriter.endSmallEvent(data);
-
         }
     }
 }

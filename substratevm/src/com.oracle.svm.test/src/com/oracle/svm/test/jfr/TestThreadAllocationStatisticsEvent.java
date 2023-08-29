@@ -26,56 +26,80 @@
 
 package com.oracle.svm.test.jfr;
 
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
-import org.junit.Test;
-
-import java.util.ArrayList;
-import java.util.List;
-
 import static org.junit.Assert.assertTrue;
 
-public class TestThreadAllocationStatisticsEvent extends JfrRecordingTest {
-    private Thread thread = null;
-    private static final String THREAD_NAME = "Thread-Name";
-    private List<byte[]> dummyList = new ArrayList<>();
+import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 
-    private volatile boolean finished = false;
+import org.junit.Test;
+
+import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.jfr.JfrEvent;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
+
+public class TestThreadAllocationStatisticsEvent extends JfrRecordingTest {
+    private static final int ALLOCATION_SIZE = 128 * 1024;
+    private static final String THREAD_NAME_1 = "HeapAllocationThread-1";
 
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{"jdk.ThreadAllocationStatistics"};
+        String[] events = new String[]{JfrEvent.ThreadAllocationStatistics.getName()};
         Recording recording = startRecording(events);
 
-        createAndStartLongLived(THREAD_NAME);
+        /* Start a thread and wait until it allocated some memory. */
+        HeapAllocationThread thread = new HeapAllocationThread(THREAD_NAME_1);
+        thread.start();
+        waitUntilTrue(() -> thread.getAllocationCount() > 0);
+
+        /* Force chunk rotation so that ThreadAllocationStatistics are emitted for all threads. */
         recording.dump(createTempJfrFile());
-        finished = true;
+
+        /* Final chunk rotation also emits ThreadAllocationStatistics for all threads. */
         stopRecording(recording, TestThreadAllocationStatisticsEvent::validateEvents);
+
+        assertTrue(thread.isAlive());
+        thread.interrupt();
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
-        boolean found = false;
+        int found = 0;
         for (RecordedEvent e : events) {
-            if (e.getThread("thread").getJavaName().equals(THREAD_NAME) && e.<Long> getValue("allocated") >= 1024L) {
-                found = true;
-                break;
+            if (e.getThread("thread").getJavaName().equals(THREAD_NAME_1) && e.<Long> getValue("allocated") >= ALLOCATION_SIZE) {
+                found++;
             }
         }
-        assertTrue(found);
+        assertTrue(found >= 2);
     }
 
-    private void createAndStartLongLived(String name) {
-        thread = new Thread(() -> {
-            while (!finished) {
-                try {
-                    dummyList.add(new byte[1024]);
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+    private static class HeapAllocationThread extends Thread {
+        private final AtomicInteger allocationCount = new AtomicInteger();
+
+        HeapAllocationThread(String name) {
+            super(name);
+        }
+
+        @Override
+        public void run() {
+            try {
+                while (true) {
+                    allocateByteArray(ALLOCATION_SIZE);
+                    allocationCount.incrementAndGet();
+                    Thread.sleep(10);
                 }
+            } catch (InterruptedException e) {
+                /* Normal way how this thread exits. */
             }
-        });
-        thread.setName(name);
-        thread.start();
+        }
+
+        public int getAllocationCount() {
+            return allocationCount.get();
+        }
+
+        @NeverInline("Prevent escape analysis.")
+        private static byte[] allocateByteArray(int length) {
+            return new byte[length];
+        }
     }
 }
