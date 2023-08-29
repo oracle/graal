@@ -25,7 +25,6 @@
 package com.oracle.svm.hosted;
 
 import java.io.IOException;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.security.SecureClassLoader;
@@ -131,19 +130,6 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     private static final Method defineClass = ReflectionUtil.lookupMethod(ClassLoader.class, "defineClass",
                     String.class, byte[].class, int.class, int.class);
 
-    private static final Constructor<Enumeration<?>> compoundEnumerationConstructor;
-    static {
-        /* Reuse utility class defined as package-private class in java.lang.ClassLoader.java */
-        String className = "java.lang.CompoundEnumeration";
-        try {
-            @SuppressWarnings("unchecked")
-            Class<Enumeration<?>> compoundEnumerationClass = (Class<Enumeration<?>>) Class.forName(className);
-            compoundEnumerationConstructor = ReflectionUtil.lookupConstructor(compoundEnumerationClass, Enumeration[].class);
-        } catch (ClassNotFoundException | ReflectionUtil.ReflectionUtilError e) {
-            throw VMError.shouldNotReachHere("Unable to get access to class " + className, e);
-        }
-    }
-
     private static Class<?> loadClass(ClassLoader loader, String name, boolean resolve) throws ClassNotFoundException {
         ClassNotFoundException classNotFoundException = null;
         try {
@@ -211,15 +197,6 @@ public final class NativeImageSystemClassLoader extends SecureClassLoader {
     @Override
     protected Enumeration<URL> findResources(String name) throws IOException {
         return findResources(getActiveClassLoader(), name);
-    }
-
-    @SuppressWarnings("unchecked")
-    private static <T> Enumeration<T> newCompoundEnumeration(Enumeration<?>... enums) {
-        try {
-            return (Enumeration<T>) compoundEnumerationConstructor.newInstance((Object) enums);
-        } catch (ReflectiveOperationException e) {
-            throw VMError.shouldNotReachHere("Cannot instantiate CompoundEnumeration", e);
-        }
     }
 
     public Class<?> forNameOrNull(String name, boolean initialize) {
