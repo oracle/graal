@@ -35,6 +35,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.svm.core.util.TimeUtils;
@@ -47,8 +48,6 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
     private static final String THREAD_NAME_1 = "Thread-1";
     private static final String THREAD_NAME_2 = "Thread-2";
     private static final String THREAD_NAME_3 = "Thread-3";
-    private static Thread thread3 = null;
-    private static volatile boolean finished = false;
 
     @Test
     public void test() throws Throwable {
@@ -57,21 +56,20 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
 
         WeakReference<Thread> thread1 = createAndStartBusyWaitThread(THREAD_NAME_1, 10, 250);
         WeakReference<Thread> thread2 = createAndStartBusyWaitThread(THREAD_NAME_2, 250, 10);
-        thread3 = createAndStartLongLived(THREAD_NAME_3);
+        Thread thread3 = createAndStartBusyWaitThread(THREAD_NAME_3, 20, TIMEOUT).get();
 
+        /* For threads 1 and 2, the event is emitted when the thread exits. */
         waitUntilCollected(thread1);
         waitUntilCollected(thread2);
 
-        /**
-         * Thread 3 should be alive at the time of final chunk rotation to test whether this event
-         * is emitted correctly upon chunk end.
-         */
+        /* For thread 3, the event is emitted upon chunk end. */
         stopRecording(recording, TestThreadCPULoadEvent::validateEvents);
-        finished = true;
+
+        Assert.assertTrue(thread3.isAlive());
+        thread3.interrupt();
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
-        assertTrue(thread3.isAlive());
         Map<String, Float> userTimes = new HashMap<>();
         Map<String, Float> cpuTimes = new HashMap<>();
 
@@ -97,21 +95,6 @@ public class TestThreadCPULoadEvent extends JfrRecordingTest {
         thread.setName(name);
         thread.start();
         return new WeakReference<>(thread);
-    }
-
-    private static Thread createAndStartLongLived(String name) {
-        Thread thread = new Thread(() -> {
-            while (!finished) {
-                try {
-                    Thread.sleep(10);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-        });
-        thread.setName(name);
-        thread.start();
-        return thread;
     }
 
     private static void busyWait(long waitMs) {
