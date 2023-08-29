@@ -75,6 +75,26 @@ public class ObjectCloneTest extends GraalCompilerTest {
         return array.clone();
     }
 
+    private static final class ArrayHolder<T> {
+        T[] array;
+
+        private ArrayHolder(T[] array) {
+            this.array = array;
+        }
+    }
+
+    public static Object[] cloneGenericObjectArray(ArrayHolder<Object> holder) {
+        return holder.array.clone();
+    }
+
+    public static Number[] cloneDynamicObjectArray(ArrayHolder<Number> holder) {
+        return holder.array.clone();
+    }
+
+    public static Integer[] cloneConcreteObjectArray(ArrayHolder<Integer> holder) {
+        return holder.array.clone();
+    }
+
     public static Object cloneList(ArrayList<?> list) {
         return list.clone();
     }
@@ -113,6 +133,21 @@ public class ObjectCloneTest extends GraalCompilerTest {
     @Test
     public void testArray() throws Throwable {
         test("cloneArray", new int[]{1, 2, 4, 3});
+    }
+
+    @Test
+    public void testGenericObjectArray() throws Throwable {
+        test("cloneGenericObjectArray", new ArrayHolder<>(new Integer[]{1, 2, 4, 3}));
+    }
+
+    @Test
+    public void testDynamicObjectArray() throws Throwable {
+        test("cloneDynamicObjectArray", new ArrayHolder<>(new Number[]{1, 2, 4, 3}));
+    }
+
+    @Test
+    public void testConcreteObjectArray() throws Throwable {
+        test("cloneConcreteObjectArray", new ArrayHolder<>(new Integer[]{1, 2, 3, 4}));
     }
 
     @Test
