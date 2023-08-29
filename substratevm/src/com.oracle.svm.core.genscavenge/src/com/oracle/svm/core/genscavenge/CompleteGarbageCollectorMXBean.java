@@ -48,12 +48,12 @@ public final class CompleteGarbageCollectorMXBean implements com.sun.management.
 
     @Override
     public long getCollectionCount() {
-        return HeapImpl.getGCImpl().getAccounting().getCompleteCollectionCount();
+        return GCImpl.getAccounting().getCompleteCollectionCount();
     }
 
     @Override
     public long getCollectionTime() {
-        long nanos = HeapImpl.getGCImpl().getAccounting().getCompleteCollectionTotalNanos();
+        long nanos = GCImpl.getAccounting().getCompleteCollectionTotalNanos();
         return TimeUtils.roundNanosToMillis(nanos);
     }
 

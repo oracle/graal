@@ -1048,8 +1048,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=['SubstrateVM', 'nil'] + additional_ni_dependencies,
-    provided_executables=['bin/<cmd:rebuild-images>'],
-    support_distributions=['substratevm:TRUFFLE_REBUILD_IMAGES_GRAALVM_SUPPORT'],
+    provided_executables=[],
+    support_distributions=[],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
             use_modules='image',
@@ -1304,6 +1304,9 @@ libgraal_build_args = [
 
     # URLClassLoader causes considerable increase of the libgraal image size and should be excluded.
     '-H:ReportAnalysisForbiddenType=java.net.URLClassLoader',
+
+    # No need for container support in libgraal as HotSpot already takes care of it
+    '-H:-UseContainerSupport',
 ] + ([
    # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
    '-H:PageSize=64K'
@@ -1368,6 +1371,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 '-H:-ParseRuntimeOptions',
             ]),
             extra_jvm_args=_native_image_configure_extra_jvm_args(),
+            home_finder=False,
         )
     ],
     jlink=False,

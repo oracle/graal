@@ -19,6 +19,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-47647) Add `--color[=WHEN]` option to color the output WHEN ('always', 'never', or 'auto'). This API option supersedes the experimental option `-H:+BuildOutputColorful`.
 * (GR-43920) Add support for executing native image bundles as jar files with extra options `--with-native-image-agent` and `--container`.
 * (GR-43920) Add `,container[=<container-tool>]`, `,dockerfile=<dockerfile>` and `,dry-run` options to `--bundle-create`and `--bundle-apply`.
+* (GR-46420) Switch to directly using cgroup support from the JDK.
 
 ## GraalVM for JDK 17 and GraalVM for JDK 20 (Internal Version 23.0.0)
 * (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, `-H:+AllowDeprecatedBuilderClassesOnImageClasspath` allows turning the error into a warning.
