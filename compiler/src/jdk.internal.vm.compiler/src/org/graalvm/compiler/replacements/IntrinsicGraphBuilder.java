@@ -333,6 +333,11 @@ public class IntrinsicGraphBuilder extends CoreProvidersDelegate implements Grap
         throw GraalError.unimplementedOverride(); // ExcludeFromJacocoGeneratedReport
     }
 
+    /**
+     * An {@link IntrinsicGraphBuilder} is used to produce a graph for inlining. It assumes the
+     * inliner does any required null checking of the receiver as part of inlining. As such,
+     * {@code performNullCheck} is ignored here.
+     */
     @Override
     public ValueNode get(boolean performNullCheck) {
         return arguments[0];
