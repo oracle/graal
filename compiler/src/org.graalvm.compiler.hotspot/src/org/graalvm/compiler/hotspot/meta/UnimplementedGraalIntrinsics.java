@@ -399,7 +399,7 @@ public final class UnimplementedGraalIntrinsics {
                             "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;"
                             // @formatter:on
             );
-            add(ignore,
+            add(toBeInvestigated,
                             "jdk/internal/misc/Unsafe.storeStoreFence()V");
         }
 
