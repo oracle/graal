@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,31 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-// @formatter:off
-package com.oracle.svm.core.containers;
+package org.graalvm.compiler.core.test;
 
-/*
- * @author bobv
- * @since 11
- */
+import java.util.List;
 
-public class Container {
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.FrameState;
+import org.graalvm.compiler.nodes.StructuredGraph;
+import org.junit.Test;
 
-    private Container() { }
+public class NodeCopyWithInputsTest extends GraalCompilerTest {
 
-    /**
-     * Returns the platform specific Container Metrics class or
-     * null if not supported on this platform.
-     *
-     * @return Metrics instance or null if not supported
-     */
-    public static Metrics metrics() {
-        return Metrics.systemMetrics();
+    static void snippet() {
+
+    }
+
+    @Test
+    public void testDuplicateEquals() {
+        StructuredGraph graph = parseEager("snippet", StructuredGraph.AllowAssumptions.YES);
+
+        // Duplicating a FrameState should produce an equivalent node.
+        List<FrameState> snapshot = graph.getNodes().filter(FrameState.class).snapshot();
+        assertTrue(!snapshot.isEmpty(), "must produce some FrameStates");
+        for (FrameState state : snapshot) {
+            Node copy = state.copyWithInputs(true);
+            assertTrue(copy.dataFlowEquals(state), "duplicated node should be equal");
+        }
     }
 }

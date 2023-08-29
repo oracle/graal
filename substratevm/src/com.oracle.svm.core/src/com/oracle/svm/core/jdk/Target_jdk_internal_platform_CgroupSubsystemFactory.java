@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, Red Hat Inc.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,24 +22,27 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
+package com.oracle.svm.core.jdk;
 
-// @formatter:off
-package com.oracle.svm.core.containers.cgroupv1;
+import java.util.function.Predicate;
 
-public class CgroupV1MemorySubSystemController extends CgroupV1SubsystemController {
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.util.ReflectionUtil;
 
-    private boolean hierarchical;
-
-    public CgroupV1MemorySubSystemController(String root, String mountPoint) {
-        super(root, mountPoint);
+@TargetClass(className = "jdk.internal.platform.CgroupSubsystemFactory", onlyWith = PlatformHasClass.class)
+final class Target_jdk_internal_platform_CgroupSubsystemFactory {
+    @Substitute
+    @TargetElement(onlyWith = HasWarnMethod.class)
+    static void warn(@SuppressWarnings("unused") String msg) {
+        /* Disable debug logging (JDK-8309191). */
     }
+}
 
-    boolean isHierarchical() {
-        return hierarchical;
+final class HasWarnMethod implements Predicate<Class<?>> {
+    @Override
+    public boolean test(Class<?> originalClass) {
+        return ReflectionUtil.lookupMethod(true, originalClass, "warn", String.class) != null;
     }
-
-    void setHierarchical(boolean hierarchical) {
-        this.hierarchical = hierarchical;
-    }
-
 }

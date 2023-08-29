@@ -27,16 +27,19 @@ package com.oracle.svm.core.jdk;
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
 
 import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@Platforms(Platform.LINUX.class)
-@TargetClass(className = "jdk.internal.platform.CgroupMetrics")
-public final class Target_jdk_internal_platform_CgroupMetrics {
+@TargetClass(className = "jdk.internal.platform.CgroupMetrics", onlyWith = PlatformHasClass.class)
+final class Target_jdk_internal_platform_CgroupMetrics {
     @Substitute
     public static boolean isUseContainerSupport() {
-        return UseContainerSupport.getValue();
+        /*
+         * It is important that this method can be folded to a constant before the static analysis,
+         * i.e., only relies on hosted options and other conditions that are constant. Inlining
+         * before analysis ensures that the constant is propagated out to call sites.
+         */
+        return UseContainerSupport.getValue() && Platform.includedIn(Platform.LINUX.class);
     }
 }

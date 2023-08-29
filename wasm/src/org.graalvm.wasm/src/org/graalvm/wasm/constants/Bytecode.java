@@ -439,6 +439,9 @@ public class Bytecode {
     public static final int ATOMIC_I64_RMW32_U_CMPXCHG = 0x3E;
 
     public static final int ATOMIC_FENCE = 0x3F;
+    public static final int ATOMIC_NOTIFY = 0x40;
+    public static final int ATOMIC_WAIT32 = 0x41;
+    public static final int ATOMIC_WAIT64 = 0x42;
 
     public static final byte[] EMPTY_BYTES = {};
     public static final int COMMON_BYTECODE_OFFSET = Bytecode.I32_EQ - Instructions.I32_EQ;

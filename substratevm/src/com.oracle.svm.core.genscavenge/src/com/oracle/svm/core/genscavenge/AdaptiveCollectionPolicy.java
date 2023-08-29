@@ -420,7 +420,7 @@ class AdaptiveCollectionPolicy extends AbstractCollectionPolicy {
         timer.reset();
         timer.open();
 
-        GCAccounting accounting = GCImpl.getGCImpl().getAccounting();
+        GCAccounting accounting = GCImpl.getAccounting();
         UnsignedWord oldLive = accounting.getOldGenerationAfterChunkBytes();
         oldSizeExceededInPreviousCollection = oldLive.aboveThan(oldSize);
 

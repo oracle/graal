@@ -73,7 +73,9 @@ public class SpectestModule extends BuiltinModule {
         defineGlobal(module, "global_f64", F64_TYPE, GlobalModifier.CONSTANT, Double.doubleToRawLongBits(666.0));
         defineTable(module, "table", 10, 20, WasmType.FUNCREF_TYPE);
         defineMemory(module, "memory", 1, 2, false, false);
-        defineMemory(module, "shared_memory", 1, 2, false, true);
+        if (context.getContextOptions().supportThreads() && context.getContextOptions().useUnsafeMemory()) {
+            defineMemory(module, "shared_memory", 1, 2, false, true);
+        }
         return module;
     }
 }

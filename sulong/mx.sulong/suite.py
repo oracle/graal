@@ -414,9 +414,9 @@ suite = {
       "dependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
+        "truffle:TRUFFLE_ANTLR4",
         "com.oracle.truffle.llvm.api",
         "com.oracle.truffle.llvm.spi",
-        "truffle:ANTLR4",
       ],
       "requires" : [
         "java.logging",
@@ -575,7 +575,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.runtime",
-        "truffle:ANTLR4",
+        "truffle:TRUFFLE_ANTLR4",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "17+",
@@ -1615,10 +1615,8 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
+        "truffle:TRUFFLE_ANTLR4",
         "SULONG_API",
-      ],
-      "exclude" : [
-        "truffle:ANTLR4",
       ],
       "javaProperties" : {
         "org.graalvm.language.llvm.home": "<path:SULONG_HOME>",

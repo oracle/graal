@@ -770,7 +770,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         int offset = -1;
         boolean isWord = false;
         if (JDK >= 20) {
-            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int64_t");
+            String cppType = JDK >= 22 ? "intx" : "int64_t";
+            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, cppType);
             isWord = true;
         }
         threadHeldMonitorCountOffset = offset;

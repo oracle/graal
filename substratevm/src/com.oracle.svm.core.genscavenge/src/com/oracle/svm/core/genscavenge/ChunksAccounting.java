@@ -30,7 +30,6 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.log.Log;
 
 /**
  * Accounting for a {@link Space} or {@link Generation}. For the eden space, the values are
@@ -82,12 +81,6 @@ final class ChunksAccounting {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public UnsignedWord getUnalignedChunkBytes() {
         return unalignedChunkBytes;
-    }
-
-    void report(Log reportLog) {
-        reportLog.string("aligned: ").unsigned(getAlignedChunkBytes()).string("/").unsigned(alignedCount);
-        reportLog.string(" ");
-        reportLog.string("unaligned: ").unsigned(unalignedChunkBytes).string("/").unsigned(unalignedCount);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

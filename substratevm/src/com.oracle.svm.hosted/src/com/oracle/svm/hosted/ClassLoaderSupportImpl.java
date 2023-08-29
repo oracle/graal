@@ -142,6 +142,10 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                             .collect(Collectors.toList());
 
             for (String resName : foundResources) {
+                if (resName.endsWith("/")) {
+                    resourceCollector.addDirectoryResource(info.module, resName, "", false);
+                    continue;
+                }
                 Optional<InputStream> content = moduleReader.open(resName);
                 if (content.isEmpty()) {
                     /* This is to be resilient, but the resources returned by list() should exist */
