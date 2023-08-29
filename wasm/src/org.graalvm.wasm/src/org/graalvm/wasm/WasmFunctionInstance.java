@@ -47,6 +47,7 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -101,6 +102,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         return moduleInstance;
     }
 
+    @TruffleBoundary
     public String name() {
         if (function == null) {
             return target.toString();
