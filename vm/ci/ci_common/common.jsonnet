@@ -547,7 +547,7 @@ local devkits = graal_common.devkits;
       self.mx_cmd_base(os, arch) + mx_args + ['build'] + build_args,
     ],
 
-    pd_layouts_archive_name(os, arch):: 'pd_layouts_' + os + '_' + arch + '.tgz',
+    pd_layouts_archive_name(platform):: 'pd-layouts-' + platform + '.tgz',
 
     pd_layouts_artifact_name(platform, dry_run):: 'pd-layouts-' + (if dry_run then 'dry-run-' else '') + platform,
 
@@ -555,6 +555,7 @@ local devkits = graal_common.devkits;
     mvn_args_only_native: self.mvn_args + ['--all-suites', '--only', self.only_native_dists],
 
     is_main_platform(os, arch):: os == 'linux' && arch == 'amd64',
+    other_platforms:: ['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64'],
 
     deploy(os, arch, dry_run, repo_strings):: [
       self.mx_cmd_base(os, arch)
@@ -576,10 +577,7 @@ local devkits = graal_common.devkits;
     run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo)::
       if (self.is_main_platform(os, arch)) then (
         [
-          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name('linux', 'aarch64')],
-          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name('darwin', 'amd64')],
-          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name('darwin', 'aarch64')],
-          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name('windows', 'amd64')],
+          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name(platform)] for platform in self.other_platforms
         ]
         + self.build(os, arch, mx_args=['--multi-platform-layout-directories=all'], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}'])  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
         + self.deploy(os, arch, dry_run, [remote_mvn_repo])
@@ -607,7 +605,7 @@ local devkits = graal_common.devkits;
           else
             [['echo', 'Skipping the deployment of ' + self.only_native_dists]]
         )
-        + [self.mx_cmd_base(os, arch) + ['archive-pd-layouts', self.pd_layouts_archive_name(os, arch)]]
+        + [self.mx_cmd_base(os, arch) + ['archive-pd-layouts', self.pd_layouts_archive_name(os + '-' + arch)]]
       ),
 
     base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo):: {
@@ -618,7 +616,7 @@ local devkits = graal_common.devkits;
            name: $.maven_deploy_base_functions.pd_layouts_artifact_name(platform, dry_run),
            dir: vm.vm_dir,
            autoExtract: true,
-         } for platform in ['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64']
+         } for platform in $.maven_deploy_base_functions.other_platforms
        ],
      }
     else {
@@ -626,7 +624,7 @@ local devkits = graal_common.devkits;
         {
            name: $.maven_deploy_base_functions.pd_layouts_artifact_name(os + '-' + arch, dry_run),
            dir: vm.vm_dir,
-           patterns: [$.maven_deploy_base_functions.pd_layouts_archive_name(os, arch)],
+           patterns: [$.maven_deploy_base_functions.pd_layouts_archive_name(os + '-' + arch)],
         },
       ],
     },
