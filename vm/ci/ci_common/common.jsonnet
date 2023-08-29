@@ -580,10 +580,10 @@ local devkits = graal_common.devkits;
       ) else (
         self.build(os, arch, build_args=['--targets=' + self.only_native_dists + ',{PLATFORM_DEPENDENT_LAYOUT_DIR_DISTRIBUTIONS}'])
         + (
-          if (vm.vm_dir == 'vm') then
+          if (vm.maven_deploy_base_functions.edition == 'ce') then
             self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
           else
-            [['echo', 'Skipping the deployment of ' + self.only_native_dists]]
+            [['echo', 'Skipping the deployment of ' + self.only_native_dists + ': It is already deployed by the ce job']]
         )
         + [self.mx_cmd_base(os, arch) + ['archive-pd-layouts', self.pd_layouts_archive_name(os + '-' + arch)]]
       ),
