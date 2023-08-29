@@ -172,8 +172,7 @@ public class NativeImageClassLoaderSupport {
          */
         Configuration configuration = ModuleLayer.boot().configuration().resolve(modulePathsFinder, upgradeAndSystemModuleFinder, moduleNames);
 
-        classLoader = new NativeImageClassLoader(imagecp, configuration.modules(), defaultSystemClassLoader);
-        classLoader.initRemotePackageMap(configuration, List.of(ModuleLayer.boot()));
+        classLoader = new NativeImageClassLoader(imagecp, configuration, defaultSystemClassLoader);
 
         ModuleLayer moduleLayer = ModuleLayer.defineModules(configuration, List.of(ModuleLayer.boot()), ignored -> classLoader).layer();
         adjustBootLayerQualifiedExports(moduleLayer);

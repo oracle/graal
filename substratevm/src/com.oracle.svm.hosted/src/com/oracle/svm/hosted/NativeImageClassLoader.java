@@ -43,7 +43,6 @@ import java.security.Permission;
 import java.security.PermissionCollection;
 import java.security.SecureClassLoader;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -67,24 +66,21 @@ import jdk.internal.loader.URLClassPath;
 import jdk.internal.module.Resources;
 
 /**
- * A class loader that loads classes and resources from a collection of modules, or from a single
- * module where the class loader is a member of a pool of class loaders.
+ * This custom class loader is used by the image builder to load the application classes that should
+ * be built into a native-image. It can load classes from a user-provided application module- and
+ * class-path. This is different from the existing classloaders that the JDK provides. While
+ * {@code ModuleLayer.defineModulesWith} methods only allow loading modules at runtime,
+ * {@code URLClassLoader} only allows loading classes on classpath at runtime. This is insufficient
+ * for the image builder as it needs to be able to load from both, module- and class-path, with the
+ * same loader so that classes on the given class-path are able to access classes from the given
+ * module-path.
  *
  * <p>
- * The delegation model used by this ClassLoader differs to the regular delegation model. When
- * requested to load a class then this ClassLoader first maps the class name to its package name. If
- * there is a module defined to the Loader containing the package then the class loader attempts to
- * load from that module. If the package is instead defined to a module in a "remote" ClassLoader
- * then this class loader delegates directly to that class loader. The map of package name to remote
- * class loader is created based on the modules read by modules defined to this class loader. If the
- * package is not local or remote then this class loader will delegate to the parent class loader.
- * This allows automatic modules (for example) to link to types in the unnamed module of the parent
- * class loader.
- *
- * @see ModuleLayer#defineModulesWithOneLoader
- * @see ModuleLayer#defineModulesWithManyLoaders
+ * This loader is heavily inspired by {@code jdk.internal.loader.Loader} and {@code URLClassLoader}.
+ * Documentation in this class only mentions where methods diverge from their respective behaviour
+ * in {@code jdk.internal.loader.Loader} and {@code URLClassLoader}. More documentation is available
+ * in the original classes.
  */
-
 final class NativeImageClassLoader extends SecureClassLoader {
 
     static {
@@ -93,26 +89,22 @@ final class NativeImageClassLoader extends SecureClassLoader {
 
     private final ClassLoader parent;
 
-    // maps a module name to a module reference
+    /* Unmodifiable maps used by this loader */
     private final Map<String, ModuleReference> localNameToModule;
-
-    // maps package name to a module loaded by this class loader
     private final Map<String, LoadedModule> localPackageToModule;
-
-    // maps package name to a remote class loader, populated post initialization
     private final Map<String, ClassLoader> remotePackageToLoader;
 
-    // maps a module reference to a module reader, populated lazily
-    private final Map<ModuleReference, ModuleReader> moduleToReader;
+    /* Modifiable map used by this loader */
+    private final ConcurrentHashMap<ModuleReference, ModuleReader> moduleToReader;
 
     private final URLClassPath ucp;
 
     /**
-     * A module defined/loaded to a {@code Loader}.
+     * See {@code jdk.internal.loader.Loader.LoadedModule}.
      */
     private static class LoadedModule {
         private final ModuleReference mref;
-        private final URL url;          // may be null
+        private final URL url; // may be null
         private final CodeSource cs;
 
         LoadedModule(ModuleReference mref) {
@@ -147,18 +139,17 @@ final class NativeImageClassLoader extends SecureClassLoader {
     }
 
     /**
-     * Creates a {@code Loader} that loads classes/resources from a collection of modules.
-     *
-     * @throws IllegalArgumentException If two or more modules have the same package
+     * See {@code jdk.internal.loader.Loader#Loader} and
+     * {@code java.net.URLClassLoader#URLClassLoader}.
      */
-    NativeImageClassLoader(List<Path> classpath, Collection<ResolvedModule> modules, ClassLoader parent) {
+    NativeImageClassLoader(List<Path> classpath, Configuration configuration, ClassLoader parent) {
         super(parent);
 
         this.parent = parent;
 
         Map<String, ModuleReference> nameToModule = new HashMap<>();
         Map<String, LoadedModule> packageToModule = new HashMap<>();
-        for (ResolvedModule resolvedModule : modules) {
+        for (ResolvedModule resolvedModule : configuration.modules()) {
             ModuleReference mref = resolvedModule.reference();
             ModuleDescriptor descriptor = mref.descriptor();
             nameToModule.put(descriptor.name(), mref);
@@ -169,11 +160,18 @@ final class NativeImageClassLoader extends SecureClassLoader {
                 }
             });
         }
-        localNameToModule = nameToModule;
-        localPackageToModule = packageToModule;
-        remotePackageToLoader = new ConcurrentHashMap<>();
+        localNameToModule = Collections.unmodifiableMap(nameToModule);
+        localPackageToModule = Collections.unmodifiableMap(packageToModule);
+        /*
+         * Other than in {@code jdk.internal.loader.Loader} we initialize remotePackageToLoader here
+         * which allows us to use an unmodifiable map instead of a ConcurrentHashMap.
+         */
+        remotePackageToLoader = initRemotePackageMap(configuration, List.of(ModuleLayer.boot()));
+
+        /* The only map that gets updated concurrently during the lifetime of this loader. */
         moduleToReader = new ConcurrentHashMap<>();
 
+        /* Initialize URLClassPath that is used to lookup classes from class-path. */
         ucp = new URLClassPath(classpath.stream().map(NativeImageClassLoader::pathToURL).toArray(URL[]::new), null);
     }
 
@@ -186,15 +184,11 @@ final class NativeImageClassLoader extends SecureClassLoader {
     }
 
     /**
-     * Completes initialization of this Loader. This method populates remotePackageToLoader with the
-     * packages of the remote modules, where "remote modules" are the modules read by modules
-     * defined to this loader.
-     *
-     * @param cf the Configuration containing at least modules to be defined to this class loader
-     *
-     * @param parentModuleLayers the parent ModuleLayers
+     * See {@code jdk.internal.loader.Loader#initRemotePackageMap}.
      */
-    public NativeImageClassLoader initRemotePackageMap(Configuration cf, List<ModuleLayer> parentModuleLayers) {
+    private Map<String, ClassLoader> initRemotePackageMap(Configuration cf, List<ModuleLayer> parentModuleLayers) {
+        Map<String, ClassLoader> remotePackageMap = new HashMap<>();
+
         for (String name : localNameToModule.keySet()) {
             ResolvedModule resolvedModule = cf.findModule(name).get();
             assert resolvedModule.configuration() == cf;
@@ -204,24 +198,15 @@ final class NativeImageClassLoader extends SecureClassLoader {
                 ClassLoader loader;
 
                 if (other.configuration() == cf) {
-
-                    // The module reads another module in the newly created
-                    // layer. If all modules are defined to the same class
-                    // loader then the packages are local.
                     assert localNameToModule.containsKey(mn);
                     continue;
                 } else {
-
-                    // find the layer for the target module
                     ModuleLayer layer = parentModuleLayers.stream()
                                     .map(parentLayer -> findModuleLayer(parentLayer, other.configuration()))
                                     .flatMap(Optional::stream)
                                     .findAny()
                                     .orElseThrow(() -> new InternalError("Unable to find parent layer"));
 
-                    // find the class loader for the module
-                    // For now we use the platform loader for modules defined to the
-                    // boot loader
                     assert layer.findModule(mn).isPresent();
                     loader = layer.findLoader(mn);
                     if (loader == null) {
@@ -229,51 +214,43 @@ final class NativeImageClassLoader extends SecureClassLoader {
                     }
                 }
 
-                // find the packages that are exported to the target module
                 ModuleDescriptor descriptor = other.reference().descriptor();
                 if (descriptor.isAutomatic()) {
                     ClassLoader l = loader;
-                    descriptor.packages().forEach(pn -> remotePackage(pn, l));
+                    descriptor.packages().forEach(pn -> remotePackage(remotePackageMap, pn, l));
                 } else {
                     String target = resolvedModule.name();
                     for (ModuleDescriptor.Exports e : descriptor.exports()) {
                         boolean delegate;
                         if (e.isQualified()) {
-                            // qualified export in same configuration
                             delegate = (other.configuration() == cf) && e.targets().contains(target);
                         } else {
-                            // unqualified
                             delegate = true;
                         }
 
                         if (delegate) {
-                            remotePackage(e.source(), loader);
+                            remotePackage(remotePackageMap, e.source(), loader);
                         }
                     }
                 }
             }
-
         }
 
-        return this;
+        return Collections.unmodifiableMap(remotePackageMap);
     }
 
     /**
-     * Adds to remotePackageToLoader so that an attempt to load a class in the package delegates to
-     * the given class loader.
-     *
-     * @throws IllegalStateException if the package is already mapped to a different class loader
+     * See {@code jdk.internal.loader.Loader#remotePackage}.
      */
-    private void remotePackage(String pn, ClassLoader loader) {
-        ClassLoader l = remotePackageToLoader.putIfAbsent(pn, loader);
+    private static void remotePackage(Map<String, ClassLoader> map, String pn, ClassLoader loader) {
+        ClassLoader l = map.putIfAbsent(pn, loader);
         if (l != null && l != loader) {
             throw new IllegalStateException("Package " + pn + " cannot be imported from multiple loaders");
         }
     }
 
     /**
-     * Find the layer corresponding to the given configuration in the tree of layers rooted at the
-     * given parent.
+     * See {@code jdk.internal.loader.Loader#findModuleLayer}.
      */
     private static Optional<ModuleLayer> findModuleLayer(ModuleLayer moduleLayer, Configuration cf) {
         return SharedSecrets.getJavaLangAccess().layers(moduleLayer)
@@ -281,23 +258,22 @@ final class NativeImageClassLoader extends SecureClassLoader {
                         .findAny();
     }
 
-    // -- resources --
-
     /**
-     * Returns a URL to a resource of the given name in a module defined to this class loader.
+     * See {@code jdk.internal.loader.Loader#findResource(String mn, String name)}.
      */
     @Override
     protected URL findResource(String mn, String name) throws IOException {
+        /* For unnamed module, search for resource in class-path */
         if (mn == null) {
             return ucp.findResource(name, false);
         }
 
+        /* otherwise search in specific module */
         ModuleReference mref = (mn != null) ? localNameToModule.get(mn) : null;
         if (mref == null) {
-            return null;   // not defined to this class loader
+            return null;
         }
 
-        // locate resource
         URL url = null;
         Optional<URI> ouri = moduleReaderFor(mref).find(name);
         if (ouri.isPresent()) {
@@ -310,15 +286,20 @@ final class NativeImageClassLoader extends SecureClassLoader {
         return url;
     }
 
+    /**
+     * See {@code jdk.internal.loader.Loader#findResource(String name)}.
+     */
     @Override
     public URL findResource(String name) {
         String pn = Resources.toPackageName(name);
 
+        /* Search for resource in class-path ... */
         URL urlOnClasspath = ucp.findResource(name, false);
         if (urlOnClasspath != null) {
             return urlOnClasspath;
         }
 
+        /* ... and in module-path */
         LoadedModule module = localPackageToModule.get(pn);
         if (module != null) {
             try {
@@ -326,7 +307,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
                 if (url != null && (name.endsWith(".class") || url.toString().endsWith("/") || isOpen(module.mref(), pn))) {
                     return url;
                 }
-            } catch (IOException ioe) {
+            } catch (IOException unused) {
                 // ignore
             }
 
@@ -337,7 +318,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
                     if (url != null) {
                         return url;
                     }
-                } catch (IOException ioe) {
+                } catch (IOException unused) {
                     // ignore
                 }
             }
@@ -346,19 +327,23 @@ final class NativeImageClassLoader extends SecureClassLoader {
         return null;
     }
 
+    /**
+     * See {@code jdk.internal.loader.Loader#findResources}.
+     */
     @Override
     public Enumeration<URL> findResources(String name) throws IOException {
         return Collections.enumeration(findResourcesAsList(name));
     }
 
+    /**
+     * See {@code jdk.internal.loader.Loader#getResource}.
+     */
     @Override
     public URL getResource(String name) {
         Objects.requireNonNull(name);
 
-        // this loader
         URL url = findResource(name);
         if (url == null) {
-            // parent loader
             if (parent != null) {
                 url = parent.getResource(name);
             } else {
@@ -368,14 +353,15 @@ final class NativeImageClassLoader extends SecureClassLoader {
         return url;
     }
 
+    /**
+     * See {@code jdk.internal.loader.Loader#getResources}.
+     */
     @Override
     public Enumeration<URL> getResources(String name) throws IOException {
         Objects.requireNonNull(name);
 
-        // this loader
         List<URL> urls = findResourcesAsList(name);
 
-        // parent loader
         Enumeration<URL> e;
         if (parent != null) {
             e = parent.getResources(name);
@@ -383,7 +369,6 @@ final class NativeImageClassLoader extends SecureClassLoader {
             e = BootLoader.findResources(name);
         }
 
-        // concat the URLs with the URLs returned by the parent
         return new Enumeration<>() {
             final Iterator<URL> iterator = urls.iterator();
 
@@ -404,18 +389,20 @@ final class NativeImageClassLoader extends SecureClassLoader {
     }
 
     /**
-     * Finds the resources with the given name in this class loader.
+     * See {@code jdk.internal.loader.Loader#findResourcesAsList}.
      */
     private List<URL> findResourcesAsList(String name) throws IOException {
         String pn = Resources.toPackageName(name);
 
         List<URL> urls = new ArrayList<>();
 
+        /* Search for resource in class-path ... */
         Enumeration<URL> classPathResources = ucp.findResources(name, false);
         while (classPathResources.hasMoreElements()) {
             urls.add(classPathResources.nextElement());
         }
 
+        /* ... and in module-path */
         LoadedModule module = localPackageToModule.get(pn);
         if (module != null) {
             URL url = findResource(module.name(), name);
@@ -433,18 +420,17 @@ final class NativeImageClassLoader extends SecureClassLoader {
         return urls;
     }
 
-    // -- finding/loading classes
-
     /**
-     * Finds the class with the specified binary name.
+     * See {@code jdk.internal.loader.Loader#findClass(String cn)}.
      */
     @Override
     protected Class<?> findClass(String cn) throws ClassNotFoundException {
-        Class<?> c = null;
+        Class<?> c;
         LoadedModule loadedModule = findLoadedModule(cn);
         if (loadedModule != null) {
             c = findClassInModuleOrNull(loadedModule, cn);
         } else {
+            /* Not found in modules of this loader, try class-path instead */
             c = findClassViaClassPath(cn);
         }
         if (c == null) {
@@ -453,6 +439,9 @@ final class NativeImageClassLoader extends SecureClassLoader {
         return c;
     }
 
+    /**
+     * See {@code java.net.URLClassLoader#findClass(java.lang.String)}.
+     */
     private Class<?> findClassViaClassPath(String name) throws ClassNotFoundException {
         Class<?> result;
 
@@ -476,16 +465,14 @@ final class NativeImageClassLoader extends SecureClassLoader {
         return result;
     }
 
-    /*
-     * Defines a Class using the class bytes obtained from the specified Resource. The resulting
-     * Class must be resolved before it can be used.
+    /**
+     * See {@code java.net.URLClassLoader#defineClass}.
      */
     private Class<?> defineClass(String name, Resource res) throws IOException {
         int i = name.lastIndexOf('.');
         URL url = res.getCodeSourceURL();
         if (i != -1) {
             String pkgname = name.substring(0, i);
-            // Check if package already loaded.
             Manifest man = res.getManifest();
             if (getAndVerifyPackage(pkgname, man, url) == null) {
                 try {
@@ -495,55 +482,47 @@ final class NativeImageClassLoader extends SecureClassLoader {
                         definePackage(pkgname, null, null, null, null, null, null, null);
                     }
                 } catch (IllegalArgumentException iae) {
-                    // parallel-capable class loaders: re-verify in case of a
-                    // race condition
                     if (getAndVerifyPackage(pkgname, man, url) == null) {
-                        // Should never happen
-                        throw new AssertionError("Cannot find package " +
-                                        pkgname);
+                        throw new AssertionError("Cannot find package " + pkgname);
                     }
                 }
             }
         }
-        // Now read the class bytes and define the class
         java.nio.ByteBuffer bb = res.getByteBuffer();
         if (bb != null) {
-            // Use (direct) ByteBuffer:
             CodeSigner[] signers = res.getCodeSigners();
             CodeSource cs = new CodeSource(url, signers);
             return defineClass(name, bb, cs);
         } else {
             byte[] b = res.getBytes();
-            // must read certificates AFTER reading bytes.
             CodeSigner[] signers = res.getCodeSigners();
             CodeSource cs = new CodeSource(url, signers);
             return defineClass(name, b, 0, b.length, cs);
         }
     }
 
+    /**
+     * See {@code java.net.URLClassLoader#getAndVerifyPackage}.
+     */
     private Package getAndVerifyPackage(String pkgname, Manifest man, URL url) {
         Package pkg = getDefinedPackage(pkgname);
         if (pkg != null) {
-            // Package found, so check package sealing.
             if (pkg.isSealed()) {
-                // Verify that code source URL is the same.
                 if (!pkg.isSealed(url)) {
-                    throw new SecurityException(
-                                    "sealing violation: package " + pkgname + " is sealed");
+                    throw new SecurityException("Sealing violation: package " + pkgname + " is sealed");
                 }
             } else {
-                // Make sure we are not attempting to seal the package
-                // at this code source URL.
                 if ((man != null) && isSealed(pkgname, man)) {
-                    throw new SecurityException(
-                                    "sealing violation: can't seal package " + pkgname +
-                                                    ": already loaded");
+                    throw new SecurityException("Sealing violation: can't seal package " + pkgname + ": already loaded");
                 }
             }
         }
         return pkg;
     }
 
+    /**
+     * See {@code java.net.URLClassLoader#definePackage}.
+     */
     private Package definePackage(String name, Manifest man, URL url) {
         String specTitle = null;
         String specVersion = null;
@@ -596,6 +575,9 @@ final class NativeImageClassLoader extends SecureClassLoader {
                         implTitle, implVersion, implVendor, sealBase);
     }
 
+    /**
+     * See {@code java.net.URLClassLoader#isSealed}.
+     */
     private static boolean isSealed(String name, Manifest man) {
         Attributes attr = SharedSecrets.javaUtilJarAccess()
                         .getTrustedAttributes(man, name.replace('.', '/').concat("/"));
@@ -612,8 +594,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
     }
 
     /**
-     * Finds the class with the specified binary name in the given module. This method returns
-     * {@code null} if the class cannot be found.
+     * See {@code jdk.internal.loader.Loader#findClass(java.lang.String, java.lang.String)}.
      */
     @Override
     protected Class<?> findClass(String mn, String cn) {
@@ -622,6 +603,7 @@ final class NativeImageClassLoader extends SecureClassLoader {
         if (loadedModule != null && loadedModule.name().equals(mn)) {
             c = findClassInModuleOrNull(loadedModule, cn);
         } else {
+            /* Not found in modules of this loader, try class-path instead */
             try {
                 c = findClassViaClassPath(cn);
             } catch (ClassNotFoundException ex) {
@@ -632,12 +614,11 @@ final class NativeImageClassLoader extends SecureClassLoader {
     }
 
     /**
-     * Loads the class with the specified binary name.
+     * See {@code jdk.internal.loader.Loader#loadClass(java.lang.String, boolean)}.
      */
     @Override
     protected Class<?> loadClass(String cn, boolean resolve) throws ClassNotFoundException {
         synchronized (getClassLoadingLock(cn)) {
-            // check if already loaded
             Class<?> c = findLoadedClass(cn);
 
             if (c == null) {
@@ -652,23 +633,17 @@ final class NativeImageClassLoader extends SecureClassLoader {
                 LoadedModule loadedModule = findLoadedModule(cn);
 
                 if (loadedModule != null) {
-
-                    // class is in module defined to this class loader
                     c = findClassInModuleOrNull(loadedModule, cn);
-
                 } else {
+                    /* Not found in modules of this loader, try class-path instead */
                     if (c == null) {
                         c = findClassViaClassPath(cn);
                     }
 
                     if (c == null) {
-                        // type in another module or visible via the parent loader
                         String pn = packageName(cn);
                         ClassLoader loader = remotePackageToLoader.get(pn);
                         if (loader == null) {
-                            // type not in a module read by any of the modules
-                            // defined to this loader, so delegate to parent
-                            // class loader
                             loader = parent;
                         }
                         if (loader == null) {
@@ -693,28 +668,22 @@ final class NativeImageClassLoader extends SecureClassLoader {
     }
 
     /**
-     * Finds the class with the specified binary name if in a module defined to this ClassLoader.
-     *
-     * @return the resulting Class or {@code null} if not found
+     * See {@code jdk.internal.loader.Loader#findClassInModuleOrNull}.
      */
     private Class<?> findClassInModuleOrNull(LoadedModule loadedModule, String cn) {
         return defineClass(cn, loadedModule);
     }
 
     /**
-     * Defines the given binary class name to the VM, loading the class bytes from the given module.
-     *
-     * @return the resulting Class or {@code null} if an I/O error occurs
+     * See {@code jdk.internal.loader.Loader#defineClass}.
      */
     private Class<?> defineClass(String cn, LoadedModule loadedModule) {
         ModuleReader reader = moduleReaderFor(loadedModule.mref());
 
         try {
-            // read class file
             String rn = cn.replace('.', '/').concat(".class");
             ByteBuffer bb = reader.read(rn).orElse(null);
             if (bb == null) {
-                // class not found
                 return null;
             }
 
@@ -725,15 +694,12 @@ final class NativeImageClassLoader extends SecureClassLoader {
             }
 
         } catch (IOException ioe) {
-            // TBD on how I/O errors should be propagated
             return null;
         }
     }
 
-    // -- permissions
-
     /**
-     * Returns the permissions for the given CodeSource.
+     * See {@code jdk.internal.loader.Loader#getPermissions}.
      */
     @Override
     protected PermissionCollection getPermissions(CodeSource cs) {
@@ -744,11 +710,9 @@ final class NativeImageClassLoader extends SecureClassLoader {
             return perms;
         }
 
-        // add the permission to access the resource
         try {
             Permission p = url.openConnection().getPermission();
             if (p != null) {
-                // for directories then need recursive access
                 if (p instanceof FilePermission) {
                     String path = p.getName();
                     if (path.endsWith(File.separator)) {
@@ -764,36 +728,43 @@ final class NativeImageClassLoader extends SecureClassLoader {
         return perms;
     }
 
-    // -- miscellaneous supporting methods
-
     /**
-     * Find the candidate module for the given class name. Returns {@code null} if none of the
-     * modules defined to this class loader contain the API package for the class.
+     * See {@code jdk.internal.loader.Loader#findLoadedModule}.
      */
     private LoadedModule findLoadedModule(String cn) {
         String pn = packageName(cn);
         return pn.isEmpty() ? null : localPackageToModule.get(pn);
     }
 
+    /**
+     * See {@code jdk.internal.loader.Loader#packageName}.
+     */
     private static String packageName(String cn) {
         int pos = cn.lastIndexOf('.');
         return (pos < 0) ? "" : cn.substring(0, pos);
     }
 
+    /**
+     * See {@code jdk.internal.loader.Loader#moduleReaderFor}.
+     */
     private ModuleReader moduleReaderFor(ModuleReference mref) {
         return moduleToReader.computeIfAbsent(mref, m -> createModuleReader(mref));
     }
 
+    /**
+     * See {@code jdk.internal.loader.Loader#createModuleReader}.
+     */
     private static ModuleReader createModuleReader(ModuleReference mref) {
         try {
             return mref.open();
         } catch (IOException e) {
-            // Return a null module reader to avoid a future class load
-            // attempting to open the module again.
             return new NullModuleReader();
         }
     }
 
+    /**
+     * See {@code jdk.internal.loader.Loader#NullModuleReader}.
+     */
     private static class NullModuleReader implements ModuleReader {
         @Override
         public Optional<URI> find(String name) {
@@ -811,6 +782,9 @@ final class NativeImageClassLoader extends SecureClassLoader {
         }
     }
 
+    /**
+     * See {@code jdk.internal.loader.Loader#isOpen}.
+     */
     private static boolean isOpen(ModuleReference mref, String pn) {
         ModuleDescriptor descriptor = mref.descriptor();
         if (descriptor.isOpen() || descriptor.isAutomatic()) {
