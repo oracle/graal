@@ -617,7 +617,7 @@ local devkits = graal_common.devkits;
          {
            name: $.maven_deploy_base_functions.pd_layouts_artifact_name(platform, dry_run),
            dir: vm.vm_dir,
-           autoExtract: false,
+           autoExtract: true,
          } for platform in ['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64']
        ],
      }
