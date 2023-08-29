@@ -561,7 +561,7 @@ local devkits = graal_common.devkits;
           self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name('darwin', 'aarch64')],
           self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name('windows', 'amd64')],
         ]
-        + self.build(os, arch, mx_args=['-multi-platform-layout-directories=all'])
+        + self.build(os, arch, mx_args=['--multi-platform-layout-directories=all'], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}'])  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
         + self.deploy(os, arch, dry_run, [remote_mvn_repo])
         + [
           # resource bundle
@@ -575,20 +575,19 @@ local devkits = graal_common.devkits;
             [['echo', 'Skipping the archiving and the final maven deployment']]
           else [
             ['set-export', 'MAVEN_RESOURCE_BUNDLE', '${LOCAL_MAVEN_REPO_REL_PATH}'],
-            ['mx', 'build', '--dependencies', 'MAVEN_RESOURCE_BUNDLE'],
+            ['mx', 'build', '--targets', 'MAVEN_RESOURCE_BUNDLE'],
             ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
           ]
         )
       ) else (
-        self.build(os, arch, build_args=['--dependencies', self.only_native_dists + ',{PLATFORM_DEPENDENT_LAYOUT_DIR_DISTRIBUTIONS}'])
-        + self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
+        self.build(os, arch, build_args=['--targets=' + self.only_native_dists + ',{PLATFORM_DEPENDENT_LAYOUT_DIR_DISTRIBUTIONS}'])
         + (
-          if (dry_run) then [
-            ['echo', 'Dry runs skip the archiving of platform-specific layout dirs']
-          ] else [
-            self.mx_cmd_base(os, arch) + ['archive-pd-layouts', self.pd_layouts_archive_name(os, arch)],
-          ]
+          if (vm.vm_dir == 'vm') then
+            self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
+          else
+            [['echo', 'Skipping the deployment of ' + self.only_native_dists]]
         )
+        + [self.mx_cmd_base(os, arch) + ['archive-pd-layouts', self.pd_layouts_archive_name(os, arch)]]
       ),
 
     base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo):: {
