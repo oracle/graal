@@ -197,7 +197,6 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
      * Removes the first instance of the given phase class, looking recursively into inner phase
      * suites.
      */
-    @SuppressWarnings("unchecked")
     public boolean removePhase(Class<? extends BasePhase<? super C>> phaseClass) {
         ListIterator<BasePhase<? super C>> it = phases.listIterator();
         while (it.hasNext()) {
@@ -206,6 +205,7 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
                 it.remove();
                 return true;
             } else if (phase instanceof PhaseSuite) {
+                @SuppressWarnings("unchecked")
                 PhaseSuite<C> innerSuite = (PhaseSuite<C>) phase;
                 if (innerSuite.removePhase(phaseClass)) {
                     if (innerSuite.phases.isEmpty()) {
@@ -221,7 +221,6 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
     /**
      * Removes all phases in this suite that are assignable to {@code type}.
      */
-    @SuppressWarnings("unchecked")
     public boolean removeSubTypePhases(Class<?> type) {
         boolean hasRemovedSpeculativePhase = false;
         ListIterator<BasePhase<? super C>> it = phases.listIterator();
@@ -231,6 +230,7 @@ public class PhaseSuite<C> extends BasePhase<C> implements PhasePlan<BasePhase<?
                 it.remove();
                 hasRemovedSpeculativePhase = true;
             } else if (phase instanceof PhaseSuite) {
+                @SuppressWarnings("unchecked")
                 PhaseSuite<C> innerSuite = (PhaseSuite<C>) phase;
                 if (innerSuite.removeSubTypePhases(type)) {
                     if (innerSuite.phases.isEmpty()) {

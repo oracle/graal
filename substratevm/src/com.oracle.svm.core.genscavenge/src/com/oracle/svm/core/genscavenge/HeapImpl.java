@@ -125,6 +125,7 @@ public final class HeapImpl extends Heap {
         this.runtimeCodeInfoGcSupport = new RuntimeCodeInfoGCSupportImpl();
         HeapParameters.initialize();
         DiagnosticThunkRegistry.singleton().register(new DumpHeapSettingsAndStatistics());
+        DiagnosticThunkRegistry.singleton().register(new DumpHeapUsage());
         DiagnosticThunkRegistry.singleton().register(new DumpChunkInformation());
     }
 
@@ -231,14 +232,14 @@ public final class HeapImpl extends Heap {
     }
 
     @Fold
-    public HeapAccounting getAccounting() {
-        return accounting;
+    public static HeapAccounting getAccounting() {
+        return getHeapImpl().accounting;
     }
 
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isAllocationDisallowed() {
-        return NoAllocationVerifier.isActive() || SafepointBehavior.ignoresSafepoints() || gcImpl.isCollectionInProgress();
+        return NoAllocationVerifier.isActive() || SafepointBehavior.ignoresSafepoints();
     }
 
     /** A guard to place before an allocation, giving the call site and the allocation type. */
@@ -263,25 +264,15 @@ public final class HeapImpl extends Heap {
         return pinHead;
     }
 
-    @Uninterruptible(reason = "Necessary to return a reasonably consistent value (a GC can change the queried values).")
-    public UnsignedWord getUsedBytes() {
-        return getOldGeneration().getChunkBytes().add(getHeapImpl().getAccounting().getYoungUsedBytes());
+    void logUsage(Log log) {
+        youngGeneration.logUsage(log);
+        oldGeneration.logUsage(log);
     }
 
-    @Uninterruptible(reason = "Necessary to return a reasonably consistent value (a GC can change the queried values).")
-    public UnsignedWord getCommittedBytes() {
-        return getUsedBytes().add(getChunkProvider().getBytesInUnusedChunks());
-    }
-
-    void report(Log log) {
-        report(log, SerialGCOptions.TraceHeapChunks.getValue());
-    }
-
-    void report(Log log, boolean traceHeapChunks) {
-        log.string("Heap:").indent(true);
-        getYoungGeneration().report(log, traceHeapChunks).newline();
-        getOldGeneration().report(log, traceHeapChunks).newline();
-        getChunkProvider().report(log, traceHeapChunks).indent(false);
+    void logChunks(Log log) {
+        getYoungGeneration().logChunks(log);
+        getOldGeneration().logChunks(log);
+        getChunkProvider().logFreeChunks(log);
     }
 
     void logImageHeapPartitionBoundaries(Log log) {
@@ -300,36 +291,30 @@ public final class HeapImpl extends Heap {
     }
 
     /** Log the zap values to make it easier to search for them. */
-    static Log zapValuesToLog(Log log) {
+    static void logZapValues(Log log) {
         if (HeapParameters.getZapProducedHeapChunks() || HeapParameters.getZapConsumedHeapChunks()) {
-            log.string("[Heap Chunk zap values: ").indent(true);
             /* Padded with spaces so the columns line up between the int and word variants. */
             if (HeapParameters.getZapProducedHeapChunks()) {
-                log.string("  producedHeapChunkZapInt: ")
-                                .string("  hex: ").spaces(8).hex(HeapParameters.getProducedHeapChunkZapInt())
-                                .string("  signed: ").spaces(9).signed(HeapParameters.getProducedHeapChunkZapInt())
-                                .string("  unsigned: ").spaces(10).unsigned(HeapParameters.getProducedHeapChunkZapInt()).newline();
-                log.string("  producedHeapChunkZapWord:")
-                                .string("  hex: ").hex(HeapParameters.getProducedHeapChunkZapWord())
-                                .string("  signed: ").signed(HeapParameters.getProducedHeapChunkZapWord())
-                                .string("  unsigned: ").unsigned(HeapParameters.getProducedHeapChunkZapWord());
-                if (HeapParameters.getZapConsumedHeapChunks()) {
-                    log.newline();
-                }
+                log.string("producedHeapChunkZapInt: ")
+                                .string(" hex: ").spaces(8).hex(HeapParameters.getProducedHeapChunkZapInt())
+                                .string(" signed: ").spaces(9).signed(HeapParameters.getProducedHeapChunkZapInt())
+                                .string(" unsigned: ").spaces(10).unsigned(HeapParameters.getProducedHeapChunkZapInt()).newline();
+                log.string("producedHeapChunkZapWord:")
+                                .string(" hex: ").hex(HeapParameters.getProducedHeapChunkZapWord())
+                                .string(" signed: ").signed(HeapParameters.getProducedHeapChunkZapWord())
+                                .string(" unsigned: ").unsigned(HeapParameters.getProducedHeapChunkZapWord()).newline();
             }
             if (HeapParameters.getZapConsumedHeapChunks()) {
-                log.string("  consumedHeapChunkZapInt: ")
-                                .string("  hex: ").spaces(8).hex(HeapParameters.getConsumedHeapChunkZapInt())
-                                .string("  signed: ").spaces(10).signed(HeapParameters.getConsumedHeapChunkZapInt())
-                                .string("  unsigned: ").spaces(10).unsigned(HeapParameters.getConsumedHeapChunkZapInt()).newline();
-                log.string("  consumedHeapChunkZapWord:")
-                                .string("  hex: ").hex(HeapParameters.getConsumedHeapChunkZapWord())
-                                .string("  signed: ").signed(HeapParameters.getConsumedHeapChunkZapWord())
-                                .string("  unsigned: ").unsigned(HeapParameters.getConsumedHeapChunkZapWord());
+                log.string("consumedHeapChunkZapInt: ")
+                                .string(" hex: ").spaces(8).hex(HeapParameters.getConsumedHeapChunkZapInt())
+                                .string(" signed: ").spaces(10).signed(HeapParameters.getConsumedHeapChunkZapInt())
+                                .string(" unsigned: ").spaces(10).unsigned(HeapParameters.getConsumedHeapChunkZapInt()).newline();
+                log.string("consumedHeapChunkZapWord:")
+                                .string(" hex: ").hex(HeapParameters.getConsumedHeapChunkZapWord())
+                                .string(" signed: ").signed(HeapParameters.getConsumedHeapChunkZapWord())
+                                .string(" unsigned: ").unsigned(HeapParameters.getConsumedHeapChunkZapWord()).newline();
             }
-            log.redent(false).string("]");
         }
-        return log;
     }
 
     @Override
@@ -877,8 +862,6 @@ public final class HeapImpl extends Heap {
         @Override
         @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
-            GCImpl gc = GCImpl.getGCImpl();
-
             log.string("Heap settings and statistics:").indent(true);
             log.string("Supports isolates: ").bool(SubstrateOptions.SpawnIsolates.getValue()).newline();
             if (SubstrateOptions.SpawnIsolates.getValue()) {
@@ -888,9 +871,27 @@ public final class HeapImpl extends Heap {
             log.string("Aligned chunk size: ").unsigned(HeapParameters.getAlignedHeapChunkSize()).newline();
             log.string("Large array threshold: ").unsigned(HeapParameters.getLargeArrayThreshold()).newline();
 
-            GCAccounting accounting = gc.getAccounting();
+            GCAccounting accounting = GCImpl.getAccounting();
             log.string("Incremental collections: ").unsigned(accounting.getIncrementalCollectionCount()).newline();
             log.string("Complete collections: ").unsigned(accounting.getCompleteCollectionCount()).newline();
+
+            logZapValues(log);
+
+            log.indent(false);
+        }
+    }
+
+    private static class DumpHeapUsage extends DiagnosticThunk {
+        @Override
+        public int maxInvocationCount() {
+            return 1;
+        }
+
+        @Override
+        @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate while printing diagnostics.")
+        public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
+            log.string("Heap usage:").indent(true);
+            HeapImpl.getHeapImpl().logUsage(log);
             log.indent(false);
         }
     }
@@ -906,9 +907,10 @@ public final class HeapImpl extends Heap {
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             HeapImpl heap = HeapImpl.getHeapImpl();
             heap.logImageHeapPartitionBoundaries(log);
-            zapValuesToLog(log).newline();
-            heap.report(log, true);
-            log.newline();
+
+            log.string("Heap chunks: E=eden, S=survivor, O=old, F=free; A=aligned chunk, U=unaligned chunk; T=to space").indent(true);
+            heap.logChunks(log);
+            log.indent(false);
         }
     }
 }
@@ -918,7 +920,7 @@ public final class HeapImpl extends Heap {
 final class Target_java_lang_Runtime {
     @Substitute
     private long freeMemory() {
-        return maxMemory() - HeapImpl.getHeapImpl().getUsedBytes().rawValue();
+        return maxMemory() - HeapImpl.getAccounting().getUsedBytes().rawValue();
     }
 
     @Substitute

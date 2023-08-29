@@ -37,6 +37,7 @@ import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
 import org.graalvm.compiler.graph.Node.NodeIntrinsic;
 import org.graalvm.compiler.hotspot.meta.HotSpotHostForeignCallsProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.hotspot.nodes.CurrentJavaThreadNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
@@ -51,11 +52,18 @@ import org.graalvm.compiler.replacements.SnippetTemplate.AbstractTemplates;
 import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
+import org.graalvm.compiler.word.Word;
 
 public class ObjectSnippets implements Snippets {
 
     @NodeIntrinsic(ForeignCallNode.class)
-    public static native boolean fastNotifyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Object o);
+    public static native byte fastNotifyStub(@ConstantNodeParameter ForeignCallDescriptor descriptor, Word thread, Object o);
+
+    static boolean fastNotifyStub(ForeignCallDescriptor descriptor, Object object) {
+        // These functions return a jboolean which can be returned as a subword type so we must
+        // explicitly mask the part we want to read.
+        return (fastNotifyStub(descriptor, CurrentJavaThreadNode.get(), object) & 0xff) != 0;
+    }
 
     @Snippet
     public static void fastNotify(Object thisObj) {

@@ -39,22 +39,6 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 
-@TargetClass(className = "jdk.internal.platform.cgroupv1.CgroupV1Subsystem")
-@Platforms(LINUX.class)
-final class Target_jdk_internal_platform_cgroupv1_CgroupV1Subsystem {
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.Reset) //
-    private static volatile Target_jdk_internal_platform_cgroupv1_CgroupV1Subsystem INSTANCE;
-}
-
-@TargetClass(className = "jdk.internal.platform.cgroupv2.CgroupV2Subsystem")
-@Platforms(LINUX.class)
-final class Target_jdk_internal_platform_cgroupv2_CgroupV2Subsystem {
-    @Alias //
-    @RecomputeFieldValue(kind = Kind.Reset) //
-    private static volatile Target_jdk_internal_platform_cgroupv2_CgroupV2Subsystem INSTANCE;
-}
-
 @TargetClass(className = "jdk.jfr.internal.instrument.JDKEvents")
 @Platforms(LINUX.class)
 final class Target_jdk_jfr_internal_instrument_JDKEvents {
@@ -92,7 +76,7 @@ final class Target_jdk_jfr_internal_periodic_JVMEventTask {
 // Only present in JDKs without JDK-8268398
 @TargetClass(className = "jdk.jfr.internal.Utils", onlyWith = JDK17OrEarlier.class)
 @Platforms(LINUX.class)
-final class Target_jdk_jfr_internal_Utils {
+final class Target_jdk_jfr_internal_Utils_JDK17 {
     @Alias //
     @RecomputeFieldValue(kind = Kind.Reset) //
     private static Target_jdk_internal_platform_Metrics[] metrics;

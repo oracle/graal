@@ -26,8 +26,6 @@ import java.nio.file.Path;
 import java.util.Collections;
 import java.util.Objects;
 
-import org.graalvm.home.HomeFinder;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
@@ -82,8 +80,7 @@ public final class NFIIsolatedNativeAccess extends NFINativeAccess {
     NFIIsolatedNativeAccess(TruffleLanguage.Env env) {
         super(env);
         // libeden.so must be the first library loaded in the isolated namespace.
-        Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
-        Path espressoLibraryPath = espressoHome.resolve("lib");
+        Path espressoLibraryPath = EspressoLanguage.getEspressoLibs(env);
         this.edenLibrary = loadLibrary(Collections.singletonList(espressoLibraryPath), "eden", true);
         this.malloc = lookupAndBindSymbol(edenLibrary, "malloc", NativeSignature.create(NativeType.POINTER, NativeType.LONG));
         this.realloc = lookupAndBindSymbol(edenLibrary, "realloc", NativeSignature.create(NativeType.POINTER, NativeType.POINTER, NativeType.LONG));

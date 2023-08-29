@@ -1037,13 +1037,13 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         public boolean check(EnumSet<CPUFeature> features, int l) {
             switch (l) {
                 case L128:
-                    assert l128features != null && features.containsAll(l128features) : "emitting illegal 128 bit instruction";
+                    GraalError.guarantee(l128features != null && features.containsAll(l128features), "emitting illegal 128 bit instruction, required features: %s", l128features);
                     break;
                 case L256:
-                    assert l256features != null && features.containsAll(l256features) : "emitting illegal 256 bit instruction";
+                    GraalError.guarantee(l256features != null && features.containsAll(l256features), "emitting illegal 256 bit instruction, required features: %s", l256features);
                     break;
                 case L512:
-                    assert l512features != null && features.containsAll(l512features) : "emitting illegal 512 bit instruction";
+                    GraalError.guarantee(l512features != null && features.containsAll(l512features), "emitting illegal 512 bit instruction, required features: %s", l512features);
                     break;
             }
             return true;

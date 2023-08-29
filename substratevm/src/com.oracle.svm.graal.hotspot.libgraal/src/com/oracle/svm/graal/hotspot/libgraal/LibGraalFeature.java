@@ -52,9 +52,6 @@ import java.util.TreeSet;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.VMInspectionOptions;
-import com.oracle.svm.core.heap.dump.HeapDumping;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.DisassemblerProvider;
 import org.graalvm.compiler.core.GraalServiceThread;
@@ -797,17 +794,6 @@ final class HotSpotGraalOptionValuesUtil {
             Iterable<OptionDescriptors> loader = OptionsParser.getOptionsLoader();
             OptionsParser.parseOptions(optionSettings, values, loader);
             options.update(values);
-        }
-
-        // Normally HeapDumpOnOutOfMemoryError is done in an isolate startup hook.
-        // However, that hook is runtime before libgraal options have been parsed,
-        // so we need to do it explicitly here.
-        if (SubstrateOptions.HeapDumpOnOutOfMemoryError.getValue()) {
-            if (VMInspectionOptions.hasHeapDumpSupport()) {
-                HeapDumping.singleton().initializeDumpHeapOnOutOfMemoryError();
-            } else {
-                throw new IllegalArgumentException("HeapDumpOnOutOfMemoryError is not supported on this platform");
-            }
         }
 
         if (LibGraalOptions.CrashAtThrowsOOME.getValue() && LibGraalOptions.CrashAtIsFatal.getValue()) {

@@ -207,9 +207,16 @@ public abstract class BytecodeParser {
                 memory.initialize(module.bytecode(), effectiveOffset, offsetAddress, dataLength);
             } else {
                 if (unsafeMemory) {
-                    final int lengthBytes = bytecode[effectiveOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
-                    final long instanceAddress = NativeDataInstanceUtil.allocateNativeInstance(bytecode, effectiveOffset + lengthBytes + 9, dataLength);
-                    BinaryStreamParser.writeI64(bytecode, effectiveOffset + lengthBytes + 1, instanceAddress);
+                    final int length = switch (bytecode[effectiveOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) {
+                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE -> 0;
+                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8 -> 1;
+                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16 -> 2;
+                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32 -> 4;
+                        default -> throw CompilerDirectives.shouldNotReachHere();
+                    };
+                    final long instanceAddress = NativeDataInstanceUtil.allocateNativeInstance(bytecode,
+                                    effectiveOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length + BytecodeBitEncoding.DATA_SEG_RUNTIME_UNSAFE_ADDRESS_LENGTH, dataLength);
+                    BinaryStreamParser.writeI64(bytecode, effectiveOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length, instanceAddress);
                 }
                 instance.setDataInstance(i, effectiveOffset);
             }
@@ -807,6 +814,9 @@ public abstract class BytecodeParser {
                         break;
                     }
                     switch (atomicOpcode) {
+                        case Bytecode.ATOMIC_NOTIFY:
+                        case Bytecode.ATOMIC_WAIT32:
+                        case Bytecode.ATOMIC_WAIT64:
                         case Bytecode.ATOMIC_I32_LOAD:
                         case Bytecode.ATOMIC_I64_LOAD:
                         case Bytecode.ATOMIC_I32_LOAD8_U:

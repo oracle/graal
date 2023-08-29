@@ -102,6 +102,7 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.JDK21OrLater;
+import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
@@ -1356,6 +1357,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         }
         return result;
     }
+
+    @KeepOriginal
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    public static native Class<?> forPrimitiveName(String primitiveName);
 
     @KeepOriginal
     private native Package getPackage();
