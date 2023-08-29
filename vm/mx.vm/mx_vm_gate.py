@@ -829,9 +829,9 @@ def gate_svm_sl_tck(tasks):
                 options = [
                     '--macro:truffle',
                     '--tool:all',
+                    '-H:Class=org.junit.runner.JUnitCore',
                 ] + mx_sdk_vm_impl.svm_experimental_options([
                     f'-H:Path={svmbuild}',
-                    '-H:Class=org.junit.runner.JUnitCore',
                 ])
                 tests_image_path, tests_file = build_tests_image(svmbuild, options, ['com.oracle.truffle.tck.tests'], ['truffle:TRUFFLE_SL_TCK', 'truffle:TRUFFLE_TCK_INSTRUMENTATION'])
                 with open(tests_file) as f:

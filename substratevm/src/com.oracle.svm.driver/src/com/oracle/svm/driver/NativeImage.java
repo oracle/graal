@@ -1065,10 +1065,17 @@ public class NativeImage {
         }
         imageClasspath.addAll(customImageClasspath);
 
-        /* Set parallelism of common pool. */
-        String maxNumberOfThreads = getMaxNumberOfThreads();
+        Integer maxNumberOfThreads = getMaxNumberOfThreads();
         if (maxNumberOfThreads != null) {
-            imageBuilderJavaArgs.add("-Djava.util.concurrent.ForkJoinPool.common.parallelism=" + maxNumberOfThreads);
+            if (maxNumberOfThreads >= 2) {
+                /*
+                 * Set number of threads in common pool. Subtract one because the main thread helps
+                 * to process tasks.
+                 */
+                imageBuilderJavaArgs.add("-Djava.util.concurrent.ForkJoinPool.common.parallelism=" + (maxNumberOfThreads - 1));
+            } else {
+                throw showError("The number of threads was set to " + maxNumberOfThreads + ". Please set the '--parallelism' option to at least 2.");
+            }
         }
 
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.disableEagerInitialization=true");
@@ -1312,20 +1319,18 @@ public class NativeImage {
         return result;
     }
 
-    private String getMaxNumberOfThreads() {
+    private Integer getMaxNumberOfThreads() {
         String numberOfThreadsValue = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHNumberOfThreads);
         if (numberOfThreadsValue != null) {
             try {
-                int maxNumberOfThreads = Integer.parseInt(numberOfThreadsValue);
-                if (maxNumberOfThreads <= 0) {
-                    throw showError("The number of threads was set to '" + maxNumberOfThreads + "'. Please set the --parallelism option to a number greater than 0.");
-                }
+                return Integer.parseInt(numberOfThreadsValue);
             } catch (NumberFormatException e) {
                 /* Validated already by CommonOptionParser. */
-                VMError.shouldNotReachHere(e);
+                throw VMError.shouldNotReachHere(e);
             }
+        } else {
+            return null;
         }
-        return numberOfThreadsValue;
     }
 
     private boolean shouldAddCWDToCP() {
