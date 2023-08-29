@@ -42,6 +42,7 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.fieldvaluetransformer.FieldValueTransformerWithAvailability;
@@ -140,9 +141,15 @@ public class MethodHandleFeature implements InternalFeature {
             referencedKeySetAdd = ReflectionUtil.lookupMethod(concurrentWeakInternSetClass, "add", Object.class);
         }
 
-        var accessImpl = (DuringSetupAccessImpl) access;
-        substitutionProcessor = new MethodHandleInvokerRenamingSubstitutionProcessor(accessImpl.getBigBang());
-        accessImpl.registerSubstitutionProcessor(substitutionProcessor);
+        if (!SubstrateOptions.UseOldMethodHandleIntrinsics.getValue()) {
+            /*
+             * Renaming is not crucial with old method handle intrinsics, so if those are requested
+             * explicitly, disable renaming to offer a fallback in case it causes problems.
+             */
+            var accessImpl = (DuringSetupAccessImpl) access;
+            substitutionProcessor = new MethodHandleInvokerRenamingSubstitutionProcessor(accessImpl.getBigBang());
+            accessImpl.registerSubstitutionProcessor(substitutionProcessor);
+        }
     }
 
     @Override
