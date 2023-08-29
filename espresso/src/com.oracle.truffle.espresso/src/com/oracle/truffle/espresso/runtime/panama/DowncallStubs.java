@@ -45,7 +45,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.OS;
 
 public final class DowncallStubs {
-    private final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, DowncallStubs.class);
+    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, DowncallStubs.class);
     public static final int MAX_STUB_COUNT = Integer.MAX_VALUE - 8;
     private final Platform platform;
     private DowncallStub[] stubs;
