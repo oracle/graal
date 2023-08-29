@@ -204,21 +204,23 @@ public class WasmPolyglotTestSuite {
                     "74615f656e6403020a090202000b0400",
                     "412a0b");
 
-    private static final String textOverwriteElement = "(module" +
-                    "  (table 10 funcref)\n" +
-                    "  (type (func (result i32)))\n" +
-                    "  (func $f (result i32)\n" +
-                    "    i32.const 7)\n" +
-                    "  (func $g (result i32)\n" +
-                    "    i32.const 11)\n" +
-                    "  (func (result i32)\n" +
-                    "    i32.const 3\n" +
-                    "    call_indirect (type 0))\n" +
-                    "  (export \"main\" (func 2))\n" +
-                    "  (elem (i32.const 0) $f)\n" +
-                    "  (elem (i32.const 3) $f)\n" +
-                    "  (elem (i32.const 7) $f)\n" +
-                    "  (elem (i32.const 5) $f)\n" +
-                    "  (elem (i32.const 3) $g)\n" +
-                    ")";
+    private static final String textOverwriteElement = """
+                    (module
+                      (table 10 funcref)
+                      (type (func (result i32)))
+                      (func $f (result i32)
+                        i32.const 7)
+                      (func $g (result i32)
+                        i32.const 11)
+                      (func (result i32)
+                        i32.const 3
+                        call_indirect (type 0))
+                      (export "main" (func 2))
+                      (elem (i32.const 0) $f)
+                      (elem (i32.const 3) $f)
+                      (elem (i32.const 7) $f)
+                      (elem (i32.const 5) $f)
+                      (elem (i32.const 3) $g)
+                    )
+                    """;
 }
