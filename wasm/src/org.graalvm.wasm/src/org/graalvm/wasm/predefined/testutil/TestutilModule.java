@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package org.graalvm.wasm.predefined.testutil;
 
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.BuiltinModule;
@@ -54,13 +53,13 @@ public class TestutilModule extends BuiltinModule {
     }
 
     @Override
-    protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
+    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
+        WasmModule module = WasmModule.createBuiltin(name);
 
         // Note: in the following methods, the types are not important here, since these methods
         // are not accessed by Wasm code.
-        defineFunction(instance, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitializationNode(language));
-
-        return instance;
+        defineFunction(context, module, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitializationNode(language));
+        assert module.numFunctions() == NUMBER_OF_FUNCTIONS;
+        return module;
     }
 }

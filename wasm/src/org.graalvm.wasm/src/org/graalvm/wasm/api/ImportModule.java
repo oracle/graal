@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,23 @@
  */
 package org.graalvm.wasm.api;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.graalvm.collections.Pair;
 import org.graalvm.wasm.SymbolTable;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
-import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
+import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.oracle.truffle.api.CompilerDirectives;
 
 public class ImportModule extends BuiltinModule {
     private final HashMap<String, Pair<WasmFunction, Object>> functions;
@@ -70,8 +72,14 @@ public class ImportModule extends BuiltinModule {
     }
 
     @Override
+    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
+        throw CompilerDirectives.shouldNotReachHere();
+    }
+
+    @Override
     protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
-        WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), functions.size());
+        WasmModule module = WasmModule.createBuiltin(name);
+        WasmInstance instance = new WasmInstance(context, module, functions.size());
         for (Map.Entry<String, Pair<WasmFunction, Object>> entry : functions.entrySet()) {
             final String functionName = entry.getKey();
             final Pair<WasmFunction, Object> info = entry.getValue();
@@ -80,24 +88,27 @@ public class ImportModule extends BuiltinModule {
             if (info.getRight() instanceof WasmFunctionInstance) {
                 defineExportedFunction(instance, functionName, type.paramTypes(), type.resultTypes(), (WasmFunctionInstance) info.getRight());
             } else {
-                defineFunction(instance, functionName, type.paramTypes(), type.resultTypes(), new ExecuteInParentContextNode(context.language(), instance, info.getRight()));
+                var executableWrapper = new ExecuteInParentContextNode(context.language(), module, info.getRight());
+                WasmFunction exported = defineFunction(context, module, functionName, type.paramTypes(), type.resultTypes(), executableWrapper);
+                instance.setTarget(exported.index(), executableWrapper.getCallTarget());
             }
         }
         for (Map.Entry<String, WasmMemory> entry : memories.entrySet()) {
             final String memoryName = entry.getKey();
             final WasmMemory memory = entry.getValue();
-            defineExternalMemory(instance, memoryName, memory);
+            defineExternalMemory(context, module, memoryName, memory);
         }
         for (Map.Entry<String, WasmTable> entry : tables.entrySet()) {
             final String tableName = entry.getKey();
             final WasmTable table = entry.getValue();
-            defineExternalTable(instance, tableName, table);
+            defineExternalTable(context, module, tableName, table);
         }
         for (Map.Entry<String, WasmGlobal> entry : globals.entrySet()) {
             final String globalName = entry.getKey();
             final WasmGlobal global = entry.getValue();
-            defineExternalGlobal(instance, globalName, global);
+            defineExternalGlobal(module, globalName, global);
         }
+        assert module.numFunctions() == functions.size();
         return instance;
     }
 

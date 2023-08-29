@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,8 @@
 package org.graalvm.wasm.api;
 
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
@@ -61,8 +61,8 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
     private final Object executable;
     private final BranchProfile errorBranch = BranchProfile.create();
 
-    public ExecuteInParentContextNode(WasmLanguage language, WasmInstance instance, Object executable) {
-        super(language, instance);
+    public ExecuteInParentContextNode(WasmLanguage language, WasmModule module, Object executable) {
+        super(language, module);
         this.executable = executable;
     }
 
