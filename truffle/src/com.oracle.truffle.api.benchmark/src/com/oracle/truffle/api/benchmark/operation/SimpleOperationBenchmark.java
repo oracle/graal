@@ -91,6 +91,7 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     private static final String NAME_MANUAL_NO_BE = "simple:manual-no-be";
     private static final String NAME_MANUAL_UNSAFE = "simple:manual-unsafe";
     private static final String NAME_MANUAL_NODED = "simple:manual-noded";
+    private static final String NAME_MANUAL_NODED_NO_BE = "simple:manual-noded-no-be";
     private static final String NAME_AST = "simple:ast";
 
     private static final Source SOURCE_OPERATION = Source.create("bm", NAME_OPERATION);
@@ -103,6 +104,7 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     private static final Source SOURCE_MANUAL_NO_BE = Source.create("bm", NAME_MANUAL_NO_BE);
     private static final Source SOURCE_MANUAL_UNSAFE = Source.create("bm", NAME_MANUAL_UNSAFE);
     private static final Source SOURCE_MANUAL_NODED = Source.create("bm", NAME_MANUAL_NODED);
+    private static final Source SOURCE_MANUAL_NODED_NO_BE = Source.create("bm", NAME_MANUAL_NODED_NO_BE);
     private static final Source SOURCE_AST = Source.create("bm", NAME_AST);
 
     // Keep the baseline interpreter around so we can manually reset its invocation threshold.
@@ -374,6 +376,12 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
             ManualBytecodeNodedNode node = new ManualBytecodeNodedNode(lang, b.build(), BC_SHORT, OBJ_SHORT, NODE_SHORT);
             return node.getCallTarget();
         });
+        BenchmarkLanguage.registerName(NAME_MANUAL_NODED_NO_BE, lang -> {
+            FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
+            b.addSlots(8, FrameSlotKind.Illegal);
+            ManualBytecodeNodedNodeNBE node = new ManualBytecodeNodedNodeNBE(lang, b.build(), BC_SHORT, OBJ_SHORT, NODE_SHORT);
+            return node.getCallTarget();
+        });
         BenchmarkLanguage.registerName(NAME_AST, lang -> {
             int iLoc = 0;
             int sumLoc = 1;
@@ -569,15 +577,15 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
         doEval(SOURCE_OPERATION_UNSAFE);
     }
 
-    @Benchmark
-    public void operationBE() {
-        doEval(SOURCE_OPERATION_BE);
-    }
-
-    @Benchmark
-    public void operationQuicken() {
-        doEval(SOURCE_OPERATION_QUICKENED);
-    }
+// @Benchmark
+// public void operationBE() {
+// doEval(SOURCE_OPERATION_BE);
+// }
+//
+// @Benchmark
+// public void operationQuicken() {
+// doEval(SOURCE_OPERATION_QUICKENED);
+// }
 
     @Benchmark
     public void operationAll() {
@@ -602,6 +610,11 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     @Benchmark
     public void manualNoded() {
         doEval(SOURCE_MANUAL_NODED);
+    }
+
+    @Benchmark
+    public void manualNodedNoBE() {
+        doEval(SOURCE_MANUAL_NODED_NO_BE);
     }
 
     @Benchmark

@@ -582,3 +582,120 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
         }
     }
 }
+
+@SuppressWarnings("truffle-inlining")
+@GeneratedBy(ManualUnsafeBytecodeNode.class) // needed for UFA
+class ManualBytecodeNodedNodeNBE extends BaseBytecodeNode {
+
+    @CompilationFinal(dimensions = 1) private final Object[] objs;
+    @CompilationFinal(dimensions = 1) private final Node[] nodes;
+
+    protected ManualBytecodeNodedNodeNBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc, Object[] objs, Node[] nodes) {
+        super(language, frameDescriptor, bc);
+        this.objs = objs;
+        this.nodes = nodes;
+    }
+
+    private static final FastAccess UFA = FastAccess.UNSAFE;
+
+    @Override
+    @BytecodeInterpreterSwitch
+    @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
+    protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
+        short[] localBc = bc;
+        Object[] localObjs = objs;
+        Node[] localNodes = nodes;
+        int bci = startBci;
+        int sp = startSp;
+
+        Counter loopCounter = new Counter();
+
+        frame.getArguments();
+
+        loop: while (true) {
+            short opcode = UFA.shortArrayRead(localBc, bci);
+            CompilerAsserts.partialEvaluationConstant(opcode);
+            switch (opcode) {
+                // ( -- )
+                case OP_JUMP: {
+                    int nextBci = UFA.shortArrayRead(localBc, bci + 1);
+                    CompilerAsserts.partialEvaluationConstant(nextBci);
+                    if (nextBci <= bci) {
+                        Object result = backwardsJumpCheck(frame, sp, loopCounter, nextBci);
+                        if (result != null) {
+                            return result;
+                        }
+                    }
+                    bci = nextBci;
+                    continue loop;
+                }
+                // (i1 i2 -- i3)
+                case OP_ADD: {
+                    int lhs = (int) UFA.getObject(frame, sp - 2);
+                    int rhs = (int) UFA.getObject(frame, sp - 1);
+                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), ManualBytecodeNodedNode.AddNode.class).execute(lhs, rhs));
+                    sp -= 1;
+                    bci += 2;
+                    continue loop;
+                }
+                // (i1 i2 -- i3)
+                case OP_MOD: {
+                    int lhs = (int) UFA.getObject(frame, sp - 2);
+                    int rhs = (int) UFA.getObject(frame, sp - 1);
+                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), ManualBytecodeNodedNode.ModNode.class).execute(lhs, rhs));
+                    sp -= 1;
+                    bci += 2;
+                    continue loop;
+                }
+                // ( -- i)
+                case OP_CONST: {
+                    UFA.setObject(frame, sp, UFA.cast(UFA.objectArrayRead(localObjs, UFA.shortArrayRead(localBc, bci + 1)), Integer.class));
+                    sp += 1;
+                    bci += 2;
+                    continue loop;
+                }
+                // (b -- )
+                case OP_JUMP_FALSE: {
+                    boolean cond = UFA.getObject(frame, sp - 1) == Boolean.TRUE;
+                    sp -= 1;
+                    if (!cond) {
+                        bci = UFA.shortArrayRead(localBc, bci + 1);
+                        continue loop;
+                    } else {
+                        bci += 2;
+                        continue loop;
+                    }
+                }
+                // (i1 i2 -- b)
+                case OP_LESS: {
+                    int lhs = (int) UFA.getObject(frame, sp - 2);
+                    int rhs = (int) UFA.getObject(frame, sp - 1);
+                    UFA.setObject(frame, sp - 2, lhs < rhs);
+                    sp -= 1;
+                    bci += 1;
+                    continue loop;
+                }
+                // (i -- )
+                case OP_RETURN: {
+                    return UFA.getObject(frame, sp - 1);
+                }
+                // (i -- )
+                case OP_ST_LOC: {
+                    UFA.copyObject(frame, sp - 1, UFA.shortArrayRead(localBc, bci + 1));
+                    sp -= 1;
+                    bci += 2;
+                    continue loop;
+                }
+                // ( -- i)
+                case OP_LD_LOC: {
+                    UFA.copyObject(frame, UFA.shortArrayRead(localBc, bci + 1), sp);
+                    sp += 1;
+                    bci += 2;
+                    continue loop;
+                }
+                default:
+                    CompilerDirectives.shouldNotReachHere();
+            }
+        }
+    }
+}
