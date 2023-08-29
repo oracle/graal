@@ -1964,7 +1964,7 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
      * Host value implementation used when a Value needs to be created but not context is available.
      * If a context is available the normal interop value implementation is used.
      */
-    static final class HostValue extends PolyglotValueDispatch {
+    static class HostValue extends PolyglotValueDispatch {
 
         HostValue(PolyglotImpl polyglot) {
             super(polyglot, null);
@@ -2013,6 +2013,166 @@ abstract class PolyglotValueDispatch extends AbstractValueDispatch {
             return targetType.cast(hostValue);
         }
 
+    }
+
+    /**
+     * Must be kept in sync with the HostObject and the HostToTypeNode implementation.
+     */
+    static final class BigIntegerHostValue extends HostValue {
+        BigIntegerHostValue(PolyglotImpl polyglot) {
+            super(polyglot);
+        }
+
+        @Override
+        public boolean isNumber(Object context, Object receiver) {
+            assert asHostObject(context, receiver) instanceof BigInteger;
+            return true;
+        }
+
+        @Override
+        public boolean fitsInByte(Object context, Object receiver) {
+            assert asHostObject(context, receiver) instanceof BigInteger;
+            return ((BigInteger) asHostObject(context, receiver)).bitLength() < Byte.SIZE;
+        }
+
+        @Override
+        public boolean fitsInShort(Object context, Object receiver) {
+            assert asHostObject(context, receiver) instanceof BigInteger;
+            return ((BigInteger) asHostObject(context, receiver)).bitLength() < Short.SIZE;
+        }
+
+        @Override
+        public boolean fitsInInt(Object context, Object receiver) {
+            assert asHostObject(context, receiver) instanceof BigInteger;
+            return ((BigInteger) asHostObject(context, receiver)).bitLength() < Integer.SIZE;
+        }
+
+        @Override
+        public boolean fitsInLong(Object context, Object receiver) {
+            assert asHostObject(context, receiver) instanceof BigInteger;
+            return ((BigInteger) asHostObject(context, receiver)).bitLength() < Long.SIZE;
+        }
+
+        @Override
+        public boolean fitsInBigInteger(Object context, Object receiver) {
+            assert asHostObject(context, receiver) instanceof BigInteger;
+            return true;
+        }
+
+        @Override
+        public boolean fitsInFloat(Object context, Object receiver) {
+            assert asHostObject(context, receiver) instanceof BigInteger;
+            return EngineAccessor.HOST.bigIntegerFitsInFloat((BigInteger) asHostObject(context, receiver));
+        }
+
+        @Override
+        public boolean fitsInDouble(Object context, Object receiver) {
+            assert asHostObject(context, receiver) instanceof BigInteger;
+            return EngineAccessor.HOST.bigIntegerFitsInDouble((BigInteger) asHostObject(context, receiver));
+        }
+
+        @Override
+        public byte asByte(Object languageContext, Object receiver) {
+            assert asHostObject(languageContext, receiver) instanceof BigInteger;
+            try {
+                return ((BigInteger) asHostObject(languageContext, receiver)).byteValueExact();
+            } catch (ArithmeticException e) {
+                // throws an unsupported error.
+                return super.asByte(languageContext, receiver);
+            }
+        }
+
+        @Override
+        public short asShort(Object languageContext, Object receiver) {
+            assert asHostObject(languageContext, receiver) instanceof BigInteger;
+            try {
+                return ((BigInteger) asHostObject(languageContext, receiver)).shortValueExact();
+            } catch (ArithmeticException e) {
+                // throws an unsupported error.
+                return super.asShort(languageContext, receiver);
+            }
+        }
+
+        @Override
+        public int asInt(Object languageContext, Object receiver) {
+            assert asHostObject(languageContext, receiver) instanceof BigInteger;
+            try {
+                return ((BigInteger) asHostObject(languageContext, receiver)).intValueExact();
+            } catch (ArithmeticException e) {
+                // throws an unsupported error.
+                return super.asInt(languageContext, receiver);
+            }
+        }
+
+        @Override
+        public long asLong(Object languageContext, Object receiver) {
+            assert asHostObject(languageContext, receiver) instanceof BigInteger;
+            try {
+                return ((BigInteger) asHostObject(languageContext, receiver)).longValueExact();
+            } catch (ArithmeticException e) {
+                // throws an unsupported error.
+                return super.asLong(languageContext, receiver);
+            }
+        }
+
+        @Override
+        public BigInteger asBigInteger(Object languageContext, Object receiver) {
+            assert asHostObject(languageContext, receiver) instanceof BigInteger;
+            return ((BigInteger) asHostObject(languageContext, receiver));
+        }
+
+        @Override
+        public float asFloat(Object languageContext, Object receiver) {
+            assert asHostObject(languageContext, receiver) instanceof BigInteger;
+            if (fitsInFloat(languageContext, receiver)) {
+                return ((BigInteger) asHostObject(languageContext, receiver)).floatValue();
+            } else {
+                // throws an unsupported error.
+                return super.asFloat(languageContext, receiver);
+            }
+        }
+
+        @Override
+        public double asDouble(Object languageContext, Object receiver) {
+            assert asHostObject(languageContext, receiver) instanceof BigInteger;
+            if (fitsInFloat(languageContext, receiver)) {
+                return ((BigInteger) asHostObject(languageContext, receiver)).doubleValue();
+            } else {
+                // throws an unsupported error.
+                return super.asDouble(languageContext, receiver);
+            }
+        }
+
+        @SuppressWarnings("unchecked")
+        @Override
+        <T> T asImpl(Object languageContext, Object receiver, Class<T> targetType) {
+            assert asHostObject(languageContext, receiver) instanceof BigInteger;
+
+            if (targetType == byte.class || targetType == Byte.class) {
+                return (T) (Byte) asByte(languageContext, receiver);
+            } else if (targetType == short.class || targetType == Short.class) {
+                return (T) (Short) asShort(languageContext, receiver);
+            } else if (targetType == int.class || targetType == Integer.class) {
+                return (T) (Integer) asInt(languageContext, receiver);
+            } else if (targetType == long.class || targetType == Long.class) {
+                return (T) (Long) asLong(languageContext, receiver);
+            } else if (targetType == float.class || targetType == Float.class) {
+                return (T) (Float) asFloat(languageContext, receiver);
+            } else if (targetType == double.class || targetType == Double.class) {
+                return (T) (Double) asDouble(languageContext, receiver);
+            } else if (targetType == BigInteger.class || targetType == Number.class) {
+                return (T) asBigInteger(languageContext, receiver);
+            } else if (targetType == char.class || targetType == Character.class) {
+                if (fitsInInt(languageContext, receiver)) {
+                    int v = asInt(languageContext, receiver);
+                    if (v >= 0 && v < 65536) {
+                        return (T) (Character) (char) v;
+                    }
+                }
+            }
+
+            return super.asImpl(languageContext, receiver, targetType);
+        }
     }
 
     @SuppressWarnings("unused")
