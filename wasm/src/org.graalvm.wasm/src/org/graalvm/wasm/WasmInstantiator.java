@@ -41,11 +41,9 @@
 
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.FrameDescriptor;
-import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.nodes.Node;
+import java.util.Arrays;
+import java.util.List;
+
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.wasm.constants.BytecodeBitEncoding;
@@ -63,8 +61,12 @@ import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
-import java.util.Arrays;
-import java.util.List;
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.FrameDescriptor;
+import com.oracle.truffle.api.frame.FrameSlotKind;
+import com.oracle.truffle.api.nodes.Node;
 
 /**
  * Creates wasm instances by converting parser nodes into Truffle nodes.
@@ -444,14 +446,16 @@ public class WasmInstantiator {
     }
 
     private void instantiateCodeEntries(WasmContext context, WasmInstance instance) {
-        final CodeEntry[] codeEntries = instance.module().codeEntries();
+        final WasmModule module = instance.module();
+        final CodeEntry[] codeEntries = module.codeEntries();
         if (codeEntries == null) {
             return;
         }
         for (int entry = 0; entry != codeEntries.length; ++entry) {
             CodeEntry codeEntry = codeEntries[entry];
-            instantiateCodeEntry(context, instance, codeEntry);
-            context.linker().resolveCodeEntry(instance.module(), entry);
+            var callTarget = instantiateCodeEntry(context, module, codeEntry);
+            instance.setTarget(codeEntry.functionIndex(), callTarget);
+            context.linker().resolveCodeEntry(module, entry);
         }
     }
 
@@ -461,10 +465,12 @@ public class WasmInstantiator {
         return builder.build();
     }
 
-    private void instantiateCodeEntry(WasmContext context, WasmInstance instance, CodeEntry codeEntry) {
+    private CallTarget instantiateCodeEntry(WasmContext context, WasmModule module, CodeEntry codeEntry) {
         final int functionIndex = codeEntry.functionIndex();
-        final WasmModule module = instance.module();
         final WasmFunction function = module.symbolTable().function(functionIndex);
+        if (function.target() != null) {
+            return function.target();
+        }
         final WasmCodeEntry wasmCodeEntry = new WasmCodeEntry(function, module.bytecode(), codeEntry.localTypes(), codeEntry.resultTypes());
         final FrameDescriptor frameDescriptor = createFrameDescriptor(codeEntry.localTypes(), codeEntry.maxStackSize());
         final WasmInstrumentableFunctionNode functionNode = instantiateFunctionNode(module, wasmCodeEntry, codeEntry);
@@ -474,7 +480,9 @@ public class WasmInstantiator {
         } else {
             rootNode = new WasmRootNode(language, frameDescriptor, functionNode);
         }
-        instance.setTarget(codeEntry.functionIndex(), rootNode.getCallTarget());
+        var callTarget = rootNode.getCallTarget();
+        function.setTarget(callTarget);
+        return callTarget;
     }
 
     private static WasmInstrumentableFunctionNode instantiateFunctionNode(WasmModule module, WasmCodeEntry codeEntry, CodeEntry entry) {
