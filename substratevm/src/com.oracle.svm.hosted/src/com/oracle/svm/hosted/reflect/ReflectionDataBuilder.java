@@ -924,7 +924,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     public int getEnabledReflectionQueries(Class<?> clazz) {
-        return enabledQueriesFlags.getOrDefault(clazz, 0);
+        int enabledQueries = enabledQueriesFlags.getOrDefault(clazz, 0);
+        /*
+         * Primitives, arrays and object are registered by default since they provide reflective
+         * access to either no members or only Object methods.
+         */
+        if (clazz == Object.class || clazz.isPrimitive() || clazz.isArray()) {
+            enabledQueries |= ALL_DECLARED_CONSTRUCTORS_FLAG | ALL_CONSTRUCTORS_FLAG | ALL_DECLARED_METHODS_FLAG | ALL_METHODS_FLAG | ALL_DECLARED_FIELDS_FLAG | ALL_FIELDS_FLAG;
+        }
+        return enabledQueries;
     }
 
     @Override
