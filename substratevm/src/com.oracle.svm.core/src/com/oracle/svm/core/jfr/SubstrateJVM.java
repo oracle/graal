@@ -92,7 +92,7 @@ public class SubstrateJVM {
     private String dumpPath;
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public SubstrateJVM(List<Configuration> configurations) {
+    public SubstrateJVM(List<Configuration> configurations, boolean writeFile) {
         this.knownConfigurations = configurations;
 
         options = new JfrOptionSet();
@@ -112,7 +112,7 @@ public class SubstrateJVM {
         threadLocal = new JfrThreadLocal();
         globalMemory = new JfrGlobalMemory();
         samplerBufferPool = new SamplerBufferPool();
-        unlockedChunkWriter = new JfrChunkWriter(globalMemory, stackTraceRepo, methodRepo, typeRepo, symbolRepo, threadRepo);
+        unlockedChunkWriter = writeFile ? new JfrChunkFileWriter(globalMemory, stackTraceRepo, methodRepo, typeRepo, symbolRepo, threadRepo) : new JfrChunkNoWriter();
         recorderThread = new JfrRecorderThread(globalMemory, unlockedChunkWriter);
 
         jfrLogging = new JfrLogging();
