@@ -265,19 +265,19 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
 
     @SuppressWarnings("static-method")
     private synchronized void resetStatus(PrintStream oldOut, String icon, String label) {
-        String formattedLabel = label;
-        if (formattedLabel.length() > STATUS_LABEL_WIDTH) {
-            formattedLabel = formattedLabel.substring(0, STATUS_LABEL_WIDTH);
-        }
-        for (int i = formattedLabel.length(); i < STATUS_LABEL_WIDTH; i++) {
-            formattedLabel += " ";
-        }
         if (isPoorShell()) {
             oldOut.println();
             oldOut.print(icon);
-            oldOut.print(formattedLabel);
+            oldOut.print(label);
             oldOut.flush();
         } else {
+            String formattedLabel = label;
+            if (formattedLabel.length() > STATUS_LABEL_WIDTH) {
+                formattedLabel = formattedLabel.substring(0, STATUS_LABEL_WIDTH);
+            }
+            for (int i = formattedLabel.length(); i < STATUS_LABEL_WIDTH; i++) {
+                formattedLabel += " ";
+            }
             eraseStatus(oldOut);
             oldOut.print(icon);
             oldOut.print(formattedLabel);
@@ -472,10 +472,12 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
                 // and erase the test name.
                 System.out.print(" ");
                 System.out.print(testCase.name());
-                for (int i = 1; i < extraWidth; i++) {
-                    System.out.print(" ");
+                if (!isPoorShell()) {
+                    for (int i = 1; i < extraWidth; i++) {
+                        System.out.print(" ");
+                    }
+                    System.out.flush();
                 }
-                System.out.flush();
 
                 if (WasmTestOptions.SHARED_ENGINE) {
                     try (Engine sharedEngine = Engine.newBuilder().allowExperimentalOptions(true).options(getAsyncCompiledShared()).build()) {
