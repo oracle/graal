@@ -248,7 +248,7 @@ GraalVM Updater common options:
 * `-v, --verbose`: enable verbose output. Print versions and dependency information
 * `--version`: print version
 
-Additonal options:
+Additional options:
 
 * `--email <address>`: print an e-mail address used for generating a download token
 * `--config <path>`: provide the path to a download token
