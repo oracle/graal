@@ -907,7 +907,7 @@ public class NativeImage {
         LinkedHashSet<EnabledOption> enabledOptions = optionRegistry.getEnabledOptions();
         /* Any use of MacroOptions opts-out of auto-fallback and activates --no-fallback */
         if (!enabledOptions.isEmpty()) {
-            addPlainImageBuilderArg(oHFallbackThreshold + SubstrateOptions.NoFallback);
+            addPlainImageBuilderArg(injectHostedOptionOrigin(oHFallbackThreshold + SubstrateOptions.NoFallback, OptionOrigin.originDriver));
         }
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.engine.PreinitializeContexts=", ",", Function.identity()); // legacy
         consolidateListArgs(imageBuilderJavaArgs, "-Dpolyglot.image-build-time.PreinitializeContexts=", ",", Function.identity());
@@ -1266,9 +1266,12 @@ public class NativeImage {
         }
         imageProvidedJars.forEach(this::processClasspathNativeImageMetaInf);
 
-        if (!config.buildFallbackImage() && imageBuilderArgs.contains(oHFallbackThreshold + SubstrateOptions.ForceFallback)) {
-            /* Bypass regular build and proceed with fallback image building */
-            return ExitStatus.FALLBACK_IMAGE.getValue();
+        if (!config.buildFallbackImage()) {
+            Optional<ArgumentEntry> fallbackThresholdEntry = getHostedOptionFinalArgument(imageBuilderArgs, oHFallbackThreshold);
+            if (fallbackThresholdEntry.isPresent() && fallbackThresholdEntry.get().value.equals("" + SubstrateOptions.ForceFallback)) {
+                /* Bypass regular build and proceed with fallback image building */
+                return ExitStatus.FALLBACK_IMAGE.getValue();
+            }
         }
 
         if (!limitModules.isEmpty()) {
