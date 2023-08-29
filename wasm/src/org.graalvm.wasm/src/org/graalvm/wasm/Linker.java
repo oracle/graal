@@ -43,6 +43,8 @@ package org.graalvm.wasm;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+
 import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
 import org.graalvm.wasm.Linker.ResolutionDag.ExportMemorySym;
 import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
@@ -119,11 +121,16 @@ public class Linker {
         // We nevertheless invalidate the compiled code that reaches this point.
         if (instance.isLinkFailed()) {
             // If the linking of this module failed already, then throw.
-            throw WasmException.format(Failure.UNSPECIFIED_UNLINKABLE, "Linking of module %s previously failed.", instance.module());
+            throw linkFailedError(instance);
         } else if (instance.isNonLinked()) {
             // TODO: Once we support multi-threading, add adequate synchronization here.
             tryLinkOutsidePartialEvaluation(instance);
         }
+    }
+
+    @TruffleBoundary
+    private static WasmException linkFailedError(WasmInstance instance) {
+        return WasmException.format(Failure.UNSPECIFIED_UNLINKABLE, "Linking of module %s previously failed.", instance.module());
     }
 
     @CompilerDirectives.TruffleBoundary
