@@ -28,6 +28,7 @@ import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -42,7 +43,8 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.NativeLibrarySupport;
+import com.oracle.svm.core.jdk.NativeLibraries;
+import com.oracle.svm.core.jdk.PlatformNativeLibrarySupport;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.Target_java_lang_Module;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -74,7 +76,7 @@ public final class Target_java_lang_foreign_SymbolLookup {
         if (Utils.containsNullChars(name)) {
             throw new IllegalArgumentException("Cannot open library: " + name);
         }
-        return Util_java_lang_foreign_SymbolLookup.libraryLookup(NativeLibrarySupport::loadLibraryPlatformSpecific, arena, List.of(name));
+        return Util_java_lang_foreign_SymbolLookup.libraryLookup(LookupNativeLibraries::loadLibraryPlatformSpecific, arena, List.of(name));
     }
 
     @Substitute
@@ -82,29 +84,62 @@ public final class Target_java_lang_foreign_SymbolLookup {
     @NeverInline("Starting a stack walk in the caller frame")
     static SymbolLookup libraryLookup(Path path, Arena arena) {
         Util_java_lang_foreign_SymbolLookup.ensureNativeAccess(StackTraceUtils.getCallerClass(KnownIntrinsics.readCallerStackPointer(), true), SymbolLookup.class, "libraryLookup");
-        return Util_java_lang_foreign_SymbolLookup.libraryLookup(NativeLibrarySupport::loadLibraryPlatformSpecific, arena, List.of(path));
+        return Util_java_lang_foreign_SymbolLookup.libraryLookup(LookupNativeLibraries::loadLibraryPlatformSpecific, arena, List.of(path));
     }
 
     @Delete
     private static native <Z> SymbolLookup libraryLookup(Z libDesc, BiFunction<RawNativeLibraries, Z, NativeLibrary> loadLibraryFunc, Arena libArena);
 }
 
+final class LookupNativeLibraries extends NativeLibraries {
+    private final List<PlatformNativeLibrarySupport.NativeLibrary> knownLibraries = new ArrayList<>();
+
+    @Override
+    protected boolean addLibrary(String canonical, boolean builtin) {
+        PlatformNativeLibrarySupport.NativeLibrary lib = PlatformNativeLibrarySupport.singleton().createLibrary(canonical, builtin);
+        if (!lib.load()) {
+            return false;
+        }
+        knownLibraries.add(lib);
+        return true;
+    }
+
+    @Override
+    public PointerBase findSymbol(String name) {
+        return findSymbol(knownLibraries, name);
+    }
+
+    public void unloadAllLibraries() {
+        for (PlatformNativeLibrarySupport.NativeLibrary known : knownLibraries) {
+            if (known.isLoaded()) {
+                if (!known.unload()) {
+                    throw new IllegalStateException("Could not unload library: " + known.getCanonicalIdentifier());
+                }
+            }
+        }
+        knownLibraries.clear();
+    }
+}
+
 final class Util_java_lang_foreign_SymbolLookup {
     /**
-     * Calling {@link Reflection#ensureNativeAccess} directly results in an assertion error, so we
-     * reimplement the method here.
+     * Calling {@link Reflection#ensureNativeAccess} directly results in an assertion error (due
+     * to @ForceInline?), so we reimplement the method here.
      */
     @AlwaysInline("As in the JDK")
-    public static void ensureNativeAccess(Class<?> currentClass, Class<?> owner, String methodName) {
-        // if there is no caller class, act as if the call came from unnamed module of system class
-        // loader
-        Target_java_lang_Module module = SubstrateUtil.cast(currentClass != null ? currentClass.getModule() : ClassLoader.getSystemClassLoader().getUnnamedModule(), Target_java_lang_Module.class);
+    static void ensureNativeAccess(Class<?> currentClass, Class<?> owner, String methodName) {
+        /*
+         * if there is no caller class, act as if the call came from unnamed module of system class
+         * loader
+         */
+        Target_java_lang_Module module = SubstrateUtil.cast(currentClass != null ? currentClass.getModule() : ClassLoader.getSystemClassLoader().getUnnamedModule(),
+                        Target_java_lang_Module.class);
         module.ensureNativeAccess(owner, methodName);
     }
 
-    public static <Z> NativeLibrarySupport createNativeLibraries(BiConsumer<NativeLibrarySupport, Z> loadLibraryFunc, List<Z> libDescs) {
+    static <Z> LookupNativeLibraries createNativeLibraries(BiConsumer<LookupNativeLibraries, Z> loadLibraryFunc, List<Z> libDescs) {
         // "Holds" the loaded libraries
-        NativeLibrarySupport nativeLibraries = new NativeLibrarySupport();
+        LookupNativeLibraries nativeLibraries = new LookupNativeLibraries();
         for (var libDesc : libDescs) {
             Objects.requireNonNull(libDesc);
             try {
@@ -117,7 +152,7 @@ final class Util_java_lang_foreign_SymbolLookup {
         return nativeLibraries;
     }
 
-    public static SymbolLookup createLookup(NativeLibrarySupport nativeLibraries) {
+    static SymbolLookup createLookup(LookupNativeLibraries nativeLibraries) {
         return new SymbolLookup() {
             @Override
             public Optional<MemorySegment> find(String name) {
@@ -131,17 +166,18 @@ final class Util_java_lang_foreign_SymbolLookup {
         };
     }
 
-    static <Z> SymbolLookup libraryLookup(BiConsumer<NativeLibrarySupport, Z> loadLibraryFunc, List<Z> libDescs) {
+    static <Z> SymbolLookup libraryLookup(BiConsumer<LookupNativeLibraries, Z> loadLibraryFunc, List<Z> libDescs) {
         Objects.requireNonNull(libDescs);
-        NativeLibrarySupport nativeLibraries = createNativeLibraries(loadLibraryFunc, libDescs);
+        LookupNativeLibraries nativeLibraries = createNativeLibraries(loadLibraryFunc, libDescs);
         return createLookup(nativeLibraries);
     }
 
-    static <Z> SymbolLookup libraryLookup(BiConsumer<NativeLibrarySupport, Z> loadLibraryFunc, Arena libArena, List<Z> libDescs) {
+    @SuppressWarnings("restricted")
+    static <Z> SymbolLookup libraryLookup(BiConsumer<LookupNativeLibraries, Z> loadLibraryFunc, Arena libArena, List<Z> libDescs) {
         Objects.requireNonNull(libDescs);
         Objects.requireNonNull(libArena);
 
-        NativeLibrarySupport nativeLibraries = createNativeLibraries(loadLibraryFunc, libDescs);
+        LookupNativeLibraries nativeLibraries = createNativeLibraries(loadLibraryFunc, libDescs);
         SymbolLookup baseLookup = createLookup(nativeLibraries);
 
         MemorySessionImpl.toMemorySession(libArena).addOrCleanupIfFail(new MemorySessionImpl.ResourceList.ResourceCleanup() {
