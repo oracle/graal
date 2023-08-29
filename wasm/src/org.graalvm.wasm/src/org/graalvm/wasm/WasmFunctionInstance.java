@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import org.graalvm.wasm.api.InteropArray;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
@@ -154,7 +153,6 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         final long[] multiValueStack = context().primitiveMultiValueStack();
         final Object[] referenceMultiValueStack = context().referenceMultiValueStack();
         final int resultCount = function.resultCount();
-        CompilerAsserts.partialEvaluationConstant(resultCount);
         assert multiValueStack.length >= resultCount;
         assert referenceMultiValueStack.length >= resultCount;
         final Object[] values = new Object[resultCount];
