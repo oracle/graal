@@ -11,7 +11,7 @@ import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant;
 
-public class TestVariantErrorTests {
+public class TestVariantErrorTest {
 
     @ExpectError("A variant with suffix \"A\" already exists. Each variant must have a unique suffix.")
     @GenerateOperationsTestVariants({

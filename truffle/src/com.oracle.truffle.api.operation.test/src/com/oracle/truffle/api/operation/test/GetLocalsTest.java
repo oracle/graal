@@ -38,6 +38,7 @@ import com.oracle.truffle.api.operation.ContinuationResult;
 import com.oracle.truffle.api.operation.GenerateOperations;
 import com.oracle.truffle.api.operation.GenerateOperationsTestVariants;
 import com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant;
+import com.oracle.truffle.api.operation.test.example.OperationsExampleLanguage;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationConfig;
 import com.oracle.truffle.api.operation.OperationLocal;
@@ -48,7 +49,7 @@ import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.Variadic;
 
 @RunWith(Parameterized.class)
-public class OperationGetLocalsTest {
+public class GetLocalsTest {
     @Parameters(name = "{0}")
     public static List<Class<? extends OperationNodeWithLocalIntrospection>> getInterpreterClasses() {
         return List.of(OperationNodeWithLocalIntrospectionBase.class, OperationNodeWithLocalIntrospectionWithBaseline.class);
@@ -495,8 +496,8 @@ public class OperationGetLocalsTest {
 }
 
 @GenerateOperationsTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true)),
-                @Variant(suffix = "WithBaseline", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableBaselineInterpreter = true))
+                @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true)),
+                @Variant(suffix = "WithBaseline", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableBaselineInterpreter = true))
 })
 @OperationProxy(value = ContinuationResult.ContinueNode.class, operationName = "Continue")
 abstract class OperationNodeWithLocalIntrospection extends RootNode implements OperationRootNode {

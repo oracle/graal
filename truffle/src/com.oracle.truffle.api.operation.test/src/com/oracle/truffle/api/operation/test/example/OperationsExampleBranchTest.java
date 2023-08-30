@@ -1,4 +1,4 @@
-package com.oracle.truffle.api.operation.test;
+package com.oracle.truffle.api.operation.test.example;
 
 import static org.junit.Assert.assertEquals;
 
@@ -8,7 +8,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
 
-public class TestOperationsBranchTest extends AbstractTestOperationsTest {
+public class OperationsExampleBranchTest extends AbstractOperationsExampleTest {
     // @formatter:off
 
     @Test

@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.operation.test;
+package com.oracle.truffle.api.operation.test.example;
 
 import java.util.List;
 
@@ -72,21 +72,21 @@ import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant;
 
 @GenerateOperationsTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true)),
-                @Variant(suffix = "Unsafe", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true)),
-                @Variant(suffix = "WithBaseline", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, enableBaselineInterpreter = true)),
-                @Variant(suffix = "WithOptimizations", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, decisionsFile = "test_operations_decisions.json")),
+                @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true)),
+                @Variant(suffix = "Unsafe", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true)),
+                @Variant(suffix = "WithBaseline", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, enableBaselineInterpreter = true)),
+                @Variant(suffix = "WithOptimizations", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, decisionsFile = "operations_example_decisions.json")),
                 // A typical "production" configuration with all of the bells and whistles.
-                @Variant(suffix = "Production", configuration = @GenerateOperations(languageClass = TestOperationsLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true, enableBaselineInterpreter = true, //
-                                decisionsFile = "test_operations_decisions.json"))
+                @Variant(suffix = "Production", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true, enableBaselineInterpreter = true, //
+                                decisionsFile = "operations_example_decisions.json"))
 })
 @GenerateAOT
-@ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScAnd", continueWhen = true)
-@ShortCircuitOperation(booleanConverter = TestOperations.ToBoolean.class, name = "ScOr", continueWhen = false)
+@ShortCircuitOperation(booleanConverter = OperationsExample.ToBoolean.class, name = "ScAnd", continueWhen = true)
+@ShortCircuitOperation(booleanConverter = OperationsExample.ToBoolean.class, name = "ScOr", continueWhen = false)
 @OperationProxy(value = ContinuationResult.ContinueNode.class, operationName = "Continue")
-public abstract class TestOperations extends RootNode implements OperationRootNode {
+public abstract class OperationsExample extends RootNode implements OperationRootNode {
 
-    protected TestOperations(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected OperationsExample(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -107,8 +107,8 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     }
 
     // Expose the protected cloneUninitialized method for testing.
-    public TestOperations doCloneUninitialized() {
-        return (TestOperations) cloneUninitialized();
+    public OperationsExample doCloneUninitialized() {
+        return (OperationsExample) cloneUninitialized();
     }
 
     protected static class TestException extends AbstractOperationsTruffleException {
@@ -234,12 +234,12 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     @Operation
     public static final class Invoke {
         @Specialization(guards = {"callTargetMatches(root.getCallTarget(), callNode.getCallTarget())"}, limit = "1")
-        public static Object doRootNode(TestOperations root, @Variadic Object[] args, @Cached("create(root.getCallTarget())") DirectCallNode callNode) {
+        public static Object doRootNode(OperationsExample root, @Variadic Object[] args, @Cached("create(root.getCallTarget())") DirectCallNode callNode) {
             return callNode.call(args);
         }
 
         @Specialization(replaces = {"doRootNode"})
-        public static Object doRootNodeUncached(TestOperations root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+        public static Object doRootNodeUncached(OperationsExample root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
             return callNode.call(root.getCallTarget(), args);
         }
 
@@ -273,7 +273,7 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     @Operation
     public static final class CreateClosure {
         @Specialization
-        public static TestClosure materialize(VirtualFrame frame, TestOperations root) {
+        public static TestClosure materialize(VirtualFrame frame, OperationsExample root) {
             return new TestClosure(frame.materialize(), root);
         }
     }
@@ -315,7 +315,7 @@ public abstract class TestOperations extends RootNode implements OperationRootNo
     public static final class GetSourcePosition {
         @Specialization
         public static Object doOperation(@Bind("$root") Node rootNode, @Bind("$bci") int bci) {
-            return ((TestOperations) rootNode).getSourceSectionAtBci(bci);
+            return ((OperationsExample) rootNode).getSourceSectionAtBci(bci);
         }
     }
 }
@@ -324,7 +324,7 @@ class TestClosure {
     private final MaterializedFrame frame;
     private final RootCallTarget root;
 
-    TestClosure(MaterializedFrame frame, TestOperations root) {
+    TestClosure(MaterializedFrame frame, OperationsExample root) {
         this.frame = frame;
         this.root = root.getCallTarget();
     }

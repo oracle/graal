@@ -1,5 +1,6 @@
-package com.oracle.truffle.api.operation.test;
+package com.oracle.truffle.api.operation.test.example;
 
+import static com.oracle.truffle.api.operation.test.example.OperationsExampleCommon.parseNodeWithSource;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNull;
@@ -7,8 +8,6 @@ import static org.junit.Assert.assertTrue;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.oracle.truffle.api.operation.test.TestOperationsCommon.parseNodeWithSource;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -27,15 +26,15 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 @RunWith(Parameterized.class)
-public class TestOperationsFindBciTest {
-    protected static final TestOperationsLanguage LANGUAGE = null;
+public class OperationsExampleFindBciTest {
+    protected static final OperationsExampleLanguage LANGUAGE = null;
 
     @Parameters(name = "{0}")
-    public static List<Class<? extends TestOperations>> getInterpreterClasses() {
-        return List.of(TestOperationsBase.class, TestOperationsWithBaseline.class);
+    public static List<Class<? extends OperationsExample>> getInterpreterClasses() {
+        return List.of(OperationsExampleBase.class, OperationsExampleWithBaseline.class);
     }
 
-    @Parameter(0) public Class<? extends TestOperations> interpreterClass;
+    @Parameter(0) public Class<? extends OperationsExample> interpreterClass;
 
     @Test
     public void testStacktrace() {
@@ -59,7 +58,7 @@ public class TestOperationsFindBciTest {
         List<FrameInstance> frames = new ArrayList<>();
 
         Source bazSource = Source.newBuilder("test", "<trace>; 4", "baz").build();
-        TestOperations baz = parseNodeWithSource(interpreterClass, "baz", b -> {
+        OperationsExample baz = parseNodeWithSource(interpreterClass, "baz", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(bazSource);
 
@@ -91,7 +90,7 @@ public class TestOperationsFindBciTest {
         });
 
         Source barSource = Source.newBuilder("test", "(1 + arg0) + baz()", "bar").build();
-        TestOperations bar = parseNodeWithSource(TestOperationsBase.class, "bar", b -> {
+        OperationsExample bar = parseNodeWithSource(OperationsExampleBase.class, "bar", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(barSource);
 
@@ -117,7 +116,7 @@ public class TestOperationsFindBciTest {
         });
 
         Source fooSource = Source.newBuilder("test", "1 + bar(2)", "foo").build();
-        TestOperations foo = parseNodeWithSource(TestOperationsBase.class, "foo", b -> {
+        OperationsExample foo = parseNodeWithSource(OperationsExampleBase.class, "foo", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(fooSource);
 
@@ -201,7 +200,7 @@ public class TestOperationsFindBciTest {
             }
         }.getCallTarget();
 
-        TestOperations baz = parseNodeWithSource(interpreterClass, "baz", b -> {
+        OperationsExample baz = parseNodeWithSource(interpreterClass, "baz", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(bazSource);
             b.beginBlock();
@@ -234,7 +233,7 @@ public class TestOperationsFindBciTest {
         });
 
         Source barSource = Source.newBuilder("test", "x = yield 1; baz(x)", "bar").build();
-        TestOperations bar = parseNodeWithSource(TestOperationsBase.class, "bar", b -> {
+        OperationsExample bar = parseNodeWithSource(OperationsExampleBase.class, "bar", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(barSource);
             b.beginBlock();
@@ -261,7 +260,7 @@ public class TestOperationsFindBciTest {
         });
 
         Source fooSource = Source.newBuilder("test", "c = bar(); continue(c, arg0)", "foo").build();
-        TestOperations foo = parseNodeWithSource(TestOperationsBase.class, "foo", b -> {
+        OperationsExample foo = parseNodeWithSource(OperationsExampleBase.class, "foo", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(fooSource);
             b.beginBlock();

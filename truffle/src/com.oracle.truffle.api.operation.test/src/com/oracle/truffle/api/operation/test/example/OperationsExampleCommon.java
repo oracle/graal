@@ -1,4 +1,4 @@
-package com.oracle.truffle.api.operation.test;
+package com.oracle.truffle.api.operation.test.example;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -11,7 +11,7 @@ import com.oracle.truffle.api.operation.OperationNodes;
 import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.operation.OperationRootNode;
 
-public class TestOperationsCommon {
+public class OperationsExampleCommon {
     /**
      * Creates a root node using the given parameters.
      *
@@ -21,10 +21,11 @@ public class TestOperationsCommon {
      * reflection.
      */
     @SuppressWarnings("unchecked")
-    public static <T extends TestOperationsBuilder> OperationNodes<TestOperations> createNodes(Class<? extends TestOperations> interpreterClass, OperationConfig config, OperationParser<T> builder) {
+    public static <T extends OperationsExampleBuilder> OperationNodes<OperationsExample> createNodes(Class<? extends OperationsExample> interpreterClass, OperationConfig config,
+                    OperationParser<T> builder) {
         try {
             Method create = interpreterClass.getMethod("create", OperationConfig.class, OperationParser.class);
-            return (OperationNodes<TestOperations>) create.invoke(null, config, builder);
+            return (OperationNodes<OperationsExample>) create.invoke(null, config, builder);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.
@@ -35,27 +36,27 @@ public class TestOperationsCommon {
         }
     }
 
-    public static <T extends TestOperationsBuilder> RootCallTarget parse(Class<? extends TestOperations> interpreterClass, String rootName, OperationParser<T> builder) {
+    public static <T extends OperationsExampleBuilder> RootCallTarget parse(Class<? extends OperationsExample> interpreterClass, String rootName, OperationParser<T> builder) {
         OperationRootNode operationsNode = parseNode(interpreterClass, rootName, builder);
         return ((RootNode) operationsNode).getCallTarget();
     }
 
-    public static <T extends TestOperationsBuilder> TestOperations parseNode(Class<? extends TestOperations> interpreterClass, String rootName, OperationParser<T> builder) {
-        OperationNodes<TestOperations> nodes = TestOperationsCommon.createNodes(interpreterClass, OperationConfig.DEFAULT, builder);
-        TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
+    public static <T extends OperationsExampleBuilder> OperationsExample parseNode(Class<? extends OperationsExample> interpreterClass, String rootName, OperationParser<T> builder) {
+        OperationNodes<OperationsExample> nodes = OperationsExampleCommon.createNodes(interpreterClass, OperationConfig.DEFAULT, builder);
+        OperationsExample op = nodes.getNodes().get(nodes.getNodes().size() - 1);
         op.setName(rootName);
         return op;
     }
 
-    public static <T extends TestOperationsBuilder> TestOperations parseNodeWithSource(Class<? extends TestOperations> interpreterClass, String rootName, OperationParser<T> builder) {
-        OperationNodes<TestOperations> nodes = TestOperationsCommon.createNodes(interpreterClass, OperationConfig.WITH_SOURCE, builder);
-        TestOperations op = nodes.getNodes().get(nodes.getNodes().size() - 1);
+    public static <T extends OperationsExampleBuilder> OperationsExample parseNodeWithSource(Class<? extends OperationsExample> interpreterClass, String rootName, OperationParser<T> builder) {
+        OperationNodes<OperationsExample> nodes = OperationsExampleCommon.createNodes(interpreterClass, OperationConfig.WITH_SOURCE, builder);
+        OperationsExample op = nodes.getNodes().get(nodes.getNodes().size() - 1);
         op.setName(rootName);
         return op;
     }
 
-    public static List<Class<? extends TestOperations>> allInterpreters() {
-        return List.of(TestOperationsBase.class, TestOperationsUnsafe.class, TestOperationsWithBaseline.class, TestOperationsWithOptimizations.class, TestOperationsProduction.class);
+    public static List<Class<? extends OperationsExample>> allInterpreters() {
+        return List.of(OperationsExampleBase.class, OperationsExampleUnsafe.class, OperationsExampleWithBaseline.class, OperationsExampleWithOptimizations.class, OperationsExampleProduction.class);
     }
 
 }

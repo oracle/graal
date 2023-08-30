@@ -1,4 +1,4 @@
-package com.oracle.truffle.api.operation.test;
+package com.oracle.truffle.api.operation.test.example;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,7 +12,7 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.operation.OperationLabel;
 import com.oracle.truffle.api.operation.OperationLocal;
 
-public class TestOperationsFinallyTryTest extends AbstractTestOperationsTest {
+public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTest {
     // @formatter:off
 
     private static void testOrdering(boolean expectException, RootCallTarget root, Long... order) {

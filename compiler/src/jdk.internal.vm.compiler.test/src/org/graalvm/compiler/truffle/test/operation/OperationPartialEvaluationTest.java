@@ -1,5 +1,7 @@
 package org.graalvm.compiler.truffle.test.operation;
 
+import static com.oracle.truffle.api.operation.test.example.OperationsExampleCommon.parseNode;
+
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -12,32 +14,30 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.OperationParser;
-import com.oracle.truffle.api.operation.test.TestOperationsLanguage;
-import com.oracle.truffle.api.operation.test.TestOperations;
-import com.oracle.truffle.api.operation.test.TestOperationsBuilder;
-import com.oracle.truffle.api.operation.test.TestOperationsCommon;
-
-import static com.oracle.truffle.api.operation.test.TestOperationsCommon.parseNode;
+import com.oracle.truffle.api.operation.test.example.OperationsExample;
+import com.oracle.truffle.api.operation.test.example.OperationsExampleBuilder;
+import com.oracle.truffle.api.operation.test.example.OperationsExampleCommon;
+import com.oracle.truffle.api.operation.test.example.OperationsExampleLanguage;
 
 @RunWith(Parameterized.class)
 public class OperationPartialEvaluationTest extends PartialEvaluationTest {
     // @formatter:off
 
-    private static final TestOperationsLanguage LANGUAGE = null;
+    private static final OperationsExampleLanguage LANGUAGE = null;
 
     @Parameters(name = "{0}")
-    public static List<Class<? extends TestOperations>> getInterpreterClasses() {
-        return TestOperationsCommon.allInterpreters();
+    public static List<Class<? extends OperationsExample>> getInterpreterClasses() {
+        return OperationsExampleCommon.allInterpreters();
     }
 
-    @Parameter(0) public Class<? extends TestOperations> interpreterClass;
+    @Parameter(0) public Class<? extends OperationsExample> interpreterClass;
 
     private static Supplier<Object> supplier(Object result) {
         return () -> result;
     }
 
-    private static <T extends TestOperationsBuilder> TestOperations parseNodeForPE(Class<? extends TestOperations> interpreterClass, String rootName, OperationParser<T> builder) {
-        TestOperations result = parseNode(interpreterClass, rootName, builder);
+    private static <T extends OperationsExampleBuilder> OperationsExample parseNodeForPE(Class<? extends OperationsExample> interpreterClass, String rootName, OperationParser<T> builder) {
+        OperationsExample result = parseNode(interpreterClass, rootName, builder);
         result.setBaselineInterpreterThreshold(0); // force interpreter to skip tier 0
         return result;
     }
@@ -46,7 +46,7 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
     public void testAddTwoConstants() {
         // return 20 + 22;
 
-        TestOperations root = parseNodeForPE(interpreterClass, "addTwoConstants", b -> {
+        OperationsExample root = parseNodeForPE(interpreterClass, "addTwoConstants", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -66,7 +66,7 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
     public void testAddThreeConstants() {
         // return 40 + 22 + - 20;
 
-        TestOperations root = parseNodeForPE(interpreterClass, "addThreeConstants", b -> {
+        OperationsExample root = parseNodeForPE(interpreterClass, "addThreeConstants", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -101,7 +101,7 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
 
         long endValue = 10L;
 
-        TestOperations root = parseNodeForPE(interpreterClass, "sum", b -> {
+        OperationsExample root = parseNodeForPE(interpreterClass, "sum", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLocal i = b.createLocal();
@@ -160,7 +160,7 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
         // }
         // return 3;
 
-        TestOperations root = parseNodeForPE(interpreterClass, "sum", b -> {
+        OperationsExample root = parseNodeForPE(interpreterClass, "sum", b -> {
             b.beginRoot(LANGUAGE);
 
             OperationLocal ex = b.createLocal();

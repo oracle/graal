@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.operation.test;
+package com.oracle.truffle.api.operation.test.example;
 
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
@@ -65,25 +65,25 @@ import com.oracle.truffle.api.operation.serialization.OperationSerializer;
 import com.oracle.truffle.api.operation.serialization.SerializationUtils;
 
 @RunWith(Parameterized.class)
-public class TestOperationsSerializationTest {
+public class OperationsExampleSerializationTest {
 
     @Parameters(name = "{0}")
-    public static List<Class<? extends TestOperations>> getInterpreterClasses() {
-        return TestOperationsCommon.allInterpreters();
+    public static List<Class<? extends OperationsExample>> getInterpreterClasses() {
+        return OperationsExampleCommon.allInterpreters();
     }
 
-    @Parameter(0) public Class<? extends TestOperations> interpreterClass;
+    @Parameter(0) public Class<? extends OperationsExample> interpreterClass;
 
     @Test
     public void testSerialization() {
         byte[] byteArray = createByteArray();
-        TestOperations root = deserialize(byteArray);
+        OperationsExample root = deserialize(byteArray);
 
         Assert.assertEquals(3L, root.getCallTarget().call());
     }
 
     @SuppressWarnings("unchecked")
-    private <T extends TestOperations> OperationNodes<T> invokeDeserialize(TruffleLanguage<?> language, OperationConfig config, Supplier<DataInput> input, OperationDeserializer callback) {
+    private <T extends OperationsExample> OperationNodes<T> invokeDeserialize(TruffleLanguage<?> language, OperationConfig config, Supplier<DataInput> input, OperationDeserializer callback) {
         try {
             Method deserialize = interpreterClass.getMethod("deserialize", TruffleLanguage.class, OperationConfig.class, Supplier.class, OperationDeserializer.class);
             return (OperationNodes<T>) deserialize.invoke(null, language, config, input, callback);
@@ -93,7 +93,7 @@ public class TestOperationsSerializationTest {
     }
 
     @SuppressWarnings("unchecked")
-    private void invokeSerialize(OperationConfig config, DataOutput buffer, OperationSerializer callback, OperationParser<TestOperationsBuilder> parser) {
+    private void invokeSerialize(OperationConfig config, DataOutput buffer, OperationSerializer callback, OperationParser<OperationsExampleBuilder> parser) {
         try {
             Method serialize = interpreterClass.getMethod("serialize", OperationConfig.class, DataOutput.class, OperationSerializer.class, OperationParser.class);
             serialize.invoke(null, config, buffer, callback, parser);
@@ -102,9 +102,9 @@ public class TestOperationsSerializationTest {
         }
     }
 
-    private TestOperations deserialize(byte[] byteArray) {
+    private OperationsExample deserialize(byte[] byteArray) {
         Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(byteArray));
-        OperationNodes<TestOperations> nodes = invokeDeserialize(null, OperationConfig.DEFAULT, input,
+        OperationNodes<OperationsExample> nodes = invokeDeserialize(null, OperationConfig.DEFAULT, input,
                         (context, buffer) -> {
                             switch (buffer.readByte()) {
                                 case 0:
