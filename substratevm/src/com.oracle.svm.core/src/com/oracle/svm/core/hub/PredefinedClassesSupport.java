@@ -102,8 +102,6 @@ public final class PredefinedClassesSupport {
     /** Predefined classes which have already been loaded, by name. */
     private final EconomicMap<String, Class<?>> loadedClassesByName = EconomicMap.create();
 
-    private long loadedClassesCount;
-
     @Platforms(Platform.HOSTED_ONLY.class)
     public static void registerClass(String hash, Class<?> clazz) {
         Class<?> existing = singleton().predefinedClassesByHash.putIfAbsent(hash, clazz);
@@ -128,7 +126,7 @@ public final class PredefinedClassesSupport {
     }
 
     public static long getRuntimeLoadedClassesCount() {
-        return singleton().loadedClassesCount;
+        return singleton().loadedClassesByName.size();
     }
 
     public static Class<?> loadClass(ClassLoader classLoader, String expectedName, byte[] data, int offset, int length, ProtectionDomain protectionDomain) {
@@ -196,7 +194,6 @@ public final class PredefinedClassesSupport {
                 hub.setProtectionDomainAtRuntime(protectionDomain);
             }
             loadedClassesByName.put(clazz.getName(), clazz);
-            loadedClassesCount++;
             return true;
         } finally {
             lock.unlock();
