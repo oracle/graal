@@ -24,6 +24,10 @@
  */
 package com.oracle.svm.core.heap;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -55,13 +59,23 @@ public class PhysicalMemory {
         UnsignedWord size();
     }
 
+    private static final CountDownLatch CACHED_SIZE_AVAIL_LATCH = new CountDownLatch(1);
     private static final AtomicInteger INITIALIZING = new AtomicInteger(0);
+    private static final ReentrantLock LOCK = new ReentrantLock();
     private static final UnsignedWord UNSET_SENTINEL = UnsignedUtils.MAX_VALUE;
     private static UnsignedWord cachedSize = UNSET_SENTINEL;
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isInitialized() {
-        return cachedSize != UNSET_SENTINEL;
+        return INITIALIZING.get() > 1;
+    }
+
+    /**
+     *
+     * @return {@code true} when PhycialMemory.size() is still initializing
+     */
+    private static boolean isInitializing() {
+        return INITIALIZING.get() == 1;
     }
 
     /**
@@ -80,13 +94,26 @@ public class PhysicalMemory {
             throw VMError.shouldNotReachHere("Accessing the physical memory size may require allocation and synchronization");
         }
 
-        if (!isInitialized()) {
-            /*
-             * Multiple threads can race to initialize the cache. This is OK because all of them
-             * will (most-likely) compute the same value.
-             */
-            INITIALIZING.incrementAndGet();
-            try {
+        LOCK.lock();
+        try {
+            if (!isInitialized()) {
+                if (isInitializing()) {
+                    /*
+                     * Recursive initializations need to wait for the one initializing thread to
+                     * finish so as to get correct reads of the cachedSize value.
+                     */
+                    try {
+                        boolean expired = !CACHED_SIZE_AVAIL_LATCH.await(1L, TimeUnit.SECONDS);
+                        if (expired) {
+                            throw new InternalError("Expired latch!");
+                        }
+                        VMError.guarantee(cachedSize != UNSET_SENTINEL, "Expected chached size to be set");
+                        return cachedSize;
+                    } catch (InterruptedException e) {
+                        throw VMError.shouldNotReachHere("Interrupt on countdown latch!");
+                    }
+                }
+                INITIALIZING.incrementAndGet();
                 long memoryLimit = SubstrateOptions.MaxRAM.getValue();
                 if (memoryLimit > 0) {
                     cachedSize = WordFactory.unsigned(memoryLimit);
@@ -96,9 +123,13 @@ public class PhysicalMemory {
                                     ? WordFactory.unsigned(memoryLimit)
                                     : ImageSingletons.lookup(PhysicalMemorySupport.class).size();
                 }
-            } finally {
-                INITIALIZING.decrementAndGet();
+                // Now that we have set the cachedSize let other threads know it's
+                // available to use.
+                INITIALIZING.incrementAndGet();
+                CACHED_SIZE_AVAIL_LATCH.countDown();
             }
+        } finally {
+            LOCK.unlock();
         }
 
         return cachedSize;
