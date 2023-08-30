@@ -46,6 +46,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.BuiltinModule;
@@ -175,6 +176,17 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     public WasmModule getOrCreateBuiltinModule(BuiltinModule builtinModule, Function<? super BuiltinModule, ? extends WasmModule> factory) {
         return builtinModules.computeIfAbsent(builtinModule, factory);
+    }
+
+    @Override
+    protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+        if (!firstOptions.hasSetOptions() && !newOptions.hasSetOptions()) {
+            return true;
+        } else if (firstOptions.equals(newOptions)) {
+            return true;
+        } else {
+            return WasmContextOptions.fromOptionValues(firstOptions).equals(WasmContextOptions.fromOptionValues(newOptions));
+        }
     }
 
     public MultiValueStack multiValueStack() {
