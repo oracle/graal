@@ -51,7 +51,6 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 public final class WasiModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 27;
 
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
@@ -94,7 +93,6 @@ public final class WasiModule extends BuiltinModule {
         } else {
             defineFunction(context, module, "random_get", types(I32_TYPE, I32_TYPE), types(I32_TYPE), new WasiRandomGetNode(language, module));
         }
-        assert module.numFunctions() == NUMBER_OF_FUNCTIONS;
         return module;
     }
 

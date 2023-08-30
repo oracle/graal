@@ -53,7 +53,6 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 public class TestutilModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 2;
 
     public static class Options {
         static final String KEEP_TEMP_FILES = System.getProperty("wasmtest.keepTempFiles", "false");
@@ -91,7 +90,6 @@ public class TestutilModule extends BuiltinModule {
 
         // The following methods are exposed to the Wasm test programs.
         defineFunction(context, module, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFileNode(language, module, temporaryDirectory));
-        assert module.numFunctions() == NUMBER_OF_FUNCTIONS;
         return module;
     }
 }

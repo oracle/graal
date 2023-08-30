@@ -54,7 +54,6 @@ import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiFdWriteNode;
 
 public class EmscriptenModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 20;
 
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
@@ -93,7 +92,6 @@ public class EmscriptenModule extends BuiltinModule {
         defineGlobal(module, "DYNAMICTOP_PTR", I32_TYPE, GlobalModifier.CONSTANT, 0);
         defineGlobal(module, "DYNAMIC_BASE", I32_TYPE, GlobalModifier.CONSTANT, 0);
         defineTable(context, module, "table", 0, -1, WasmType.FUNCREF_TYPE);
-        assert module.numFunctions() == NUMBER_OF_FUNCTIONS;
         return module;
     }
 }

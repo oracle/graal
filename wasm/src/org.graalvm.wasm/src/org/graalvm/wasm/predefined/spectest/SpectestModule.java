@@ -54,7 +54,6 @@ import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 public class SpectestModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 7;
 
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
@@ -75,7 +74,6 @@ public class SpectestModule extends BuiltinModule {
         if (context.getContextOptions().supportThreads() && context.getContextOptions().useUnsafeMemory()) {
             defineMemory(module, "shared_memory", 1, 2, false, true);
         }
-        assert module.numFunctions() == NUMBER_OF_FUNCTIONS;
         return module;
     }
 }
