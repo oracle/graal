@@ -28,6 +28,7 @@ package com.oracle.svm.core.jdk.localization;
 import static com.oracle.svm.util.StringUtil.toDotSeparated;
 import static com.oracle.svm.util.StringUtil.toSlashSeparated;
 
+import java.lang.reflect.Constructor;
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
@@ -107,6 +108,22 @@ public class LocalizationSupport {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale) {
+        /*
+         * Class-based bundle lookup happens on every query, but we don't need to register the
+         * constructor for a property resource bundle since the class lookup will fail.
+         */
+        registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale));
+        if (!(bundle instanceof PropertyResourceBundle)) {
+            RuntimeReflection.register(bundle.getClass());
+            try {
+                Constructor<?> nullaryConstructor = bundle.getClass().getDeclaredConstructor();
+                RuntimeReflection.register(nullaryConstructor);
+            } catch (NoSuchMethodException e) {
+                RuntimeReflection.registerConstructorLookup(bundle.getClass());
+            }
+        }
+
+        /* Property-based bundle lookup happens only if class-based lookup fails */
         if (bundle instanceof PropertyResourceBundle) {
             String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
             String resourceName;
@@ -131,12 +148,8 @@ public class LocalizationSupport {
                     module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName));
                 }
             }
-        } else {
-            registerRequiredReflectionAndResourcesForBundle(bundleName, Set.of(locale));
-            RuntimeReflection.register(bundle.getClass());
-            RuntimeReflection.registerForReflectiveInstantiation(bundle.getClass());
-            onBundlePrepared(bundle);
         }
+        onBundlePrepared(bundle);
     }
 
     private static String packageName(String bundleName) {
