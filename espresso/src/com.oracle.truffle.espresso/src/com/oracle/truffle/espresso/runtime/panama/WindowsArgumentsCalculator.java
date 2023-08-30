@@ -85,8 +85,8 @@ public class WindowsArgumentsCalculator extends AbstractArgumentsCalculator {
             // https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170
             // for varargs floating point values get passed in both the usual floating-point
             // register and integer register
-            if (callIntRegs[globalIndex].equals(reg) && callFloatRegs[globalIndex].equals(nextReg) ||
-                            callIntRegs[globalIndex].equals(nextReg) && callFloatRegs[globalIndex].equals(reg)) {
+            if ((callIntRegs[globalIndex].equals(reg) && callFloatRegs[globalIndex].equals(nextReg)) ||
+                            (callIntRegs[globalIndex].equals(nextReg) && callFloatRegs[globalIndex].equals(reg))) {
                 return true;
             }
         }
