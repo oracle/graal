@@ -48,7 +48,6 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 public class GoModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 19;
 
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
@@ -72,7 +71,6 @@ public class GoModule extends BuiltinModule {
         defineFunction(context, module, "syscall/js.valuePrepareString", types(I32_TYPE), types(), new GoFunctionNode(language, module));
         defineFunction(context, module, "syscall/js.valueLoadString", types(I32_TYPE), types(), new GoFunctionNode(language, module));
         defineFunction(context, module, "syscall/js.copyBytesToJS", types(I32_TYPE), types(), new GoFunctionNode(language, module));
-        assert module.numFunctions() == NUMBER_OF_FUNCTIONS;
         return module;
     }
 }

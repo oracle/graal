@@ -46,7 +46,6 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 public class TestutilModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 2;
 
     public static class Names {
         public static final String RUN_CUSTOM_INITIALIZATION = "__testutil_run_custom_initialization";
@@ -59,7 +58,6 @@ public class TestutilModule extends BuiltinModule {
         // Note: in the following methods, the types are not important here, since these methods
         // are not accessed by Wasm code.
         defineFunction(context, module, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitializationNode(language));
-        assert module.numFunctions() == NUMBER_OF_FUNCTIONS;
         return module;
     }
 }

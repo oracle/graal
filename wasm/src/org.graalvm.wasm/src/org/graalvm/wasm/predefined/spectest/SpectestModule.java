@@ -54,7 +54,6 @@ import org.graalvm.wasm.constants.GlobalModifier;
 import org.graalvm.wasm.predefined.BuiltinModule;
 
 public class SpectestModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 7;
 
     @Override
     protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
