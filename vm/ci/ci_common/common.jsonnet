@@ -554,8 +554,9 @@ local devkits = graal_common.devkits;
     mvn_args: ['maven-deploy', '--tags=public', '--all-distribution-types', '--validate=full', '--version-suite=vm'],
     mvn_args_only_native: self.mvn_args + ['--all-suites', '--only', self.only_native_dists],
 
-    is_main_platform(os, arch):: os == 'linux' && arch == 'amd64',
+    main_platform:: 'linux-amd64',
     other_platforms:: ['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64'],
+    is_main_platform(os, arch):: os + '-' + arch == self.main_platform,
 
     deploy(os, arch, dry_run, repo_strings):: [
       self.mx_cmd_base(os, arch)
@@ -579,7 +580,7 @@ local devkits = graal_common.devkits;
         [
           self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name(platform)] for platform in self.other_platforms
         ]
-        + self.build(os, arch, mx_args=['--multi-platform-layout-directories=all'], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}'])  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
+        + self.build(os, arch, mx_args=['--multi-platform-layout-directories=' + std.join(',', [self.main_platform] + self.other_platforms)], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}'])  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
         + self.deploy(os, arch, dry_run, [remote_mvn_repo])
         + [
           # resource bundle
