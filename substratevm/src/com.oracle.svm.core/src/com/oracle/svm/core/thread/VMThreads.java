@@ -918,7 +918,7 @@ public abstract class VMThreads {
          */
         @Uninterruptible(reason = "May only be called from uninterruptible code to prevent races with the safepoint handling.", callerMustBe = true)
         public static void preventSafepoints() {
-            // It would be nice if we could retire the TLAB here but that wouldn't work reliably.
+            // It would be nice if we could retire the TLAB but that wouldn't work reliably.
             safepointBehaviorTL.setVolatile(PREVENT_VM_FROM_REACHING_SAFEPOINT);
         }
 

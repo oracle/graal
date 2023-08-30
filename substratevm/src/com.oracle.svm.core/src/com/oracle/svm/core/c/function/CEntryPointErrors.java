@@ -59,6 +59,9 @@ public final class CEntryPointErrors {
     @Description("An argument was NULL.") //
     public static final int NULL_ARGUMENT = 2;
 
+    @Description("Memory allocation failed, the OS is probably out of memory.") //
+    public static final int ALLOCATION_FAILED = 3;
+
     @Description("The specified thread is not attached to the isolate.") //
     public static final int UNATTACHED_THREAD = 4;
 
@@ -148,6 +151,9 @@ public final class CEntryPointErrors {
 
     @Description("Could not create unique GOT file even after retrying.") //
     public static final int DYNAMIC_METHOD_ADDRESS_RESOLUTION_GOT_UNIQUE_FILE_CREATE_FAILED = 31;
+
+    @Description("Could not determine the stack boundaries.") //
+    public static final int UNKNOWN_STACK_BOUNDARIES = 32;
 
     public static String getDescription(int code) {
         String result = null;

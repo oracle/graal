@@ -448,7 +448,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 }
             }
         } else {
-            StackOverflowCheck.singleton().initialize(WordFactory.nullPointer());
+            StackOverflowCheck.singleton().initialize();
         }
         CEntryPointListenerSupport.singleton().afterThreadAttach();
         return CEntryPointErrors.NO_ERROR;
@@ -458,10 +458,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static int attachUnattachedThread(Isolate isolate, boolean startedByIsolate, boolean inCrashHandler, int vmThreadSize) {
         IsolateThread thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
         if (thread.isNull()) {
-            return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
+            return CEntryPointErrors.ALLOCATION_FAILED;
         }
-        StackOverflowCheck.singleton().initialize(thread);
         writeCurrentVMThread(thread);
+        if (!StackOverflowCheck.singleton().initialize()) {
+            return CEntryPointErrors.UNKNOWN_STACK_BOUNDARIES;
+        }
 
         if (inCrashHandler) {
             // If we are in the crash handler then we only want to make sure that this thread can
