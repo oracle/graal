@@ -827,10 +827,6 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
 
     private void registerTypesForAnnotation(AnnotationValue annotationValue) {
         registerTypes(annotationValue.getTypes());
-        Class<?> annotationType = annotationValue.getType();
-        if (annotationType != null) {
-            RuntimeReflection.registerAllDeclaredMethods(annotationType);
-        }
     }
 
     @SuppressWarnings("cast")
@@ -840,6 +836,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
             analysisType.registerAsReachable("Is used by annotation of element registered for reflection.");
             if (type.isAnnotation()) {
                 RuntimeProxyCreation.register(type);
+                RuntimeReflection.registerAllDeclaredMethods(type);
             }
             /*
              * Exception proxies are stored as-is in the image heap
