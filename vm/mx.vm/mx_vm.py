@@ -461,8 +461,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             'groupId': 'org.graalvm.polyglot',
             'artifactId': 'maven-{edition}-resource-bundle'.format(
                 edition='ee' if mx.suite('vm-enterprise', fatalIfMissing=False) else 'ce',
-                os=mx.get_os(),
-                arch=mx.get_arch()
             ),
             'version': mx_sdk_vm_impl.graalvm_version('graalvm'),
             'tag': 'resource-bundle',
