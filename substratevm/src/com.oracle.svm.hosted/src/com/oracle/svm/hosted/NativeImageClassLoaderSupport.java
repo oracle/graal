@@ -35,11 +35,8 @@ import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
 import java.lang.reflect.Method;
-import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URL;
-import java.net.URLClassLoader;
 import java.nio.channels.ClosedByInterruptException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystems;
@@ -47,7 +44,6 @@ import java.nio.file.FileVisitResult;
 import java.nio.file.FileVisitor;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
 import java.util.ArrayDeque;
@@ -74,7 +70,6 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -83,6 +78,7 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
+import com.oracle.svm.core.NativeImageClassLoaderOptions;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.OptionOrigin;
@@ -114,8 +110,7 @@ public class NativeImageClassLoaderSupport {
 
     private final ConcurrentHashMap<String, LinkedHashSet<String>> serviceProviders;
 
-    private final URLClassLoader classPathClassLoader;
-    private final ClassLoader classLoader;
+    private final NativeImageClassLoader classLoader;
 
     public final ModuleFinder upgradeAndSystemModuleFinder;
     public final ModuleLayer moduleLayerForImageBuild;
@@ -131,10 +126,10 @@ public class NativeImageClassLoaderSupport {
         emptySet = EconomicSet.create();
         builderURILocations = EconomicSet.create();
         serviceProviders = new ConcurrentHashMap<>();
-        classPathClassLoader = new URLClassLoader(Util.verifyClassPathAndConvertToURLs(classpath), defaultSystemClassLoader);
 
-        imagecp = Arrays.stream(classPathClassLoader.getURLs())
-                        .map(Util::urlToPath)
+        imagecp = Arrays.stream(classpath)
+                        .map(Path::of)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         String builderClassPathString = System.getProperty("java.class.path");
@@ -146,34 +141,57 @@ public class NativeImageClassLoaderSupport {
         }
         buildcp = Arrays.stream(builderClassPathEntries)
                         .map(Path::of)
-                        .map(Util::toRealPath)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
         buildcp.stream().map(Path::toUri).forEach(builderURILocations::add);
 
         imagemp = Arrays.stream(modulePath)
                         .map(Path::of)
-                        .map(Util::toRealPath)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         buildmp = Optional.ofNullable(System.getProperty("jdk.module.path")).stream()
                         .flatMap(s -> Arrays.stream(s.split(File.pathSeparator)))
                         .map(Path::of)
-                        .map(Util::toRealPath)
+                        .flatMap(NativeImageClassLoaderSupport::toRealPath)
                         .collect(Collectors.toUnmodifiableList());
 
         upgradeAndSystemModuleFinder = createUpgradeAndSystemModuleFinder();
-        ModuleLayer moduleLayer = createModuleLayer(imagemp.toArray(Path[]::new), classPathClassLoader);
+
+        ModuleFinder modulePathsFinder = ModuleFinder.of(imagemp.toArray(Path[]::new));
+        Set<String> moduleNames = modulePathsFinder.findAll().stream()
+                        .map(moduleReference -> moduleReference.descriptor().name())
+                        .collect(Collectors.toSet());
+
+        /**
+         * When building a moduleLayer for the module-path passed to native-image we need to be able
+         * to resolve against system modules that are not used by the moduleLayer in which the
+         * image-builder got loaded into. To do so we use {@link upgradeAndSystemModuleFinder} as
+         * {@code ModuleFinder after} in
+         * {@link Configuration#resolve(ModuleFinder, ModuleFinder, Collection)}.
+         */
+        Configuration configuration = ModuleLayer.boot().configuration().resolve(modulePathsFinder, upgradeAndSystemModuleFinder, moduleNames);
+
+        classLoader = new NativeImageClassLoader(imagecp, configuration, defaultSystemClassLoader);
+
+        ModuleLayer moduleLayer = ModuleLayer.defineModules(configuration, List.of(ModuleLayer.boot()), ignored -> classLoader).layer();
         adjustBootLayerQualifiedExports(moduleLayer);
         moduleLayerForImageBuild = moduleLayer;
         allLayers(moduleLayerForImageBuild).stream()
                         .flatMap(layer -> layer.modules().stream())
                         .forEach(this::registerModulePathServiceProviders);
 
-        classLoader = getSingleClassloader(moduleLayer);
-
         modulepathModuleFinder = ModuleFinder.of(modulepath().toArray(Path[]::new));
 
         annotationExtractor = new SubstrateAnnotationExtractor();
+    }
+
+    private static Stream<Path> toRealPath(Path p) {
+        try {
+            return Stream.of(p.toRealPath());
+        } catch (IOException e) {
+            return Stream.empty();
+        }
     }
 
     List<Path> classpath() {
@@ -184,7 +202,7 @@ public class NativeImageClassLoaderSupport {
         return imagecp;
     }
 
-    public ClassLoader getClassLoader() {
+    public NativeImageClassLoader getClassLoader() {
         return classLoader;
     }
 
@@ -224,65 +242,6 @@ public class NativeImageClassLoaderSupport {
 
     public boolean noEntryForURI(EconomicSet<String> set) {
         return set == emptySet;
-    }
-
-    protected static class Util {
-
-        static URL[] verifyClassPathAndConvertToURLs(String[] classpath) {
-            Stream<Path> pathStream = new LinkedHashSet<>(Arrays.asList(classpath)).stream().map(Path::of).filter(Util::verifyClassPathEntry);
-            return pathStream.map(v -> {
-                try {
-                    return toRealPath(v).toUri().toURL();
-                } catch (MalformedURLException e) {
-                    throw UserError.abort("Invalid classpath element '%s'. Make sure that all paths provided with '%s' are correct.", v, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
-                }
-            }).toArray(URL[]::new);
-        }
-
-        static Path toRealPath(Path p) {
-            try {
-                return p.toRealPath();
-            } catch (IOException e) {
-                throw UserError.abort("Path entry '%s' does not map to a real path.", p);
-            }
-        }
-
-        private static boolean verifyClassPathEntry(Path cpEntry) {
-            if (ClasspathUtils.isJar(cpEntry)) {
-                return true;
-            }
-            if (Files.isDirectory(cpEntry) && Files.isReadable(cpEntry)) {
-                return true;
-            }
-            return false;
-        }
-
-        static Path urlToPath(URL url) {
-            try {
-                return Paths.get(url.toURI());
-            } catch (URISyntaxException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        }
-    }
-
-    private ModuleLayer createModuleLayer(Path[] modulePaths, ClassLoader parent) {
-        ModuleFinder modulePathsFinder = ModuleFinder.of(modulePaths);
-        Set<String> moduleNames = modulePathsFinder.findAll().stream().map(moduleReference -> moduleReference.descriptor().name()).collect(Collectors.toSet());
-
-        /**
-         * When building a moduleLayer for the module-path passed to native-image we need to be able
-         * to resolve against system modules that are not used by the moduleLayer in which the
-         * image-builder got loaded into. To do so we use {@link upgradeAndSystemModuleFinder} as
-         * {@code ModuleFinder after} in
-         * {@link Configuration#resolve(ModuleFinder, ModuleFinder, Collection)}.
-         */
-        Configuration configuration = ModuleLayer.boot().configuration().resolve(modulePathsFinder, upgradeAndSystemModuleFinder, moduleNames);
-        /**
-         * For the modules we want to build an image for, a ModuleLayer is needed that can be
-         * accessed with a single classloader so we can use it for {@link ImageClassLoader}.
-         */
-        return ModuleLayer.defineModulesWithOneLoader(configuration, List.of(ModuleLayer.boot()), parent).layer();
     }
 
     /**
@@ -337,19 +296,6 @@ public class NativeImageClassLoaderSupport {
                 }
             }
         }
-    }
-
-    private ClassLoader getSingleClassloader(ModuleLayer moduleLayer) {
-        ClassLoader singleClassloader = classPathClassLoader;
-        for (Module module : moduleLayer.modules()) {
-            ClassLoader moduleClassLoader = module.getClassLoader();
-            if (singleClassloader == classPathClassLoader) {
-                singleClassloader = moduleClassLoader;
-            } else {
-                VMError.guarantee(singleClassloader == moduleClassLoader);
-            }
-        }
-        return singleClassloader;
     }
 
     private void registerModulePathServiceProviders(Module module) {
