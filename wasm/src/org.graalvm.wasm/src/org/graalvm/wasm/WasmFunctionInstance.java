@@ -47,6 +47,7 @@ import org.graalvm.wasm.nodes.WasmIndirectCallNode;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -86,6 +87,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         this.function = function;
         this.target = target;
         this.truffleContext = context.environment().getContext();
+        assert ((RootCallTarget) target).getRootNode().getLanguage(WasmLanguage.class) == context.language();
     }
 
     @Override
