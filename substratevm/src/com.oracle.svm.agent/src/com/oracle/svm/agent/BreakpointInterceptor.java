@@ -61,7 +61,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Supplier;
 
-import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
@@ -102,6 +101,8 @@ import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiEventMode;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiFrameInfo;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiInterface;
 import com.oracle.svm.jvmtiagentbase.jvmti.JvmtiLocationFormat;
+
+import jdk.graal.compiler.core.common.NumUtil;
 
 /**
  * Intercepts events of interest via breakpoints in Java code.
@@ -681,6 +682,26 @@ final class BreakpointInterceptor {
         JNIObjectHandle callerClass = getMethodDeclaringClass(callerMethod);
         JNIObjectHandle baseName = getObjectArgument(thread, 2);
         JNIObjectHandle locale = getObjectArgument(thread, 3);
+        traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(),
+                        Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), readLocaleTag(jni, locale), Tracer.UNKNOWN_VALUE);
+        return true;
+    }
+
+    /*
+     * Bundles.putBundleInCache is the single point through which all bundles queried through
+     * sun.util.resources.Bundles go
+     */
+    private static boolean putBundleInCache(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle cacheKey = getObjectArgument(thread, 0);
+        JNIObjectHandle baseName = Support.callObjectMethod(jni, cacheKey, agent.handles().sunUtilResourcesBundlesCacheKeyGetName);
+        if (clearException(jni)) {
+            baseName = nullHandle();
+        }
+        JNIObjectHandle locale = Support.callObjectMethod(jni, cacheKey, agent.handles().sunUtilResourcesBundlesCacheKeyGetLocale);
+        if (clearException(jni)) {
+            locale = nullHandle();
+        }
         traceReflectBreakpoint(jni, nullHandle(), nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(),
                         Tracer.UNKNOWN_VALUE, Tracer.UNKNOWN_VALUE, fromJniString(jni, baseName), readLocaleTag(jni, locale), Tracer.UNKNOWN_VALUE);
         return true;
@@ -1509,6 +1530,8 @@ final class BreakpointInterceptor {
                                     "getBundleImpl",
                                     "(Ljava/lang/Module;Ljava/lang/Module;Ljava/lang/String;Ljava/util/Locale;Ljava/util/ResourceBundle$Control;)Ljava/util/ResourceBundle;",
                                     BreakpointInterceptor::getBundleImpl),
+                    brk("sun/util/resources/Bundles", "putBundleInCache", "(Lsun/util/resources/Bundles$CacheKey;Ljava/util/ResourceBundle;)Ljava/util/ResourceBundle;",
+                                    BreakpointInterceptor::putBundleInCache),
 
                     // In Java 9+, these are Java methods that call private methods
                     optionalBrk("jdk/internal/misc/Unsafe", "objectFieldOffset", "(Ljava/lang/Class;Ljava/lang/String;)J", BreakpointInterceptor::objectFieldOffsetByName),

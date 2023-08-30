@@ -84,6 +84,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
     final JNIFieldId javaLangInvokeSerializedLambdaCapturingClass;
 
+    final JNIMethodId sunUtilResourcesBundlesCacheKeyGetName;
+    final JNIMethodId sunUtilResourcesBundlesCacheKeyGetLocale;
+
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
         javaLangClass = newClassGlobalRef(env, "java/lang/Class");
@@ -120,6 +123,10 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
 
         JNIObjectHandle serializedLambda = findClass(env, "java/lang/invoke/SerializedLambda");
         javaLangInvokeSerializedLambdaCapturingClass = getFieldId(env, serializedLambda, "capturingClass", "Ljava/lang/Class;", false);
+
+        JNIObjectHandle sunUtilResourcesBundlesCacheKey = findClass(env, "sun/util/resources/Bundles$CacheKey");
+        sunUtilResourcesBundlesCacheKeyGetName = getMethodId(env, sunUtilResourcesBundlesCacheKey, "getName", "()Ljava/lang/String;", false);
+        sunUtilResourcesBundlesCacheKeyGetLocale = getMethodId(env, sunUtilResourcesBundlesCacheKey, "getLocale", "()Ljava/util/Locale;", false);
     }
 
     JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {
