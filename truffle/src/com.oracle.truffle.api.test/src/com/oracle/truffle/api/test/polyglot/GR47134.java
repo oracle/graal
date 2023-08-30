@@ -43,6 +43,7 @@ package com.oracle.truffle.api.test.polyglot;
 import static com.oracle.truffle.api.test.ReflectionUtils.getField;
 
 import java.util.Map;
+import java.util.Collections;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Value;
@@ -57,10 +58,11 @@ public class GR47134 {
     public void test() {
         try (Context ctx = Context.create()) {
             // bug triggers only with hash maps
-            final Value member = ctx.asValue((ProxyExecutable) (v) -> ProxyHashMap.from(Map.of("a", "b")));
+            Map<Object, Object> map = Collections.singletonMap("a", "b");
+            final Value member = ctx.asValue((ProxyExecutable) (v) -> ProxyHashMap.from(map));
             for (int i = 0; i < 5000; i++) {
                 final Value execute = member.execute();
-                for (var entries : execute.as(Map.class).entrySet()) {
+                for (Object entries : execute.as(Map.class).entrySet()) {
                     // we need to iterate the map to trigger the bug
                 }
             }
