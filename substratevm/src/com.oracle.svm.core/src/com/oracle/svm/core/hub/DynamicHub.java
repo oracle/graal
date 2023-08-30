@@ -1063,8 +1063,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         boolean throwMissingErrors = throwMissingRegistrationErrors();
         Class<?> clazz = DynamicHub.toClass(this);
         if (method == null) {
-            if (throwMissingErrors && !allElementsRegistered(publicOnly, ALL_DECLARED_METHODS_FLAG, ALL_METHODS_FLAG) &&
-                            !(methodName.equals(CONSTRUCTOR_NAME) && isInterface())) {
+            boolean isConstructor = methodName.equals(CONSTRUCTOR_NAME);
+            int allDeclaredFlag = isConstructor ? ALL_DECLARED_CONSTRUCTORS_FLAG : ALL_DECLARED_METHODS_FLAG;
+            int allPublicFlag = isConstructor ? ALL_CONSTRUCTORS_FLAG : ALL_METHODS_FLAG;
+            if (throwMissingErrors && !allElementsRegistered(publicOnly, allDeclaredFlag, allPublicFlag) &&
+                            !(isConstructor && isInterface())) {
                 MissingReflectionRegistrationUtils.forMethod(clazz, methodName, parameterTypes);
             }
             /*
