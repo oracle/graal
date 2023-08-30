@@ -296,9 +296,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex")));
-        if (model.hasBoxingElimination()) {
-            operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(byte[].class), "localBoxingState")));
-        }
         if (model.enableBaselineInterpreter) {
             operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "baselineExecuteCount")).createInitBuilder().string("16");
         }
@@ -316,14 +313,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Define helpers for bci lookups.
         operationNodeGen.add(createFindBciOfOperationNode());
         operationNodeGen.add(createReadBciFromFrame());
-
-        // Define helpers for boxing-eliminated accesses.
-        if (model.hasBoxingElimination()) {
-            operationNodeGen.add(createDoPopObject());
-            for (TypeMirror type : model.boxingEliminatedTypes) {
-                operationNodeGen.add(createDoPopPrimitive(type));
-            }
-        }
 
         // Define the generated Node classes for custom instructions.
         StaticConstants consts = new StaticConstants();
@@ -1531,8 +1520,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLabels"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "stackValueBciStack"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "stackValueBciSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceIndexStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceIndexSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceLocationStack"),
@@ -2386,11 +2373,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("numNodes = 0");
             b.statement("constantPool = new ConstantPool()");
 
-            if (model.hasBoxingElimination()) {
-                b.statement("stackValueBciStack = new int[8]");
-                b.statement("stackValueBciSp = 0");
-            }
-
             b.startIf().string("withSource").end().startBlock();
             b.statement("sourceIndexStack = new int[1]");
             b.statement("sourceIndexSp = 0");
@@ -3118,9 +3100,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                         if (op.kind == OperationKind.CONDITIONAL) {
                             // we have to adjust the stack for the third child
                             b.statement("curStack -= 1");
-                            if (model.hasBoxingElimination()) {
-                                b.statement("stackValueBciSp -= 1");
-                            }
                         }
                         b.statement("int toUpdate = ((int[]) data)[0]");
                         b.statement(writeBc("toUpdate", "(short) bci"));
@@ -4238,7 +4217,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = helper.createBuilder();
 
             // Since an instruction produces at most one value, stackEffect is at most 1.
-            int stackEffect = (instr.signature.isVoid ? 0 : 1) - instr.signature.valueCount;
+            int stackEffect = (isVoid ? 0 : 1) - instr.signature.valueCount;
 
             if (tier.isUncached) {
                 // If in the baseline interpreter, we need to store the bci in the frame in case the
@@ -4664,11 +4643,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 if (type.getSimpleName() == Uncached_Name) {
                     type.setSuperClass(types.Node);
                 }
-            }
-
-            if (instr.signature.resultBoxingElimination) {
-                el.getInterfaces().add(boxableInterface.asType());
-                el.add(createSetBoxing(instr));
             }
 
             if (OperationsNodeFactory.this.model.enableBaselineInterpreter) {

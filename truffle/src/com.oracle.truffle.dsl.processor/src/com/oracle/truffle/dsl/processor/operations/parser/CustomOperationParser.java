@@ -377,21 +377,8 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
         } else {
             result.add(createExecuteMethod(signature, "executeObject", context.getType(Object.class), false, false));
 
-            List<TypeMirror> boxingEliminatedTypes;
-            if (parent.boxingEliminatedTypes.isEmpty() || !signature.resultBoxingElimination) {
-                boxingEliminatedTypes = new ArrayList<>();
-            } else if (signature.possibleBoxingResults != null) {
-                boxingEliminatedTypes = new ArrayList<>(signature.possibleBoxingResults);
-            } else {
-                boxingEliminatedTypes = new ArrayList<>(parent.boxingEliminatedTypes);
-            }
-
-            boxingEliminatedTypes.sort((o1, o2) -> getQualifiedName(o1).compareTo(getQualifiedName(o2)));
-
-            for (TypeMirror ty : boxingEliminatedTypes) {
-                if (!ElementUtils.isObject(ty)) {
-                    result.add(createExecuteMethod(signature, "execute" + firstLetterUpperCase(getSimpleName(ty)), ty, true, false));
-                }
+            for (TypeMirror ty : signature.getBoxingEliminatableReturnTypes()) {
+                result.add(createExecuteMethod(signature, "execute" + firstLetterUpperCase(getSimpleName(ty)), ty, true, false));
             }
         }
 
@@ -464,8 +451,8 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
             instr.addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
             instr.addImmediate(ImmediateKind.NODE, "node");
         } else {
-            for (int i = 0; i < signature.valueBoxingElimination.length; i++) {
-                if (signature.valueBoxingElimination[i]) {
+            for (int i = 0; i < signature.valueCount; i++) {
+                if (signature.canBoxingEliminateValue(i)) {
                     instr.addImmediate(ImmediateKind.BYTECODE_INDEX, "child" + i + "_bci");
                 }
             }
@@ -552,16 +539,10 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
             return false;
         }
 
-        a.resultBoxingElimination = a.resultBoxingElimination || b.resultBoxingElimination;
+        a.addBoxingEliminatableReturnTypes(b.getBoxingEliminatableReturnTypes());
 
-        if (a.possibleBoxingResults == null || b.possibleBoxingResults == null) {
-            a.possibleBoxingResults = null;
-        } else {
-            a.possibleBoxingResults.addAll(b.possibleBoxingResults);
-        }
-
-        for (int i = 0; i < a.valueBoxingElimination.length; i++) {
-            a.valueBoxingElimination[i] = a.valueBoxingElimination[i] || b.valueBoxingElimination[i];
+        for (int i = 0; i < a.valueCount; i++) {
+            a.setCanBoxingEliminateValue(i, a.canBoxingEliminateValue(i) || b.canBoxingEliminateValue(i));
         }
 
         return true;
@@ -571,13 +552,10 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
 
         boolean isValid = true;
 
-        List<Boolean> canBeBoxingEliminated = new ArrayList<>();
-
-        int numValues = 0;
+        List<VariableElement> valueParams = new ArrayList<>();
         boolean hasVariadic = false;
-
-        int numLocalSetters = 0;
-        int numLocalSetterRanges = 0;
+        int localSetterCount = 0;
+        int localSetterRangeCount = 0;
 
         boolean isFallback = ElementUtils.findAnnotationMirror(spec, types.Fallback) != null;
 
@@ -589,48 +567,29 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
                 // nothing, we ignore these
                 continue;
             } else if (isAssignable(param.asType(), types.LocalSetter)) {
-                if (isDSLParameter(param)) {
-                    data.addError(param, "%s parameters must not be annotated with @%s or @%s.",
-                                    getSimpleName(types.LocalSetter),
-                                    getSimpleName(types.Cached),
-                                    getSimpleName(types.Bind));
-                    isValid = false;
-                }
-                if (numLocalSetterRanges > 0) {
+                isValid = errorIfDSLParameter(data, types.LocalSetter, param) && isValid;
+                if (localSetterRangeCount > 0) {
                     data.addError(param, "%s parameters must precede %s parameters.",
                                     getSimpleName(types.LocalSetter), getSimpleName(types.LocalSetterRange));
                     isValid = false;
                 }
-                numLocalSetters++;
+                localSetterCount++;
             } else if (isAssignable(param.asType(), types.LocalSetterRange)) {
-                if (isDSLParameter(param)) {
-                    data.addError(param, "%s parameters must not be annotated with @%s or @%s.",
-                                    getSimpleName(types.LocalSetterRange),
-                                    getSimpleName(types.Cached),
-                                    getSimpleName(types.Bind));
-                    isValid = false;
-                }
-                numLocalSetterRanges++;
+                isValid = errorIfDSLParameter(data, types.LocalSetterRange, param) && isValid;
+                localSetterRangeCount++;
             } else if (ElementUtils.findAnnotationMirror(param, types.Variadic) != null) {
-                if (isDSLParameter(param)) {
-                    data.addError(param, "@%s parameters must not be annotated with @%s or @%s.",
-                                    getSimpleName(types.Variadic),
-                                    getSimpleName(types.Cached),
-                                    getSimpleName(types.Bind));
-                    isValid = false;
-                }
+                isValid = errorIfDSLParameter(data, types.Variadic, param) && isValid;
                 if (hasVariadic) {
                     data.addError(param, "Multiple variadic parameters not allowed to an operation. Split up the operation if such behaviour is required.");
                     isValid = false;
                 }
-                if (numLocalSetterRanges > 0 || numLocalSetters > 0) {
+                if (localSetterRangeCount > 0 || localSetterCount > 0) {
                     data.addError(param, "Value parameters must precede %s and %s parameters.",
                                     getSimpleName(types.LocalSetter),
                                     getSimpleName(types.LocalSetterRange));
                     isValid = false;
                 }
-                canBeBoxingEliminated.add(false);
-                numValues++;
+                valueParams.add(param);
                 hasVariadic = true;
             } else if (isDSLParameter(param)) {
                 // nothing, we ignore these
@@ -639,7 +598,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
                     data.addError(param, "Non-variadic value parameters must precede variadic parameters.");
                     isValid = false;
                 }
-                if (numLocalSetterRanges > 0 || numLocalSetters > 0) {
+                if (localSetterRangeCount > 0 || localSetterCount > 0) {
                     data.addError(param, "Value parameters must precede LocalSetter and LocalSetterRange parameters.");
                     isValid = false;
                 }
@@ -655,11 +614,9 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
                                         getSimpleName(types.Fallback),
                                         getSimpleName(context.getDeclaredType(Object.class)));
                         isValid = false;
-
                     }
                 }
-                canBeBoxingEliminated.add(parent.isBoxingEliminated(param.asType()));
-                numValues++;
+                valueParams.add(param);
             }
         }
 
@@ -667,36 +624,28 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
             return null;
         }
 
-        Signature signature = new Signature();
-        signature.valueCount = numValues;
-        signature.isVariadic = hasVariadic;
-        signature.localSetterCount = numLocalSetters;
-        signature.localSetterRangeCount = numLocalSetterRanges;
-        signature.valueBoxingElimination = new boolean[numValues];
-
-        for (int i = 0; i < numValues; i++) {
-            signature.valueBoxingElimination[i] = canBeBoxingEliminated.get(i);
-        }
-
-        // short-circuit ops are never boxing-eliminated
-        if (data.kind != OperationKind.CUSTOM_SHORT_CIRCUIT) {
-            TypeMirror returnType = spec.getReturnType();
-            if (ElementUtils.isVoid(spec.getReturnType())) {
-                signature.isVoid = true;
-                signature.resultBoxingElimination = false;
-            } else if (parent.isBoxingEliminated(returnType)) {
-                signature.resultBoxingElimination = true;
-                signature.possibleBoxingResults = new HashSet<>(Set.of(returnType));
-            } else if (ElementUtils.isObject(returnType)) {
-                signature.resultBoxingElimination = false;
-                signature.possibleBoxingResults = null;
+        boolean[] canBoxingEliminateValue = new boolean[valueParams.size()];
+        for (int i = 0; i < valueParams.size(); i++) {
+            VariableElement param = valueParams.get(i);
+            if (ElementUtils.findAnnotationMirror(param, parent.getContext().getTypes().Variadic) != null) {
+                canBoxingEliminateValue[i] = false;
             } else {
-                signature.resultBoxingElimination = false;
-                signature.possibleBoxingResults = new HashSet<>(Set.of(context.getType(Object.class)));
+                canBoxingEliminateValue[i] = parent.isBoxingEliminated(param.asType());
             }
         }
 
-        return signature;
+        boolean isVoid = false;
+        Set<TypeMirror> boxingEliminatableReturnTypes = new HashSet<>();
+        if (data.kind != OperationKind.CUSTOM_SHORT_CIRCUIT) {
+            // short-circuit ops are always non-void and never boxing-eliminated
+            if (ElementUtils.isVoid(spec.getReturnType())) {
+                isVoid = true;
+            } else if (parent.isBoxingEliminated(spec.getReturnType())) {
+                boxingEliminatableReturnTypes = new HashSet<>(Set.of(spec.getReturnType()));
+            }
+        }
+
+        return new Signature(valueParams.size(), hasVariadic, localSetterCount, localSetterRangeCount, isVoid, canBoxingEliminateValue, boxingEliminatableReturnTypes);
     }
 
     private boolean isDSLParameter(VariableElement param) {
@@ -706,6 +655,18 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
             }
         }
         return false;
+    }
+
+    private boolean errorIfDSLParameter(OperationModel data, TypeMirror paramType, VariableElement param) {
+        if (isDSLParameter(param)) {
+            data.addError(param, "%s parameters must not be annotated with @%s or @%s.",
+                            getSimpleName(paramType),
+                            getSimpleName(types.Cached),
+                            getSimpleName(types.CachedLibrary),
+                            getSimpleName(types.Bind));
+            return false;
+        }
+        return true;
     }
 
     private List<ExecutableElement> findSpecializations(TypeElement te) {

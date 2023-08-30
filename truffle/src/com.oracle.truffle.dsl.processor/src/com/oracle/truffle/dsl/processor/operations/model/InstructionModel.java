@@ -110,15 +110,25 @@ public class InstructionModel implements PrettyPrintable {
     public static final class Signature {
         private final ProcessorContext context = ProcessorContext.getInstance();
         // Number of value parameters (includes the variadic parameter, if it exists).
-        public int valueCount;
-        public boolean isVariadic;
-        public int localSetterCount;
-        public int localSetterRangeCount;
+        public final int valueCount;
+        public final boolean isVariadic;
+        public final int localSetterCount;
+        public final int localSetterRangeCount;
+        public final boolean isVoid;
 
-        public boolean[] valueBoxingElimination;
-        public boolean resultBoxingElimination;
-        public Set<TypeMirror> possibleBoxingResults;
-        public boolean isVoid;
+        private boolean[] canBoxingEliminateValue;
+        private Set<TypeMirror> boxingEliminatableReturnTypes;
+
+        public Signature(int valueCount, boolean hasVariadic, int localSetterCount, int localSetterRangeCount, boolean isVoid, boolean[] canBoxingEliminateValue,
+                        Set<TypeMirror> boxingEliminatableReturnTypes) {
+            this.valueCount = valueCount;
+            this.isVariadic = hasVariadic;
+            this.localSetterCount = localSetterCount;
+            this.localSetterRangeCount = localSetterRangeCount;
+            this.isVoid = isVoid;
+            this.canBoxingEliminateValue = canBoxingEliminateValue;
+            this.boxingEliminatableReturnTypes = boxingEliminatableReturnTypes;
+        }
 
         public TypeMirror getParameterType(int i) {
             assert i > 0 && i < valueCount;
@@ -128,17 +138,37 @@ public class InstructionModel implements PrettyPrintable {
             return context.getType(Object.class);
         }
 
+        public boolean canBoxingEliminateValue(int i) {
+            return canBoxingEliminateValue[i];
+        }
+
+        public void setCanBoxingEliminateValue(int i, boolean b) {
+            canBoxingEliminateValue[i] = b;
+        }
+
+        public boolean canBoxingEliminateResult() {
+            return !boxingEliminatableReturnTypes.isEmpty();
+        }
+
+        public Set<TypeMirror> getBoxingEliminatableReturnTypes() {
+            return boxingEliminatableReturnTypes;
+        }
+
+        public void addBoxingEliminatableReturnTypes(Set<TypeMirror> otherTypes) {
+            boxingEliminatableReturnTypes.addAll(otherTypes);
+        }
+
         @Override
         public String toString() {
             StringBuilder sb = new StringBuilder();
 
             if (isVoid) {
                 sb.append("void ");
-            } else if (resultBoxingElimination) {
-                if (possibleBoxingResults != null) {
-                    sb.append(possibleBoxingResults).append(" ");
-                } else {
-                    sb.append("box ");
+            } else if (canBoxingEliminateResult()) {
+                sb.append("obj ");
+                for (TypeMirror mir : boxingEliminatableReturnTypes) {
+                    sb.append(mir);
+                    sb.append(" ");
                 }
             } else {
                 sb.append("obj ");
@@ -147,7 +177,7 @@ public class InstructionModel implements PrettyPrintable {
             sb.append("(");
 
             for (int i = 0; i < valueCount; i++) {
-                sb.append(valueBoxingElimination[i] ? "box" : "obj");
+                sb.append(canBoxingEliminateValue(i) ? "box" : "obj");
                 if (isVariadic && i == valueCount - 1) {
                     sb.append("...");
                 }
