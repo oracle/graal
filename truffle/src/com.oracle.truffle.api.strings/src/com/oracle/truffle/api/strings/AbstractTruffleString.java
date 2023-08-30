@@ -1262,7 +1262,7 @@ public abstract class AbstractTruffleString {
                 return false;
             }
         }
-        return TruffleString.EqualNode.checkContentEquals(null, this, b,
+        return TruffleString.EqualNode.checkContentEquals(TruffleString.EqualNode.getUncached(), this, b,
                         ToIndexableNodeGen.getUncached(),
                         ToIndexableNodeGen.getUncached(),
                         InlinedConditionProfile.getUncached(),
@@ -1392,7 +1392,7 @@ public abstract class AbstractTruffleString {
 
         @TruffleBoundary
         private static void copy(Node location, TruffleString src, byte[] dst, int dstFrom, int dstStride) {
-            Object arrayA = ToIndexableNodeGen.getUncached().execute(null, src, src.data());
+            Object arrayA = ToIndexableNodeGen.getUncached().execute(location, src, src.data());
             TStringOps.arraycopyWithStride(location,
                             arrayA, src.offset(), src.stride(), 0,
                             dst, 0, dstStride, dstFrom, src.length());
