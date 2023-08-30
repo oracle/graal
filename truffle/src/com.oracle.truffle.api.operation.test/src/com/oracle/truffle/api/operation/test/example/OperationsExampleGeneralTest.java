@@ -38,8 +38,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.operation.test;
+package com.oracle.truffle.api.operation.test.example;
 
+import static com.oracle.truffle.api.operation.test.example.OperationsExampleCommon.parseNode;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -54,10 +55,8 @@ import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.operation.introspection.Instruction;
 import com.oracle.truffle.api.operation.introspection.OperationIntrospection;
 
-import static com.oracle.truffle.api.operation.test.TestOperationsCommon.parseNode;
-
 @RunWith(Parameterized.class)
-public class TestOperationsParserTest extends AbstractTestOperationsTest {
+public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest {
     // @formatter:off
 
     private static void assertInstructionEquals(Instruction instr, int bci, String name) {
@@ -447,7 +446,7 @@ public class TestOperationsParserTest extends AbstractTestOperationsTest {
 
                 emitReturn(b, 1);
 
-                TestOperations innerRoot = b.endRoot();
+                OperationsExample innerRoot = b.endRoot();
 
                 b.emitLoadConstant(innerRoot);
 
@@ -491,7 +490,7 @@ public class TestOperationsParserTest extends AbstractTestOperationsTest {
                 b.emitLoadArgument(0);
                 b.endLoadLocalMaterialized();
                 b.endReturn();
-                TestOperations inner = b.endRoot();
+                OperationsExample inner = b.endRoot();
 
             b.beginCreateClosure();
             b.emitLoadConstant(inner);
@@ -535,7 +534,7 @@ public class TestOperationsParserTest extends AbstractTestOperationsTest {
                 b.emitLoadConstant(null);
                 b.endReturn();
 
-                TestOperations inner = b.endRoot();
+                OperationsExample inner = b.endRoot();
 
             b.beginCreateClosure();
             b.emitLoadConstant(inner);
@@ -811,7 +810,7 @@ public class TestOperationsParserTest extends AbstractTestOperationsTest {
 
     @Test
     public void testIntrospectionData() {
-        TestOperations node = parseNode(interpreterClass, "introspectionData", b -> {
+        OperationsExample node = parseNode(interpreterClass, "introspectionData", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -839,7 +838,7 @@ public class TestOperationsParserTest extends AbstractTestOperationsTest {
     public void testCloneUninitializedAdd() {
         // return arg0 + arg1;
 
-        TestOperations testOperations = parseNode(interpreterClass, "cloneUninitializedAdd", b -> {
+        OperationsExample node = parseNode(interpreterClass, "cloneUninitializedAdd", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -851,8 +850,8 @@ public class TestOperationsParserTest extends AbstractTestOperationsTest {
 
             b.endRoot();
         });
-        testOperations.setBaselineInterpreterThreshold(16);
-        RootCallTarget root = testOperations.getCallTarget();
+        node.setBaselineInterpreterThreshold(16);
+        RootCallTarget root = node.getCallTarget();
 
         // Run enough times to trigger cached execution.
         for (int i = 0; i < 16; i++) {
@@ -861,8 +860,8 @@ public class TestOperationsParserTest extends AbstractTestOperationsTest {
             assertEquals(100L, root.call(120L, -20L));
         }
 
-        TestOperations cloned = testOperations.doCloneUninitialized();
-        assertNotEquals(testOperations.getCallTarget(), cloned.getCallTarget());
+        OperationsExample cloned = node.doCloneUninitialized();
+        assertNotEquals(node.getCallTarget(), cloned.getCallTarget());
         root = cloned.getCallTarget();
 
         // Run enough times to trigger cached execution again. The transition should work without crashing.
@@ -875,20 +874,20 @@ public class TestOperationsParserTest extends AbstractTestOperationsTest {
 
     @Test
     public void testCloneUninitializedFields() {
-        TestOperations testOperations = parseNode(interpreterClass, "cloneUninitializedFields", b -> {
+        OperationsExample node = parseNode(interpreterClass, "cloneUninitializedFields", b -> {
             b.beginRoot(LANGUAGE);
             emitReturn(b, 0);
             b.endRoot();
         });
 
-        TestOperations cloned = testOperations.doCloneUninitialized();
-        assertEquals("User field was not copied to the uninitialized clone.", testOperations.name, cloned.name);
+        OperationsExample cloned = node.doCloneUninitialized();
+        assertEquals("User field was not copied to the uninitialized clone.", node.name, cloned.name);
     }
 
     @Test
     @Ignore
     public void testDecisionQuicken() {
-        TestOperations node = parseNode(interpreterClass, "decisionQuicken", b -> {
+        OperationsExample node = parseNode(interpreterClass, "decisionQuicken", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -917,7 +916,7 @@ public class TestOperationsParserTest extends AbstractTestOperationsTest {
     @Test
     @Ignore
     public void testDecisionSuperInstruction() {
-        TestOperations node = parseNode(interpreterClass, "decisionSuperInstruction", b -> {
+        OperationsExample node = parseNode(interpreterClass, "decisionSuperInstruction", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();

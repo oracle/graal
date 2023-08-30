@@ -1,6 +1,6 @@
-package com.oracle.truffle.api.operation.test;
+package com.oracle.truffle.api.operation.test.example;
 
-import static com.oracle.truffle.api.operation.test.TestOperationsCommon.parseNodeWithSource;
+import static com.oracle.truffle.api.operation.test.example.OperationsExampleCommon.parseNodeWithSource;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
@@ -16,12 +16,12 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 @RunWith(Parameterized.class)
-public class TestOperationsSourcesTest extends AbstractTestOperationsTest {
+public class OperationsExampleSourcesTest extends AbstractOperationsExampleTest {
 
     @Test
     public void testSource() {
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
-        TestOperations node = parseNodeWithSource(interpreterClass, "source", b -> {
+        OperationsExample node = parseNodeWithSource(interpreterClass, "source", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 8);
@@ -79,7 +79,7 @@ public class TestOperationsSourcesTest extends AbstractTestOperationsTest {
     public void testSourceMultipleSources() {
         Source source1 = Source.newBuilder("test", "This is just a piece of test source.", "test1.test").build();
         Source source2 = Source.newBuilder("test", "This is another test source.", "test2.test").build();
-        TestOperations root = parseNodeWithSource(interpreterClass, "sourceMultipleSources", b -> {
+        OperationsExample root = parseNodeWithSource(interpreterClass, "sourceMultipleSources", b -> {
             b.beginRoot(LANGUAGE);
 
             b.emitVoidOperation(); // no source
@@ -176,7 +176,7 @@ public class TestOperationsSourcesTest extends AbstractTestOperationsTest {
     @Test
     public void testGetSourcePosition() {
         Source source = Source.newBuilder("test", "return 1", "testGetSourcePosition").build();
-        TestOperations node = parseNodeWithSource(interpreterClass, "source", b -> {
+        OperationsExample node = parseNodeWithSource(interpreterClass, "source", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 8);
@@ -217,7 +217,7 @@ public class TestOperationsSourcesTest extends AbstractTestOperationsTest {
          */
 
         Source source = Source.newBuilder("test", "try finally", "testGetSourcePosition").build();
-        TestOperations node = parseNodeWithSource(interpreterClass, "source", b -> {
+        OperationsExample node = parseNodeWithSource(interpreterClass, "source", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 11);
@@ -286,7 +286,7 @@ public class TestOperationsSourcesTest extends AbstractTestOperationsTest {
     public void testSourceReparse() {
         // Test input taken from testSource above.
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
-        OperationNodes<TestOperations> nodes = TestOperationsCommon.createNodes(interpreterClass, OperationConfig.DEFAULT, b -> {
+        OperationNodes<OperationsExample> nodes = OperationsExampleCommon.createNodes(interpreterClass, OperationConfig.DEFAULT, b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 8);
@@ -308,7 +308,7 @@ public class TestOperationsSourcesTest extends AbstractTestOperationsTest {
         nodes.updateConfiguration(OperationConfig.WITH_SOURCE);
         assertTrue(nodes.hasSources());
 
-        TestOperations node = nodes.getNodes().get(0);
+        OperationsExample node = nodes.getNodes().get(0);
 
         assertEquals(node.getSourceSection().getSource(), source);
         assertEquals(node.getSourceSection().getCharIndex(), 0);

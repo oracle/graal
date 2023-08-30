@@ -20,8 +20,9 @@ import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.operation.test.OperationNodeWithHooks.MyException;
 import com.oracle.truffle.api.operation.test.OperationNodeWithHooks.ThrowStackOverflow;
+import com.oracle.truffle.api.operation.test.example.OperationsExampleLanguage;
 
-public class OperationHookTest {
+public class HookTest {
 
     public static OperationNodeWithHooks parseNode(OperationParser<OperationNodeWithHooksGen.Builder> builder) {
         OperationNodes<OperationNodeWithHooks> nodes = OperationNodeWithHooksGen.create(OperationConfig.DEFAULT, builder);
@@ -189,7 +190,7 @@ public class OperationHookTest {
     }
 }
 
-@GenerateOperations(languageClass = TestOperationsLanguage.class)
+@GenerateOperations(languageClass = OperationsExampleLanguage.class)
 abstract class OperationNodeWithHooks extends RootNode implements OperationRootNode {
     // Used to validate whether hooks get called.
     private Object[] refs;

@@ -1,4 +1,4 @@
-package com.oracle.truffle.api.operation.test;
+package com.oracle.truffle.api.operation.test.example;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -10,7 +10,7 @@ import com.oracle.truffle.api.operation.ContinuationResult;
 import com.oracle.truffle.api.operation.ContinuationRootNode;
 import com.oracle.truffle.api.operation.OperationLocal;
 
-public class TestOperationsYieldTest extends AbstractTestOperationsTest {
+public class OperationsExampleYieldTest extends AbstractOperationsExampleTest {
 
     @Test
     public void testYield() {
@@ -262,7 +262,7 @@ public class TestOperationsYieldTest extends AbstractTestOperationsTest {
 
     @Test
     public void testYieldGetSourceRootNode() {
-        TestOperations rootNode = TestOperationsCommon.parseNode(interpreterClass, "yieldGetSourceRootNode", b -> {
+        OperationsExample rootNode = OperationsExampleCommon.parseNode(interpreterClass, "yieldGetSourceRootNode", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginYield();
@@ -274,7 +274,7 @@ public class TestOperationsYieldTest extends AbstractTestOperationsTest {
 
         ContinuationResult r1 = (ContinuationResult) rootNode.getCallTarget().call(42L);
         if (r1.getContinuationCallTarget().getRootNode() instanceof ContinuationRootNode continuationRootNode) {
-            TestOperations sourceRootNode = (TestOperations) continuationRootNode.getSourceRootNode();
+            OperationsExample sourceRootNode = (OperationsExample) continuationRootNode.getSourceRootNode();
             assertEquals(rootNode, sourceRootNode);
         } else {
             fail("yield did not return a continuation");
