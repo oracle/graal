@@ -332,6 +332,9 @@ suite = {
         "ESPRESSO": {
             "moduleInfo" : {
                 "name" : "org.graalvm.espresso",
+                "exports": [
+                    "com.oracle.truffle.espresso.runtime.staticobject",  # Workaround GR-48132
+                ]
             },
             "description" : "Core module of the Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "subDir": "src",
