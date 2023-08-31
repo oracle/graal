@@ -63,6 +63,7 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 
 import org.graalvm.wasm.BinaryStreamParser;
 import org.graalvm.wasm.SymbolTable;
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
@@ -175,8 +176,10 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.notifyFunction = notifyFunction;
     }
 
-    private WasmInstance instance(WasmContext context) {
-        return context.lookupModuleInstance(module);
+    private WasmInstance instance(VirtualFrame frame) {
+        WasmInstance instance = WasmArguments.getModuleInstance(frame.getArguments());
+        assert instance == WasmContext.get(this).lookupModuleInstance(module);
+        return instance;
     }
 
     // region OSR support
@@ -241,7 +244,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int stackPointer = startStackPointer;
         int line = startLine;
 
-        final WasmInstance instance = instance(context);
+        final WasmInstance instance = instance(frame);
         final WasmMemory zeroMemory = instance.memory(0);
 
         check(bytecode.length, (1 << 31) - 1);
@@ -606,6 +609,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     int paramCount = module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
                     Object[] args = createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, stackPointer);
                     stackPointer -= paramCount;
+                    WasmArguments.setModuleInstance(args, functionInstance.moduleInstance());
 
                     // Enter function's context when it is not from the current one
                     final boolean enterContext = !functionFromCurrentContext;
@@ -1813,6 +1817,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             WasmIndirectCallNode indirectCallNode = (WasmIndirectCallNode) callNode;
             WasmFunctionInstance functionInstance = instance.functionInstance(function.index());
             TruffleContext truffleContext = functionInstance.getTruffleContext();
+            WasmArguments.setModuleInstance(args, functionInstance.moduleInstance());
             Object prev = truffleContext.enter(this);
             try {
                 return indirectCallNode.execute(instance.target(function.index()), args);
@@ -1821,6 +1826,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             }
         } else {
             DirectCallNode directCallNode = (DirectCallNode) callNode;
+            WasmArguments.setModuleInstance(args, instance);
             assert assertDirectCall(instance, function, directCallNode);
             return directCallNode.call(args);
         }
@@ -3906,33 +3912,21 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @ExplodeLoop
     private Object[] createArgumentsForCall(VirtualFrame frame, int functionTypeIndex, int numArgs, int stackPointerOffset) {
         CompilerAsserts.partialEvaluationConstant(numArgs);
-        Object[] args = new Object[numArgs];
+        Object[] args = WasmArguments.createEmpty(numArgs);
         int stackPointer = stackPointerOffset;
         for (int i = numArgs - 1; i >= 0; --i) {
             stackPointer--;
             byte type = module.symbolTable().functionTypeParamTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(type);
-            switch (type) {
-                case WasmType.I32_TYPE:
-                    args[i] = popInt(frame, stackPointer);
-                    break;
-                case WasmType.I64_TYPE:
-                    args[i] = popLong(frame, stackPointer);
-                    break;
-                case WasmType.F32_TYPE:
-                    args[i] = popFloat(frame, stackPointer);
-                    break;
-                case WasmType.F64_TYPE:
-                    args[i] = popDouble(frame, stackPointer);
-                    break;
-                case WasmType.FUNCREF_TYPE:
-                case WasmType.EXTERNREF_TYPE:
-                    args[i] = popReference(frame, stackPointer);
-                    break;
-                default: {
-                    throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
-                }
-            }
+            Object arg = switch (type) {
+                case WasmType.I32_TYPE -> popInt(frame, stackPointer);
+                case WasmType.I64_TYPE -> popLong(frame, stackPointer);
+                case WasmType.F32_TYPE -> popFloat(frame, stackPointer);
+                case WasmType.F64_TYPE -> popDouble(frame, stackPointer);
+                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> popReference(frame, stackPointer);
+                default -> throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown type: %d", type);
+            };
+            WasmArguments.setArgument(args, i, arg);
         }
         return args;
     }

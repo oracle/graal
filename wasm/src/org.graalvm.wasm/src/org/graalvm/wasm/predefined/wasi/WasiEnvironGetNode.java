@@ -46,6 +46,7 @@ import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
@@ -61,19 +62,19 @@ public final class WasiEnvironGetNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return environGet((int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return environGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int environGet(int envInitialPointer, int bufInitialPointer) {
+    private int environGet(WasmMemory memory, int envInitialPointer, int bufInitialPointer) {
         int bufPointer = bufInitialPointer;
         int envPointer = envInitialPointer;
         final Map<String, String> env = getContext().environment().getEnvironment();
         for (final Map.Entry<String, String> entry : env.entrySet()) {
-            memory().store_i32(this, envPointer, bufPointer);
+            memory.store_i32(this, envPointer, bufPointer);
             envPointer += 4;
-            bufPointer += memory().writeString(this, entry.getKey() + "=" + entry.getValue(), bufPointer);
-            memory().store_i32_8(this, bufPointer, (byte) 0);
+            bufPointer += memory.writeString(this, entry.getKey() + "=" + entry.getValue(), bufPointer);
+            memory.store_i32_8(this, bufPointer, (byte) 0);
             ++bufPointer;
         }
 

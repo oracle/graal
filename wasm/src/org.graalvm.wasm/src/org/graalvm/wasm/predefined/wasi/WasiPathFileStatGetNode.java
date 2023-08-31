@@ -44,6 +44,7 @@ import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
@@ -60,7 +61,7 @@ public class WasiPathFileStatGetNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return pathFilestatGet(context,
+        return pathFilestatGet(context, memory(frame),
                         (int) WasmArguments.getArgument(args, 0),
                         (int) WasmArguments.getArgument(args, 1),
                         (int) WasmArguments.getArgument(args, 2),
@@ -69,12 +70,12 @@ public class WasiPathFileStatGetNode extends WasmBuiltinRootNode {
     }
 
     @TruffleBoundary
-    private int pathFilestatGet(WasmContext context, int fd, int flags, int pathAddress, int pathLength, int resultAddress) {
+    private int pathFilestatGet(WasmContext context, WasmMemory memory, int fd, int flags, int pathAddress, int pathLength, int resultAddress) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.pathFilestatGet(this, memory(), flags, pathAddress, pathLength, resultAddress).ordinal();
+        return handle.pathFilestatGet(this, memory, flags, pathAddress, pathLength, resultAddress).ordinal();
     }
 
     @Override

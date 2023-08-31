@@ -44,6 +44,7 @@ import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
@@ -59,16 +60,16 @@ public class WasiPathUnlinkFileNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return pathUnlinkFile(context, (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1), (int) WasmArguments.getArgument(args, 2));
+        return pathUnlinkFile(context, memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1), (int) WasmArguments.getArgument(args, 2));
     }
 
     @TruffleBoundary
-    private int pathUnlinkFile(WasmContext context, int fd, int pathAddress, int pathLength) {
+    private int pathUnlinkFile(WasmContext context, WasmMemory memory, int fd, int pathAddress, int pathLength) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.pathUnlinkFile(this, memory(), pathAddress, pathLength).ordinal();
+        return handle.pathUnlinkFile(this, memory, pathAddress, pathLength).ordinal();
     }
 
     @Override

@@ -44,9 +44,9 @@ package org.graalvm.wasm.nodes;
 import java.util.Set;
 import java.util.concurrent.locks.Lock;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.BinaryParser;
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
@@ -56,6 +56,7 @@ import org.graalvm.wasm.debugging.data.DebugFunction;
 import org.graalvm.wasm.debugging.representation.DebugObjectDisplayValue;
 import org.graalvm.wasm.memory.WasmMemory;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -99,14 +100,10 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         this.instrumentation = node.instrumentation;
     }
 
-    WasmInstance instance(WasmContext context) {
-        WasmInstance instance = context.lookupModuleInstance(module);
-        assert instance != null && instance.module() == module;
+    private WasmInstance instance(MaterializedFrame frame) {
+        WasmInstance instance = WasmArguments.getModuleInstance(frame.getArguments());
+        assert instance == WasmContext.get(this).lookupModuleInstance(module);
         return instance;
-    }
-
-    private WasmInstance instance() {
-        return instance(WasmContext.get(this));
     }
 
     WasmModule module() {
@@ -193,14 +190,14 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         WasmInstrumentationSupportNode info = this.instrumentation;
         // We need to check if linking is completed. Else the call nodes might not have been
         // resolved yet.
-        WasmInstance instance = instance();
+        WasmContext context = WasmContext.get(this);
+        WasmInstance instance = context.lookupModuleInstance(module);
         if (info == null && instance.isLinkCompleted() && materializedTags.contains(StandardTags.StatementTag.class)) {
             Lock lock = getLock();
             lock.lock();
             try {
                 info = this.instrumentation;
                 if (info == null) {
-                    final WasmContext context = instance.context();
                     final int functionIndex = codeEntry.functionIndex();
                     final DebugFunction debugFunction = module.debugFunctions(context).get(functionSourceLocation);
                     this.instrumentation = info = insert(new WasmInstrumentationSupportNode(debugFunction, module, functionIndex));
@@ -295,73 +292,73 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     @TruffleBoundary
-    public int loadI32FromGlobals(int index) {
-        WasmInstance instance = instance();
+    public int loadI32FromGlobals(MaterializedFrame frame, int index) {
+        WasmInstance instance = instance(frame);
         final int address = instance.globalAddress(index);
         return instance.context().globals().loadAsInt(address);
     }
 
     @TruffleBoundary
-    public long loadI64FromGlobals(int index) {
-        WasmInstance instance = instance();
+    public long loadI64FromGlobals(MaterializedFrame frame, int index) {
+        WasmInstance instance = instance(frame);
         final int address = instance.globalAddress(index);
         return instance.context().globals().loadAsLong(address);
     }
 
     @TruffleBoundary
-    public float loadF32FromGlobals(int index) {
-        return Float.floatToRawIntBits(loadI32FromGlobals(index));
+    public float loadF32FromGlobals(MaterializedFrame frame, int index) {
+        return Float.floatToRawIntBits(loadI32FromGlobals(frame, index));
     }
 
     @TruffleBoundary
-    public double loadF64FromGlobals(int index) {
-        return Double.doubleToRawLongBits(loadI64FromGlobals(index));
+    public double loadF64FromGlobals(MaterializedFrame frame, int index) {
+        return Double.doubleToRawLongBits(loadI64FromGlobals(frame, index));
     }
 
     @Override
-    public boolean isValidMemoryAddress(long address, int length) {
-        final WasmMemory memory = instance().memory(0);
+    public boolean isValidMemoryAddress(MaterializedFrame frame, long address, int length) {
+        final WasmMemory memory = instance(frame).memory(0);
         return address >= 0 && address + length < memory.byteSize();
     }
 
     @TruffleBoundary
-    public byte loadI8FromMemory(long address) {
-        final WasmMemory memory = instance().memory(0);
+    public byte loadI8FromMemory(MaterializedFrame frame, long address) {
+        final WasmMemory memory = instance(frame).memory(0);
         return (byte) memory.load_i32_8s(this, address);
     }
 
     @TruffleBoundary
-    public short loadI16FromMemory(long address) {
-        final WasmMemory memory = instance().memory(0);
+    public short loadI16FromMemory(MaterializedFrame frame, long address) {
+        final WasmMemory memory = instance(frame).memory(0);
         return (short) memory.load_i32_16s(this, address);
     }
 
     @TruffleBoundary
-    public int loadI32FromMemory(long address) {
-        final WasmMemory memory = instance().memory(0);
+    public int loadI32FromMemory(MaterializedFrame frame, long address) {
+        final WasmMemory memory = instance(frame).memory(0);
         return memory.load_i32(this, address);
     }
 
     @TruffleBoundary
-    public long loadI64FromMemory(long address) {
-        final WasmMemory memory = instance().memory(0);
+    public long loadI64FromMemory(MaterializedFrame frame, long address) {
+        final WasmMemory memory = instance(frame).memory(0);
         return memory.load_i64(this, address);
     }
 
     @TruffleBoundary
-    public float loadF32FromMemory(long address) {
-        final WasmMemory memory = instance().memory(0);
+    public float loadF32FromMemory(MaterializedFrame frame, long address) {
+        final WasmMemory memory = instance(frame).memory(0);
         return memory.load_f32(this, address);
     }
 
     @TruffleBoundary
-    public double loadF64FromMemory(long address) {
-        final WasmMemory memory = instance().memory(0);
+    public double loadF64FromMemory(MaterializedFrame frame, long address) {
+        final WasmMemory memory = instance(frame).memory(0);
         return memory.load_f64(this, address);
     }
 
-    private byte[] loadByteArrayFromMemory(long address, int length) {
-        final WasmMemory memory = instance().memory(0);
+    private byte[] loadByteArrayFromMemory(MaterializedFrame frame, long address, int length) {
+        final WasmMemory memory = instance(frame).memory(0);
         byte[] dataArray = new byte[length];
         for (int i = 0; i < length; i++) {
             dataArray[i] = (byte) memory.load_i32_8s(this, address + i);
@@ -370,8 +367,8 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     @TruffleBoundary
-    public String loadStringFromMemory(long address, int length) {
-        final byte[] dataArray = loadByteArrayFromMemory(address, length);
+    public String loadStringFromMemory(MaterializedFrame frame, long address, int length) {
+        final byte[] dataArray = loadByteArrayFromMemory(frame, address, length);
         return new String(dataArray);
     }
 }
