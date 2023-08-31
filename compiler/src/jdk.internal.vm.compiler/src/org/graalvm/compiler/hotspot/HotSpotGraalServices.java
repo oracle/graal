@@ -24,11 +24,13 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import java.lang.reflect.Field;
 import java.util.Objects;
 
 import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
 import jdk.vm.ci.hotspot.HotSpotObjectConstantScope;
 import jdk.vm.ci.hotspot.HotSpotSpeculationLog;
+import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.services.Services;
@@ -83,5 +85,30 @@ public class HotSpotGraalServices {
 
     public static SpeculationLog newHotSpotSpeculationLog(long cachedFailedSpeculationsAddress) {
         return new HotSpotSpeculationLog(cachedFailedSpeculationsAddress);
+    }
+
+    /**
+     * Returns true if the {@code intrinsic} is available in HotSpot's runtime. Note that this flag
+     * is affected by -XX:ControlIntrinsic, -XX:DisableIntrinsic, and -XX:-UseXXXIntrinsic.
+     */
+    public static boolean isIntrinsicAvailable(VMIntrinsicMethod intrinsic) {
+        try {
+            Field isAvailable = VMIntrinsicMethod.class.getField("isAvailable");
+            return isAvailable.getBoolean(intrinsic);
+        } catch (ReflectiveOperationException e) {
+            return true;
+        }
+    }
+
+    /**
+     * Returns true if the {@code intrinsic} is supported by HotSpot's C2 compiler.
+     */
+    public static boolean isIntrinsicSupportedByC2(VMIntrinsicMethod intrinsic) {
+        try {
+            Field c2Supported = VMIntrinsicMethod.class.getField("c2Supported");
+            return c2Supported.getBoolean(intrinsic);
+        } catch (ReflectiveOperationException e) {
+            return true;
+        }
     }
 }

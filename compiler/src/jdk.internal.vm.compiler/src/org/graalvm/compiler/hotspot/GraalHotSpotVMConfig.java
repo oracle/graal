@@ -137,6 +137,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class);
     private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class);
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class);
+    public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class);
+    public final boolean useCharacterCompareIntrinsics = getFlag("UseCharacterCompareIntrinsics", Boolean.class);
     public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64"));
 
     public final String onSpinWaitInst = getFlag("OnSpinWaitInst", String.class, "none", osArch.equals("aarch64"));
@@ -877,5 +879,12 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public boolean supportsMethodHandleDeoptimizationEntry() {
         return HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY.isAvailable() && VMINTRINSIC_FIRST_MH_SIG_POLY != -1 && VMINTRINSIC_LAST_MH_SIG_POLY != -1 && VMINTRINSIC_INVOKE_GENERIC != -1 &&
                         VMINTRINSIC_COMPILED_LAMBDA_FORM != -1;
+    }
+
+    /**
+     * Returns true if results of vmIntrinsics::is_intrinsic_available are exported to Graal.
+     */
+    public boolean isIntrinsicAvailableExported() {
+        return JDK >= 22 || (JDK == 21 && jvmciGE(JVMCI_23_1_b13));
     }
 }

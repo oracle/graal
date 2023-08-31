@@ -25,7 +25,6 @@
 package com.oracle.svm.core.cpufeature;
 
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.ADX;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AES;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.BMI2;
@@ -76,14 +75,19 @@ public final class Stubs {
                         POPCNT,
                         AVX,
                         AVX2);
-        public static final EnumSet<AMD64.CPUFeature> AES_CPU_FEATURES_AMD64 = EnumSet.of(AVX, AES);
         public static final EnumSet<AMD64.CPUFeature> GHASH_CPU_FEATURES_AMD64 = EnumSet.of(AVX, CLMUL);
         public static final EnumSet<AMD64.CPUFeature> BIGINTEGER_MULTIPLY_TO_LEN_CPU_FEATURES_AMD64 = EnumSet.of(AVX, BMI2, ADX);
         public static final EnumSet<AMD64.CPUFeature> BIGINTEGER_MUL_ADD_CPU_FEATURES_AMD64 = EnumSet.of(AVX, BMI2);
 
         public static EnumSet<AMD64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
-            if (AESNode.class.equals(klass) || CounterModeAESNode.class.equals(klass) || CipherBlockChainingAESNode.class.equals(klass)) {
-                return AES_CPU_FEATURES_AMD64;
+            if (AESNode.class.equals(klass)) {
+                return AESNode.minFeaturesAMD64();
+            }
+            if (CounterModeAESNode.class.equals(klass)) {
+                return CounterModeAESNode.minFeaturesAMD64();
+            }
+            if (CipherBlockChainingAESNode.class.equals(klass)) {
+                return CipherBlockChainingAESNode.minFeaturesAMD64();
             }
             if (GHASHProcessBlocksNode.class.equals(klass)) {
                 return GHASH_CPU_FEATURES_AMD64;
@@ -113,15 +117,19 @@ public final class Stubs {
     @Platforms(Platform.AARCH64.class)
     public static class AArch64Features {
         public static final EnumSet<AArch64.CPUFeature> EMPTY_CPU_FEATURES_AARCH64 = EnumSet.noneOf(AArch64.CPUFeature.class);
-        public static final EnumSet<AArch64.CPUFeature> AES_CPU_FEATURES_AARCH64 = EnumSet.of(AArch64.CPUFeature.AES);
-        public static final EnumSet<AArch64.CPUFeature> GHASH_CPU_FEATURES_AARCH64 = EnumSet.of(AArch64.CPUFeature.PMULL);
 
         public static EnumSet<AArch64.CPUFeature> getRequiredCPUFeatures(Class<? extends ValueNode> klass) {
-            if (AESNode.class.equals(klass) || CounterModeAESNode.class.equals(klass) || CipherBlockChainingAESNode.class.equals(klass)) {
-                return AES_CPU_FEATURES_AARCH64;
+            if (AESNode.class.equals(klass)) {
+                return AESNode.minFeaturesAARCH64();
+            }
+            if (CounterModeAESNode.class.equals(klass)) {
+                return CounterModeAESNode.minFeaturesAARCH64();
+            }
+            if (CipherBlockChainingAESNode.class.equals(klass)) {
+                return CipherBlockChainingAESNode.minFeaturesAARCH64();
             }
             if (GHASHProcessBlocksNode.class.equals(klass)) {
-                return GHASH_CPU_FEATURES_AARCH64;
+                return GHASHProcessBlocksNode.minFeaturesAARCH64();
             }
             if (SHA1Node.class.equals(klass)) {
                 return SHA1Node.minFeaturesAARCH64();
