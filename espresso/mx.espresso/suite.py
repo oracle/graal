@@ -72,18 +72,6 @@ suite = {
             {
                 "name": "sulong",
                 "subdir": True,
-                "os_arch": {
-                    "windows": {
-                        "<others>": {
-                            "ignore": True,
-                        },
-                    },
-                    "<others>": {
-                        "<others>": {
-                            "ignore": False,
-                        }
-                    }
-                }
             },
             {
                 "name" : "java-benchmarks",
