@@ -129,7 +129,6 @@ Continue to [Build a Static or Mostly-Static Native Executable guide](build-stat
 
 ### Related Documentation
 
-* [Oracle GraalVM Container Images](https://docs.oracle.com/en/graalvm/jdk/17/docs/getting-started/container-images/)
 * [Build a Static or Mostly-Static Native Executable](build-static-and-mostly-static-executable.md)
-* [Hands-on Lab: GraalVM Native Image, Spring and Containerisation](https://luna.oracle.com/lab/fdfd090d-e52c-4481-a8de-dccecdca7d68)
-
+* <a href="https://docs.oracle.com/en/graalvm/jdk/17/docs/getting-started/container-images/" target="_blank">Oracle GraalVM Container Images</a>
+* <a href="https://luna.oracle.com/lab/fdfd090d-e52c-4481-a8de-dccecdca7d68" target="_blank">Hands-on Lab: GraalVM Native Image, Spring and Containerisation</a>
