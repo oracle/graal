@@ -222,16 +222,21 @@ public class Linker {
         for (WasmInstance instance : instanceList) {
             if (instance.isLinkInProgress()) {
                 try {
-                    final WasmFunction start = instance.symbolTable().startFunction();
-                    if (start != null) {
-                        instance.target(start.index()).call();
-                    }
+                    runStartFunction(instance);
                     instance.setLinkCompleted();
                 } catch (Throwable e) {
                     instance.setLinkFailed();
                     failures.add(e);
                 }
             }
+        }
+    }
+
+    static void runStartFunction(WasmInstance instance) {
+        final WasmFunction start = instance.symbolTable().startFunction();
+        if (start != null) {
+            WasmInstance targetInstance = !start.isImported() ? instance : instance.functionInstance(start.index()).moduleInstance();
+            instance.target(start.index()).call(WasmArguments.create(targetInstance));
         }
     }
 
