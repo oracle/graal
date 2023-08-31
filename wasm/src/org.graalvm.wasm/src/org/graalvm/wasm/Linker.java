@@ -167,6 +167,9 @@ public class Linker {
             maxStartFunctionIndex = Math.max(maxStartFunctionIndex, instance.startFunctionIndex());
             if (instance.isNonLinked()) {
                 instance.setLinkInProgress();
+                if (!instance.module().hasLinkActions()) {
+                    continue;
+                }
                 try {
                     for (BiConsumer<WasmContext, WasmInstance> action : instance.module().linkActions()) {
                         action.accept(context, instance);
