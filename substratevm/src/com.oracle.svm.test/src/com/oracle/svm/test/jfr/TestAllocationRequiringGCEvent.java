@@ -26,30 +26,32 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertTrue;
+
+import java.util.List;
+
+import org.junit.Test;
+
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.genscavenge.HeapParameters;
+import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
-import org.junit.Test;
-
-import java.util.List;
-
-import static org.junit.Assert.assertTrue;
 
 public class TestAllocationRequiringGCEvent extends JfrRecordingTest {
-    private static final int MAX_YOUNG_SIZE = 256 * 1024 * 1024;
-
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{"jdk.AllocationRequiringGC"};
+        String[] events = new String[]{JfrEvent.AllocationRequiringGC.getName()};
         Recording recording = startRecording(events);
-        final int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
 
-        // 256MB is the max possible eden size
-        allocateByteArray(MAX_YOUNG_SIZE);
-        allocateByteArray(alignedHeapChunkSize * 2);
+        int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
+
+        /* Allocate 256 arrays with 1 MB each. */
+        for (int i = 0; i < 256; i++) {
+            allocateByteArray(1024 * 1024);
+        }
 
         stopRecording(recording, TestAllocationRequiringGCEvent::validateEvents);
     }

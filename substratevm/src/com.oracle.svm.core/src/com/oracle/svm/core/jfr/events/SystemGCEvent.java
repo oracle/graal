@@ -50,6 +50,7 @@ public class SystemGCEvent {
         if (JfrEvent.SystemGC.shouldEmit(duration)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.SystemGC);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, duration);

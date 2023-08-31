@@ -78,7 +78,7 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.events.AllocationRequiringGC;
+import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
 import com.oracle.svm.core.jfr.events.SystemGCEvent;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
@@ -150,7 +150,7 @@ public final class GCImpl implements GC {
             UnsignedWord edenUsed = HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes();
             outOfMemory = edenUsed.aboveThan(GCImpl.getPolicy().getMaximumHeapSize());
         } else if (getPolicy().shouldCollectOnAllocation()) {
-            AllocationRequiringGC.emit(startTicks, getCollectionEpoch().rawValue(), size);
+            AllocationRequiringGCEvent.emit(startTicks, getCollectionEpoch().rawValue(), size);
             outOfMemory = collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
         }
         if (outOfMemory) {

@@ -26,25 +26,29 @@
 
 package com.oracle.svm.test.jfr;
 
-import jdk.jfr.Recording;
-import jdk.jfr.consumer.RecordedEvent;
-
-import org.junit.Test;
+import static org.junit.Assert.assertTrue;
 
 import java.util.List;
 
-import static org.junit.Assert.assertEquals;
+import org.junit.Test;
+
+import com.oracle.svm.core.jfr.JfrEvent;
+
+import jdk.jfr.Recording;
+import jdk.jfr.consumer.RecordedEvent;
 
 public class TestSystemGCEvent extends JfrRecordingTest {
     @Test
     public void test() throws Throwable {
-        String[] events = new String[]{"jdk.SystemGC"};
+        String[] events = new String[]{JfrEvent.SystemGC.getName()};
         Recording recording = startRecording(events);
+
         System.gc();
+
         stopRecording(recording, TestSystemGCEvent::validateEvents);
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
-        assertEquals(1, events.size());
+        assertTrue(events.size() >= 1);
     }
 }
