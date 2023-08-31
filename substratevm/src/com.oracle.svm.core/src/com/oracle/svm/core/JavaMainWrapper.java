@@ -35,7 +35,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.util.ClassUtil;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -80,6 +79,7 @@ import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.util.CounterSupport;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ReflectionUtil;
 
 @InternalVMMethod
@@ -235,6 +235,7 @@ public class JavaMainWrapper {
              */
             JavaMainSupport mainSupport = ImageSingletons.lookup(JavaMainSupport.class);
             invokeMain(mainSupport.mainArgs);
+
             return 0;
         } catch (Throwable ex) {
             JavaThreads.dispatchUncaughtException(Thread.currentThread(), ex);

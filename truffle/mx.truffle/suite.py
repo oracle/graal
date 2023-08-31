@@ -39,9 +39,9 @@
 # SOFTWARE.
 #
 suite = {
-  "mxversion": "6.39.0",
+  "mxversion": "6.44.1",
   "name" : "truffle",
-  "version" : "23.1.0",
+  "version" : "24.0.0",
   "release" : False,
   "groupId" : "org.graalvm.truffle",
   "sourceinprojectwhitelist" : [],
@@ -83,6 +83,7 @@ suite = {
     "ANTLR4": {
       "moduleName": "org.antlr.antlr4.runtime",
       "digest" : "sha512:4abb69a3c6895edeec64c11d61886fbeb68eda5ebb21094f596e4f7add8afa9ff049c05fa916264b9185ac9013b16d8eabf44fb65da0b6871997c8f1473a3771",
+      "sourceDigest" : "sha512:611840da04cf2768f234ef06d69d95ed6edb2c55a48c3cffdf96ab23e76fc3bdd03e900155e454d2dd23ce8b644d48882a980aa6f5a76905dbbad57320d1cce0",
       "maven" : {
         "groupId" : "org.antlr",
         "artifactId" : "antlr4-runtime",
@@ -196,9 +197,6 @@ suite = {
         "java.logging",
         "jdk.unsupported", # sun.misc.Unsafe
       ],
-      # We need to force javac as JDT has a bug that JDT ignores SuppressWarnings
-      # if warnings as errors is enabled. See GR-14683.
-      "forceJavac" : "true",
       "javaCompliance" : "17+",
       "checkstyleVersion" : "10.7.0",
       "workingSets" : "API,Truffle",
@@ -1181,7 +1179,9 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "javaCompliance" : "17+",
-      "forceJavac" : "true",
+      # We need to force javac because the generated sources in this project
+      # produce warnings in JDT.
+      "forceJavac": True,
       "spotbugs" : "false",
       "requires" : [
       ],
@@ -1203,6 +1203,33 @@ suite = {
         },
       },
       "description" : "JSON shaded library.",
+      "allowsJavadocWarnings": True,
+      "javac.lint.overrides" : 'none',
+      "jacoco" : "exclude",
+    },
+
+    "org.graalvm.shadowed.org.antlr.v4.runtime" : {
+      # shaded ANTLR4 (org.antlr:antlr4-runtime) library
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "forceJavac" : "true",
+      "spotbugs" : "false",
+      "shadedDependencies" : [
+        "truffle:ANTLR4",
+      ],
+      "class" : "ShadedLibraryProject",
+      "shade" : {
+        "packages" : {
+          "org.antlr.v4.runtime" : "org.graalvm.shadowed.org.antlr.v4.runtime",
+        },
+        "exclude" : [
+          "META-INF/MANIFEST.MF",
+          "META-INF/maven/**",
+          "main/dot/org/antlr/v4/runtime/atn/images/*"
+        ],
+      },
+      "description" : "ANTLR4 shaded library.",
       "allowsJavadocWarnings": True,
       "javac.lint.overrides" : 'none',
       "jacoco" : "exclude",
@@ -1413,6 +1440,7 @@ suite = {
           "java.nio.file.spi.FileTypeDetector",
           "com.oracle.truffle.api.impl.TruffleLocator",
           "com.oracle.truffle.api.provider.TruffleLanguageProvider",
+          "com.oracle.truffle.api.provider.InternalResourceProvider",
           "com.oracle.truffle.api.library.provider.DefaultExportProvider",
           "com.oracle.truffle.api.library.provider.EagerExportProvider",
           "com.oracle.truffle.api.instrumentation.provider.TruffleInstrumentProvider",
@@ -1560,6 +1588,9 @@ suite = {
       ],
       "description" : """Implementation of the Truffle NFI using CLinker from project panama.""",
       "allowsJavadocWarnings": True,
+      "maven": {
+        "tag": ["default", "public"],
+      },
       "noMavenJavadoc": True,  # the maven deploy job refuses to build javadoc if javaCompliance is higher than 17
     },
 
@@ -1691,8 +1722,9 @@ suite = {
 
     "TRUFFLE_DSL_PROCESSOR" : {
       "subDir" : "src",
-      "dependencies" : ["truffle:ANTLR4",
-                        "com.oracle.truffle.dsl.processor"],
+      "dependencies" : [
+        "com.oracle.truffle.dsl.processor",
+      ],
       "distDependencies" : [],
       "description" : "The Truffle DSL Processor generates source code for nodes that are declared using the DSL.",
       "allowsJavadocWarnings": True,
@@ -2000,6 +2032,31 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.shadowed",
         "artifactId" : "json",
+        "tag": ["default", "public"],
+      },
+    },
+
+    "TRUFFLE_ANTLR4" : {
+      # shaded ANTLR4 (org.antlr:antlr4-runtime) library module
+      "moduleInfo" : {
+        "name" : "org.graalvm.shadowed.antlr4",
+        "exports" : [
+          "org.graalvm.shadowed.org.antlr.v4.runtime*",
+        ],
+      },
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "dependencies" : [
+        "org.graalvm.shadowed.org.antlr.v4.runtime",
+      ],
+      "description" : "ANTLR4 shaded module.",
+      "allowsJavadocWarnings" : True,
+      "license" : "BSD-new",
+      "maven" : {
+        "groupId" : "org.graalvm.shadowed",
+        "artifactId" : "antlr4",
         "tag": ["default", "public"],
       },
     },

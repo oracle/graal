@@ -115,6 +115,12 @@ public final class RuntimeSupport implements VMRuntimeSupport {
         executeHooks(getRuntimeSupport().shutdownHooks);
     }
 
+    /**
+     * Initialization hooks are executed during isolate initialization, before runtime options are
+     * parsed. The executed code should therefore not try to access any runtime options. If it is
+     * necessary to access a runtime option, then its value must be accessed via
+     * {@link com.oracle.svm.core.IsolateArgumentParser}.
+     */
     public void addInitializationHook(Hook initHook) {
         addHook(initializationHooks, initHook);
     }

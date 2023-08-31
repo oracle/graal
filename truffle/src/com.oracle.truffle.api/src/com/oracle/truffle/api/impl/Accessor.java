@@ -121,6 +121,7 @@ import com.oracle.truffle.api.nodes.ExecutionSignature;
 import com.oracle.truffle.api.nodes.LanguageInfo;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.provider.InternalResourceProvider;
 import com.oracle.truffle.api.provider.TruffleLanguageProvider;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
@@ -1255,6 +1256,12 @@ public abstract class Accessor {
         public abstract List<String> getInternalResourceIds(TruffleLanguageProvider provider);
 
         public abstract InternalResource createInternalResource(TruffleLanguageProvider provider, String resourceId);
+
+        public abstract String getInternalResourceComponentId(InternalResourceProvider provider);
+
+        public abstract String getInternalResourceId(InternalResourceProvider provider);
+
+        public abstract InternalResource createInternalResource(InternalResourceProvider provider);
 
     }
 

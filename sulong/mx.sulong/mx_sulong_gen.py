@@ -107,7 +107,7 @@ COPYRIGHT_HEADER_BSD_HASH = """\
 @mx.command(_suite.name, 'create-asm-parser')
 def create_asm_parser(args=None, out=None):
     """create the inline assembly parser using antlr"""
-    mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", COPYRIGHT_HEADER_BSD, args, out)
+    mx.suite("truffle").extensions.create_parser("com.oracle.truffle.llvm.asm.amd64", "com.oracle.truffle.llvm.asm.amd64", "InlineAssembly", args=args, out=out, shaded=True)
 
 
 @mx.command(_suite.name, 'create-debugexpr-parser')
@@ -116,7 +116,7 @@ def create_debugexpr_parser(args=None, out=None):
     mx.suite("truffle").extensions.create_parser(grammar_project="com.oracle.truffle.llvm.runtime",
                                                  grammar_package="com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.antlr",
                                                  grammar_name="DebugExpression",
-                                                 copyright_template=COPYRIGHT_HEADER_BSD, args=args, out=out)
+                                                 args=args, out=out, shaded=True)
 
 
 @mx.command(_suite.name, 'create-parsers')

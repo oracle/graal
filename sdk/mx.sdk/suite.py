@@ -41,7 +41,7 @@
 suite = {
   "mxversion": "6.39.0",
   "name" : "sdk",
-  "version" : "23.1.0",
+  "version" : "24.0.0",
   "release" : False,
   "sourceinprojectwhitelist" : [],
   "url" : "https://github.com/oracle/graal",
@@ -70,7 +70,7 @@ suite = {
     "lafo-maven" : {
       "snapshotsUrl" : "https://curio.ssw.jku.at/nexus/content/repositories/maven-snapshots",
       "releasesUrl": "https://curio.ssw.jku.at/nexus/content/repositories/maven-releases",
-      "licenses" : ["GPLv2-CPE", "GPLv2", "UPL", "BSD-new", "MIT", "NCSA", "ICU"],
+      "licenses" : ["GPLv2-CPE", "GPLv2", "UPL", "BSD-new", "MIT", "NCSA", "ICU", "PSF-License", "BSD-simplified", "EPL-2.0"],
       "mavenId" : "lafo",
     },
   },
@@ -560,6 +560,18 @@ suite = {
     "GPLv2" : {
       "name" : "GNU General Public License, version 2",
       "url" : "http://www.gnu.org/licenses/old-licenses/gpl-2.0.html"
+    },
+    "PSF-License": {
+      "name": "Python Software Foundation License",
+      "url": "https://docs.python.org/3/license.html",
+    },
+    "BSD-simplified": {
+      "name": "Simplified BSD License (2-clause BSD license)",
+      "url": "http://opensource.org/licenses/BSD-2-Clause"
+    },
+    "EPL-2.0": {
+      "name": "Eclipse Public License 2.0",
+      "url": "https://opensource.org/licenses/EPL-2.0",
     },
 },
 

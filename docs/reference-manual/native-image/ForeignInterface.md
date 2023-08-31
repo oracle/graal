@@ -5,31 +5,34 @@ link_title: Foreign Interface
 permalink: /reference-manual/native-image/dynamic-features/foreign-interface/
 ---
 
-# Foreign Interface in Native Image
+# Foreign Function & Memory API in Native Image
 
-The Foreign Interface is a native API that enables Java code to interact with native code and vice versa.
-It is currently a preview API of the Java platform and must be enabled with `--enable-preview`.
-This page gives an overview of its support in Native Image.
+The Foreign Function & Memory (FFM) API is a native interface that enables Java code to interact with native code and vice versa.
+As of [JEP 442](https://openjdk.org/jeps/442){:target="_blank"}, it is a preview API of the Java platform and must be enabled with `--enable-preview`.
+Modules that are permitted to perform "restricted" native operations (including creating handles for calls to or from native code) must be specified using `--enable-native-access=`.
+This page gives an overview of support for the FFM API in Native Image.
 
 ## Foreign memory
-Shared arenas are not supported.
+Foreign memory functionality is generally supported. Shared arenas are currently not supported.
 
 ## Foreign functions
-The Foreign Functions Interface (FFI) allows Java code to call native functions, and conversely allows native code to invoke Java method handles.
-These two kind of calls are referred to as "downcalls" and "upcalls" respectively and are collectively referred to as "foreign calls".
+The FFM API enables Java code to call _down_ to native functions, and conversely allows native code to call _up_ to invoke Java code via method handles.
+These two kinds of calls are referred to as "downcalls" and "upcalls" respectively and are collectively referred to as "foreign calls".
 
-This feature is currently only supported on the AMD64 platform.
+Currently, only downcalls are supported, and only on the AMD64 architecture.
 
 ### Looking up native functions
-FFI provides the `SymbolLookup` interface which allows to search native libraries for functions by name.
-`loaderLookup` is currently the only supported `SymbolLookup`.
+The FFM API provides the `SymbolLookup` interface to find functions in native libraries by name.
+`SymbolLookup.loaderLookup()` is currently the only supported kind of `SymbolLookup`.
 
 ### Registering foreign calls
-In order to perform a call to native, some glue code is required and thus must be generated at build time.
-Therefore, a list of the types of downcall which will be performed must be provided to the `native-image` builder.
+In order to perform calls to native code at runtime, supporting code must be generated at image build time.
+Therefore, the `native-image` tool must be provided with descriptors that characterize functions to which downcalls may be performed at runtime.
 
-This list can be specified using a custom `Feature`. For example:
+These descriptors can be registered using a custom `Feature`, for example:
 ```java
+import static java.lang.foreign.ValueLayout.*;
+
 class ForeignRegistrationFeature implements Feature { 
   public void duringSetup(DuringSetupAccess access) {
     RuntimeForeignAccess.registerForDowncall(FunctionDescriptor.ofVoid());
@@ -40,7 +43,9 @@ class ForeignRegistrationFeature implements Feature {
   }
 }
 ```
-To activate the custom feature `--features=<fully qualified name of ForeignRegistrationFeature class>` needs to be passed to native-image.
-[Native Image Build Configuration](BuildConfiguration.md#embed-a-configuration-file) explains how this can be automated with a `native-image.properties` file in `META-INF/native-image`.
+To activate the custom feature, `--features=com.example.ForeignRegistrationFeature` (the fully-qualified name of the feature class) needs to be passed to `native-image`.
+It is recommended to do so [with a _native-image.properties_ file](BuildConfiguration.md#embed-a-configuration-file).
 
-Upcalls are currently not supported.
+### Upcalls
+
+Upcalls are not yet supported.

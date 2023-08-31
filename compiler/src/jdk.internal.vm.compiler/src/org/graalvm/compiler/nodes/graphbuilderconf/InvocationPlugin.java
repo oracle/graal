@@ -152,6 +152,15 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
     }
 
     /**
+     * Determines if this plugin is only implemented in Graal. This is useful for adapting HotSpot
+     * intrinsic related flags, which for intrinsics not yet implemented in HotSpot are off by
+     * default and should not disable Graal plugins.
+     */
+    public boolean isGraalOnly() {
+        return false;
+    }
+
+    /**
      * Rewrite the first element of {@link #argumentTypes} to {@code receiverType} for non-static
      * method.
      */

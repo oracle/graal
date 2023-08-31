@@ -190,6 +190,7 @@ import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
 import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
 import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import org.graalvm.compiler.replacements.nodes.ProfileBooleanNode;
+import org.graalvm.compiler.replacements.nodes.ReverseBitsNode;
 import org.graalvm.compiler.replacements.nodes.ReverseBytesNode;
 import org.graalvm.compiler.replacements.nodes.VirtualizableInvokeMacroNode;
 import org.graalvm.compiler.replacements.nodes.arithmetic.IntegerAddExactNode;
@@ -818,6 +819,13 @@ public class StandardGraphBuilderPlugins {
                 return true;
             }
         });
+        r.register(new InvocationPlugin("reverse", type) {
+            @Override
+            public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode arg) {
+                b.addPush(kind, new ReverseBitsNode(arg).canonical(null));
+                return true;
+            }
+        });
     }
 
     private static void registerCharacterPlugins(InvocationPlugins plugins) {
@@ -844,6 +852,13 @@ public class StandardGraphBuilderPlugins {
                 ValueNode sub = b.add(SubNode.create(ch, ConstantNode.forInt('0'), NodeView.DEFAULT));
                 LogicNode isDigit = b.add(IntegerBelowNode.create(sub, ConstantNode.forInt(10), NodeView.DEFAULT));
                 b.addPush(JavaKind.Boolean, ConditionalNode.create(isDigit, NodeView.DEFAULT));
+                return true;
+            }
+
+            @Override
+            public boolean isGraalOnly() {
+                // On X64/AArch64 HotSpot, this intrinsic is not implemented and
+                // UseCharacterCompareIntrinsics defaults to false
                 return true;
             }
         });

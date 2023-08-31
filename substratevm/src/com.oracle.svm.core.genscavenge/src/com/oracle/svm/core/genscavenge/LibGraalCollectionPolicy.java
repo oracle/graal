@@ -75,7 +75,7 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
     @Override
     public boolean shouldCollectOnHint(boolean fullGC) {
         guaranteeSizeParametersInitialized();
-        UnsignedWord edenUsedBytes = HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes();
+        UnsignedWord edenUsedBytes = HeapImpl.getAccounting().getEdenUsedBytes();
         if (fullGC) {
             // For full GC request, we slightly lower the threshold to increase their
             // probability to be performed, as they are supposed to be issued at the lowest

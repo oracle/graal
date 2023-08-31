@@ -39,6 +39,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.core.jfr.JfrEventWriterAccess;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
+import com.oracle.svm.core.jfr.JfrJdkCompatibility;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -159,7 +160,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
             JfrJavaEvents.registerEventClass(newEventClass);
             // the reflection registration for the event handler field is delayed to the JfrFeature
             // duringAnalysis callback so it does not race/interfere with other retransforms
-            JVM.getJVM().retransformClasses(new Class<?>[]{newEventClass});
+            JfrJdkCompatibility.retransformClasses(new Class<?>[]{newEventClass});
             return Boolean.TRUE;
         } catch (Throwable ex) {
             throw VMError.shouldNotReachHere(ex);

@@ -24,10 +24,15 @@ package com.oracle.truffle.espresso;
 
 import static com.oracle.truffle.espresso.jni.JniEnv.JNI_OK;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import com.oracle.truffle.api.TruffleLogger;
+import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
@@ -448,7 +453,17 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @TruffleBoundary
     private StaticShape<StaticObjectFactory> createArrayShape() {
         assert arrayShape == null;
-        return StaticShape.newBuilder(this).property(arrayProperty, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
+        try {
+            return StaticShape.newBuilder(this).property(arrayProperty, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
+        } catch (IllegalAccessError e) {
+            if (EspressoLanguage.class.getModule().isNamed()) {
+                TruffleLogger.getLogger(ID).warning("""
+                                IllegalAccessError while trying static shape from espresso module.
+                                You might need to use the following java argument to work around:
+                                --add-exports=org.graalvm.espresso/com.oracle.truffle.espresso.runtime=ALL-UNNAMED""");
+            }
+            throw e;
+        }
     }
 
     public StaticProperty getForeignProperty() {
@@ -546,5 +561,51 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
 
     public void setCurrentVirtualThread(StaticObject thread) {
         getThreadLocalState().setCurrentVirtualThread(thread);
+    }
+
+    public static Path getEspressoLibs(TruffleLanguage.Env env) {
+        Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
+        if (espressoHome != null) {
+            Path libs = espressoHome.resolve("lib");
+            if (Files.isDirectory(libs)) {
+                return libs;
+            }
+        }
+        try {
+            String resources = env.getInternalResource("espresso-libs").getAbsoluteFile().toString();
+            Path libs = Path.of(resources, "lib");
+            assert Files.isDirectory(libs);
+            return libs;
+        } catch (IOException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+    }
+
+    public static Path getEspressoRuntime(TruffleLanguage.Env env) {
+        // If --java.JavaHome is not specified, Espresso tries to use the same (jars and native)
+        // libraries bundled with GraalVM.
+        // Try to figure out if we are running in the GraalVM
+        Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
+        if (espressoHome != null && Files.isDirectory(espressoHome)) {
+            // ESPRESSO_HOME = GRAALVM_JAVA_HOME/languages/java
+            Path graalvmHome = HomeFinder.getInstance().getHomeFolder();
+            if (graalvmHome != null) {
+                try {
+                    Path expectedLanguageHome = graalvmHome.resolve("languages").resolve("java");
+                    if (Files.isDirectory(expectedLanguageHome) && Files.isSameFile(espressoHome, expectedLanguageHome)) {
+                        return graalvmHome;
+                    }
+                } catch (IOException e) {
+                    env.getLogger(EspressoContext.class).log(Level.WARNING, "Error while probing espresso and graalvm home", e);
+                }
+            }
+        }
+        try {
+            Path resources = Path.of(env.getInternalResource("espresso-runtime").getAbsoluteFile().toString());
+            assert Files.isDirectory(resources);
+            return resources;
+        } catch (IOException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
     }
 }

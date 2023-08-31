@@ -25,6 +25,8 @@ package com.oracle.truffle.espresso.ffi;
 import java.nio.file.Path;
 import java.util.List;
 
+import org.graalvm.options.OptionValues;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
@@ -35,7 +37,6 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.runtime.EspressoProperties;
-import org.graalvm.options.OptionValues;
 
 /**
  * Encapsulates minimal functionality required to interface with the native world in the JVM.

@@ -216,19 +216,26 @@ def getClasspathOptions(extra_dists=None):
     return mx.get_runtime_jvm_args(['SULONG_CORE', 'SULONG_NATIVE', 'SULONG_LAUNCHER', 'TRUFFLE_NFI'] + (extra_dists or []))
 
 
-def _get_sulong_home():
-    return mx_subst.path_substitutions.substitute('<path:SULONG_HOME>')
+_the_sulong_home_dist = "SULONG_HOME_NATIVEMODE"
 
-_the_get_sulong_home = _get_sulong_home
-
-def get_sulong_home():
-    return _the_get_sulong_home()
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    sulongHome = mx.LayoutTARDistribution(_suite,
+                                          name="SULONG_HOME",
+                                          deps=[],
+                                          layout={
+                                                "./": f"extracted-dependency:{_the_sulong_home_dist}",
+                                              },
+                                          path=None,
+                                          excludedLibs=[],
+                                          platformDependent=True,
+                                          theLicense="BSD-new",
+                                          relpath=True,
+                                          distDependencies=[_the_sulong_home_dist])
+    register_distribution(sulongHome)
 
 def update_sulong_home(new_home):
-    global _the_get_sulong_home
-    _the_get_sulong_home = new_home
-
-mx_subst.path_substitutions.register_no_arg('sulong_home', get_sulong_home)
+    global _the_sulong_home_dist
+    _the_sulong_home_dist = new_home
 
 
 @mx.command(_suite.name, "lli-legacy")
@@ -536,7 +543,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     license_files=[],
     third_party_license_files=[],
     dependencies=['Truffle NFI LIBFFI', 'LLVM Runtime Core'],
-    truffle_jars=['sulong:SULONG_NATIVE', 'sulong:SULONG_NATIVE_RESOURCES'],
+    truffle_jars=['sulong:SULONG_NATIVE'],
     support_distributions=[
         'sulong:SULONG_BITCODE_HOME',
         'sulong:SULONG_NATIVE_HOME',
