@@ -26,11 +26,11 @@ package com.oracle.svm.configure.trace;
 
 import java.util.regex.Pattern;
 
-import jdk.graal.compiler.java.LambdaUtils;
-import jdk.graal.compiler.phases.common.LazyValue;
-
 import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
+
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.phases.common.LazyValue;
 
 /**
  * Decides if a recorded access should be included in a configuration. Also advises the agent's
@@ -66,11 +66,19 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("com.sun.nio.sctp.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("com.sun.nio.zipfs.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.io.**", ConfigurationFilter.Inclusion.Exclude);
+        internalCallerFilter.addOrGetChildren("java.io.ObjectInputFilter$Config", ConfigurationFilter.Inclusion.Include);
+
         internalCallerFilter.addOrGetChildren("java.lang.**", ConfigurationFilter.Inclusion.Exclude);
+        // ClassLoader.findSystemClass calls ClassLoader.loadClass
+        internalCallerFilter.addOrGetChildren("java.lang.ClassLoader", ConfigurationFilter.Inclusion.Include);
         // The agent should not filter calls from native libraries (JDK11).
         internalCallerFilter.addOrGetChildren("java.lang.ClassLoader$NativeLibrary", ConfigurationFilter.Inclusion.Include);
+        // Module has resource query wrappers
+        internalCallerFilter.addOrGetChildren("java.lang.Module", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("java.math.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.net.**", ConfigurationFilter.Inclusion.Exclude);
+        // URLConnection.lookupContentHandlerClassFor calls Class.forName
+        internalCallerFilter.addOrGetChildren("java.net.URLConnection", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("java.nio.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.text.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("java.time.**", ConfigurationFilter.Inclusion.Exclude);
@@ -78,13 +86,20 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("java.util.concurrent.atomic.*", ConfigurationFilter.Inclusion.Include); // Atomic*FieldUpdater
         internalCallerFilter.addOrGetChildren("java.util.Collections", ConfigurationFilter.Inclusion.Include); // java.util.Collections.zeroLengthArray
         internalCallerFilter.addOrGetChildren("java.util.random.*", ConfigurationFilter.Inclusion.Include); // RandomGeneratorFactory$$Lambda
-        // Exception constructors
+        /*
+         * ForkJoinTask.getThrowableException calls Class.getConstructors and
+         * Constructor.newInstance
+         */
         internalCallerFilter.addOrGetChildren("java.util.concurrent.ForkJoinTask", ConfigurationFilter.Inclusion.Include);
+        // LazyClassPathLookupIterator calls Class.forName
+        internalCallerFilter.addOrGetChildren("java.util.ServiceLoader$LazyClassPathLookupIterator", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("javax.crypto.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("javax.lang.model.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("javax.net.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("javax.tools.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("jdk.internal.**", ConfigurationFilter.Inclusion.Exclude);
+        // BootLoader calls BuiltinClassLoader.getResource
+        internalCallerFilter.addOrGetChildren("jdk.internal.loader.BootLoader", ConfigurationFilter.Inclusion.Include);
         // The agent should not filter calls from native libraries (JDK17).
         internalCallerFilter.addOrGetChildren("jdk.internal.loader.NativeLibraries$NativeLibraryImpl", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("jdk.jfr.**", ConfigurationFilter.Inclusion.Exclude);
@@ -92,6 +107,8 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("jdk.nio.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("jdk.vm.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.invoke.**", ConfigurationFilter.Inclusion.Exclude);
+        // BytecodeDescriptor calls Class.forName
+        internalCallerFilter.addOrGetChildren("sun.invoke.util.BytecodeDescriptor", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("sun.launcher.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.misc.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.net.**", ConfigurationFilter.Inclusion.Exclude);
@@ -99,8 +116,12 @@ public final class AccessAdvisor {
         internalCallerFilter.addOrGetChildren("sun.net.www.protocol.http.*", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("sun.nio.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.reflect.**", ConfigurationFilter.Inclusion.Exclude);
+        // ConstructorUtil has wrappers around reflection methods
+        internalCallerFilter.addOrGetChildren("sun.reflect.misc.ConstructorUtil", ConfigurationFilter.Inclusion.Include);
         internalCallerFilter.addOrGetChildren("sun.text.**", ConfigurationFilter.Inclusion.Exclude);
         internalCallerFilter.addOrGetChildren("sun.util.**", ConfigurationFilter.Inclusion.Exclude);
+        // Bundles calls Bundles.of
+        internalCallerFilter.addOrGetChildren("sun.util.resources.Bundles", ConfigurationFilter.Inclusion.Include);
 
         excludeInaccessiblePackages(internalCallerFilter);
 
