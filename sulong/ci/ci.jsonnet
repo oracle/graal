@@ -12,6 +12,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
 
   sulong:: {
     suite:: "sulong",
+    extra_mx_args+:: [ "--dynamicimport", "/compiler" ],
     setup+: [
       ["cd", "./sulong"],
     ],

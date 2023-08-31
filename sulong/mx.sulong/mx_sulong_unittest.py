@@ -95,7 +95,9 @@ class SulongUnittestConfigBase(mx_unittest.MxUnittestConfig):
         if mx.get_opts().use_llvm_standalone is not None:
             vmArgs += [f'-Dsulongtest.testAOTImage={mx_sulong.get_lli_path()}']
         else:
-            vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+            if mx.suite('compiler', fatalIfMissing=False) is None:
+                mx.warn("compiler suite not available, running Sulong unittests with -Dpolyglot.engine.WarnInterpreterOnly=false")
+                vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
             if not SulongUnittestConfigBase.useResources:
                 vmArgs += [f'-Dorg.graalvm.language.llvm.home={mx.distribution(cfg.sulongHome).get_output()}']
         vmArgs += cfg.extra_vm_args()
