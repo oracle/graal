@@ -107,7 +107,7 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
     }
 
     private WasmMemory memory0(MaterializedFrame frame) {
-        return instance(frame).memory(0);
+        return module.memory(instance(frame), 0);
     }
 
     WasmModule module() {
