@@ -91,7 +91,8 @@ public final class ClassForNameSupport {
             return null;
         }
         Object result = singleton().knownClasses.get(className);
-        if (result == NEGATIVE_QUERY) {
+        if (result == NEGATIVE_QUERY || className.endsWith("[]")) {
+            /* Querying array classes with their "TypeName[]" name always throws */
             result = new ClassNotFoundException(className);
         }
         if (result == null) {
