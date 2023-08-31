@@ -169,10 +169,15 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     }
 
     @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
-    private static void uninstall(IsolateThread thread) {
+    private void uninstall(IsolateThread thread) {
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
 
         if (ExecutionSamplerInstallation.isInstalled(thread)) {
+            /*
+             * Invalidate thread-local area. Once this value is set to null, the signal handler
+             * can't interrupt this thread anymore.
+             */
+            storeIsolateThreadInNativeThreadLocal(WordFactory.nullPointer());
             ExecutionSamplerInstallation.uninstalled(thread);
         }
     }
