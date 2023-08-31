@@ -180,7 +180,9 @@ public class Linker {
                     instance.setLinkFailed();
                     failures.add(e);
                 } finally {
-                    instance.module().removeLinkActions();
+                    if (!context.language().isMultiContext()) {
+                        instance.module().removeLinkActions();
+                    }
                 }
             }
         }
