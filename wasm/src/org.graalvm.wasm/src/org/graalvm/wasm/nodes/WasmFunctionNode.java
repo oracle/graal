@@ -481,7 +481,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     int paramCount = function.paramCount();
 
                     Object[] args = createArgumentsForCall(frame, function.typeIndex(), paramCount, stackPointer);
-                    stackPointer -= args.length;
+                    stackPointer -= paramCount;
 
                     Object result = executeDirectCall(instance, callNodeIndex, function, args);
 
@@ -605,7 +605,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     // Invoke the resolved function.
                     int paramCount = module.symbolTable().functionTypeParamCount(expectedFunctionTypeIndex);
                     Object[] args = createArgumentsForCall(frame, expectedFunctionTypeIndex, paramCount, stackPointer);
-                    stackPointer -= args.length;
+                    stackPointer -= paramCount;
 
                     // Enter function's context when it is not from the current one
                     final boolean enterContext = !functionFromCurrentContext;
