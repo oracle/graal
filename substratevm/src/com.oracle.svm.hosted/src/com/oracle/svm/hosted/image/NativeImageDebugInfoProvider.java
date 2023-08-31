@@ -119,8 +119,9 @@ import org.graalvm.nativeimage.c.struct.RawPointerTo;
 class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase implements DebugInfoProvider {
     private final DebugContext debugContext;
     private final Set<HostedMethod> allOverrides;
+    private final Runnable heartbeatCallback;
 
-    NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess) {
+    NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess, Runnable heartbeatCallback) {
         super(codeCache, heap, nativeLibs, metaAccess);
         this.debugContext = debugContext;
         /* Calculate the set of all HostedMethods that are overrides. */
@@ -129,6 +130,7 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
                         .flatMap(m -> Arrays.stream(m.getImplementations())
                                         .filter(Predicate.not(m::equals)))
                         .collect(Collectors.toSet());
+        this.heartbeatCallback = heartbeatCallback;
     }
 
     @Override
@@ -2703,5 +2705,10 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
 
     private DebugDataInfo createDebugDataInfo(ObjectInfo objectInfo) {
         return new NativeImageDebugDataInfo(objectInfo);
+    }
+
+    @Override
+    public void recordActivity() {
+        heartbeatCallback.run();
     }
 }
