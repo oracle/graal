@@ -78,8 +78,6 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
-import com.oracle.svm.core.jfr.events.SystemGCEvent;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -150,7 +148,6 @@ public final class GCImpl implements GC {
             UnsignedWord edenUsed = HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes();
             outOfMemory = edenUsed.aboveThan(GCImpl.getPolicy().getMaximumHeapSize());
         } else if (getPolicy().shouldCollectOnAllocation()) {
-            AllocationRequiringGCEvent.emit(startTicks, getCollectionEpoch().rawValue(), size);
             outOfMemory = collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
         }
         if (outOfMemory) {
@@ -159,11 +156,9 @@ public final class GCImpl implements GC {
     }
 
     @Override
-    public void maybeCauseUserRequestedCollection(GCCause cause, boolean fullGC) {
-        if (policy.shouldCollectOnRequest(cause, fullGC)) {
-            long startTicks = JfrTicks.elapsedTicks();
-            collect(cause, fullGC);
-            SystemGCEvent.emit(startTicks, false);
+    public void collectionHint(boolean fullGC) {
+        if (policy.shouldCollectOnHint(fullGC)) {
+            collect(GCCause.HintedGC, fullGC);
         }
     }
 

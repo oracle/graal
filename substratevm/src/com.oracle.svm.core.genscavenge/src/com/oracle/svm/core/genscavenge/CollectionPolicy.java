@@ -126,7 +126,7 @@ public interface CollectionPolicy {
      * {@link org.graalvm.compiler.serviceprovider.GraalServices#notifyLowMemoryPoint(boolean)})
      * should be performed.
      */
-    boolean shouldCollectOnRequest(GCCause cause, boolean fullGC);
+    boolean shouldCollectOnHint(boolean fullGC);
 
     /**
      * At a safepoint, decides whether to do a complete collection (returning {@code true}) or an
