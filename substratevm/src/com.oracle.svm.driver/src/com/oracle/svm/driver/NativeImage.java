@@ -706,9 +706,11 @@ public class NativeImage {
         }
 
         @Override
-        public boolean isExcluded(Path resourcePath, Path classpathEntry) {
+        public boolean isExcluded(Path resourcePath, Path entry) {
+            Path srcPath = useBundle() ? bundleSupport.originalPath(entry) : null;
+            Path matchPath = srcPath != null ? srcPath : entry;
             return excludedConfigs.stream()
-                            .filter(e -> e.jarPattern.matcher(classpathEntry.toString()).find())
+                            .filter(e -> e.jarPattern.matcher(matchPath.toString()).find())
                             .anyMatch(e -> e.resourcePattern.matcher(resourcePath.toString()).find());
         }
     }
