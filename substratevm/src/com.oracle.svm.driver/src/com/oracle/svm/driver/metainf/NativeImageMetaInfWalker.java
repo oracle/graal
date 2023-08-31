@@ -55,11 +55,12 @@ public class NativeImageMetaInfWalker {
         }
     }
 
-    public static void walkMetaInfForCPEntry(Path classpathEntry, NativeImageMetaInfResourceProcessor metaInfProcessor) throws MetaInfWalkException {
+    public static boolean walkMetaInfForCPEntry(Path classpathEntry, NativeImageMetaInfResourceProcessor metaInfProcessor) throws MetaInfWalkException {
         try {
+            boolean removeFromClassPath = false;
             if (Files.isDirectory(classpathEntry)) {
                 Path nativeImageMetaInfBase = classpathEntry.resolve(Paths.get(nativeImageMetaInf));
-                processNativeImageMetaInf(classpathEntry, nativeImageMetaInfBase, metaInfProcessor);
+                removeFromClassPath = processNativeImageMetaInf(classpathEntry, nativeImageMetaInfBase, metaInfProcessor);
             } else {
                 if (ClasspathUtils.isJar(classpathEntry)) {
                     URI jarFileURI = URI.create("jar:" + classpathEntry.toUri());
@@ -73,17 +74,19 @@ public class NativeImageMetaInfWalker {
                     if (probeJarFS != null) {
                         try (FileSystem jarFS = probeJarFS) {
                             Path nativeImageMetaInfBase = jarFS.getPath("/" + nativeImageMetaInf);
-                            processNativeImageMetaInf(classpathEntry, nativeImageMetaInfBase, metaInfProcessor);
+                            removeFromClassPath = processNativeImageMetaInf(classpathEntry, nativeImageMetaInfBase, metaInfProcessor);
                         }
                     }
                 }
             }
+            return removeFromClassPath;
         } catch (IOException | FileSystemNotFoundException e) {
             throw new MetaInfWalkException("Invalid classpath entry " + classpathEntry, e);
         }
     }
 
-    private static void processNativeImageMetaInf(Path classpathEntry, Path nativeImageMetaInfBase, NativeImageMetaInfResourceProcessor metaInfProcessor) throws MetaInfWalkException {
+    private static boolean processNativeImageMetaInf(Path classpathEntry, Path nativeImageMetaInfBase, NativeImageMetaInfResourceProcessor metaInfProcessor) throws MetaInfWalkException {
+        boolean ignoreOnClassPath = false;
         if (Files.isDirectory(nativeImageMetaInfBase)) {
             for (MetaInfFileType fileType : MetaInfFileType.values()) {
                 List<Path> nativeImageMetaInfFiles;
@@ -101,12 +104,13 @@ public class NativeImageMetaInfWalker {
                     Path resourceRoot = nativeImageMetaInfBase.getParent().getParent();
                     metaInfProcessor.showVerboseMessage("Apply " + nativeImageMetaInfFile.toUri());
                     try {
-                        metaInfProcessor.processMetaInfResource(classpathEntry, resourceRoot, nativeImageMetaInfFile, fileType);
+                        ignoreOnClassPath = ignoreOnClassPath | metaInfProcessor.processMetaInfResource(classpathEntry, resourceRoot, nativeImageMetaInfFile, fileType);
                     } catch (Throwable err) {
                         throw new MetaInfWalkException("Processing " + nativeImageMetaInfFile.toUri() + " failed", err);
                     }
                 }
             }
         }
+        return ignoreOnClassPath;
     }
 }

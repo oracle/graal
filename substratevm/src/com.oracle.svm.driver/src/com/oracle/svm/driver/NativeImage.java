@@ -29,6 +29,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.lang.module.FindException;
+import java.lang.module.ModuleFinder;
+import java.lang.module.ModuleReference;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -629,8 +632,33 @@ public class NativeImage {
 
     class DriverMetaInfProcessor implements NativeImageMetaInfResourceProcessor {
         @Override
-        public void processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws IOException {
+        public boolean processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws IOException {
             boolean isNativeImagePropertiesFile = type.equals(MetaInfFileType.Properties);
+            boolean ignoreClasspathEntry = false;
+            Map<String, String> properties = null;
+            if (isNativeImagePropertiesFile) {
+                properties = loadProperties(Files.newInputStream(resourcePath));
+                if (config.modulePathBuild) {
+                    String forceOnModulePath = properties.get("ForceOnModulePath");
+                    if (forceOnModulePath != null) {
+                        try {
+                            ModuleFinder finder = ModuleFinder.of(classpathEntry);
+                            ModuleReference ref = finder.find(forceOnModulePath).orElse(null);
+                            if (ref == null) {
+                                throw showError("Failed to process ForceOnModulePath attribute: No module descriptor was not found in class-path entry: " +
+                                                classpathEntry + ".");
+                            }
+                        } catch (FindException e) {
+                            throw showError("Failed to process ForceOnModulePath attribute: Module descriptor for the module " + forceOnModulePath +
+                                            " could not be resolved with class-path entry: " + classpathEntry + ".", e);
+                        }
+                        ignoreClasspathEntry = true;
+                        addImageModulePath(classpathEntry, true, false);
+                        addAddedModules(forceOnModulePath);
+                        ignoreClasspathEntry = true;
+                    }
+                }
+            }
 
             /*
              * All MetaInfFileType values that are lowered to options are considered stable (not
@@ -651,7 +679,6 @@ public class NativeImage {
             };
 
             if (isNativeImagePropertiesFile) {
-                Map<String, String> properties = loadProperties(Files.newInputStream(resourcePath));
                 String imageNameValue = properties.get("ImageName");
                 if (imageNameValue != null) {
                     addPlainImageBuilderArg(injectHostedOptionOrigin(oHName + resolver.apply(imageNameValue), resourcePath.toUri().toString()));
@@ -662,6 +689,8 @@ public class NativeImage {
                 args.accept(oH(type.optionKey) + resourceRoot.relativize(resourcePath));
             }
             args.apply(true);
+
+            return ignoreClasspathEntry;
         }
 
         @Override
@@ -910,9 +939,9 @@ public class NativeImage {
         }
     }
 
-    private void processClasspathNativeImageMetaInf(Path classpathEntry) {
+    private boolean processClasspathNativeImageMetaInf(Path classpathEntry) {
         try {
-            NativeImageMetaInfWalker.walkMetaInfForCPEntry(classpathEntry, metaInfProcessor);
+            return NativeImageMetaInfWalker.walkMetaInfForCPEntry(classpathEntry, metaInfProcessor);
         } catch (NativeImageMetaInfWalker.MetaInfWalkException e) {
             throw showError(e.getMessage(), e.cause);
         }
@@ -1590,9 +1619,10 @@ public class NativeImage {
             switch (ExitStatus.of(exitStatusCode)) {
                 case OK -> {
                 }
-                case BUILDER_ERROR ->
+                case BUILDER_ERROR -> {
                     /* Exit, builder has handled error reporting. */
                     throw NativeImage.showError(null, null, exitStatusCode);
+                }
                 case OUT_OF_MEMORY -> {
                     showOutOfMemoryWarning();
                     throw NativeImage.showError(null, null, exitStatusCode);
@@ -2057,10 +2087,10 @@ public class NativeImage {
     LinkedHashSet<String> builderModuleNames = null;
 
     void addImageModulePath(Path modulePathEntry) {
-        addImageModulePath(modulePathEntry, true);
+        addImageModulePath(modulePathEntry, true, true);
     }
 
-    void addImageModulePath(Path modulePathEntry, boolean strict) {
+    void addImageModulePath(Path modulePathEntry, boolean strict, boolean processMetaInf) {
         enableModulePathBuild();
 
         Path mpEntry;
@@ -2086,7 +2116,9 @@ public class NativeImage {
 
         Path mpEntryFinal = useBundle() ? bundleSupport.substituteModulePath(mpEntry) : mpEntry;
         imageModulePath.add(mpEntryFinal);
-        processClasspathNativeImageMetaInf(mpEntryFinal);
+        if (processMetaInf) {
+            processClasspathNativeImageMetaInf(mpEntryFinal);
+        }
     }
 
     /**
@@ -2150,11 +2182,13 @@ public class NativeImage {
 
         Path classpathEntryFinal = useBundle() ? bundleSupport.substituteClassPath(classpathEntry) : classpathEntry;
         if (!imageClasspath.contains(classpathEntryFinal) && !customImageClasspath.contains(classpathEntryFinal)) {
-            destination.add(classpathEntryFinal);
             if (ClasspathUtils.isJar(classpathEntryFinal)) {
                 processJarManifestMainAttributes(classpathEntryFinal, (jarFilePath, attributes) -> handleClassPathAttribute(destination, jarFilePath, attributes));
             }
-            processClasspathNativeImageMetaInf(classpathEntryFinal);
+            boolean ignore = processClasspathNativeImageMetaInf(classpathEntryFinal);
+            if (!ignore) {
+                destination.add(classpathEntryFinal);
+            }
         }
     }
 
