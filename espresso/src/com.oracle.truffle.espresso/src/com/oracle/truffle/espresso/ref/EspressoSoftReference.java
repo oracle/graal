@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.ref;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 final class EspressoSoftReference extends SoftReference<StaticObject> implements EspressoReference {

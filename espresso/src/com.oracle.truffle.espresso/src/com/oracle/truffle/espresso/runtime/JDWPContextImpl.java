@@ -74,6 +74,7 @@ import com.oracle.truffle.espresso.redefinition.HotSwapClassInfo;
 import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.redefinition.RedefinitionNotSupportedException;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 
 public final class JDWPContextImpl implements JDWPContext {

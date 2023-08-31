@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @EspressoSubstitutions
 public final class Target_java_lang_ClassLoader {

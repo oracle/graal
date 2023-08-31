@@ -34,8 +34,8 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.JavaVersion.VersionRange;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
 
 final class LinkedKlassFieldLayout {
     final StaticShape<StaticObjectFactory> instanceShape;

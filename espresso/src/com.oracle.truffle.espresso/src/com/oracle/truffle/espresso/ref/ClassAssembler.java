@@ -91,7 +91,7 @@ final class ClassAssembler {
      * import java.lang.ref.PublicFinalReference;
      * import java.lang.ref.ReferenceQueue;
      *
-     * import com.oracle.truffle.espresso.runtime.StaticObject;
+     * import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
      * import com.oracle.truffle.espresso.substitutions.JavaType;
      *
      * final class EspressoFinalReference extends PublicFinalReference&lt;StaticObject&gt; implements EspressoReference {

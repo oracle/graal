@@ -29,7 +29,7 @@ import java.util.Arrays;
 import java.util.function.Supplier;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * JNI handles are divided in two categories: local and global.

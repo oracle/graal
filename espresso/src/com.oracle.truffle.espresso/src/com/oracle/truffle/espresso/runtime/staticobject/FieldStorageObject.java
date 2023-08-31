@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -20,18 +20,9 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.preinit;
+package com.oracle.truffle.espresso.runtime.staticobject;
 
-import com.oracle.truffle.espresso.descriptors.Symbol;
-import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
-import com.oracle.truffle.espresso.impl.ClassRegistry;
-import com.oracle.truffle.espresso.impl.ParserKlass;
-import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.api.interop.TruffleObject;
 
-public interface ParserKlassProvider {
-    ParserKlass getParserKlass(ClassLoadingEnv env, StaticObject loader, Symbol<Symbol.Type> typeOrNull, byte[] bytes, ClassRegistry.ClassDefinitionInfo info);
-
-    default int getCachedParserKlassCount() {
-        return 0;
-    }
+public class FieldStorageObject implements TruffleObject {
 }

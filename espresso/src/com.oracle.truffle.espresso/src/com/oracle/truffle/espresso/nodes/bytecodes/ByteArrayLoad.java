@@ -41,7 +41,7 @@ import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.quick.interop.ForeignArrayUtils;
 import com.oracle.truffle.espresso.nodes.quick.interop.Utils;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * BALOAD bytecode with interop extensions. Similar to the BALOAD, supports both byte[] and

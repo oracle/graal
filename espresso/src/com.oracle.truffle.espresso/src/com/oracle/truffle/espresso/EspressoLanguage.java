@@ -78,8 +78,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 // TODO: Update website once Espresso has one
