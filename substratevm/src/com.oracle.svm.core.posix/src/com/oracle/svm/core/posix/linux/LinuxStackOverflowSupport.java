@@ -48,6 +48,7 @@ final class LinuxStackOverflowSupport implements StackOverflowCheck.StackOverflo
         return result;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static boolean lookupStack0(WordPointer stackBasePtr, WordPointer stackEndPtr) {
         WordPointer guardSizePtr = StackValue.get(WordPointer.class);
         Pthread.pthread_attr_t attr = StackValue.get(Pthread.pthread_attr_t.class);
