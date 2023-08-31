@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -58,7 +59,7 @@ public class WasiPathRemoveDirectoryNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return pathRemoveDirectory(context, (int) args[0], (int) args[1], (int) args[2]);
+        return pathRemoveDirectory(context, (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1), (int) WasmArguments.getArgument(args, 2));
     }
 
     @TruffleBoundary

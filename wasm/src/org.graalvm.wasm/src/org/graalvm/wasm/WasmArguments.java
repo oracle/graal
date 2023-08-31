@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,40 +38,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.emscripten;
 
-import org.graalvm.wasm.WasmArguments;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
+package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
+public final class WasmArguments {
 
-public class LLVMExp2F64Node extends WasmBuiltinRootNode {
-    public LLVMExp2F64Node(WasmLanguage language, WasmModule module) {
-        super(language, module);
+    public static final int RUNTIME_ARGUMENT_COUNT = 0;
+
+    private WasmArguments() {
     }
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        Object[] args = frame.getArguments();
-        assert WasmArguments.getArgumentCount(args) == 1;
-
-        double x = (double) WasmArguments.getArgument(args, 0);
-
-        return exp2(x);
+    public static Object getArgument(Object[] arguments, int index) {
+        return arguments[index + RUNTIME_ARGUMENT_COUNT];
     }
 
-    @Override
-    public String builtinNodeName() {
-        return "_llvm_exp2_f64";
+    public static int getArgumentCount(Object[] arguments) {
+        return arguments.length - RUNTIME_ARGUMENT_COUNT;
     }
 
-    // TODO: Remove the boundary here.
-    @CompilerDirectives.TruffleBoundary
-    double exp2(double x) {
-        return Math.pow(2, x);
+    public static Object[] getArguments(Object[] arguments) {
+        Object[] userArguments = new Object[arguments.length - RUNTIME_ARGUMENT_COUNT];
+        System.arraycopy(arguments, RUNTIME_ARGUMENT_COUNT, userArguments, 0, userArguments.length);
+        return userArguments;
     }
 }

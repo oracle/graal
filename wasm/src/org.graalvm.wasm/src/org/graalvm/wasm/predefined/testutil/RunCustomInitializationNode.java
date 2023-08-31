@@ -42,6 +42,7 @@ package org.graalvm.wasm.predefined.testutil;
 
 import java.util.function.Consumer;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
@@ -63,7 +64,7 @@ public class RunCustomInitializationNode extends RootNode {
 
     @Override
     public Object execute(VirtualFrame frame) {
-        initializeModule(frame.getArguments()[0]);
+        initializeModule(WasmArguments.getArgument(frame.getArguments(), 0));
         return WasmConstant.VOID;
     }
 

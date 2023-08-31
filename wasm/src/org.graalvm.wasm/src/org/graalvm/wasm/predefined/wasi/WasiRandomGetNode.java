@@ -42,6 +42,7 @@ package org.graalvm.wasm.predefined.wasi;
 
 import java.util.concurrent.ThreadLocalRandom;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -59,7 +60,7 @@ public class WasiRandomGetNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return randomGet((int) args[0], (int) args[1]);
+        return randomGet((int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @CompilerDirectives.TruffleBoundary

@@ -43,6 +43,7 @@ package org.graalvm.wasm.predefined.wasi;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -64,10 +65,10 @@ public final class WasiClockTimeGetNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        assert args.length == 3;
+        assert WasmArguments.getArgumentCount(args) == 3;
 
         // TODO(mbovel): handle args[1] "precision"
-        return clockTimeGet((int) args[0], (int) args[2]);
+        return clockTimeGet((int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 2));
     }
 
     @TruffleBoundary

@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.api;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -72,7 +73,7 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
         TruffleContext truffleContext = context.environment().getContext().getParent();
         Object prev = truffleContext.enter(this);
         try {
-            return InteropLibrary.getUncached().execute(executable, frame.getArguments());
+            return InteropLibrary.getUncached().execute(executable, WasmArguments.getArguments(frame.getArguments()));
         } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
             errorBranch.enter();
             throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Call failed: %s", getMessage(e));

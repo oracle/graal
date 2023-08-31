@@ -45,6 +45,7 @@ import java.io.IOException;
 import java.nio.file.Path;
 
 import org.graalvm.wasm.Assert;
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
@@ -75,9 +76,10 @@ public class SaveBinaryFileNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        final int filenamePtr = (int) frame.getArguments()[0];
-        final int dataPtr = (int) frame.getArguments()[1];
-        final int size = (int) frame.getArguments()[2];
+        Object[] args = frame.getArguments();
+        final int filenamePtr = (int) WasmArguments.getArgument(args, 0);
+        final int dataPtr = (int) WasmArguments.getArgument(args, 1);
+        final int size = (int) WasmArguments.getArgument(args, 2);
         saveFile(filenamePtr, dataPtr, size);
         return WasmConstant.VOID;
     }
