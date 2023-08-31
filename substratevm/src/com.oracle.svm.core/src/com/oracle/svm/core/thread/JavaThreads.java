@@ -114,11 +114,15 @@ public final class JavaThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static ThreadGroup getRawThreadGroup(Thread thread) {
         Target_java_lang_Thread t = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
-        Target_java_lang_Thread_FieldHolder holder = t.holder;
-        if (holder != null) {
-            return holder.group;
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            Target_java_lang_Thread_FieldHolder holder = t.holder;
+            if (holder != null) {
+                return holder.group;
+            }
+            return null;
+        } else {
+            return t.group;
         }
-        return null;
     }
 
     /**
