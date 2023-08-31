@@ -181,6 +181,7 @@ public final class GCImpl implements GC {
         UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
         data.setCauseId(cause.getId());
         data.setRequestingEpoch(getCollectionEpoch());
+        data.setCompleteCollectionCount(GCImpl.getGCImpl().getAccounting().getCompleteCollectionCount());
         data.setRequestingNanoTime(System.nanoTime());
         data.setForceFullGC(forceFullGC);
         enqueueCollectOperation(data);
@@ -1313,7 +1314,12 @@ public final class GCImpl implements GC {
         @Override
         protected boolean hasWork(NativeVMOperationData data) {
             CollectionVMOperationData d = (CollectionVMOperationData) data;
-            return HeapImpl.getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
+            if (d.getForceFullGC()) {
+                /* Skip if another full GC happened in the meanwhile. */
+                return GCImpl.getGCImpl().getAccounting().getCompleteCollectionCount() == d.getCompleteCollectionCount();
+            }
+            /* Skip if any other GC happened in the meanwhile. */
+            return GCImpl.getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());
         }
     }
 
@@ -1342,6 +1348,12 @@ public final class GCImpl implements GC {
 
         @RawField
         void setForceFullGC(boolean value);
+
+        @RawField
+        long getCompleteCollectionCount();
+
+        @RawField
+        void setCompleteCollectionCount(long value);
 
         @RawField
         boolean getOutOfMemory();
