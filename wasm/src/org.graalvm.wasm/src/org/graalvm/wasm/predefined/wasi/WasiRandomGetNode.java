@@ -65,7 +65,7 @@ public class WasiRandomGetNode extends WasmBuiltinRootNode {
     }
 
     @CompilerDirectives.TruffleBoundary
-    private Object randomGet(WasmMemory memory, int buf, int size) {
+    private static int randomGet(WasmMemory memory, int buf, int size) {
         byte[] randomData = new byte[size];
         ThreadLocalRandom.current().nextBytes(randomData);
         memory.initialize(randomData, 0, buf, size);
