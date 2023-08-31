@@ -1179,20 +1179,16 @@ public final class JNIFunctions {
         static class JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVM vm) {
-                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true) != CEntryPointErrors.NO_ERROR) {
-                    return JNIErrors.JNI_ERR();
-                }
-                return CEntryPointErrors.NO_ERROR;
+                int code = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true);
+                return convertCEntryPointErrorToJNIError(code);
             }
         }
 
         static class JNIJavaVMEnterAttachThreadManualJavaThreadPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVM vm) {
-                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, false) != CEntryPointErrors.NO_ERROR) {
-                    return JNIErrors.JNI_ERR();
-                }
-                return CEntryPointErrors.NO_ERROR;
+                int code = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, false);
+                return convertCEntryPointErrorToJNIError(code);
             }
         }
 
@@ -1257,6 +1253,30 @@ public final class JNIFunctions {
                 int error = (t instanceof OutOfMemoryError) ? JNIErrors.JNI_ENOMEM() : JNIErrors.JNI_ERR();
                 CEntryPointActions.leaveDetachThread();
                 return error;
+            }
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        static int convertCEntryPointErrorToJNIError(int code) {
+            switch (code) {
+                case CEntryPointErrors.NO_ERROR:
+                    return JNIErrors.JNI_OK();
+                case CEntryPointErrors.UNSPECIFIED:
+                case CEntryPointErrors.ARGUMENT_PARSING_FAILED:
+                    return JNIErrors.JNI_ERR();
+                case CEntryPointErrors.MAP_HEAP_FAILED:
+                case CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED:
+                case CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE:
+                case CEntryPointErrors.ALLOCATION_FAILED:
+                    return JNIErrors.JNI_ENOMEM();
+                default: {
+                    // return a (non-JNI) error that is more helpful for diagnosis
+                    int result = -1000000000 - code;
+                    if (result == JNIErrors.JNI_OK() || result >= -100) {
+                        return JNIErrors.JNI_ERR(); // non-negative or potential actual JNI error
+                    }
+                    return result;
+                }
             }
         }
 
