@@ -448,6 +448,44 @@ local devkits = graal_common.devkits;
   full_vm_build_darwin_amd64:   self.ruby_python_vm_build_darwin_amd64   + self.fastr_darwin,
   full_vm_build_darwin_aarch64: self.ruby_python_vm_build_darwin_aarch64,
 
+  graalvm_complete_build_deps(edition, os, arch):
+      local java_deps(edition) =
+        if (edition == 'ce' || edition == 'ee') then {
+            downloads+: {
+              JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17'],
+              EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+            }
+          }
+        else
+          error 'Unknown edition: ' + edition;
+
+      if (os == 'linux') then
+        if (arch == 'amd64') then
+          # Linux/AMD64
+          java_deps(edition) + self.full_vm_build_linux_amd64
+        else if (arch == 'aarch64') then
+          # Linux/AARCH64
+          java_deps(edition) + self.full_vm_build_linux_aarch64
+        else
+          error 'Unknown linux arch: ' + arch
+      else if (os == 'darwin') then
+        if (arch == 'amd64') then
+          # Darwin/AMD64
+          java_deps(edition) + self.full_vm_build_darwin_amd64
+        else if (arch == 'aarch64') then
+          # Darwin/AARCH64
+          java_deps(edition) + self.full_vm_build_darwin_aarch64
+        else
+          error 'Unknown darwin arch: ' + arch
+      else if (os == 'windows') then
+        if (arch == 'amd64') then
+          # Windows/AMD64
+          java_deps(edition) + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows
+        else
+          error 'Unknown windows arch: ' + arch
+      else
+        error 'Unknown os: ' + os,
+
   # for cases where a maven package is not easily accessible
   maven_download_unix: {
     downloads+: {
@@ -455,6 +493,141 @@ local devkits = graal_common.devkits;
     },
     environment+: {
       PATH: '$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH',
+    },
+  },
+
+  maven_deploy_base_functions: {
+    dynamic_ce_imports(os, arch)::
+      local legacy_imports = '/tools,/compiler,/graal-js,/espresso,/substratevm';
+      local ce_windows_imports = legacy_imports + ',/wasm,/sulong,graalpython';
+      local non_windows_imports = ',truffleruby';
+
+      if (os == 'windows') then
+        ce_windows_imports
+      else
+        ce_windows_imports + non_windows_imports,
+
+    ce_suites(os, arch)::
+      local legacy_suites = [
+        '--suite', 'compiler',
+        '--suite', 'truffle',
+        '--suite', 'sdk',
+        '--suite', 'tools',
+        '--suite', 'regex',
+        '--suite', 'graal-js',
+        '--suite', 'espresso',
+        '--suite', 'substratevm',
+      ];
+      local ce_windows_suites = legacy_suites + [
+        '--suite', 'wasm',
+        '--suite', 'sulong',
+        '--suite', 'graalpython'
+      ];
+      local non_windows_suites = [
+        '--suite', 'truffleruby',
+      ];
+
+      if (os == 'windows') then
+        ce_windows_suites
+      else
+        ce_windows_suites + non_windows_suites,
+
+    ce_licenses()::
+      local legacy_licenses = 'GPLv2-CPE,GPLv2,UPL,MIT,ICU';
+      local ce_licenses = legacy_licenses + ',PSF-License,BSD-simplified,BSD-new,EPL-2.0';
+      ce_licenses,
+
+    legacy_mx_args:: ['--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
+    mx_cmd_base(os, arch):: ['mx'] + vm.maven_deploy_base_functions.dynamic_imports(os, arch) + self.legacy_mx_args,
+    mx_cmd_base_only_native(os, arch):: ['mx', '--dynamicimports', '/substratevm'] + self.legacy_mx_args,
+
+    only_native_dists:: 'TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE',
+
+    build(os, arch, mx_args=[], build_args=[]):: [
+      self.mx_cmd_base(os, arch) + mx_args + ['build'] + build_args,
+    ],
+
+    pd_layouts_archive_name(platform):: 'pd-layouts-' + platform + '.tgz',
+
+    pd_layouts_artifact_name(platform, dry_run):: 'pd-layouts-' + (if dry_run then 'dry-run-' else '') + platform,
+
+    mvn_args: ['maven-deploy', '--tags=public', '--all-distribution-types', '--validate=full', '--version-suite=vm'],
+    mvn_args_only_native: self.mvn_args + ['--all-suites', '--only', self.only_native_dists],
+
+    main_platform:: 'linux-amd64',
+    other_platforms:: ['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64'],
+    is_main_platform(os, arch):: os + '-' + arch == self.main_platform,
+
+    deploy(os, arch, dry_run, repo_strings):: [
+      self.mx_cmd_base(os, arch)
+      + vm.maven_deploy_base_functions.suites(os, arch)
+      + self.mvn_args
+      + vm.maven_deploy_base_functions.licenses()
+      + (if dry_run then ['--dry-run'] else [])
+      + repo_strings,
+    ],
+
+    deploy_only_native(os, arch, dry_run, repo_strings):: [
+      self.mx_cmd_base_only_native(os, arch)
+      + self.mvn_args_only_native
+      + vm.maven_deploy_base_functions.licenses()
+      + (if dry_run then ['--dry-run'] else [])
+      + repo_strings,
+    ],
+
+    run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo)::
+      if (self.is_main_platform(os, arch)) then (
+        [
+          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name(platform)] for platform in self.other_platforms
+        ]
+        + self.build(os, arch, mx_args=['--multi-platform-layout-directories=' + std.join(',', [self.main_platform] + self.other_platforms)], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}'])  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
+        + self.deploy(os, arch, dry_run, [remote_mvn_repo])
+        + [
+          # resource bundle
+          ['set-export', 'VERSION_STRING', self.mx_cmd_base(os, arch) + ['--quiet', 'graalvm-version']],
+          ['set-export', 'LOCAL_MAVEN_REPO_REL_PATH', 'maven-resource-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
+          ['set-export', 'LOCAL_MAVEN_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REPO_REL_PATH}']],
+        ]
+        + self.deploy(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+        + (
+          if (dry_run) then
+            [['echo', 'Skipping the archiving and the final maven deployment']]
+          else [
+            ['set-export', 'MAVEN_RESOURCE_BUNDLE', '${LOCAL_MAVEN_REPO_REL_PATH}'],
+            ['mx', 'build', '--targets', 'MAVEN_RESOURCE_BUNDLE'],
+            ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
+          ]
+        )
+      ) else (
+        self.build(os, arch, build_args=['--targets=' + self.only_native_dists + ',{PLATFORM_DEPENDENT_LAYOUT_DIR_DISTRIBUTIONS}'])
+        + (
+          if (vm.maven_deploy_base_functions.edition == 'ce') then
+            self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
+          else
+            [['echo', 'Skipping the deployment of ' + self.only_native_dists + ': It is already deployed by the ce job']]
+        )
+        + [self.mx_cmd_base(os, arch) + ['archive-pd-layouts', self.pd_layouts_archive_name(os + '-' + arch)]]
+      ),
+
+    base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo):: {
+      run: $.maven_deploy_base_functions.run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo),
+    } + if (self.is_main_platform(os, arch)) then {
+       requireArtifacts+: [
+         {
+           name: $.maven_deploy_base_functions.pd_layouts_artifact_name(platform, dry_run),
+           dir: vm.vm_dir,
+           autoExtract: true,
+         } for platform in $.maven_deploy_base_functions.other_platforms
+       ],
+     }
+    else {
+      publishArtifacts+: [
+        {
+           name: $.maven_deploy_base_functions.pd_layouts_artifact_name(os + '-' + arch, dry_run),
+           dir: vm.vm_dir,
+           patterns: [$.maven_deploy_base_functions.pd_layouts_archive_name(os + '-' + arch)],
+        },
+      ],
     },
   },
 
