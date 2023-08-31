@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -56,11 +57,11 @@ public class EmscriptenMemcpyBigNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
-        assert args.length == 3;
+        assert WasmArguments.getArgumentCount(args) == 3;
 
-        int dest = (int) args[0];
-        int src = (int) args[1];
-        int num = (int) args[2];
+        int dest = (int) WasmArguments.getArgument(args, 0);
+        int src = (int) WasmArguments.getArgument(args, 1);
+        int num = (int) WasmArguments.getArgument(args, 2);
 
         WasmMemory memory = instance(context).memory(0);
         memory.copyFrom(memory, src, dest, num);

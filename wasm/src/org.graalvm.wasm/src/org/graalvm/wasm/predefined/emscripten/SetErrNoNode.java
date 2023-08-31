@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -56,9 +57,9 @@ public class SetErrNoNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
-        assert args.length == 1;
+        assert WasmArguments.getArgumentCount(args) == 1;
 
-        int value = (int) args[0];
+        int value = (int) WasmArguments.getArgument(args, 0);
 
         // TODO: Get address (3120) via call to `___errno_location` WebAssembly function.
         WasmMemory memory = instance(context).memory(0);

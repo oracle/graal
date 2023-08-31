@@ -42,6 +42,7 @@ package org.graalvm.wasm.predefined.spectest;
 
 import java.io.PrintStream;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
@@ -59,7 +60,7 @@ public class PrintNode extends WasmBuiltinRootNode {
 
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
-        for (final Object arg : frame.getArguments()) {
+        for (final Object arg : WasmArguments.getArguments(frame.getArguments())) {
             print(arg);
         }
         return WasmConstant.VOID;

@@ -42,6 +42,7 @@ package org.graalvm.wasm.predefined.wasi;
 
 import java.util.Map;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -61,7 +62,7 @@ public final class WasiEnvironSizesGetNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return environSizesGet((int) args[0], (int) args[1]);
+        return environSizesGet((int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary

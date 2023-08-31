@@ -51,6 +51,8 @@ import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 
+import org.graalvm.wasm.WasmArguments;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
@@ -191,9 +193,9 @@ public class WasmRootNode extends RootNode {
     private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
         int paramCount = function.paramCount();
-        assert args.length == paramCount : "Expected number of params " + paramCount + ", actual " + args.length;
+        assert WasmArguments.getArgumentCount(args) == paramCount : "Expected number of params " + paramCount + ", actual " + args.length;
         for (int i = 0; i != paramCount; ++i) {
-            final Object arg = args[i];
+            final Object arg = WasmArguments.getArgument(args, i);
             byte type = function.localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:

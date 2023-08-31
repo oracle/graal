@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -60,7 +61,16 @@ public final class WasiPathOpenNode extends WasmBuiltinRootNode {
     @SuppressWarnings("unused")
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return pathOpen(context, (int) args[0], (int) args[1], (int) args[2], (int) args[3], (short) (int) args[4], (long) args[5], (long) args[6], (short) (int) args[7], (int) args[8]);
+        return pathOpen(context,
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1),
+                        (int) WasmArguments.getArgument(args, 2),
+                        (int) WasmArguments.getArgument(args, 3),
+                        (short) (int) WasmArguments.getArgument(args, 4),
+                        (long) WasmArguments.getArgument(args, 5),
+                        (long) WasmArguments.getArgument(args, 6),
+                        (short) (int) WasmArguments.getArgument(args, 7),
+                        (int) WasmArguments.getArgument(args, 8));
     }
 
     @TruffleBoundary

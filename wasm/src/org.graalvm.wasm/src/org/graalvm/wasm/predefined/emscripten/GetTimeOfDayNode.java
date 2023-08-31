@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -57,9 +58,9 @@ public class GetTimeOfDayNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         Object[] args = frame.getArguments();
-        assert args.length == 2;
+        assert WasmArguments.getArgumentCount(args) == 2;
 
-        int ptr = (int) args[0];
+        int ptr = (int) WasmArguments.getArgument(args, 0);
 
         long now = getCurrentTime();
         WasmMemory memory = instance(context).memory(0);

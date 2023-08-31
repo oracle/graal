@@ -40,6 +40,7 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
@@ -59,7 +60,7 @@ public final class WasiFdFdstatSetFlagsNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return fdFdstatSetFlags(context, (int) args[0], (short) (int) args[1]);
+        return fdFdstatSetFlags(context, (int) WasmArguments.getArgument(args, 0), (short) (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
