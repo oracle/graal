@@ -137,7 +137,9 @@ public final class WasmContext {
 
     @TruffleBoundary
     public WasmInstance lookupModuleInstance(WasmModule module) {
-        return moduleInstances.get(module.name());
+        WasmInstance instance = moduleInstances.get(module.name());
+        assert instance == null || instance.module() == module;
+        return instance;
     }
 
     @TruffleBoundary

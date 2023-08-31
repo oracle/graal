@@ -40,28 +40,30 @@
  */
 package org.graalvm.wasm.nodes;
 
-import static org.graalvm.wasm.nodes.WasmFrame.popLong;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.popInt;
+import static org.graalvm.wasm.nodes.WasmFrame.popLong;
 import static org.graalvm.wasm.nodes.WasmFrame.popReference;
-import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
+import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 
 import org.graalvm.wasm.WasmArguments;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -84,17 +86,42 @@ public class WasmRootNode extends RootNode {
         return WasmContext.get(this);
     }
 
-    public void tryInitialize(WasmContext context) {
+    /**
+     * Overridden by {@link org.graalvm.wasm.predefined.WasmBuiltinRootNode}.
+     */
+    protected WasmModule module() {
+        return function.module();
+    }
+
+    @SuppressWarnings("static-method")
+    public final void tryInitialize(WasmContext context, WasmInstance instance) {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        context.linker().tryLink(function.instance(context));
+        context.linker().tryLink(instance);
+    }
+
+    protected final WasmInstance instance(VirtualFrame frame, WasmContext context) {
+        final WasmInstance moduleInstance = WasmArguments.getModuleInstance(frame.getArguments());
+        assert moduleInstance == context.lookupModuleInstance(module());
+        return moduleInstance;
+    }
+
+    protected final WasmInstance instance(VirtualFrame frame) {
+        final WasmInstance moduleInstance = WasmArguments.getModuleInstance(frame.getArguments());
+        assert moduleInstance == WasmContext.get(this).lookupModuleInstance(module());
+        return moduleInstance;
+    }
+
+    protected final WasmMemory memory(VirtualFrame frame) {
+        return instance(frame).memory(0);
     }
 
     @Override
     public final Object execute(VirtualFrame frame) {
+        assert WasmArguments.isValid(frame.getArguments());
         final WasmContext context = getContext();
-        tryInitialize(context);
+        tryInitialize(context, instance(frame, context));
         return executeWithContext(frame, context);
     }
 
@@ -280,7 +307,7 @@ public class WasmRootNode extends RootNode {
         if (sourceSection == null) {
             sourceSection = function.getSourceSection();
             if (sourceSection == null) {
-                sourceSection = function.module().source().createUnavailableSection();
+                sourceSection = module().source().createUnavailableSection();
             }
         }
         return sourceSection;

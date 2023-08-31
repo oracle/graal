@@ -44,6 +44,7 @@ import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
@@ -60,7 +61,7 @@ public class WasiPathSymlinkNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return pathSymlink(context,
+        return pathSymlink(context, memory(frame),
                         (int) WasmArguments.getArgument(args, 0),
                         (int) WasmArguments.getArgument(args, 1),
                         (int) WasmArguments.getArgument(args, 2),
@@ -69,12 +70,12 @@ public class WasiPathSymlinkNode extends WasmBuiltinRootNode {
     }
 
     @TruffleBoundary
-    private int pathSymlink(WasmContext context, int oldPathAddress, int oldPathLength, int fd, int newPathAddress, int newPathLength) {
+    private int pathSymlink(WasmContext context, WasmMemory memory, int oldPathAddress, int oldPathLength, int fd, int newPathAddress, int newPathLength) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.pathSymlink(this, memory(), oldPathAddress, oldPathLength, newPathAddress, newPathLength).ordinal();
+        return handle.pathSymlink(this, memory, oldPathAddress, oldPathLength, newPathAddress, newPathLength).ordinal();
     }
 
     @Override

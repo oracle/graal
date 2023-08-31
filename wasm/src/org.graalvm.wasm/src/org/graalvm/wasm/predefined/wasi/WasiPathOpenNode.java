@@ -44,6 +44,7 @@ import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
@@ -61,7 +62,7 @@ public final class WasiPathOpenNode extends WasmBuiltinRootNode {
     @SuppressWarnings("unused")
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return pathOpen(context,
+        return pathOpen(context, memory(frame),
                         (int) WasmArguments.getArgument(args, 0),
                         (int) WasmArguments.getArgument(args, 1),
                         (int) WasmArguments.getArgument(args, 2),
@@ -74,12 +75,13 @@ public final class WasiPathOpenNode extends WasmBuiltinRootNode {
     }
 
     @TruffleBoundary
-    private int pathOpen(WasmContext context, int fd, int dirflags, int pathStart, int pathLength, short oflags, long fsRightsBase, long fsRightsInheriting, short fdflags, int fdAddress) {
+    private int pathOpen(WasmContext context, WasmMemory memory, int fd, int dirflags, int pathStart, int pathLength,
+                    short oflags, long fsRightsBase, long fsRightsInheriting, short fdflags, int fdAddress) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.pathOpen(this, memory(), dirflags, pathStart, pathLength, oflags, fsRightsBase, fsRightsInheriting, fdflags, fdAddress).ordinal();
+        return handle.pathOpen(this, memory, dirflags, pathStart, pathLength, oflags, fsRightsBase, fsRightsInheriting, fdflags, fdAddress).ordinal();
     }
 
     @Override

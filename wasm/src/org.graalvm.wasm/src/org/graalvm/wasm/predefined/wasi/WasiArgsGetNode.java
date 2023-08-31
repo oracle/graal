@@ -44,6 +44,7 @@ import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
@@ -59,19 +60,19 @@ public final class WasiArgsGetNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return argsGet((int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return argsGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int argsGet(int argvAddress, int argvBuffAddress) {
+    private int argsGet(WasmMemory memory, int argvAddress, int argvBuffAddress) {
         final String[] arguments = getContext().environment().getApplicationArguments();
         int argvPointer = argvAddress;
         int argvBuffPointer = argvBuffAddress;
         for (final String argument : arguments) {
-            memory().store_i32(this, argvPointer, argvBuffPointer);
+            memory.store_i32(this, argvPointer, argvBuffPointer);
             argvPointer += 4;
-            argvBuffPointer += memory().writeString(this, argument, argvBuffPointer);
-            memory().store_i32_8(this, argvBuffPointer, (byte) 0);
+            argvBuffPointer += memory.writeString(this, argument, argvBuffPointer);
+            memory.store_i32_8(this, argvBuffPointer, (byte) 0);
             ++argvBuffPointer;
 
         }

@@ -44,6 +44,7 @@ import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
@@ -60,16 +61,20 @@ public final class WasiFdReadNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return fdRead(context, (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1), (int) WasmArguments.getArgument(args, 2), (int) WasmArguments.getArgument(args, 3));
+        return fdRead(context, memory(frame),
+                        (int) WasmArguments.getArgument(args, 0),
+                        (int) WasmArguments.getArgument(args, 1),
+                        (int) WasmArguments.getArgument(args, 2),
+                        (int) WasmArguments.getArgument(args, 3));
     }
 
     @TruffleBoundary
-    private int fdRead(WasmContext context, int fd, int iov, int iovcnt, int sizeAddress) {
+    private int fdRead(WasmContext context, WasmMemory memory, int fd, int iov, int iovcnt, int sizeAddress) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.read(this, memory(), iov, iovcnt, sizeAddress).ordinal();
+        return handle.read(this, memory, iov, iovcnt, sizeAddress).ordinal();
     }
 
     @Override

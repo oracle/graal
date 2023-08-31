@@ -60,11 +60,11 @@ public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return argsSizesGet((int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return argsSizesGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int argsSizesGet(int argcAddress, int argvBufSizeAddress) {
+    private int argsSizesGet(WasmMemory memory, int argcAddress, int argvBufSizeAddress) {
         final String[] arguments = getContext().environment().getApplicationArguments();
         final int argc = arguments.length;
         int argvBufSize = 0;
@@ -73,8 +73,8 @@ public final class WasiArgsSizesGetNode extends WasmBuiltinRootNode {
             argvBufSize += 1; // extra byte needed for the trailing null character
         }
 
-        memory().store_i32(this, argcAddress, argc);
-        memory().store_i32(this, argvBufSizeAddress, argvBufSize);
+        memory.store_i32(this, argcAddress, argc);
+        memory.store_i32(this, argvBufSizeAddress, argvBufSize);
         return Errno.Success.ordinal();
     }
 

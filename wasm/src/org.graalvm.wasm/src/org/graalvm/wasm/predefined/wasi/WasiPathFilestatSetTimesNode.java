@@ -44,6 +44,7 @@ import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
@@ -59,7 +60,7 @@ public class WasiPathFilestatSetTimesNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return pathFilestatSetTimeNode(context,
+        return pathFilestatSetTimeNode(context, memory(frame),
                         (int) WasmArguments.getArgument(args, 0),
                         (int) WasmArguments.getArgument(args, 1),
                         (int) WasmArguments.getArgument(args, 2),
@@ -70,12 +71,12 @@ public class WasiPathFilestatSetTimesNode extends WasmBuiltinRootNode {
     }
 
     @TruffleBoundary
-    private int pathFilestatSetTimeNode(WasmContext context, int fd, int flags, int pathAddress, int pathLength, long atim, long mtim, int fstFlags) {
+    private int pathFilestatSetTimeNode(WasmContext context, WasmMemory memory, int fd, int flags, int pathAddress, int pathLength, long atim, long mtim, int fstFlags) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.pathFilestatSetTimes(this, memory(), flags, pathAddress, pathLength, atim, mtim, fstFlags).ordinal();
+        return handle.pathFilestatSetTimes(this, memory, flags, pathAddress, pathLength, atim, mtim, fstFlags).ordinal();
     }
 
     @Override

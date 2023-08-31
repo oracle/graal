@@ -43,22 +43,55 @@ package org.graalvm.wasm;
 
 public final class WasmArguments {
 
-    public static final int RUNTIME_ARGUMENT_COUNT = 0;
+    public static final int RUNTIME_ARGUMENT_COUNT = 1;
+
+    private static final int MODULE_INSTANCE_ARGUMENT_INDEX = 0;
 
     private WasmArguments() {
     }
 
-    public static Object getArgument(Object[] arguments, int index) {
-        return arguments[index + RUNTIME_ARGUMENT_COUNT];
+    public static Object[] createEmpty(int formalArgumentCount) {
+        return new Object[RUNTIME_ARGUMENT_COUNT + formalArgumentCount];
+    }
+
+    public static Object[] create(Object instance, Object... formalArguments) {
+        Object[] arguments = new Object[RUNTIME_ARGUMENT_COUNT + formalArguments.length];
+        arguments[MODULE_INSTANCE_ARGUMENT_INDEX] = instance;
+        setArguments(arguments, 0, formalArguments);
+        return arguments;
     }
 
     public static int getArgumentCount(Object[] arguments) {
         return arguments.length - RUNTIME_ARGUMENT_COUNT;
     }
 
+    public static Object getArgument(Object[] arguments, int index) {
+        return arguments[index + RUNTIME_ARGUMENT_COUNT];
+    }
+
+    public static void setArgument(Object[] arguments, int index, Object value) {
+        arguments[index + RUNTIME_ARGUMENT_COUNT] = value;
+    }
+
     public static Object[] getArguments(Object[] arguments) {
         Object[] userArguments = new Object[arguments.length - RUNTIME_ARGUMENT_COUNT];
         System.arraycopy(arguments, RUNTIME_ARGUMENT_COUNT, userArguments, 0, userArguments.length);
         return userArguments;
+    }
+
+    public static void setArguments(Object[] arguments, int index, Object[] formalArguments) {
+        System.arraycopy(formalArguments, 0, arguments, RUNTIME_ARGUMENT_COUNT + index, formalArguments.length);
+    }
+
+    public static WasmInstance getModuleInstance(Object[] arguments) {
+        return (WasmInstance) arguments[MODULE_INSTANCE_ARGUMENT_INDEX];
+    }
+
+    public static void setModuleInstance(Object[] arguments, WasmInstance instance) {
+        arguments[MODULE_INSTANCE_ARGUMENT_INDEX] = instance;
+    }
+
+    public static boolean isValid(Object[] arguments) {
+        return arguments.length >= RUNTIME_ARGUMENT_COUNT && arguments[0] instanceof WasmInstance;
     }
 }

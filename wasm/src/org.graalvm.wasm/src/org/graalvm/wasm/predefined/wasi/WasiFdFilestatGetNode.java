@@ -44,6 +44,7 @@ import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
@@ -60,16 +61,16 @@ public final class WasiFdFilestatGetNode extends WasmBuiltinRootNode {
     @Override
     public Object executeWithContext(VirtualFrame frame, WasmContext context) {
         final Object[] args = frame.getArguments();
-        return fdFilestatGet(context, (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
+        return fdFilestatGet(context, memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int fdFilestatGet(WasmContext context, int fd, int bufferAddress) {
+    private int fdFilestatGet(WasmContext context, WasmMemory memory, int fd, int bufferAddress) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.filestatGet(this, memory(), bufferAddress).ordinal();
+        return handle.filestatGet(this, memory, bufferAddress).ordinal();
     }
 
     @Override
