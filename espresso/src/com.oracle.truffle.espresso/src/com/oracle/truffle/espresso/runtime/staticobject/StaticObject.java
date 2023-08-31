@@ -20,7 +20,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime;
+package com.oracle.truffle.espresso.runtime.staticobject;
 
 import java.lang.reflect.Array;
 
@@ -42,6 +42,8 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.impl.SuppressFBWarnings;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.BaseInterop;
 import com.oracle.truffle.espresso.runtime.dispatch.staticobject.SharedInterop;
 
@@ -300,7 +302,7 @@ public class StaticObject implements TruffleObject, Cloneable {
         return Array.getLength(getArray(language));
     }
 
-    final Object cloneWrappedArray(EspressoLanguage language) {
+    public final Object cloneWrappedArray(EspressoLanguage language) {
         checkNotForeign();
         assert isArray();
         Object array = getArray(language);

@@ -28,7 +28,7 @@ import static com.oracle.truffle.espresso.runtime.Classpath.JAVA_BASE;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.ModulesHelperVM;
 
 @EspressoSubstitutions
