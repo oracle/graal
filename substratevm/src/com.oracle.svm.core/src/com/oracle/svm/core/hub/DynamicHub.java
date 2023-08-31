@@ -1059,7 +1059,18 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         return getReflectionFactory().copyMethod(method);
     }
 
-    private void checkMethod(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly) throws NoSuchMethodException {
+    private void checkMethod(String methodName, Class<?>[] parameterTypes, Method method, boolean publicOnly) throws NoSuchMethodException {
+        if (CONSTRUCTOR_NAME.equals(methodName)) {
+            throw new NoSuchMethodException(methodToString(methodName, parameterTypes));
+        }
+        checkExecutable(methodName, parameterTypes, method, publicOnly);
+    }
+
+    private void checkConstructor(Class<?>[] parameterTypes, Constructor<?> constructor, boolean publicOnly) throws NoSuchMethodException {
+        checkExecutable(CONSTRUCTOR_NAME, parameterTypes, constructor, publicOnly);
+    }
+
+    private void checkExecutable(String methodName, Class<?>[] parameterTypes, Executable method, boolean publicOnly) throws NoSuchMethodException {
         boolean throwMissingErrors = throwMissingRegistrationErrors();
         Class<?> clazz = DynamicHub.toClass(this);
         if (method == null) {
@@ -1238,7 +1249,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                 candidate = constructor;
             }
         }
-        checkMethod("<init>", parameterTypes, candidate, which == Member.PUBLIC);
+        checkConstructor(parameterTypes, candidate, which == Member.PUBLIC);
         return candidate;
     }
 
