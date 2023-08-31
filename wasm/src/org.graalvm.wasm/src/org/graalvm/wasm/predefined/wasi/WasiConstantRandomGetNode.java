@@ -71,7 +71,7 @@ public class WasiConstantRandomGetNode extends WasmBuiltinRootNode {
 
     @SuppressFBWarnings(value = "DMI_RANDOM_USED_ONLY_ONCE", justification = "This is a testing class only")
     @CompilerDirectives.TruffleBoundary
-    private Object randomGet(WasmMemory memory, int buf, int size) {
+    private static int randomGet(WasmMemory memory, int buf, int size) {
         byte[] randomData = new byte[size];
         new Random(SEED).nextBytes(randomData);
         memory.initialize(randomData, 0, buf, size);
