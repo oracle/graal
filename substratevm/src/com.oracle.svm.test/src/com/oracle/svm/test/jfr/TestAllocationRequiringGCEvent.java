@@ -33,9 +33,7 @@ import java.util.List;
 import org.junit.Test;
 
 import com.oracle.svm.core.NeverInline;
-import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.core.util.UnsignedUtils;
 
 import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
@@ -45,8 +43,6 @@ public class TestAllocationRequiringGCEvent extends JfrRecordingTest {
     public void test() throws Throwable {
         String[] events = new String[]{JfrEvent.AllocationRequiringGC.getName()};
         Recording recording = startRecording(events);
-
-        int alignedHeapChunkSize = UnsignedUtils.safeToInt(HeapParameters.getAlignedHeapChunkSize());
 
         /* Allocate 256 arrays with 1 MB each. */
         for (int i = 0; i < 256; i++) {

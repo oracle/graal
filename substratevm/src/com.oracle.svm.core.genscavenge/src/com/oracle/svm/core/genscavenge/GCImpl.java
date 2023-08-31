@@ -81,6 +81,7 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
+import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -144,13 +145,13 @@ public final class GCImpl implements GC {
         collect(cause, false);
     }
 
-    public void maybeCollectOnAllocation(UnsignedWord size) {
+    public void maybeCollectOnAllocation(UnsignedWord allocationSize) {
         boolean outOfMemory = false;
-        long startTicks = JfrTicks.elapsedTicks();
         if (hasNeverCollectPolicy()) {
             UnsignedWord edenUsed = HeapImpl.getAccounting().getEdenUsedBytes();
             outOfMemory = edenUsed.aboveThan(GCImpl.getPolicy().getMaximumHeapSize());
         } else if (getPolicy().shouldCollectOnAllocation()) {
+            AllocationRequiringGCEvent.emit(getCollectionEpoch(), allocationSize);
             outOfMemory = collectWithoutAllocating(GenScavengeGCCause.OnAllocation, false);
         }
         if (outOfMemory) {
@@ -184,7 +185,7 @@ public final class GCImpl implements GC {
         UnmanagedMemoryUtil.fill((Pointer) data, WordFactory.unsigned(size), (byte) 0);
         data.setCauseId(cause.getId());
         data.setRequestingEpoch(getCollectionEpoch());
-        data.setCompleteCollectionCount(GCImpl.getGCImpl().getAccounting().getCompleteCollectionCount());
+        data.setCompleteCollectionCount(GCImpl.getAccounting().getCompleteCollectionCount());
         data.setRequestingNanoTime(System.nanoTime());
         data.setForceFullGC(forceFullGC);
         enqueueCollectOperation(data);
@@ -199,7 +200,8 @@ public final class GCImpl implements GC {
     /** The body of the VMOperation to do the collection. */
     private void collectOperation(CollectionVMOperationData data) {
         assert VMOperation.isGCInProgress();
-        assert getCollectionEpoch().equal(data.getRequestingEpoch());
+        assert getCollectionEpoch().equal(data.getRequestingEpoch()) ||
+                        data.getForceFullGC() && GCImpl.getAccounting().getCompleteCollectionCount() == data.getCompleteCollectionCount() : "unnecessary GC?";
 
         timers.mutator.closeAt(data.getRequestingNanoTime());
         timers.resetAllExceptMutator();
@@ -1209,7 +1211,7 @@ public final class GCImpl implements GC {
             CollectionVMOperationData d = (CollectionVMOperationData) data;
             if (d.getForceFullGC()) {
                 /* Skip if another full GC happened in the meanwhile. */
-                return GCImpl.getGCImpl().getAccounting().getCompleteCollectionCount() == d.getCompleteCollectionCount();
+                return GCImpl.getAccounting().getCompleteCollectionCount() == d.getCompleteCollectionCount();
             }
             /* Skip if any other GC happened in the meanwhile. */
             return GCImpl.getGCImpl().getCollectionEpoch().equal(d.getRequestingEpoch());

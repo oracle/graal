@@ -77,9 +77,10 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
         guaranteeSizeParametersInitialized();
         UnsignedWord edenUsedBytes = HeapImpl.getAccounting().getEdenUsedBytes();
         if (fullGC) {
-            // For full GC request, we slightly lower the threshold to increase their
-            // probability to be performed, as they are supposed to be issued at the lowest
-            // memory usage point.
+            /*
+             * For full GC request, we slightly lower the threshold to increase their probability to
+             * be performed, as they are supposed to be issued at the lowest memory usage point.
+             */
             edenUsedBytes = edenUsedBytes.add(FULL_GC_BONUS);
         }
         return edenUsedBytes.aboveOrEqual(WordFactory.unsigned(Options.ExpectedEdenSize.getValue())) ||

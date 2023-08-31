@@ -32,8 +32,8 @@ public interface GC {
     void collectCompletely(GCCause cause);
 
     /**
-     * Notify the GC that it might be a good time to do a GC. The final decision is up to the GC and
-     * its policy.
+     * Notify the GC that it might be a good time to do a collection. The final decision is up to
+     * the GC and its policy.
      */
     void collectionHint(boolean fullGC);
 

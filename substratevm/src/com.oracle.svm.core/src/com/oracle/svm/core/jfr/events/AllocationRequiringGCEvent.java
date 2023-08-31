@@ -27,6 +27,7 @@
 package com.oracle.svm.core.jfr.events;
 
 import org.graalvm.nativeimage.StackValue;
+import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.HasJfrSupport;
@@ -34,26 +35,27 @@ import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
+import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 
 public class AllocationRequiringGCEvent {
-    public static void emit(long startTicks, long gcId, org.graalvm.word.UnsignedWord size) {
+    public static void emit(UnsignedWord gcId, UnsignedWord size) {
         if (HasJfrSupport.get()) {
-            emit0(startTicks, gcId, size);
+            emit0(gcId, size);
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emit0(long startTicks, long gcId, org.graalvm.word.UnsignedWord size) {
+    private static void emit0(UnsignedWord gcId, UnsignedWord size) {
         if (JfrEvent.AllocationRequiringGC.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.AllocationRequiringGC);
-            JfrNativeEventWriter.putLong(data, startTicks);
+            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.AllocationRequiringGC, 0));
-            JfrNativeEventWriter.putLong(data, gcId);
+            JfrNativeEventWriter.putLong(data, gcId.rawValue());
             JfrNativeEventWriter.putLong(data, size.rawValue());
             JfrNativeEventWriter.endSmallEvent(data);
         }

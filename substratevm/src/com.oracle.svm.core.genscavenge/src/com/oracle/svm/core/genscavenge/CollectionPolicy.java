@@ -122,9 +122,8 @@ public interface CollectionPolicy {
     boolean shouldCollectOnAllocation();
 
     /**
-     * Return true if a user-requested GC (e.g., call to {@link System#gc()} or
-     * {@link org.graalvm.compiler.serviceprovider.GraalServices#notifyLowMemoryPoint(boolean)})
-     * should be performed.
+     * Called when an application provides a hint to the GC that it might be a good time to do a
+     * collection. Returns true if the GC decides to do a collection.
      */
     boolean shouldCollectOnHint(boolean fullGC);
 
