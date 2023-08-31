@@ -70,12 +70,14 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 
 @NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode {
     private SourceSection sourceSection;
     @Child private WasmInstrumentableFunctionNode function;
+    private final BranchProfile nonLinkedProfile = BranchProfile.create();
 
     public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstrumentableFunctionNode function) {
         super(language, frameDescriptor);
@@ -98,7 +100,10 @@ public class WasmRootNode extends RootNode {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        context.linker().tryLink(instance);
+        if (!instance.isLinkCompleted()) {
+            nonLinkedProfile.enter();
+            context.linker().tryLink(instance);
+        }
     }
 
     protected final WasmInstance instance(VirtualFrame frame, WasmContext context) {
