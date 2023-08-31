@@ -228,10 +228,7 @@ public final class WasmContext {
         if (reinitMemory) {
             BytecodeParser.resetMemoryState(this, instance.module(), instance);
             BytecodeParser.resetTableState(this, instance.module(), instance);
-            final WasmFunction startFunction = instance.symbolTable().startFunction();
-            if (startFunction != null) {
-                instance.target(startFunction.index()).call();
-            }
+            Linker.runStartFunction(instance);
         }
     }
 
