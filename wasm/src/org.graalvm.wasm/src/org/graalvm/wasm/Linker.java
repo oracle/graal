@@ -119,12 +119,11 @@ public class Linker {
         // compilation, and this check will fold away.
         // If the code is compiled synchronously, then this check will persist in the compiled code.
         // We nevertheless invalidate the compiled code that reaches this point.
-        if (instance.isLinkFailed()) {
-            // If the linking of this module failed already, then throw.
-            throw linkFailedError(instance);
-        } else if (instance.isNonLinked()) {
+        if (instance.isNonLinked() || instance.isLinkFailed()) {
             // TODO: Once we support multi-threading, add adequate synchronization here.
             tryLinkOutsidePartialEvaluation(instance);
+        } else {
+            assert instance.isLinkCompleted() || instance.isLinkInProgress();
         }
     }
 
@@ -135,6 +134,10 @@ public class Linker {
 
     @CompilerDirectives.TruffleBoundary
     private void tryLinkOutsidePartialEvaluation(WasmInstance entryPointInstance) {
+        if (entryPointInstance.isLinkFailed()) {
+            // If the linking of this module failed already, then throw.
+            throw linkFailedError(entryPointInstance);
+        }
         // Some Truffle configurations allow that the code gets compiled before executing the code.
         // We therefore check the link state again.
         if (entryPointInstance.isNonLinked()) {
