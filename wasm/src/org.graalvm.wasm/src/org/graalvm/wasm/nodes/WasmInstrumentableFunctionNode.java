@@ -46,7 +46,6 @@ import java.util.concurrent.locks.Lock;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.wasm.BinaryParser;
-import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmCodeEntry;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
@@ -56,6 +55,7 @@ import org.graalvm.wasm.debugging.data.DebugFunction;
 import org.graalvm.wasm.debugging.representation.DebugObjectDisplayValue;
 import org.graalvm.wasm.memory.WasmMemory;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -100,17 +100,20 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         this.instrumentation = node.instrumentation;
     }
 
-    private WasmInstance instance(MaterializedFrame frame) {
-        WasmInstance instance = WasmArguments.getModuleInstance(frame.getArguments());
-        assert instance == WasmContext.get(this).lookupModuleInstance(module);
-        return instance;
+    final WasmInstance instance(VirtualFrame frame) {
+        return functionNode.instance(frame);
+    }
+
+    public void setBoundModuleInstance(WasmInstance boundInstance) {
+        CompilerAsserts.neverPartOfCompilation();
+        functionNode.setBoundModuleInstance(boundInstance);
     }
 
     private WasmMemory memory0(MaterializedFrame frame) {
         return module.memory(instance(frame), 0);
     }
 
-    WasmModule module() {
+    final WasmModule module() {
         return module;
     }
 

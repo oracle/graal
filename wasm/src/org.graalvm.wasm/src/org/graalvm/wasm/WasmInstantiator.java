@@ -453,7 +453,7 @@ public class WasmInstantiator {
         }
         for (int entry = 0; entry != codeEntries.length; ++entry) {
             CodeEntry codeEntry = codeEntries[entry];
-            var callTarget = instantiateCodeEntry(context, module, codeEntry);
+            var callTarget = instantiateCodeEntry(context, module, instance, codeEntry);
             instance.setTarget(codeEntry.functionIndex(), callTarget);
             context.linker().resolveCodeEntry(module, entry);
         }
@@ -465,7 +465,7 @@ public class WasmInstantiator {
         return builder.build();
     }
 
-    private CallTarget instantiateCodeEntry(WasmContext context, WasmModule module, CodeEntry codeEntry) {
+    private CallTarget instantiateCodeEntry(WasmContext context, WasmModule module, WasmInstance instance, CodeEntry codeEntry) {
         final int functionIndex = codeEntry.functionIndex();
         final WasmFunction function = module.symbolTable().function(functionIndex);
         var cachedTarget = function.target();
@@ -485,6 +485,8 @@ public class WasmInstantiator {
         var callTarget = rootNode.getCallTarget();
         if (context.language().isMultiContext()) {
             function.setTarget(callTarget);
+        } else {
+            functionNode.setBoundModuleInstance(instance);
         }
         return callTarget;
     }

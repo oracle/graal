@@ -145,6 +145,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @CompilationFinal private int bytecodeEndOffset;
     @CompilationFinal(dimensions = 1) private byte[] bytecode;
     @CompilationFinal private WasmNotifyFunction notifyFunction;
+    /** Bound module instance (single-context mode only). */
+    @CompilationFinal private WasmInstance boundInstance;
 
     public WasmFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset) {
         this.module = module;
@@ -176,10 +178,22 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.notifyFunction = notifyFunction;
     }
 
-    private WasmInstance instance(VirtualFrame frame) {
-        WasmInstance instance = WasmArguments.getModuleInstance(frame.getArguments());
+    WasmInstance instance(VirtualFrame frame) {
+        WasmInstance instance = boundInstance;
+        if (instance == null) {
+            instance = WasmArguments.getModuleInstance(frame.getArguments());
+        } else {
+            CompilerAsserts.partialEvaluationConstant(instance);
+            assert instance == WasmArguments.getModuleInstance(frame.getArguments());
+        }
         assert instance == WasmContext.get(this).lookupModuleInstance(module);
         return instance;
+    }
+
+    void setBoundModuleInstance(WasmInstance boundInstance) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert this.boundInstance == null;
+        this.boundInstance = boundInstance;
     }
 
     private WasmMemory memory(WasmInstance instance) {

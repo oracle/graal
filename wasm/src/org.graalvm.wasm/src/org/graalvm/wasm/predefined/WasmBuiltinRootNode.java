@@ -40,9 +40,14 @@
  */
 package org.graalvm.wasm.predefined;
 
+import org.graalvm.wasm.WasmArguments;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.nodes.WasmRootNode;
+
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public abstract class WasmBuiltinRootNode extends WasmRootNode {
     protected final WasmModule module;
@@ -57,6 +62,13 @@ public abstract class WasmBuiltinRootNode extends WasmRootNode {
     @Override
     protected WasmModule module() {
         return module;
+    }
+
+    @Override
+    protected WasmInstance instance(VirtualFrame frame) {
+        WasmInstance instance = WasmArguments.getModuleInstance(frame.getArguments());
+        assert instance == WasmContext.get(this).lookupModuleInstance(module);
+        return instance;
     }
 
     @Override

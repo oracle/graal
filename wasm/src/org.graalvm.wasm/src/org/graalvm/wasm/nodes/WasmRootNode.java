@@ -106,16 +106,11 @@ public class WasmRootNode extends RootNode {
         }
     }
 
-    protected final WasmInstance instance(VirtualFrame frame, WasmContext context) {
-        final WasmInstance moduleInstance = WasmArguments.getModuleInstance(frame.getArguments());
-        assert moduleInstance == context.lookupModuleInstance(module());
-        return moduleInstance;
-    }
-
-    protected final WasmInstance instance(VirtualFrame frame) {
-        final WasmInstance moduleInstance = WasmArguments.getModuleInstance(frame.getArguments());
-        assert moduleInstance == WasmContext.get(this).lookupModuleInstance(module());
-        return moduleInstance;
+    /**
+     * Overridden by {@link org.graalvm.wasm.predefined.WasmBuiltinRootNode}.
+     */
+    protected WasmInstance instance(VirtualFrame frame) {
+        return function.instance(frame);
     }
 
     protected final WasmMemory memory(VirtualFrame frame) {
@@ -130,7 +125,7 @@ public class WasmRootNode extends RootNode {
     public final Object execute(VirtualFrame frame) {
         assert WasmArguments.isValid(frame.getArguments());
         final WasmContext context = getContext();
-        tryInitialize(context, instance(frame, context));
+        tryInitialize(context, instance(frame));
         return executeWithContext(frame, context);
     }
 
