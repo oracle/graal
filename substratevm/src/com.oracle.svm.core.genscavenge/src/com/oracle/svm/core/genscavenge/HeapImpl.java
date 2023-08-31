@@ -32,6 +32,7 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.nodes.extended.MembarNode;
 import org.graalvm.compiler.nodes.memory.address.OffsetAddressNode;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
@@ -71,7 +72,6 @@ import com.oracle.svm.core.heap.ReferenceInternals;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RuntimeCodeInfoGCSupport;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.hub.PredefinedClassesSupport;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicReference;
 import com.oracle.svm.core.locks.VMCondition;
 import com.oracle.svm.core.locks.VMMutex;
@@ -118,10 +118,6 @@ public final class HeapImpl extends Heap {
 
     /** A cached list of all the classes, if someone asks for it. */
     private List<Class<?>> classList;
-
-    /** A cached list of all the loaded classes, if someone asks for it. */
-    private List<Class<?>> loadedClasses;
-    private long lastRuntimeLoadedClassesCount = -1;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public HeapImpl(int pageSize) {
@@ -327,23 +323,6 @@ public final class HeapImpl extends Heap {
         return imageHeapInfo.dynamicHubCount;
     }
 
-    /** Returns an updated list of which classes are "loaded". */
-    @Override
-    public List<Class<?>> getLoadedClasses() {
-        long currentLoadedClassesCount = PredefinedClassesSupport.getRuntimeLoadedClassesCount();
-        if (lastRuntimeLoadedClassesCount != currentLoadedClassesCount) {
-            lastRuntimeLoadedClassesCount = currentLoadedClassesCount;
-            List<Class<?>> all = getAllClasses();
-            loadedClasses = new ArrayList<>(all.size());
-            for (Class<?> clazz : all) {
-                if (DynamicHub.fromClass(clazz).isLoaded()) {
-                    loadedClasses.add(clazz);
-                }
-            }
-        }
-        return loadedClasses;
-    }
-
     @Override
     protected List<Class<?>> getAllClasses() {
         /* Two threads might race to set classList, but they compute the same result. */
@@ -351,6 +330,9 @@ public final class HeapImpl extends Heap {
             ArrayList<Class<?>> list = new ArrayList<>(1024);
             ImageHeapWalker.walkRegions(imageHeapInfo, new ClassListBuilderVisitor(list));
             list.trimToSize();
+
+            /* Ensure that other threads see consistent values once the list is published. */
+            MembarNode.memoryBarrier(MembarNode.FenceKind.STORE_STORE);
             classList = list;
         }
         assert classList.size() == imageHeapInfo.dynamicHubCount;

@@ -125,10 +125,6 @@ public final class PredefinedClassesSupport {
         return singleton().predefinedClasses.contains(clazz);
     }
 
-    public static long getRuntimeLoadedClassesCount() {
-        return singleton().loadedClassesByName.size();
-    }
-
     public static Class<?> loadClass(ClassLoader classLoader, String expectedName, byte[] data, int offset, int length, ProtectionDomain protectionDomain) {
         if (!hasBytecodeClasses()) {
             throw throwNoBytecodeClasses();
