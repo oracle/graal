@@ -995,4 +995,9 @@ class NativeWasmMemory extends WasmMemory {
             stream.write(b & 0x0000_00ff);
         }
     }
+
+    @Override
+    public boolean isUnsafe() {
+        return true;
+    }
 }

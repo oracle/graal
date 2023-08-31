@@ -413,7 +413,8 @@ public class BinaryParser extends BinaryStreamParser {
                     final int memoryIndex = module.memoryCount();
                     final boolean is64Bit = booleanMultiResult[0];
                     final boolean isShared = booleanMultiResult[1];
-                    module.symbolTable().importMemory(moduleName, memberName, memoryIndex, longMultiResult[0], longMultiResult[1], is64Bit, isShared, multiMemory);
+                    final boolean useUnsafeMemory = wasmContext.getContextOptions().useUnsafeMemory();
+                    module.symbolTable().importMemory(moduleName, memberName, memoryIndex, longMultiResult[0], longMultiResult[1], is64Bit, isShared, multiMemory, useUnsafeMemory);
                     break;
                 }
                 case ImportIdentifier.GLOBAL: {
@@ -461,7 +462,8 @@ public class BinaryParser extends BinaryStreamParser {
             readMemoryLimits(longMultiResult, booleanMultiResult);
             final boolean is64Bit = booleanMultiResult[0];
             final boolean isShared = booleanMultiResult[1];
-            module.symbolTable().allocateMemory(memoryIndex, longMultiResult[0], longMultiResult[1], is64Bit, isShared, multiMemory);
+            final boolean useUnsafeMemory = wasmContext.getContextOptions().useUnsafeMemory();
+            module.symbolTable().allocateMemory(memoryIndex, longMultiResult[0], longMultiResult[1], is64Bit, isShared, multiMemory, useUnsafeMemory);
         }
     }
 

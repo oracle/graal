@@ -119,7 +119,11 @@ public class WasmRootNode extends RootNode {
     }
 
     protected final WasmMemory memory(VirtualFrame frame) {
-        return instance(frame).memory(0);
+        return memory(frame, 0);
+    }
+
+    protected final WasmMemory memory(VirtualFrame frame, int index) {
+        return module().memory(instance(frame), index);
     }
 
     @Override

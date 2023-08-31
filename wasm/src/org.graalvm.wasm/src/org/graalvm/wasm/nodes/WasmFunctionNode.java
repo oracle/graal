@@ -182,6 +182,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         return instance;
     }
 
+    private WasmMemory memory(WasmInstance instance) {
+        return memory(instance, 0);
+    }
+
+    private WasmMemory memory(WasmInstance instance, int index) {
+        return module.memory(instance, index);
+    }
+
     // region OSR support
     private static final class WasmOSRInterpreterState {
         final int stackPointer;
@@ -245,7 +253,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int line = startLine;
 
         final WasmInstance instance = instance(frame);
-        final WasmMemory zeroMemory = instance.memory(0);
+        // Note: The module may not have any memories.
+        final WasmMemory zeroMemory = module.memoryCount() == 0 ? null : memory(instance);
 
         check(bytecode.length, (1 << 31) - 1);
 
@@ -859,7 +868,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         baseAddress = popLong(frame, stackPointer - 1);
                     }
                     final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                    final WasmMemory memory = instance.memory(memoryIndex);
+                    final WasmMemory memory = memory(instance, memoryIndex);
                     load(memory, frame, stackPointer - 1, opcode, address);
                     break;
                 }
@@ -968,7 +977,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         baseAddress = popLong(frame, stackPointer - 2);
                     }
                     final long address = effectiveMemoryAddress64(memOffset, baseAddress);
-                    final WasmMemory memory = instance.memory(memoryIndex);
+                    final WasmMemory memory = memory(instance, memoryIndex);
                     store(memory, frame, stackPointer - 1, opcode, address);
                     stackPointer -= 2;
                     break;
@@ -1038,7 +1047,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.MEMORY_SIZE: {
                     final int memoryIndex = rawPeekI32(bytecode, offset);
                     offset += 4;
-                    final WasmMemory memory = instance.memory(memoryIndex);
+                    final WasmMemory memory = memory(instance, memoryIndex);
                     int pageSize = (int) memory.size();
                     pushInt(frame, stackPointer, pageSize);
                     stackPointer++;
@@ -1047,7 +1056,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case Bytecode.MEMORY_GROW: {
                     final int memoryIndex = rawPeekI32(bytecode, offset);
                     offset += 4;
-                    final WasmMemory memory = instance.memory(memoryIndex);
+                    final WasmMemory memory = memory(instance, memoryIndex);
                     int extraSize = popInt(frame, stackPointer - 1);
                     int pageSize = (int) memory.size();
                     if (memory.grow(extraSize)) {
@@ -1726,7 +1735,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.MEMORY64_SIZE: {
                             final int memoryIndex = rawPeekI32(bytecode, offset);
                             offset += 4;
-                            final WasmMemory memory = instance.memory(memoryIndex);
+                            final WasmMemory memory = memory(instance, memoryIndex);
                             long pageSize = memory.size();
                             pushLong(frame, stackPointer, pageSize);
                             stackPointer++;
@@ -1735,7 +1744,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         case Bytecode.MEMORY64_GROW: {
                             final int memoryIndex = rawPeekI32(bytecode, offset);
                             offset += 4;
-                            final WasmMemory memory = instance.memory(memoryIndex);
+                            final WasmMemory memory = memory(instance, memoryIndex);
                             long extraSize = popLong(frame, stackPointer - 1);
                             long pageSize = memory.size();
                             if (memory.grow(extraSize)) {
@@ -1772,7 +1781,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         offset += 8;
                     }
 
-                    final WasmMemory memory = instance.memory(memoryIndex);
+                    final WasmMemory memory = memory(instance, memoryIndex);
                     final int stackPointerDecrement = executeAtomic(frame, stackPointer, atomicOpcode, memory, memOffset, indexType64);
                     stackPointer -= stackPointerDecrement;
                     break;
@@ -3822,7 +3831,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     @TruffleBoundary
     private void memory_init(WasmInstance instance, int length, int source, long destination, int dataIndex, int memoryIndex) {
-        final WasmMemory memory = instance.memory(memoryIndex);
+        final WasmMemory memory = memory(instance, memoryIndex);
         final int dataOffset = instance.dataInstanceOffset(dataIndex);
         final int dataLength = instance.dataInstanceLength(dataIndex);
         if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memory.byteSize())) {
@@ -3837,7 +3846,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     @TruffleBoundary
     private void memory_init_unsafe(WasmInstance instance, int length, int source, long destination, int dataIndex, int memoryIndex) {
-        final WasmMemory memory = instance.memory(memoryIndex);
+        final WasmMemory memory = memory(instance, memoryIndex);
         final long dataAddress = instance.dataInstanceAddress(dataIndex);
         final int dataLength = instance.dataInstanceLength(dataIndex);
         if (checkOutOfBounds(source, length, dataLength) || checkOutOfBounds(destination, length, memory.byteSize())) {
@@ -3862,7 +3871,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     @TruffleBoundary
     private void memory_fill(WasmInstance instance, long length, int value, long offset, int memoryIndex) {
-        final WasmMemory memory = instance.memory(memoryIndex);
+        final WasmMemory memory = memory(instance, memoryIndex);
         if (checkOutOfBounds(offset, length, memory.byteSize())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
@@ -3875,8 +3884,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     @TruffleBoundary
     private void memory_copy(WasmInstance instance, long length, long source, long destination, int destMemoryIndex, int srcMemoryIndex) {
-        final WasmMemory destMemory = instance.memory(destMemoryIndex);
-        final WasmMemory srcMemory = instance.memory(srcMemoryIndex);
+        final WasmMemory destMemory = memory(instance, destMemoryIndex);
+        final WasmMemory srcMemory = memory(instance, srcMemoryIndex);
         if (checkOutOfBounds(source, length, srcMemory.byteSize()) || checkOutOfBounds(destination, length, destMemory.byteSize())) {
             enterErrorBranch();
             throw WasmException.create(Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);

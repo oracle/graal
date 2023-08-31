@@ -167,10 +167,11 @@ public abstract class BuiltinModule {
         module.symbolTable().exportMemory(index, memoryName);
     }
 
-    protected void defineMemory(WasmModule module, String memoryName, int initSize, int maxSize, boolean is64Bit, boolean isShared) {
+    protected void defineMemory(WasmContext context, WasmModule module, String memoryName, int initSize, int maxSize, boolean is64Bit, boolean isShared) {
+        final boolean useUnsafeMemory = context.getContextOptions().useUnsafeMemory();
         int index = module.symbolTable().memoryCount();
         // set multiMemory flag to true, since spectest module has multiple memories
-        module.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, isShared, true);
+        module.symbolTable().allocateMemory(index, initSize, maxSize, is64Bit, isShared, true, useUnsafeMemory);
         module.symbolTable().exportMemory(index, memoryName);
     }
 
@@ -182,8 +183,9 @@ public abstract class BuiltinModule {
 
     protected void importMemory(WasmContext context, WasmModule module, String importModuleName, String memoryName, int initSize, long maxSize, boolean is64Bit, boolean isShared) {
         final boolean multiMemory = context.getContextOptions().supportMultiMemory();
+        final boolean useUnsafeMemory = context.getContextOptions().useUnsafeMemory();
         int index = module.symbolTable().memoryCount();
-        module.symbolTable().importMemory(importModuleName, memoryName, index, initSize, maxSize, is64Bit, isShared, multiMemory);
+        module.symbolTable().importMemory(importModuleName, memoryName, index, initSize, maxSize, is64Bit, isShared, multiMemory, useUnsafeMemory);
     }
 
     protected byte[] types(byte... args) {
