@@ -359,6 +359,10 @@ local devkits = graal_common.devkits;
   weekly_vm_windows: self.vm_windows + {
     targets+: ['weekly'],
   },
+  
+  weekly_vm_windows_amd64: self.vm_windows + {
+    targets+: ['weekly'],
+  },
 
   weekly_vm_windows_jdk17: self.vm_windows_jdk17 + {
     targets+: ['weekly'],
