@@ -36,7 +36,7 @@
                 "os": "linux",
                 "arch": "amd64",
                 "name_template": "{name}-community-{version}"
-            },
+            }
         ]
     },
     {
