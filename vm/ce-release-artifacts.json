@@ -107,7 +107,7 @@
     },
     {
         "name": "nodejs-native-standalone-svm-java21",
-        "core": false,
+        "core": true,
         "jdk": "jdk_21",
         "override_name":"graalnodejs",
         "artifacts": [
@@ -140,7 +140,7 @@
     },
     {
         "name": "nodejs-java-standalone-svm-java21",
-        "core": false,
+        "core": true,
         "jdk": "jdk_21",
         "override_name":"graalnodejs",
         "artifacts": [
@@ -295,7 +295,7 @@
     },
     {
         "name": "wasm-native-standalone-svm-java21",
-        "core": false,
+        "core": true,
         "jdk": "jdk_21",
         "override_name": "graalwasm",
         "artifacts": [
@@ -328,7 +328,7 @@
     },
     {
         "name": "wasm-java-standalone-svm-java21",
-        "core": false,
+        "core": true,
         "jdk": "jdk_21",
         "override_name": "graalwasm",
         "artifacts": [
