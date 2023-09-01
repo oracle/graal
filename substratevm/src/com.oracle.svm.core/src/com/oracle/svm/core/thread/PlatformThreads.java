@@ -88,6 +88,7 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
+import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -104,6 +105,7 @@ import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.internal.event.ThreadSleepEvent;
 import jdk.internal.misc.Unsafe;
 
 /**
@@ -963,8 +965,8 @@ public abstract class PlatformThreads {
      */
     static void sleep(long nanos) throws InterruptedException {
         assert !isCurrentThreadVirtual();
-        if (com.oracle.svm.core.jfr.HasJfrSupport.get() && Target_jdk_internal_event_ThreadSleepEvent.isTurnedOn()) {
-            Target_jdk_internal_event_ThreadSleepEvent event = new Target_jdk_internal_event_ThreadSleepEvent();
+        if (HasJfrSupport.get() && ThreadSleepEvent.isTurnedOn()) {
+            ThreadSleepEvent event = new ThreadSleepEvent();
             try {
                 event.time = nanos;
                 event.begin();

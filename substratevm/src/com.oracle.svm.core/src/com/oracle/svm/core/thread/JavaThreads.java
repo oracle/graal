@@ -43,9 +43,6 @@ import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.util.ReflectionUtil;
@@ -408,19 +405,4 @@ public final class JavaThreads {
         }
         return 0L;
     }
-}
-
-/* GR-43733: this class can be removed when we drop the JDK 17 support. */
-@TargetClass(className = "jdk.internal.event.ThreadSleepEvent", onlyWith = JDK19OrLater.class)
-final class Target_jdk_internal_event_ThreadSleepEvent {
-    @Alias public long time;
-
-    @Alias
-    public static native boolean isTurnedOn();
-
-    @Alias
-    public native void begin();
-
-    @Alias
-    public native void commit();
 }
