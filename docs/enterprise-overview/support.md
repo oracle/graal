@@ -23,17 +23,19 @@ The following platforms are certified for Oracle GraalVM:
 | macOS 	| 11 (Big Sur), 12.4 (Monterey), 13.3 (Ventura)	| x64, AArch64	| [Installation Guide for macOS](../getting-started/graalvm-enterprise/macos.md) 	|
 | Microsoft Windows 	| Server 2016, 2019, 2022	| x64 	| [Installation Guide for Windows](../getting-started/graalvm-enterprise/windows.md) 	|
 
-## Features Support
+## Technologies Support
 
 Oracle GraalVM technologies are distributed as _supported_ or _experimental_.
 
-_Experimental_ technologies are being considered for future versions of Oracle GraalVM.
+_Experimental_ technologies are those considered for future versions of Oracle GraalVM.
 They are not meant for use in production and are **not** supported by Oracle.
 The development team welcomes feedback on experimental features, but users should be aware that experimental features may not be included in a final version, or may change significantly before being considered production-ready.
 
-GraalVM JavaScript runtime (known as GraalJS) is supported on all certified platrofms. 
-The Java on Truffle runtime (known as Espresso) is supported on Linux x64 only, and experimenal on other certified platrofms. 
-GraalVM Python runtime (known as GraalPy) is experimental on all certified platrofms.
+The GraalVM JavaScript runtime (known as GraalJS) is _supported_ on all certified platforms. 
+
+The Java on Truffle runtime (known as Espresso) is _supported_ on Linux x64 only, and _experimental_ on other certified platforms. 
+
+The GraalVM Python runtime (known as GraalPy) is _experimental_ on all certified platforms.
 
 The following technologies are deprecated and will be removed in Oracle GraalVM for JDK 23:
 * LLVM runtime
