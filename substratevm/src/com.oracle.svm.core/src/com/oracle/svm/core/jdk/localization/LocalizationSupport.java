@@ -57,6 +57,7 @@ import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.graal.compiler.debug.GraalError;
+import sun.util.resources.Bundles;
 
 /**
  * Holder for localization information that is computed during image generation and used at run
@@ -196,6 +197,10 @@ public class LocalizationSupport {
             String bundleWithLocale = control.toBundleName(baseName, locale);
             RuntimeReflection.registerClassLookup(bundleWithLocale);
             Resources.singleton().registerNegativeQuery(bundleWithLocale.replace('.', '/') + ".properties");
+            String otherBundleName = Bundles.toOtherBundleName(baseName, bundleWithLocale, locale);
+            if (!otherBundleName.equals(bundleWithLocale)) {
+                RuntimeReflection.registerClassLookup(otherBundleName);
+            }
         }
     }
 
