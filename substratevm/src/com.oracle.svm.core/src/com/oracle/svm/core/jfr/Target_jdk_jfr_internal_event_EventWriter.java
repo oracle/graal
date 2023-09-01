@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,16 +24,19 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "jdk.jfr.internal.EventHandlerCreator", onlyWith = {HasJfrSupport.class, JDK17OrEarlier.class})
-public final class Target_jdk_jfr_internal_EventHandlerCreator {
-    @Substitute
-    @SuppressWarnings("static-method")
-    public Class<? extends Target_jdk_jfr_internal_handlers_EventHandler> makeEventHandlerClass() {
-        throw VMError.shouldNotReachHereSubstitution();
+@TargetClass(className = "jdk.jfr.internal.event.EventWriter", onlyWith = HasJfrSupport.class)
+public final class Target_jdk_jfr_internal_event_EventWriter {
+    @Alias //
+    boolean excluded;
+
+    @Alias //
+    long threadID;
+
+    @Alias
+    @SuppressWarnings("unused")
+    Target_jdk_jfr_internal_event_EventWriter(long committedPos, long maxPos, long threadID, boolean valid, boolean excluded) {
     }
 }
