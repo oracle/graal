@@ -213,7 +213,7 @@ public class Linker {
                 final SymbolTable symtab = instance.symbolTable();
                 for (int index = 0; index < symtab.typeCount(); index++) {
                     FunctionType type = symtab.typeAt(index);
-                    Integer equivalenceClass = context.equivalenceClassFor(type);
+                    int equivalenceClass = context.language().equivalenceClassFor(type);
                     symtab.setEquivalenceClass(index, equivalenceClass);
                 }
                 for (int index = 0; index < symtab.numFunctions(); index++) {
