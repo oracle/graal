@@ -601,7 +601,7 @@ suite = {
       "ninja_install_targets" : ["test"],
       "results" : ["main.out"],
       "cmakeConfig" : {
-        "SULONG_EXE" : "<mx_exe> lli",
+        "SULONG_EXE" : "<lli_path>",
         "CMAKE_C_COMPILER": "<toolchainGetToolPath:native,CC>",
         "CMAKE_CXX_COMPILER": "<toolchainGetToolPath:native,CXX>",
         "SULONG_C_COMPILER": "<toolchainGetToolPath:native,CC>",
