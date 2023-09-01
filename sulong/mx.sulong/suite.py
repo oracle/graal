@@ -1202,6 +1202,9 @@ suite = {
             "TOOLCHAIN_CLANG" : "<toolchainGetToolPath:native,CC>",
             "TOOLCHAIN_CLANGXX" : "<toolchainGetToolPath:native,CXX>",
           },
+          "buildDependencies" : [
+            "SULONG_HOME",
+          ],
         },
         "<others>" : {},
       },
