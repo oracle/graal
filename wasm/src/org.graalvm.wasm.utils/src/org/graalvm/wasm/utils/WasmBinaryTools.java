@@ -40,11 +40,9 @@
  */
 package org.graalvm.wasm.utils;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -54,10 +52,9 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
-import java.util.function.Supplier;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
 
@@ -65,29 +62,49 @@ public class WasmBinaryTools {
     private static final String WAT_TO_WASM_EXECUTABLE_NAME = "wat2wasm";
 
     static String resolvedWat2WasmExecutable;
+    static boolean compileUsingStdInOut = true;
 
     public enum WabtOption {
         MULTI_MEMORY,
         THREADS
     }
 
-    private static Supplier<String> asyncReadInputStream(InputStream is) {
-        class SupplierThread extends Thread implements Supplier<String> {
-            private String result = null;
+    private interface OutputSupplier {
+        void close() throws IOException, InterruptedException;
+
+        byte[] getBytes();
+
+        default String get() {
+            return new String(getBytes(), StandardCharsets.UTF_8);
+        }
+    }
+
+    private static OutputSupplier asyncReadInputStream(InputStream is) {
+        class SupplierThread extends Thread implements OutputSupplier {
+            private byte[] result;
+            private IOException exception;
 
             @Override
-            public String get() {
-                try {
-                    this.join();
-                } catch (InterruptedException e) {
-                    throw new RuntimeException();
-                }
-                return result;
+            public byte[] getBytes() {
+                assert exception == null : exception;
+                return Objects.requireNonNull(result);
             }
 
             @Override
             public void run() {
-                result = new BufferedReader(new InputStreamReader(is)).lines().collect(Collectors.joining(System.lineSeparator()));
+                try {
+                    result = is.readAllBytes();
+                } catch (IOException e) {
+                    exception = e;
+                }
+            }
+
+            @Override
+            public void close() throws IOException, InterruptedException {
+                this.join();
+                if (exception != null) {
+                    throw exception;
+                }
             }
         }
         final SupplierThread supplier = new SupplierThread();
@@ -95,35 +112,48 @@ public class WasmBinaryTools {
         return supplier;
     }
 
-    private static void runExternalToolAndVerify(String message, String[] commandLine) throws IOException, InterruptedException {
-        Runtime runtime = Runtime.getRuntime();
-        Process process = runtime.exec(commandLine);
-        Supplier<String> stdout = asyncReadInputStream(process.getInputStream());
-        Supplier<String> stderr = asyncReadInputStream(process.getErrorStream());
-        int exitCode = process.waitFor();
-        if (exitCode != 0) {
-            Assert.fail(String.format("%s ('%s', exit code %d)\nstderr:\n%s\nstdout:\n%s", message, String.join(" ", commandLine), exitCode, stderr.get(), stdout.get()));
-        }
+    private static byte[] runExternalToolAndVerify(String message, String[] commandLine) throws IOException, InterruptedException {
+        return runExternalToolAndVerify(message, commandLine, null);
     }
 
-    private static byte[] wat2wasm(File input, File output, EnumSet<WabtOption> options) throws IOException, InterruptedException {
+    private static byte[] runExternalToolAndVerify(String message, String[] commandLine, String input) throws IOException, InterruptedException {
+        Process process = Runtime.getRuntime().exec(commandLine);
+        var stdout = asyncReadInputStream(process.getInputStream());
+        var stderr = asyncReadInputStream(process.getErrorStream());
+        if (input != null) {
+            var stdin = process.getOutputStream();
+            stdin.write(input.getBytes(StandardCharsets.UTF_8));
+            stdin.close();
+        }
+        int exitCode = process.waitFor();
+        stderr.close();
+        stdout.close();
+        if (exitCode != 0) {
+            String output = input == null ? stdout.get() : "(binary data)";
+            Assert.fail(String.format("%s ('%s', exit code %d)\nstderr:\n%s\nstdout:\n%s", message, String.join(" ", commandLine), exitCode, stderr.get(), output));
+        }
+        return stdout.getBytes();
+    }
+
+    private static List<String> wat2wasmCmdLine(EnumSet<WabtOption> options) {
         List<String> commandLine = new ArrayList<>();
         commandLine.add(wat2wasmExecutable());
-        commandLine.add(input.getPath());
         // This option is needed so that wat2wasm agrees to generate
         // invalid wasm files.
-        commandLine.add("-v");
+        commandLine.add("-v"); // prints to stderr
         commandLine.add("--no-check");
         for (WabtOption option : options) {
             switch (option) {
-                case MULTI_MEMORY:
-                    commandLine.add("--enable-multi-memory");
-                    break;
-                case THREADS:
-                    commandLine.add("--enable-threads");
-                    break;
+                case MULTI_MEMORY -> commandLine.add("--enable-multi-memory");
+                case THREADS -> commandLine.add("--enable-threads");
             }
         }
+        return commandLine;
+    }
+
+    private static byte[] wat2wasm(File input, File output, EnumSet<WabtOption> options) throws IOException, InterruptedException {
+        List<String> commandLine = wat2wasmCmdLine(options);
+        commandLine.add(input.getPath());
         commandLine.add("-o");
         commandLine.add(output.getPath());
 
@@ -131,6 +161,15 @@ public class WasmBinaryTools {
         runExternalToolAndVerify("wat2wasm compilation failed", commandLine.toArray(new String[0]));
         // read the resulting binary, delete the temporary files and return
         return Files.readAllBytes(output.toPath());
+    }
+
+    private static byte[] wat2wasmFromString(String program, EnumSet<WabtOption> options) throws IOException, InterruptedException {
+        List<String> commandLine = wat2wasmCmdLine(options);
+        commandLine.add("-"); // stdin
+        commandLine.add("--output=-"); // stdout
+
+        // execute the wat2wasm tool and wait for it to finish execution
+        return runExternalToolAndVerify("wat2wasm compilation failed", commandLine.toArray(new String[0]), program);
     }
 
     private static synchronized String wat2wasmExecutable() {
@@ -174,6 +213,22 @@ public class WasmBinaryTools {
             return cachedBytes;
         }
 
+        byte[] binary = compileWatUncached(name, program, options);
+        wat2wasmCache.putIfAbsent(cacheKey, binary);
+        return binary;
+    }
+
+    private static byte[] compileWatUncached(String name, String program, EnumSet<WabtOption> options) throws IOException, InterruptedException {
+        if (compileUsingStdInOut) {
+            try {
+                return wat2wasmFromString(program, options);
+            } catch (RuntimeException e) {
+                System.err.println(e);
+                System.err.println("wat2wasm compilation via stdin+stdout failed, retrying with temporary files");
+                compileUsingStdInOut = false;
+            }
+        }
+
         // create two temporary files for the text and the binary, write the given program to the
         // first one
         File watFile = File.createTempFile(name + "-wasm-text-", ".wat");
@@ -183,7 +238,6 @@ public class WasmBinaryTools {
         byte[] binary = wat2wasm(watFile, wasmFile, options);
         watFile.deleteOnExit();
         wasmFile.deleteOnExit();
-        wat2wasmCache.putIfAbsent(cacheKey, binary);
         return binary;
     }
 
