@@ -357,9 +357,7 @@ class APIOptionHandler extends NativeImage.OptionHandler<NativeImage> {
                         whitespaceSeparated = true;
                         break found;
                     } else {
-                        boolean withSeparator = valueSeparator != APIOption.NO_SEPARATOR;
-                        String separatorString = withSeparator ? Character.toString(valueSeparator) : "";
-                        String optionNameWithSeparator = optionName + separatorString;
+                        String optionNameWithSeparator = optionName + APIOption.Utils.valueSeparatorToString(valueSeparator);
                         if (headArg.startsWith(optionNameWithSeparator)) {
                             option = optionInfo;
                             int length = optionNameWithSeparator.length();
