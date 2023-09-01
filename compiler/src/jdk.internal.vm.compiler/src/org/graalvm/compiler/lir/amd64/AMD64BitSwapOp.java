@@ -50,7 +50,7 @@ public final class AMD64BitSwapOp extends AMD64LIRInstruction {
     public static final LIRInstructionClass<AMD64BitSwapOp> TYPE = LIRInstructionClass.create(AMD64BitSwapOp.class);
 
     @Def({REG}) protected Value dstValue;
-    @Use({REG}) protected Value srcValue;
+    @Alive({REG}) protected Value srcValue;
 
     @Temp({REG}) protected Value rtmpValue;
     @Temp({REG, ILLEGAL}) protected Value rtmp2Value;
