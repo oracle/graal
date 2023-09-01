@@ -98,7 +98,9 @@ public class WasmInstantiator {
     @TruffleBoundary
     public WasmInstance createInstance(WasmContext context, WasmModule module) {
         if (!module.hasLinkActions()) {
-            recreateLinkActions(module);
+            synchronized (module) {
+                recreateLinkActions(module);
+            }
         }
         WasmInstance instance = new WasmInstance(context, module);
         int binarySize = instance.module().bytecodeLength();
