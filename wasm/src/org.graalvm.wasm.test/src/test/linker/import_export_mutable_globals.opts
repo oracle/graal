@@ -2,4 +2,4 @@ zero-memory = true
 interpreter-iterations = 1
 sync-noinline-iterations = 1
 sync-inline-iterations = 1
-async-iterations = 0
+async-iterations = 20
