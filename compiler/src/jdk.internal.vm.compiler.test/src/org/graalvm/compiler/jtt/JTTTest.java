@@ -34,7 +34,6 @@ import java.util.Collections;
 import java.util.Formatter;
 import java.util.ListIterator;
 import java.util.Optional;
-import java.util.Random;
 import java.util.Set;
 
 import org.graalvm.compiler.api.test.Graal;
@@ -216,7 +215,7 @@ public class JTTTest extends GraalCompilerTest {
         // phases that cannot be serialized.
         removeTestPhases(originalSuites);
         StructuredGraph graph = parseForCompile(method, getCompilationId(method), options);
-        long randomSeed = Long.getLong(SEED_SYSTEM_PROPERTY, new Random().nextLong());
+        long randomSeed = Long.getLong(SEED_SYSTEM_PROPERTY, getRandomInstance().nextLong());
         RuntimeProvider runtime = Graal.getRequiredCapability(RuntimeProvider.class);
 
         MinimalFuzzedCompilationPlan minimalFuzzedCompilationPlan = MinimalFuzzedCompilationPlan.createMinimalFuzzedCompilationPlan(

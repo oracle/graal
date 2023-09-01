@@ -250,7 +250,7 @@ public class Base64SubstitutionsTest extends GraalOSRTestBase {
      */
     @Test
     public void testDecodeByteArray1() {
-        Random ran = new Random(1000); // Constant seed for repeatability
+        Random ran = getRandomInstance();
         ResolvedJavaMethod m = getResolvedJavaMethod(Decoder.class, "decode", byte[].class);
         for (DecoderTestCase tc : getDecoders()) {
             IllegalBase64CharSupplier illegals = new IllegalBase64CharSupplier(tc.type.equals("url"));
