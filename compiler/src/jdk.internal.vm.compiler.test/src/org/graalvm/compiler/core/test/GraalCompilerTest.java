@@ -1075,10 +1075,13 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         boolean useCache = !forceCompile && getArgumentToBind() == null;
         if (useCache && graph == null) {
-            InstalledCode cached = cache.get().get(installedCodeOwner);
+            HashMap<ResolvedJavaMethod, InstalledCode> tlCache = cache.get();
+            InstalledCode cached = tlCache.get(installedCodeOwner);
             if (cached != null) {
                 if (cached.isValid()) {
                     return cached;
+                } else {
+                    tlCache.remove(installedCodeOwner);
                 }
             }
         }
