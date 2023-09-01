@@ -260,6 +260,26 @@ local devkits = graal_common.devkits;
     targets+: ['post-merge', 'deploy'],
   },
 
+  deploy_vm_darwin_amd64: self.vm_darwin_amd64 + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
+  deploy_vm_darwin_aarch64: self.vm_darwin_aarch64 + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
+  deploy_vm_windows: self.vm_windows + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
+  deploy_vm_windows_jdk17: self.vm_windows_jdk17 + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
+  deploy_vm_windows_jdk21: self.vm_windows_jdk21 + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
   deploy_daily_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['daily', 'deploy'],
   },
