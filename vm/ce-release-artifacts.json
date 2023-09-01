@@ -27,33 +27,6 @@
         ]
     },
     {
-        "name": "graalvm-espresso-community-java21",
-        "core": true,
-        "jdk": "jdk_21",
-        "artifacts": [
-            {
-                "os": "linux",
-                "arch": "amd64"
-            },
-            {
-                "os": "linux",
-                "arch": "aarch64"
-            },
-            {
-                "os": "darwin",
-                "arch": "amd64"
-            },
-            {
-                "os": "darwin",
-                "arch": "aarch64"
-            },
-            {
-                "os": "windows",
-                "arch": "amd64"
-            }
-        ]
-    },
-    {
         "name": "maven-ce-resource-bundle",
         "core": true,
         "jdk": "jdk_21",
@@ -383,6 +356,39 @@
                 "os": "windows",
                 "arch": "amd64",
                 "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            }
+        ]
+    },
+    {
+        "name": "graalvm-espresso-community-java21",
+        "core": true,
+        "jdk": "jdk_21",
+        "override_name":"espresso",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64",
+                "name_template": "{name}-community-native-{version}-{os}-{arch}"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64",
+                "name_template": "{name}-community-native-{version}-{os}-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64",
+                "name_template": "{name}-community-native-{version}-macos-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64",
+                "name_template": "{name}-community-native-{version}-macos-{arch}"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64",
+                "name_template": "{name}-community-native-{version}-{os}-{arch}"
             }
         ]
     }
