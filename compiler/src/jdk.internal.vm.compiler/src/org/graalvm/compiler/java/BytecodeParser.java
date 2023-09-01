@@ -2299,12 +2299,12 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         assert invokeKind.isDirect() : "Cannot apply invocation plugin on an indirect call site.";
 
         InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
-        boolean needsReceiverNullCheck = !targetMethod.isStatic() && args[0].getStackKind() == JavaKind.Object && !StampTool.isPointerNonNull(args[0].stamp(NodeView.DEFAULT));
+        boolean needsReceiverNullCheck = !targetMethod.isStatic() && args[0].getStackKind() == JavaKind.Object;
         try (DebugCloseable context = openNodeContext(targetMethod); InvocationPluginScope pluginScope = new InvocationPluginScope(invokeKind, args, targetMethod, resultType, plugin)) {
             Mark mark = graph.getMark();
             if (plugin.execute(this, targetMethod, pluginReceiver, args)) {
                 checkDeoptAfterPlugin(mark, targetMethod);
-                if (needsReceiverNullCheck && !isPointerNonNull(args[0].stamp(NodeView.DEFAULT))) {
+                if (needsReceiverNullCheck && !pluginReceiver.nullCheckPerformed()) {
                     throw new GraalError(pluginErrorMessage(plugin,
                                     "plugin needs to null check the receiver of %s: receiver=%s",
                                     targetMethod.format("%H.%n(%p)"),

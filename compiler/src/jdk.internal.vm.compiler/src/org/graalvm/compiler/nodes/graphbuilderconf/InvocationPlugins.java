@@ -93,6 +93,10 @@ public class InvocationPlugins {
     public static class InvocationPluginReceiver implements InvocationPlugin.Receiver {
         private final GraphBuilderContext parser;
         private ValueNode[] args;
+        /**
+         * Caches the null checked receiver value. If still {@code null} after application of a
+         * plugin, then the plugin never called {@link #get(boolean)} with {@code true}.
+         */
         private ValueNode value;
 
         public InvocationPluginReceiver(GraphBuilderContext parser) {
@@ -126,6 +130,13 @@ public class InvocationPlugins {
                 return this;
             }
             return null;
+        }
+
+        /**
+         * Determines if {@link #get(boolean)} was called with {@code true}.
+         */
+        public boolean nullCheckPerformed() {
+            return value != null;
         }
     }
 
