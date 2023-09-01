@@ -40,36 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-
-import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
-import org.graalvm.wasm.Linker.ResolutionDag.ExportMemorySym;
-import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
-import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
-import org.graalvm.wasm.Linker.ResolutionDag.Sym;
-import org.graalvm.wasm.SymbolTable.FunctionType;
-import org.graalvm.wasm.constants.Bytecode;
-import org.graalvm.wasm.constants.BytecodeBitEncoding;
-import org.graalvm.wasm.constants.GlobalModifier;
-import org.graalvm.wasm.exception.Failure;
-import org.graalvm.wasm.exception.WasmException;
-import org.graalvm.wasm.memory.NativeDataInstanceUtil;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.nodes.WasmFunctionNode;
-
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.function.BiConsumer;
-
 import static org.graalvm.wasm.Assert.assertByteEqual;
 import static org.graalvm.wasm.Assert.assertTrue;
 import static org.graalvm.wasm.Assert.assertUnsignedIntGreaterOrEqual;
@@ -82,16 +52,6 @@ import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI8;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
-import static org.graalvm.wasm.Linker.ResolutionDag.CallsiteSym;
-import static org.graalvm.wasm.Linker.ResolutionDag.CodeEntrySym;
-import static org.graalvm.wasm.Linker.ResolutionDag.ElemSym;
-import static org.graalvm.wasm.Linker.ResolutionDag.ExportFunctionSym;
-import static org.graalvm.wasm.Linker.ResolutionDag.ExportGlobalSym;
-import static org.graalvm.wasm.Linker.ResolutionDag.ExportTableSym;
-import static org.graalvm.wasm.Linker.ResolutionDag.ImportFunctionSym;
-import static org.graalvm.wasm.Linker.ResolutionDag.ImportGlobalSym;
-import static org.graalvm.wasm.Linker.ResolutionDag.ImportTableSym;
-import static org.graalvm.wasm.Linker.ResolutionDag.InitializeGlobalSym;
 import static org.graalvm.wasm.Linker.ResolutionDag.NO_RESOLVE_ACTION;
 import static org.graalvm.wasm.WasmType.EXTERNREF_TYPE;
 import static org.graalvm.wasm.WasmType.F32_TYPE;
@@ -99,6 +59,46 @@ import static org.graalvm.wasm.WasmType.F64_TYPE;
 import static org.graalvm.wasm.WasmType.FUNCREF_TYPE;
 import static org.graalvm.wasm.WasmType.I32_TYPE;
 import static org.graalvm.wasm.WasmType.I64_TYPE;
+
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.function.BiConsumer;
+
+import org.graalvm.wasm.Linker.ResolutionDag.CallsiteSym;
+import org.graalvm.wasm.Linker.ResolutionDag.CodeEntrySym;
+import org.graalvm.wasm.Linker.ResolutionDag.DataSym;
+import org.graalvm.wasm.Linker.ResolutionDag.ElemSym;
+import org.graalvm.wasm.Linker.ResolutionDag.ExportFunctionSym;
+import org.graalvm.wasm.Linker.ResolutionDag.ExportGlobalSym;
+import org.graalvm.wasm.Linker.ResolutionDag.ExportMemorySym;
+import org.graalvm.wasm.Linker.ResolutionDag.ExportTableSym;
+import org.graalvm.wasm.Linker.ResolutionDag.ImportFunctionSym;
+import org.graalvm.wasm.Linker.ResolutionDag.ImportGlobalSym;
+import org.graalvm.wasm.Linker.ResolutionDag.ImportMemorySym;
+import org.graalvm.wasm.Linker.ResolutionDag.ImportTableSym;
+import org.graalvm.wasm.Linker.ResolutionDag.InitializeGlobalSym;
+import org.graalvm.wasm.Linker.ResolutionDag.Resolver;
+import org.graalvm.wasm.Linker.ResolutionDag.Sym;
+import org.graalvm.wasm.SymbolTable.FunctionType;
+import org.graalvm.wasm.constants.Bytecode;
+import org.graalvm.wasm.constants.BytecodeBitEncoding;
+import org.graalvm.wasm.constants.GlobalModifier;
+import org.graalvm.wasm.exception.Failure;
+import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.memory.NativeDataInstanceUtil;
+import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.nodes.WasmFunctionNode;
+
+import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 
 public class Linker {
     public enum LinkState {
@@ -150,11 +150,6 @@ public class Linker {
             final int maxStartFunctionIndex = runLinkActions(context, instances, failures);
             linkTopologically(context, failures, maxStartFunctionIndex);
             assignTypeEquivalenceClasses();
-            for (WasmInstance instance : instances.values()) {
-                if (instance.isLinkInProgress()) {
-                    instance.module().setParsed();
-                }
-            }
             resolutionDag = null;
             runStartFunctions(instances, failures);
             checkFailures(failures);
@@ -209,18 +204,29 @@ public class Linker {
         final WasmContext context = WasmContext.get(null);
         final Map<String, WasmInstance> instances = context.moduleInstances();
         for (WasmInstance instance : instances.values()) {
-            if (instance.isLinkInProgress() && !instance.module().isParsed()) {
-                final SymbolTable symtab = instance.symbolTable();
-                for (int index = 0; index < symtab.typeCount(); index++) {
-                    FunctionType type = symtab.typeAt(index);
-                    int equivalenceClass = context.language().equivalenceClassFor(type);
-                    symtab.setEquivalenceClass(index, equivalenceClass);
-                }
-                for (int index = 0; index < symtab.numFunctions(); index++) {
-                    final WasmFunction function = symtab.function(index);
-                    function.setTypeEquivalenceClass(symtab.equivalenceClass(function.typeIndex()));
-                }
+            WasmModule module = instance.module();
+            if (instance.isLinkInProgress() && !module.isParsed()) {
+                assignTypeEquivalenceClasses(module, context.language());
             }
+        }
+    }
+
+    private static void assignTypeEquivalenceClasses(WasmModule module, WasmLanguage language) {
+        synchronized (module) {
+            if (module.isParsed()) {
+                return;
+            }
+            final SymbolTable symtab = module.symbolTable();
+            for (int index = 0; index < symtab.typeCount(); index++) {
+                FunctionType type = symtab.typeAt(index);
+                int equivalenceClass = language.equivalenceClassFor(type);
+                symtab.setEquivalenceClass(index, equivalenceClass);
+            }
+            for (int index = 0; index < symtab.numFunctions(); index++) {
+                final WasmFunction function = symtab.function(index);
+                function.setTypeEquivalenceClass(symtab.equivalenceClass(function.typeIndex()));
+            }
+            module.setParsed();
         }
     }
 
