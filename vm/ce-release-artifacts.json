@@ -60,6 +60,39 @@
         ]
     },
     {
+        "name": "js-java-standalone-svm-java21",
+        "core": true,
+        "jdk": "jdk_21",
+        "override_name":"graaljs",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-macos-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64",
+                "name_template": "{name}-community-java-{version}-macos-{arch}"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            }
+        ]
+    },
+    {
         "name": "nodejs-native-standalone-svm-java21",
         "core": false,
         "jdk": "jdk_21",
@@ -93,6 +126,39 @@
         ]
     },
     {
+        "name": "nodejs-java-standalone-svm-java21",
+        "core": false,
+        "jdk": "jdk_21",
+        "override_name":"graalnodejs",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-macos-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64",
+                "name_template": "{name}-community-java-{version}-macos-{arch}"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            }
+        ]
+    },
+    {
         "name": "ruby-native-standalone-svm-java21",
         "core": true,
         "jdk": "jdk_21",
@@ -117,6 +183,34 @@
                 "os": "darwin",
                 "arch": "aarch64",
                 "name_template": "{name}-community-native-{version}-macos-{arch}"
+            }
+        ]
+    },
+    {
+        "name": "ruby-java-standalone-svm-java21",
+        "core": true,
+        "jdk": "jdk_21",
+        "override_name":"truffleruby",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-macos-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64",
+                "name_template": "{name}-community-java-{version}-macos-{arch}"
             }
         ]
     },
@@ -154,6 +248,39 @@
         ]
     },
     {
+        "name": "python-java-standalone-svm-java21",
+        "core": true,
+        "jdk": "jdk_21",
+        "override_name":"graalpy",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-macos-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64",
+                "name_template": "{name}-community-java-{version}-macos-{arch}"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            }
+        ]
+    },
+    {
         "name": "wasm-native-standalone-svm-java21",
         "core": false,
         "jdk": "jdk_21",
@@ -186,4 +313,37 @@
             }
         ]
     },
+    {
+        "name": "wasm-java-standalone-svm-java21",
+        "core": false,
+        "jdk": "jdk_21",
+        "override_name": "graalwasm",
+        "artifacts": [
+            {
+                "os": "linux",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            },
+            {
+                "os": "linux",
+                "arch": "aarch64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-macos-{arch}"
+            },
+            {
+                "os": "darwin",
+                "arch": "aarch64",
+                "name_template": "{name}-community-java-{version}-macos-{arch}"
+            },
+            {
+                "os": "windows",
+                "arch": "amd64",
+                "name_template": "{name}-community-java-{version}-{os}-{arch}"
+            }
+        ]
+    }
 ]
