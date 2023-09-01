@@ -60,13 +60,13 @@ import jdk.vm.ci.services.Services;
  */
 public abstract class CompilerConfigurationFactory implements Comparable<CompilerConfigurationFactory> {
 
-    enum ShowConfigurationLevel {
+    public enum ShowConfigurationLevel {
         none,
         info,
         verbose
     }
 
-    static class Options {
+    public static class Options {
         // @formatter:off
         @Option(help = "Names the compiler configuration to use. If omitted, the compiler configuration " +
                        "with the highest auto-selection priority is used. To see the set of available configurations, " +
