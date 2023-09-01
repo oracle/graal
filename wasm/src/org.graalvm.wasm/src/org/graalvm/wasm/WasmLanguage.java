@@ -87,6 +87,24 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     private final Map<BuiltinModule, WasmModule> builtinModules = new ConcurrentHashMap<>();
 
+    private final Map<SymbolTable.FunctionType, Integer> equivalenceClasses = new ConcurrentHashMap<>();
+    private int nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
+
+    public int equivalenceClassFor(SymbolTable.FunctionType type) {
+        Integer equivalenceClass = equivalenceClasses.get(type);
+        if (equivalenceClass == null) {
+            synchronized (this) {
+                equivalenceClass = equivalenceClasses.get(type);
+                if (equivalenceClass == null) {
+                    equivalenceClass = nextEquivalenceClass++;
+                    Integer prev = equivalenceClasses.put(type, equivalenceClass);
+                    assert prev == null;
+                }
+            }
+        }
+        return equivalenceClass;
+    }
+
     @Override
     protected WasmContext createContext(Env env) {
         WasmContext context = new WasmContext(env, this);

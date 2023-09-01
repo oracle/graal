@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -58,8 +57,6 @@ import com.oracle.truffle.api.nodes.Node;
 public final class WasmContext {
     private final Env env;
     private final WasmLanguage language;
-    private final Map<SymbolTable.FunctionType, Integer> equivalenceClasses;
-    private int nextEquivalenceClass;
     private final MemoryRegistry memoryRegistry;
     private final GlobalRegistry globals;
     private final TableRegistry tableRegistry;
@@ -74,8 +71,6 @@ public final class WasmContext {
         this.env = env;
         this.language = language;
         this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
-        this.equivalenceClasses = new HashMap<>();
-        this.nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
         this.globals = new GlobalRegistry(contextOptions.supportBulkMemoryAndRefTypes());
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
@@ -108,15 +103,6 @@ public final class WasmContext {
 
     public Linker linker() {
         return linker;
-    }
-
-    public Integer equivalenceClassFor(SymbolTable.FunctionType type) {
-        Integer equivalenceClass = equivalenceClasses.get(type);
-        if (equivalenceClass == null) {
-            equivalenceClass = nextEquivalenceClass++;
-            equivalenceClasses.put(type, equivalenceClass);
-        }
-        return equivalenceClass;
     }
 
     @SuppressWarnings("unused")
