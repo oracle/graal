@@ -79,14 +79,14 @@ suite = {
   "ignore_suite_commit_info": True,
   "libraries" : {
     "WRK_MULTIARCH": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5-multiarch.tar.gz"],
-      "digest": "sha512:a7f7a7fd9bf8b87423a682ff1390a6ba87cc8dec43d41a3dcabb9a4fa5516b3d2e71f2384661a4248440c0ba4f2e27b8ef50d5dc123c5ae118866fa38254e23c",
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk-a211dd5-multiarch-2.0.tar.gz"],
+      "digest": "sha512:b25a315ce50b446cb7f715ad93e718b937d2ed5c2be9ad0308935a7ccfca92f8d74aff403b5aff53fdedd0f71fd7beb08c6060b904f23fbd27ff6a40a1848770",
       "packedResource": True,
       "license": "Apache-2.0-wrk-a211dd5",
     },
     "WRK2_MULTIARCH": {
-      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2-multiarch.tar.gz"],
-      "digest": "sha512:597d64086e4d8126bea480ae5edc15b3b9ed649a4ad38c99c42968f25e260da351780921c5013200eddefcc5a4b715676df194d52ff04a5bfcec024cc6140530",
+      "urls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/wrk2-multiarch-2.0.tar.gz"],
+      "digest": "sha512:94629a69ebf2d683c6ea6c61dc86729d121e70c30a25ec6daf8fd70b74f6ebb694a5973a3d3e2f9c624efa418b51a550868d6951de9d7277d2028e0c8078e4b4",
       "packedResource": True,
       "license": "Apache-2.0",
     },
