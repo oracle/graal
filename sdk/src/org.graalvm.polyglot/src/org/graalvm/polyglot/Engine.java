@@ -2026,7 +2026,8 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public int getPriority() {
-            return Integer.MIN_VALUE;
+            // make sure polyglot invalid has lowest priority but is not filtered (hence + 1)
+            return Integer.MIN_VALUE + 1;
         }
 
         @Override
