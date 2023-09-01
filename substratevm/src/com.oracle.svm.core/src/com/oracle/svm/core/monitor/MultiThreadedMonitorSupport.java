@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.monitor;
 
-import java.lang.ref.ReferenceQueue;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Map;
@@ -48,8 +47,6 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccess.Access;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubCompanion;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.JavaMonitorInflateEvent;
 import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer.JavaMonitorConditionObject;
@@ -448,8 +445,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 
     protected JavaMonitor getOrCreateMonitorFromMap(Object obj, boolean createIfNotExisting, MonitorInflationCause cause) {
-        assert JavaVersionUtil.JAVA_SPEC > 17 ||
-                        obj.getClass() != Target_java_lang_ref_ReferenceQueue_Lock.class : "ReferenceQueue.Lock must have a monitor field or we can deadlock accessing WeakIdentityHashMap below";
         VMError.guarantee(!additionalMonitorsLock.isHeldByCurrentThread(),
                         "Recursive manipulation of the additionalMonitors map can lead to table corruptions and double insertion of a monitor for the same object");
 
@@ -479,11 +474,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     }
 }
 
-@TargetClass(value = ReferenceQueue.class, innerClass = "Lock", onlyWith = JDK17OrEarlier.class)
-final class Target_java_lang_ref_ReferenceQueue_Lock {
-}
-
-@TargetClass(className = "jdk.internal.misc.Blocker", onlyWith = JDK19OrLater.class)
+@TargetClass(className = "jdk.internal.misc.Blocker")
 final class Target_jdk_internal_misc_Blocker {
     @Alias
     public static native long begin();

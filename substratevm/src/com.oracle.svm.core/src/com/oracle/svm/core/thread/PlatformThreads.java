@@ -390,7 +390,7 @@ public abstract class PlatformThreads {
         /* Return a stack size based on parameters and command line flags. */
         long stackSize;
         Target_java_lang_Thread tjlt = toTarget(thread);
-        long threadSpecificStackSize = (JavaVersionUtil.JAVA_SPEC >= 19) ? tjlt.holder.stackSize : tjlt.stackSize;
+        long threadSpecificStackSize = tjlt.holder.stackSize;
         if (threadSpecificStackSize != 0) {
             /* If the user set a thread stack size at thread creation, then use that. */
             stackSize = threadSpecificStackSize;
@@ -472,12 +472,6 @@ public abstract class PlatformThreads {
 
         /* If the thread was manually started, finish initializing it. */
         if (manuallyStarted) {
-            final ThreadGroup group = thread.getThreadGroup();
-            if (JavaVersionUtil.JAVA_SPEC < 19 && !(VirtualThreads.isSupported() && VirtualThreads.singleton().isVirtual(thread))) {
-                toTarget(group).addUnstarted();
-                toTarget(group).add(thread);
-            }
-
             if (!thread.isDaemon()) {
                 nonDaemonThreads.incrementAndGet();
             }
@@ -649,7 +643,7 @@ public abstract class PlatformThreads {
                 }
             } else {
                 Target_java_lang_Thread tjlt = toTarget(thread);
-                Runnable target = JavaVersionUtil.JAVA_SPEC >= 19 ? tjlt.holder.task : tjlt.target;
+                Runnable target = tjlt.holder.task;
                 if (Target_java_util_concurrent_ThreadPoolExecutor_Worker.class.isInstance(target)) {
                     ThreadPoolExecutor executor = SubstrateUtil.cast(target, Target_java_util_concurrent_ThreadPoolExecutor_Worker.class).executor;
                     if (executor != null && (executor.getClass() == ThreadPoolExecutor.class || executor.getClass() == ScheduledThreadPoolExecutor.class)) {
@@ -1054,16 +1048,12 @@ public abstract class PlatformThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int getThreadStatus(Thread thread) {
         assert !isVirtual(thread);
-        return (JavaVersionUtil.JAVA_SPEC >= 19) ? toTarget(thread).holder.threadStatus : toTarget(thread).threadStatus;
+        return toTarget(thread).holder.threadStatus;
     }
 
     public static void setThreadStatus(Thread thread, int threadStatus) {
         assert !isVirtual(thread);
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            toTarget(thread).holder.threadStatus = threadStatus;
-        } else {
-            toTarget(thread).threadStatus = threadStatus;
-        }
+        toTarget(thread).holder.threadStatus = threadStatus;
     }
 
     static boolean compareAndSetThreadStatus(Thread thread, int expectedStatus, int newStatus) {
@@ -1224,14 +1214,8 @@ public abstract class PlatformThreads {
     static void blockedOn(Target_sun_nio_ch_Interruptible b) {
         assert !isCurrentThreadVirtual();
         Target_java_lang_Thread me = toTarget(currentThread.get());
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            synchronized (me.interruptLock) {
-                me.nioBlocker = b;
-            }
-        } else {
-            synchronized (me.blockerLock) {
-                me.blocker = b;
-            }
+        synchronized (me.interruptLock) {
+            me.nioBlocker = b;
         }
     }
 

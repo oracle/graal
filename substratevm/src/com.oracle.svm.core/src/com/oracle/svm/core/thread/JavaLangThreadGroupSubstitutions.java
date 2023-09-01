@@ -40,27 +40,13 @@ import com.oracle.svm.core.annotate.Inject;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.heap.Heap;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK19OrLater;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrThreadRepository;
 import com.oracle.svm.util.ReflectionUtil;
 
 @TargetClass(ThreadGroup.class)
 final class Target_java_lang_ThreadGroup {
-
-    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNUnstartedThreadsRecomputation.class, disableCaching = true)//
-    private int nUnstartedThreads;
-    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class)//
-    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupNThreadsRecomputation.class)//
-    private int nthreads;
-
-    @Alias @TargetElement(onlyWith = JDK17OrEarlier.class) //
-    @InjectAccessors(ThreadGroupThreadsAccessor.class) //
-    private Thread[] threads;
 
     @Inject //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ThreadGroupThreadsRecomputation.class)//
@@ -82,10 +68,8 @@ final class Target_java_lang_ThreadGroup {
      * All ThreadGroups in the image heap are strong and will be stored in ThreadGroup.groups.
      */
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    @TargetElement(onlyWith = JDK19OrLater.class)//
     private int nweaks;
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    @TargetElement(onlyWith = JDK19OrLater.class)//
     private WeakReference<ThreadGroup>[] weaks;
 
     @Inject @InjectAccessors(ThreadGroupIdAccessor.class) //
@@ -93,14 +77,6 @@ final class Target_java_lang_ThreadGroup {
 
     @Inject @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
     long injectedId;
-
-    @Alias
-    @TargetElement(onlyWith = JDK17OrEarlier.class)//
-    native void addUnstarted();
-
-    @Alias
-    @TargetElement(onlyWith = JDK17OrEarlier.class)//
-    native void add(Thread t);
 
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
