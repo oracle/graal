@@ -88,7 +88,6 @@ import com.oracle.svm.core.heap.ReferenceHandlerThread;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
-import com.oracle.svm.core.jfr.events.ThreadSleepEventJDK17;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorSupport;
@@ -964,24 +963,17 @@ public abstract class PlatformThreads {
      */
     static void sleep(long nanos) throws InterruptedException {
         assert !isCurrentThreadVirtual();
-        /* Starting with JDK 19, the thread sleep event is implemented as a Java-level event. */
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            if (com.oracle.svm.core.jfr.HasJfrSupport.get() && Target_jdk_internal_event_ThreadSleepEvent.isTurnedOn()) {
-                Target_jdk_internal_event_ThreadSleepEvent event = new Target_jdk_internal_event_ThreadSleepEvent();
-                try {
-                    event.time = nanos;
-                    event.begin();
-                    sleep0(nanos);
-                } finally {
-                    event.commit();
-                }
-            } else {
+        if (com.oracle.svm.core.jfr.HasJfrSupport.get() && Target_jdk_internal_event_ThreadSleepEvent.isTurnedOn()) {
+            Target_jdk_internal_event_ThreadSleepEvent event = new Target_jdk_internal_event_ThreadSleepEvent();
+            try {
+                event.time = nanos;
+                event.begin();
                 sleep0(nanos);
+            } finally {
+                event.commit();
             }
         } else {
-            long startTicks = com.oracle.svm.core.jfr.JfrTicks.elapsedTicks();
             sleep0(nanos);
-            ThreadSleepEventJDK17.emit(TimeUtils.roundNanosToMillis(nanos), startTicks);
         }
     }
 
