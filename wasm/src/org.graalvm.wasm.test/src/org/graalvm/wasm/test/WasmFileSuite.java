@@ -456,7 +456,7 @@ public abstract class WasmFileSuite extends AbstractWasmSuite {
         System.out.println("Using runtime: " + Truffle.getRuntime().toString());
         int width = retrieveTerminalWidth();
         int position = 0;
-        ExecutorService pool = WasmTestOptions.SHARED_ENGINE ? Executors.newSingleThreadExecutor() : null;
+        ExecutorService pool = WasmTestOptions.SHARED_ENGINE ? Executors.newFixedThreadPool(3) : null;
         for (WasmCase testCase : qualifyingTestCases) {
             int extraWidth = 1 + STATUS_ICON_WIDTH + STATUS_LABEL_WIDTH;
             int requiredWidth = testCase.name().length() + extraWidth;
