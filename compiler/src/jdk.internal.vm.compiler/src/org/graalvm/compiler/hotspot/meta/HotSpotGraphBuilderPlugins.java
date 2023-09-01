@@ -285,6 +285,7 @@ public class HotSpotGraphBuilderPlugins {
         tl.register(new InvocationPlugin("get", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                receiver.get();
                 int jvmciReservedReference0Offset = config.jvmciReservedReference0Offset;
                 GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
                 b.addPush(JavaKind.Object, new HotSpotLoadReservedReferenceNode(b.getMetaAccess(), wordTypes, jvmciReservedReference0Offset));
@@ -295,6 +296,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver,
                             ValueNode value) {
+                receiver.get();
                 int jvmciReservedReference0Offset = config.jvmciReservedReference0Offset;
                 GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
                 b.add(new HotSpotStoreReservedReferenceNode(wordTypes, value, jvmciReservedReference0Offset));
@@ -770,6 +772,7 @@ public class HotSpotGraphBuilderPlugins {
                 public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode hide) {
                     if (config.doJVMTIVirtualThreadTransitions) {
                         try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
+                            receiver.get();
                             // unconditionally update the temporary VTMS transition bit in current
                             // JavaThread
                             GraalError.guarantee(config.threadIsInTmpVTMSTransitionOffset != -1L, "JavaThread::_is_in_tmp_VTMS_transition is not exported");
@@ -1180,6 +1183,7 @@ public class HotSpotGraphBuilderPlugins {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode input, ValueNode offset, ValueNode length, ValueNode aLimbs, ValueNode rLimbs) {
                 try (InvocationPluginHelper helper = new InvocationPluginHelper(b, targetMethod)) {
+                    receiver.get();
                     ValueNode inputNotNull = b.nullCheckedValue(input);
                     ValueNode aLimbsNotNull = b.nullCheckedValue(aLimbs);
                     ValueNode rLimbsNotNull = b.nullCheckedValue(rLimbs);
@@ -1279,6 +1283,7 @@ public class HotSpotGraphBuilderPlugins {
                 try (HotSpotInvocationPluginHelper helper = new HotSpotInvocationPluginHelper(b, targetMethod, config)) {
                     ValueNode objectNonNull = b.nullCheckedValue(objectToSize);
                     StructuredGraph graph = b.getGraph();
+                    receiver.get(); // Discharge receiver null check requirement
                     LoadHubNode hub = b.add(new LoadHubNode(b.getStampProvider(), objectNonNull));
                     ValueNode layoutHelper = helper.klassLayoutHelper(hub);
 

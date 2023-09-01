@@ -259,7 +259,6 @@ import static org.graalvm.compiler.java.BytecodeParserOptions.TraceParserPlugins
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
-import static org.graalvm.compiler.nodes.type.StampTool.isPointerNonNull;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -2299,7 +2298,7 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         assert invokeKind.isDirect() : "Cannot apply invocation plugin on an indirect call site.";
 
         InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
-        boolean needsReceiverNullCheck = !targetMethod.isStatic() && args[0].getStackKind() == JavaKind.Object;
+        boolean needsReceiverNullCheck = !(plugin instanceof GeneratedInvocationPlugin) && !targetMethod.isStatic() && args[0].getStackKind() == JavaKind.Object;
         try (DebugCloseable context = openNodeContext(targetMethod); InvocationPluginScope pluginScope = new InvocationPluginScope(invokeKind, args, targetMethod, resultType, plugin)) {
             Mark mark = graph.getMark();
             if (plugin.execute(this, targetMethod, pluginReceiver, args)) {

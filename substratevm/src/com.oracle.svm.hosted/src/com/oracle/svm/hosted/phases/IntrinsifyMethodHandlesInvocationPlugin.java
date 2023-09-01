@@ -577,6 +577,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                     } catch (WrongMethodTypeException t) {
                         return false;
                     }
+                    receiver.requireNonNull();
                     JavaConstant asTypeConstant = snippetReflection.forObject(asType);
                     ConstantNode asTypeNode = ConstantNode.forConstant(asTypeConstant, b.getMetaAccess(), b.getGraph());
                     b.push(JavaKind.Object, asTypeNode);
