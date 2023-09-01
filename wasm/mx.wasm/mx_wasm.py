@@ -99,6 +99,12 @@ class GraalWasmDefaultTags:
 def wat2wasm_binary():
     return mx.exe_suffix("wat2wasm")
 
+def wabt_test_args():
+    if not wabt_dir:
+        mx.warn("No WABT_DIR specified")
+        return []
+    return ["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary())]
+
 
 def graal_wasm_gate_runner(args, tasks):
     with Task("BuildAll", tasks, tags=[GraalWasmDefaultTags.buildall]) as t:
@@ -107,11 +113,12 @@ def graal_wasm_gate_runner(args, tasks):
 
     with Task("UnitTests", tasks, tags=[GraalWasmDefaultTags.wasmtest, GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
-            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()), "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest([*wabt_test_args(), "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest([*wabt_test_args(), "-Dwasmtest.sharedEngine=true", "WasmTestSuite"], test_report_tags={'task': t.title})
+
     with Task("ConstantsPolicyUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmconstantspolicytest], report=True) as t:
         if t:
-            unittest(["-Dwasmtest.watToWasmExecutable=" + os.path.join(wabt_dir, wat2wasm_binary()),
-                      "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WasmTestSuite"], test_report_tags={'task': t.title})
+            unittest([*wabt_test_args(), "-Dwasmtest.storeConstantsPolicy=LARGE_ONLY", "WasmTestSuite"], test_report_tags={'task': t.title})
 
     with Task("ExtraUnitTests", tasks, tags=[GraalWasmDefaultTags.wasmextratest, GraalWasmDefaultTags.coverage], report=True) as t:
         if t:
