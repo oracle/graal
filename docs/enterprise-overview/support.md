@@ -7,7 +7,7 @@ permalink: /support/
 
 ## Available Distributions
 
-Oracle GraalVM distributions are based on Oracle JDK 17 and Oracle JDK 20.
+Oracle GraalVM distributions are based on Oracle JDK 17 and Oracle JDK 21.
 Oracle GraalVM releases include all Oracle Java critical patch updates (CPUs), which are released on a regular schedule to remedy defects and known vulnerabilities.
 
 Oracle GraalVM is available for Linux, macOS, and Windows platforms on x64 systems, for Linux and macOS on AArch64 architecture.
