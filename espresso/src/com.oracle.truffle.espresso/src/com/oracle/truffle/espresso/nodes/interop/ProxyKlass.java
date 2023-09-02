@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.nodes.interop;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.impl.ObjectKlass;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public class ProxyKlass {
 

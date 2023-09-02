@@ -1,0 +1,7 @@
+# mx --dy /espresso,/substratevm,/sulong --components="Espresso libjvm,Java on Truffle LLVM Java libraries,Java on Truffle,LLVM Runtime Native,LLVM.org toolchain,Truffle Macro,GraalVM license files" --disable-libpolyglot --non-rebuildable-images=lib:javavm --disable-installables=true graalvm-show --print-env
+DYNAMIC_IMPORTS=/espresso,/sdk,/substratevm,/sulong,/truffle,/vm
+COMPONENTS=antlr4,ejvm,ejc,ellvm,gvm,java,llp,llrc,llrlf,llrn,nfi,nfi-libffi,sdk,sdkc,sdkl,sdkni,tfl,tfla,tflc,tflm
+EXCLUDE_COMPONENTS=libpoly
+NATIVE_IMAGES=graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang++,graalvm-native-clang-cl,graalvm-native-flang,graalvm-native-ld,lib:javavm
+DISABLE_INSTALLABLES=True
+NON_REBUILDABLE_IMAGES=lib:javavm

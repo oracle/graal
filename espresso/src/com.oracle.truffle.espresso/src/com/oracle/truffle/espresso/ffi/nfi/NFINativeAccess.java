@@ -60,7 +60,7 @@ import com.oracle.truffle.espresso.ffi.SignatureCallNode;
 import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Collect;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
@@ -281,7 +281,10 @@ public class NFINativeAccess implements NativeAccess {
                         break;
                 }
                 return ret;
-            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere("This can be caused by mixing native/ffi symbols with llvm signatures and vice-versa", e);
+            } catch (UnsupportedTypeException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {

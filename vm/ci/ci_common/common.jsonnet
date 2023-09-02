@@ -794,7 +794,7 @@ local devkits = graal_common.devkits;
       $.upload_file_sizes,
     ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "windows", "amd64", java_version),
     notify_groups:: ['deploy'],
-    timelimit: '2:00:00',
+    timelimit: '2:30:00',
   },
 
   deploy_graalvm_ruby(os, arch, java_version): {
@@ -809,13 +809,15 @@ local devkits = graal_common.devkits;
 
   deploy_graalvm_espresso(os, arch, java_version): {
     run: vm.collect_profiles() + (
-      if os == 'windows' then [
-        ['set-export', 'VM_ENV', "${VM_ENV}-win-espresso"],
+      if ((os == 'linux' || os == 'darwin') && arch == 'amd64') then [
+        ['set-export', 'VM_ENV', "${VM_ENV}-llvm-espresso"],
       ] else [
         ['set-export', 'VM_ENV', "${VM_ENV}-espresso"],
       ]
     ) + $.build_base_graalvm_image + $.deploy_sdk_base(os, 'espresso') + [
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
+      ['set-export', 'DACAPO_JAR', $.mx_vm_common + ['--quiet', '--no-warning', 'paths', '--download', 'DACAPO_MR1_2baec49']],
+      ['${GRAALVM_HOME}/bin/java', '-jar', '${DACAPO_JAR}', 'luindex'],
     ] + $.create_releaser_notifier_artifact,
     notify_groups:: ['deploy'],
     timelimit: '1:45:00',
@@ -856,11 +858,11 @@ local devkits = graal_common.devkits;
   # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
   #
 
-  deploy_vm_espresso_java21_linux_amd64: vm.vm_java_21 + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_espresso('linux', 'amd64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-linux-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_espresso('linux', 'amd64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-linux-amd64', notify_groups:: ["deploy"]},
   deploy_vm_espresso_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_vm_linux_aarch64 + self.deploy_graalvm_espresso('linux', 'aarch64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-linux-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_darwin_amd64: vm.vm_java_21 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_espresso('darwin', 'amd64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-darwin-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_vm_darwin_amd64 + self.deploy_graalvm_espresso('darwin', 'amd64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-darwin-amd64', notify_groups:: ["deploy"]},
   deploy_vm_espresso_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_vm_darwin_aarch64 + self.deploy_graalvm_espresso('darwin', 'aarch64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-darwin-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.deploy_build + self.deploy_vm_windows_jdk21 + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.sulong_windows + self.deploy_build + self.deploy_vm_windows_jdk21 + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'post-merge-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
 
   local builds = [
     #

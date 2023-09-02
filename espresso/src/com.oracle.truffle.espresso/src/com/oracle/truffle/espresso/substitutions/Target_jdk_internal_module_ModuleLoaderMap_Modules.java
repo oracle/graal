@@ -36,7 +36,7 @@ import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @EspressoSubstitutions(nameProvider = Target_jdk_internal_module_ModuleLoaderMap_Modules.Provider.class)
 public final class Target_jdk_internal_module_ModuleLoaderMap_Modules {
