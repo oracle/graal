@@ -469,16 +469,6 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     }
     #endif
 
-    #ifdef JVMCILIB_PATH
-    if (jvmMode) {
-        std::stringstream ss;
-        std::stringstream relativePath;
-        relativePath << exeDir << DIR_SEP_STR << STR(JVMCILIB_PATH);
-        ss << "-XX:JVMCILibPath=" << fs::canonical(relativePath.str()).string();
-        vmArgs.push_back(ss.str());
-    }
-    #endif
-
     /* handle CLI arguments */
     if (!vmArgInfo) {
         for (int i = 0; i < argc; i++) {

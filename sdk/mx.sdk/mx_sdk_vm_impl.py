@@ -2986,7 +2986,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             else:
                 for library_config in _get_libgraal_component().library_configs:
                     dependency = GraalVmLibrary.project_name(library_config)
-                    layout.setdefault(base_dir + 'jvm/lib/', []).append({
+                    jvm_lib_dir = 'bin' if mx.is_windows() else 'lib'
+                    layout.setdefault(f'{base_dir}jvm/{jvm_lib_dir}/', []).append({
                         'source_type': 'dependency',
                         'dependency': dependency,
                         'exclude': [],
@@ -3357,13 +3358,6 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             _libjli_path = escaped_relpath(_libjli_path)
             _dynamic_cflags += [
                 '-DLIBJLI_RELPATH=' + _libjli_path,
-            ]
-
-        if self.jvm_standalone and mx.is_windows():
-            _libjvmci_path = join(self.jre_base, 'lib')
-            _libjvmci_path = escaped_relpath(_libjvmci_path)
-            _dynamic_cflags += [
-                "-DJVMCILIB_PATH=" + _libjvmci_path,
             ]
 
         if not self.jvm_standalone:
