@@ -3275,12 +3275,15 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         if mx.is_darwin():
             _dynamic_cflags += ['-ObjC++']
 
+        def escaped_path(path):
+            if mx.is_windows():
+                return path.replace('\\', '\\\\')
+            else:
+                return path
+
         def escaped_relpath(path):
             relative = relpath(path, start=_exe_dir)
-            if mx.is_windows():
-                return relative.replace('\\', '\\\\')
-            else:
-                return relative
+            return escaped_path(relative)
 
         _graalvm_home = _get_graalvm_archive_path("")
 
@@ -3290,11 +3293,11 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             _lp = []
             for jvm_jar in self.jvm_standalone.jvm_jars:
                 for _, jar_name in mx.dependency(jvm_jar).getArchivableResults(single=True):
-                    _cp.append(join('..', 'jars', jar_name))
+                    _cp.append(escaped_path(join('..', 'jars', jar_name)))
             if self.jvm_standalone.jvm_modules:
-                _mp.append(join('..', 'modules'))
+                _mp.append(escaped_path(join('..', 'modules')))
             if self.jvm_standalone.jvm_libs:
-                _lp.append(join('..', 'jvmlibs'))
+                _lp.append(escaped_path(join('..', 'jvmlibs')))
         else:
             _cp = []
             # launcher classpath for launching via jvm
@@ -3379,8 +3382,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             lang_home_names = []
             bin_home_paths = []
             for lang_home_name, lib_home_path in self.language_library_config.relative_home_paths.items():
-                bin_home_path = relpath(join(self.jre_base, '..', 'lib', lib_home_path), _exe_dir)
-                lang_home_names.append(lang_home_name)
+                bin_home_path = escaped_relpath(join(self.jre_base, '..', 'lib', lib_home_path))
+                lang_home_names.append(escaped_path(lang_home_name))
                 bin_home_paths.append(bin_home_path)
             if lang_home_names:
                 _dynamic_cflags += [
