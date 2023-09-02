@@ -3359,6 +3359,13 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
                 '-DLIBJLI_RELPATH=' + _libjli_path,
             ]
 
+        if self.jvm_standalone and mx.is_windows():
+            _libjvmci_path = join(self.jre_base, 'lib')
+            _libjvmci_path = escaped_relpath(_libjvmci_path)
+            _dynamic_cflags += [
+                "-DJVMCILIB_PATH=" + _libjvmci_path,
+            ]
+
         if not self.jvm_standalone:
             # path to native image language library - this is set even if the library is not built, as it may be built after the fact
             if self.jvm_launcher:
