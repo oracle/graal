@@ -56,6 +56,8 @@ import mx_native
 import mx_sdk
 import mx_sdk_vm
 import mx_unittest
+import mx_jardistribution
+import mx_pomdistribution
 import tck
 from mx_gate import Task
 from mx_javamodules import as_java_module, get_module_name
@@ -895,6 +897,95 @@ def validate_parser(grammar_project, grammar_path, create_command, args=None, ou
             mx.abort(f"Content generated from {grammar_path} does not match content of {path}:{nl}" +
                     f"{diff}{nl}" +
                     "Make sure the grammar files are up to date with the generated code. You can regenerate the generated code using mx.")
+
+
+def register_polyglot_isolate_distributions(register_distribution, language_id, language_distribution, isolate_library_layout_distribution, internal_resource_project):
+    """
+    Registers the polyglot isolate resource distribution and isolate resource meta-POM distribution.
+    The created polyglot isolate resource distribution is named `<ID>_ISOLATE_RESOURCES`, inheriting the Maven group ID
+    from the given `language_distribution`, and the Maven artifact ID is `<id>-isolate`.
+    The meta-POM distribution is named `<ID>_ISOLATE`, having the Maven group ID `org.graalvm.polyglot`,
+    and the Maven artifact ID is `<id>-isolate`.
+
+    :param register_distribution: A callback to dynamically register the distribution, obtained as a parameter from `mx_register_dynamic_suite_constituents`.
+    :type register_distribution: (mx.Distribution) -> None
+    :param language_id: The language ID.
+    :param language_distribution: The language distribution used to inherit distribution properties.
+    :param isolate_library_layout_distribution: The layout distribution with polyglot isolate library.
+    :param internal_resource_project: The internal resource project used for unpacking the polyglot isolate library.
+    """
+    assert language_distribution
+    assert isolate_library_layout_distribution
+    assert internal_resource_project
+    owner_suite = language_distribution.suite
+    resources_dist_name = f'{language_id.upper()}_ISOLATE_RESOURCES'
+    isolate_dist_name = f'{language_id.upper()}_ISOLATE'
+    layout_dist_qualified_name = f'{isolate_library_layout_distribution.suite.name}:{isolate_library_layout_distribution.name}'
+    maven_group_id = language_distribution.maven_group_id()
+    maven_artifact_id = f'{language_id}-isolate'
+    module_name = f'{get_module_name(language_distribution)}.isolate'
+    licenses = set()
+    licenses.update(language_distribution.theLicense)
+    licenses.update(owner_suite.defaultLicense)
+    attrs = {
+        'description': f'Polyglot isolate resources for {language_id}.',
+        'moduleInfo': {
+            'name': module_name,
+        },
+        'maven': {
+            'groupId': maven_group_id,
+            'artifactId': maven_artifact_id,
+            'tag': ['default', 'public'],
+        },
+        'mavenNoJavadoc': True,
+        'mavenNoSources': True,
+    }
+    isolate_library_dist = mx_jardistribution.JARDistribution(
+        suite=owner_suite,
+        name=resources_dist_name,
+        subDir=language_distribution.subDir,
+        path=None,
+        sourcesPath=None,
+        deps=[
+            internal_resource_project.name,
+            layout_dist_qualified_name,
+        ],
+        mainClass=None,
+        excludedLibs=[],
+        distDependencies=['truffle:TRUFFLE_API'],
+        javaCompliance=str(internal_resource_project.javaCompliance)+'+',
+        platformDependent=True,
+        theLicense=list(licenses),
+        compress=True,
+        **attrs
+    )
+    register_distribution(isolate_library_dist)
+    attrs = {
+        'description': f'The {language_id} polyglot isolate.',
+        'maven': {
+            'groupId': 'org.graalvm.polyglot',
+            'artifactId': maven_artifact_id,
+            'tag': ['default', 'public'],
+        },
+    }
+    # the graal-enterprise may not be fully loaded
+    # we need to use suiteDict to get the license
+    graal_enterprise = mx.suite('graal-enterprise')
+    graal_enterprise_license = graal_enterprise.suiteDict.get('defaultLicense')
+    if isinstance(graal_enterprise_license, str):
+        graal_enterprise_license = [graal_enterprise_license]
+    licenses.update(graal_enterprise_license)
+    meta_pom_dist = mx_pomdistribution.POMDistribution(
+        suite=owner_suite,
+        name=isolate_dist_name,
+        distDependencies=[],
+        runtimeDependencies=[
+            resources_dist_name,
+            'graal-enterprise:TRUFFLE_ENTERPRISE',
+        ],
+        theLicense=sorted(list(licenses)),
+        **attrs)
+    register_distribution(meta_pom_dist)
 
 class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
     """Project for building libffi from source.

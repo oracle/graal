@@ -753,6 +753,8 @@ public abstract class Accessor {
         public abstract TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException;
 
         public abstract TruffleFile getInternalResource(Object owner, String resourceId) throws IOException;
+
+        public abstract Collection<String> getResourceIds(String componentId);
     }
 
     public abstract static class LanguageSupport extends Support {
@@ -1232,9 +1234,6 @@ public abstract class Accessor {
         public abstract boolean isLegacyCompilerOption(String key);
 
         public abstract <T> ThreadLocal<T> createTerminatingThreadLocal(Supplier<T> initialValue, Consumer<T> onThreadTermination);
-
-        public abstract Collection<InternalResource> getInternalResources();
-
     }
 
     public abstract static class LanguageProviderSupport extends Support {
