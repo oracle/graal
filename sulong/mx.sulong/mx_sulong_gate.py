@@ -232,7 +232,7 @@ def testLLVMImage(image, imageArgs=None, testFilter=None, libPath=True, test=Non
     args = ['-Dsulongtest.testAOTImage=' + image]
     aotArgs = []
     if libPath:
-        aotArgs += [mx_subst.path_substitutions.substitute('<sulong_home>')]
+        aotArgs += [mx_subst.path_substitutions.substitute('<path:SULONG_HOME>')]
     if imageArgs is not None:
         aotArgs += imageArgs
     if aotArgs:

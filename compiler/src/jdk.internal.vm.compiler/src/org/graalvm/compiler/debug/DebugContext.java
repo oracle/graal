@@ -46,7 +46,6 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -2220,8 +2219,10 @@ public final class DebugContext implements AutoCloseable {
         if (metricValues == null) {
             return;
         }
-        String metricsFile = DebugOptions.MetricsFile.getValue(getOptions());
-        if (metricsFile != null) {
+        if (DebugOptions.MetricsFile.getValue(getOptions()) != null) {
+            Path metricsFilePath = GlobalMetrics.generateFileName(DebugOptions.MetricsFile.getValue(getOptions()));
+            String metricsFile = metricsFilePath.toString();
+
             // Use identity to distinguish methods that have been redefined
             // or loaded by different class loaders.
             Object compilable = desc.compilable;
@@ -2261,14 +2262,14 @@ public final class DebugContext implements AutoCloseable {
             }
 
             byte[] content = baos.toByteArray();
-            Path path = Paths.get(metricsFile);
             synchronized (PRINT_METRICS_LOCK) {
                 metricsBufSize = Math.max(metricsBufSize, content.length);
                 try {
-                    Files.write(path, content, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
+                    Files.write(metricsFilePath, content, StandardOpenOption.CREATE, StandardOpenOption.APPEND);
                 } catch (IOException e) {
                 }
             }
+
         }
     }
 

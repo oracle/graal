@@ -77,7 +77,6 @@ _graalvm_hostvm_configs = [
     ('jvm-3-compiler-threads', [], ['--jvm', '--engine.CompilerThreads=3'], 50),
     ('native-3-compiler-threads', [], ['--native', '--engine.CompilerThreads=3'], 100)
 ]
-_known_vms = set()
 _base_jdk = None
 
 
@@ -254,7 +253,8 @@ class GraalVmComponent(object):
                  early_adopter=False,
                  stability=None,
                  extra_installable_qualifiers=None,
-                 has_relative_home=True):
+                 has_relative_home=True,
+                 jvm_configs=None):
         """
         :param suite mx.Suite: the suite this component belongs to
         :type name: str
@@ -266,6 +266,11 @@ class GraalVmComponent(object):
         :param list[str | (str, str)] provided_executables: executables to be placed in the appropriate `bin` directory.
             In the list, strings represent a path inside the component (e.g., inside a support distribution).
             Tuples `(dist, exec)` represent an executable to be copied found in `dist`, at path `exec` (the same basename will be used).
+        :param jvm_configs: list of dicts that describe changes to the `lib/jvm.cfg` file. Example:
+            {
+                'configs': ['-truffle KNOWN'],
+                'priority': -1,  # 0 is invalid; < 0 prepends to the default configs; > 0 appends
+            }
         :type license_files: list[str]
         :type third_party_license_files: list[str]
         :type polyglot_lib_build_args: list[str]
@@ -289,6 +294,7 @@ class GraalVmComponent(object):
         :type stability: str | None
         :type extra_installable_qualifiers: list[str] | None
         :type has_relative_home: bool
+        :type jvm_configs: list[dict] or None
         """
         if dependencies is None:
             mx.logv('Component {} does not specify dependencies'.format(name))
@@ -325,6 +331,7 @@ class GraalVmComponent(object):
         self.installable_id = installable_id or self.dir_name
         self.extra_installable_qualifiers = extra_installable_qualifiers or []
         self.has_relative_home = has_relative_home
+        self.jvm_configs = jvm_configs or []
 
         if supported is not None or early_adopter:
             if stability is not None:
@@ -530,12 +537,6 @@ def register_vm_config(config_name, components, suite, dist_name=None, env_file=
 
 def get_graalvm_hostvm_configs():
     return _graalvm_hostvm_configs
-
-
-def register_known_vm(name):
-    if name in _known_vms:
-        raise mx.abort("VM '{}' already registered".format(name))
-    _known_vms.add(name)
 
 
 def base_jdk():
@@ -1248,6 +1249,3 @@ Expected component list:
 Actual component list:
 {}
 {}Did you forget to update the registration of the GraalVM config?""".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines + err.lines), sorted(components), got_components, diff))
-
-
-register_known_vm('truffle')

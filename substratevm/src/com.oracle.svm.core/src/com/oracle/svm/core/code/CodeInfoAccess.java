@@ -262,6 +262,7 @@ public final class CodeInfoAccess {
         return CodeInfoDecoder.lookupDeoptimizationEntrypoint(info, method, encodedBci, codeInfo);
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long lookupTotalFrameSize(CodeInfo info, long ip) {
         SimpleCodeInfoQueryResult codeInfoQueryResult = UnsafeStackValue.get(SimpleCodeInfoQueryResult.class);
         lookupCodeInfo(info, ip, codeInfoQueryResult);

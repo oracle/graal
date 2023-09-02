@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,10 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import static org.graalvm.compiler.hotspot.HotSpotGraalServices.isIntrinsicAvailable;
+import static org.graalvm.compiler.hotspot.HotSpotGraalServices.isIntrinsicSupportedByC2;
+
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -42,8 +46,10 @@ import org.graalvm.compiler.hotspot.meta.UnimplementedGraalIntrinsics;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.GraalTest;
+import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -114,6 +120,19 @@ public class CheckGraalIntrinsics extends GraalTest {
                 }
             }
         }
+        for (Constructor<?> constructor : c.getDeclaredConstructors()) {
+            if (constructor.getName().equals(intrinsic.name)) {
+                ResolvedJavaMethod method = metaAccess.lookupJavaMethod(constructor);
+                if (intrinsic.descriptor.equals("*")) {
+                    // Signature polymorphic method - name match is enough
+                    return method;
+                } else {
+                    if (method.getSignature().toMethodDescriptor().equals(intrinsic.descriptor)) {
+                        return method;
+                    }
+                }
+            }
+        }
         return null;
     }
 
@@ -123,11 +142,12 @@ public class CheckGraalIntrinsics extends GraalTest {
 
     public final HotSpotGraalRuntimeProvider rt = (HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class);
     public final GraalHotSpotVMConfig config = rt.getVMConfig();
-    public final UnimplementedGraalIntrinsics unimplementedGraalIntrinsics = new UnimplementedGraalIntrinsics(config, rt.getHostBackend().getTarget().arch);
+    public final UnimplementedGraalIntrinsics unimplementedGraalIntrinsics = new UnimplementedGraalIntrinsics();
 
     @Test
     @SuppressWarnings("try")
     public void test() throws ClassNotFoundException {
+        Assume.assumeTrue("CheckGraalIntrinsics now relies on both VMIntrinsicMethod.isAvailable and VMIntrinsicMethod.c2Supported fields being present.", config.isIntrinsicAvailableExported());
         HotSpotProviders providers = rt.getHostBackend().getProviders();
         Plugins graphBuilderPlugins = providers.getGraphBuilderPlugins();
         InvocationPlugins invocationPlugins = graphBuilderPlugins.getInvocationPlugins();
@@ -142,19 +162,24 @@ public class CheckGraalIntrinsics extends GraalTest {
         List<String> missing = new ArrayList<>();
         List<String> mischaracterizedAsToBeInvestigated = new ArrayList<>();
         List<String> mischaracterizedAsIgnored = new ArrayList<>();
-        EconomicMap<String, List<InvocationPlugin>> invocationPluginsMap = invocationPlugins.getInvocationPlugins(true);
+        List<String> notAvailableYetIntrinsified = new ArrayList<>();
+
         for (VMIntrinsicMethod intrinsic : intrinsics) {
-            InvocationPlugin plugin = findPlugin(invocationPluginsMap, intrinsic);
+            ResolvedJavaMethod method = resolveIntrinsic(providers.getMetaAccess(), intrinsic);
+            if (method == null) {
+                continue;
+            }
+
+            InvocationPlugin plugin = invocationPlugins.lookupInvocation(method, Graal.getRequiredCapability(OptionValues.class));
             String m = String.format("%s.%s%s", intrinsic.declaringClass, intrinsic.name, intrinsic.descriptor);
             if (plugin == null) {
-                ResolvedJavaMethod method = resolveIntrinsic(providers.getMetaAccess(), intrinsic);
                 if (method != null) {
                     IntrinsicMethod intrinsicMethod = providers.getConstantReflection().getMethodHandleAccess().lookupMethodHandleIntrinsic(method);
                     if (intrinsicMethod != null) {
                         continue;
                     }
                 }
-                if (!unimplementedGraalIntrinsics.isDocumented(m)) {
+                if (!unimplementedGraalIntrinsics.isDocumented(m) && isIntrinsicAvailable(intrinsic) && isIntrinsicSupportedByC2(intrinsic)) {
                     missing.add(m);
                 }
             } else {
@@ -162,6 +187,8 @@ public class CheckGraalIntrinsics extends GraalTest {
                     mischaracterizedAsToBeInvestigated.add(m + " [plugin: " + plugin + "]");
                 } else if (unimplementedGraalIntrinsics.isIgnored(m)) {
                     mischaracterizedAsIgnored.add(m + " [plugin: " + plugin + "]");
+                } else if (!isIntrinsicAvailable(intrinsic) && !plugin.isGraalOnly()) {
+                    notAvailableYetIntrinsified.add(m + " [plugin: " + plugin + "]");
                 }
             }
         }
@@ -180,7 +207,12 @@ public class CheckGraalIntrinsics extends GraalTest {
         if (!mischaracterizedAsIgnored.isEmpty()) {
             Collections.sort(mischaracterizedAsIgnored);
             String missingString = mischaracterizedAsIgnored.stream().map(s -> '"' + s + '"').collect(Collectors.joining(String.format(",%n    ")));
-            errorMsgBuf.format("found plugins for intrinsics characterized as IGNORED:%n    %s%n", missingString);
+            errorMsgBuf.format("found plugins for intrinsics characterized as ignored:%n    %s%n", missingString);
+        }
+        if (!notAvailableYetIntrinsified.isEmpty()) {
+            Collections.sort(notAvailableYetIntrinsified);
+            String missingString = notAvailableYetIntrinsified.stream().map(s -> '"' + s + '"').collect(Collectors.joining(String.format(",%n    ")));
+            errorMsgBuf.format("found plugins for intrinsics marked as unavailable:%n    %s%n", missingString);
         }
         String errorMsg = errorMsgBuf.toString();
         if (!errorMsg.isEmpty()) {

@@ -24,6 +24,12 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AES;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
+
 import java.util.EnumSet;
 
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
@@ -114,11 +120,11 @@ public class CounterModeAESNode extends MemoryKillStubIntrinsicNode {
     }
 
     public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-        return AESNode.minFeaturesAMD64();
+        return EnumSet.of(SSE2, SSE3, SSSE3, SSE4_1, AES);
     }
 
     public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {
-        return AESNode.minFeaturesAARCH64();
+        return EnumSet.of(AArch64.CPUFeature.AES);
     }
 
     @SuppressWarnings("unlikely-arg-type")

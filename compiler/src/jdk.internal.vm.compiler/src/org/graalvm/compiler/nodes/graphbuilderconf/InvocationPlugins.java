@@ -813,15 +813,7 @@ public class InvocationPlugins {
         register(declaringClass, plugin, false);
     }
 
-    /**
-     * Gets the plugin for a given method.
-     *
-     * @param method the method to lookup
-     * @param allowDecorators return {@link InvocationPlugin#isDecorator()} plugins only if true
-     * @param allowDisable whether to respect the DisableIntrinsics flag
-     * @return the plugin associated with {@code method} or {@code null} if none exists
-     */
-    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, boolean allowDisable, OptionValues options) {
+    private void initializeDisabledIntrinsicsFilter(OptionValues options) {
         if (!isDisabledIntrinsicsFilterInitialized) {
             synchronized (this) {
                 if (!isDisabledIntrinsicsFilterInitialized) {
@@ -837,6 +829,23 @@ public class InvocationPlugins {
                 isDisabledIntrinsicsFilterInitialized = true;
             }
         }
+    }
+
+    protected final boolean shouldLogDisabledIntrinsics(OptionValues options) {
+        initializeDisabledIntrinsicsFilter(options);
+        return logDisabledIntrinsics;
+    }
+
+    /**
+     * Gets the plugin for a given method.
+     *
+     * @param method the method to lookup
+     * @param allowDecorators return {@link InvocationPlugin#isDecorator()} plugins only if true
+     * @param allowDisable whether to respect the DisableIntrinsics flag
+     * @return the plugin associated with {@code method} or {@code null} if none exists
+     */
+    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, boolean allowDisable, OptionValues options) {
+        initializeDisabledIntrinsicsFilter(options);
 
         if (parent != null) {
             InvocationPlugin plugin = parent.lookupInvocation(method, allowDecorators, allowDisable, options);
@@ -1227,5 +1236,8 @@ public class InvocationPlugins {
      */
     @SuppressWarnings("unused")
     public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
+        if (parent != null) {
+            parent.notifyNoPlugin(targetMethod, options);
+        }
     }
 }

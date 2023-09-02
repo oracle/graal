@@ -39,8 +39,9 @@ public class AgentMetaInfProcessor implements NativeImageMetaInfResourceProcesso
     }
 
     @Override
-    public void processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws Exception {
+    public boolean processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws Exception {
         ignoredConfigFileCollection.addDirectory(resourcePath.getParent());
+        return false;
     }
 
     @Override

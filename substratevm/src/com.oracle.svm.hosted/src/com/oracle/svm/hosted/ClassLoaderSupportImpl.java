@@ -33,7 +33,6 @@ import java.io.InputStream;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
-import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
@@ -67,21 +66,13 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
 
-    private final ClassLoader imageClassLoader;
-    private final URLClassLoader classPathClassLoader;
+    private final NativeImageClassLoader imageClassLoader;
 
     private final Map<String, Set<Module>> packageToModules;
 
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         imageClassLoader = classLoaderSupport.getClassLoader();
-        /*
-         * Only if imageClassLoader is not the URLClassLoader we need to also remember its parent as
-         * classPathClassLoader (for use in isNativeImageClassLoaderImpl). Otherwise, there is only
-         * the URLClassLoader (already stored in imageClassLoader, extra classPathClassLoader field
-         * can be set to null).
-         */
-        classPathClassLoader = imageClassLoader instanceof URLClassLoader ? null : (URLClassLoader) imageClassLoader.getParent();
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
     }
@@ -89,9 +80,6 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     @Override
     protected boolean isNativeImageClassLoaderImpl(ClassLoader loader) {
         if (loader == imageClassLoader) {
-            return true;
-        }
-        if (classPathClassLoader != null && loader == classPathClassLoader) {
             return true;
         }
         if (loader instanceof NativeImageSystemClassLoader) {

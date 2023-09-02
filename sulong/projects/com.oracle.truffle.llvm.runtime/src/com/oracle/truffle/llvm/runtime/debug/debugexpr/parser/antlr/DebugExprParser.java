@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -33,11 +33,11 @@ import com.oracle.truffle.api.TruffleLanguage.InlineParsingRequest;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.nodes.DebugExprNodeFactory;
 import com.oracle.truffle.llvm.runtime.debug.debugexpr.parser.DebugExprException;
 import com.oracle.truffle.llvm.runtime.nodes.api.LLVMExpressionNode;
-import org.antlr.v4.runtime.BaseErrorListener;
-import org.antlr.v4.runtime.CharStreams;
-import org.antlr.v4.runtime.CommonTokenStream;
-import org.antlr.v4.runtime.RecognitionException;
-import org.antlr.v4.runtime.Recognizer;
+import org.graalvm.shadowed.org.antlr.v4.runtime.BaseErrorListener;
+import org.graalvm.shadowed.org.antlr.v4.runtime.CharStreams;
+import org.graalvm.shadowed.org.antlr.v4.runtime.CommonTokenStream;
+import org.graalvm.shadowed.org.antlr.v4.runtime.RecognitionException;
+import org.graalvm.shadowed.org.antlr.v4.runtime.Recognizer;
 
 public class DebugExprParser {
 

@@ -165,11 +165,15 @@ public abstract class Edges extends Fields {
         while (index < curCount) {
             NodeList<Node> list = getNodeList(toNode, curOffsets, index);
             NodeList<Node> fromList = getNodeList(fromNode, curOffsets, index);
-            if (list == null || list == fromList) {
-                list = curType == Edges.Type.Inputs ? new NodeInputList<>(toNode, fromList) : new NodeSuccessorList<>(toNode, fromList);
-                initializeList(toNode, index, list);
-            } else {
-                list.copy(fromList);
+            // Some Nodes use a null NodeList if they know there are no values so don't introduce
+            // an empty NodeList when cloning.
+            if (fromList != null) {
+                if (list == null || list == fromList) {
+                    list = curType == Edges.Type.Inputs ? new NodeInputList<>(toNode, fromList) : new NodeSuccessorList<>(toNode, fromList);
+                    initializeList(toNode, index, list);
+                } else {
+                    list.copy(fromList);
+                }
             }
             index++;
         }

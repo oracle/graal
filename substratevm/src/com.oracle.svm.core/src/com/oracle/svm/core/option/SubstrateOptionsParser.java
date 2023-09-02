@@ -210,7 +210,8 @@ public class SubstrateOptionsParser {
                                 apiOptionWithValue = optionName;
                             } else {
                                 /* Option with custom value. Use form with valueSeparator */
-                                apiOptionWithValue = optionName + apiOption.valueSeparator()[0] + value;
+                                String valueSeparator = APIOption.Utils.valueSeparatorToString(apiOption.valueSeparator()[0]);
+                                apiOptionWithValue = optionName + valueSeparator + value;
                             }
                         }
                     } else if (apiOption.fixedValue()[0].equals(value)) {

@@ -36,6 +36,7 @@ import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.PointerBase;
+import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 /**
@@ -233,6 +234,8 @@ public abstract class Log implements AutoCloseable {
     public abstract Log unsigned(long value, int fill, int align);
 
     public abstract Log rational(long numerator, long denominator, long decimals);
+
+    public abstract Log rational(UnsignedWord numerator, long denominator, long decimals);
 
     /**
      * Prints the value, treated as an unsigned value, in hexadecimal format.
@@ -490,6 +493,11 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log rational(long numerator, long denominator, long decimals) {
+            return this;
+        }
+
+        @Override
+        public Log rational(UnsignedWord numerator, long denominator, long decimals) {
             return this;
         }
 

@@ -217,8 +217,7 @@ class NativeImageVM(GraalVm):
             if vm.async_sampler:
                 self.base_image_build_args += ['-R:+FlightRecorder',
                                                '-R:StartFlightRecording=filename=default.jfr',
-                                               '--enable-monitoring=jfr',
-                ] + svm_experimental_options(['-H:+SignalHandlerBasedExecutionSampler'])
+                                               '--enable-monitoring=jfr']
                 for stage in ('instrument-image', 'instrument-run'):
                     if stage in self.stages:
                         self.stages.remove(stage)

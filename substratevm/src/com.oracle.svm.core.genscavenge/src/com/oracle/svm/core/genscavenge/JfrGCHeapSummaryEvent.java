@@ -39,7 +39,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 class JfrGCHeapSummaryEvent {
     public static void emit(JfrGCWhen gcWhen) {
         if (HasJfrSupport.get()) {
-            emit0(GCImpl.getGCImpl().getCollectionEpoch(), JfrTicks.elapsedTicks(), HeapImpl.getHeapImpl().getCommittedBytes(), HeapImpl.getHeapImpl().getUsedBytes(), gcWhen);
+            emit0(GCImpl.getGCImpl().getCollectionEpoch(), JfrTicks.elapsedTicks(), HeapImpl.getAccounting().getCommittedBytes(), HeapImpl.getAccounting().getUsedBytes(), gcWhen);
         }
     }
 

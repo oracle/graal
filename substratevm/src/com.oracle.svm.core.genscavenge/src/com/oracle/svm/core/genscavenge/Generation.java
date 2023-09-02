@@ -53,8 +53,11 @@ abstract class Generation {
         return name;
     }
 
-    /** Report some statistics about the Generation to a Log. */
-    public abstract Log report(Log log, boolean traceHeapChunks);
+    /** Print some heap statistics to a log. */
+    public abstract void logUsage(Log log);
+
+    /** Print some information about the chunks to the log. */
+    public abstract void logChunks(Log log);
 
     /**
      * Promote an Object to this Generation, typically by copying and leaving a forwarding pointer

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.hosted.methodhandles;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.HashSet;
 import java.util.List;
@@ -47,8 +48,11 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * the {@code LambdaForm} which they were compiled from.
  */
 public class MethodHandleInvokerRenamingSubstitutionProcessor extends SubstitutionProcessor {
-    private static final Class<?> LAMBDA_FORM_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm");
     private static final Method CLASS_GET_CLASS_DATA_METHOD = ReflectionUtil.lookupMethod(Class.class, "getClassData");
+    private static final Class<?> LAMBDA_FORM_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.LambdaForm");
+    private static final Field LAMBDA_FORM_CUSTOMIZED_FIELD = ReflectionUtil.lookupField(LAMBDA_FORM_CLASS, "customized");
+    private static final Class<?> DIRECT_METHOD_HANDLE_CLASS = ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle");
+    private static final Method DIRECT_METHOD_HANDLE_INTERNAL_MEMBER_NAME_METHOD = ReflectionUtil.lookupMethod(DIRECT_METHOD_HANDLE_CLASS, "internalMemberName");
 
     /*
      * We currently only replace the invokers of direct method handles which have a simpler
@@ -88,15 +92,39 @@ public class MethodHandleInvokerRenamingSubstitutionProcessor extends Substituti
 
     private ResolvedJavaType getSubstitution(ResolvedJavaType type) {
         return typeSubstitutions.computeIfAbsent(type, original -> {
+            Object lambdaForm;
+            Object customizedMemberName = null;
             try {
                 Class<?> clazz = OriginalClassProvider.getJavaClass(original);
                 Object classData = CLASS_GET_CLASS_DATA_METHOD.invoke(clazz);
-                VMError.guarantee(LAMBDA_FORM_CLASS.isInstance(classData));
-                int hash = classData.hashCode();
-                return new MethodHandleInvokerSubstitutionType(original, findUniqueName(hash));
+                if (LAMBDA_FORM_CLASS.isInstance(classData)) {
+                    lambdaForm = classData;
+                } else if (classData instanceof List<?> list && list.size() == 2) {
+                    lambdaForm = list.get(0);
+                    Object customizedHandle = list.get(1);
+                    VMError.guarantee(LAMBDA_FORM_CLASS.isInstance(lambdaForm) && DIRECT_METHOD_HANDLE_CLASS.isInstance(customizedHandle) &&
+                                    LAMBDA_FORM_CUSTOMIZED_FIELD.get(lambdaForm) == customizedHandle, "Expected classData to contain LambdaForm and its customization: %s", classData);
+                    customizedMemberName = DIRECT_METHOD_HANDLE_INTERNAL_MEMBER_NAME_METHOD.invoke(customizedHandle);
+                } else {
+                    throw VMError.shouldNotReachHere("Unexpected classData: %s", classData);
+                }
             } catch (ReflectiveOperationException e) {
                 throw VMError.shouldNotReachHere(e);
             }
+            /*
+             * LambdaForm.hashCode() is not stable between image builds because it incorporates
+             * identity hash codes of objects such as those of Class<?> that don't override
+             * hashCode(). For that reason, we compute a hash code from LambdaForm.toString(). It
+             * might also not be perfectly unique because the string contains unqualified class
+             * names and can contain string representations of constraints that may be arbitrary
+             * objects, but it should typically be distinct and stable.
+             */
+            int hash = lambdaForm.toString().hashCode();
+            if (customizedMemberName != null) {
+                /* MemberName.hashCode() also includes identity hash codes of Class<?> objects. */
+                hash = hash * 31 + customizedMemberName.toString().hashCode();
+            }
+            return new MethodHandleInvokerSubstitutionType(original, findUniqueName(hash));
         });
     }
 

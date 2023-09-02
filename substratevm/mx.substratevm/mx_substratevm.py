@@ -1034,6 +1034,7 @@ driver_build_args = [
 ] + svm_experimental_options([
     '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
+    f'-R:MaxHeapSize={256 * 1024 * 1024}',
 ])
 
 additional_ni_dependencies = []
@@ -1063,8 +1064,8 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
     license_files=[],
     third_party_license_files=[],
     dependencies=['SubstrateVM', 'nil'] + additional_ni_dependencies,
-    provided_executables=['bin/<cmd:rebuild-images>'],
-    support_distributions=['substratevm:TRUFFLE_REBUILD_IMAGES_GRAALVM_SUPPORT'],
+    provided_executables=[],
+    support_distributions=[],
     launcher_configs=[
         mx_sdk_vm.LauncherConfig(
             use_modules='image',
@@ -1319,6 +1320,9 @@ libgraal_build_args = [
 
     # URLClassLoader causes considerable increase of the libgraal image size and should be excluded.
     '-H:ReportAnalysisForbiddenType=java.net.URLClassLoader',
+
+    # No need for container support in libgraal as HotSpot already takes care of it
+    '-H:-UseContainerSupport',
 ] + ([
    # Force page size to support libgraal on AArch64 machines with a page size up to 64K.
    '-H:PageSize=64K'
@@ -1383,6 +1387,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
                 '-H:-ParseRuntimeOptions',
             ]),
             extra_jvm_args=_native_image_configure_extra_jvm_args(),
+            home_finder=False,
         )
     ],
     jlink=False,
@@ -1535,8 +1540,8 @@ def clinittest(args):
                 '-J-ea', '-J-esa',
                 '-o', binary_path,
                 '-H:+ReportExceptionStackTraces',
-            ] + svm_experimental_options([
                 '-H:Class=com.oracle.svm.test.clinit.TestClassInitialization',
+            ] + svm_experimental_options([
                 '-H:+PrintClassInitialization',
             ]) + policy_args + args)
         mx.run([binary_path])

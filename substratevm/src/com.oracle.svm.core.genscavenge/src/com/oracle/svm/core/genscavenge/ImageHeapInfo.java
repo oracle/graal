@@ -223,6 +223,6 @@ public final class ImageHeapInfo {
         log.string("Writable Primitives: ").zhex(Word.objectToUntrackedPointer(firstWritablePrimitiveObject)).string(" - ").zhex(getObjectEnd(lastWritablePrimitiveObject)).newline();
         log.string("Writable References: ").zhex(Word.objectToUntrackedPointer(firstWritableReferenceObject)).string(" - ").zhex(getObjectEnd(lastWritableReferenceObject)).newline();
         log.string("Writable Huge: ").zhex(Word.objectToUntrackedPointer(firstWritableHugeObject)).string(" - ").zhex(getObjectEnd(lastWritableHugeObject)).newline();
-        log.string("ReadOnly Huge: ").zhex(Word.objectToUntrackedPointer(firstReadOnlyHugeObject)).string(" - ").zhex(getObjectEnd(lastReadOnlyHugeObject));
+        log.string("ReadOnly Huge: ").zhex(Word.objectToUntrackedPointer(firstReadOnlyHugeObject)).string(" - ").zhex(getObjectEnd(lastReadOnlyHugeObject)).newline();
     }
 }

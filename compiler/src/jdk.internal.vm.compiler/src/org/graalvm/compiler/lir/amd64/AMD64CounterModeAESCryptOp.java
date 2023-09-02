@@ -43,17 +43,9 @@ import static jdk.vm.ci.amd64.AMD64.xmm7;
 import static jdk.vm.ci.amd64.AMD64.xmm8;
 import static jdk.vm.ci.amd64.AMD64.xmm9;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRQ;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexMRIOp.VPEXTRW;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRB;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRD;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRQ;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VPINSRW;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.AES_BLOCK_SIZE;
+import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.keyShuffleMask;
 import static org.graalvm.compiler.lir.amd64.AMD64AESEncryptOp.loadKey;
 import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
@@ -245,7 +237,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
         // pos as scratch
         masm.movdqu(xmmCounterShufMask, recordExternalAddress(crb, counterShuffleMask));
         // counter is shuffled
-        masm.vpshufb(xmmCurrCounter, xmmCurrCounter, xmmCounterShufMask, AVXSize.XMM);
+        masm.pshufb(AVXSize.XMM, xmmCurrCounter, xmmCounterShufMask);
         masm.movq(pos, 0);
 
         // Use the partially used encrpyted counter from last invocation
@@ -290,7 +282,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
             incCounter(masm, rbx, xmmResult5, 0x05, labelIncCounter[k][4]);
             incCounter(masm, rbx, xmmCurrCounter, 0x06, labelIncCounter[k][5]);
             // after increased, shuffled counters back for PXOR
-            applyCTRDoSix((dst, src) -> masm.vpshufb(dst, dst, src, AVXSize.XMM), xmmCounterShufMask);
+            applyCTRDoSix((dst, src) -> masm.pshufb(AVXSize.XMM, dst, src), xmmCounterShufMask);
             // PXOR with Round 0 key
             applyCTRDoSix(masm::pxor, xmmKeyTmp0);
 
@@ -344,7 +336,7 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
             loadKey(masm, xmmKeyTmp0, key, 0x00, xmmKeyShufMask);
             masm.movdqa(xmmResult0, xmmCurrCounter);
             incCounter(masm, rbx, xmmCurrCounter, 0x01, labelIncCounterSingle[k]);
-            masm.vpshufb(xmmResult0, xmmResult0, xmmCounterShufMask, AVXSize.XMM);
+            masm.pshufb(AVXSize.XMM, xmmResult0, xmmCounterShufMask);
             masm.pxor(xmmResult0, xmmKeyTmp0);
             for (int i = 1; i < rounds[k]; i++) {
                 loadKey(masm, xmmKeyTmp0, key, i * 0x10, xmmKeyShufMask);
@@ -367,22 +359,22 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
             masm.testlAndJcc(lenReg, 8, ConditionFlag.Zero, labelProcessTail4Insr[k], false);
             masm.subq(pos, 8);
 
-            VPINSRQ.emit(masm, AVXSize.XMM, xmmFrom0, xmmFrom0, new AMD64Address(from, pos, Stride.S1), 0);
+            masm.pinsrq(xmmFrom0, new AMD64Address(from, pos, Stride.S1), 0);
             masm.bind(labelProcessTail4Insr[k]);
             masm.testlAndJcc(lenReg, 4, ConditionFlag.Zero, labelProcessTail2Insr[k], false);
             masm.subq(pos, 4);
             masm.pslldq(xmmFrom0, 4);
-            VPINSRD.emit(masm, AVXSize.XMM, xmmFrom0, xmmFrom0, new AMD64Address(from, pos, Stride.S1), 0);
+            masm.pinsrd(xmmFrom0, new AMD64Address(from, pos, Stride.S1), 0);
             masm.bind(labelProcessTail2Insr[k]);
             masm.testlAndJcc(lenReg, 2, ConditionFlag.Zero, labelProcessTail1Insr[k], false);
             masm.subq(pos, 2);
             masm.pslldq(xmmFrom0, 2);
-            VPINSRW.emit(masm, AVXSize.XMM, xmmFrom0, xmmFrom0, new AMD64Address(from, pos, Stride.S1), 0);
+            masm.pinsrw(xmmFrom0, new AMD64Address(from, pos, Stride.S1), 0);
             masm.bind(labelProcessTail1Insr[k]);
             masm.testlAndJcc(lenReg, 1, ConditionFlag.Zero, labelProcessTailExitInsr[k], false);
             masm.subq(pos, 1);
             masm.pslldq(xmmFrom0, 1);
-            VPINSRB.emit(masm, AVXSize.XMM, xmmFrom0, xmmFrom0, new AMD64Address(from, pos, Stride.S1), 0);
+            masm.pinsrb(xmmFrom0, new AMD64Address(from, pos, Stride.S1), 0);
             masm.bind(labelProcessTailExitInsr[k]);
             // 2. Perform pxor of the encrypted counter and plaintext Bytes.
             // Also the encrypted counter is saved for next invocation.
@@ -390,22 +382,22 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
             masm.pxor(xmmResult0, xmmFrom0);
             // 3. Extract bytes from xmmResult0 into the dest. array
             masm.testlAndJcc(lenReg, 8, ConditionFlag.Zero, labelProcessTail4Extr[k], false);
-            VPEXTRQ.emit(masm, AVXSize.XMM, new AMD64Address(to, pos, Stride.S1), xmmResult0, 0);
+            masm.pextrq(new AMD64Address(to, pos, Stride.S1), xmmResult0, 0);
             masm.psrldq(xmmResult0, 8);
             masm.addq(pos, 8);
             masm.bind(labelProcessTail4Extr[k]);
             masm.testlAndJcc(lenReg, 4, ConditionFlag.Zero, labelProcessTail2Extr[k], false);
-            VPEXTRD.emit(masm, AVXSize.XMM, new AMD64Address(to, pos, Stride.S1), xmmResult0, 0);
+            masm.pextrd(new AMD64Address(to, pos, Stride.S1), xmmResult0, 0);
             masm.psrldq(xmmResult0, 4);
             masm.addq(pos, 4);
             masm.bind(labelProcessTail2Extr[k]);
             masm.testlAndJcc(lenReg, 2, ConditionFlag.Zero, labelProcessTail1Extr[k], false);
-            VPEXTRW.emit(masm, AVXSize.XMM, new AMD64Address(to, pos, Stride.S1), xmmResult0, 0);
+            masm.pextrw(new AMD64Address(to, pos, Stride.S1), xmmResult0, 0);
             masm.psrldq(xmmResult0, 2);
             masm.addq(pos, 2);
             masm.bind(labelProcessTail1Extr[k]);
             masm.testlAndJcc(lenReg, 1, ConditionFlag.Zero, labelProcessTailExitExtr[k], false);
-            VPEXTRB.emit(masm, AVXSize.XMM, new AMD64Address(to, pos, Stride.S1), xmmResult0, 0);
+            masm.pextrb(new AMD64Address(to, pos, Stride.S1), xmmResult0, 0);
 
             masm.bind(labelProcessTailExitExtr[k]);
             masm.movl(new AMD64Address(usedAddr), lenReg);
@@ -414,19 +406,19 @@ public final class AMD64CounterModeAESCryptOp extends AMD64LIRInstruction {
 
         masm.bind(labelExit);
         // counter is shuffled back.
-        masm.vpshufb(xmmCurrCounter, xmmCurrCounter, xmmCounterShufMask, AVXSize.XMM);
+        masm.pshufb(AVXSize.XMM, xmmCurrCounter, xmmCounterShufMask);
         masm.movdqu(new AMD64Address(counter), xmmCurrCounter); // save counter back
         masm.movl(asRegister(resultValue), asRegister(lenValue));
     }
 
     private static void incCounter(AMD64MacroAssembler masm, Register reg, Register xmmdst, int incDelta, Label nextBlock) {
-        VPEXTRQ.emit(masm, AVXSize.XMM, reg, xmmdst, 0x00);
+        masm.pextrq(reg, xmmdst, 0x00);
         masm.addq(reg, incDelta);
-        VPINSRQ.emit(masm, AVXSize.XMM, xmmdst, xmmdst, reg, 0x00);
+        masm.pinsrq(xmmdst, reg, 0x00);
         masm.jcc(ConditionFlag.CarryClear, nextBlock); // jump if no carry
-        VPEXTRQ.emit(masm, AVXSize.XMM, reg, xmmdst, 0x01); // Carry-> D1
+        masm.pextrq(reg, xmmdst, 0x01); // Carry-> D1
         masm.addq(reg, 0x01);
-        VPINSRQ.emit(masm, AVXSize.XMM, xmmdst, xmmdst, reg, 0x01);
+        masm.pinsrq(xmmdst, reg, 0x01);
         masm.bind(nextBlock); // next instruction
     }
 

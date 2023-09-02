@@ -522,9 +522,18 @@ public class NativeImageGeneratorRunner {
                     mainEntryPointData = createMainEntryPointData(imageKind, mainEntryPoint);
                 }
 
-                int maxConcurrentThreads = NativeImageOptions.getMaximumNumberOfConcurrentThreads(parsedHostedOptions);
-                analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, NativeImageOptions.getMaximumNumberOfAnalysisThreads(parsedHostedOptions));
-                compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, maxConcurrentThreads);
+                /*
+                 * Since the main thread helps to process analysis and compilation tasks (see use of
+                 * awaitQuiescence() in CompletionExecutor), subtract one to determine the number of
+                 * dedicated threads in ForkJoinPools.
+                 */
+                final int numberOfHelpingThreads = 1; // main thread
+                int numberOfThreads = NativeImageOptions.NumberOfThreads.getValue(parsedHostedOptions);
+                int numberOfAnalysisThreads = NativeImageOptions.getNumberOfAnalysisThreads(numberOfThreads, parsedHostedOptions) - numberOfHelpingThreads;
+                int numberOfCompilationThreads = numberOfThreads - numberOfHelpingThreads;
+                analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, numberOfAnalysisThreads);
+                compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, numberOfCompilationThreads);
+
                 generator = createImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
                 generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
                                 compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames(), timerCollection);

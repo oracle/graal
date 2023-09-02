@@ -24,19 +24,27 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import static com.oracle.svm.core.log.Log.RIGHT_ALIGN;
+
+import org.graalvm.word.Pointer;
+import org.graalvm.word.UnsignedWord;
+
 import com.oracle.svm.core.log.Log;
 
 class HeapChunkLogging {
     private static final int MAX_CHUNKS_TO_PRINT = 64 * 1024;
 
-    public static void logChunks(Log log, AlignedHeapChunk.AlignedHeader firstChunk) {
+    public static void logChunks(Log log, AlignedHeapChunk.AlignedHeader firstChunk, String shortSpaceName, boolean isFromSpace) {
         if (firstChunk.isNonNull()) {
-            log.newline().string("aligned chunks:").redent(true);
-
             int i = 0;
             AlignedHeapChunk.AlignedHeader chunk = firstChunk;
             while (chunk.isNonNull() && i < MAX_CHUNKS_TO_PRINT) {
-                log.newline().zhex(chunk).string(" (").zhex(AlignedHeapChunk.getObjectsStart(chunk)).string("-").zhex(HeapChunk.getTopPointer(chunk)).string(")");
+                Pointer bottom = AlignedHeapChunk.getObjectsStart(chunk);
+                Pointer top = HeapChunk.getTopPointer(chunk);
+                Pointer end = AlignedHeapChunk.getObjectsEnd(chunk);
+
+                logChunk(log, chunk, bottom, top, end, true, shortSpaceName, isFromSpace);
+
                 chunk = HeapChunk.getNext(chunk);
                 i++;
             }
@@ -44,19 +52,20 @@ class HeapChunkLogging {
                 assert i == MAX_CHUNKS_TO_PRINT;
                 log.newline().string("... (truncated)");
             }
-
-            log.redent(false);
         }
     }
 
-    public static void logChunks(Log log, UnalignedHeapChunk.UnalignedHeader firstChunk) {
+    public static void logChunks(Log log, UnalignedHeapChunk.UnalignedHeader firstChunk, String shortSpaceName, boolean isFromSpace) {
         if (firstChunk.isNonNull()) {
-            log.newline().string("unaligned chunks:").redent(true);
-
             int i = 0;
             UnalignedHeapChunk.UnalignedHeader chunk = firstChunk;
             while (chunk.isNonNull() && i < MAX_CHUNKS_TO_PRINT) {
-                log.newline().zhex(chunk).string(" (").zhex(UnalignedHeapChunk.getObjectStart(chunk)).string("-").zhex(HeapChunk.getTopPointer(chunk)).string(")");
+                Pointer bottom = UnalignedHeapChunk.getObjectStart(chunk);
+                Pointer top = HeapChunk.getTopPointer(chunk);
+                Pointer end = UnalignedHeapChunk.getObjectEnd(chunk);
+
+                logChunk(log, chunk, bottom, top, end, false, shortSpaceName, isFromSpace);
+
                 chunk = HeapChunk.getNext(chunk);
                 i++;
             }
@@ -64,8 +73,19 @@ class HeapChunkLogging {
                 assert i == MAX_CHUNKS_TO_PRINT;
                 log.newline().string("... (truncated)");
             }
-
-            log.redent(false);
         }
+    }
+
+    private static void logChunk(Log log, HeapChunk.Header<?> chunk, Pointer bottom, Pointer top, Pointer end, boolean isAligned, String shortSpaceName, boolean isFromSpace) {
+        UnsignedWord used = top.subtract(bottom);
+        UnsignedWord capacity = end.subtract(bottom);
+        UnsignedWord usedPercent = used.multiply(100).unsignedDivide(capacity);
+
+        log.string("|").zhex(chunk).string("|").zhex(bottom).string(", ").zhex(top).string(", ").zhex(end);
+        log.string("|").unsigned(usedPercent, 3, RIGHT_ALIGN).string("%");
+        log.string("|").string(shortSpaceName, 3, RIGHT_ALIGN);
+        log.string("|").string(isAligned ? "A" : "U");
+        log.string("|").string(isFromSpace ? "" : "T");
+        log.newline();
     }
 }

@@ -115,6 +115,7 @@ public class TruffleTypes {
     public static final String FinalBitSet_Name = "com.oracle.truffle.api.utilities.FinalBitSet";
     public static final String HostCompilerDirectives_Name = "com.oracle.truffle.api.HostCompilerDirectives";
 
+    public static final String InternalResource_Name = "com.oracle.truffle.api.InternalResource";
     public static final String InternalResource_Id_Name = "com.oracle.truffle.api.InternalResource.Id";
     public static final String InvalidAssumptionException_Name = "com.oracle.truffle.api.nodes.InvalidAssumptionException";
     public static final String MaterializedFrame_Name = "com.oracle.truffle.api.frame.MaterializedFrame";
@@ -130,6 +131,7 @@ public class TruffleTypes {
     public static final String Profile_Name = "com.oracle.truffle.api.profiles.Profile";
     public static final String IndirectCallNode_Name = "com.oracle.truffle.api.nodes.IndirectCallNode";
     public static final String InlinedProfile_Name = "com.oracle.truffle.api.profiles.InlinedProfile";
+    public static final String InternalResourceProvider_Name = "com.oracle.truffle.api.provider.InternalResourceProvider";
     public static final String SlowPathException_Name = "com.oracle.truffle.api.nodes.SlowPathException";
     public static final String SourceSection_Name = "com.oracle.truffle.api.source.SourceSection";
     public static final String TruffleFile_FileTypeDetector_Name = "com.oracle.truffle.api.TruffleFile.FileTypeDetector";
@@ -158,6 +160,7 @@ public class TruffleTypes {
     public final DeclaredType FrameDescriptor = c.getDeclaredType(FrameDescriptor_Name);
     public final DeclaredType FinalBitSet = c.getDeclaredType(FinalBitSet_Name);
     public final DeclaredType HostCompilerDirectives = c.getDeclaredType(HostCompilerDirectives_Name);
+    public final DeclaredType InternalResource = c.getDeclaredType(InternalResource_Name);
     public final DeclaredType InternalResource_Id = c.getDeclaredType(InternalResource_Id_Name);
     public final DeclaredType InvalidAssumptionException = c.getDeclaredType(InvalidAssumptionException_Name);
     public final DeclaredType MaterializedFrame = c.getDeclaredType(MaterializedFrame_Name);
@@ -171,6 +174,7 @@ public class TruffleTypes {
     public final DeclaredType Profile = c.getDeclaredTypeOptional(Profile_Name);
     public final DeclaredType IndirectCallNode = c.getDeclaredType(IndirectCallNode_Name);
     public final DeclaredType InlinedProfile = c.getDeclaredTypeOptional(InlinedProfile_Name);
+    public final DeclaredType InternalResourceProvider = c.getDeclaredType(InternalResourceProvider_Name);
     public final DeclaredType SlowPathException = c.getDeclaredType(SlowPathException_Name);
     public final DeclaredType SourceSection = c.getDeclaredType(SourceSection_Name);
     public final DeclaredType TruffleLanguage = c.getDeclaredType(TruffleLanguage_Name);

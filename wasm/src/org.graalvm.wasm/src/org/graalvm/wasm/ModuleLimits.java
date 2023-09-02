@@ -143,8 +143,6 @@ public final class ModuleLimits {
     }
 
     public void checkMemoryCount(int count, boolean multiMemory) {
-
-        assertUnsignedIntLessOrEqual(count, memoryCountLimit, Failure.MEMORY_COUNT_LIMIT_EXCEEDED);
         if (multiMemory) {
             assertUnsignedIntLessOrEqual(count, multiMemoryCountLimit, Failure.MEMORY_COUNT_LIMIT_EXCEEDED);
         } else {

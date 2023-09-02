@@ -42,24 +42,19 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.JavaMainWrapper;
-import com.oracle.svm.core.jdk.RuntimeSupport;
+import com.oracle.svm.core.Uninterruptible;
 
 import sun.management.Util;
 
 public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     private final String managementSpecVersion;
-    private long startMillis;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     SubstrateRuntimeMXBean() {
         managementSpecVersion = ManagementFactory.getRuntimeMXBean().getManagementSpecVersion();
-        RuntimeSupport.getRuntimeSupport().addInitializationHook(isFirstIsolate -> initialize());
-    }
-
-    void initialize() {
-        startMillis = System.currentTimeMillis();
     }
 
     @Override
@@ -83,7 +78,7 @@ public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
         try {
             id = ProcessProperties.getProcessID();
         } catch (Throwable t) {
-            id = startMillis;
+            id = Isolates.getCurrentStartTimeMillis();
         }
         try {
             hostName = InetAddress.getLocalHost().getHostName();
@@ -152,13 +147,13 @@ public final class SubstrateRuntimeMXBean implements RuntimeMXBean {
 
     @Override
     public long getUptime() {
-        return Math.max(0, System.currentTimeMillis() - startMillis);
+        return Isolates.getCurrentUptimeMillis();
     }
 
     @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getStartTime() {
-        assert startMillis > 0 : "SubstrateRuntimeMXBean.getStartTime: Should have set SubstrateRuntimeMXBean.startMillis.";
-        return startMillis;
+        return Isolates.getCurrentStartTimeMillis();
     }
 
     /** Copied from {@code sun.management.RuntimeImpl#getSystemProperties()}. */

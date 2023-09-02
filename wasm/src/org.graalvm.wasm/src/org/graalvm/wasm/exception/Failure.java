@@ -146,6 +146,7 @@ public enum Failure {
     UNSUPPORTED_MULTI_VALUE_TYPE(Type.TRAP, "multi-value has to be provided by an array type"),
 
     MEMORY_OVERHEAD_MODE(Type.TRAP, "functions cannot be executed with memory overhead mode enabled"),
+    SHARED_MEMORY_WITHOUT_UNSAFE(Type.TRAP, "shared memories are not supported without Unsafe"),
 
     CALL_STACK_EXHAUSTED(Type.EXHAUSTION, "call stack exhausted"),
     MEMORY_ALLOCATION_FAILED(Type.EXHAUSTION, "could not allocate memory"),

@@ -281,7 +281,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     protected Object newmultiarray(KlassPointer hub, @ConstantParameter int rank, @VarargsParameter int[] dimensions) {
-        return newMultiArrayImpl(hub.asWord(), rank, dimensions);
+        return piCastToSnippetReplaceeStamp(newMultiArrayImpl(hub.asWord(), rank, dimensions));
     }
 
     @Snippet

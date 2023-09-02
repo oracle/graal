@@ -27,9 +27,12 @@ package com.oracle.svm.core.jdk;
 import java.io.File;
 import java.net.URL;
 import java.security.ProtectionDomain;
+import java.util.Collections;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Set;
 import java.util.Vector;
+import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
@@ -360,4 +363,12 @@ class PackageFieldTransformer implements FieldValueTransformerWithAvailability {
 final class ClassLoaderUtil {
 
     public static final LazyFinalReference<Target_java_lang_Module> unnamedModuleReference = new LazyFinalReference<>(Target_java_lang_Module::new);
+}
+
+@TargetClass(className = "java.lang.ClassLoader", innerClass = "ParallelLoaders")
+final class Target_java_lang_ClassLoader_ParallelLoaders {
+
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias) //
+    private static Set<Class<? extends ClassLoader>> loaderTypes = Collections.newSetFromMap(new WeakHashMap<>());
 }

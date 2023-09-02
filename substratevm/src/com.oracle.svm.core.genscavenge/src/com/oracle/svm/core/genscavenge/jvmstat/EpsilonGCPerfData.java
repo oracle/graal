@@ -52,7 +52,7 @@ public class EpsilonGCPerfData implements PerfDataHolder {
     @Override
     public void update() {
         long maxCapacity = GCImpl.getPolicy().getMaximumHeapSize().rawValue();
-        long usedBytes = HeapImpl.getHeapImpl().getAccounting().getEdenUsedBytes().rawValue();
+        long usedBytes = HeapImpl.getAccounting().getEdenUsedBytes().rawValue();
 
         space.used.setValue(usedBytes);
         generation.capacity.setValue(usedBytes);

@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import com.oracle.svm.core.Isolates;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.log.Log;
 
@@ -87,7 +88,7 @@ final class Timer implements AutoCloseable {
         if (!wasOpened) {
             /* If a timer was not opened, pretend it was opened at the start of the VM. */
             assert openNanos == 0;
-            return HeapImpl.getChunkProvider().getFirstAllocationTime();
+            return Isolates.getCurrentStartNanoTime();
         }
         return openNanos;
     }
@@ -105,10 +106,6 @@ final class Timer implements AutoCloseable {
     /** Get the nanoseconds collected by the most recent open/close pair. */
     long getLastIntervalNanos() {
         return getClosedTime() - getOpenedTime();
-    }
-
-    static long getTimeSinceFirstAllocation(long nanos) {
-        return nanos - HeapImpl.getChunkProvider().getFirstAllocationTime();
     }
 }
 

@@ -93,8 +93,8 @@ public class SerialGCPerfData implements PerfDataHolder {
 
     @Override
     public void update() {
-        GCAccounting accounting = GCImpl.getGCImpl().getAccounting();
-        HeapAccounting heapAccounting = HeapImpl.getHeapImpl().getAccounting();
+        GCAccounting accounting = GCImpl.getAccounting();
+        HeapAccounting heapAccounting = HeapImpl.getAccounting();
         CollectionPolicy policy = GCImpl.getPolicy();
         policy.ensureSizeParametersInitialized();
 
@@ -107,7 +107,7 @@ public class SerialGCPerfData implements PerfDataHolder {
 
         youngGen.spaces[0].used.setValue(heapAccounting.getEdenUsedBytes().rawValue());
         for (int i = 1; i < youngGen.spaces.length; i++) {
-            youngGen.spaces[i].used.setValue(heapAccounting.getSurvivorSpaceAfterChunkBytes(i - 1).rawValue());
+            youngGen.spaces[i].used.setValue(heapAccounting.getSurvivorUsedBytes(i - 1).rawValue());
         }
 
         long maxOldSize = policy.getMaximumHeapSize().rawValue() - maxNewSize;
@@ -117,7 +117,7 @@ public class SerialGCPerfData implements PerfDataHolder {
         oldGen.capacity.setValue(policy.getOldGenerationCapacity().rawValue());
         oldGen.maxCapacity.setValue(maxOldSize);
 
-        oldGen.spaces[0].used.setValue(accounting.getOldGenerationAfterChunkBytes().rawValue());
+        oldGen.spaces[0].used.setValue(heapAccounting.getOldUsedBytes().rawValue());
     }
 
     private static class PerfDataGCPolicy {

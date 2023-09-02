@@ -35,8 +35,9 @@ public interface NativeImageMetaInfResourceProcessor {
      *            originated.
      * @param resourcePath Path to the file.
      * @param type Type of the file.
+     * @return whether to ignore this resource on the class-path.
      */
-    void processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws Exception;
+    boolean processMetaInfResource(Path classpathEntry, Path resourceRoot, Path resourcePath, MetaInfFileType type) throws Exception;
 
     void showWarning(String message);
 

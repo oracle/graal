@@ -2046,24 +2046,43 @@ final class EngineAccessor extends Accessor {
         public TruffleFile getInternalResource(Object owner, Class<? extends InternalResource> resourceType) throws IOException {
             InternalResource.Id id = resourceType.getAnnotation(InternalResource.Id.class);
             assert id != null : resourceType + " must be annotated by @InternalResource.Id";
-            return getInternalResource(owner, id.value());
+            return getInternalResource(owner, id.value(), true);
         }
 
         @Override
         public TruffleFile getInternalResource(Object owner, String resourceId) throws IOException {
+            return getInternalResource(owner, resourceId, false);
+        }
+
+        private static TruffleFile getInternalResource(Object owner, String resourceId, boolean failIfMissing) throws IOException {
             Map<String, TruffleFile> cachedRoots;
             InternalResourceCache resourceCache;
+            String componentId;
+            Supplier<Collection<String>> supportedResourceIds;
             if (owner instanceof PolyglotLanguageContext languageContext) {
                 PolyglotLanguage polyglotLanguage = languageContext.language;
                 cachedRoots = polyglotLanguage.internalResources;
-                resourceCache = languageContext.language.cache.getResourceCache(resourceId);
+                LanguageCache cache = polyglotLanguage.cache;
+                resourceCache = cache.getResourceCache(resourceId);
+                componentId = cache.getId();
+                supportedResourceIds = cache::getResourceIds;
             } else if (owner instanceof PolyglotInstrument polyglotInstrument) {
                 cachedRoots = polyglotInstrument.internalResources;
-                resourceCache = polyglotInstrument.cache.getResourceCache(resourceId);
+                InstrumentCache cache = polyglotInstrument.cache;
+                resourceCache = cache.getResourceCache(resourceId);
+                componentId = cache.getId();
+                supportedResourceIds = cache::getResourceIds;
             } else {
                 throw CompilerDirectives.shouldNotReachHere("Unsupported owner " + owner);
             }
-
+            if (resourceCache == null) {
+                if (failIfMissing) {
+                    throw new IllegalArgumentException(String.format("Resource with id %s is not provided by component %s, provided resource types are %s",
+                                    resourceId, componentId, String.join(", ", supportedResourceIds.get())));
+                } else {
+                    return null;
+                }
+            }
             TruffleFile root = cachedRoots.get(resourceId);
             if (root == null) {
                 PolyglotEngineImpl polyglotEngine = ((VMObject) owner).getEngine();

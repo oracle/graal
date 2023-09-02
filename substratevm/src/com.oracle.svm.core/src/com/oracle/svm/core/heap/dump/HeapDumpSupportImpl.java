@@ -69,12 +69,10 @@ public class HeapDumpSupportImpl extends HeapDumping {
 
     @Override
     public void initializeDumpHeapOnOutOfMemoryError() {
-        // Be defensive against different paths initializing this feature
-        if (outOfMemoryHeapDumpPath.isNull()) {
-            String defaultFilename = getDefaultHeapDumpFilename("OOME");
-            String heapDumpPath = getHeapDumpPath(defaultFilename);
-            outOfMemoryHeapDumpPath = getFileSupport().allocateCPath(heapDumpPath);
-        }
+        assert outOfMemoryHeapDumpPath.isNull();
+        String defaultFilename = getDefaultHeapDumpFilename("OOME");
+        String heapDumpPath = getHeapDumpPath(defaultFilename);
+        outOfMemoryHeapDumpPath = getFileSupport().allocateCPath(heapDumpPath);
     }
 
     @Override

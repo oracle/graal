@@ -35,6 +35,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionType;
 
 import com.oracle.svm.core.option.BundleMember;
@@ -49,7 +50,7 @@ import com.oracle.svm.core.util.UserError;
 public final class ConfigurationFiles {
 
     public static final class Options {
-        @Option(help = "Directories directly containing configuration files for dynamic features at runtime.", type = OptionType.User)//
+        @Option(help = "Directories directly containing configuration files for dynamic features at runtime.", type = OptionType.User, stability = OptionStability.STABLE)//
         @BundleMember(role = BundleMember.Role.Input)//
         static final HostedOptionKey<LocatableMultiOptionValue.Paths> ConfigurationFileDirectories = new HostedOptionKey<>(LocatableMultiOptionValue.Paths.buildWithCommaDelimiter());
 

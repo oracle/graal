@@ -386,6 +386,12 @@ public class RealLog extends Log {
 
     @Override
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log rational(UnsignedWord numerator, long denominator, long decimals) {
+        return rational(numerator.rawValue(), denominator, decimals);
+    }
+
+    @Override
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
     public Log hex(WordBase value) {
         string("0x").number(value.rawValue(), 16, false);
         return this;

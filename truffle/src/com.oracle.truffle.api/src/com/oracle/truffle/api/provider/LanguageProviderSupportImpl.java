@@ -79,4 +79,19 @@ final class LanguageProviderSupportImpl extends Accessor.LanguageProviderSupport
     public InternalResource createInternalResource(TruffleLanguageProvider provider, String resourceId) {
         return (InternalResource) provider.createInternalResource(resourceId);
     }
+
+    @Override
+    public String getInternalResourceComponentId(InternalResourceProvider provider) {
+        return provider.getComponentId();
+    }
+
+    @Override
+    public String getInternalResourceId(InternalResourceProvider provider) {
+        return provider.getResourceId();
+    }
+
+    @Override
+    public InternalResource createInternalResource(InternalResourceProvider provider) {
+        return (InternalResource) provider.createInternalResource();
+    }
 }

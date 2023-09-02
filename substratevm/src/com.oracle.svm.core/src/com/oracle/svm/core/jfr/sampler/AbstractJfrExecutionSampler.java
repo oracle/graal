@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -221,6 +222,11 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
             }
         }
 
+        if (!isSPInsideStackBoundaries(ip, sp)) {
+            JfrThreadLocal.increaseUnparseableStacks();
+            return;
+        }
+
         /* Try to do a stack walk. */
         SamplerSampleWriterData data = StackValue.get(SamplerSampleWriterData.class);
         if (SamplerSampleWriterDataAccess.initialize(data, 0, false)) {
@@ -241,6 +247,21 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
     private static boolean isInAOTCompiledCode(CodePointer ip) {
         CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
         return CodeInfoAccess.contains(codeInfo, ip);
+    }
+
+    /**
+     * Verify whether the stack pointer (SP) lies within the limits of the thread's stack. If not,
+     * attempting a stack walk might result in a segmentation fault (SEGFAULT). The stack pointer
+     * might be positioned outside the stack's boundaries if a signal interrupted the execution at
+     * the beginning of a method, before the SP was adjusted to its correct value.
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static boolean isSPInsideStackBoundaries(CodePointer ip, Pointer sp) {
+        CodeInfo codeInfo = CodeInfoTable.getImageCodeInfo();
+        long totalFrameSize = CodeInfoAccess.lookupTotalFrameSize(codeInfo, CodeInfoAccess.relativeIP(codeInfo, ip));
+        Pointer returnAddressAddress = FrameAccess.singleton().getReturnAddressLocation(sp.add(WordFactory.unsigned(totalFrameSize)))
+                        .add(FrameAccess.returnAddressSize());
+        return returnAddressAddress.aboveThan(VMThreads.StackEnd.get()) && returnAddressAddress.belowOrEqual(VMThreads.StackBase.get());
     }
 
     /**

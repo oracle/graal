@@ -32,10 +32,12 @@ package com.oracle.truffle.llvm.runtime;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
 
-import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.InternalResource.CPUArchitecture;
 import com.oracle.truffle.api.InternalResource.OS;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
@@ -47,9 +49,18 @@ import com.oracle.truffle.llvm.spi.internal.LLVMResourceProvider;
  */
 public abstract class InternalLibraryLocator extends LibraryLocator implements LLVMCapability {
 
+    private static final List<LLVMResourceProvider> LIBRARY_LOCATORS;
+    static {
+        List<LLVMResourceProvider> resourceLocators = new ArrayList<>();
+        for (LLVMResourceProvider provider : Configurations.getService(LLVMResourceProvider.class)) {
+            resourceLocators.add(provider);
+        }
+        LIBRARY_LOCATORS = resourceLocators;
+    }
+
     public static InternalLibraryLocator create(String config, LLVMLanguage language, OS os, CPUArchitecture arch) {
         InternalLibraryLocator resourceLocator = null;
-        for (LLVMResourceProvider provider : Configurations.getService(LLVMResourceProvider.class)) {
+        for (LLVMResourceProvider provider : LIBRARY_LOCATORS) {
             if (provider.getConfiguration().equals(config)) {
                 resourceLocator = new ResourceInternalLibraryLocator(provider, os, arch);
                 break;
@@ -105,6 +116,12 @@ public abstract class InternalLibraryLocator extends LibraryLocator implements L
                 return null;
             }
         }
+
+        @Override
+        public String toString() {
+            return "HomeInternalLibraryLocator [config=" + config + ", backup=" + backup + "]";
+        }
+
     }
 
     private static final class ResourceInternalLibraryLocator extends InternalLibraryLocator {
@@ -125,5 +142,11 @@ public abstract class InternalLibraryLocator extends LibraryLocator implements L
             }
             return Source.newBuilder("llvm", url).internal(true);
         }
+
+        @Override
+        public String toString() {
+            return "ResourceInternalLibraryLocator [resourceLocation=" + resourceLocation + ", basePath=" + basePath + "]";
+        }
+
     }
 }

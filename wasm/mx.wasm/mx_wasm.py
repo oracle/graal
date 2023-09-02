@@ -500,20 +500,47 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     name="GraalWasm",
     short_name="gwa",
     dir_name="wasm",
-    license_files=["LICENSE_WASM.txt"],
+    standalone_dir_name='graalwasm-community-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name_enterprise='graalwasm-<version>-<graalvm_os>-<arch>',
+    standalone_dependencies={
+        'gwal': ('', []), # GraalWasm license files
+    },
+    standalone_dependencies_enterprise={
+        'gwal': ('', []), # GraalWasm license files
+        'GraalVM enterprise license files': ('LICENSE.txt', ['GRAALVM-README.md']),
+    },
+    license_files=[],
     third_party_license_files=[],
-    dependencies=["Truffle"],
+    dependencies=[
+        'gwal', # GraalWasm license files
+        "Truffle",
+    ],
     truffle_jars=["wasm:WASM"],
     support_distributions=["wasm:WASM_GRAALVM_SUPPORT"],
-    launcher_configs=[
-        mx_sdk_vm.LanguageLauncherConfig(
-            destination="bin/<exe:wasm>",
+    library_configs=[
+        mx_sdk_vm.LanguageLibraryConfig(
+            launchers=["bin/<exe:wasm>"],
             jar_distributions=["wasm:WASM_LAUNCHER"],
             main_class="org.graalvm.wasm.launcher.WasmLauncher",
             build_args=[],
             language="wasm",
         ),
     ],
+    installable=True,
+    stability="experimental",
+))
+
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='GraalWasm license files',
+    short_name='gwal',
+    dir_name='wasm',
+    license_files=["LICENSE_WASM.txt"],
+    third_party_license_files=[],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=["wasm:WASM_GRAALVM_LICENSES"],
+    priority=5,
     installable=True,
     stability="experimental",
 ))

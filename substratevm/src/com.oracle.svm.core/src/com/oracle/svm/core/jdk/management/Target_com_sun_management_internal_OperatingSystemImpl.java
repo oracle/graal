@@ -24,17 +24,14 @@
  */
 package com.oracle.svm.core.jdk.management;
 
-import com.oracle.svm.core.SubstrateUtil;
-import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
 
 import sun.management.VMManagement;
 
 @TargetClass(className = "com.sun.management.internal.OperatingSystemImpl")
 final class Target_com_sun_management_internal_OperatingSystemImpl {
-    @Substitute
+    @Alias
     Target_com_sun_management_internal_OperatingSystemImpl(@SuppressWarnings("unused") VMManagement vm) {
-        /* Workaround until we enable container support (GR-37365). */
-        SubstrateUtil.cast(this, Target_sun_management_BaseOperatingSystemImpl.class).loadavg = new double[1];
     }
 }

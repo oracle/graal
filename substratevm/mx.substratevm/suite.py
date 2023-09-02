@@ -2,7 +2,7 @@
 suite = {
     "mxversion": "6.27.1",
     "name": "substratevm",
-    "version" : "23.1.0",
+    "version" : "24.0.0",
     "release" : False,
     "url" : "https://github.com/oracle/graal/tree/master/substratevm",
 
@@ -286,6 +286,7 @@ suite = {
                     "jdk.internal.misc",
                     "jdk.internal.module",
                     "jdk.internal.perf",
+                    "jdk.internal.platform",
                     "jdk.internal.ref",
                     "jdk.internal.reflect",
                     "jdk.internal.vm",
@@ -320,21 +321,6 @@ suite = {
             "workingSets": "SVM",
             "jacoco" : "exclude",
         },
-
-        "com.oracle.svm.core.containers": {
-            "subDir": "src",
-            "sourceDirs": ["src"],
-            "dependencies": ["com.oracle.svm.core"],
-            "javaCompliance" : "17+",
-            "annotationProcessors": [
-                "compiler:GRAAL_PROCESSOR",
-                "SVM_PROCESSOR",
-            ],
-            "workingSets": "SVM",
-            "spotbugs": "false",
-            "jacoco" : "exclude",
-        },
-
 
         "com.oracle.svm.core.genscavenge": {
             "subDir": "src",
@@ -1416,7 +1402,6 @@ suite = {
                 "com.oracle.svm.core.posix",
                 "com.oracle.svm.core.windows",
                 "com.oracle.svm.core.genscavenge",
-                "com.oracle.svm.core.containers",
             ],
             "distDependencies": [
                 "sdk:NATIVEIMAGE",
@@ -1671,28 +1656,6 @@ suite = {
           "maven" : False,
         },
 
-        "TRUFFLE_REBUILD_IMAGES_GRAALVM_SUPPORT" : {
-            "native" : True,
-            "platformDependent" : True,
-            "description" : "Native Image support distribution for the GraalVM",
-            "os_arch" : {
-                "windows": {
-                    "<others>" : {
-                        "layout" : {
-                            "bin/" : "file:mx.substratevm/rebuild-images.cmd",
-                        },
-                    },
-                },
-                "<others>": {
-                    "<others>": {
-                        "layout" : {
-                            "bin/rebuild-images" : "file:mx.substratevm/rebuild-images.sh",
-                        },
-                    },
-                },
-            },
-        },
-
         "TRUFFLE_SVM_GRAALVM_SUPPORT" : {
           "native" : True,
           "description" : "Truffle support distribution for SVM",
@@ -1741,7 +1704,9 @@ suite = {
                 ],
             },
             "description" : "SubstrateVM image builder native components",
-            "maven": True
+            "maven": {
+                "tag": ["default", "public"],
+            },
         },
 
         #

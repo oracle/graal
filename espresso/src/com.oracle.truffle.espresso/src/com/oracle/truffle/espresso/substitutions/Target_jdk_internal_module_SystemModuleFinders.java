@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -26,8 +26,6 @@ package com.oracle.truffle.espresso.substitutions;
 import java.nio.file.Path;
 import java.util.ArrayList;
 
-import org.graalvm.home.HomeFinder;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -35,6 +33,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
+import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.StaticObject;
 
 @EspressoSubstitutions
@@ -55,7 +54,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
             // construct a ModuleFinder that can locate our Espresso-specific platform modules
             // and compose it with the resulting module finder from the original call
             StaticObject moduleFinder = (StaticObject) original.call(systemModules);
-            StaticObject extensionPathArray = getEspressoExtensionPaths(meta);
+            StaticObject extensionPathArray = getEspressoExtensionPaths(getContext());
             if (extensionPathArray != StaticObject.NULL) {
                 moduleFinder = extendModuleFinders(getLanguage(), meta, moduleFinder, extensionPathArray);
             }
@@ -76,7 +75,7 @@ final class Target_jdk_internal_module_SystemModuleFinders {
             // construct ModuleFinders that can locate our Espresso-specific platform modules
             // and compose it with the resulting module finder from the original call
             StaticObject moduleFinder = (StaticObject) original.call();
-            StaticObject extensionPathArray = getEspressoExtensionPaths(meta);
+            StaticObject extensionPathArray = getEspressoExtensionPaths(getContext());
             if (extensionPathArray != StaticObject.NULL) {
                 moduleFinder = extendModuleFinders(getLanguage(), meta, moduleFinder, extensionPathArray);
             }
@@ -85,15 +84,15 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     }
 
     @TruffleBoundary
-    private static StaticObject getEspressoExtensionPaths(Meta meta) {
+    private static StaticObject getEspressoExtensionPaths(EspressoContext context) {
         ArrayList<StaticObject> extensionPaths = new ArrayList<>(2);
-        for (ModuleExtension me : ModuleExtension.get(meta.getContext())) {
-            extensionPaths.add(getEspressoModulePath(meta, me.jarName()));
+        for (ModuleExtension me : ModuleExtension.get(context)) {
+            extensionPaths.add(getEspressoModulePath(context, me.jarName()));
         }
-        if (!extensionPaths.isEmpty()) {
-            return meta.java_nio_file_Path.allocateReferenceArray(extensionPaths.size(), extensionPaths::get);
-        } else {
+        if (extensionPaths.isEmpty()) {
             return StaticObject.NULL;
+        } else {
+            return context.getMeta().java_nio_file_Path.allocateReferenceArray(extensionPaths.size(), extensionPaths::get);
         }
     }
 
@@ -110,11 +109,11 @@ final class Target_jdk_internal_module_SystemModuleFinders {
     }
 
     @TruffleBoundary
-    private static StaticObject getEspressoModulePath(Meta meta, String jarName) {
-        Path espressoHome = HomeFinder.getInstance().getLanguageHomes().get(EspressoLanguage.ID);
-        Path hotswapJar = espressoHome.resolve("lib").resolve(jarName);
+    private static StaticObject getEspressoModulePath(EspressoContext context, String jarName) {
+        Path jar = context.getEspressoLibs().resolve(jarName);
+        Meta meta = context.getMeta();
         // Paths.get(guestPath);
-        StaticObject guestPath = meta.toGuestString(hotswapJar.toFile().getAbsolutePath());
+        StaticObject guestPath = meta.toGuestString(jar.toFile().getAbsolutePath());
         StaticObject emptyArray = meta.java_nio_file_Path.allocateReferenceArray(0);
         return (StaticObject) meta.java_nio_file_Paths_get.invokeDirect(StaticObject.NULL, guestPath, emptyArray);
     }

@@ -396,6 +396,7 @@ suite = {
       "subDir" : "projects",
       "sourceDirs" : ["src"],
       "dependencies" : [
+        "sdk:NATIVEIMAGE",
         "truffle:TRUFFLE_API",
         "sulong:SULONG_API",
       ],
@@ -413,10 +414,9 @@ suite = {
       "dependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
+        "truffle:TRUFFLE_ANTLR4",
         "com.oracle.truffle.llvm.api",
         "com.oracle.truffle.llvm.spi",
-        "com.oracle.truffle.llvm.nativemode.resources",
-        "truffle:ANTLR4",
       ],
       "requires" : [
         "java.logging",
@@ -575,7 +575,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.llvm.runtime",
-        "truffle:ANTLR4",
+        "truffle:TRUFFLE_ANTLR4",
       ],
       "checkstyle" : "com.oracle.truffle.llvm.runtime",
       "javaCompliance" : "17+",
@@ -1602,10 +1602,6 @@ suite = {
         "exports" : [
           "* to org.graalvm.llvm.nativemode,org.graalvm.llvm,org.graalvm.llvm.managed,org.graalvm.llvm.nativemode_community",
         ],
-        "requires" : [
-          # for registration in the language class only
-          "static org.graalvm.llvm.nativemode.resources"
-        ],
         "uses" : [
           "com.oracle.truffle.llvm.runtime.config.ConfigurationFactory",
           "com.oracle.truffle.llvm.spi.internal.LLVMResourceProvider",
@@ -1619,14 +1615,11 @@ suite = {
       "distDependencies" : [
         "truffle:TRUFFLE_API",
         "truffle:TRUFFLE_NFI",
+        "truffle:TRUFFLE_ANTLR4",
         "SULONG_API",
-        "SULONG_NATIVE_RESOURCES",
-      ],
-      "exclude" : [
-        "truffle:ANTLR4",
       ],
       "javaProperties" : {
-        "org.graalvm.language.llvm.home": "<sulong_home>",
+        "org.graalvm.language.llvm.home": "<path:SULONG_HOME>",
       },
       "maven": {
         "artifactId": "llvm-language",
@@ -1698,11 +1691,6 @@ suite = {
         "exports" : [
           "* to org.graalvm.llvm.nativemode",
         ],
-        "requires" : [
-          # static because it's not needed if the language home is there (e.g. in standalones)
-          # will be loaded via ServiceLoader if the language home is not there
-          "static org.graalvm.llvm.nativemode.resources",
-        ],
       },
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.nativemode"],
@@ -1721,13 +1709,14 @@ suite = {
       "description" : "Module that contains resources needed by Sulong Native mode.",
       "moduleInfo" : {
         "name" : "org.graalvm.llvm.nativemode.resources",
-        "exports" : [
-          "* to org.graalvm.llvm.nativemode_community,org.graalvm.llvm_community",
+        "requires" : [
+          "static org.graalvm.nativeimage",
         ],
       },
       "subDir" : "projects",
       "dependencies" : ["com.oracle.truffle.llvm.nativemode.resources"],
       "distDependencies" : [
+        "sdk:NATIVEIMAGE",
         "truffle:TRUFFLE_API",
         "SULONG_API",
         "SULONG_NATIVE_LIB_RESOURCES",
@@ -1853,7 +1842,7 @@ suite = {
       "license" : "BSD-new",
     },
 
-    "SULONG_HOME" : {
+    "SULONG_HOME_NATIVEMODE" : {
       "description" : "Only used as build dependency.",
       "native" : True,
       "relpath" : False,

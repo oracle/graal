@@ -47,6 +47,7 @@ This changelog summarizes major changes between GraalVM SDK versions. The main f
 * (GR-44222) Polyglot contexts and engines now print a warning when deprecated options were used. To resolve this migrate the option using the deprecation instructions or set the `engine.WarnOptionDeprecation` to `false` to suppress this warning. It is recommended to prefer migration over suppression whenever possible. 
 * (GR-46345) Added `Engine#copyResources(Path, String...)` to unpack the specified language and instrument resources into the target directory. This method is designed for creating pre-built installations of internal resources, specifically for standalone applications.
 * (GR-36213) Added `HostAccess.Builder#useModuleLookup(Lookup)` to allow guest applications to access host classes from named modules. Passing `MethodHandles#lookup()` from a named module is the intended usage.
+* (GR-48133) Native Image API: Added ability to promote jars from the class-path to the module-path in the native image driver. Use `ForceOnModulePath = ${module-name}`. Promoting a module to the module-path is equivalent to specifying it on the module-path in combination with exporting the module using `--add-modules ${module-name}` to the unnamed module.
 
 ## Version 23.0.0
 * (GR-26758) Added the [TraceLimits](https://www.graalvm.org/reference-manual/embed-languages/sandbox-resource-limits#determining-sandbox-resource-limits) option to the Truffle Sandbox to measure a guest application's resource consumption and obtain realistic sandbox parameters.

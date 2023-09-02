@@ -970,6 +970,7 @@ public class SnippetTemplate {
                     }
                 }
             }
+            assert checkTemplate(context.getMetaAccess(), args, template.snippet.method());
             return template;
         }
 
@@ -1060,7 +1061,7 @@ public class SnippetTemplate {
             nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
             MetaAccessProvider metaAccess = providers.getMetaAccess();
-            assert checkTemplate(metaAccess, args, method, signature);
+            assert checkTemplate(metaAccess, args, method);
 
             int parameterCount = args.info.getParameterCount();
             VarargsPlaceholderNode[] placeholders = new VarargsPlaceholderNode[parameterCount];
@@ -2760,7 +2761,8 @@ public class SnippetTemplate {
         return buf.append(')').toString();
     }
 
-    private static boolean checkTemplate(MetaAccessProvider metaAccess, Arguments args, ResolvedJavaMethod method, Signature signature) {
+    private static boolean checkTemplate(MetaAccessProvider metaAccess, Arguments args, ResolvedJavaMethod method) {
+        Signature signature = method.getSignature();
         int offset = args.info.hasReceiver() ? 1 : 0;
         for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {

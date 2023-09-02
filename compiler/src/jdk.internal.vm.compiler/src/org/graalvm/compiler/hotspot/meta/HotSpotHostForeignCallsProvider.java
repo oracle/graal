@@ -172,8 +172,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
     public static final HotSpotForeignCallDescriptor JAVA_TIME_MILLIS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "javaTimeMillis", long.class);
     public static final HotSpotForeignCallDescriptor JAVA_TIME_NANOS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, REEXECUTABLE, NO_LOCATIONS, "javaTimeNanos", long.class);
 
-    public static final HotSpotForeignCallDescriptor NOTIFY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "object_notify", boolean.class, Object.class);
-    public static final HotSpotForeignCallDescriptor NOTIFY_ALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "object_notifyAll", boolean.class, Object.class);
+    public static final HotSpotForeignCallDescriptor NOTIFY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "object_notify", int.class, Word.class, Object.class);
+    public static final HotSpotForeignCallDescriptor NOTIFY_ALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, any(), "object_notifyAll", int.class, Word.class, Object.class);
 
     public static final HotSpotForeignCallDescriptor INVOKE_STATIC_METHOD_ONE_ARG = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS,
                     "JVMCIRuntime::invoke_static_method_one_arg", long.class, Word.class, Word.class, long.class);
@@ -513,8 +513,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, createDescriptor(REGISTER_FINALIZER, SAFEPOINT, NOT_REEXECUTABLE, any()), c.registerFinalizerAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers, NOTIFY, c.notifyAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers, NOTIFY_ALL, c.notifyAllAddress, PREPEND_THREAD);
+        registerForeignCall(NOTIFY, c.notifyAddress, NativeCall);
+        registerForeignCall(NOTIFY_ALL, c.notifyAllAddress, NativeCall);
 
         if (c.nmethodEntryBarrier != 0) {
             registerForeignCall(NMETHOD_ENTRY_BARRIER, c.nmethodEntryBarrier, NativeCall);

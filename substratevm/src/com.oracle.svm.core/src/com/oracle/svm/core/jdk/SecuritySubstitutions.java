@@ -405,20 +405,6 @@ final class Target_javax_crypto_JarVerifier {
     }
 }
 
-/** A predicate to tell whether this platform includes the argument class. */
-final class PlatformHasClass implements Predicate<String> {
-    @Override
-    public boolean test(String className) {
-        try {
-            @SuppressWarnings({"unused"})
-            final Class<?> classForName = Class.forName(className);
-            return true;
-        } catch (ClassNotFoundException cnfe) {
-            return false;
-        }
-    }
-}
-
 final class ContainsVerifyJars implements Predicate<Class<?>> {
     @Override
     public boolean test(Class<?> originalClass) {

@@ -33,8 +33,6 @@ import sun.management.VMManagement;
 @SuppressWarnings("static-method")
 @TargetClass(className = "sun.management.BaseOperatingSystemImpl")
 final class Target_sun_management_BaseOperatingSystemImpl {
-    @Alias double[] loadavg;
-
     @Alias
     Target_sun_management_BaseOperatingSystemImpl(@SuppressWarnings("unused") VMManagement vm) {
     }

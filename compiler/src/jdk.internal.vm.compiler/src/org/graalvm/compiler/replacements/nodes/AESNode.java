@@ -25,7 +25,9 @@
 package org.graalvm.compiler.replacements.nodes;
 
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AES;
-import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
 
 import java.util.EnumSet;
 
@@ -126,7 +128,7 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
     }
 
     public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-        return EnumSet.of(AVX, AES);
+        return EnumSet.of(SSE2, SSE3, SSSE3, AES);
     }
 
     public static EnumSet<AArch64.CPUFeature> minFeaturesAARCH64() {

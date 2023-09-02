@@ -140,6 +140,10 @@ public @interface APIOption {
             }
         }
 
+        public static String valueSeparatorToString(char valueSeparator) {
+            return valueSeparator != APIOption.NO_SEPARATOR ? Character.toString(valueSeparator) : "";
+        }
+
         public static String groupName(APIOptionGroup group) {
             if (group.name() == null || group.name().isEmpty()) {
                 VMError.shouldNotReachHere("Invalid APIOptionGroup.name() for " + group.getClass().getName());

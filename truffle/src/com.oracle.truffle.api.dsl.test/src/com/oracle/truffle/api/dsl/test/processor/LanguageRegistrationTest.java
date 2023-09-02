@@ -314,6 +314,35 @@ public class LanguageRegistrationTest {
         }
     }
 
+    @ExpectError("The '@Id.componentId' for an required internal resources must be unset or equal to '@Registration.id'. " +
+                    "To resolve this, remove the '@Id.componentId = \"other-language\"'.")
+    @Registration(id = "languageresource8", name = "languageresource8", internalResources = {InternalResourceRegistration8.Resource1.class})
+    public static class InternalResourceRegistration8 extends ProxyLanguage {
+
+        @InternalResource.Id(value = "resource-id", componentId = "other-language")
+        public static class Resource1 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource1() {
+            }
+        }
+    }
+
+    @ExpectError("Optional internal resources must not be registered using '@Registration' annotation. To resolve this, " +
+                    "remove the 'LanguageRegistrationTest.InternalResourceRegistration9.Resource1' from 'internalResources' the or " +
+                    "make the 'LanguageRegistrationTest.InternalResourceRegistration9.Resource1' non-optional by removing 'optional = true'.")
+    @Registration(id = "languageresource9", name = "languageresource9", internalResources = {InternalResourceRegistration9.Resource1.class})
+    public static class InternalResourceRegistration9 extends ProxyLanguage {
+
+        @InternalResource.Id(value = "resource-id", componentId = "languageresource9", optional = true)
+        public static class Resource1 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource1() {
+            }
+        }
+    }
+
     static class ProxyFileTypeDetector implements FileTypeDetector {
 
         @Override

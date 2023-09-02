@@ -59,3 +59,5 @@ visualizer/IdealGraphVisualizer/build/
 visualizer/IdealGraphVisualizer/dist/
 visualizer/IdealGraphVisualizer/nbplatform/
 /.src-rev
+*.interp
+*.tokens

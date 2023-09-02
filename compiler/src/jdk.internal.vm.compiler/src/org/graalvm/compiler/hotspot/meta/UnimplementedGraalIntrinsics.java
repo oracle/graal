@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.hotspot.meta;
 
-import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC;
-
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Formatter;
@@ -33,20 +31,7 @@ import java.util.Set;
 import java.util.TreeSet;
 
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.replacements.nodes.AESNode;
-import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
-import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
-import org.graalvm.compiler.replacements.nodes.GHASHProcessBlocksNode;
-import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
-import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
-import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
-import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
-
-import jdk.vm.ci.aarch64.AArch64;
-import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 
 /**
  * This class documents unimplemented Graal intrinsics and categorizes them into 3 categories:
@@ -96,7 +81,7 @@ public final class UnimplementedGraalIntrinsics {
         c.addAll(Arrays.asList(elements));
     }
 
-    public UnimplementedGraalIntrinsics(GraalHotSpotVMConfig config, Architecture arch) {
+    public UnimplementedGraalIntrinsics() {
         // These are dead
         add(ignore,
                         "java/lang/Math.atan2(DD)D",
@@ -134,7 +119,9 @@ public final class UnimplementedGraalIntrinsics {
         // ignoring them as cmovs are not necessarily beneficial.
         add(ignore,
                         "java/lang/Math.max(II)I",
-                        "java/lang/Math.min(II)I");
+                        "java/lang/Math.min(II)I",
+                        "java/lang/StrictMath.max(II)I",
+                        "java/lang/StrictMath.min(II)I");
 
         // Relevant for Java flight recorder
         // [GR-10106] These JFR intrinsics are used for firing socket/file events via Java
@@ -144,16 +131,12 @@ public final class UnimplementedGraalIntrinsics {
                         "jdk/jfr/internal/JVM.counterTime()J",
                         "jdk/jfr/internal/JVM.getBufferWriter()Ljava/lang/Object;",
                         "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
-                        "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;",
+                        "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;",
                         "oracle/jrockit/jfr/Timing.counterTime()J",
                         "oracle/jrockit/jfr/VMJFR.classID0(Ljava/lang/Class;)J",
                         "oracle/jrockit/jfr/VMJFR.threadID()I");
 
         add(ignore,
-                        // ppc only
-                        "java/lang/CharacterDataLatin1.isLowerCase(I)Z",
-                        "java/lang/CharacterDataLatin1.isUpperCase(I)Z",
-                        "java/lang/CharacterDataLatin1.isWhitespace(I)Z",
                         // handled through an intrinsic for String.equals itself
                         "java/lang/StringLatin1.equals([B[B)Z",
 
@@ -180,270 +163,34 @@ public final class UnimplementedGraalIntrinsics {
         // JDK-8258558
         add(ignore, "java/lang/Object.<blackhole>*");
 
-        /*
-         * The intrinsics down here are known to be implemented but they are not always enabled on
-         * the HotSpot side (e.g., because they require certain CPU features). So, we are ignoring
-         * them if the HotSpot config tells us that they can't be used.
-         */
-        if (arch instanceof AMD64) {
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.POPCNT)) {
-                add(ignore,
-                                "java/lang/Integer.bitCount(I)I",
-                                "java/lang/Long.bitCount(J)I");
-            }
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
-                add(ignore,
-                                "java/lang/Math.max(DD)D",
-                                "java/lang/Math.max(FF)F",
-                                "java/lang/Math.min(DD)D",
-                                "java/lang/Math.min(FF)F");
-            }
-            if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX512VL)) {
-                add(ignore,
-                                "java/lang/Math.copySign(DD)D",
-                                "java/lang/Math.copySign(FF)F");
-            }
-        }
-
-        if (!config.inlineNotify()) {
-            add(ignore, "java/lang/Object.notify()V");
-        }
-        if (!config.inlineNotifyAll()) {
-            add(ignore, "java/lang/Object.notifyAll()V");
-        }
-
-        if (config.base64EncodeBlock == 0L) {
-            add(ignore, "java/util/Base64$Encoder.encodeBlock([BII[BIZ)V");
-        }
-        if (config.base64DecodeBlock == 0L) {
-            add(ignore,
-                            "java/util/Base64$Decoder.decodeBlock([BII[BIZ)I",
-                            "java/util/Base64$Decoder.decodeBlock([BII[BIZZ)I");
-        }
-
-        if (!GHASHProcessBlocksNode.isSupported(arch)) {
-            add(ignore,
-                            "com/sun/crypto/provider/GHASH.processBlocks([BII[J[J)V");
-        }
-        if (!config.useFMAIntrinsics) {
-            add(ignore,
-                            "java/lang/Math.fma(DDD)D",
-                            "java/lang/Math.fma(FFF)F");
-        }
-
-        // CRC32 intrinsics
-        if (!config.useCRC32Intrinsics) {
-            add(ignore,
-                            "java/util/zip/CRC32.update(II)I",
-                            "java/util/zip/CRC32.updateByteBuffer0(IJII)I",
-                            "java/util/zip/CRC32.updateBytes0(I[BII)I");
-        }
-
-        // CRC32C intrinsics
-        if (!config.useCRC32CIntrinsics) {
-            add(ignore,
-                            "java/util/zip/CRC32C.updateBytes(I[BII)I",
-                            "java/util/zip/CRC32C.updateDirectByteBuffer(IJII)I");
-        }
-
-        // AES intrinsics
-        if (!AESNode.isSupported(arch)) {
-            add(ignore,
-                            "com/sun/crypto/provider/AESCrypt.implDecryptBlock([BI[BI)V",
-                            "com/sun/crypto/provider/AESCrypt.implEncryptBlock([BI[BI)V");
-        }
-
-        if (!CounterModeAESNode.isSupported(arch)) {
-            add(ignore,
-                            "com/sun/crypto/provider/CounterMode.implCrypt([BII[BI)I");
-        }
-
-        if (!CipherBlockChainingAESNode.isSupported(arch)) {
-            add(ignore,
-                            "com/sun/crypto/provider/CipherBlockChaining.implDecrypt([BII[BI)I",
-                            "com/sun/crypto/provider/CipherBlockChaining.implEncrypt([BII[BI)I");
-        }
-
-        // BigInteger intrinsics
-        if (!config.useMontgomeryMultiplyIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMontgomeryMultiply([I[I[IIJ[I)[I");
-        }
-        if (!config.useMontgomerySquareIntrinsic()) {
-            add(ignore, "java/math/BigInteger.implMontgomerySquare([I[IIJ[I)[I");
-        }
-        // DigestBase intrinsics
-        if (HotSpotGraphBuilderPlugins.isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") &&
-                        !(config.md5ImplCompressMultiBlock != 0L || config.useSHA1Intrinsics() || config.useSHA256Intrinsics() || config.useSHA512Intrinsics() ||
-                                        config.sha3ImplCompressMultiBlock != 0L)) {
-            add(ignore, "sun/security/provider/DigestBase.implCompressMultiBlock0([BII)I");
-        }
-        // SHA intrinsics
-        if (!SHA1Node.isSupported(arch)) {
-            add(ignore, "sun/security/provider/SHA.implCompress0([BI)V");
-        }
-        if (!SHA256Node.isSupported(arch)) {
-            add(ignore, "sun/security/provider/SHA2.implCompress0([BI)V");
-        }
-        if (!SHA3Node.isSupported(arch)) {
-            add(ignore, "sun/security/provider/SHA3.implCompress0([BI)V");
-        }
-        if (!SHA512Node.isSupported(arch)) {
-            add(ignore, "sun/security/provider/SHA5.implCompress0([BI)V");
-        }
-        if (config.updateBytesAdler32 == 0L) {
-            add(ignore,
-                            "java/util/zip/Adler32.updateByteBuffer(IJII)I",
-                            "java/util/zip/Adler32.updateBytes(I[BII)I");
-        }
-        if (config.bigIntegerLeftShiftWorker == 0L) {
-            add(ignore, "java/math/BigInteger.shiftLeftImplWorker([I[IIII)V");
-        }
-        if (config.bigIntegerRightShiftWorker == 0L) {
-            add(ignore, "java/math/BigInteger.shiftRightImplWorker([I[IIII)V");
-        }
-        if (config.electronicCodeBookEncrypt == 0L) {
-            add(ignore, "com/sun/crypto/provider/ElectronicCodeBook.implECBDecrypt([BII[BI)I");
-        }
-        if (config.electronicCodeBookDecrypt == 0L) {
-            add(ignore, "com/sun/crypto/provider/ElectronicCodeBook.implECBEncrypt([BII[BI)I");
-        }
-        if (config.poly1305ProcessBlocks == 0L) {
-            add(ignore, "com/sun/crypto/provider/Poly1305.processMultipleBlocks([BII[J[J)V");
-        }
-        if (config.chacha20Block == 0L) {
-            add(ignore, "com/sun/crypto/provider/ChaCha20Cipher.implChaCha20Block([I[B)I");
-        }
-
-        if (JAVA_SPEC >= 18) {
-            add(ignore,
-                            "java/lang/StrictMath.max(II)I",
-                            "java/lang/StrictMath.min(II)I");
-            if (arch instanceof AMD64) {
-                if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX)) {
-                    add(ignore,
-                                    "java/lang/StrictMath.max(DD)D",
-                                    "java/lang/StrictMath.max(FF)F",
-                                    "java/lang/StrictMath.min(DD)D",
-                                    "java/lang/StrictMath.min(FF)F");
-                }
-            }
-            if (config.galoisCounterModeCrypt == 0L) {
-                add(ignore, "com/sun/crypto/provider/GaloisCounterMode.implGCMCrypt0([BII[BI[BILcom/sun/crypto/provider/GCTR;Lcom/sun/crypto/provider/GHASH;)I");
-            }
-        }
-
-        if (JAVA_SPEC >= 19) {
-            if (config.threadScopedValueCacheOffset == -1L) {
-                add(ignore,
-                                "java/lang/Thread.scopedValueCache()[Ljava/lang/Object;",
-                                "java/lang/Thread.setScopedValueCache([Ljava/lang/Object;)V");
-            }
-
-            if (arch instanceof AMD64) {
-                if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.AVX512DQ)) {
-                    add(ignore,
-                                    "java/lang/Double.isInfinite(D)Z",
-                                    "java/lang/Float.isInfinite(F)Z");
-                }
-            }
-        }
-
-        if (JAVA_SPEC >= 20) {
-            // without JIT implementation
-            add(ignore,
-                            "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
-                            "jdk/internal/vm/Continuation.doYield()I",
-                            "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
-                            "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V");
-
-            // same ignore reason as "jdk/jfr/internal/JVM.getEventWriter()Ljava/lang/Object;"
-            // see also https://bugs.openjdk.org/browse/JDK-8286480
-            add(ignore,
-                            "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;");
-
-            if (arch instanceof AMD64) {
-                if (!((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.valueOf("GFNI"))) {
-                    add(ignore,
-                                    "java/lang/Integer.reverse(I)I",
-                                    "java/lang/Long.reverse(J)J");
-                }
-            }
-        }
+        // without JIT implementation
+        add(ignore,
+                        "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
+                        "jdk/internal/vm/Continuation.doYield()I",
+                        "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
+                        "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V");
 
         // JDK-8254231: Implementation of Foreign Linker API (Incubator)
         add(toBeInvestigated,
                         "java/lang/invoke/MethodHandle.linkToNative*");
 
-        if (JAVA_SPEC == 17) {
-            // JDK-8223347: Integration of Vector API (Incubator)
-            add(toBeInvestigated, // @formatter:off
-                            "jdk/internal/vm/vector/VectorSupport.binaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/util/function/BiFunction;)Ljava/lang/Object;",
-                            "jdk/internal/vm/vector/VectorSupport.blend(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorBlendOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
-                            "jdk/internal/vm/vector/VectorSupport.broadcastCoerced(Ljava/lang/Class;Ljava/lang/Class;IJLjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$BroadcastOperation;)Ljava/lang/Object;",
-                            "jdk/internal/vm/vector/VectorSupport.broadcastInt(ILjava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VectorBroadcastIntOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
-                            "jdk/internal/vm/vector/VectorSupport.compare(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorCompareOp;)Ljdk/internal/vm/vector/VectorSupport$VectorMask;",
-                            "jdk/internal/vm/vector/VectorSupport.convert(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$VectorPayload;Ljdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$VectorConvertOp;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
-                            "jdk/internal/vm/vector/VectorSupport.extract(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VecExtractOp;)J",
-                            "jdk/internal/vm/vector/VectorSupport.insert(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;IJLjdk/internal/vm/vector/VectorSupport$VecInsertOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
-                            "jdk/internal/vm/vector/VectorSupport.load(Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjava/lang/Object;ILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$LoadOperation;)Ljava/lang/Object;",
-                            "jdk/internal/vm/vector/VectorSupport.loadWithMap(Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljava/lang/Object;I[IILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$LoadVectorOperationWithMap;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
-                            "jdk/internal/vm/vector/VectorSupport.maskReductionCoerced(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljdk/internal/vm/vector/VectorSupport$VectorMaskOp;)I",
-                            "jdk/internal/vm/vector/VectorSupport.maybeRebox(Ljava/lang/Object;)Ljava/lang/Object;",
-                            "jdk/internal/vm/vector/VectorSupport.rearrangeOp(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;Ljdk/internal/vm/vector/VectorSupport$VectorRearrangeOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
-                            "jdk/internal/vm/vector/VectorSupport.reductionCoerced(ILjava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljava/util/function/Function;)J",
-                            "jdk/internal/vm/vector/VectorSupport.shuffleIota(Ljava/lang/Class;Ljava/lang/Class;Ljdk/internal/vm/vector/VectorSupport$VectorSpecies;IIIILjdk/internal/vm/vector/VectorSupport$ShuffleIotaOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;",
-                            "jdk/internal/vm/vector/VectorSupport.shuffleToVector(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;ILjdk/internal/vm/vector/VectorSupport$ShuffleToVectorOperation;)Ljava/lang/Object;",
-                            "jdk/internal/vm/vector/VectorSupport.store(Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljava/lang/Object;ILjdk/internal/vm/vector/VectorSupport$StoreVectorOperation;)V",
-                            "jdk/internal/vm/vector/VectorSupport.storeWithMap(Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljava/lang/Object;I[IILjdk/internal/vm/vector/VectorSupport$StoreVectorOperationWithMap;)V",
-                            "jdk/internal/vm/vector/VectorSupport.ternaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljdk/internal/vm/vector/VectorSupport$TernaryOperation;)Ljava/lang/Object;",
-                            "jdk/internal/vm/vector/VectorSupport.test(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/lang/Object;Ljava/util/function/BiFunction;)Z",
-                            "jdk/internal/vm/vector/VectorSupport.unaryOp(ILjava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;Ljava/util/function/Function;)Ljava/lang/Object;"
-                            // @formatter:on
-            );
-        }
-
-        if (JAVA_SPEC >= 20) {
-            // JDK-8223347: Integration of Vector API (Incubator)
-            add(toBeInvestigated, // @formatter:off
-                            "jdk/internal/vm/vector/VectorSupport.compressExpandOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$CompressExpandOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
-                            "jdk/internal/vm/vector/VectorSupport.extract(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VecExtractOp;)J",
-                            "jdk/internal/vm/vector/VectorSupport.indexPartiallyInUpperRange(Ljava/lang/Class;Ljava/lang/Class;IJJLjdk/internal/vm/vector/VectorSupport$IndexPartiallyInUpperRangeOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorMask;",
-                            "jdk/internal/vm/vector/VectorSupport.indexVector(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$IndexOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
-                            "jdk/internal/vm/vector/VectorSupport.insert(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;IJLjdk/internal/vm/vector/VectorSupport$VecInsertOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
-                            "jdk/internal/vm/vector/VectorSupport.loadMasked(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$VectorMask;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$LoadVectorMaskedOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
-                            "jdk/internal/vm/vector/VectorSupport.loadWithMap(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;I[IILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$LoadVectorOperationWithMap;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
-                            "jdk/internal/vm/vector/VectorSupport.maskReductionCoerced(ILjava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorMaskOp;)J",
-                            "jdk/internal/vm/vector/VectorSupport.maybeRebox(Ljdk/internal/vm/vector/VectorSupport$VectorPayload;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
-                            "jdk/internal/vm/vector/VectorSupport.rearrangeOp(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorRearrangeOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
-                            "jdk/internal/vm/vector/VectorSupport.storeMasked(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$StoreVectorMaskedOperation;)V",
-                            "jdk/internal/vm/vector/VectorSupport.storeWithMap(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;I[IILjdk/internal/vm/vector/VectorSupport$StoreVectorOperationWithMap;)V",
-                            "jdk/internal/vm/vector/VectorSupport.ternaryOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$TernaryOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;"
-                            // @formatter:on
-            );
-            // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8294198
-            add(toBeInvestigated,
-                            "java/lang/Double.isFinite(D)Z",
-                            "java/lang/Float.isFinite(F)Z");
-
-            if (arch instanceof AArch64) {
-                // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8285868
-                add(toBeInvestigated,
-                                "java/lang/Double.isInfinite(D)Z",
-                                "java/lang/Float.isInfinite(F)Z");
-
-                // not implemented yet, watch https://bugs.openjdk.org/browse/JDK-8283892
-                add(toBeInvestigated,
-                                "java/lang/Integer.compress(II)I",
-                                "java/lang/Integer.expand(II)I",
-                                "java/lang/Long.compress(JJ)J",
-                                "java/lang/Long.expand(JJ)J");
-
-                if (JAVA_SPEC >= 21) {
-                    // not implemented yet, watch JDK-8282664
-                    add(toBeInvestigated, "jdk/internal/util/ArraysSupport.vectorizedHashCode(Ljava/lang/Object;IIII)I");
-                }
-            }
-        }
+        // JDK-8223347: Integration of Vector API (Incubator)
+        add(toBeInvestigated, // @formatter:off
+                        "jdk/internal/vm/vector/VectorSupport.compressExpandOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$CompressExpandOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
+                        "jdk/internal/vm/vector/VectorSupport.extract(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VecExtractOp;)J",
+                        "jdk/internal/vm/vector/VectorSupport.indexPartiallyInUpperRange(Ljava/lang/Class;Ljava/lang/Class;IJJLjdk/internal/vm/vector/VectorSupport$IndexPartiallyInUpperRangeOperation;)Ljdk/internal/vm/vector/VectorSupport$VectorMask;",
+                        "jdk/internal/vm/vector/VectorSupport.indexVector(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;ILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$IndexOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                        "jdk/internal/vm/vector/VectorSupport.insert(Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;IJLjdk/internal/vm/vector/VectorSupport$VecInsertOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                        "jdk/internal/vm/vector/VectorSupport.loadMasked(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$VectorMask;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$LoadVectorMaskedOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                        "jdk/internal/vm/vector/VectorSupport.loadWithMap(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;I[IILjdk/internal/vm/vector/VectorSupport$VectorSpecies;Ljdk/internal/vm/vector/VectorSupport$LoadVectorOperationWithMap;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                        "jdk/internal/vm/vector/VectorSupport.maskReductionCoerced(ILjava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorMaskOp;)J",
+                        "jdk/internal/vm/vector/VectorSupport.maybeRebox(Ljdk/internal/vm/vector/VectorSupport$VectorPayload;)Ljdk/internal/vm/vector/VectorSupport$VectorPayload;",
+                        "jdk/internal/vm/vector/VectorSupport.rearrangeOp(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorShuffle;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$VectorRearrangeOp;)Ljdk/internal/vm/vector/VectorSupport$Vector;",
+                        "jdk/internal/vm/vector/VectorSupport.storeMasked(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$StoreVectorMaskedOperation;)V",
+                        "jdk/internal/vm/vector/VectorSupport.storeWithMap(Ljava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjava/lang/Class;Ljava/lang/Object;JLjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljava/lang/Object;I[IILjdk/internal/vm/vector/VectorSupport$StoreVectorOperationWithMap;)V",
+                        "jdk/internal/vm/vector/VectorSupport.ternaryOp(ILjava/lang/Class;Ljava/lang/Class;Ljava/lang/Class;ILjdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$Vector;Ljdk/internal/vm/vector/VectorSupport$VectorMask;Ljdk/internal/vm/vector/VectorSupport$TernaryOperation;)Ljdk/internal/vm/vector/VectorSupport$Vector;"
+                        // @formatter:on
+        );
 
         // These are known to be implemented down stream
         add(enterprise, // @formatter:off
