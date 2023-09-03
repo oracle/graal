@@ -12,6 +12,7 @@ import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import java.util.ArrayList;
@@ -39,6 +40,9 @@ public class HeapAssignmentTracingFeature implements InternalFeature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         HeapAssignmentTracing.activate();
+
+        var rci = ImageSingletons.lookup(org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport.class);
+        rci.initializeAtBuildTime("HeapAssignmentTracingHooks", "Avoid generation of EnsureClassInitializedNode");
     }
 
     @Override
