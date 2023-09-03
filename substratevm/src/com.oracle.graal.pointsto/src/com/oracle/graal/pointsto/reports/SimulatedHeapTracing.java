@@ -14,14 +14,16 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class SimulatedHeapTracing {
-    private static abstract class HeapConstantContext {
+    private static class HeapConstantContext {
         public final CausalityExport.Event allocator;
 
         public HeapConstantContext(CausalityExport.Event allocator) {
             this.allocator = allocator;
         }
 
-        public abstract HeapConstantContext clone(CausalityExport.Event cloner);
+        public HeapConstantContext clone(CausalityExport.Event cloner) {
+            return new HeapConstantContext(cloner);
+        }
     }
 
     private static final class HeapInstanceContext extends HeapConstantContext {
@@ -84,9 +86,7 @@ public class SimulatedHeapTracing {
         }
 
         public void traceAllocation(CausalityExport.Event cause, ImageHeapArray array) {
-            if (array instanceof ImageHeapObjectArray objectArray) {
-                objects.put(objectArray, new HeapArrayContext(cause, array.getLength()));
-            }
+            objects.put(array, array instanceof ImageHeapObjectArray ? new HeapArrayContext(cause, array.getLength()) : new HeapConstantContext(cause));
         }
 
         public void traceWrite(CausalityExport.Event cause, ImageHeapInstance instance, AnalysisField field) {
@@ -94,7 +94,7 @@ public class SimulatedHeapTracing {
         }
 
         public void traceWrite(CausalityExport.Event cause, ImageHeapArray array, int position) {
-            if (array instanceof ImageHeapObjectArray objectArray) {
+            if (array instanceof ImageHeapObjectArray) {
                 ((HeapArrayContext) objects.get(array)).arrayWriters[position] = cause;
             }
         }
