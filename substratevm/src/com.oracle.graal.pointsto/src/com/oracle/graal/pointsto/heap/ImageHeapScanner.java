@@ -118,17 +118,19 @@ public abstract class ImageHeapScanner {
     public void onFieldRead(AnalysisField field) {
         assert field.isRead();
         /* Check if the value is available before accessing it. */
-        if (isValueAvailable(field)) {
-            FieldScan reason = new FieldScan(field);
-            AnalysisType declaringClass = field.getDeclaringClass();
-            if (field.isStatic()) {
+        FieldScan reason = new FieldScan(field);
+        AnalysisType declaringClass = field.getDeclaringClass();
+        if (field.isStatic()) {
+            if (isValueAvailable(field)) {
                 JavaConstant fieldValue = declaringClass.getOrComputeData().readFieldValue(field);
                 markReachable(fieldValue, reason);
                 notifyAnalysis(field, null, fieldValue, reason);
-            } else {
-                /* Trigger field scanning for the already processed objects. */
-                postTask(() -> onInstanceFieldRead(field, declaringClass, reason));
+            } else if (field.canBeNull()) {
+                notifyAnalysis(field, null, JavaConstant.NULL_POINTER, reason);
             }
+        } else {
+            /* Trigger field scanning for the already processed objects. */
+            postTask(() -> onInstanceFieldRead(field, declaringClass, reason));
         }
     }
 
@@ -136,9 +138,7 @@ public abstract class ImageHeapScanner {
         for (AnalysisType subtype : type.getSubTypes()) {
             for (ImageHeapConstant imageHeapConstant : imageHeap.getReachableObjects(subtype)) {
                 ImageHeapInstance imageHeapInstance = (ImageHeapInstance) imageHeapConstant;
-                JavaConstant fieldValue = imageHeapInstance.readFieldValue(field);
-                markReachable(fieldValue, reason);
-                notifyAnalysis(field, imageHeapInstance, fieldValue, reason);
+                updateInstanceField(field, imageHeapInstance, reason, null);
             }
             /* Subtypes include this type itself. */
             if (!subtype.equals(type)) {
@@ -468,17 +468,25 @@ public abstract class ImageHeapScanner {
         } else if (imageHeapConstant instanceof ImageHeapInstance imageHeapInstance) {
             for (ResolvedJavaField javaField : objectType.getInstanceFields(true)) {
                 AnalysisField field = (AnalysisField) javaField;
-                if (field.isRead() && isValueAvailable(field)) {
-                    JavaConstant fieldValue = imageHeapInstance.readFieldValue(field);
-                    markReachable(fieldValue, reason, onAnalysisModified);
-                    notifyAnalysis(field, imageHeapInstance, fieldValue, reason, onAnalysisModified);
+                if (field.isRead()) {
+                    updateInstanceField(field, imageHeapInstance, reason, onAnalysisModified);
                 }
             }
         }
     }
 
-    public boolean isValueAvailable(@SuppressWarnings("unused") AnalysisField field) {
-        return true;
+    private void updateInstanceField(AnalysisField field, ImageHeapInstance imageHeapInstance, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
+        if (isValueAvailable(field)) {
+            JavaConstant fieldValue = imageHeapInstance.readFieldValue(field);
+            markReachable(fieldValue, reason, onAnalysisModified);
+            notifyAnalysis(field, imageHeapInstance, fieldValue, reason, onAnalysisModified);
+        } else if (field.canBeNull()) {
+            notifyAnalysis(field, imageHeapInstance, JavaConstant.NULL_POINTER, reason, onAnalysisModified);
+        }
+    }
+
+    public boolean isValueAvailable(AnalysisField field) {
+        return field.isValueAvailable();
     }
 
     protected String formatReason(String message, ScanReason reason) {

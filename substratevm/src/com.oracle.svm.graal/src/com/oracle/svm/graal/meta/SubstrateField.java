@@ -50,8 +50,8 @@ public class SubstrateField implements SharedField {
 
     protected static final SubstrateField[] EMPTY_ARRAY = new SubstrateField[0];
 
-    SubstrateType type;
-    SubstrateType declaringClass;
+    @UnknownObjectField SubstrateType type;
+    @UnknownObjectField SubstrateType declaringClass;
     private final String name;
     private final int modifiers;
     private int hashCode;

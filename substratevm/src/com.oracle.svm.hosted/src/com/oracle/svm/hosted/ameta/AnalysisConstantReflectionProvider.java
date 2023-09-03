@@ -42,6 +42,7 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
@@ -199,11 +200,12 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             value = readSimulatedValue(field);
         }
         if (value == null && receiver instanceof ImageHeapConstant) {
+            AnalysisError.guarantee(ReadableJavaField.isValueAvailable(field), "Value not yet available for %s", field);
             ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
             value = heapObject.readFieldValue(field);
         }
         if (value == null) {
-            value = universe.lookup(ReadableJavaField.readFieldValue(suppliedMetaAccess, classInitializationSupport, field.wrapped, universe.toHosted(receiver)));
+            value = doReadValue(field, universe.toHosted(receiver), suppliedMetaAccess);
         }
         return interceptValue(suppliedMetaAccess, field, value);
     }
@@ -217,24 +219,24 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             }
         }
 
-        if (field.wrapped instanceof ReadableJavaField) {
-            ReadableJavaField readableField = (ReadableJavaField) field.wrapped;
-            if (readableField.isValueAvailableBeforeAnalysis()) {
-                /* Materialize and return the value. */
-                return ValueSupplier.eagerValue(universe.lookup(readableField.readValue(metaAccess, classInitializationSupport, receiver)));
-            } else {
-                /*
-                 * Return a lazy value. This applies to RecomputeFieldValue.Kind.FieldOffset and
-                 * RecomputeFieldValue.Kind.Custom. The value becomes available during hosted
-                 * universe building and is installed by calling
-                 * ComputedValueField.processSubstrate() or by ComputedValueField.readValue().
-                 * Attempts to materialize the value earlier will result in an error.
-                 */
-                return ValueSupplier.lazyValue(() -> universe.lookup(readableField.readValue(hMetaAccess, classInitializationSupport, receiver)),
-                                readableField::isValueAvailable);
-            }
+        if (ReadableJavaField.isValueAvailable(field)) {
+            /* Materialize and return the value. */
+            return ValueSupplier.eagerValue(doReadValue(field, receiver, metaAccess));
         }
-        return ValueSupplier.eagerValue(universe.lookup(ReadableJavaField.readFieldValue(metaAccess, classInitializationSupport, field.wrapped, receiver)));
+        /*
+         * Return a lazy value. First, this applies to fields annotated with
+         * RecomputeFieldValue.Kind.FieldOffset and RecomputeFieldValue.Kind.Custom whose value
+         * becomes available during hosted universe building and is installed by calling
+         * ComputedValueField.processSubstrate() or ComputedValueField.readValue(). Secondly, this
+         * applies to fields annotated with @UnknownObjectField whose value is set directly either
+         * during analysis or in a later phase. Attempts to materialize the value before it becomes
+         * available will result in an error.
+         */
+        return ValueSupplier.lazyValue(() -> doReadValue(field, receiver, hMetaAccess), () -> ReadableJavaField.isValueAvailable(field));
+    }
+
+    private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver, UniverseMetaAccess access) {
+        return universe.lookup(ReadableJavaField.readFieldValue(access, classInitializationSupport, field.wrapped, receiver));
     }
 
     /**
