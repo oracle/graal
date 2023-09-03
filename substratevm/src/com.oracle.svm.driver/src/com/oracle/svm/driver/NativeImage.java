@@ -274,6 +274,8 @@ public class NativeImage {
 
     final String oHEnableHeapAssignmentTracingAgent = oH + "+" + AnalysisReportsOptions.HeapAssignmentTracingAgent.getName();
     final String oHDisableHeapAssignmentTracingAgent = oH + "-" + AnalysisReportsOptions.HeapAssignmentTracingAgent.getName();
+    final String oHDisableHeapAssignmentTracingAgentBreakpoints = oH + "-" + AnalysisReportsOptions.HeapAssignmentTracingAgentUseBreakpoints.getName();
+    final String oHDisableHeapAssignmentTracingAgentInstrumentation = oH + "-" + AnalysisReportsOptions.HeapAssignmentTracingAgentUseInstrumentation.getName();
     final String oHPrintCausalityGraph = oH + "+" + AnalysisReportsOptions.PrintCausalityGraph.getName();
 
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
@@ -1407,12 +1409,20 @@ public class NativeImage {
             agentOptions += getAgentOptions(traceObjectInstantiationOpts, "o");
         }
 
-        boolean heapAssignmentTracingAgentManuallyActivated = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oHEnableHeapAssignmentTracingAgent));
-        boolean heapAssignmentTracingAgentManuallyDeactivated = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oHDisableHeapAssignmentTracingAgent));
-        boolean causalityExportActivated = imageBuilderArgs.stream().anyMatch(arg -> arg.contains(oHPrintCausalityGraph));
+        boolean heapAssignmentTracingAgentManuallyActivated = imageBuilderArgs.stream().anyMatch(arg -> arg.startsWith(oHEnableHeapAssignmentTracingAgent));
+        boolean heapAssignmentTracingAgentManuallyDeactivated = imageBuilderArgs.stream().anyMatch(arg -> arg.startsWith(oHDisableHeapAssignmentTracingAgent) && !arg.startsWith(oHDisableHeapAssignmentTracingAgentInstrumentation) && !arg.startsWith(oHDisableHeapAssignmentTracingAgentBreakpoints));
+        boolean causalityExportActivated = imageBuilderArgs.stream().anyMatch(arg -> arg.startsWith(oHPrintCausalityGraph));
 
         if(heapAssignmentTracingAgentManuallyActivated || (!heapAssignmentTracingAgentManuallyDeactivated && causalityExportActivated)) {
-            args.add("-agentlib:heap-assignment-tracing-agent");
+            boolean useBreakpoints = imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHDisableHeapAssignmentTracingAgentBreakpoints));
+            boolean useInstrumentation = imageBuilderArgs.stream().noneMatch(arg -> arg.startsWith(oHDisableHeapAssignmentTracingAgentInstrumentation));
+
+            String arg = "-agentlib:heap-assignment-tracing-agent=";
+            if (useBreakpoints)
+                arg += "breakpoints,";
+            if (useInstrumentation)
+                arg += "instrumentation,";
+            args.add(arg);
         }
 
         if (!agentOptions.isEmpty()) {

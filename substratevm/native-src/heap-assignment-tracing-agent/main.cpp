@@ -611,17 +611,17 @@ ObjectContext* ObjectContext::create(jvmtiEnv* jvmti_env, JNIEnv* env, jobject o
 }
 
 
+static bool breakpoints_enable = false;
+static bool instrumentation_enable = false;
 
 static void addToTracingStack(jvmtiEnv* jvmti_env, JNIEnv* env, jthread thread, jobject reason)
 {
     AgentThreadContext* tc = AgentThreadContext::from_thread(jvmti_env, thread);
 
-#if BREAKPOINTS_ENABLE
-    if(!tc->reason(true))
+    if(breakpoints_enable && !tc->reason(true))
     {
         check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FIELD_MODIFICATION, thread));
     }
-#endif
 
 #if LOG || PRINT_CLINIT_HEAP_WRITES
 
@@ -665,12 +665,10 @@ static void removeFromTracingStack(jvmtiEnv* jvmti_env, JNIEnv* env, jthread thr
     assert(env->IsSameObject(topReason, reason));
     tc->clinit_pop(env);
 
-#if BREAKPOINTS_ENABLE
-    if(!tc->reason(true))
+    if(breakpoints_enable && !tc->reason(true))
     {
         check(jvmti_env->SetEventNotificationMode(JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, thread));
     }
-#endif
 
 #if LOG
     char inner_clinit_name[1024];
@@ -787,8 +785,24 @@ static string get_own_path()
     return path;
 }
 
+static void foreach_option(string_view options, auto callback)
+{
+    for(size_t start = 0, pos; (pos = options.find(',', start)) != std::string::npos; start = pos + 1)
+    {
+        string_view option = options.substr(start, pos);
+        callback(option);
+    }
+}
+
 JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 {
+    foreach_option(options, [&](string_view option){
+        if(option == "breakpoints")
+            breakpoints_enable = true;
+        else if(option == "instrumentation")
+            instrumentation_enable = true;
+    });
+
     //cerr << nounitbuf;
     //iostream::sync_with_stdio(false);
 
@@ -804,17 +818,21 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
     _jvmti_env_backing = std::make_shared<Environment>(vm, env);
     _jvmti_env = _jvmti_env_backing;
 
-    jvmtiCapabilities cap{ 0 };
-    cap.can_generate_frame_pop_events = true;
+    jvmtiCapabilities cap{};
     cap.can_tag_objects = true;
     cap.can_generate_object_free_events = true;
-    cap.can_retransform_classes = true;
-    cap.can_retransform_any_class = true;
-    cap.can_generate_all_class_hook_events = true;
-#if BREAKPOINTS_ENABLE
-    cap.can_generate_breakpoint_events = true;
-    cap.can_generate_field_modification_events = true;
-#endif
+    if(instrumentation_enable)
+    {
+        cap.can_retransform_classes = true;
+        cap.can_retransform_any_class = true;
+        cap.can_generate_all_class_hook_events = true;
+        cap.can_generate_frame_pop_events = true;
+    }
+    if(breakpoints_enable)
+    {
+        cap.can_generate_breakpoint_events = true;
+        cap.can_generate_field_modification_events = true;
+    }
 
     check_code(1, env->AddCapabilities(&cap));
 
@@ -831,13 +849,14 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
 
     check_code(1, env->SetEventCallbacks(&callbacks, sizeof(callbacks)));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_VM_INIT, nullptr));
-    check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FRAME_POP, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_THREAD_START, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_THREAD_END, nullptr));
     check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_OBJECT_FREE, nullptr));
-#if REWRITE_ENABLE
-    check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullptr));
-#endif
+    if(instrumentation_enable)
+    {
+        check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_FILE_LOAD_HOOK, nullptr));
+        check_code(1, env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_FRAME_POP, nullptr));
+    }
 
     return 0;
 }
@@ -953,33 +972,37 @@ static void JNICALL onVMInit(jvmtiEnv *jvmti_env, JNIEnv* jni_env, jthread threa
     }
 
     acquire_jvmti_and_wrap_exceptions([&](){
-#if BREAKPOINTS_ENABLE
-        check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullptr));
-#endif
-
-#if REWRITE_ENABLE || BREAKPOINTS_ENABLE
-        jint num_classes;
-        jclass* classes_ptr;
-
-        LoadedClasses classes(jvmti_env);
-
-        for(jclass clazz : classes)
+        if(breakpoints_enable)
         {
-#if REWRITE_ENABLE
-            jboolean is_modifiable;
-            check(jvmti_env->IsModifiableClass(clazz, &is_modifiable));
-            if(is_modifiable)
-                check(jvmti_env->RetransformClasses(1, &clazz));
-#endif // REWRITE_ENABLE
-
-#if BREAKPOINTS_ENABLE
-            jint status;
-            check(jvmti_env->GetClassStatus(clazz, &status));
-            if(status & JVMTI_CLASS_STATUS_PREPARED)
-                processClass(jvmti_env, clazz);
-#endif // BREAKPOINTS_ENABLE
+            check(jvmti_env->SetEventNotificationMode(JVMTI_ENABLE, JVMTI_EVENT_CLASS_PREPARE, nullptr));
         }
-#endif // REWRITE_ENABLE || BREAKPOINTS_ENABLE
+
+        if(breakpoints_enable || instrumentation_enable)
+        {
+            jint num_classes;
+            jclass* classes_ptr;
+
+            LoadedClasses classes(jvmti_env);
+
+            for(jclass clazz : classes)
+            {
+                if (instrumentation_enable)
+                {
+                    jboolean is_modifiable;
+                    check(jvmti_env->IsModifiableClass(clazz, &is_modifiable));
+                    if(is_modifiable)
+                        check(jvmti_env->RetransformClasses(1, &clazz));
+                }
+
+                if (breakpoints_enable)
+                {
+                    jint status;
+                    check(jvmti_env->GetClassStatus(clazz, &status));
+                    if(status & JVMTI_CLASS_STATUS_PREPARED)
+                        processClass(jvmti_env, clazz);
+                }
+            }
+        }
 
         jniNativeInterface* redirected_jni;
         check(jvmti_env->GetJNIFunctionTable(&original_jni));
@@ -1377,13 +1400,14 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_graal_pointsto_reports_HeapAss
 
         bool fieldModificationWasTracked = tc->reason(true) != nullptr;
         tc->set_current_cause(env, cause, recordHeapAssignments);
-#if BREAKPOINTS_ENABLE
-        bool fieldModificationIsTracked = tc->reason(true) != nullptr;
-        if(fieldModificationIsTracked != fieldModificationWasTracked)
+        if(breakpoints_enable)
         {
-            check(jvmti_env->SetEventNotificationMode(fieldModificationIsTracked ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, thread));
+            bool fieldModificationIsTracked = tc->reason(true) != nullptr;
+            if(fieldModificationIsTracked != fieldModificationWasTracked)
+            {
+                check(jvmti_env->SetEventNotificationMode(fieldModificationIsTracked ? JVMTI_ENABLE : JVMTI_DISABLE, JVMTI_EVENT_FIELD_MODIFICATION, thread));
+            }
         }
-#endif
     });
 }
 

@@ -21,10 +21,6 @@
 #define LOG 0 // Medium verbose
 
 
-#define REWRITE_ENABLE 1
-// THis option is relevant in order to be able to debug the Java process with the rewriting functionality
-#define BREAKPOINTS_ENABLE 1
-
 #define HOOK_CLASS_NAME "HeapAssignmentTracingHooks"
 
 #define HOOK_JAR_NAME "heap-assignment-tracing-agent-hooks.jar"
