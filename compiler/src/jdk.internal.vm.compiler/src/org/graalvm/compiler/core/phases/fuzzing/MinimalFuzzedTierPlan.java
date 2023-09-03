@@ -71,7 +71,7 @@ class MinimalFuzzedTierPlan<C> extends AbstractTierPlan<C> {
                     long randomSeed,
                     String tierName) {
         super(originalPhases, tierName);
-        this.ignoredPhases = new HashSet<>(originalPhases);
+        this.ignoredPhases = new HashSet<>();
         this.randomSeed = randomSeed;
         computeMinimalFuzzedTierPlan(graphState, mandatoryStages);
     }
