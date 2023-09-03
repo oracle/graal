@@ -277,9 +277,12 @@ def maven_deploy_public_repo_dir():
     return os.path.join(_suite.get_mx_output_dir(), 'public-maven-repo')
 
 @mx.command(_suite.name, 'maven-deploy-public')
-def maven_deploy_public(args, licenses=None):
+def maven_deploy_public(args, licenses=None, deploy_snapshots=True):
     """Helper to simplify deploying all public Maven dependendencies into the mxbuild directory"""
-    artifact_version = mx_sdk_vm_impl.graalvm_version('graalvm') + '-SNAPSHOT'
+    if deploy_snapshots:
+        artifact_version = f'{mx_sdk_vm_impl.graalvm_version("graalvm")}-SNAPSHOT'
+    else:
+        artifact_version = f'{mx_sdk_vm_impl.graalvm_version("graalvm")}'
     path = maven_deploy_public_repo_dir()
     mx.rmtree(path, ignore_errors=True)
     os.mkdir(path)
