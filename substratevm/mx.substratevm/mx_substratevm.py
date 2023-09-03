@@ -1019,6 +1019,7 @@ driver_build_args = [
 ] + svm_experimental_options([
     '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
+    f'-R:MaxHeapSize={256 * 1024 * 1024}',
 ])
 
 additional_ni_dependencies = []
