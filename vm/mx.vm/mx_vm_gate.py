@@ -781,7 +781,7 @@ def gate_maven_downloader(tasks):
     with Task('Maven Downloader prepare maven repo', tasks, tags=[VmGateTasks.maven_downloader]) as t:
         if t:
             mx.suite('sulong')
-            mx_sdk.maven_deploy_public([], licenses=['EPL-2.0', 'GPLv2-CPE', 'ICU,GPLv2', 'BSD-new', 'UPL', 'MIT'])
+            mx_sdk.maven_deploy_public([], licenses=['EPL-2.0', 'GPLv2-CPE', 'ICU,GPLv2', 'BSD-new', 'UPL', 'MIT'], deploy_snapshots=False)
             mx.build(["--dep", "MAVEN_DOWNLOADER"])
             jdk = mx.get_jdk()
             mvnDownloader = mx.distribution("MAVEN_DOWNLOADER")
