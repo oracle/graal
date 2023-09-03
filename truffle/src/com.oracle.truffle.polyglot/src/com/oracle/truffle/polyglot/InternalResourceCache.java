@@ -303,7 +303,11 @@ final class InternalResourceCache {
         if (res == null) {
             assert ImageInfo.inImageRuntimeCode() : "Can be called only in the native-image execution time.";
             Path executable = Path.of(ProcessProperties.getExecutableName());
-            Path cache = executable.resolve("resources");
+            Path parent = executable.getParent();
+            if (parent == null) {
+                throw new IllegalStateException("Could not locate native-image resources.");
+            }
+            Path cache = parent.resolve("resources");
             res = Pair.create(cache, false);
             cacheRoot = res;
         }

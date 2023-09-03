@@ -41,10 +41,14 @@ import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Assertions;
+import org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory;
+import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
+import org.graalvm.compiler.hotspot.EconomyCompilerConfigurationFactory;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.test.SubprocessUtil;
@@ -205,6 +209,14 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
                 }
             }
         }
+
+        // classes needed to find out whether enterprise is installed in the JDK
+        allowList.add(OptionStability.class);
+        allowList.add(CompilerConfigurationFactory.class);
+        allowList.add(CompilerConfigurationFactory.Options.class);
+        allowList.add(CompilerConfigurationFactory.ShowConfigurationLevel.class);
+        allowList.add(EconomyCompilerConfigurationFactory.class);
+        allowList.add(CommunityCompilerConfigurationFactory.class);
 
         allowList.add(Cancellable.class);
 
