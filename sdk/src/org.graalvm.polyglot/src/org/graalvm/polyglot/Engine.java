@@ -1708,9 +1708,6 @@ public final class Engine implements AutoCloseable {
     private static class ClassPathIsolation {
 
         private static final String TRUFFLE_MODULE_NAME = "org.graalvm.truffle";
-        private static final String TRUFFLE_RUNTIME_MODULE_NAME = "org.graalvm.truffle.runtime";
-        private static final String JVMCI_MODULE_NAME = "jdk.internal.vm.ci";
-        private static final String TRUFFLE_ENTERPRISE_MODULE_NAME = "com.oracle.truffle.enterprise";
         private static final String POLYGLOT_MODULE_NAME = "org.graalvm.polyglot";
         private static final String OPTION_DISABLE_CLASS_PATH_ISOLATION = "polyglotimpl.DisableClassPathIsolation";
         private static final String OPTION_TRACE_CLASS_PATH_ISOLATION = "polyglotimpl.TraceClassPathIsolation";
@@ -1908,16 +1905,6 @@ public final class Engine implements AutoCloseable {
                 return null;
             }
 
-            Set<String> excludedModules;
-            if (ModuleLayer.boot().findModule(JVMCI_MODULE_NAME).isPresent()) {
-                excludedModules = Set.of();
-            } else {
-                /*
-                 * if jdk.internal.vm.ci is not enabled we can't load these modules on the layer.
-                 */
-                excludedModules = Set.of(TRUFFLE_RUNTIME_MODULE_NAME, TRUFFLE_ENTERPRISE_MODULE_NAME);
-            }
-
             // now iteratively resolve modules until no more modules are included
             List<ParsedModule> toProcess = new ArrayList<>(parsedModules);
             Set<String> usedServices = new HashSet<>();
@@ -1930,10 +1917,6 @@ public final class Engine implements AutoCloseable {
                     ParsedModule module = modules.next();
                     for (ModuleReference m : module.modules) {
                         ModuleDescriptor d = m.descriptor();
-                        if (excludedModules.contains(d.name())) {
-                            modules.remove();
-                            continue;
-                        }
 
                         for (Provides p : d.provides()) {
                             if (usedServices.contains(p.service())) {
