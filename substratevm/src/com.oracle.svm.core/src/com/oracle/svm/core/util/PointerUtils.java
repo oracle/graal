@@ -101,6 +101,7 @@ public final class PointerUtils {
      * @param y Another Pointer.
      * @return The whichever Pointer is smaller.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends PointerBase> T min(T x, T y) {
         return (((Pointer) x).belowOrEqual((Pointer) y)) ? x : y;
     }
@@ -112,6 +113,7 @@ public final class PointerUtils {
      * @param y Another Pointer.
      * @return The whichever Pointer is larger.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static <T extends PointerBase> T max(T x, T y) {
         return (((Pointer) x).aboveOrEqual((Pointer) y)) ? x : y;
     }

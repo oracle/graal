@@ -124,6 +124,11 @@ public final class HeapParameters {
     }
 
     @Fold
+    public static UnsignedWord getMinUnalignedChunkSize() {
+        return UnalignedHeapChunk.getChunkSizeForObject(HeapParameters.getLargeArrayThreshold());
+    }
+
+    @Fold
     public static UnsignedWord getLargeArrayThreshold() {
         long largeArrayThreshold = SerialAndEpsilonGCOptions.LargeArrayThreshold.getValue();
         if (largeArrayThreshold == 0) {

@@ -105,10 +105,6 @@ public final class UnalignedHeapChunk {
         return HeapChunk.getEndPointer(that);
     }
 
-    public static UnsignedWord getOverhead() {
-        return getObjectStartOffset();
-    }
-
     static UnsignedWord getChunkSizeForObject(UnsignedWord objectSize) {
         UnsignedWord objectStart = getObjectStartOffset();
         UnsignedWord alignment = WordFactory.unsigned(ConfigurationValues.getObjectLayout().getAlignment());
