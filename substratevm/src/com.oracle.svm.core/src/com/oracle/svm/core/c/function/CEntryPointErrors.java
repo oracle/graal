@@ -37,8 +37,8 @@ import com.oracle.svm.core.util.VMError;
 
 /**
  * Errors returned by {@link CEntryPointActions} and {@link CEntryPointNativeFunctions} and their
- * implementation, including snippets and foreign function calls. These are non-API, with the
- * exception of 0 = success.
+ * implementation, including snippets and foreign function calls. These are non-public API as
+ * callers such as libgraal rely on those values.
  */
 public final class CEntryPointErrors {
     private CEntryPointErrors() {
