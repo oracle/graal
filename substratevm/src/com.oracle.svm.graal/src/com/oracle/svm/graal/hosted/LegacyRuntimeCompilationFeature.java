@@ -518,6 +518,11 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
     }
 
     @Override
+    public void beforeHeapLayout(BeforeHeapLayoutAccess a) {
+        super.beforeHeapLayoutHelper(a);
+    }
+
+    @Override
     public void afterHeapLayout(AfterHeapLayoutAccess a) {
         super.afterHeapLayoutHelper(a);
     }
