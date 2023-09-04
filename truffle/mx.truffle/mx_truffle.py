@@ -367,9 +367,9 @@ def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
     enterprise = _get_enterprise_truffle()
     if enterprise:
         def run_jvm_no_enterprise_optimized(test_file):
-            return _sl_command(jdk, [], [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false'] + default_args, use_optimized_runtime=True, use_enterprise=False, force_cp=force_cp)
+            return _sl_command(jdk, [], [test_file, '--disable-launcher-output'] + default_args, use_optimized_runtime=True, use_enterprise=False, force_cp=force_cp)
         def run_jvm_no_enterprise_optimized_immediately(test_file):
-            return _sl_command(jdk, [], [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'] + default_args, use_optimized_runtime=True, use_enterprise=False, force_cp=force_cp)
+            return _sl_command(jdk, [], [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'] + default_args, use_optimized_runtime=True, use_enterprise=False, force_cp=force_cp)
         def run_jvm_no_enterprise_jvmci_disabled(test_file):
             return _sl_command(jdk, [], [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false', '-XX:-EnableJVMCI'] + default_args, use_optimized_runtime=True, use_enterprise=False, force_cp=force_cp)
 
