@@ -11,12 +11,12 @@
     "oraclejdk11":        {"name": "jpg-jdk",   "version": "11.0.11", "build_id": "9", "release": true, "platformspecific": true, "extrabundles": ["static-libs"] },
 
     "oraclejdk17":        {"name": "jpg-jdk",   "version": "17.0.1",  "build_id": "12", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
-    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.9+4-jvmci-23.0-b17", "platformspecific": true },
-    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.9+4-jvmci-23.0-b17-debug", "platformspecific": true },
-    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.9+4-jvmci-23.0-b17-sulong", "platformspecific": true },
-    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.9+7-jvmci-23.0-b17", "platformspecific": true },
-    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.9+7-jvmci-23.0-b17-debug", "platformspecific": true },
-    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.9+7-jvmci-23.0-b17-sulong", "platformspecific": true },
+    "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.9+5-jvmci-23.0-b18", "platformspecific": true },
+    "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.9+5-jvmci-23.0-b18-debug", "platformspecific": true },
+    "labsjdk-ce-17-llvm": {"name": "labsjdk",   "version": "ce-17.0.9+5-jvmci-23.0-b18-sulong", "platformspecific": true },
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.9+8-jvmci-23.0-b18", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.9+8-jvmci-23.0-b18-debug", "platformspecific": true },
+    "labsjdk-ee-17-llvm": {"name": "labsjdk",   "version": "ee-17.0.9+8-jvmci-23.0-b18-sulong", "platformspecific": true },
 
     "oraclejdk19":        {"name": "jpg-jdk",   "version": "19",      "build_id": "26", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
     "labsjdk-ce-19":      {"name": "labsjdk",   "version": "ce-19.0.1+10-jvmci-23.0-b04", "platformspecific": true },
