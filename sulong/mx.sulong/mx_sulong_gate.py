@@ -36,6 +36,7 @@ import mx_subst
 from mx_gate import Task, add_gate_runner, add_gate_argument
 
 import mx_sulong_suite_constituents
+import mx_sulong_unittest
 
 _suite = mx.suite('sulong')
 
@@ -262,14 +263,19 @@ def runLLVMUnittests(unittest_runner):
 
     test_harness_dist = mx.distribution('SULONG_TEST')
     java_run_props = [x for x in mx.get_runtime_jvm_args(test_harness_dist) if x.startswith('-D')]
-    # necessary because mx native-unittest ignores config participants (GR-34875)
-    # TODO migrate to unittest config
-    # java_run_props += [x for x in _unittest_config_participant(([], None, None))[0] if x.startswith('-D')]
+
+    # necessary because mx native-unittest ignores unittest config (GR-34875)
+    java_run_props += [x for x in mx_sulong_unittest.get_vm_args_for_native() if x.startswith('-D')]
 
     test_suite = 'SULONG_EMBEDDED_TEST_SUITES'
     mx_sulong_suite_constituents.compileTestSuite(test_suite, extra_build_args=[])
 
     run_args = [libpath, libs] + java_run_props
-    build_args = ['--language:llvm'] + java_run_props
-    unittest_runner(['com.oracle.truffle.llvm.tests.interop', '--run-args'] + run_args +
-                    ['--build-args', '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED', '--initialize-at-build-time'] + build_args)
+    build_args = ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+                  '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime=ALL-UNNAMED',
+                  '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime.except=ALL-UNNAMED',
+                  '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime.memory=ALL-UNNAMED',
+                  '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime.pointer=ALL-UNNAMED',
+                  '--initialize-at-build-time',
+                  '--language:llvm'] + java_run_props
+    unittest_runner(['com.oracle.truffle.llvm.tests.interop', '--run-args'] + run_args + ['--build-args'] + build_args)

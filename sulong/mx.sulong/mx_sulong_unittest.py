@@ -173,3 +173,11 @@ class SulongResourceConfigAction(argparse.Action):
 
 mx_unittest.add_unittest_argument('--sulong-config', default=None, help='Select test engine configuration for the sulong unittests.', metavar='<config>', action=SelectSulongConfigAction)
 mx_unittest.add_unittest_argument('--sulong-test-resources', default=False, help='Run Sulong tests with resource jars instead of language home.', metavar='<config>', action=SulongResourceConfigAction)
+
+# helper for `mx native-unittest`
+def get_vm_args_for_native():
+    SulongUnittestConfigBase.sulongConfig = _sulong_test_configs["Native"]
+    cfg = SulongInternalUnittestConfig()
+    (extraVmArgs, _, _) = cfg.apply(([], None, []))
+    SulongUnittestConfigBase.sulongConfig = None
+    return extraVmArgs
