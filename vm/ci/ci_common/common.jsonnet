@@ -542,10 +542,10 @@ local devkits = graal_common.devkits;
       local ce_licenses = legacy_licenses + ',PSF-License,BSD-simplified,BSD-new,EPL-2.0';
       ce_licenses,
 
-    legacy_mx_args:: ['--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
+    legacy_mx_args:: ['--disable-installables=true'],  # `['--force-bash-launcher=true', '--skip-libraries=true']` have been replaced by `--native-images=lib:jsvm` and `--native-images=false`
     mx_args(os, arch):: self.legacy_mx_args + vm.maven_deploy_base_functions.mx_args(os, arch),
-    mx_cmd_base(os, arch):: ['mx'] + vm.maven_deploy_base_functions.dynamic_imports(os, arch) + self.mx_args(os, arch),
-    mx_cmd_base_only_native(os, arch):: ['mx', '--dynamicimports', '/substratevm'] + self.mx_args(os, arch),
+    mx_cmd_base(os, arch):: ['mx'] + vm.maven_deploy_base_functions.dynamic_imports(os, arch) + self.mx_args(os, arch) + ['--native-images=lib:jsvm'],
+    mx_cmd_base_only_native(os, arch):: ['mx', '--dynamicimports', '/substratevm'] + self.mx_args(os, arch) + ['--native-images=false'],
 
     only_native_dists:: 'TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE',
 
