@@ -12,25 +12,44 @@ This includes languages like C/C++, Fortran and others.
 In contrast to static compilation that is normally used for LLVM-based languages, GraalVM's implementation of the `lli` tool first interprets LLVM bitcode and then dynamically compiles the hot parts of the program using the Graal compiler.
 This allows seamless interoperability with the dynamic languages supported by GraalVM.
 
-## Install LLVM Runtime
+## Getting Started
 
-Since GraalVM 22.2, the LLVM runtime is packaged in a separate GraalVM component. It can be installed with GraalVM Updater:
+Starting of GraalVM for JDK 21, GraalVM LLVM runtime is available as a standalone distribution. 
+You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
+1. Navigate to [GitHub releases of GraalVM for JDK 21](https://github.com/graalvm/graalvm-ce-builds/releases) and download the LLVM standalone for your operating system. 
+
+2. Unzip the archive:
+   ```shell
+   tar -xzf <archive>.tar.gz
+   ```
+   Alternatively, open the file in the Finder.
+   > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+    ```shell
+    sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
+    ```
+
+3. A standalone comes with a JVM in addition to its native launcher. Check the version to see GraalVM LLVM runtime is active:
+    ```bash
+    ./path/to/bin/llvm --version
+    ```
+
+Now you can execute programs in the LLVM bitcode format.
+
+### LLVM Toolchain
+
+Additionally, a prebuilt LLVM toolchain is bundled with the GraalVM LLVM runtime. 
+To get the location of the toolchain, use the `--print-toolchain-path` argument of `lli`:
 ```shell
-$JAVA_HOME/bin/gu install llvm
+export LLVM_TOOLCHAIN=$($JAVA_HOME/bin/lli --print-toolchain-path)
 ```
 
-This installs GraalVM's implementation of `lli` in the `$JAVA_HOME/bin` directory.
-With the LLVM runtime installed, you can execute programs in LLVM bitcode format on GraalVM.
-
-Additionally to installing the LLVM runtime, you can add the LLVM toolchain:
-
+See the content of the toolchain path for a list of available tools:
 ```shell
-gu install llvm-toolchain
-export LLVM_TOOLCHAIN=$(lli --print-toolchain-path)
+ls $LLVM_TOOLCHAIN
 ```
 
-Now you can compile C/C++ code to LLVM bitcode using `clang` shipped with GraalVM via a prebuilt LLVM toolchain.
+Now you can compile C/C++ code to LLVM bitcode using `clang` shipped with GraalVM via the LLVM toolchain.
 
 ## Run LLVM Bitcode on GraalVM
 

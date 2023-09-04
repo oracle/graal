@@ -30,11 +30,6 @@ To simplify compiling C/C++ to executables with embedded bitcode, GraalVM comes 
 The toolchain contains compilers such as `clang` for C or `clang++` for C++, but also other tools that are needed
 for building native projects such as a linker (`ld`), or an archiver (`ar`) for creating static libraries.
 
-The LLVM toolchain can be added to GraalVM on demand with the [GraalVM Updater](../graalvm-updater.md) tool:
-```shell
-$JAVA_HOME/bin/gu install llvm-toolchain
-```
-
 To get the location of the toolchain, use the `--print-toolchain-path` argument of `lli`:
 ```shell
 export LLVM_TOOLCHAIN=$($JAVA_HOME/bin/lli --print-toolchain-path)
