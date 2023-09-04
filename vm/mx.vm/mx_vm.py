@@ -249,8 +249,8 @@ _community_tools_meta_distributions = [
 # When this list is changed, the _enterprise_languages_meta_distributions
 # in the mx_vm_enterprise.py must also be updated.
 _community_languages_meta_distributions = [
-    'espresso:JAVA_COMMUNITY',
     'graal-js:JS_COMMUNITY',
+    'espresso:JAVA_COMMUNITY',
     'graalpython:PYTHON_COMMUNITY',
     'sulong:LLVM_NATIVE_COMMUNITY',
     'sulong:LLVM_COMMUNITY',

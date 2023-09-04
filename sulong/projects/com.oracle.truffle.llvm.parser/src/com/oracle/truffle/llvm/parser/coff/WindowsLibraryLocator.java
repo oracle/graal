@@ -42,7 +42,16 @@ public final class WindowsLibraryLocator extends LibraryLocator {
     Path libraryPath;
 
     public WindowsLibraryLocator(Source source) {
-        libraryPath = source != null ? Paths.get(source.getPath()).getParent() : null;
+        if (source == null || source.isInternal()) {
+            /*
+             * No need to search the current file directory for internal sources. Those can always
+             * be located anyway. Also Paths.get doesn't work if the source path is an internal
+             * resources inside a jar.
+             */
+            libraryPath = null;
+        } else {
+            libraryPath = Paths.get(source.getPath()).getParent();
+        }
     }
 
     @Override
