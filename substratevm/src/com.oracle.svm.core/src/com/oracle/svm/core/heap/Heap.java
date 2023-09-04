@@ -26,8 +26,8 @@ package com.oracle.svm.core.heap;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -104,16 +104,13 @@ public abstract class Heap {
     /** Returns the number of classes in the heap (initialized as well as uninitialized). */
     public abstract int getClassCount();
 
-    /** Returns all loaded classes in the heap (see {@link PredefinedClassesSupport}). */
-    public List<Class<?>> getLoadedClasses() {
-        List<Class<?>> all = getAllClasses();
-        ArrayList<Class<?>> loaded = new ArrayList<>(all.size());
-        for (Class<?> clazz : all) {
+    /** Visits all loaded classes in the heap (see {@link PredefinedClassesSupport}). */
+    public void visitLoadedClasses(Consumer<Class<?>> visitor) {
+        for (Class<?> clazz : getAllClasses()) {
             if (DynamicHub.fromClass(clazz).isLoaded()) {
-                loaded.add(clazz);
+                visitor.accept(clazz);
             }
         }
-        return loaded;
     }
 
     /**
