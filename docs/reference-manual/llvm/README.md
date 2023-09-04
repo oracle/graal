@@ -30,24 +30,30 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
     ```
 
 3. A standalone comes with a JVM in addition to its native launcher. Check the version to see GraalVM LLVM runtime is active:
-    ```bash
-    ./path/to/bin/llvm --version
+    ```shell
+    ./path/to/bin/lli --version
     ```
 
 Now you can execute programs in the LLVM bitcode format.
 
 ### LLVM Toolchain
 
-Additionally, a prebuilt LLVM toolchain is bundled with the GraalVM LLVM runtime. 
-To get the location of the toolchain, use the `--print-toolchain-path` argument of `lli`:
-```shell
-export LLVM_TOOLCHAIN=$($JAVA_HOME/bin/lli --print-toolchain-path)
-```
+Additionally, a prebuilt LLVM toolchain is bundled with the GraalVM LLVM runtime.
 
-See the content of the toolchain path for a list of available tools:
-```shell
-ls $LLVM_TOOLCHAIN
-```
+1. Get the location of the toolchain, using the `--print-toolchain-path` argument of `lli`:
+    ```shell
+    ./path/to/bin/lli --print-toolchain-path
+    ```
+
+2. Set the `LLVM_TOOLCHAIN` environment variable: 
+    ```shell
+    export LLVM_TOOLCHAIN=$(./path/to/bin/lli --print-toolchain-path)
+    ```
+
+3. Then see the content of the toolchain path for a list of available tools:
+    ```shell
+    ls $LLVM_TOOLCHAIN
+    ```
 
 Now you can compile C/C++ code to LLVM bitcode using `clang` shipped with GraalVM via the LLVM toolchain.
 
