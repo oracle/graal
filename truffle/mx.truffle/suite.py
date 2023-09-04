@@ -1284,6 +1284,7 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
+          "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
         ],
         "exports" : [
           # Qualified exports
@@ -1322,6 +1323,7 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
+          "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
         ],
         "exports" : [
           # Qualified exports
