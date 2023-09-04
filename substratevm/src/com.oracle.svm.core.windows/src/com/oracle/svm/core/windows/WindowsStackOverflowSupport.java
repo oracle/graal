@@ -36,8 +36,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.windows.headers.MemoryAPI;
 
-@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.StackOverflowSupport.class)
-final class WindowsStackOverflowSupport implements StackOverflowCheck.StackOverflowSupport {
+@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
+final class WindowsStackOverflowSupport implements StackOverflowCheck.PlatformSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr) {

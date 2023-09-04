@@ -35,8 +35,8 @@ import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 
-@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.StackOverflowSupport.class)
-final class LinuxStackOverflowSupport implements StackOverflowCheck.StackOverflowSupport {
+@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
+final class LinuxStackOverflowSupport implements StackOverflowCheck.PlatformSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr) {
