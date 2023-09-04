@@ -282,11 +282,8 @@ public final class NativeImageHeap implements ImageHeap {
             Object cur = worklist.pop();
             registerAsImmutable(cur);
 
-            if (!hMetaAccess.optionalLookupJavaType(cur.getClass()).isPresent()) {
-                /*
-                 * The type is unused (actually was never created by the static analysis), so we do
-                 * not need to follow any children.
-                 */
+            if (hMetaAccess.optionalLookupJavaType(cur.getClass()).isEmpty()) {
+                throw VMError.shouldNotReachHere("Type missing from static analysis: " + cur.getClass().getTypeName());
             } else if (cur instanceof Object[]) {
                 for (Object element : ((Object[]) cur)) {
                     addToWorklist(aUniverse.replaceObject(element), includeObject, worklist, registeredObjects);
