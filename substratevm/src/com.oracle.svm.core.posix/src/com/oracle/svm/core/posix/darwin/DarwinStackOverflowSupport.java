@@ -45,8 +45,8 @@ import com.oracle.svm.core.posix.headers.darwin.DarwinPthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.util.VMError;
 
-@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.StackOverflowSupport.class)
-final class DarwinStackOverflowSupport implements StackOverflowCheck.StackOverflowSupport {
+@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
+final class DarwinStackOverflowSupport implements StackOverflowCheck.PlatformSupport {
     @Override
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr) {

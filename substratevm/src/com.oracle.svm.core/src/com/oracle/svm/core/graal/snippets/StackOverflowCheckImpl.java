@@ -113,7 +113,7 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         /* Get the physical end of the stack. Everything past this point is memory-protected. */
         WordPointer stackBasePtr = StackValue.get(WordPointer.class);
         WordPointer stackEndPtr = StackValue.get(WordPointer.class);
-        if (!StackOverflowSupport.singleton().lookupStack(stackBasePtr, stackEndPtr)) {
+        if (!PlatformSupport.singleton().lookupStack(stackBasePtr, stackEndPtr)) {
             return false;
         }
 

@@ -85,13 +85,14 @@ public interface StackOverflowCheck {
      * stack that grows from higher addresses towards lower addresses. All supported platforms use
      * this direction.
      */
-    interface StackOverflowSupport {
+    interface PlatformSupport {
         @Fold
-        static StackOverflowSupport singleton() {
+        static PlatformSupport singleton() {
             if (ImageSingletons.contains(OSSupport.class)) {
+                assert !ImageSingletons.contains(PlatformSupport.class);
                 return ImageSingletons.lookup(OSSupport.class);
             }
-            return ImageSingletons.lookup(StackOverflowSupport.class);
+            return ImageSingletons.lookup(PlatformSupport.class);
         }
 
         /**
@@ -113,7 +114,7 @@ public interface StackOverflowCheck {
     }
 
     /* Only used by legacy code, will be removed as part of GR-48332. */
-    interface OSSupport extends StackOverflowSupport {
+    interface OSSupport extends PlatformSupport {
         /** The highest address of the stack or zero if not supported. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         default UnsignedWord lookupStackBase() {
