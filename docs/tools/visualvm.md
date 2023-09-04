@@ -7,7 +7,8 @@ permalink: /tools/visualvm/
 
 # VisualVM
 
-GraalVM provides support for [VisualVM](https://visualvm.github.io), the all-in-one Java (and polyglot) monitoring and troubleshooting tool. VisualVM enables powerful yet easy-to-use Java tooling which includes heap analysis for the supported guest languages. The following languages and features are currently available:
+GraalVM provides support for [VisualVM](https://visualvm.github.io), the all-in-one Java (and polyglot) monitoring and troubleshooting tool. 
+VisualVM enables powerful yet easy-to-use Java tooling which includes heap analysis for the supported guest languages. The following languages and features are currently available:
 
  - __Java:__ Heap Summary, Objects View, Threads View, OQL Console
  - __JavaScript:__ Heap Summary, Objects View, Thread View
@@ -17,18 +18,10 @@ GraalVM provides support for [VisualVM](https://visualvm.github.io), the all-in-
 
 ### Starting VisualVM
 
-VisualVM is shipped as an installable component and can be added to GraalVM using [GraalVM Updater](../reference-manual/graalvm-updater.md):
+1. Download the latest VisualVM from [visualvm.github.io](http://visualvm.github.io/), unzip, and move it to the applications directory.
 
-```shell
-gu install visualvm
-```
+2. Double-click on the application icon to start. 
 
-This installs VisualVM in the `$JAVA_HOME/bin` directory.
-To start VisualVM, execute `jvisualvm`:
-
-```shell
-$JAVA_HOME/bin/jvisualvm
-```
 Immediately after startup, the tool shows all locally running Java processes in the Applications area, including the VisualVM process, itself.
 
 ### Capture a Heap Dump
