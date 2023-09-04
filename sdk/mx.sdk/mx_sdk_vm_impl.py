@@ -110,7 +110,6 @@ default_components = []
 
 USE_LEGACY_GU = mx.str_to_bool(mx.get_env('LEGACY_GU', 'false'))
 
-
 mx.add_argument('--base-dist-name', help='Sets the name of the GraalVM base image ( for complete, ruby ... images), default to "base"', default='base')
 
 
