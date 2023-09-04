@@ -786,13 +786,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    @SuppressFBWarnings(value = "EC_UNRELATED_TYPES_USING_POINTER_EQUALITY", justification = "Class is DynamicHub")
     private boolean isEnum() {
         /*
          * We do not do the check "this.getModifiers() & ENUM) != 0" because we do not have the full
          * modifier bits.
          */
-        return (Object) this.getSuperclass() == java.lang.Enum.class;
+        return toClass(getSuperclass()) == java.lang.Enum.class;
     }
 
     @KeepOriginal
