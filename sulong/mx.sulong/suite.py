@@ -610,6 +610,7 @@ suite = {
         "SULONG_LIB" : "<path:SULONG_HOME>/native/lib",
         "SULONG_OBJDUMP" : "<path:LLVM_TOOLCHAIN>/bin/<exe:llvm-objdump>",
         "SULONG_NATIVE_BUILD" : "True",
+        "STANDALONE_MODE" : "<llvm_standalone_mode>",
       },
       "buildEnv" : {
         "CTEST_PARALLEL_LEVEL" : "16",

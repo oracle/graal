@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2022, Oracle and/or its affiliates.
+# Copyright (c) 2022, 2023, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -119,7 +119,12 @@ function(add_bc_section_test PREFIX TEST DEST_EXT)
 endfunction()
 
 function(add_run_test PREFIX TEST DEST_EXT)
-  add_test(NAME run-${PREFIX}${TEST} COMMAND ${SULONG_EXE} ${TEST}${DEST_EXT})
+  if(NOT ${STANDALONE_MODE} STREQUAL "native" OR NOT ${TEST} MATCHES "biginteger")
+    # tests with "biginteger" in their name use Java interop
+    # they can not run on the "native" standalone, but they can still be compiled
+    # so we still want them for all the other build tests, but skip the "run"
+    add_test(NAME run-${PREFIX}${TEST} COMMAND ${SULONG_EXE} ${TEST}${DEST_EXT})
+  endif()
 endfunction()
 
 function(add_bc_magic_tests PREFIX TESTS TC FLAGS SRC_EXT DEST_EXT)

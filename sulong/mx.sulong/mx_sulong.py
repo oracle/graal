@@ -255,12 +255,15 @@ def runLLVMMul(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True,
 mx.add_argument('--use-llvm-standalone', action='store', metavar='<mode>', choices=['jvm', 'native'],
                 help='Use the LLVM standalone instead of the full GraalVM for `mx lli` or `mx unittest`.')
 
-def get_lli_path():
+def get_lli_path(fatalIfMissing=True):
     standaloneMode = mx.get_opts().use_llvm_standalone
     if standaloneMode is None:
         # on Windows <GRAALVM_HOME>/bin/lli is always a .cmd file because it is a "fake symlink"
-        path = mx_sdk_vm_impl.graalvm_home(fatalIfMissing=True)
-        return os.path.join(path, 'bin', mx_subst.path_substitutions.substitute('<cmd:lli>'))
+        path = mx_sdk_vm_impl.graalvm_home(fatalIfMissing=fatalIfMissing)
+        if path is None:
+            return None
+        else:
+            return os.path.join(path, 'bin', mx_subst.path_substitutions.substitute('<cmd:lli>'))
     else:
         useJvm = None
         if standaloneMode == "jvm":
@@ -274,6 +277,7 @@ def get_lli_path():
 
 
 mx_subst.path_substitutions.register_no_arg('lli_path', get_lli_path)
+mx_subst.path_substitutions.register_no_arg('llvm_standalone_mode', lambda: mx.get_opts().use_llvm_standalone or "none")
 
 @mx.command(_suite.name, "lli")
 def lli(args=None, out=None, err=None, timeout=None, nonZeroIsFatal=True):
@@ -406,7 +410,7 @@ class ToolchainConfig(object):
         "BINUTIL": ["graalvm-{name}-binutil"] + _llvm_tool_map + ["llvm-" + i for i in _llvm_tool_map]
     }
 
-    def __init__(self, name, dist, bootstrap_dist, tools, suite):
+    def __init__(self, name, dist, bootstrap_dist, tools, suite, select_flags=None):
         self.name = name
         self.dist = dist if isinstance(dist, list) else [dist]
         self.bootstrap_provider = create_toolchain_root_provider(name, bootstrap_dist)
@@ -414,6 +418,7 @@ class ToolchainConfig(object):
         self.tools = tools
         self.llvm_binutil_tools = [tool.upper() for tool in ToolchainConfig._llvm_tool_map]
         self.suite = suite
+        self.select_flags = select_flags or []
         self.mx_command = self.name + '-toolchain'
         self.tool_map = {tool: [_exe_sub(alias.format(name=name)) for alias in aliases] for tool, aliases in ToolchainConfig._tool_map.items()}
         self.path_map = {_exe_sub(path): tool for tool, aliases in self.tool_map.items() for path in aliases}
@@ -462,7 +467,19 @@ class ToolchainConfig(object):
         if tool not in self._supported_tools():
             mx.abort("The {} toolchain (defined by {}) does not support tool '{}'".format(self.name, self.dist[0], tool))
 
-    def get_toolchain_tool(self, tool):
+    def get_toolchain_tool(self, tool, allow_bootstrap=False):
+        standaloneMode = mx.get_opts().use_llvm_standalone
+        if standaloneMode is not None:
+            lli_path = get_lli_path(fatalIfMissing=False)
+            if lli_path and os.path.exists(lli_path):
+                toolPathCapture = mx.OutputCapture()
+                mx.run([lli_path] + self.select_flags + ["--print-toolchain-api-tool", tool], out=toolPathCapture)
+                return toolPathCapture.data.strip()
+
+            if not allow_bootstrap:
+                mx.abort(f"Could not query toolchain tool {tool} from the standalone. Maybe the standalone isn't built yet?")
+
+        # fall back to picking up the tool from the bootstrap toolchain
         if tool in self._supported_tools():
             ret = os.path.join(self.bootstrap_provider(), 'bin', self._tool_to_bin(tool))
             if mx.is_windows() and ret.endswith('.exe') and not os.path.exists(ret):
