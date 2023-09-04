@@ -385,13 +385,14 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         const char* dirs[] = { LANGUAGES_DIR_STR, TOOLS_DIR_STR };
         for (int i = 0; i < 2; i++) {
             const char* relativeDir = dirs[i];
-            std::stringstream absoluteDir;
-            absoluteDir << exeDir << DIR_SEP_STR << relativeDir;
+            std::stringstream absoluteDirStream;
+            absoluteDirStream << exeDir << DIR_SEP_STR << relativeDir;
+            std::string absoluteDir = absoluteDirStream.str();
 
             #ifndef _WIN32
-            DIR* dir = opendir(absoluteDir.str().c_str());
+            DIR* dir = opendir(absoluteDir.c_str());
             if (dir) {
-                std::string canonicalDir = canonicalize(absoluteDir.str());
+                std::string canonicalDir = canonicalize(absoluteDir);
                 struct dirent* entry;
                 while (entry = readdir(dir)) {
                     char* name = entry->d_name;
@@ -405,9 +406,11 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
             // From https://learn.microsoft.com/en-us/windows/win32/fileio/listing-the-files-in-a-directory
             // and https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfilea
             WIN32_FIND_DATAA entry;
-            HANDLE dir = FindFirstFileA(absoluteDir.str().c_str(), &entry);
+            std::stringstream searchDir;
+            searchDir << absoluteDir << "\\*";
+            HANDLE dir = FindFirstFileA(searchDir.str().c_str(), &entry);
             if (dir != INVALID_HANDLE_VALUE) {
-                std::string canonicalDir = canonicalize(absoluteDir.str());
+                std::string canonicalDir = canonicalize(absoluteDir);
                 do {
                     char* name = entry.cFileName;
                     if (name[0] != '.') {
