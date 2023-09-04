@@ -37,7 +37,7 @@ The SimpleLanguage demonstration language is licensed under the [Universal Permi
     ```shell
     mvn package
     ```
-    The command builds the `slnative` executable in the `simplelanguage/native` directory and the `sl-component.jar` language component which can be later installed into GraalVM using the [GraalVM Updater](../reference-manual/graalvm-updater.md) tool.
+    The command builds the `slnative` executable in the `simplelanguage/native` directory and the `sl-component.jar` language component.
 
    You can disable the SimpleLanguage native executable build during the packaging phase by running:
     ```shell
