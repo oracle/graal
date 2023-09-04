@@ -39,7 +39,6 @@ Ensure you set up GraalVM before you begin.
 The below examples work:
 * on a JVM, by passing `--polyglot --jvm`.
 * on native launchers with `--polyglot` (e.g., `js --polyglot`).
-* with native executables (e.g., `native-image --language:js`).
 
 For native launchers and native executables using Java as a Target Language and accessing classes other than Java arrays, it is required to recompile the image and provide a [reflection configuration file](native-image/Reflection.md).
 
