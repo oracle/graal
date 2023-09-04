@@ -43,14 +43,13 @@
 
 #include <cstdint>
 #include <cstring>
+#include <climits>
+#include <cstdlib>
 
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include <filesystem>
-
-namespace fs = std::filesystem;
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
@@ -111,6 +110,7 @@ namespace fs = std::filesystem;
     #include <limits.h>
     #include <unistd.h>
     #include <errno.h>
+    #include <dirent.h>
     #include <sys/types.h>
     #include <sys/stat.h>
 #elif defined (__APPLE__)
@@ -119,6 +119,7 @@ namespace fs = std::filesystem;
     #include <libgen.h>
     #include <unistd.h>
     #include <errno.h>
+    #include <dirent.h>
     #include <mach-o/dyld.h>
     #include <sys/syslimits.h>
     #include <sys/stat.h>
@@ -219,6 +220,21 @@ std::string exe_directory() {
     std::string exeDir(result);
     free(path);
     return exeDir;
+}
+
+static std::string canonicalize(std::string path) {
+    char *result;
+    #ifndef _WIN32
+    char real[PATH_MAX];
+    result = realpath(path.c_str(), real);
+    #else
+    char real[_MAX_PATH];
+    result = _fullpath(real, path.c_str(), _MAX_PATH);
+    #endif
+    if (result == NULL) {
+        std::cerr << "Could not canonicalize " << path << std::endl;
+    }
+    return std::string(real);
 }
 
 #if defined (__APPLE__)
@@ -354,7 +370,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         for (int i = 0; i < launcherModulePathCnt; i++) {
             std::stringstream entry;
             entry << exeDir << DIR_SEP_STR << launcherModulePathEntries[i];
-            modulePath << fs::canonical(entry.str()).string();
+            modulePath << canonicalize(entry.str());
             if (i < launcherModulePathCnt-1) {
                 modulePath << CP_SEP_STR;
             }
@@ -363,29 +379,50 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     #endif
 
 
+    #if defined(LANGUAGES_DIR) && defined(TOOLS_DIR)
     if (jvmMode) {
-        #ifdef LANGUAGES_DIR
-        /* Add languages to module path */
-        std::stringstream languagesDir;
-        languagesDir << exeDir << DIR_SEP_STR << LANGUAGES_DIR_STR;
-        fs::path languagesDirPath = fs::canonical(languagesDir.str());
-        for (const auto & entry : fs::directory_iterator(languagesDirPath)) {
-            modulePath << CP_SEP_STR << entry.path().string();
-        }
-        #endif
+        /* Add languages and tools to module path */
+        const char* dirs[] = { LANGUAGES_DIR_STR, TOOLS_DIR_STR };
+        for (int i = 0; i < 2; i++) {
+            const char* relativeDir = dirs[i];
+            std::stringstream absoluteDirStream;
+            absoluteDirStream << exeDir << DIR_SEP_STR << relativeDir;
+            std::string absoluteDir = absoluteDirStream.str();
 
-        #ifdef TOOLS_DIR
-        /* Add tools to module path */
-        std::stringstream toolsDir;
-        toolsDir << exeDir << DIR_SEP_STR << TOOLS_DIR_STR;
-        if (fs::is_directory(toolsDir.str())) {
-            fs::path toolsDirPath = fs::canonical(toolsDir.str());
-            for (const auto & entry : fs::directory_iterator(toolsDirPath)) {
-                modulePath << CP_SEP_STR << entry.path().string();
+            #ifndef _WIN32
+            DIR* dir = opendir(absoluteDir.c_str());
+            if (dir) {
+                std::string canonicalDir = canonicalize(absoluteDir);
+                struct dirent* entry;
+                while (entry = readdir(dir)) {
+                    char* name = entry->d_name;
+                    if (name[0] != '.') {
+                        modulePath << CP_SEP_STR << canonicalDir << DIR_SEP_STR << name;
+                    }
+                }
+                closedir(dir);
             }
+            #else
+            // From https://learn.microsoft.com/en-us/windows/win32/fileio/listing-the-files-in-a-directory
+            // and https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfilea
+            WIN32_FIND_DATAA entry;
+            std::stringstream searchDir;
+            searchDir << absoluteDir << "\\*";
+            HANDLE dir = FindFirstFileA(searchDir.str().c_str(), &entry);
+            if (dir != INVALID_HANDLE_VALUE) {
+                std::string canonicalDir = canonicalize(absoluteDir);
+                do {
+                    char* name = entry.cFileName;
+                    if (name[0] != '.') {
+                        modulePath << CP_SEP_STR << canonicalDir << DIR_SEP_STR << name;
+                    }
+                } while (FindNextFileA(dir, &entry));
+                FindClose(dir);
+            }
+            #endif
         }
-        #endif
     }
+    #endif
 
     #ifdef LAUNCHER_LIBRARY_PATH
     if (jvmMode) {
@@ -415,7 +452,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
             std::stringstream ss;
             std::stringstream relativeHome;
             relativeHome << exeDir << DIR_SEP_STR << launcherLangHomePaths[i];
-            ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << fs::canonical(relativeHome.str()).c_str();
+            ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << canonicalize(relativeHome.str());
             vmArgs.push_back(ss.str());
         }
     }

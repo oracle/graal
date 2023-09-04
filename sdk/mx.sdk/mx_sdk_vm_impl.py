@@ -3229,7 +3229,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             self.jre_base = join(get_final_graalvm_distribution().string_substitutions.substitute(self.component.standalone_dir_name_enterprise if has_component('cmpee') else self.component.standalone_dir_name), 'jvm')
         else:
             self.jre_base = get_final_graalvm_distribution().path_substitutions.substitute('<jre_base>')
-        toolchain = 'mx:DEFAULT_NINJA_TOOLCHAIN' if mx.is_windows() else 'sdk:LLVM_NINJA_TOOLCHAIN'
+        # We use our LLVM toolchain on Linux because we want to statically link the C++ standard library,
+        # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).
+        toolchain = 'sdk:LLVM_NINJA_TOOLCHAIN' if mx.is_linux() else 'mx:DEFAULT_NINJA_TOOLCHAIN'
         super(NativeLibraryLauncherProject, self).__init__(
             _suite,
             NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config, self.jvm_standalone is not None),
@@ -3267,7 +3269,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             '-DGRAALVM_VERSION=' + _suite.release_version(),
         ]
         if not mx.is_windows():
-            _dynamic_cflags += ['-stdlib=libc++', '-pthread']
+            _dynamic_cflags += ['-pthread']
+        if mx.is_linux():
+            _dynamic_cflags += ['-stdlib=libc++'] # to link libc++ statically, see ldlibs
         if mx.is_darwin():
             _dynamic_cflags += ['-ObjC++']
 
@@ -3399,25 +3403,19 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
     @property
     def ldlibs(self):
         _dynamic_ldlibs = []
-        if not mx.is_windows():
+        if mx.is_linux():
             # Link libc++ statically
-            llvm_toolchain = mx.distribution("LLVM_TOOLCHAIN").get_output()
-            libcxx_dir = join(llvm_toolchain, 'lib')
-            libcxx_arch = mx.get_arch().replace('amd64', 'x86_64')
-            if mx.is_linux():
-                libcxx_dir = join(libcxx_dir, libcxx_arch + '-unknown-linux-gnu')
             _dynamic_ldlibs += [
                 '-stdlib=libc++',
-                '-nostdlib++', # avoids to dynamically link libc++
-                join(libcxx_dir, 'libc++.a'),
-                join(libcxx_dir, 'libc++abi.a'),
+                '-static-libstdc++', # it looks weird but this does link libc++ statically
+                '-l:libc++abi.a',
             ]
-
+        if not mx.is_windows():
             _dynamic_ldlibs += ['-ldl']
             if mx.is_darwin():
                 _dynamic_ldlibs += ['-framework', 'Foundation']
 
-                default_min_version = {'x86_64': '10.13', 'aarch64': '11.0'}[libcxx_arch]
+                default_min_version = {'amd64': '10.13', 'aarch64': '11.0'}[mx.get_arch()]
                 min_version = os.getenv('MACOSX_DEPLOYMENT_TARGET', default_min_version)
                 _dynamic_ldlibs += ['-mmacosx-version-min=' + min_version]
 
