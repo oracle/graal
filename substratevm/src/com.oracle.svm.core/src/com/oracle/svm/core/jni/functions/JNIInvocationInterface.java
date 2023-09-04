@@ -174,7 +174,7 @@ public final class JNIInvocationInterface {
                     // The isolate was created successfully, so we can finish the initialization.
                     return Support.finishInitialization(vmBuf, penv, vmArgs, hasSpecialVmOptions);
                 }
-                return JNIFunctions.Support.convertCEntryPointErrorToJNIError(code);
+                return JNIFunctions.Support.convertCEntryPointErrorToJNIError(code, true);
             }
         }
 
