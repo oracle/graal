@@ -1289,6 +1289,7 @@ libgraal_build_args = [
     '-H:+AllowFoldMethods',
     '-Djdk.vm.ci.services.aot=true',
     '-Dtruffle.TruffleRuntime=',
+    '-H:+JNIEnhancedErrorCodes',
     '-H:InitialCollectionPolicy=LibGraal',
 
     # These 2 arguments provide walkable call stacks for a crash in libgraal

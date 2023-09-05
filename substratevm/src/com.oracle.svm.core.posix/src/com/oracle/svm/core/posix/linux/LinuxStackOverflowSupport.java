@@ -35,23 +35,43 @@ import com.oracle.svm.core.posix.PosixUtils;
 import com.oracle.svm.core.posix.headers.Pthread;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 
-@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.OSSupport.class)
-final class LinuxStackOverflowSupport implements StackOverflowCheck.OSSupport {
+@AutomaticallyRegisteredImageSingleton(StackOverflowCheck.PlatformSupport.class)
+final class LinuxStackOverflowSupport implements StackOverflowCheck.PlatformSupport {
+    @Override
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr) {
+        boolean result = lookupStack0(stackBasePtr, stackEndPtr);
+        if (!result) {
+            stackBasePtr.write(WordFactory.zero());
+            stackEndPtr.write(WordFactory.zero());
+        }
+        return result;
+    }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static void getStackInformation(WordPointer stackBasePtr, WordPointer stackEndPtr) {
+    private static boolean lookupStack0(WordPointer stackBasePtr, WordPointer stackEndPtr) {
         WordPointer guardSizePtr = StackValue.get(WordPointer.class);
         Pthread.pthread_attr_t attr = StackValue.get(Pthread.pthread_attr_t.class);
-        PosixUtils.checkStatusIs0(Pthread.pthread_getattr_np(Pthread.pthread_self(), attr), "LinuxStackOverflowSupport: pthread_getattr_np");
+        if (Pthread.pthread_getattr_np(Pthread.pthread_self(), attr) != 0) {
+            /*
+             * pthread_getattr_np can fail for various reasons, e.g., because /proc/self/maps can't
+             * be opened
+             */
+            return false;
+        }
 
-        PosixUtils.checkStatusIs0(Pthread.pthread_attr_getstack(attr, stackBasePtr, stackEndPtr), "LinuxStackOverflowSupport: pthread_attr_getstack");
+        if (Pthread.pthread_attr_getstack(attr, stackBasePtr, stackEndPtr) != 0) {
+            return false;
+        }
 
         /*
          * The block of memory returned by pthread_attr_getstack() includes guard pages where
          * present. We need to retrieve the size of the guard pages in order to trim them off. Note
          * that these guard pages are not the yellow and red zones of the stack that we designate.
          */
-        PosixUtils.checkStatusIs0(Pthread.pthread_attr_getguardsize(attr, guardSizePtr), "LinuxStackOverflowSupport: pthread_attr_getguardsize");
+        if (Pthread.pthread_attr_getguardsize(attr, guardSizePtr) != 0) {
+            return false;
+        }
         UnsignedWord stackAddr = stackBasePtr.read();
         UnsignedWord stackSize = stackEndPtr.read();
         UnsignedWord guardSize = guardSizePtr.read();
@@ -62,49 +82,6 @@ final class LinuxStackOverflowSupport implements StackOverflowCheck.OSSupport {
         stackEndPtr.write(stackEnd);
 
         PosixUtils.checkStatusIs0(Pthread.pthread_attr_destroy(attr), "LinuxStackOverflowSupport: pthread_attr_destroy");
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    public UnsignedWord lookupStackBase() {
-        WordPointer stackBasePtr = StackValue.get(WordPointer.class);
-        WordPointer stackEndPtr = StackValue.get(WordPointer.class);
-        lookupStack(stackBasePtr, stackEndPtr, WordFactory.zero());
-        return stackBasePtr.read();
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    public UnsignedWord lookupStackEnd() {
-        return lookupStackEnd(WordFactory.zero());
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    @Override
-    public UnsignedWord lookupStackEnd(UnsignedWord requestedStackSize) {
-        WordPointer stackBasePtr = StackValue.get(WordPointer.class);
-        WordPointer stackEndPtr = StackValue.get(WordPointer.class);
-        lookupStack(stackBasePtr, stackEndPtr, requestedStackSize);
-        return stackEndPtr.read();
-    }
-
-    @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public void lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr, UnsignedWord requestedStackSize) {
-        getStackInformation(stackBasePtr, stackEndPtr);
-
-        if (requestedStackSize.notEqual(WordFactory.zero())) {
-            /*
-             * if stackSize > requestedStackSize, then artificially limit stack end to match
-             * requested stack size.
-             */
-            UnsignedWord stackBase = stackBasePtr.read();
-            UnsignedWord stackEnd = stackEndPtr.read();
-            UnsignedWord stackSize = stackBase.subtract(stackEnd);
-            if (stackSize.aboveThan(requestedStackSize)) {
-                UnsignedWord stackAdjustment = stackSize.subtract(requestedStackSize);
-                stackEndPtr.write(stackEnd.add(stackAdjustment));
-            }
-        }
+        return true;
     }
 }
