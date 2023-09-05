@@ -3519,7 +3519,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         }
                         register_distribution(mx.LayoutDirDistribution(
                             suite=_suite,
-                            name=library_config.isolate_library_layout_distribution,
+                            name=library_config.isolate_library_layout_distribution['name'],
                             deps=[],
                             layout={
                                 f'{resource_base_folder}/': f'dependency:{library_project.name}'
@@ -3527,6 +3527,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                             path=None,
                             platformDependent=True,
                             theLicense=None,
+                            platforms=library_config.isolate_library_layout_distribution['platforms'],
                             **attrs
                         ))
             if isinstance(component, mx_sdk.GraalVmLanguage) and component.support_distributions:
