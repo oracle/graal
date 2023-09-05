@@ -564,11 +564,20 @@ local devkits = graal_common.devkits;
     other_platforms:: ['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64'],
     is_main_platform(os, arch):: os + '-' + arch == self.main_platform,
 
-    deploy(os, arch, dry_run, repo_strings):: [
+    deploy_ce(os, arch, dry_run, repo_strings):: [
       self.mx_cmd_base(os, arch)
-      + vm.maven_deploy_base_functions.suites(os, arch)
+      + $.maven_deploy_base_functions.ce_suites(os,arch)
       + self.mvn_args
-      + vm.maven_deploy_base_functions.licenses()
+      + ['--licenses', $.maven_deploy_base_functions.ce_licenses()]
+      + (if dry_run then ['--dry-run'] else [])
+      + repo_strings,
+    ],
+
+    deploy_ee(os, arch, dry_run, repo_strings):: [
+      self.mx_cmd_base(os, arch)
+      + vm.maven_deploy_base_functions.ee_suites(os, arch)
+      + self.mvn_args
+      + ['--licenses', vm.maven_deploy_base_functions.ee_licenses()]
       + (if dry_run then ['--dry-run'] else [])
       + repo_strings,
     ],
@@ -576,7 +585,7 @@ local devkits = graal_common.devkits;
     deploy_only_native(os, arch, dry_run, repo_strings):: [
       self.mx_cmd_base_only_native(os, arch)
       + self.mvn_args_only_native
-      + vm.maven_deploy_base_functions.licenses()
+      + ['--licenses', $.maven_deploy_base_functions.ce_licenses()]
       + (if dry_run then ['--dry-run'] else [])
       + repo_strings,
     ],
@@ -587,14 +596,27 @@ local devkits = graal_common.devkits;
           self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name(platform)] for platform in self.other_platforms
         ]
         + self.build(os, arch, mx_args=['--multi-platform-layout-directories=' + std.join(',', [self.main_platform] + self.other_platforms)], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}'])  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
-        + self.deploy(os, arch, dry_run, [remote_mvn_repo])
+        + (
+          # remotely deploy only the suites that are defined in the current repository, to avoid duplicated deployments
+          if (vm.maven_deploy_base_functions.edition == 'ce') then
+            self.deploy_ce(os, arch, dry_run, [remote_mvn_repo])
+          else
+            self.deploy_ee(os, arch, dry_run, [remote_mvn_repo])
+        )
         + [
           # resource bundle
           ['set-export', 'VERSION_STRING', self.mx_cmd_base(os, arch) + ['--quiet', 'graalvm-version']],
           ['set-export', 'LOCAL_MAVEN_REPO_REL_PATH', 'maven-resource-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
           ['set-export', 'LOCAL_MAVEN_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REPO_REL_PATH}']],
         ]
-        + self.deploy(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+        + (
+          # locally deploy all relevant suites
+          if (vm.maven_deploy_base_functions.edition == 'ce') then
+            self.deploy_ce(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+          else
+            self.deploy_ce(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+            + self.deploy_ee(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+        )
         + (
           if (dry_run) then
             [['echo', 'Skipping the archiving and the final maven deployment']]
@@ -609,6 +631,7 @@ local devkits = graal_common.devkits;
         + (
           if (vm.maven_deploy_base_functions.edition == 'ce') then
             self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
+//            [['foo']]
           else
             [['echo', 'Skipping the deployment of ' + self.only_native_dists + ': It is already deployed by the ce job']]
         )
