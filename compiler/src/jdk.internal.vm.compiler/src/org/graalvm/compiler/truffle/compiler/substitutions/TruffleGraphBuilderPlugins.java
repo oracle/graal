@@ -1150,10 +1150,14 @@ public class TruffleGraphBuilderPlugins {
                     locationIdentity = ObjectLocationIdentity.create(location.asJavaConstant());
                     forceLocation = true;
                 }
-                LogicNode compare = b.add(CompareNode.createCompareNode(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, CanonicalCondition.EQ, condition,
-                                ConstantNode.forBoolean(true, object.graph()), NodeView.DEFAULT));
-                ConditionAnchorNode anchor = b.add(new ConditionAnchorNode(compare));
-                b.addPush(returnKind, b.add(new GuardedUnsafeLoadNode(b.addNonNullCast(object), offset, returnKind, locationIdentity, anchor, forceLocation)));
+                ValueNode guard = null;
+                // If the condition is the constant true then no guard is needed
+                if (!condition.isConstant() || condition.asJavaConstant().asInt() == 0) {
+                    LogicNode compare = b.add(CompareNode.createCompareNode(b.getConstantReflection(), b.getMetaAccess(), b.getOptions(), null, CanonicalCondition.EQ, condition,
+                                    ConstantNode.forBoolean(true, object.graph()), NodeView.DEFAULT));
+                    guard = b.add(new ConditionAnchorNode(compare));
+                }
+                b.addPush(returnKind, b.add(new GuardedUnsafeLoadNode(b.addNonNullCast(object), offset, returnKind, locationIdentity, guard, forceLocation)));
                 return true;
             } else if (canDelayIntrinsification) {
                 return false;
