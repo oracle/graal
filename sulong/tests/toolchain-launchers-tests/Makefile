@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+# Copyright (c) 2019, 2024, Oracle and/or its affiliates.
 #
 # All rights reserved.
 #
@@ -91,7 +91,7 @@ endef
 CHECK_WRAPPER_SCRIPT= | grep "GraalVM wrapper script" $(QUIETLY_REDIR)
 
 ifeq ($(OS), darwin)
-SHARED_FLAGS=-dynamic -dylib -arch x86_64 -macosx_version_min 10.14.0 -lSystem
+SHARED_FLAGS=-dylib -arch x86_64 -macosx_version_min 10.14.0 -undefined dynamic_lookup
 else
 SHARED_FLAGS=--shared
 main.out: LDFLAGS+=-Wl,--gc-sections
