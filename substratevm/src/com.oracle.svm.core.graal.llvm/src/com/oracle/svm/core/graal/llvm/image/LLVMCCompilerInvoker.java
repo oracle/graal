@@ -42,7 +42,7 @@ public class LLVMCCompilerInvoker extends CCompilerInvoker {
     @Override
     protected void verify() {
         if (!Files.exists(getCCompilerPath())) {
-            throw UserError.abort("The LLVM toolchain is missing. Please install clang via `gu install llvm-toolchain` and run the same command again.");
+            throw UserError.abort("The LLVM toolchain is missing.");
         }
     }
 

@@ -357,7 +357,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     useLld = true;
                     additionalPreOptions.add("-fuse-ld=" + lld);
                 } else {
-                    throw new RuntimeException("The Native Image build ran into a ld64 limitation. Please use ld64.lld via `gu install llvm-toolchain` and run the same command again.");
+                    throw new RuntimeException("The Native Image build ran into a ld64 limitation. Please use ld64.lld via LLVM toolchain and run the same command again.");
                 }
             }
 
