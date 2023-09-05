@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.tests.util;
 
+import com.oracle.truffle.llvm.tests.Platform;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
 import org.graalvm.polyglot.Context;
@@ -115,6 +116,16 @@ public class ProcessUtil {
             return sb.toString();
         }
 
+        private static String sanitizeCRLF(String str) {
+            if (Platform.isWindows()) {
+                // on windows, the JVM sometimes messes with the binary/text mode of stdout
+                // so we have to ignore CRLF vs LF differences in the test output
+                return str.replaceAll("\r\n", "\n");
+            } else {
+                return str;
+            }
+        }
+
         @Override
         public boolean equals(Object obj) {
             // ignore originalCommand, two different commands can still produce the same output
@@ -124,8 +135,8 @@ public class ProcessUtil {
 
             ProcessResult other = (ProcessResult) obj;
             return this.returnValue == other.returnValue &&
-                            Objects.equals(this.stdErr, other.stdErr) &&
-                            Objects.equals(this.stdOutput, other.stdOutput);
+                            Objects.equals(sanitizeCRLF(this.stdErr), sanitizeCRLF(other.stdErr)) &&
+                            Objects.equals(sanitizeCRLF(this.stdOutput), sanitizeCRLF(other.stdOutput));
         }
 
         @Override
