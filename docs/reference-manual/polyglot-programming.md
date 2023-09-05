@@ -162,10 +162,9 @@ tab5type="c" tab5id="c_to_java" tab5name="Java" tab5path="polyglot_ref/c_to_java
 %}
 
 The example C code has to be compiled to LLVM bitcode using the LLVM frontend such as `clang`.
-A user can use `clang` shipped with GraalVM by installing a pre-built LLVM toolchain support:
+A user can use `clang` from the pre-built [LLVM toolchain shipped with the GraalVM LLVM runtime](../reference-manual/llvm/README.md#llvm-toolchain):
 
 ```shell
-gu install llvm-toolchain
 export LLVM_TOOLCHAIN=$(lli --print-toolchain-path)
 ```
 Run:
@@ -179,7 +178,7 @@ lli --polyglot polyglot
 ## Polyglot Launcher
 
 With polyglot applications it is often impossible to decide what the primary language of an application is.
-Therefore, an experimental new launcher, called `polyglot`, has been added to GraalVM.
+Therefore, an experimental new launcher, called `polyglot`, has been developed.
 For the moment, this launcher runs code for JavaScript, Ruby, and R without requiring the selection of a primary language.
 The polyglot launcher does not require the `--polyglot` option; it is enabled by default.
 
@@ -195,21 +194,6 @@ This is how you can start it:
 
 ```shell
 polyglot --jvm --shell
-```
-
-If you have installed all optional languages packs to the core GraalVM installation, then the Polyglot Shell will look like:
-```shell
-GraalVM MultiLanguage Shell 22.2.0
-Copyright (c) 2013-2021, Oracle and/or its affiliates
-  Java version 22.2.0
-  JavaScript version 22.2.0
-  Python version 3.8.5
-  R version 4.0.3
-  Ruby version 3.0.3
-Usage:
-  Use Ctrl+n to switch language and Ctrl+d to exit.
-  Enter -usage to get a list of available commands.
-js>
 ```
 
 > Note: The `polyglot` launcher and the _Polyglot Shell_ are experimental features in GraalVM.
@@ -229,7 +213,7 @@ You can configure a language engine for better throughput or startup.
     startup but less optimal throughput. This mode uses the compiler configuration
     `economy` if not specified otherwise.
 
-## Passing Options for Language Launchers
+## Passing Options to Language Launchers
 
 Every language launcher has been extended with a set of so called _polyglot options_.
 Polyglot options allow users of any language launcher to access the options of other languages supported by GraalVM (implemented with the Truffle language implementation framework).
@@ -315,3 +299,7 @@ java -Dpolyglot.js.strict=true SystemPropertiesTest
 ```
 
 > Note: System properties are read once when the polyglot context is created. Subsequent changes have no effect.
+
+### Related Documentation
+
+- Learn more about a guest and Java host language interoperability from the [Embedding Languages documentation](embedding/embed-languages.md)
