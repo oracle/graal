@@ -542,8 +542,9 @@ local devkits = graal_common.devkits;
       ce_licenses,
 
     legacy_mx_args:: ['--disable-installables=true', '--force-bash-launcher=true', '--skip-libraries=true'],
-    mx_cmd_base(os, arch):: ['mx'] + vm.maven_deploy_base_functions.dynamic_imports(os, arch) + self.legacy_mx_args,
-    mx_cmd_base_only_native(os, arch):: ['mx', '--dynamicimports', '/substratevm'] + self.legacy_mx_args,
+    mx_args(os, arch):: self.legacy_mx_args + vm.maven_deploy_base_functions.mx_args(os, arch),
+    mx_cmd_base(os, arch):: ['mx'] + vm.maven_deploy_base_functions.dynamic_imports(os, arch) + self.mx_args(os, arch),
+    mx_cmd_base_only_native(os, arch):: ['mx', '--dynamicimports', '/substratevm'] + self.mx_args(os, arch),
 
     only_native_dists:: 'TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE',
 
