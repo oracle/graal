@@ -142,21 +142,7 @@ public class TypeflowImpl extends Impl {
                 return null;
 
             return flowMapping.computeIfAbsent(flow, f -> {
-                Event reason;
-                Object source = f.getSource();
-                if (source instanceof BytecodePosition pos) {
-                    reason = new InlinedMethodCode(pos);
-                } else {
-                    AnalysisMethod m = f.method();
-                    if (m != null) {
-                        reason = new InlinedMethodCode(m);
-                    } else {
-                        reason = null;
-                    }
-                }
-
-                if (reason instanceof InlinedMethodCode imc && imc.context.length == 1 && !imc.context[0].isImplementationInvoked())
-                    throw new RuntimeException();
+                Event reason = getContainingEvent(f);
 
                 if(reason != null && reason.unused())
                     return null;

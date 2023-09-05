@@ -83,7 +83,9 @@ public class Impl extends CausalityExport {
         if(callingMethod == null && invocation.getTargetMethod().getContextInsensitiveVirtualInvoke(invocation.getCallerMultiMethodKey()) != invocation)
             throw new RuntimeException("CausalityExport has made an invalid assumption!");
 
-        CausalityExport.Event callerEvent = callingMethod != null ? new CausalityExport.InlinedMethodCode(invocation.getSource()) : new RootMethodRegistration(invocation.getTargetMethod());
+        CausalityExport.Event callerEvent = callingMethod != null
+                ? new CausalityExport.InlinedMethodCode(callingMethod) /* TODO: Take inlining into account */
+                : new RootMethodRegistration(invocation.getTargetMethod());
 
         registerEdge(
                 callerEvent,
@@ -114,7 +116,7 @@ public class Impl extends CausalityExport {
 
         if (reason instanceof ObjectScanner.EmbeddedRootScan ers) {
             EmbeddedRoot er = new EmbeddedRoot(ers.getMethod(), heapObject);
-            registerConjunctiveEdge(new InlinedMethodCode(ers.getMethod()), e, er);
+            registerConjunctiveEdge(new InlinedMethodCode(ers.getPosition()), e, er);
             return er;
         }
 

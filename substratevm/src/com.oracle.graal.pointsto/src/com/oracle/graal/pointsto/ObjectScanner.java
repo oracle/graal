@@ -631,6 +631,10 @@ public class ObjectScanner {
             return (AnalysisMethod) position.getMethod();
         }
 
+        public BytecodePosition getPosition() {
+            return position;
+        }
+
         @Override
         public String toString(BigBang bb) {
             return "scanning root " + asString(bb, constant) + " embedded in " + System.lineSeparator() + INDENTATION_AFTER_NEWLINE + position.getMethod().asStackTraceElement(position.getBCI());

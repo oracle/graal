@@ -15,6 +15,7 @@ import com.oracle.graal.pointsto.reports.causality.Graph;
 import com.oracle.graal.pointsto.reports.causality.TypeflowImpl;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Signature;
@@ -318,8 +319,9 @@ public class CausalityExport {
         public InlinedMethodCode(BytecodePosition invokePos) {
             ArrayList<AnalysisMethod> context = new ArrayList<>();
             while (invokePos != null) {
-                // if (invokePos.getBCI() != BytecodeFrame.UNKNOWN_BCI) // TODO: Revisit this
-                context.add((AnalysisMethod) invokePos.getMethod());
+                if (invokePos.getBCI() != BytecodeFrame.UNWIND_BCI) {
+                    context.add((AnalysisMethod) invokePos.getMethod());
+                }
                 invokePos = invokePos.getCaller();
 
                 if (context.size() >= 2 && context.get(context.size() - 1) == context.get(context.size() - 2))
