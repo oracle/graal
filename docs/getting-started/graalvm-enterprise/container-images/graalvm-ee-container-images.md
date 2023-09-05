@@ -20,10 +20,30 @@ The following images are available:
 
 ## Images Tagging Structure and Availability
 
-Images are multi-arch (`x64`, `aarch64` for Java 11 or later, depending on container host architecture), and tagged with the format:
+Both repositories provide container images for AMD64 and AArch64 processor architectures, with a choice of Oracle Linux versions 7, 8, or 9.
+
+Oracle GraalVM is installed in `/usr/lib64/graalvm/graalvm-java<$FeatureVersion>` where `<$FeatureVersion>` is `17`, `20`, etc. 
+For instance, Oracle GraalVM for JDK 17 is installed in `/usr/lib64/graalvm/graalvm-java17`. 
+All binaries, including `java`, `javac`, `native-image`, and other binaries are available as global commands via the `alternatives` command.
+
+## Tags
+
+Each repository provides multiple tags that let you choose the level of stability you need including the Java version, build number, and the Oracle Linux version. 
+Oracle GraalVM image tags use the following naming convention:
+
+```bash
+$version[-muslib(for native image only)][-$platform][-$buildnumber]
+```
+
+The following tags are listed from the most-specific tag (at the top) to the least-specific tag (at the bottom). 
+The most-specific tag is unique and always points to the same image, while the less-specific tags point to newer image variants over time.
 
 ```
-container-registry.oracle.com/graalvm/{IMAGE_NAME}:{IMAGE_TAG}
+17.0.8-ol9-20230904
+17.0.8-ol9
+17.0.8
+17-ol9
+17
 ```
 
 The structure of {IMAGE_TAG} is:
@@ -87,8 +107,8 @@ To pull an Oracle GraalVM image from the Oracle Container Registry, you are requ
 
 9. Start a container from the `jdk-ee` image and enter the bash session with the following `run` command:
 
-    ```shell
-    docker run -it --rm container-registry.oracle.com/graalvm/jdk-ee:latest bash
+    ```bash
+    docker run -it --rm --entrypoint /bin/bash container-registry.oracle.com/graalvm/native-image:17
     ```
 
 10. Check the version of Oracle GraalVM and its storage location by running the `env` command:
