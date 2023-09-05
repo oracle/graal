@@ -75,10 +75,8 @@ class OptionProperties {
     public static String getDefaultOutputDir() {
         if (RELATIVE_OUTPUT_DIR != null) {
             if (ImageInfo.inImageRuntimeCode()) {
-                if (ProcessProperties.getArgumentVectorBlockSize() > 0) {
-                    String progName = ProcessProperties.getArgumentVectorProgramName();
-                    return Paths.get(progName).resolve("..").resolve(RELATIVE_OUTPUT_DIR).normalize().toString();
-                }
+                String progName = ProcessProperties.getExecutableName();
+                return Paths.get(progName).resolve("..").resolve(RELATIVE_OUTPUT_DIR).normalize().toString();
             }
         }
         return "maven downloader output";
