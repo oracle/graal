@@ -626,7 +626,7 @@ public class SubstrateOptions {
                     isLLVMBackendMissing = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.graal.llvm.LLVMFeature") == null;
                 }
                 if (isLLVMBackendMissing) {
-                    throw UserError.abort("Please install the LLVM backend for GraalVM Native Image via `$JAVA_HOME/bin/gu install native-image-llvm-backend`.");
+                    throw UserError.abort("Please install the LLVM backend for GraalVM Native Image.");
                 }
 
                 /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
