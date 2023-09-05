@@ -320,10 +320,6 @@ public class OperationsModel extends Template implements PrettyPrintable {
         printer.field("instructions", instructions);
     }
 
-    public boolean hasBoxingElimination() {
-        return !boxingEliminatedTypes.isEmpty();
-    }
-
     @Override
     public String toString() {
         return getClass().getSimpleName() + "[" + getName() + "]";

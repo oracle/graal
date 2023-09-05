@@ -41,6 +41,7 @@
 package com.oracle.truffle.api.operation.test.example;
 
 import static com.oracle.truffle.api.operation.test.example.OperationsExampleCommon.parseNode;
+import static com.oracle.truffle.api.operation.test.example.OperationsExampleCommon.hasBE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -829,9 +830,11 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
         assertInstructionEquals(data.getInstructions().get(0), 0, "load.argument");
         assertInstructionEquals(data.getInstructions().get(1), 2, "load.argument");
         assertInstructionEquals(data.getInstructions().get(2), 4, "c.AddOperation");
-        assertInstructionEquals(data.getInstructions().get(3), 6, "return");
-        // todo: with DCE, this pop will go away (since return is considered as returning a value)
-        assertInstructionEquals(data.getInstructions().get(4), 7, "pop");
+        // With BE, the add instruction's encoding includes its child indices.
+        int beOffset = hasBE(interpreterClass) ? 2 : 0;
+        assertInstructionEquals(data.getInstructions().get(3), 6 + beOffset, "return");
+        assertInstructionEquals(data.getInstructions().get(4), 7 + beOffset, "pop");
+
     }
 
     @Test

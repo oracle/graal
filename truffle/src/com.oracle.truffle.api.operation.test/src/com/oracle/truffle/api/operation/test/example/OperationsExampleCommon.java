@@ -56,7 +56,12 @@ public class OperationsExampleCommon {
     }
 
     public static List<Class<? extends OperationsExample>> allInterpreters() {
-        return List.of(OperationsExampleBase.class, OperationsExampleUnsafe.class, OperationsExampleWithBaseline.class, OperationsExampleWithOptimizations.class, OperationsExampleProduction.class);
+        return List.of(OperationsExampleBase.class, OperationsExampleUnsafe.class, OperationsExampleWithBaseline.class, OperationsExampleWithBE.class, OperationsExampleWithOptimizations.class,
+                        OperationsExampleProduction.class);
+    }
+
+    public static boolean hasBE(Class<? extends OperationsExample> c) {
+        return c == OperationsExampleWithBE.class || c == OperationsExampleProduction.class;
     }
 
 }
