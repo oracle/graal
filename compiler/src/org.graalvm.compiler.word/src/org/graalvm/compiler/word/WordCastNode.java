@@ -202,11 +202,7 @@ public final class WordCastNode extends FixedWithNextNode implements LIRLowerabl
             } else if (!trackedPointer && !((AbstractPointerStamp) input.stamp(NodeView.DEFAULT)).nonNull() && !(input.stamp(NodeView.DEFAULT) instanceof NarrowOopStamp)) {
                 generator.getLIRGeneratorTool().emitConvertNullToZero(result, (AllocatableValue) value);
             } else {
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.word/src/org/graalvm/compiler/word/WordCastNode.java
                 generator.getLIRGeneratorTool().emitMove(result, value);
-=======
-                result = generator.getLIRGeneratorTool().emitMove(resultKind, value);
->>>>>>> d3bcea417d3 (Fix aarch64 uncompress.):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/word/WordCastNode.java
             }
             generator.setResult(this, result);
         }
