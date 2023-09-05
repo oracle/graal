@@ -6,12 +6,16 @@ import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
 import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
+import com.oracle.graal.pointsto.flow.ConstantTypeFlow;
+import com.oracle.graal.pointsto.flow.FilterTypeFlow;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
+import com.oracle.graal.pointsto.flow.NullCheckTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import org.graalvm.collections.Pair;
 
@@ -117,8 +121,55 @@ public class TypeflowImpl extends Impl {
         });
     }
 
+    private static BytecodePosition chopUnwindFrames(BytecodePosition p) {
+        while (p != null && p.getBCI() == BytecodeFrame.UNWIND_BCI)
+            p = p.getCaller();
+        return p;
+    }
+
+    private static BytecodePosition takePlausibleFramesFromBottom(BytecodePosition p) {
+        if (p == null)
+            return null;
+
+        BytecodePosition callerPos = takePlausibleFramesFromBottom(p.getCaller());
+
+        if (callerPos != p.getCaller())
+            return callerPos;
+
+        if (!((AnalysisMethod) p.getMethod()).isInlined()) {
+            return callerPos != null ? callerPos : new BytecodePosition(null, p.getMethod(), p.getBCI());
+        }
+
+        return p;
+    }
+
+    private static BytecodePosition takePlausibleFramesFromTop(BytecodePosition p) {
+        if (p == null)
+            return null;
+
+        if (!((AnalysisMethod) p.getMethod()).isInlined())
+            return new BytecodePosition(null, p.getMethod(), p.getBCI());
+
+        BytecodePosition callerPos = takePlausibleFramesFromTop(p.getCaller());
+        if (callerPos != p.getCaller())
+            return new BytecodePosition(callerPos, p.getMethod(), p.getBCI());
+
+        return p;
+    }
+
     private static Event getContainingEvent(TypeFlow<?> f) {
         if (f.getSource() instanceof BytecodePosition pos) {
+            /*
+             * For some reason the BytecodePosition assigned to a TypeFlow isn't always what you would expect from browsing the code.
+             * We query AnalysisMethod.isInlined() in order to improve implausible sources.
+             * Incorrect sources that are not corrected will lead to underapproximation in the Causality Graph.
+             * TODO: Fix the underlying problem
+             */
+            if (f instanceof FilterTypeFlow || f instanceof NullCheckTypeFlow) {
+                pos = takePlausibleFramesFromBottom(chopUnwindFrames(pos));
+            } else if (f instanceof ConstantTypeFlow) {
+                pos = takePlausibleFramesFromTop(chopUnwindFrames(pos));
+            }
             return new InlinedMethodCode(pos);
         } else {
             AnalysisMethod m = f.method();
