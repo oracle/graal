@@ -2986,7 +2986,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             else:
                 for library_config in _get_libgraal_component().library_configs:
                     dependency = GraalVmLibrary.project_name(library_config)
-                    layout.setdefault(base_dir + 'jvm/lib/', []).append({
+                    jvm_lib_dir = 'bin' if mx.is_windows() else 'lib'
+                    layout.setdefault(f'{base_dir}jvm/{jvm_lib_dir}/', []).append({
                         'source_type': 'dependency',
                         'dependency': dependency,
                         'exclude': [],
@@ -3229,7 +3230,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             self.jre_base = join(get_final_graalvm_distribution().string_substitutions.substitute(self.component.standalone_dir_name_enterprise if has_component('cmpee') else self.component.standalone_dir_name), 'jvm')
         else:
             self.jre_base = get_final_graalvm_distribution().path_substitutions.substitute('<jre_base>')
-        toolchain = 'mx:DEFAULT_NINJA_TOOLCHAIN' if mx.is_windows() else 'sdk:LLVM_NINJA_TOOLCHAIN'
+        # We use our LLVM toolchain on Linux because we want to statically link the C++ standard library,
+        # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).
+        toolchain = 'sdk:LLVM_NINJA_TOOLCHAIN' if mx.is_linux() else 'mx:DEFAULT_NINJA_TOOLCHAIN'
         super(NativeLibraryLauncherProject, self).__init__(
             _suite,
             NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config, self.jvm_standalone is not None),
@@ -3267,16 +3270,21 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             '-DGRAALVM_VERSION=' + _suite.release_version(),
         ]
         if not mx.is_windows():
-            _dynamic_cflags += ['-stdlib=libc++', '-pthread']
+            _dynamic_cflags += ['-pthread']
+        if mx.is_linux():
+            _dynamic_cflags += ['-stdlib=libc++'] # to link libc++ statically, see ldlibs
         if mx.is_darwin():
             _dynamic_cflags += ['-ObjC++']
 
+        def escaped_path(path):
+            if mx.is_windows():
+                return path.replace('\\', '\\\\')
+            else:
+                return path
+
         def escaped_relpath(path):
             relative = relpath(path, start=_exe_dir)
-            if mx.is_windows():
-                return relative.replace('\\', '\\\\')
-            else:
-                return relative
+            return escaped_path(relative)
 
         _graalvm_home = _get_graalvm_archive_path("")
 
@@ -3286,11 +3294,11 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             _lp = []
             for jvm_jar in self.jvm_standalone.jvm_jars:
                 for _, jar_name in mx.dependency(jvm_jar).getArchivableResults(single=True):
-                    _cp.append(join('..', 'jars', jar_name))
+                    _cp.append(escaped_path(join('..', 'jars', jar_name)))
             if self.jvm_standalone.jvm_modules:
-                _mp.append(join('..', 'modules'))
+                _mp.append(escaped_path(join('..', 'modules')))
             if self.jvm_standalone.jvm_libs:
-                _lp.append(join('..', 'jvmlibs'))
+                _lp.append(escaped_path(join('..', 'jvmlibs')))
         else:
             _cp = []
             # launcher classpath for launching via jvm
@@ -3375,8 +3383,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             lang_home_names = []
             bin_home_paths = []
             for lang_home_name, lib_home_path in self.language_library_config.relative_home_paths.items():
-                bin_home_path = relpath(join(self.jre_base, '..', 'lib', lib_home_path), _exe_dir)
-                lang_home_names.append(lang_home_name)
+                bin_home_path = escaped_relpath(join(self.jre_base, '..', 'lib', lib_home_path))
+                lang_home_names.append(escaped_path(lang_home_name))
                 bin_home_paths.append(bin_home_path)
             if lang_home_names:
                 _dynamic_cflags += [
@@ -3399,25 +3407,19 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
     @property
     def ldlibs(self):
         _dynamic_ldlibs = []
-        if not mx.is_windows():
+        if mx.is_linux():
             # Link libc++ statically
-            llvm_toolchain = mx.distribution("LLVM_TOOLCHAIN").get_output()
-            libcxx_dir = join(llvm_toolchain, 'lib')
-            libcxx_arch = mx.get_arch().replace('amd64', 'x86_64')
-            if mx.is_linux():
-                libcxx_dir = join(libcxx_dir, libcxx_arch + '-unknown-linux-gnu')
             _dynamic_ldlibs += [
                 '-stdlib=libc++',
-                '-nostdlib++', # avoids to dynamically link libc++
-                join(libcxx_dir, 'libc++.a'),
-                join(libcxx_dir, 'libc++abi.a'),
+                '-static-libstdc++', # it looks weird but this does link libc++ statically
+                '-l:libc++abi.a',
             ]
-
+        if not mx.is_windows():
             _dynamic_ldlibs += ['-ldl']
             if mx.is_darwin():
                 _dynamic_ldlibs += ['-framework', 'Foundation']
 
-                default_min_version = {'x86_64': '10.13', 'aarch64': '11.0'}[libcxx_arch]
+                default_min_version = {'amd64': '10.13', 'aarch64': '11.0'}[mx.get_arch()]
                 min_version = os.getenv('MACOSX_DEPLOYMENT_TARGET', default_min_version)
                 _dynamic_ldlibs += ['-mmacosx-version-min=' + min_version]
 
