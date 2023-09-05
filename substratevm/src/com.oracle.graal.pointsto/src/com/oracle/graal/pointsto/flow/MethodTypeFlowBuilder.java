@@ -210,10 +210,7 @@ public class MethodTypeFlowBuilder {
                  * parsing graphs again for compilation, we need to have all types, methods, fields
                  * of the original graph registered properly.
                  */
-                // TODO: Account to inlined methods if possible
-                try (var ignored = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(method))) {
-                    registerUsedElements(bb, graph, false);
-                }
+                registerUsedElements(bb, graph, false);
             }
             CanonicalizerPhase canonicalizerPhase = CanonicalizerPhase.create();
             canonicalizerPhase.apply(graph, bb.getProviders(method));
@@ -245,11 +242,8 @@ public class MethodTypeFlowBuilder {
                 return false;
             }
 
-            // TODO: Account to inlined methods if possible
-            try (var ignored = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(method))) {
-                // Do it again after canonicalization changed type checks and field accesses.
-                registerUsedElements(bb, graph, true);
-            }
+            // Do it again after canonicalization changed type checks and field accesses.
+            registerUsedElements(bb, graph, true);
 
             return true;
         } catch (Throwable ex) {
@@ -261,103 +255,106 @@ public class MethodTypeFlowBuilder {
         PointsToAnalysisMethod method = (PointsToAnalysisMethod) graph.method();
         HostedProviders providers = bb.getProviders(method);
         for (Node n : graph.getNodes()) {
-            if (n instanceof InstanceOfNode) {
-                InstanceOfNode node = (InstanceOfNode) n;
-                AnalysisType type = (AnalysisType) node.type().getType();
-                if (!ignoreInstanceOfType(bb, type)) {
-                    type.registerAsReachable(AbstractAnalysisEngine.sourcePosition(node));
-                }
+            BytecodePosition reason = n instanceof ValueNode vn ? AbstractAnalysisEngine.sourcePosition(vn) : AbstractAnalysisEngine.syntheticSourcePosition(n, method);
+            try (var ignored = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(reason))) {
+                if (n instanceof InstanceOfNode) {
+                    InstanceOfNode node = (InstanceOfNode) n;
+                    AnalysisType type = (AnalysisType) node.type().getType();
+                    if (!ignoreInstanceOfType(bb, type)) {
+                        type.registerAsReachable(AbstractAnalysisEngine.sourcePosition(node));
+                    }
 
-            } else if (n instanceof NewInstanceNode) {
-                NewInstanceNode node = (NewInstanceNode) n;
-                AnalysisType type = (AnalysisType) node.instanceClass();
-                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                } else if (n instanceof NewInstanceNode) {
+                    NewInstanceNode node = (NewInstanceNode) n;
+                    AnalysisType type = (AnalysisType) node.instanceClass();
+                    type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
-            } else if (n instanceof VirtualObjectNode) {
-                VirtualObjectNode node = (VirtualObjectNode) n;
-                AnalysisType type = (AnalysisType) node.type();
-                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                } else if (n instanceof VirtualObjectNode) {
+                    VirtualObjectNode node = (VirtualObjectNode) n;
+                    AnalysisType type = (AnalysisType) node.type();
+                    type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
-            } else if (n instanceof CommitAllocationNode) {
-                CommitAllocationNode node = (CommitAllocationNode) n;
-                List<ValueNode> values = node.getValues();
-                int objectStartIndex = 0;
-                for (VirtualObjectNode virtualObject : node.getVirtualObjects()) {
-                    AnalysisType type = (AnalysisType) virtualObject.type();
-                    if (!type.isArray()) {
-                        for (int i = 0; i < virtualObject.entryCount(); i++) {
-                            ValueNode value = values.get(objectStartIndex + i);
-                            if (!value.isJavaConstant() || !value.asJavaConstant().isDefaultForKind()) {
-                                AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
-                                field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
+                } else if (n instanceof CommitAllocationNode) {
+                    CommitAllocationNode node = (CommitAllocationNode) n;
+                    List<ValueNode> values = node.getValues();
+                    int objectStartIndex = 0;
+                    for (VirtualObjectNode virtualObject : node.getVirtualObjects()) {
+                        AnalysisType type = (AnalysisType) virtualObject.type();
+                        if (!type.isArray()) {
+                            for (int i = 0; i < virtualObject.entryCount(); i++) {
+                                ValueNode value = values.get(objectStartIndex + i);
+                                if (!value.isJavaConstant() || !value.asJavaConstant().isDefaultForKind()) {
+                                    AnalysisField field = (AnalysisField) ((VirtualInstanceNode) virtualObject).field(i);
+                                    field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
+                                }
                             }
                         }
+                        objectStartIndex += virtualObject.entryCount();
                     }
-                    objectStartIndex += virtualObject.entryCount();
-                }
 
-            } else if (n instanceof NewArrayNode) {
-                NewArrayNode node = (NewArrayNode) n;
-                AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
-                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof NewMultiArrayNode) {
-                NewMultiArrayNode node = (NewMultiArrayNode) n;
-                AnalysisType type = ((AnalysisType) node.type());
-                for (int i = 0; i < node.dimensionCount(); i++) {
+                } else if (n instanceof NewArrayNode) {
+                    NewArrayNode node = (NewArrayNode) n;
+                    AnalysisType type = ((AnalysisType) node.elementType()).getArrayClass();
                     type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
-                    type = type.getComponentType();
-                }
 
-            } else if (n instanceof BoxNode) {
-                BoxNode node = (BoxNode) n;
-                AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
-                type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof LoadFieldNode) {
-                LoadFieldNode node = (LoadFieldNode) n;
-                AnalysisField field = (AnalysisField) node.field();
-                field.registerAsRead(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof StoreFieldNode) {
-                StoreFieldNode node = (StoreFieldNode) n;
-                AnalysisField field = (AnalysisField) node.field();
-                field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
-
-            } else if (n instanceof ConstantNode) {
-                ConstantNode cn = (ConstantNode) n;
-                JavaConstant root = cn.asJavaConstant();
-                if (cn.hasUsages() && cn.isJavaConstant() && root.getJavaKind() == JavaKind.Object && root.isNonNull()) {
-                    assert StampTool.isExactType(cn);
-                    AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
-                    type.registerAsInHeap(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
-                    if (registerEmbeddedRoots && !ignoreConstant(bb, cn)) {
-                        registerEmbeddedRoot(bb, cn);
+                } else if (n instanceof NewMultiArrayNode) {
+                    NewMultiArrayNode node = (NewMultiArrayNode) n;
+                    AnalysisType type = ((AnalysisType) node.type());
+                    for (int i = 0; i < node.dimensionCount(); i++) {
+                        type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
+                        type = type.getComponentType();
                     }
-                }
 
-            } else if (n instanceof FrameState) {
-                FrameState node = (FrameState) n;
-                AnalysisMethod frameStateMethod = (AnalysisMethod) node.getMethod();
-                if (frameStateMethod != null) {
-                    /*
-                     * All types referenced in (possibly inlined) frame states must be reachable,
-                     * because these classes will be reachable from stack walking metadata. This
-                     * metadata is only constructed after AOT compilation, so the image heap
-                     * scanning during static analysis does not see these classes.
-                     */
-                    frameStateMethod.getDeclaringClass().registerAsReachable(AbstractAnalysisEngine.syntheticSourcePosition(node, method));
-                }
+                } else if (n instanceof BoxNode) {
+                    BoxNode node = (BoxNode) n;
+                    AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
+                    type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(node));
 
-            } else if (n instanceof ForeignCall) {
-                ForeignCall node = (ForeignCall) n;
-                registerForeignCall(bb, providers.getForeignCalls(), node.getDescriptor(), graph.method());
-            } else if (n instanceof UnaryMathIntrinsicNode) {
-                UnaryMathIntrinsicNode node = (UnaryMathIntrinsicNode) n;
-                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
-            } else if (n instanceof BinaryMathIntrinsicNode) {
-                BinaryMathIntrinsicNode node = (BinaryMathIntrinsicNode) n;
-                registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
+                } else if (n instanceof LoadFieldNode) {
+                    LoadFieldNode node = (LoadFieldNode) n;
+                    AnalysisField field = (AnalysisField) node.field();
+                    field.registerAsRead(AbstractAnalysisEngine.sourcePosition(node));
+
+                } else if (n instanceof StoreFieldNode) {
+                    StoreFieldNode node = (StoreFieldNode) n;
+                    AnalysisField field = (AnalysisField) node.field();
+                    field.registerAsWritten(AbstractAnalysisEngine.sourcePosition(node));
+
+                } else if (n instanceof ConstantNode) {
+                    ConstantNode cn = (ConstantNode) n;
+                    JavaConstant root = cn.asJavaConstant();
+                    if (cn.hasUsages() && cn.isJavaConstant() && root.getJavaKind() == JavaKind.Object && root.isNonNull()) {
+                        assert StampTool.isExactType(cn);
+                        AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
+                        type.registerAsInHeap(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
+                        if (registerEmbeddedRoots && !ignoreConstant(bb, cn)) {
+                            registerEmbeddedRoot(bb, cn);
+                        }
+                    }
+
+                } else if (n instanceof FrameState) {
+                    FrameState node = (FrameState) n;
+                    AnalysisMethod frameStateMethod = (AnalysisMethod) node.getMethod();
+                    if (frameStateMethod != null) {
+                        /*
+                         * All types referenced in (possibly inlined) frame states must be reachable,
+                         * because these classes will be reachable from stack walking metadata. This
+                         * metadata is only constructed after AOT compilation, so the image heap
+                         * scanning during static analysis does not see these classes.
+                         */
+                        frameStateMethod.getDeclaringClass().registerAsReachable(AbstractAnalysisEngine.syntheticSourcePosition(node, method));
+                    }
+
+                } else if (n instanceof ForeignCall) {
+                    ForeignCall node = (ForeignCall) n;
+                    registerForeignCall(bb, providers.getForeignCalls(), node.getDescriptor(), graph.method());
+                } else if (n instanceof UnaryMathIntrinsicNode) {
+                    UnaryMathIntrinsicNode node = (UnaryMathIntrinsicNode) n;
+                    registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
+                } else if (n instanceof BinaryMathIntrinsicNode) {
+                    BinaryMathIntrinsicNode node = (BinaryMathIntrinsicNode) n;
+                    registerForeignCall(bb, providers.getForeignCalls(), providers.getForeignCalls().getDescriptor(node.getOperation().foreignCallSignature), graph.method());
+                }
             }
         }
     }

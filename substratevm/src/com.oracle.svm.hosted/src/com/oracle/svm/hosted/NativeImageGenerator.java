@@ -1151,9 +1151,8 @@ public class NativeImageGenerator {
                     for (StructuredGraph graph : snippetGraphs) {
                         CausalityExport.Event snippetRegistrationEvent = new CausalityExport.MethodSnippet((AnalysisMethod) graph.method());
                         CausalityExport.get().registerEvent(snippetRegistrationEvent); // Is directly catching the "[Initial Registrations]" reason from above
-                        try (var ignored0 = CausalityExport.get().setCause(snippetRegistrationEvent)) {
-                            HostedConfiguration.instance().registerUsedElements((PointsToAnalysis) bb, graph, false);
-                        }
+                        CausalityExport.get().registerEdge(snippetRegistrationEvent, new CausalityExport.InlinedMethodCode((AnalysisMethod) graph.method()));
+                        HostedConfiguration.instance().registerUsedElements((PointsToAnalysis) bb, graph, false);
                     }
                 } else if (bb instanceof NativeImageReachabilityAnalysisEngine) {
                     NativeImageReachabilityAnalysisEngine reachabilityAnalysis = (NativeImageReachabilityAnalysisEngine) bb;
