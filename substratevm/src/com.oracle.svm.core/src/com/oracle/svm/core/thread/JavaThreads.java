@@ -107,6 +107,25 @@ public final class JavaThreads {
     }
 
     /**
+     * Similar to {@link Thread#getThreadGroup()} but without any of the extra checks that the JDK
+     * code does (e.g., the method below does not check for virtual threads or
+     * {@code Thread.isTerminated()}).
+     */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static ThreadGroup getRawThreadGroup(Thread thread) {
+        Target_java_lang_Thread t = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
+        if (JavaVersionUtil.JAVA_SPEC >= 19) {
+            Target_java_lang_Thread_FieldHolder holder = t.holder;
+            if (holder != null) {
+                return holder.group;
+            }
+            return null;
+        } else {
+            return t.group;
+        }
+    }
+
+    /**
      * Safe method to check whether a thread has been interrupted.
      *
      * Use instead of {@link Thread#isInterrupted()}, which is not {@code final} and can be

@@ -271,7 +271,6 @@ public final class Target_java_lang_Thread {
         contextClassLoader = ClassLoader.getSystemClassLoader();
     }
 
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     public long getId() {
@@ -281,10 +280,6 @@ public final class Target_java_lang_Thread {
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public native String getName();
-
-    @AnnotateOriginal
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public native ThreadGroup getThreadGroup();
 
     @AnnotateOriginal
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -771,7 +766,6 @@ public final class Target_java_lang_Thread {
      */
     @Substitute
     @TargetElement(onlyWith = JDK19OrLater.class)
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     boolean isTerminated() {
         return (holder.threadStatus & JVMTI_THREAD_STATE_TERMINATED) != 0;
     }
