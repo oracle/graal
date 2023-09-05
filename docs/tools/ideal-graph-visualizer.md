@@ -66,14 +66,13 @@ Using a host Ruby application that embeds some Java, you will now dump compiler 
     puts js_obj[:payload].join(' ')
     ```
 
-2. From another console window, install the Ruby runtime for GraalVM (if you have not yet) and check its version:
-    ```shell
-    gu install ruby
-    ```
+2. [Install Ruby from a TruffleRuby standalone](https://www.graalvm.org/reference-manual/ruby/#getting-started). 
+Check its version to make sure you are running the GraalVM Ruby distribution:
     ```shell
     ruby --version
     ```
-3. Run the application and connect the process to the running IGV:
+
+3. Run the application, connecting the process to the running IGV:
     ```shell
     ruby --jvm --polyglot --vm.Dgraal.Dump=:1 --vm.Dgraal.PrintGraph=Network Test.rb
     ```

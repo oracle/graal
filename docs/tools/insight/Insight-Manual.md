@@ -157,7 +157,7 @@ Prepare your Ruby program in the `helloworld.rb` file:
 puts 'Hello from GraalVM Ruby!'
 ```
 
-Note: Make sure the Ruby support is added to GraalVM with `gu install ruby`.
+Note: Make sure the Ruby support is enabled. See [Polyglot Programming guide](../../reference-manual/polyglot-programming.md).
 
 Apply the JavaScript instrument to the Ruby program. Here is what you should see:
 
@@ -254,14 +254,14 @@ Apply this script to [agent-fib.js](https://github.com/oracle/graal/blob/5ec71a2
 `js --polyglot --insight=agent.py agent-fib.js`
 ```
 
-Note: Make sure the Python support is added to GraalVM with `gu install python`.
+Note: Make sure the Python support is enabled. See [Polyglot Programming guide](../../reference-manual/polyglot-programming.md).
 
 ## Insights with Ruby
 
 It is possible to write GraalVM Insight scripts in Ruby.
 Such insights can be applied to programs written in Ruby or any other language.
 
-Note: Make sure the Ruby support is added to GraalVM with `gu install ruby`.
+Note: Make sure the Ruby support is enabled. See [Polyglot Programming guide](../../reference-manual/polyglot-programming.md).
 
 Create the `source-tracing.rb` script:
 
