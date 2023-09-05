@@ -95,11 +95,11 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     dynamic_imports(os, arch)::
       ['--dynamicimports', vm_common.maven_deploy_base_functions.dynamic_ce_imports(os, arch)],
 
-    suites(os, arch)::
-      vm_common.maven_deploy_base_functions.ce_suites(os,arch),
+    ee_suites(os, arch)::
+      error 'The vm suite does not define ee suites',
 
-    licenses()::
-      ['--licenses', vm_common.maven_deploy_base_functions.ce_licenses()],
+    ee_licenses()::
+      error 'The vm suite does not define ee licenses',
   },
 
   local builds = [
