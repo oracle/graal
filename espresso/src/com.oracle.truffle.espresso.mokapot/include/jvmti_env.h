@@ -23,7 +23,6 @@
 #ifndef _JVMTI_ENV_H
 #define _JVMTI_ENV_H
 
-#include <trufflenfi.h>
 #include <jni.h>
 
 #include <stddef.h>

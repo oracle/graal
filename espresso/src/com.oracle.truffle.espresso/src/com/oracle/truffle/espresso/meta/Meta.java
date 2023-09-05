@@ -412,6 +412,11 @@ public final class Meta extends ContextAccessImpl {
         HIDDEN_DEPRECATION_SUPPORT = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEPRECATION_SUPPORT);
         HIDDEN_THREAD_UNPARK_SIGNALS = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_UNPARK_SIGNALS);
         HIDDEN_THREAD_PARK_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PARK_LOCK);
+        if (getJavaVersion().java19OrLater()) {
+            HIDDEN_THREAD_SCOPED_VALUE_CACHE = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_SCOPED_VALUE_CACHE);
+        } else {
+            HIDDEN_THREAD_SCOPED_VALUE_CACHE = null;
+        }
 
         if (context.getEspressoEnv().EnableManagement) {
             HIDDEN_THREAD_PENDING_MONITOR = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PENDING_MONITOR);
@@ -1354,6 +1359,7 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
     public final Field HIDDEN_THREAD_DEPTH_FIRST_NUMBER;
+    public final Field HIDDEN_THREAD_SCOPED_VALUE_CACHE;
 
     public final Field java_lang_Thread_name;
     public final Field java_lang_Thread_priority;

@@ -26,27 +26,35 @@ import com.oracle.truffle.espresso.impl.Klass;
 
 public class WindowsArgumentsCalculator extends AbstractArgumentsCalculator {
     private int globalIndex;
+    private boolean skipNext;
 
     public WindowsArgumentsCalculator(Platform platform, VMStorage[] callIntRegs, VMStorage[] callFloatRegs, VMStorage intReturn, VMStorage floatReturn) {
         super(platform, callIntRegs, callFloatRegs, intReturn, floatReturn);
     }
 
     @Override
-    public int getNextInputIndex(VMStorage reg, Klass type) {
+    public int getNextInputIndex(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType) {
         // TODO this currently depends on order but doesn't actually need to
-        assert isInt(type) || isFloat(type);
+        assert isInt(type) || isFloat(type) : platform.toString(reg) + ": " + type;
+        if (skipNext) {
+            skipNext = false;
+            return SKIP;
+        }
+        if (isVarArg(reg, type, nextReg, nextType)) {
+            skipNext = true;
+        }
         if (globalIndex < callIntRegs.length && callIntRegs[globalIndex].equals(reg)) {
-            assert isInt(type);
+            assert isInt(type) || (skipNext && isFloat(type)) : platform.toString(reg) + ": " + type;
             return globalIndex++;
         }
         if (globalIndex < callFloatRegs.length && callFloatRegs[globalIndex].equals(reg)) {
-            assert isFloat(type);
+            assert isFloat(type) : platform.toString(reg) + ": " + type;
             return globalIndex++;
         }
         if (reg.type(platform).isStack()) {
             // TODO validate offset
-            assert !isInt(type) || globalIndex >= callIntRegs.length;
-            assert !isFloat(type) || globalIndex >= callFloatRegs.length;
+            assert !isInt(type) || globalIndex >= callIntRegs.length : platform.toString(reg) + ": " + type;
+            assert !isFloat(type) || globalIndex >= callFloatRegs.length : platform.toString(reg) + ": " + type;
             return globalIndex++;
         }
         return -1;
@@ -55,12 +63,32 @@ public class WindowsArgumentsCalculator extends AbstractArgumentsCalculator {
     @Override
     public boolean checkReturn(VMStorage reg, Klass type) {
         if (intReturn.equals(reg)) {
-            assert isInt(type);
+            assert isInt(type) : platform.toString(reg) + ": " + type;
             return true;
         }
         if (floatReturn.equals(reg)) {
-            assert isFloat(type);
+            assert isFloat(type) : platform.toString(reg) + ": " + type;
             return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean isVarArg(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType) {
+        if (nextReg == null) {
+            return false;
+        }
+        if (globalIndex >= callIntRegs.length || globalIndex >= callFloatRegs.length) {
+            return false;
+        }
+        if (isFloat(type) && isFloat(nextType)) {
+            // https://learn.microsoft.com/en-us/cpp/build/x64-calling-convention?view=msvc-170
+            // for varargs floating point values get passed in both the usual floating-point
+            // register and integer register
+            if ((callIntRegs[globalIndex].equals(reg) && callFloatRegs[globalIndex].equals(nextReg)) ||
+                            (callIntRegs[globalIndex].equals(nextReg) && callFloatRegs[globalIndex].equals(reg))) {
+                return true;
+            }
         }
         return false;
     }

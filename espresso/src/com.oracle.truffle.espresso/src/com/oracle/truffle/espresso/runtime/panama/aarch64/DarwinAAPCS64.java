@@ -20,16 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime.panama;
+package com.oracle.truffle.espresso.runtime.panama.aarch64;
 
-import com.oracle.truffle.espresso.impl.Klass;
+import static com.oracle.truffle.espresso.runtime.panama.aarch64.AArch64Regs.r0;
+import static com.oracle.truffle.espresso.runtime.panama.aarch64.AArch64Regs.v0;
 
-public interface ArgumentsCalculator {
-    int SKIP = -2;
+import com.oracle.truffle.espresso.runtime.panama.ArgumentsCalculator;
+import com.oracle.truffle.espresso.runtime.panama.DarwinAArch64ArgumentsCalculator;
 
-    int getNextInputIndex(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType);
+public final class DarwinAAPCS64 extends AAPCS64 {
+    public static final DarwinAAPCS64 INSTANCE = new DarwinAAPCS64();
 
-    boolean isVarArg(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType);
+    private DarwinAAPCS64() {
+    }
 
-    boolean checkReturn(VMStorage reg, Klass type);
+    @Override
+    public ArgumentsCalculator getArgumentsCalculator() {
+        return new DarwinAArch64ArgumentsCalculator(this, CALL_INT_REGS, CALL_FLOAT_REGS, r0, v0);
+    }
 }

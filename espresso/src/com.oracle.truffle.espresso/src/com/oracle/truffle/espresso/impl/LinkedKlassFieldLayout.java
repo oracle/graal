@@ -264,6 +264,7 @@ final class LinkedKlassFieldLayout {
                                 new HiddenField(Name.HIDDEN_DEPRECATION_SUPPORT),
                                 new HiddenField(Name.HIDDEN_THREAD_UNPARK_SIGNALS, Type._int, VersionRange.ALL, Constants.ACC_VOLATILE),
                                 new HiddenField(Name.HIDDEN_THREAD_PARK_LOCK, Type.java_lang_Object, VersionRange.ALL, Constants.ACC_FINAL),
+                                new HiddenField(Name.HIDDEN_THREAD_SCOPED_VALUE_CACHE),
 
                                 // Only used for j.l.management bookkeeping.
                                 new HiddenField(Name.HIDDEN_THREAD_PENDING_MONITOR),

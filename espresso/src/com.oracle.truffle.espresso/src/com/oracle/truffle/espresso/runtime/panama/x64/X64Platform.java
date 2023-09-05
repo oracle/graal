@@ -20,16 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.truffle.espresso.runtime.panama;
+package com.oracle.truffle.espresso.runtime.panama.x64;
 
-import com.oracle.truffle.espresso.impl.Klass;
+import com.oracle.truffle.espresso.runtime.panama.Platform;
+import com.oracle.truffle.espresso.runtime.panama.StorageType;
 
-public interface ArgumentsCalculator {
-    int SKIP = -2;
+public abstract class X64Platform extends Platform {
+    @Override
+    public StorageType getStorageType(byte id) {
+        return X64StorageType.get(id);
+    }
 
-    int getNextInputIndex(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType);
+    @Override
+    protected String getIntegerRegisterName(int idx, int maskOrSize) {
+        if (maskOrSize == X64Regs.REG64_MASK) {
+            return X64Regs.getIntegerRegisterName(idx);
+        } else {
+            return "?INT_REG?[" + idx + ", " + maskOrSize + "]";
+        }
+    }
 
-    boolean isVarArg(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType);
-
-    boolean checkReturn(VMStorage reg, Klass type);
+    @Override
+    protected String getVectorRegisterName(int idx, int maskOrSize) {
+        if (maskOrSize == X64Regs.XMM_MASK) {
+            return X64Regs.getVectorRegisterName(idx);
+        } else {
+            return "?VEC_REG?[" + idx + ", " + maskOrSize + "]";
+        }
+    }
 }

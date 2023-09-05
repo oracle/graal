@@ -27,6 +27,7 @@ import java.util.Locale;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.OS;
 import com.oracle.truffle.espresso.runtime.panama.aarch64.AAPCS64;
+import com.oracle.truffle.espresso.runtime.panama.aarch64.DarwinAAPCS64;
 import com.oracle.truffle.espresso.runtime.panama.x64.SysVx64;
 import com.oracle.truffle.espresso.runtime.panama.x64.WindowsX64;
 
@@ -40,7 +41,8 @@ public abstract class Platform {
                 default -> throw EspressoError.unimplemented(OS.getCurrent() + "-x86_64");
             };
             case "aarch64", "arm64" -> switch (OS.getCurrent()) {
-                case Linux, Darwin -> AAPCS64.INSTANCE;
+                case Linux -> AAPCS64.INSTANCE;
+                case Darwin -> DarwinAAPCS64.INSTANCE;
                 default -> throw EspressoError.unimplemented(OS.getCurrent() + "-aarch64");
             };
             default -> throw EspressoError.unimplemented(arch);
@@ -57,4 +59,23 @@ public abstract class Platform {
     public String toString() {
         return getClass().getSimpleName();
     }
+
+    public String toString(VMStorage reg) {
+        StorageType type = reg.type(this);
+        if (type.isPlaceholder()) {
+            return reg.getStubLocation(this).toString();
+        } else if (type.isStack()) {
+            return "stack[" + reg.indexOrOffset() + ";" + reg.segmentMaskOrSize() + "]";
+        } else if (type.isInteger()) {
+            return getIntegerRegisterName(reg.indexOrOffset(), reg.segmentMaskOrSize());
+        } else if (type.isVector()) {
+            return getVectorRegisterName(reg.indexOrOffset(), reg.segmentMaskOrSize());
+        } else {
+            return "??[" + type + ", " + reg.indexOrOffset() + ", " + reg.segmentMaskOrSize() + "]";
+        }
+    }
+
+    protected abstract String getIntegerRegisterName(int idx, int maskOrSize);
+
+    protected abstract String getVectorRegisterName(int idx, int maskOrSize);
 }

@@ -393,6 +393,18 @@ public final class Target_java_lang_Thread {
         }
     }
 
+    @Substitution(versionFilter = VersionFilter.Java20OrLater.class)
+    public static @JavaType(Object[].class) StaticObject scopedValueCache(@Inject EspressoContext context) {
+        StaticObject platformThread = context.getCurrentPlatformThread();
+        return context.getThreadAccess().getScopedValueCache(platformThread);
+    }
+
+    @Substitution(versionFilter = VersionFilter.Java20OrLater.class)
+    public static void setScopedValueCache(@JavaType(Object[].class) StaticObject cache, @Inject EspressoContext context) {
+        StaticObject platformThread = context.getCurrentPlatformThread();
+        context.getThreadAccess().setScopedValueCache(platformThread, cache);
+    }
+
     @Substitution(versionFilter = VersionFilter.Java20OrLater.class, isTrivial = true)
     public static void ensureMaterializedForStackWalk(@JavaType(Object.class) StaticObject obj) {
         CompilerDirectives.blackhole(obj);
