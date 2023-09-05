@@ -319,7 +319,7 @@ public class CausalityExport {
         public InlinedMethodCode(BytecodePosition invokePos) {
             ArrayList<AnalysisMethod> context = new ArrayList<>();
             while (invokePos != null) {
-                if (invokePos.getBCI() != BytecodeFrame.UNWIND_BCI) {
+                if (invokePos.getBCI() != BytecodeFrame.UNWIND_BCI || invokePos.getCaller() == null) {
                     context.add((AnalysisMethod) invokePos.getMethod());
                 }
                 invokePos = invokePos.getCaller();
@@ -327,6 +327,10 @@ public class CausalityExport {
                 if (context.size() >= 2 && context.get(context.size() - 1) == context.get(context.size() - 2))
                     throw new RuntimeException("Didn't expect the same method to appear twice!");
             }
+
+            if (context.isEmpty())
+                throw new RuntimeException();
+
             this.context = context.toArray(AnalysisMethod[]::new);
         }
 
