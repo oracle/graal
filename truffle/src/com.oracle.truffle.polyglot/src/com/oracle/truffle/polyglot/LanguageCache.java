@@ -446,12 +446,7 @@ final class LanguageCache implements Comparable<LanguageCache> {
     }
 
     private static String getLanguageHomeImpl(String languageId) {
-        String home = toRealStringPath("org.graalvm.language." + languageId + ".home");
-        if (home == null) {
-            // check legacy property
-            home = toRealStringPath(languageId + ".home");
-        }
-        return home;
+        return toRealStringPath("org.graalvm.language." + languageId + ".home");
     }
 
     private static String toRealStringPath(String propertyName) {
