@@ -199,7 +199,7 @@ public class MethodTypeFlowBuilder {
         }
 
         // This is for capturing sideeffects e.g. by SubstrateGraphBuilderPlugin.interceptUpdaterInvoke(...) which adds reflection
-        try (var ignored = CausalityExport.get().setCause(new CausalityExport.MethodCode(method))) {
+        try (var ignored = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(method))) {
             graph = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
         }
 
@@ -210,7 +210,8 @@ public class MethodTypeFlowBuilder {
                  * parsing graphs again for compilation, we need to have all types, methods, fields
                  * of the original graph registered properly.
                  */
-                try (var ignored = CausalityExport.get().setCause(new CausalityExport.MethodCode(method))) {
+                // TODO: Account to inlined methods if possible
+                try (var ignored = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(method))) {
                     registerUsedElements(bb, graph, false);
                 }
             }
@@ -244,7 +245,8 @@ public class MethodTypeFlowBuilder {
                 return false;
             }
 
-            try (var ignored = CausalityExport.get().setCause(new CausalityExport.MethodCode(method))) {
+            // TODO: Account to inlined methods if possible
+            try (var ignored = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(method))) {
                 // Do it again after canonicalization changed type checks and field accesses.
                 registerUsedElements(bb, graph, true);
             }
@@ -1583,15 +1585,15 @@ public class MethodTypeFlowBuilder {
             if (createDeoptInvokeTypeFlow) {
                 invokeFlow = bb.analysisPolicy().createDeoptInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
             } else {
-                AnalysisMethod logicalCaller = getPotentiallyInlinedCaller(invoke);
+                CausalityExport.Event logicalCallerEvent = new CausalityExport.InlinedMethodCode(invoke.getNodeSourcePosition());
                 switch (invokeKind) {
                     case Static:
-                        CausalityExport.get().registerEdge(new CausalityExport.MethodCode(logicalCaller), new CausalityExport.MethodReachable(targetMethod));
+                        CausalityExport.get().registerEdge(logicalCallerEvent, new CausalityExport.MethodImplementationInvoked(targetMethod));
                         invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                         break;
                     case Special:
                         // Causality-TODO: This adds one kind of overapproximation: When the DefaultSpecialInvokeTypeFlow can prove that the receiver is null, it won't make the target reachable.
-                        CausalityExport.get().registerEdge(new CausalityExport.MethodCode(logicalCaller), new CausalityExport.MethodReachable(targetMethod));
+                        CausalityExport.get().registerEdge(logicalCallerEvent, new CausalityExport.MethodImplementationInvoked(targetMethod));
                         invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                         break;
                     case Virtual:

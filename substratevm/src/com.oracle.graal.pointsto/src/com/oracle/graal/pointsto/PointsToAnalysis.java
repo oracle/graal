@@ -316,7 +316,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * initialized with the corresponding parameter declared type.
              */
             Consumer<PointsToAnalysisMethod> triggerStaticMethodFlow = (pointsToMethod) -> {
-                CausalityExport.get().registerEvent(new CausalityExport.MethodReachable(pointsToMethod));
+                CausalityExport.get().registerEvent(new CausalityExport.MethodImplementationInvoked(pointsToMethod));
                 postTask(() -> {
                     pointsToMethod.registerAsDirectRootMethod(reason);
                     pointsToMethod.registerAsImplementationInvoked(reason.toString());

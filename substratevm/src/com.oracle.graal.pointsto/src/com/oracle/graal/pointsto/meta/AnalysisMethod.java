@@ -354,7 +354,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      */
     public void registerAsIntrinsicMethod(Object reason) {
         assert isValidReason(reason) : "Registering a method as intrinsic needs to provide a valid reason, found: " + reason;
-        CausalityExport.get().registerEvent(new CausalityExport.MethodReachable(this));
+        var invokedEvent = new CausalityExport.MethodImplementationInvoked(this);
+        CausalityExport.get().registerEvent(invokedEvent);
+        CausalityExport.get().registerEdge(invokedEvent, new CausalityExport.MethodReachable(this));
         AtomicUtils.atomicSetAndRun(this, reason, isIntrinsicMethodUpdater, this::onImplementationInvoked);
     }
 
@@ -386,6 +388,8 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
          * the method as invoked, it would have an unwanted side effect, where this method could
          * return before the class gets marked as reachable.
          */
+        CausalityExport.get().registerEdge(new CausalityExport.MethodImplementationInvoked(this), new CausalityExport.MethodReachable(this));
+        CausalityExport.get().registerEdge(new CausalityExport.MethodImplementationInvoked(this), new CausalityExport.InlinedMethodCode(this));
         try(var ignored = CausalityExport.get().setCause(new CausalityExport.MethodReachable(this))) {
             getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as implementation invoked");
         }
@@ -394,6 +398,9 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
     public void registerAsInlined(Object reason) {
         assert reason instanceof NodeSourcePosition || reason instanceof ResolvedJavaMethod : "Registering a method as inlined needs to provide the inline location as reason, found: " + reason;
+        var inlinedEvent = new CausalityExport.MethodInlined(this);
+        CausalityExport.get().registerEvent(inlinedEvent);
+        CausalityExport.get().registerEdge(inlinedEvent, new CausalityExport.MethodReachable(this));
         AtomicUtils.atomicSetAndRun(this, reason, isInlinedUpdater, this::onReachable);
     }
 
@@ -902,7 +909,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
 
             AnalysisParsedGraph graph;
             try (var ignored1 = CausalityExport.get().setCause(null)) {
-                try (var ignored2 = CausalityExport.get().setCause(new CausalityExport.MethodCode(this))) {
+                try (var ignored2 = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(this))) {
                     graph = AnalysisParsedGraph.parseBytecode(bb, this);
                 }
             }

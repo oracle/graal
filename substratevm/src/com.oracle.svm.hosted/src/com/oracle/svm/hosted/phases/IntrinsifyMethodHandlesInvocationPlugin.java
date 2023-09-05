@@ -807,7 +807,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             } else if (oNode.getClass() == LoadFieldNode.class) {
                 LoadFieldNode oLoad = (LoadFieldNode) oNode;
                 ResolvedJavaField tTarget;
-                try(var ignored = CausalityExport.get().setCause(new CausalityExport.MethodCode((AnalysisMethod) b.getMethod()))) {
+                try(var ignored = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(oNode.getNodeSourcePosition()))) {
                     tTarget = lookup(oLoad.field());
                 }
                 maybeEmitClassInitialization(b, tTarget.isStatic(), tTarget.getDeclaringClass());
@@ -818,7 +818,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             } else if (oNode.getClass() == StoreFieldNode.class) {
                 StoreFieldNode oStore = (StoreFieldNode) oNode;
                 ResolvedJavaField tTarget;
-                try(var ignored = CausalityExport.get().setCause(new CausalityExport.MethodCode((AnalysisMethod) b.getMethod()))) {
+                try(var ignored = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(oNode.getNodeSourcePosition()))) {
                     tTarget = lookup(oStore.field());
                 }
                 maybeEmitClassInitialization(b, tTarget.isStatic(), tTarget.getDeclaringClass());

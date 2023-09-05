@@ -79,7 +79,7 @@ public class Impl extends CausalityExport {
         if(callingMethod == null && invocation.getTargetMethod().getContextInsensitiveVirtualInvoke(invocation.getCallerMultiMethodKey()) != invocation)
             throw new RuntimeException("CausalityExport has made an invalid assumption!");
 
-        CausalityExport.Event callerEvent = callingMethod != null ? new CausalityExport.MethodCode(callingMethod) : new RootMethodRegistration(invocation.getTargetMethod());
+        CausalityExport.Event callerEvent = callingMethod != null ? new CausalityExport.InlinedMethodCode(invocation.getSource()) : new RootMethodRegistration(invocation.getTargetMethod());
 
         registerEdge(
                 callerEvent,
@@ -87,7 +87,7 @@ public class Impl extends CausalityExport {
         registerConjunctiveEdge(
                 new CausalityExport.VirtualMethodInvoked(invocation.getTargetMethod()),
                 new CausalityExport.TypeInstantiated(concreteTargetType),
-                new CausalityExport.MethodReachable(concreteTargetMethod)
+                new CausalityExport.MethodImplementationInvoked(concreteTargetMethod)
         );
     }
 
@@ -110,7 +110,7 @@ public class Impl extends CausalityExport {
 
         if (reason instanceof ObjectScanner.EmbeddedRootScan ers) {
             EmbeddedRoot er = new EmbeddedRoot(ers.getMethod(), heapObject);
-            registerConjunctiveEdge(new MethodCode(ers.getMethod()), e, er);
+            registerConjunctiveEdge(new InlinedMethodCode(ers.getMethod()), e, er);
             return er;
         }
 
@@ -226,12 +226,6 @@ public class Impl extends CausalityExport {
         for (Event e : events) {
             if (e != null && !e.unused() && e.root()) {
                 g.add(new Graph.DirectEdge(null, e));
-            }
-        }
-
-        for (AnalysisMethod m : bb.getUniverse().getMethods()) {
-            if (m.isReachable()) {
-                g.add(new Graph.DirectEdge(new MethodReachable(m), new MethodCode(m)));
             }
         }
 

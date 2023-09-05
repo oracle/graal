@@ -15,8 +15,8 @@ import com.oracle.graal.pointsto.reports.causality.Graph;
 import com.oracle.graal.pointsto.reports.causality.TypeflowImpl;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.Signature;
 
 import java.lang.reflect.Constructor;
@@ -254,34 +254,105 @@ public class CausalityExport {
         }
     }
 
-    public static final class MethodCode extends Event {
+    public static final class MethodImplementationInvoked extends Event {
         public final AnalysisMethod method;
 
-        public MethodCode(AnalysisMethod method) {
+        public MethodImplementationInvoked(AnalysisMethod method) {
             this.method = method;
-        }
-
-        @Override
-        public String toString() {
-            return method.format("%H.%n(%P):%R") + " [Impl]";
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            MethodCode that = (MethodCode) o;
-            return method.equals(that.method);
-        }
 
-        @Override
-        public boolean unused() {
-            return !method.isReachable();
+            MethodImplementationInvoked that = (MethodImplementationInvoked) o;
+            return method.equals(that.method);
         }
 
         @Override
         public int hashCode() {
             return getClass().hashCode() ^ method.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return method.format("%H.%n(%P):%R") + " [Implementation Invoked]";
+        }
+    }
+
+    public static final class MethodInlined extends Event {
+        public final AnalysisMethod method;
+
+        public MethodInlined(AnalysisMethod method) {
+            this.method = method;
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+
+            var that = (MethodInlined) o;
+            return method.equals(that.method);
+        }
+
+        @Override
+        public int hashCode() {
+            return getClass().hashCode() ^ method.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return method.format("%H.%n(%P):%R") + " [Inlined]";
+        }
+    }
+
+    public static final class InlinedMethodCode extends Event {
+        public final AnalysisMethod[] context;
+
+        public InlinedMethodCode(AnalysisMethod method) {
+            this.context = new AnalysisMethod[] { method };
+        }
+
+        public InlinedMethodCode(BytecodePosition invokePos) {
+            ArrayList<AnalysisMethod> context = new ArrayList<>();
+            while (invokePos != null) {
+                // if (invokePos.getBCI() != BytecodeFrame.UNKNOWN_BCI) // TODO: Revisit this
+                context.add((AnalysisMethod) invokePos.getMethod());
+                invokePos = invokePos.getCaller();
+
+                if (context.size() >= 2 && context.get(context.size() - 1) == context.get(context.size() - 2))
+                    throw new RuntimeException("Didn't expect the same method to appear twice!");
+            }
+            this.context = context.toArray(AnalysisMethod[]::new);
+        }
+
+        @Override
+        public String toString() {
+            StringBuilder sb = new StringBuilder(context[0].format("%H.%n(%P):%R"));
+
+            for (int i = 1; i < context.length; i++) {
+                sb.append(';');
+                AnalysisMethod m = context[i];
+                sb.append(m.format("%H.%n(%P):%R"));
+            }
+            sb.append(" [Impl]");
+
+            return sb.toString();
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            InlinedMethodCode that = (InlinedMethodCode) o;
+            return Arrays.equals(context, that.context);
+        }
+
+        @Override
+        public int hashCode() {
+            return getClass().hashCode() ^ Arrays.hashCode(context);
         }
     }
 

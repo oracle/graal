@@ -12,6 +12,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import jdk.vm.ci.code.BytecodePosition;
 import org.graalvm.collections.Pair;
 
 import java.lang.reflect.Modifier;
@@ -104,14 +105,29 @@ public class TypeflowImpl extends Impl {
         flowingFromHeap.keySet().stream().map(Pair::getLeft).forEach(callback);
 
         // TODO: Unsure about this - whether it is necessary and whether it is correct/complete
-        originalInvokeReceivers.keySet().stream().map(InvokeTypeFlow::getTargetMethod).flatMap(targetMethod -> Arrays.stream(targetMethod.getImplementations())).map(MethodReachable::new).forEach(callback);
+        originalInvokeReceivers.keySet().stream().map(InvokeTypeFlow::getTargetMethod).flatMap(targetMethod -> Arrays.stream(targetMethod.getImplementations())).map(MethodImplementationInvoked::new).forEach(callback);
 
         forEachTypeflow(tf -> {
-            if(tf != null && tf.method() != null) {
-                callback.accept(new MethodCode(tf.method()));
-                callback.accept(new MethodReachable(tf.method()));
+            if(tf != null) {
+                Event e = getContainingEvent(tf);
+                if (e != null) {
+                    callback.accept(e);
+                }
             }
         });
+    }
+
+    private static Event getContainingEvent(TypeFlow<?> f) {
+        if (f.getSource() instanceof BytecodePosition pos) {
+            return new InlinedMethodCode(pos);
+        } else {
+            AnalysisMethod m = f.method();
+            if (m != null) {
+                return new InlinedMethodCode(m);
+            } else {
+                return null;
+            }
+        }
     }
 
     @Override
@@ -126,9 +142,21 @@ public class TypeflowImpl extends Impl {
                 return null;
 
             return flowMapping.computeIfAbsent(flow, f -> {
-                AnalysisMethod m = f.method();
+                Event reason;
+                Object source = f.getSource();
+                if (source instanceof BytecodePosition pos) {
+                    reason = new InlinedMethodCode(pos);
+                } else {
+                    AnalysisMethod m = f.method();
+                    if (m != null) {
+                        reason = new InlinedMethodCode(m);
+                    } else {
+                        reason = null;
+                    }
+                }
 
-                Event reason = m == null ? null : new MethodCode(m);
+                if (reason instanceof InlinedMethodCode imc && imc.context.length == 1 && !imc.context[0].isImplementationInvoked())
+                    throw new RuntimeException();
 
                 if(reason != null && reason.unused())
                     return null;
@@ -187,7 +215,7 @@ public class TypeflowImpl extends Impl {
         }
 
         for (var e : virtual_invokes.entrySet()) {
-            Event reason = new MethodReachable(e.getKey());
+            Event reason = new MethodImplementationInvoked(e.getKey());
 
             if(reason.unused())
                 continue;

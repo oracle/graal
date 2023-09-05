@@ -115,7 +115,7 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
     @Override
     protected void run(StructuredGraph graph) {
         try (var ignored0 = CausalityExport.get().setCause(null)) {
-            try (var ignored1 = CausalityExport.get().setCause(graph.method() instanceof AnalysisMethod ? new CausalityExport.MethodCode((AnalysisMethod) graph.method()) : null)) {
+            try (var ignored1 = CausalityExport.get().setCause(graph.method() instanceof AnalysisMethod ? new CausalityExport.InlinedMethodCode((AnalysisMethod) graph.method()) : null)) {
                 super.run(graph);
             }
         }
