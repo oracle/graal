@@ -29,32 +29,32 @@
  */
 package com.oracle.truffle.llvm.nativemode.resources;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.util.Properties;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.InternalResource;
+import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
-@InternalResource.Id(value = "libsulong-native", componentId = "llvm", optional = true)
-public class SulongNativeLibResource implements InternalResource {
+import com.oracle.truffle.api.InternalResource.CPUArchitecture;
+import com.oracle.truffle.api.InternalResource.OS;
 
-    private static Path basePath(Env env) {
-        return Path.of("META-INF", "resources", "llvm", "native-lib", env.getOS().toString(), env.getCPUArchitecture().toString());
-    }
+public final class NativeResourceFeature implements Feature {
 
     @Override
-    public void unpackFiles(Env env, Path targetDirectory) throws IOException {
-        Path base = basePath(env);
-        env.unpackResourceFiles(base.resolve("files"), targetDirectory, base);
-    }
+    public void duringSetup(DuringSetupAccess access) {
+        String fileListPath = String.format("/META-INF/resources/llvm/native/%s/%s/files", OS.getCurrent(), CPUArchitecture.getCurrent());
+        Properties props = new Properties();
+        try (BufferedInputStream in = new BufferedInputStream(getClass().getResourceAsStream(fileListPath))) {
+            props.load(in);
+        } catch (IOException ex) {
+            throw new IllegalStateException("error processing LLVM runtime resources", ex);
+        }
 
-    @Override
-    public String versionHash(Env env) {
-        try {
-            Path hashResource = basePath(env).resolve("sha256");
-            return env.readResourceLines(hashResource).get(0);
-        } catch (IOException ioe) {
-            throw CompilerDirectives.shouldNotReachHere(ioe);
+        Module self = getClass().getModule();
+        for (Object key : props.keySet()) {
+            String path = (String) key;
+            RuntimeResourceAccess.addResource(self, path);
         }
     }
 }

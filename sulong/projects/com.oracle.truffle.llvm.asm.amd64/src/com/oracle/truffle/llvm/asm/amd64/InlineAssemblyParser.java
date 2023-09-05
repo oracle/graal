@@ -35,11 +35,11 @@ package com.oracle.truffle.llvm.asm.amd64;
 
 import com.oracle.truffle.llvm.runtime.nodes.func.LLVMInlineAssemblyRootNode;
 
-import org.antlr.v4.runtime.atn.*;
-import org.antlr.v4.runtime.dfa.DFA;
-import org.antlr.v4.runtime.*;
-import org.antlr.v4.runtime.misc.*;
-import org.antlr.v4.runtime.tree.*;
+import org.graalvm.shadowed.org.antlr.v4.runtime.atn.*;
+import org.graalvm.shadowed.org.antlr.v4.runtime.dfa.DFA;
+import org.graalvm.shadowed.org.antlr.v4.runtime.*;
+import org.graalvm.shadowed.org.antlr.v4.runtime.misc.*;
+import org.graalvm.shadowed.org.antlr.v4.runtime.tree.*;
 import java.util.List;
 import java.util.Iterator;
 import java.util.ArrayList;
