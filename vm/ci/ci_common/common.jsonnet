@@ -503,7 +503,7 @@ local devkits = graal_common.devkits;
   maven_deploy_base_functions: {
     dynamic_ce_imports(os, arch)::
       local legacy_imports = '/tools,/compiler,/graal-js,/espresso,/substratevm';
-      local ce_windows_imports = legacy_imports + ',/wasm,/sulong,graalpython';
+      local ce_windows_imports = legacy_imports + ',/vm,/wasm,/sulong,graalpython';
       local non_windows_imports = ',truffleruby';
 
       if (os == 'windows') then
@@ -523,6 +523,7 @@ local devkits = graal_common.devkits;
         '--suite', 'substratevm',
       ];
       local ce_windows_suites = legacy_suites + [
+        '--suite', 'vm',
         '--suite', 'wasm',
         '--suite', 'sulong',
         '--suite', 'graalpython'
