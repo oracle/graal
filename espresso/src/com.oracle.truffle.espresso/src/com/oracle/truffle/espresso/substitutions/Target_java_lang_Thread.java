@@ -198,7 +198,7 @@ public final class Target_java_lang_Thread {
         hostThread.setPriority(newPriority);
     }
 
-    @Substitution(hasReceiver = true)
+    @Substitution(hasReceiver = true, versionFilter = VersionFilter.Java18OrEarlier.class)
     public static boolean isAlive(@JavaType(Thread.class) StaticObject self,
                     @Inject EspressoContext context) {
         return context.getThreadAccess().isAlive(self);
