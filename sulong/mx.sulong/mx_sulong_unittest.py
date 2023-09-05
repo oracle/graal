@@ -84,9 +84,9 @@ class SulongUnittestConfigBase(mx_unittest.MxUnittestConfig):
     sulongConfig = None
     useResources = None
 
-    def apply(self, config):
+    def apply(self, config, overrideSulongConfig=None):
         (vmArgs, mainClass, mainClassArgs) = config
-        cfg = SulongUnittestConfigBase.sulongConfig
+        cfg = overrideSulongConfig or SulongUnittestConfigBase.sulongConfig
         # remove args from javaProperties
         vmArgs = [arg for arg in vmArgs if not arg.startswith('-Dorg.graalvm.language.llvm.home')]
         vmArgs += [f'-Dsulongtest.path.{d.name}={d.get_output()}' for d in _get_test_distributions(cfg.nativeTestDistFrom)]
@@ -118,19 +118,24 @@ class SulongUnittestConfig(SulongUnittestConfigBase):
     def __init__(self):
         super(SulongUnittestConfig, self).__init__(name="sulong")
 
-    def apply(self, config):
-        (vmArgs, mainClass, mainClassArgs) = super(SulongUnittestConfig, self).apply(config)
+    def apply(self, config, **kwArgs):
+        (vmArgs, mainClass, mainClassArgs) = super(SulongUnittestConfig, self).apply(config, **kwArgs)
         newVmArgs = []
         i = 0
         while i < len(vmArgs):
+            # remove all --add-modules args
             if vmArgs[i] == "--add-modules":
-                # remove all --add-modules args except org.graalvm.polyglot (the embedders API)
-                if vmArgs[i+1] != "org.graalvm.polyglot":
-                    i += 2
-                    continue
+                i += 2
+            elif vmArgs[i].startswith("--add-modules="):
+                i += 1
+            else:
+                newVmArgs.append(vmArgs[i])
+                i += 1
 
-            newVmArgs.append(vmArgs[i])
-            i += 1
+        if mx.get_opts().use_llvm_standalone is None:
+            # add back the embedders API if we're not testing a standalone
+            newVmArgs.append("--add-modules=org.graalvm.polyglot")
+
         return (newVmArgs, mainClass, mainClassArgs)
 
 # unittest config for Sulong tests that depend on sulong internals
@@ -138,8 +143,8 @@ class SulongInternalUnittestConfig(SulongUnittestConfigBase):
     def __init__(self):
         super(SulongInternalUnittestConfig, self).__init__(name="sulong-internal")
 
-    def apply(self, config):
-        (vmArgs, mainClass, mainClassArgs) = super(SulongInternalUnittestConfig, self).apply(config)
+    def apply(self, config, **kwArgs):
+        (vmArgs, mainClass, mainClassArgs) = super(SulongInternalUnittestConfig, self).apply(config, **kwArgs)
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.truffle/com.oracle.truffle.api.impl=ALL-UNNAMED'])  # for TruffleRunner
         mainClassArgs.extend(['-JUnitOpenPackages', 'org.graalvm.llvm_community/*=ALL-UNNAMED'])  # for Sulong internals
         return (vmArgs, mainClass, mainClassArgs)
@@ -176,8 +181,6 @@ mx_unittest.add_unittest_argument('--sulong-test-resources', default=False, help
 
 # helper for `mx native-unittest`
 def get_vm_args_for_native():
-    SulongUnittestConfigBase.sulongConfig = _sulong_test_configs["Native"]
     cfg = SulongInternalUnittestConfig()
-    (extraVmArgs, _, _) = cfg.apply(([], None, []))
-    SulongUnittestConfigBase.sulongConfig = None
+    (extraVmArgs, _, _) = cfg.apply(([], None, []), overrideSulongConfig=_sulong_test_configs["Native"])
     return extraVmArgs
