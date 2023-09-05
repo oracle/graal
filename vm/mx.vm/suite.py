@@ -83,19 +83,6 @@ suite = {
     },
 
     "projects": {
-        "org.graalvm.maven.downloader" : {
-            "subDir" : "src",
-            "sourceDirs" : ["src"],
-            "javaCompliance" : "17+",
-            "license" : "UPL",
-            "dependencies": [
-                "sdk:NATIVEIMAGE",
-            ],
-            "requires": [
-                "java.logging",
-                "java.xml",
-            ],
-        },
         "org.graalvm.component.installer" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
@@ -204,17 +191,6 @@ suite = {
     },
 
     "distributions": {
-        "MAVEN_DOWNLOADER": {
-            "defaultBuild": False,
-            "mainClass": "org.graalvm.maven.downloader.Main",
-            "dependencies": [
-                "org.graalvm.maven.downloader",
-            ],
-            "distDependencies": [
-                "sdk:NATIVEIMAGE",
-            ],
-            "maven": False,
-        },
         "INSTALLER": {
             "subDir": "src",
             "mainClass": "org.graalvm.component.installer.ComponentInstaller",
