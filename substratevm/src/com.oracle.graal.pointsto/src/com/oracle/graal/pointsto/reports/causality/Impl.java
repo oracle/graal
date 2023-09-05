@@ -66,8 +66,12 @@ public class Impl extends CausalityExport {
 
     @Override
     public void registerEdge(Event cause, Event consequence) {
-        if((cause == null || cause.root()) && !causes.empty())
-            cause = causes.peek().event;
+        if((cause == null || cause.root()) && !causes.empty()) {
+            Event topCause = causes.peek().event;
+            if (topCause != null) {
+                cause = topCause;
+            }
+        }
 
         direct_edges.add(Pair.create(cause, consequence));
     }
