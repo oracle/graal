@@ -327,7 +327,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
         TypeMirror[] boxingEliminated = parent.boxingEliminatedTypes.toArray(new TypeMirror[0]);
 
         for (int i = 0; i < signature.valueCount; i++) {
-            result.add(createNodeChildAnnotation("child" + i, signature.getParameterType(i), boxingEliminated));
+            result.add(createNodeChildAnnotation("child" + i, signature.getParameterType(i)));
         }
         for (int i = 0; i < signature.localSetterCount; i++) {
             result.add(createNodeChildAnnotation("localSetter" + i, types.LocalSetter));

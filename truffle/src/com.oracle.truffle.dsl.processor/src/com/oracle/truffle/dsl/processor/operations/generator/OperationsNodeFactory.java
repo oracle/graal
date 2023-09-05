@@ -2452,6 +2452,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                     break;
                 case CUSTOM_SIMPLE:
                     b.startNewArray(arrayOf(context.getType(Object.class)), null);
+                    for (InstructionImmediate immediate : operation.instruction.getImmediates(ImmediateKind.BYTECODE_INDEX)) {
+                        b.string(UNINIT + " /* " + immediate.name + " */");
+                    }
                     for (int i = 0; i < operation.operationArguments.length; i++) {
                         b.string("arg" + i);
                     }
@@ -2646,6 +2649,11 @@ public class OperationsNodeFactory implements ElementHelpers {
             } else {
                 b.string("" + !operation.isVoid);
             }
+            if (operation.instruction != null) {
+                b.string("bci - " + operation.instruction.getInstructionLength());
+            } else {
+                b.string("-1");
+            }
             b.end(2);
 
             return ex;
@@ -2753,7 +2761,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation) {
-            b.startBlock();
             String[] args = switch (operation.kind) {
                 case LOAD_LOCAL -> new String[]{"((OperationLocalImpl) arg0).index"};
                 case STORE_LOCAL, LOAD_LOCAL_MATERIALIZED, STORE_LOCAL_MATERIALIZED -> new String[]{"((OperationLocalImpl) operationStack[operationSp].data).index"};
@@ -2814,7 +2821,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 default -> throw new AssertionError("Reached an operation " + operation.name + " that cannot be initialized. This is a bug in the Operation DSL processor.");
             };
             buildEmitInstruction(b, operation.instruction, args);
-            b.end();
         }
 
         private CodeExecutableElement createEmitOperationBegin() {
@@ -2870,13 +2876,15 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.string("label");
                 b.string("curStack");
                 b.end(2);
-            } else if (operation.instruction != null) {
+            } else {
+                assert operation.instruction != null;
                 buildEmitOperationInstruction(b, operation);
-            }
 
-            b.startStatement().startCall("afterChild");
-            b.string("" + !operation.isVoid);
-            b.end(2);
+                b.startStatement().startCall("afterChild");
+                b.string("" + !operation.isVoid);
+                b.string("bci - " + operation.instruction.getInstructionLength());
+                b.end(2);
+            }
 
             return ex;
         }
@@ -2895,14 +2903,22 @@ public class OperationsNodeFactory implements ElementHelpers {
             List<InstructionImmediate> immediates = instruction.getImmediates();
             String[] args = new String[immediates.size()];
 
+            int childNodeIndex = 0;
             int localSetterIndex = 0;
             int localSetterRangeIndex = 0;
             for (int i = 0; i < immediates.size(); i++) {
                 InstructionImmediate immediate = immediates.get(i);
                 args[i] = switch (immediate.kind) {
-                    case BYTECODE_INDEX -> UNINIT;
+                    case BYTECODE_INDEX -> {
+                        String child = "child" + childNodeIndex++;
+                        b.startAssign("int " + child);
+                        b.string("(int) ((Object[]) operationStack[operationSp].data)[" + i + "]");
+                        b.end();
+
+                        yield child;
+                    }
                     case LOCAL_SETTER -> {
-                        String arg = "localSetter" + localSetterIndex;
+                        String arg = "localSetter" + localSetterIndex++;
                         b.startAssign("int " + arg);
                         if (inEmit) {
                             b.string("((OperationLocalImpl) arg" + i + ").index");
@@ -2915,7 +2931,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.string(arg);
                         b.end(2);
 
-                        localSetterIndex++;
                         yield arg;
                     }
                     case LOCAL_SETTER_RANGE_START -> {
@@ -3033,6 +3048,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeExecutableElement createAfterChild() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "afterChild");
             ex.addParameter(new CodeVariableElement(context.getType(boolean.class), "producedValue"));
+            ex.addParameter(new CodeVariableElement(context.getType(int.class), "childBci"));
             CodeTreeBuilder b = ex.createBuilder();
 
             b.statement("Object data = operationStack[operationSp - 1].data");
@@ -3047,24 +3063,64 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 b.startCase().tree(createOperationConstant(op)).end().startBlock();
 
+                /**
+                 * Ensure the stack balances. If a value was expected, assert that the child
+                 * produced a value. If a value was not expected but the child produced one, pop it.
+                 */
                 if (op.childrenMustBeValues != null && !op.isTransparent) {
-                    // this can be optimized a bit, by merging all the throw cases into one, and all
-                    // the pop cases into the other
+                    List<Integer> valueChildren = new ArrayList<>();
+                    List<Integer> nonValueChildren = new ArrayList<>();
+
                     for (int i = 0; i < op.childrenMustBeValues.length; i++) {
-                        b.startIf().string("childIndex ", (i == op.childrenMustBeValues.length - 1 && op.isVariadic) ? ">=" : "==", " " + i).end().startBlock();
                         if (op.childrenMustBeValues[i]) {
-                            b.startIf().string("!producedValue").end().startBlock();
-                            b.startThrow().startNew(context.getType(IllegalStateException.class));
-                            b.string("\"Operation " + op.name + " expected a value-producing child at position \"",
-                                            " + childIndex + ",
-                                            "\", but a void one was provided. This likely indicates a bug in the parser.\"");
-                            b.end(2);
-                            b.end();
+                            valueChildren.add(i);
                         } else {
-                            b.startIf().string("producedValue").end().startBlock();
-                            buildEmitInstruction(b, model.popInstruction, null);
-                            b.end();
+                            nonValueChildren.add(i);
                         }
+                    }
+
+                    if (nonValueChildren.isEmpty()) {
+                        // Simplification: each child should be value producing.
+                        b.startIf().string("!producedValue").end().startBlock();
+                        b.startThrow().startNew(context.getType(IllegalStateException.class));
+                        b.string("\"Operation " + op.name + " expected a value-producing child at position \"",
+                                        " + childIndex + ",
+                                        "\", but a void one was provided. This likely indicates a bug in the parser.\"");
+                        b.end(3);
+                    } else if (valueChildren.isEmpty()) {
+                        // Simplification: each child should not be value producing.
+                        b.startIf().string("producedValue").end().startBlock();
+                        buildEmitInstruction(b, model.popInstruction, null);
+                        b.end();
+                    } else {
+                        // Otherwise, partition by value/not value producing.
+                        b.startIf();
+                        b.string("(");
+                        for (int i = 0; i < valueChildren.size(); i++) {
+                            if (i != 0) {
+                                b.string(" || ");
+                            }
+                            b.string("childIndex == " + valueChildren.get(i));
+                        }
+                        b.string(") && !producedValue");
+                        b.end().startBlock();
+                        b.startThrow().startNew(context.getType(IllegalStateException.class));
+                        b.string("\"Operation " + op.name + " expected a value-producing child at position \"",
+                                        " + childIndex + ",
+                                        "\", but a void one was provided. This likely indicates a bug in the parser.\"");
+                        b.end(3);
+
+                        b.startElseIf();
+                        b.string("(");
+                        for (int i = 0; i < nonValueChildren.size(); i++) {
+                            if (i != 0) {
+                                b.string(" || ");
+                            }
+                            b.string("childIndex == " + nonValueChildren.get(i));
+                        }
+                        b.string(") && producedValue");
+                        b.end().startBlock();
+                        buildEmitInstruction(b, model.popInstruction, null);
                         b.end();
                     }
                 }
@@ -3181,6 +3237,18 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("finallyTryContext = finallyTryContext.parentContext");
 
                         b.end();
+                        break;
+                    case CUSTOM_SIMPLE:
+                        int immediateIndex = 0;
+                        boolean elseIf = false;
+                        for (int valueIndex = 0; valueIndex < op.instruction.signature.valueCount; valueIndex++) {
+                            if (op.instruction.signature.canBoxingEliminateValue(valueIndex)) {
+                                elseIf = b.startIf(elseIf);
+                                b.string("childIndex == " + valueIndex).end().startBlock();
+                                b.statement("((Object[]) data)[" + immediateIndex++ + "] = childBci");
+                                b.end();
+                            }
+                        }
                         break;
                 }
 
@@ -3338,8 +3406,8 @@ public class OperationsNodeFactory implements ElementHelpers {
                         case BYTECODE_INDEX:
                             // Custom operations don't have non-local branches/children, so
                             // this immediate is *always* relative.
-                            b.statement("int newOffset = " + readBc("offsetBci + handlerBci + " + immediate.offset) + " + offsetBci /* adjust " + immediate.name + " */");
-                            b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset, "(short) newOffset"));
+                            b.statement(writeBc("offsetBci + handlerBci + " + immediate.offset,
+                                            "(short) (" + readBc("offsetBci + handlerBci + " + immediate.offset) + " + offsetBci) /* adjust " + immediate.name + " */"));
                             break;
                         case NODE:
                             // Allocate a separate Node for each handler.
@@ -3781,6 +3849,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             for (InstructionModel instruction : OperationsNodeFactory.this.model.getInstructions()) {
                 CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(short.class), instruction.getConstantName());
                 fld.createInitBuilder().string(instruction.id).end();
+                fld.createDocBuilder().startDoc().lines(instruction.pp()).end(2);
                 instructionsElement.add(fld);
             }
             return instructionsElement;
@@ -3882,10 +3951,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 if (instr.isInstrumentationOnly() && !tier.isInstrumented) {
                     continue;
                 }
-
-                b.startDoc();
-                b.lines(instr.pp());
-                b.end();
 
                 b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
 
