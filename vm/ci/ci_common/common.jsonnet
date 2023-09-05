@@ -454,10 +454,17 @@ local devkits = graal_common.devkits;
 
   graalvm_complete_build_deps(edition, os, arch):
       local java_deps(edition) =
-        if (edition == 'ce' || edition == 'ee') then {
+        if (edition == 'ce') then
+          {
             downloads+: {
               JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17'],
               EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+            }
+          }
+        else if (edition == 'ee') then
+          {
+            downloads+: {
+              JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
             }
           }
         else
