@@ -577,6 +577,7 @@ local devkits = graal_common.devkits;
       self.mx_cmd_base(os, arch)
       + vm.maven_deploy_base_functions.ee_suites(os, arch)
       + self.mvn_args
+      + ['--dummy-javadoc']
       + ['--licenses', vm.maven_deploy_base_functions.ee_licenses()]
       + (if dry_run then ['--dry-run'] else [])
       + repo_strings,
