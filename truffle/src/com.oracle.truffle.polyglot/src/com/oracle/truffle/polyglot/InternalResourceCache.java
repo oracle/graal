@@ -328,19 +328,6 @@ final class InternalResourceCache {
      * {@code TruffleBaseFeature#afterAnalysis}.
      */
     static void resetNativeImageState() {
-        cacheRoot = null;
-        for (LanguageCache language : LanguageCache.languages().values()) {
-            for (String resourceId : language.getResourceIds()) {
-                InternalResourceCache cache = language.getResourceCache(resourceId);
-                cache.resetFileSystemNativeImageState();
-            }
-        }
-        for (InstrumentCache instrument : InstrumentCache.load()) {
-            for (String resourceId : instrument.getResourceIds()) {
-                InternalResourceCache cache = instrument.getResourceCache(resourceId);
-                cache.resetFileSystemNativeImageState();
-            }
-        }
         nativeImageCache.clear();
     }
 
