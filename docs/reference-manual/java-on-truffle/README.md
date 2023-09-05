@@ -28,35 +28,25 @@ Java on Truffle passes the Java Compatibility Kit (JCK or TCK for Java SE).
 
 ## Getting Started
 
-The Java on Truffle runtime is not available by default, but can be easily added as a Maven dependency to your Java project.
-The Java on Truffle artifact should be on the Java module or class path.
+Starting of GraalVM for JDK 21, Java on Truffle (known as Espresso) is available as a standalone distribution. 
+You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
-Add the following set of dependencies to the project configuration file, _pom.xml_.
+1. Navigate to [GitHub releases of GraalVM for JDK 21](https://github.com/graalvm/graalvm-ce-builds/releases) and download the Java on Truffle (Espresso) standalone for your operating system. 
 
-To enable the polyglot runtime:
-```xml
-<dependency>
-    <groupId>org.graalvm.polyglot</groupId>
-    <artifactId>polyglot</artifactId> 
-    <version>${graalvm.version}</version>
-</dependency>
-```
-To enable Java on Truffle:
-```xml
-<dependency>
-    <groupId>org.graalvm.polyglot</groupId>
-    <artifactId>java</artifactId> 
-    <version>${graalvm.version}</version>
-</dependency>
-```
-To enable the Truffle tools:
-```xml
-<dependency>
-    <groupId>org.graalvm.polyglot</groupId>
-    <artifactId>tools</artifactId>
-    <version>${graalvm.version}</version>
-</dependency>
-```
+2. Unzip the archive:
+   ```shell
+   tar -xzf <archive>.tar.gz
+   ```
+   Alternatively, open the file in the Finder.
+   > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+    ```shell
+    sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
+    ```
+
+3. A standalone comes with a JVM in addition to its native launcher. Check the version to see the Java on Truffle runtime is active:
+    ```shell
+    ./path/to/bin/java -truffle --version
+    ```
 
 ## Run Java on Truffle
 
