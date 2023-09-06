@@ -56,7 +56,6 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.hosted.analysis.ReachabilityTracePrinter;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -241,6 +240,7 @@ import com.oracle.svm.hosted.FeatureImpl.AfterImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.AfterRegistrationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeCompilationAccessImpl;
+import com.oracle.svm.hosted.FeatureImpl.BeforeHeapLayoutAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeUniverseBuildingAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.ConcurrentAnalysisAccessImpl;
@@ -252,6 +252,7 @@ import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.Inflation;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.analysis.NativeImageReachabilityAnalysisEngine;
+import com.oracle.svm.hosted.analysis.ReachabilityTracePrinter;
 import com.oracle.svm.hosted.analysis.SVMAnalysisMetaAccess;
 import com.oracle.svm.hosted.analysis.SubstrateUnsupportedFeatures;
 import com.oracle.svm.hosted.annotation.SubstrateAnnotationExtractor;
@@ -694,6 +695,10 @@ public class NativeImageGenerator {
                 try (DebugContext.Scope buildScope = debug.scope("CreateImage", codeCacheProvider)) {
                     try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.IMAGE)) {
                         bb.getHeartbeatCallback().run();
+
+                        BeforeHeapLayoutAccessImpl beforeLayoutConfig = new BeforeHeapLayoutAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtimeConfiguration,
+                                        nativeLibraries);
+                        featureHandler.forEachFeature(feature -> feature.beforeHeapLayout(beforeLayoutConfig));
 
                         buildNativeImageHeap(heap, codeCache);
 

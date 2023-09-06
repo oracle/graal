@@ -66,7 +66,7 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.nativeimage.hosted.Feature.FeatureAccess;
 import org.graalvm.word.Pointer;
@@ -301,7 +301,7 @@ public class GraalSupport {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerImmutableObjects(CompilationAccess access) {
+    public static void registerImmutableObjects(BeforeHeapLayoutAccess access) {
         access.registerAsImmutable(get().graphEncoding);
         access.registerAsImmutable(get().graphObjects);
         access.registerAsImmutable(get().graphNodeTypes);

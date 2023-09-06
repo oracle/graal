@@ -39,6 +39,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
@@ -269,6 +270,47 @@ public final class NativeImageHeap implements ImageHeap {
     public void registerAsImmutable(Object object) {
         assert addObjectsPhase.isBefore() : "Registering immutable object too late: phase: " + addObjectsPhase.toString();
         knownImmutableObjects.add(object);
+    }
+
+    public void registerAsImmutable(Object root, Predicate<Object> includeObject) {
+        Deque<Object> worklist = new ArrayDeque<>();
+        IdentityHashMap<Object, Boolean> registeredObjects = new IdentityHashMap<>();
+
+        worklist.push(root);
+
+        while (!worklist.isEmpty()) {
+            Object cur = worklist.pop();
+            registerAsImmutable(cur);
+
+            if (hMetaAccess.optionalLookupJavaType(cur.getClass()).isEmpty()) {
+                throw VMError.shouldNotReachHere("Type missing from static analysis: " + cur.getClass().getTypeName());
+            } else if (cur instanceof Object[]) {
+                for (Object element : ((Object[]) cur)) {
+                    addToWorklist(aUniverse.replaceObject(element), includeObject, worklist, registeredObjects);
+                }
+            } else {
+                JavaConstant constant = aUniverse.getSnippetReflection().forObject(cur);
+                for (HostedField field : hMetaAccess.lookupJavaType(constant).getInstanceFields(true)) {
+                    if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
+                        Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, constant));
+                        addToWorklist(fieldValue, includeObject, worklist, registeredObjects);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void addToWorklist(Object object, Predicate<Object> includeObject, Deque<Object> worklist, IdentityHashMap<Object, Boolean> registeredObjects) {
+        if (object == null || registeredObjects.containsKey(object)) {
+            return;
+        } else if (object instanceof DynamicHub || object instanceof Class) {
+            /* Classes are handled specially, some fields of it are immutable and some not. */
+            return;
+        } else if (!includeObject.test(object)) {
+            return;
+        }
+        registeredObjects.put(object, Boolean.TRUE);
+        worklist.push(object);
     }
 
     /**

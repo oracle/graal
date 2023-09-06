@@ -33,8 +33,8 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.hosted.util.ObservableMap;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 
 public class ObservableImageHeapMapProviderImpl implements ObservableImageHeapMapProvider {
     private List<ObservableMap<?, ?>> cachedInstances = new ArrayList<>();
@@ -77,8 +77,13 @@ public class ObservableImageHeapMapProviderImpl implements ObservableImageHeapMa
 final class ObservableHeapMapFeature implements InternalFeature {
 
     @Override
-    public void duringSetup(DuringSetupAccess a) {
-        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        /*
+         * Set the heap scanner beforeAnalysis, i.e., only after all other features have finished
+         * their set-up. We want to make sure that all features have already registered the object
+         * replacers before any scanning can happen, e.g., such as HostedDynamicHubFeature.
+         */
+        BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         ObservableImageHeapMapProviderImpl provider = (ObservableImageHeapMapProviderImpl) ImageSingletons.lookup(ObservableImageHeapMapProvider.class);
         provider.setHeapScanner(access.getUniverse().getHeapScanner());
     }

@@ -63,6 +63,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.AfterCompilationAccess;
 import org.graalvm.nativeimage.hosted.Feature.AfterHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
@@ -653,10 +654,12 @@ public abstract class RuntimeCompilationFeature {
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
         HostedUniverse hUniverse = hMetaAccess.getUniverse();
         objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders());
+    }
 
-        objectReplacer.registerImmutableObjects(config);
-        GraalSupport.registerImmutableObjects(config);
-        ((SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(config);
+    protected final void beforeHeapLayoutHelper(BeforeHeapLayoutAccess a) {
+        objectReplacer.registerImmutableObjects(a);
+        GraalSupport.registerImmutableObjects(a);
+        ((SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(a);
     }
 
     protected final void afterHeapLayoutHelper(AfterHeapLayoutAccess a) {
