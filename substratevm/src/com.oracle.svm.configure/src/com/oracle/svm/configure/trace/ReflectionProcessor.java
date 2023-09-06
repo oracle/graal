@@ -76,7 +76,6 @@ class ReflectionProcessor extends AbstractProcessor {
                 resourceConfiguration.addResourcePattern(condition, (module == null ? "" : module + ":") + Pattern.quote(resource));
                 return;
             case "getResource":
-            case "getResourceAsStream":
             case "getSystemResource":
             case "getSystemResourceAsStream":
             case "getResources":

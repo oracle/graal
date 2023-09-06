@@ -89,6 +89,8 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     final JNIMethodId sunUtilResourcesBundlesCacheKeyGetName;
     final JNIMethodId sunUtilResourcesBundlesCacheKeyGetLocale;
 
+    final JNIMethodId javaLangModuleGetName;
+
     NativeImageAgentJNIHandleSet(JNIEnvironment env) {
         super(env);
         javaLangClass = newClassGlobalRef(env, "java/lang/Class");
@@ -129,6 +131,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         JNIObjectHandle sunUtilResourcesBundlesCacheKey = findClass(env, "sun/util/resources/Bundles$CacheKey");
         sunUtilResourcesBundlesCacheKeyGetName = getMethodId(env, sunUtilResourcesBundlesCacheKey, "getName", "()Ljava/lang/String;", false);
         sunUtilResourcesBundlesCacheKeyGetLocale = getMethodId(env, sunUtilResourcesBundlesCacheKey, "getLocale", "()Ljava/util/Locale;", false);
+
+        JNIObjectHandle javaLangModule = findClass(env, "java/lang/Module");
+        javaLangModuleGetName = getMethodId(env, javaLangModule, "getName", "()Ljava/lang/String;", false);
     }
 
     JNIMethodId getJavaLangReflectExecutableGetParameterTypes(JNIEnvironment env) {
