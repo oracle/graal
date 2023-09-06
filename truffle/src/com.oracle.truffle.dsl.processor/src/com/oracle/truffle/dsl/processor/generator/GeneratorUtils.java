@@ -415,8 +415,18 @@ public class GeneratorUtils {
     }
 
     public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName) {
+        return overrideImplement(type, methodName, -1);
+    }
+
+    public static CodeExecutableElement overrideImplement(DeclaredType type, String methodName, int parameterCount) {
         TypeElement typeElement = (TypeElement) type.asElement();
-        ExecutableElement method = ElementUtils.findInstanceMethod(typeElement, methodName);
+
+        ExecutableElement method;
+        if (parameterCount >= 0) {
+            method = ElementUtils.findMethod(type, methodName, parameterCount);
+        } else {
+            method = ElementUtils.findInstanceMethod(typeElement, methodName);
+        }
         if (method == null) {
             return null;
         }

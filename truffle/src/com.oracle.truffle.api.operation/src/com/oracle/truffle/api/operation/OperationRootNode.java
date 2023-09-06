@@ -304,6 +304,16 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
     }
 
     @SuppressWarnings("unused")
+    default void copyLocals(Frame source, Frame destination) {
+        throw new AbstractMethodError();
+    }
+
+    @SuppressWarnings("unused")
+    default void copyLocals(Frame source, Frame destination, int length) {
+        throw new AbstractMethodError();
+    }
+
+    @SuppressWarnings("unused")
     default InstrumentableNode materializeInstrumentTree(Set<Class<? extends Tag>> materializedTags) {
         throw new AbstractMethodError();
     }
