@@ -24,9 +24,6 @@
  */
 package com.oracle.svm.truffle.nfi;
 
-import com.oracle.svm.core.c.CGlobalData;
-import com.oracle.svm.core.c.CGlobalDataFactory;
-import com.oracle.svm.core.c.function.CEntryPointErrors;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
@@ -36,7 +33,10 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.ReturnNullPointer;
 import com.oracle.svm.core.c.function.CEntryPointSetup.LeaveDetachThreadEpilogue;
@@ -53,7 +53,6 @@ import com.oracle.svm.truffle.nfi.NativeAPI.NewObjectRefFunction;
 import com.oracle.svm.truffle.nfi.NativeAPI.ReleaseAndReturnFunction;
 import com.oracle.svm.truffle.nfi.NativeAPI.ReleaseClosureRefFunction;
 import com.oracle.svm.truffle.nfi.NativeAPI.ReleaseObjectRefFunction;
-import com.oracle.truffle.api.interop.TruffleObject;
 
 /**
  * Implementation of the TruffleEnv and TruffleContext native API functions.
@@ -138,7 +137,7 @@ final class NativeAPIImpl {
     static TruffleObjectHandle getClosureObject(NativeTruffleEnv env, PointerBase closure) {
         TruffleNFISupport support = ImageSingletons.lookup(TruffleNFISupport.class);
         Target_com_oracle_truffle_nfi_backend_libffi_LibFFIContext context = lookupContext(env.context());
-        TruffleObject ret = context.getClosureObject(closure.rawValue());
+        Object ret = context.getClosureObject(closure.rawValue());
         return support.createGlobalHandle(ret);
     }
 

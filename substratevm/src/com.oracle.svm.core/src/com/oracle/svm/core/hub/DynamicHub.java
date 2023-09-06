@@ -752,12 +752,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    private Object getComponentType() {
+    private DynamicHub getComponentType() {
         return componentType;
     }
 
     @Substitute
-    private Object getSuperclass() {
+    private DynamicHub getSuperclass() {
         return superHub;
     }
 
@@ -791,18 +791,18 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
          * We do not do the check "this.getModifiers() & ENUM) != 0" because we do not have the full
          * modifier bits.
          */
-        return this.getSuperclass() == java.lang.Enum.class;
+        return toClass(getSuperclass()) == java.lang.Enum.class;
     }
 
     @KeepOriginal
-    private native Enum<?>[] getEnumConstants();
+    private native Object[] getEnumConstants();
 
     @Substitute
-    public Enum<?>[] getEnumConstantsShared() {
+    public Object[] getEnumConstantsShared() {
         if (enumConstantsReference instanceof LazyFinalReference) {
-            return (Enum<?>[]) ((LazyFinalReference<?>) enumConstantsReference).get();
+            return (Object[]) ((LazyFinalReference<?>) enumConstantsReference).get();
         }
-        return (Enum<?>[]) enumConstantsReference;
+        return (Object[]) enumConstantsReference;
     }
 
     @KeepOriginal
@@ -962,7 +962,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         T[] result = getDeclaredAnnotationsByType(annotationClass);
 
         if (result.length == 0 && AnnotationAccess.isAnnotationPresent(annotationClass, Inherited.class)) {
-            DynamicHub superClass = (DynamicHub) this.getSuperclass();
+            DynamicHub superClass = this.getSuperclass();
             if (superClass != null) {
                 /* Determine if the annotation is associated with the superclass. */
                 result = superClass.getAnnotationsByType(annotationClass);
@@ -1378,7 +1378,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         String pn = null;
         DynamicHub me = this;
         while (me.hubIsArray()) {
-            me = (DynamicHub) me.getComponentType();
+            me = me.getComponentType();
         }
         if (me.isPrimitive()) {
             pn = "java.lang";

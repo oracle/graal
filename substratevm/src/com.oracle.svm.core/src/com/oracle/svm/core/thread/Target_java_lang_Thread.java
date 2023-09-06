@@ -668,11 +668,11 @@ public final class Target_java_lang_Thread {
 
     @Alias
     @TargetElement(onlyWith = LoomJDK.class)
-    public static native Target_java_lang_Thread_Builder ofVirtual();
+    public static native Target_java_lang_Thread_Builder_OfVirtual ofVirtual();
 
     @Substitute
     @TargetElement(name = "ofVirtual", onlyWith = {JDK19OrLater.class, NotLoomJDK.class})
-    public static Target_java_lang_Thread_Builder ofVirtualWithoutLoom() {
+    public static Target_java_lang_Thread_Builder_OfVirtual ofVirtualWithoutLoom() {
         if (Target_jdk_internal_misc_PreviewFeatures.isEnabled()) {
             if (DeoptimizationSupport.enabled()) {
                 throw new UnsupportedOperationException("Virtual threads are not supported together with Truffle JIT compilation.");
@@ -808,6 +808,10 @@ public final class Target_java_lang_Thread {
 interface Target_java_lang_Thread_Builder {
     @Alias
     ThreadFactory factory();
+}
+
+@TargetClass(value = Thread.class, innerClass = {"Builder", "OfVirtual"}, onlyWith = JDK19OrLater.class)
+interface Target_java_lang_Thread_Builder_OfVirtual {
 }
 
 @TargetClass(value = Thread.class, innerClass = "Constants", onlyWith = JDK19OrLater.class)

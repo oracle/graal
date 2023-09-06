@@ -335,7 +335,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getEventWriter}. */
     @Substitute
-    public static Object getEventWriter() {
+    public static Target_jdk_jfr_internal_event_EventWriter getEventWriter() {
         return SubstrateJVM.get().getEventWriter();
     }
 

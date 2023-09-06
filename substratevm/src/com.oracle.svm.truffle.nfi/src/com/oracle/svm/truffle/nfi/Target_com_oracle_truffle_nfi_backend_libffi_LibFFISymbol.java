@@ -31,5 +31,5 @@ import com.oracle.svm.core.annotate.TargetClass;
 final class Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol {
 
     @Alias
-    static native Target_com_oracle_truffle_nfi_backend_libffi_LibFFISymbol create(Target_com_oracle_truffle_nfi_backend_libffi_LibFFILibrary library, String name, long address);
+    static native Object create(Target_com_oracle_truffle_nfi_backend_libffi_LibFFILibrary library, String name, long address);
 }

@@ -88,7 +88,7 @@ public final class Target_java_lang_ClassLoader {
     }
 
     @Delete
-    private static native void initSystemClassLoader();
+    private static native ClassLoader initSystemClassLoader();
 
     @Alias
     public native Enumeration<URL> findResources(String name);
