@@ -3,19 +3,19 @@
 
   "jdks": {
     "openjdk8":           {"name": "openjdk",   "version": "8u302+06-jvmci-21.3-b05", "platformspecific": true },
-    "oraclejdk8":         {"name": "labsjdk",   "version": "ee-8u391+08-jvmci-21.3-b34-20230831225746-0071de0c3b", "platformspecific": true },
-    "oraclejdk8Debug":    {"name": "labsjdk",   "version": "ee-8u391+08-jvmci-21.3-b34-20230831225746-0071de0c3b-fastdebug", "platformspecific": true },
+    "oraclejdk8":         {"name": "labsjdk",   "version": "ee-8u391+08-jvmci-21.3-b34", "platformspecific": true },
+    "oraclejdk8Debug":    {"name": "labsjdk",   "version": "ee-8u391+08-jvmci-21.3-b34-fastdebug", "platformspecific": true },
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
     "labsjdk-ce-11":      {"name": "labsjdk",   "version": "ce-11.0.17+5-jvmci-21.3-b23", "platformspecific": true },
-    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.21+7-jvmci-21.3-b34-20230904093059-f5efc43524+14c0b4dfdf", "platformspecific": true },
+    "labsjdk-ee-11":      {"name": "labsjdk",   "version": "ee-11.0.21+7-jvmci-21.3-b34", "platformspecific": true },
 
     "oraclejdk17":        {"name": "oraclejdk", "version": "17.0.1+2", "platformspecific": true },
     "labsjdk-ce-17":      {"name": "labsjdk",   "version": "ce-17.0.5+5-jvmci-21.3-b23", "platformspecific": true },
     "labsjdk-ce-17Debug": {"name": "labsjdk",   "version": "ce-17.0.5+5-jvmci-21.3-b23-debug", "platformspecific": true },
-    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.9+7-jvmci-21.3-b34-20230904093108-af50d54e5a+c467567ddc", "platformspecific": true },
-    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.9+7-jvmci-21.3-b34-20230904093108-af50d54e5a+c467567ddc-debug", "platformspecific": true }
+    "labsjdk-ee-17":      {"name": "labsjdk",   "version": "ee-17.0.9+7-jvmci-21.3-b34", "platformspecific": true },
+    "labsjdk-ee-17Debug": {"name": "labsjdk",   "version": "ee-17.0.9+7-jvmci-21.3-b34-debug", "platformspecific": true }
   },
 
   "COMMENT" : "The devkits versions reflect those used to build the JVMCI JDKs (e.g., see devkit_platform_revisions in <jdk>/make/conf/jib-profiles.js)",
