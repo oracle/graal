@@ -1,0 +1,3 @@
+DYNAMIC_IMPORTS=/substratevm,/vm
+COMPONENTS=llp,llrl,llrlf,llrn,lg,svmnfi,tflm,tflsm
+BUILD_TARGETS=GRAALVM_STANDALONES
