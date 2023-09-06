@@ -2777,13 +2777,15 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                 raise mx.warn(f"JVM standalones do not yet support components with `jvmci_parent_jars` outside of the included JVM.\n  Component '{comp.name}' adds '{comp.jvmci_parent_jars}', which is skipped")
 
             for jar_dist in jar_dists:
-                layout.setdefault(default_jvm_jars_dir if force_modules_as_jars else default_jvm_modules_dir, []).append({
-                    'source_type': 'dependency',
-                    'dependency': jar_dist,
-                    'exclude': [],
-                    'path': None,
-                })
-                (self.jvm_jars if force_modules_as_jars else self.jvm_modules).append(jar_dist)
+                component_list = (self.jvm_jars if force_modules_as_jars else self.jvm_modules)
+                if jar_dist not in component_list:
+                    layout.setdefault(default_jvm_jars_dir if force_modules_as_jars else default_jvm_modules_dir, []).append({
+                        'source_type': 'dependency',
+                        'dependency': jar_dist,
+                        'exclude': [],
+                        'path': None,
+                    })
+                    component_list.append(jar_dist)
 
         def add_files_from_component(comp, is_main, path_prefix, excluded_paths, force_modules_as_jars=False):
             """
@@ -2893,7 +2895,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                                 'path': None,
                             })
                         if is_main:
-                            for jar_distribution in library_config.jar_distributions:
+                            for jar_distribution in [j for j in library_config.jar_distributions if j not in self.jvm_modules]:
                                 layout.setdefault(default_jvm_modules_dir, []).append({
                                     'source_type': 'dependency',
                                     'dependency': jar_distribution,
@@ -2901,6 +2903,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                                     'path': None,
                                 })
                                 self.jvm_modules.append(jar_distribution)
+
                         for language, path_from_root in home_paths.items():
                             destination = path_prefix + library_config.destination
                             relative_path_from_launcher_dir = relpath(path_from_root, dirname(destination))
@@ -2925,6 +2928,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             dependency_path = details[0]
             excluded_paths = details[1] if len(details) > 1 else []
             dependency = get_component(dependency_name, fatalIfMissing=True)
+            assert dependency not in added_components
             excluded_paths = [mx_subst.path_substitutions.substitute(excluded) for excluded in excluded_paths]
             dependency_path_prefix = base_dir + ((dependency_path + '/') if dependency_path else '')
             add_files_from_component(dependency, is_main=False, path_prefix=dependency_path_prefix, excluded_paths=excluded_paths)
@@ -2932,6 +2936,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
         # Add files from the main standalone component.
         # Must be done for both Native and JVM Standalones.
+        assert component not in added_components
         add_files_from_component(component, is_main=True, path_prefix=base_dir, excluded_paths=[])
         added_components.append(component)
 
@@ -2973,13 +2978,14 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             # Add jars of components that must be on the module path.
             for default_module_component in GraalVmStandaloneComponent.default_module_components():
                 for dist in default_module_component.jar_distributions + default_module_component.boot_jars + default_module_component.jvmci_parent_jars:
-                    layout.setdefault(default_jvm_modules_dir, []).append({
-                        'source_type': 'dependency',
-                        'dependency': dist,
-                        'exclude': [],
-                        'path': None,
-                    })
-                    self.jvm_modules.append(dist)
+                    if dist not in self.jvm_modules:
+                        layout.setdefault(default_jvm_modules_dir, []).append({
+                            'source_type': 'dependency',
+                            'dependency': dist,
+                            'exclude': [],
+                            'path': None,
+                        })
+                        self.jvm_modules.append(dist)
 
             # Add LibGraal.
             lg_component = _get_libgraal_component()
