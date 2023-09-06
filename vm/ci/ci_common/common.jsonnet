@@ -631,7 +631,6 @@ local devkits = graal_common.devkits;
         + (
           if (vm.maven_deploy_base_functions.edition == 'ce') then
             self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
-//            [['foo']]
           else
             [['echo', 'Skipping the deployment of ' + self.only_native_dists + ': It is already deployed by the ce job']]
         )
