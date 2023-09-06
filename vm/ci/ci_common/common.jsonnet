@@ -571,31 +571,30 @@ local devkits = graal_common.devkits;
     other_platforms:: ['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64'],
     is_main_platform(os, arch):: os + '-' + arch == self.main_platform,
 
-    deploy_ce(os, arch, dry_run, repo_strings):: [
+    deploy_ce(os, arch, dry_run, extra_args):: [
       self.mx_cmd_base(os, arch)
       + $.maven_deploy_base_functions.ce_suites(os,arch)
       + self.mvn_args
       + ['--licenses', $.maven_deploy_base_functions.ce_licenses()]
       + (if dry_run then ['--dry-run'] else [])
-      + repo_strings,
+      + extra_args,
     ],
 
-    deploy_ee(os, arch, dry_run, repo_strings):: [
+    deploy_ee(os, arch, dry_run, extra_args):: [
       self.mx_cmd_base(os, arch)
       + vm.maven_deploy_base_functions.ee_suites(os, arch)
       + self.mvn_args
-      + ['--dummy-javadoc']
       + ['--licenses', vm.maven_deploy_base_functions.ee_licenses()]
       + (if dry_run then ['--dry-run'] else [])
-      + repo_strings,
+      + extra_args,
     ],
 
-    deploy_only_native(os, arch, dry_run, repo_strings):: [
+    deploy_only_native(os, arch, dry_run, extra_args):: [
       self.mx_cmd_base_only_native(os, arch)
       + self.mvn_args_only_native
       + ['--licenses', $.maven_deploy_base_functions.ce_licenses()]
       + (if dry_run then ['--dry-run'] else [])
-      + repo_strings,
+      + extra_args,
     ],
 
     run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo)::
@@ -609,7 +608,7 @@ local devkits = graal_common.devkits;
           if (vm.maven_deploy_base_functions.edition == 'ce') then
             self.deploy_ce(os, arch, dry_run, [remote_mvn_repo])
           else
-            self.deploy_ee(os, arch, dry_run, [remote_mvn_repo])
+            self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', remote_mvn_repo])
         )
         + [
           # resource bundle
@@ -622,8 +621,8 @@ local devkits = graal_common.devkits;
           if (vm.maven_deploy_base_functions.edition == 'ce') then
             self.deploy_ce(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
           else
-            self.deploy_ce(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
-            + self.deploy_ee(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+            self.deploy_ce(os, arch, dry_run, ['--dummy-javadoc', local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+            + self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', local_repo, '${LOCAL_MAVEN_REPO_URL}'])
         )
         + (
           if (dry_run) then
