@@ -371,11 +371,11 @@ abstract class CVSymbolSubrecord {
         /* It might be more efficient to use an array of shorts instead of a List of Gaps. */
         private static class Gap {
             public final short start;
-            public final short length;
+            public final short gapLength;
 
-            Gap(short start, short length) {
+            Gap(short start, short gapLength) {
                 this.start = start;
-                this.length = length;
+                this.gapLength = gapLength;
             }
         }
 
@@ -405,7 +405,7 @@ abstract class CVSymbolSubrecord {
             if (gaps != null) {
                 for (Gap gap : gaps) {
                     pos = CVUtil.putShort(gap.start, buffer, pos);
-                    pos = CVUtil.putShort(gap.length, buffer, pos);
+                    pos = CVUtil.putShort(gap.gapLength, buffer, pos);
                 }
             }
             return pos;
@@ -424,7 +424,7 @@ abstract class CVSymbolSubrecord {
             String s = "";
             if (gaps != null) {
                 for (Gap gap : gaps) {
-                    s = String.format("%s%n     - gap=0x%x len=0x%x last=0x%x", s, gap.start, gap.length, gap.start + gap.length - 1);
+                    s = String.format("%s%n     - gap=0x%x len=0x%x last=0x%x", s, gap.start, gap.gapLength, gap.start + gap.gapLength - 1);
                 }
             }
             return s;
