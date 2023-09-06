@@ -122,13 +122,9 @@ public class CausalityExport {
 
     public void registerConjunctiveEdge(Event cause1, Event cause2, Event consequence) {}
 
-    public Event getHeapObjectCreator(Object heapObject, ObjectScanner.ScanReason reason) {
-        return null;
-    }
+    public void registerEdgeFromHeapObject(BigBang bb, JavaConstant heapObject, ObjectScanner.ScanReason reason, Event consequence) {}
 
-    public Event getHeapObjectCreator(BigBang bb, JavaConstant heapObject, ObjectScanner.ScanReason reason) {
-        return null;
-    }
+    public void registerEdgeFromHeapObject(Object heapObject, ObjectScanner.ScanReason reason, Event consequence) {}
 
     public Event getHeapFieldAssigner(BigBang analysis, JavaConstant receiver, AnalysisField field, JavaConstant value) {
         return null;
@@ -1134,31 +1130,29 @@ public class CausalityExport {
         }
     }
 
-    public static class EmbeddedRoot extends Event {
-        public final AnalysisMethod method;
-        public final Object constant;
+    public static class FieldRead extends Event {
+        public final AnalysisField field;
 
-        public EmbeddedRoot(AnalysisMethod method, Object constant) {
-            this.method = method;
-            this.constant = constant;
+        public FieldRead(AnalysisField field) {
+            this.field = field;
         }
 
         @Override
         public String toString() {
-            return method.format("%H.%n(%P):%R") + " + " + constant.getClass().getName() + "@" + Integer.toHexString(System.identityHashCode(constant)) + " [Embedded Root]";
+            return field.format("%H.%n [Read]");
         }
 
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
             if (o == null || getClass() != o.getClass()) return false;
-            var that = (EmbeddedRoot) o;
-            return method.equals(that.method) && constant == that.constant;
+            FieldRead fieldRead = (FieldRead) o;
+            return field.equals(fieldRead.field);
         }
 
         @Override
         public int hashCode() {
-            return getClass().hashCode() ^ method.hashCode() ^ System.identityHashCode(constant);
+            return getClass().hashCode() ^ field.hashCode();
         }
     }
 
@@ -1184,7 +1178,7 @@ public class CausalityExport {
         } else if(reflectionObject instanceof Executable e) {
             return metaAccess.lookupJavaMethod(e).format("%H.%n(%P):%R");
         } else {
-            return metaAccess.lookupJavaField((Field) reflectionObject).format("%h.%n");
+            return metaAccess.lookupJavaField((Field) reflectionObject).format("%H.%n");
         }
     }
 }

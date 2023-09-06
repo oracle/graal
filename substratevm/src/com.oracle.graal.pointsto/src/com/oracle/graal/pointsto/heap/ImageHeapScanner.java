@@ -31,7 +31,6 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.reports.CausalityExport;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
@@ -309,7 +308,7 @@ public abstract class ImageHeapScanner {
     private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
         /* We are about to query the type's fields, the type must be marked as reachable. */
         var inHeap = new CausalityExport.TypeInHeap(type);
-        CausalityExport.get().registerEdge(CausalityExport.get().getHeapObjectCreator(bb, constant, reason), inHeap);
+        CausalityExport.get().registerEdgeFromHeapObject(bb, constant, reason, inHeap);
         try(var ignored = CausalityExport.get().setCause(inHeap)) {
             type.registerAsReachable(reason);
         }
@@ -493,7 +492,9 @@ public abstract class ImageHeapScanner {
         AnalysisType objectType = metaAccess.lookupJavaType(imageHeapConstant);
         imageHeap.addReachableObject(objectType, imageHeapConstant);
 
-        try(var ignored = CausalityExport.get().setCause(CausalityExport.get().getHeapObjectCreator(bb, imageHeapConstant, reason))) {
+        var inHeap = new CausalityExport.TypeInHeap(objectType);
+        CausalityExport.get().registerEdgeFromHeapObject(bb, imageHeapConstant, reason, inHeap);
+        try(var ignored = CausalityExport.get().setCause(inHeap)) {
             markTypeInstantiated(objectType, reason);
         }
         if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {

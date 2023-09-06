@@ -109,27 +109,40 @@ public class Impl extends CausalityExport {
         }
     }
 
-    @Override
-    public Event getHeapObjectCreator(Object heapObject, ObjectScanner.ScanReason reason) {
+    private Event getHeapObjectCreator(Object heapObject, ObjectScanner.ScanReason reason) {
         Object responsible = HeapAssignmentTracing.getInstance().getResponsibleClass(heapObject);
-        Event e = getEventForHeapReason(responsible, heapObject);
-
-        if (reason instanceof ObjectScanner.EmbeddedRootScan ers) {
-            EmbeddedRoot er = new EmbeddedRoot(ers.getMethod(), heapObject);
-            registerConjunctiveEdge(new InlinedMethodCode(ers.getPosition()), e, er);
-            return er;
-        }
-
-        // TODO: Think about how field reachability impacts heap scanning
-        return e;
+        return getEventForHeapReason(responsible, heapObject);
     }
 
-    @Override
-    public Event getHeapObjectCreator(BigBang bb, JavaConstant heapObject, ObjectScanner.ScanReason reason) {
+    private Event getHeapObjectCreator(BigBang bb, JavaConstant heapObject, ObjectScanner.ScanReason reason) {
         if (heapObject instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isBackedByHostedObject()) {
             return SimulatedHeapTracing.instance.getHeapObjectCreator(imageHeapConstant);
         }
         return getHeapObjectCreator(asObject(bb, Object.class, heapObject), reason);
+    }
+
+    private static Event forScanReason(ObjectScanner.ScanReason reason) {
+        if (reason instanceof ObjectScanner.EmbeddedRootScan ers) {
+            return new InlinedMethodCode(ers.getPosition());
+        }
+        if (reason instanceof ObjectScanner.FieldScan fs) {
+            return new FieldRead(fs.getField());
+        }
+        return null;
+    }
+
+    @Override
+    public void registerEdgeFromHeapObject(BigBang bb, JavaConstant heapObject, ObjectScanner.ScanReason reason, Event consequence) {
+        Event writerCause = getHeapObjectCreator(bb, heapObject, reason);
+        Event readerCause = forScanReason(reason);
+        registerConjunctiveEdge(writerCause, readerCause, consequence);
+    }
+
+    @Override
+    public void registerEdgeFromHeapObject(Object heapObject, ObjectScanner.ScanReason reason, Event consequence) {
+        Event writerCause = getHeapObjectCreator(heapObject, reason);
+        Event readerCause = forScanReason(reason);
+        registerConjunctiveEdge(writerCause, readerCause, consequence);
     }
 
     @Override

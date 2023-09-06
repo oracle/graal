@@ -1000,7 +1000,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         assert !sealed;
         var inHeap = new CausalityExport.ReflectionObjectInHeap(reflectField);
         var reflRegistration = new CausalityExport.ReflectionRegistration(reflectField);
-        CausalityExport.get().registerEdge(CausalityExport.get().getHeapObjectCreator(reflectField, reason), inHeap);
+        CausalityExport.get().registerEdgeFromHeapObject(reflectField, reason, inHeap);
         CausalityExport.get().registerEdge(inHeap, reflRegistration);
         try (var ignored = CausalityExport.get().setCause(reflRegistration)) {
             AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
@@ -1018,7 +1018,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         assert !sealed;
         var inHeap = new CausalityExport.ReflectionObjectInHeap(reflectExecutable);
         var reflRegistration = new CausalityExport.ReflectionRegistration(reflectExecutable);
-        CausalityExport.get().registerEdge(CausalityExport.get().getHeapObjectCreator(reflectExecutable, reason), inHeap);
+        CausalityExport.get().registerEdgeFromHeapObject(reflectExecutable, reason, inHeap);
         CausalityExport.get().registerEdge(inHeap, reflRegistration);
         try (var ignored = CausalityExport.get().setCause(reflRegistration)) {
             AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
