@@ -535,6 +535,19 @@ suite = {
       "javac.lint.overrides": 'none',
       "jacoco": "exclude",
     },
+    "org.graalvm.maven.downloader" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "license" : "UPL",
+      "dependencies": [
+        "sdk:NATIVEIMAGE",
+      ],
+      "requires": [
+        "java.logging",
+        "java.xml",
+      ],
+    },
   },
   "licenses" : {
     "UPL" : {
@@ -753,6 +766,18 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+    },
+
+    "MAVEN_DOWNLOADER": {
+      "defaultBuild": False,
+      "mainClass": "org.graalvm.maven.downloader.Main",
+      "dependencies": [
+        "org.graalvm.maven.downloader",
+      ],
+      "distDependencies": [
+        "sdk:NATIVEIMAGE",
+      ],
+      "maven": False,
     },
 
     "SDK_TEST" : {
