@@ -708,12 +708,6 @@ public final class Meta extends ContextAccessImpl {
                         .klass(VERSION_9_OR_HIGHER, Type.jdk_internal_reflect_ConstructorAccessorImpl) //
                         .klass();
 
-        sun_misc_VM = diff() //
-                        .klass(VERSION_8_OR_LOWER, Type.sun_misc_VM) //
-                        .klass(VERSION_9_OR_HIGHER, Type.jdk_internal_misc_VM) //
-                        .klass();
-        sun_misc_VM_toThreadState = sun_misc_VM.requireDeclaredMethod(Name.toThreadState, Signature.Thread$State_int);
-
         sun_misc_Signal = diff() //
                         .klass(VERSION_8_OR_LOWER, Type.sun_misc_Signal) //
                         .klass(VERSION_9_OR_HIGHER, Type.jdk_internal_misc_Signal) //
@@ -1367,8 +1361,6 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_ref_Reference$ReferenceHandler;
     public final ObjectKlass misc_InnocuousThread;
 
-    public final ObjectKlass sun_misc_VM;
-    public final Method sun_misc_VM_toThreadState;
     public final ObjectKlass sun_reflect_ConstantPool;
 
     public final ObjectKlass sun_misc_Signal;
