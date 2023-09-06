@@ -972,6 +972,18 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    private static boolean readClassDescriptor(JNIEnvironment jni, JNIObjectHandle thread, @SuppressWarnings("unused") Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle desc = getObjectArgument(thread, 1);
+        JNIMethodId descriptor = agent.handles().getJavaIoObjectStreamClassGetName(jni);
+        var name = Support.callObjectMethod(jni, desc, descriptor);
+        if (clearException(jni)) {
+            name = nullHandle();
+        }
+        var className = fromJniString(jni, name);
+        traceSerializeBreakpoint(jni, "ObjectInputStream.readClassDescriptor", true, state.getFullStackTraceOrNull(), className, null);
+        return true;
+    }
+
     private static boolean objectStreamClassConstructor(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
 
         JNIObjectHandle serializeTargetClass = getObjectArgument(thread, 1);
@@ -1522,6 +1534,7 @@ final class BreakpointInterceptor {
                                     "(Ljava/lang/ClassLoader;[Ljava/lang/Class;Ljava/lang/reflect/InvocationHandler;)Ljava/lang/Object;", BreakpointInterceptor::newProxyInstance),
 
                     brk("java/lang/invoke/SerializedLambda", "readResolve", "()Ljava/lang/Object;", BreakpointInterceptor::serializedLambdaReadResolve),
+                    brk("java/io/ObjectInputStream", "resolveClass", "(Ljava/io/ObjectStreamClass;)Ljava/lang/Class;", BreakpointInterceptor::readClassDescriptor),
                     brk("java/io/ObjectStreamClass", "<init>", "(Ljava/lang/Class;)V", BreakpointInterceptor::objectStreamClassConstructor),
                     brk("jdk/internal/reflect/ReflectionFactory",
                                     "newConstructorForSerialization",

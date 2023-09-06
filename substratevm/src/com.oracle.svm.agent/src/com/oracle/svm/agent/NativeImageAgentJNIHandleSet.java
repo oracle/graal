@@ -67,7 +67,9 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
     private JNIMethodId javaUtilResourceBundleGetBundleImplSLCC;
     private boolean queriedJavaUtilResourceBundleGetBundleImplSLCC;
 
+    private JNIObjectHandle javaIoObjectStreamClass;
     private JNIMethodId javaIoObjectStreamClassForClass;
+    private JNIMethodId javaIoObjectStreamClassGetName;
     private JNIMethodId javaIoObjectStreamClassGetClassDataLayout0;
     private JNIObjectHandle javaIOObjectStreamClassClassDataSlot;
     private JNIFieldId javaIOObjectStreamClassClassDataSlotDesc;
@@ -163,11 +165,25 @@ public class NativeImageAgentJNIHandleSet extends JNIHandleSet {
         return javaUtilResourceBundleGetBundleImplSLCC;
     }
 
+    JNIObjectHandle getJavaIOObjectStreamClass(JNIEnvironment env) {
+        if (javaIoObjectStreamClass.equal(nullHandle())) {
+            javaIoObjectStreamClass = findClass(env, "java/io/ObjectStreamClass");
+        }
+        return javaIoObjectStreamClass;
+    }
+
     JNIMethodId getJavaIoObjectStreamClassForClass(JNIEnvironment env, JNIObjectHandle javaIoObjectStreamClass) {
         if (javaIoObjectStreamClassForClass.equal(nullHandle())) {
             javaIoObjectStreamClassForClass = getMethodId(env, javaIoObjectStreamClass, "forClass", "()Ljava/lang/Class;", false);
         }
         return javaIoObjectStreamClassForClass;
+    }
+
+    JNIMethodId getJavaIoObjectStreamClassGetName(JNIEnvironment env) {
+        if (javaIoObjectStreamClassGetName.equal(nullHandle())) {
+            javaIoObjectStreamClassGetName = getMethodId(env, getJavaIOObjectStreamClass(env), "getName", "()Ljava/lang/String;", false);
+        }
+        return javaIoObjectStreamClassGetName;
     }
 
     JNIMethodId getJavaIoObjectStreamClassGetClassDataLayout0(JNIEnvironment env, JNIObjectHandle javaIoObjectStreamClass) {
