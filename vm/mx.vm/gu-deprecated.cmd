@@ -27,7 +27,7 @@ echo GraalVM Updater is no longer available in this release of GraalVM.
 echo.
 echo For more details and information on migration options, please visit:
 echo.
-echo https://github.com/oracle/graal/issues/6855
+echo   https://github.com/oracle/graal/issues/6855
 echo.
 echo (Note that $JAVA_HOME\bin\gu.cmd will be removed entirely in a future release.)
 echo.
