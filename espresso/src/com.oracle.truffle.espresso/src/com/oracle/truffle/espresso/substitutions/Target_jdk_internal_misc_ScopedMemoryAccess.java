@@ -23,11 +23,15 @@
 
 package com.oracle.truffle.espresso.substitutions;
 
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
@@ -35,6 +39,7 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.classfile.attributes.Local;
 import com.oracle.truffle.espresso.classfile.attributes.LocalVariableTable;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
@@ -51,7 +56,14 @@ public final class Target_jdk_internal_misc_ScopedMemoryAccess {
     @TruffleBoundary
     public static boolean closeScope0(@JavaType(internalName = "Ljdk/internal/foreign/MemorySessionImpl;") StaticObject session, @Inject EspressoContext context) {
         CloseScopedMemoryAction action = new CloseScopedMemoryAction(session);
-        context.getEnv().submitThreadLocal(null, action);
+        Future<Void> future = context.getEnv().submitThreadLocal(null, action);
+        TruffleSafepoint.setBlockedThreadInterruptible(null, f -> {
+            try {
+                future.get();
+            } catch (ExecutionException e) {
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }, future);
         return !action.found;
     }
 
