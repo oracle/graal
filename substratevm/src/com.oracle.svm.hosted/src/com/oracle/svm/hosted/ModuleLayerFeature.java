@@ -66,9 +66,11 @@ import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.RuntimeModuleSupport;
 import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -124,17 +126,6 @@ public final class ModuleLayerFeature implements InternalFeature {
         FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
         moduleLayerFeatureUtils = new ModuleLayerFeatureUtils(accessImpl.imageClassLoader);
 
-        /*
-         * Generate a temporary module layer to serve as a runtime boot module layer until the
-         * analysis is finished.
-         */
-        Set<String> baseModules = ModuleLayer.boot().modules()
-                        .stream()
-                        .map(Module::getName)
-                        .collect(Collectors.toSet());
-        Function<String, ClassLoader> clf = moduleLayerFeatureUtils::getClassLoaderForBootLayerModule;
-        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(new ArrayList<>(List.of(ModuleLayer.empty())), accessImpl.imageClassLoader, baseModules, Set.of(), clf, null);
-        RuntimeModuleSupport.instance().setBootLayer(runtimeBootLayer);
         RuntimeModuleSupport.instance().setHostedToRuntimeModuleMapper(moduleLayerFeatureUtils::getOrCreateRuntimeModuleForHostedModule);
 
         /*
@@ -166,6 +157,28 @@ public final class ModuleLayerFeature implements InternalFeature {
                                             "Please ensure that only proper modules are found on the module-path.",
                             bootLayerAutomaticModules.stream().map(ModuleLayerFeatureUtils::formatModule).collect(Collectors.joining(System.lineSeparator())));
         }
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        scanRuntimeBootLayerPrototype((BeforeAnalysisAccessImpl) access);
+    }
+
+    /**
+     * Generate a temporary module layer to serve as a prototype object for
+     * {@link RuntimeModuleSupport}.bootLayer. The value doesn't need to actually be set in the
+     * field, just scanned such that the analysis sees the deep type hierarchy. The field value
+     * wouldn't be processed during analysis anyway since the field is annotated with
+     * {@link UnknownObjectField}, only the field declared type is injected in the type flow graphs.
+     * The concrete value is set in {@link ModuleLayerFeature#afterAnalysis}. Later when the field
+     * is read the lazy value supplier scans the concrete value and patches the shadow heap.
+     */
+    private void scanRuntimeBootLayerPrototype(BeforeAnalysisAccessImpl accessImpl) {
+        Set<String> baseModules = ModuleLayer.boot().modules().stream().map(Module::getName).collect(Collectors.toSet());
+        Function<String, ClassLoader> clf = moduleLayerFeatureUtils::getClassLoaderForBootLayerModule;
+        ModuleLayer runtimeBootLayer = synthesizeRuntimeModuleLayer(new ArrayList<>(List.of(ModuleLayer.empty())), accessImpl.imageClassLoader, baseModules, Set.of(), clf, null);
+        /* Only scan the value if module support is enabled and bootLayer field is reachable. */
+        accessImpl.registerReachabilityHandler((a) -> accessImpl.rescanObject(runtimeBootLayer), ReflectionUtil.lookupField(RuntimeModuleSupport.class, "bootLayer"));
     }
 
     @Override

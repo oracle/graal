@@ -30,6 +30,7 @@ import shutil
 import mx
 import mx_subst
 import mx_unittest
+import mx_sdk
 import mx_sdk_vm
 import mx_sdk_vm_impl
 
@@ -73,6 +74,7 @@ class VmGateTasks:
     svm_truffle_tck_js = 'svm-truffle-tck-js'
     svm_truffle_tck_python = 'svm-truffle-tck-python'
     truffle_unchained = 'truffle-unchained'
+    maven_downloader = 'maven-downloader'
 
 def _unittest_config_participant(config):
     vmArgs, mainClass, mainClassArgs = config
@@ -553,6 +555,7 @@ def gate_body(args, tasks):
     gate_svm_truffle_tck_js(tasks)
     gate_svm_truffle_tck_python(tasks)
     gate_truffle_unchained(tasks)
+    gate_maven_downloader(tasks)
 
 def graalvm_svm():
     """
@@ -773,6 +776,51 @@ def gate_truffle_unchained(tasks):
             if not truffle_suite:
                 mx.abort("Cannot resolve truffle suite.")
             mx_truffle.sl_native_optimized_gate_tests()
+
+def gate_maven_downloader(tasks):
+    with Task('Maven Downloader prepare maven repo', tasks, tags=[VmGateTasks.maven_downloader]) as t:
+        if t:
+            mx.suite('sulong')
+            mx_sdk.maven_deploy_public([], licenses=['EPL-2.0', 'GPLv2-CPE', 'ICU,GPLv2', 'BSD-new', 'UPL', 'MIT'], deploy_snapshots=False)
+            mx.build(["--dep", "MAVEN_DOWNLOADER"])
+            jdk = mx.get_jdk()
+            mvnDownloader = mx.distribution("MAVEN_DOWNLOADER")
+            vm_args = mx.get_runtime_jvm_args([mvnDownloader], jdk=jdk)
+            vm_args.append(mvnDownloader.mainClass)
+            output_dir = os.path.join(_suite.get_mx_output_dir(), 'downloaded-mvn-modules')
+            shutil.rmtree(output_dir, ignore_errors=True)
+            env = os.environ.copy()
+            if mx._opts.verbose:
+                env["org.graalvm.maven.downloader.logLevel"] = "ALL"
+            mvntoolargs = [
+                "-r", f"file://{abspath(mx_sdk.maven_deploy_public_repo_dir())}",
+                "-o", output_dir,
+                "-v", mx_sdk_vm_impl.graalvm_version('graalvm'),
+                "-a",
+            ]
+            mx.run_java(vm_args + mvntoolargs + ["polyglot"], jdk=jdk, env=env)
+            # now we should have all jars for llvm-language in the output dir
+            entries = os.listdir(output_dir)
+            for entry in entries:
+                if isdir(entry):
+                    mx.abort("We do not expect the maven downloader to create directories")
+                os.rename(join(output_dir, entry), join(output_dir, f"first_download_{entry}"))
+            if not any(re.search("polyglot.*\\.jar", entry) for entry in entries):
+                mx.abort("We expected polyglot to have been downloaded")
+            if any(re.search("llvm.*\\.jar", entry) for entry in entries):
+                mx.abort("We did not expect llvm to have been downloaded")
+            # now we download something higher up the dependency tree, to check
+            # that existing files (even though renamed) are not clobbered and
+            # no duplicate modules are placed in the output directory
+            mx.run_java(vm_args + mvntoolargs + ["llvm-community"], jdk=jdk, env=env)
+            entries = os.listdir(output_dir)
+            for entry in entries:
+                if isdir(entry):
+                    mx.abort("We do not expect the maven downloader to create directories")
+                if f"first_download_{entry}" in entries:
+                    mx.abort("We do not expect the maven downloader to download modules that are already there")
+            if not any(re.search("llvm-language-native.*\\.jar", entry) for entry in entries):
+                mx.abort("We did not expect llvm-language-native to have been downloaded via llvm-community meta pom")
 
 def build_tests_image(image_dir, options, unit_tests=None, additional_deps=None, shared_lib=False):
     native_image_context, svm = graalvm_svm()

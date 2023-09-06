@@ -66,9 +66,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     // InlinedMethodPredicate.class
     private TypeElement noPredicate;
 
-    // StaticObject
-    private TypeElement staticObjectElement;
-
     // region Various String constants.
 
     private static final String SUBSTITUTION_PACKAGE = "com.oracle.truffle.espresso.substitutions";
@@ -76,7 +73,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
     private static final String ESPRESSO_SUBSTITUTIONS = SUBSTITUTION_PACKAGE + "." + "EspressoSubstitutions";
     private static final String SUBSTITUTION = SUBSTITUTION_PACKAGE + "." + "Substitution";
     private static final String INLINE_IN_BYTECODE = SUBSTITUTION_PACKAGE + "." + "InlineInBytecode";
-    private static final String STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
     private static final String JAVA_TYPE = SUBSTITUTION_PACKAGE + "." + "JavaType";
     private static final String NO_PROVIDER = SUBSTITUTION_PACKAGE + "." + "SubstitutionNamesProvider" + "." + "NoProvider";
     private static final String NO_FILTER = SUBSTITUTION_PACKAGE + "." + "VersionFilter" + "." + "NoFilter";
@@ -184,7 +180,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
             }
         } else if (typeMirror.getKind() != TypeKind.VOID) {
             // Reference type.
-            if (!processingEnv.getTypeUtils().isSameType(typeMirror, staticObjectElement.asType())) {
+            if (!processingEnv.getTypeUtils().isSameType(typeMirror, staticObject.asType())) {
                 processingEnv.getMessager().printMessage(Diagnostic.Kind.WARNING,
                                 headerMessage + " is not of type StaticObject", element);
             }
@@ -409,7 +405,7 @@ public final class SubstitutionProcessor extends EspressoProcessor {
                 } else {
                     // @JavaType annotation not found -> primitive or j.l.Object
                     // All StaticObject(s) parameters must be annotated with @JavaType.
-                    if (!isReceiver && processingEnv.getTypeUtils().isSameType(parameter.asType(), staticObjectElement.asType())) {
+                    if (!isReceiver && processingEnv.getTypeUtils().isSameType(parameter.asType(), staticObject.asType())) {
                         processingEnv.getMessager().printMessage(Diagnostic.Kind.ERROR, "non-receiver StaticObject parameters require the @JavaType annotation", parameter);
                     }
                     String arg = getInternalName(parameter.asType().toString());
@@ -565,7 +561,6 @@ public final class SubstitutionProcessor extends EspressoProcessor {
         // Set up the different annotations, along with their values, that we will need.
         this.espressoSubstitutions = getTypeElement(ESPRESSO_SUBSTITUTIONS);
         this.substitutionAnnotation = getTypeElement(SUBSTITUTION);
-        this.staticObjectElement = getTypeElement(STATIC_OBJECT);
         this.inlineInBytecodeAnnotation = getTypeElement(INLINE_IN_BYTECODE);
         this.javaType = getTypeElement(JAVA_TYPE);
         this.noProvider = getTypeElement(NO_PROVIDER);

@@ -35,7 +35,7 @@ import java.nio.file.Path;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.InternalResource;
 
-@InternalResource.Id("libsulong-native")
+@InternalResource.Id(value = "libsulong-native", componentId = "llvm", optional = true)
 public class SulongNativeLibResource implements InternalResource {
 
     private static Path basePath(Env env) {

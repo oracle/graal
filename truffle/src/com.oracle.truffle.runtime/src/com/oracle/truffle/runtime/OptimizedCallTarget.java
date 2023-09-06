@@ -671,8 +671,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return result;
     }
 
-    // This should be private but can't be. GR-19397
-    public final boolean firstTierCall() {
+    private boolean firstTierCall() {
         // this is partially evaluated so the second part should fold to a constant.
         int firstTierCallCount = this.callCount;
         this.callCount = firstTierCallCount == Integer.MAX_VALUE ? firstTierCallCount : ++firstTierCallCount;
@@ -773,8 +772,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         return (OptimizedTruffleRuntime) Truffle.getRuntime();
     }
 
-    // This should be private but can't be due to SVM bug.
-    public final void ensureInitialized() {
+    private void ensureInitialized() {
         if (!initialized) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             initialize(true);
@@ -1302,8 +1300,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         profileArguments(args);
     }
 
-    // This should be private but can't be. GR-19397
-    public final void profileArguments(Object[] args) {
+    private void profileArguments(Object[] args) {
         assert !callProfiled;
         ArgumentsProfile argumentsProfile = this.argumentsProfile;
         if (argumentsProfile == ArgumentsProfile.INVALID) {
@@ -1393,8 +1390,7 @@ public abstract class OptimizedCallTarget implements TruffleCompilable, RootCall
         }
     }
 
-    // This should be private but can't be. GR-19397
-    public final Object[] injectArgumentsProfile(Object[] originalArguments) {
+    private Object[] injectArgumentsProfile(Object[] originalArguments) {
         assert CompilerDirectives.inCompiledCode();
         ArgumentsProfile argumentsProfile = this.argumentsProfile;
         Object[] args = originalArguments;

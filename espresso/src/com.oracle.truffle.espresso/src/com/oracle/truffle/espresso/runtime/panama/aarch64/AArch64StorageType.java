@@ -84,17 +84,26 @@ public enum AArch64StorageType implements StorageType {
                     case Long, Int, Char, Short, Byte, Boolean, Object, Void, ReturnAddress, Illegal -> throw EspressoError.shouldNotReachHere("Unexpected kind in VECTOR: " + type);
                 };
             }
-            case STACK -> {
-                assert maskOrSize == 8;
-                yield switch (type.getJavaKind()) {
-                    case Int -> NativeType.INT;
-                    case Long -> NativeType.LONG;
-                    case Float -> NativeType.FLOAT;
-                    case Double -> NativeType.DOUBLE;
-                    case Char, Short, Byte, Boolean -> throw EspressoError.shouldNotReachHere("Unexpected sub-word in STACK: " + type);
-                    case Object, Void, ReturnAddress, Illegal -> throw EspressoError.shouldNotReachHere("Unexpected kind in STACK: " + type);
-                };
-            }
+            case STACK -> switch (type.getJavaKind()) {
+                case Int -> {
+                    assert maskOrSize == 4 : maskOrSize;
+                    yield NativeType.INT;
+                }
+                case Long -> {
+                    assert maskOrSize == 8 : maskOrSize;
+                    yield NativeType.LONG;
+                }
+                case Float -> {
+                    assert maskOrSize == 4 : maskOrSize;
+                    yield NativeType.FLOAT;
+                }
+                case Double -> {
+                    assert maskOrSize == 8 : maskOrSize;
+                    yield NativeType.DOUBLE;
+                }
+                case Char, Short, Byte, Boolean -> throw EspressoError.shouldNotReachHere("Unexpected sub-word in STACK: " + type);
+                case Object, Void, ReturnAddress, Illegal -> throw EspressoError.shouldNotReachHere("Unexpected kind in STACK: " + type);
+            };
             default -> throw EspressoError.shouldNotReachHere("Unsupported " + this);
         };
     }

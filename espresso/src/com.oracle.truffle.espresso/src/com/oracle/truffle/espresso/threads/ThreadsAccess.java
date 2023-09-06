@@ -41,7 +41,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * Provides bridges to guest world thread implementation.
@@ -512,6 +512,18 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
 
     public int getDepthFirstNumber(StaticObject thread) {
         return (int) meta.HIDDEN_THREAD_DEPTH_FIRST_NUMBER.getHiddenObject(thread);
+    }
+
+    public StaticObject getScopedValueCache(StaticObject platformThread) {
+        StaticObject cache = (StaticObject) meta.HIDDEN_THREAD_SCOPED_VALUE_CACHE.getHiddenObject(platformThread);
+        if (cache == null) {
+            return StaticObject.NULL;
+        }
+        return cache;
+    }
+
+    public void setScopedValueCache(StaticObject platformThread, StaticObject cache) {
+        meta.HIDDEN_THREAD_SCOPED_VALUE_CACHE.setHiddenObject(platformThread, cache);
     }
 
     private final class DeprecationSupport {

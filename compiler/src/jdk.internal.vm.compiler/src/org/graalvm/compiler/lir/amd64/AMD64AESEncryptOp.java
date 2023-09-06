@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSHUFB;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
@@ -34,7 +33,7 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.amd64.AVXKind;
+import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
@@ -101,12 +100,12 @@ public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 
     static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, Register xmmShufMask) {
         masm.movdqu(xmmDst, new AMD64Address(key, offset));
-        VPSHUFB.emit(masm, AVXKind.AVXSize.XMM, xmmDst, xmmDst, xmmShufMask);
+        masm.pshufb(AVXSize.XMM, xmmDst, xmmShufMask);
     }
 
     static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, CompilationResultBuilder crb) {
         masm.movdqu(xmmDst, new AMD64Address(key, offset));
-        VPSHUFB.emit(masm, AVXKind.AVXSize.XMM, xmmDst, xmmDst, recordExternalAddress(crb, keyShuffleMask));
+        masm.pshufb(AVXSize.XMM, xmmDst, recordExternalAddress(crb, keyShuffleMask));
     }
 
     static Register asXMMRegister(int index) {

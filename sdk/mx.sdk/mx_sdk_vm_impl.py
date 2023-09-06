@@ -2816,7 +2816,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     'path': None,
                 })
 
-            assert not self.is_jvm or not is_main or len(launcher_configs) == 0, "JVM standalones do not yet support main components with launcher configs, only thin launchers. Found: '{}'".format(name)
+            assert not self.is_jvm or not is_main or all(type(lc) == mx_sdk.LauncherConfig for lc in launcher_configs), "JVM standalones do not yet support main components with language launcher configs, only thin launchers and plain NI launchers. Found: '{}'".format(name)  # pylint: disable=unidiomatic-typecheck
             for launcher_config in launcher_configs:
                 launcher_dest = path_prefix + launcher_config.destination
                 if launcher_config.destination not in excluded_paths:
@@ -2986,7 +2986,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             else:
                 for library_config in _get_libgraal_component().library_configs:
                     dependency = GraalVmLibrary.project_name(library_config)
-                    layout.setdefault(base_dir + 'jvm/lib/', []).append({
+                    jvm_lib_dir = 'bin' if mx.is_windows() else 'lib'
+                    layout.setdefault(f'{base_dir}jvm/{jvm_lib_dir}/', []).append({
                         'source_type': 'dependency',
                         'dependency': dependency,
                         'exclude': [],
@@ -3229,7 +3230,9 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             self.jre_base = join(get_final_graalvm_distribution().string_substitutions.substitute(self.component.standalone_dir_name_enterprise if has_component('cmpee') else self.component.standalone_dir_name), 'jvm')
         else:
             self.jre_base = get_final_graalvm_distribution().path_substitutions.substitute('<jre_base>')
-        toolchain = 'mx:DEFAULT_NINJA_TOOLCHAIN' if mx.is_windows() else 'sdk:LLVM_NINJA_TOOLCHAIN'
+        # We use our LLVM toolchain on Linux because we want to statically link the C++ standard library,
+        # and the system toolchain rarely has libstdc++.a installed (it would be an extra CI & dev dependency).
+        toolchain = 'sdk:LLVM_NINJA_TOOLCHAIN' if mx.is_linux() else 'mx:DEFAULT_NINJA_TOOLCHAIN'
         super(NativeLibraryLauncherProject, self).__init__(
             _suite,
             NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config, self.jvm_standalone is not None),
@@ -3267,16 +3270,21 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             '-DGRAALVM_VERSION=' + _suite.release_version(),
         ]
         if not mx.is_windows():
-            _dynamic_cflags += ['-stdlib=libc++', '-pthread']
+            _dynamic_cflags += ['-pthread']
+        if mx.is_linux():
+            _dynamic_cflags += ['-stdlib=libc++'] # to link libc++ statically, see ldlibs
         if mx.is_darwin():
             _dynamic_cflags += ['-ObjC++']
 
+        def escaped_path(path):
+            if mx.is_windows():
+                return path.replace('\\', '\\\\')
+            else:
+                return path
+
         def escaped_relpath(path):
             relative = relpath(path, start=_exe_dir)
-            if mx.is_windows():
-                return relative.replace('\\', '\\\\')
-            else:
-                return relative
+            return escaped_path(relative)
 
         _graalvm_home = _get_graalvm_archive_path("")
 
@@ -3286,11 +3294,11 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             _lp = []
             for jvm_jar in self.jvm_standalone.jvm_jars:
                 for _, jar_name in mx.dependency(jvm_jar).getArchivableResults(single=True):
-                    _cp.append(join('..', 'jars', jar_name))
+                    _cp.append(escaped_path(join('..', 'jars', jar_name)))
             if self.jvm_standalone.jvm_modules:
-                _mp.append(join('..', 'modules'))
+                _mp.append(escaped_path(join('..', 'modules')))
             if self.jvm_standalone.jvm_libs:
-                _lp.append(join('..', 'jvmlibs'))
+                _lp.append(escaped_path(join('..', 'jvmlibs')))
         else:
             _cp = []
             # launcher classpath for launching via jvm
@@ -3375,8 +3383,8 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
             lang_home_names = []
             bin_home_paths = []
             for lang_home_name, lib_home_path in self.language_library_config.relative_home_paths.items():
-                bin_home_path = relpath(join(self.jre_base, '..', 'lib', lib_home_path), _exe_dir)
-                lang_home_names.append(lang_home_name)
+                bin_home_path = escaped_relpath(join(self.jre_base, '..', 'lib', lib_home_path))
+                lang_home_names.append(escaped_path(lang_home_name))
                 bin_home_paths.append(bin_home_path)
             if lang_home_names:
                 _dynamic_cflags += [
@@ -3399,25 +3407,19 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
     @property
     def ldlibs(self):
         _dynamic_ldlibs = []
-        if not mx.is_windows():
+        if mx.is_linux():
             # Link libc++ statically
-            llvm_toolchain = mx.distribution("LLVM_TOOLCHAIN").get_output()
-            libcxx_dir = join(llvm_toolchain, 'lib')
-            libcxx_arch = mx.get_arch().replace('amd64', 'x86_64')
-            if mx.is_linux():
-                libcxx_dir = join(libcxx_dir, libcxx_arch + '-unknown-linux-gnu')
             _dynamic_ldlibs += [
                 '-stdlib=libc++',
-                '-nostdlib++', # avoids to dynamically link libc++
-                join(libcxx_dir, 'libc++.a'),
-                join(libcxx_dir, 'libc++abi.a'),
+                '-static-libstdc++', # it looks weird but this does link libc++ statically
+                '-l:libc++abi.a',
             ]
-
+        if not mx.is_windows():
             _dynamic_ldlibs += ['-ldl']
             if mx.is_darwin():
                 _dynamic_ldlibs += ['-framework', 'Foundation']
 
-                default_min_version = {'x86_64': '10.13', 'aarch64': '11.0'}[libcxx_arch]
+                default_min_version = {'amd64': '10.13', 'aarch64': '11.0'}[mx.get_arch()]
                 min_version = os.getenv('MACOSX_DEPLOYMENT_TARGET', default_min_version)
                 _dynamic_ldlibs += ['-mmacosx-version-min=' + min_version]
 
@@ -3485,6 +3487,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     else:
                         with_non_rebuildable_configs = True
             for library_config in _get_library_configs(component):
+                library_project = None
                 if with_svm:
                     library_project = GraalVmLibrary(component, GraalVmNativeImage.project_name(library_config), [], library_config)
                     register_project(library_project)
@@ -3496,11 +3499,34 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                         jmod_file = library_config.add_to_module + ('' if library_config.add_to_module.endswith('.jmod') else '.jmod')
                         modified_jmods.setdefault(jmod_file, []).append(library_project)
                     needs_stage1 = True  # library configs need a stage1 even when they are skipped
-                if isinstance(library_config, mx_sdk.LanguageLibraryConfig) and library_config.launchers:
-                    launcher_project = NativeLibraryLauncherProject(component, library_config)
-                    register_project(launcher_project)
-                    polyglot_config_project = PolyglotConfig(component, library_config)
-                    register_project(polyglot_config_project)
+                if isinstance(library_config, mx_sdk.LanguageLibraryConfig):
+                    if library_config.launchers:
+                        launcher_project = NativeLibraryLauncherProject(component, library_config)
+                        register_project(launcher_project)
+                        polyglot_config_project = PolyglotConfig(component, library_config)
+                        register_project(polyglot_config_project)
+                    if with_svm and library_config.isolate_library_layout_distribution and not library_project.is_skipped() and has_component('tfle', stage1=True):
+                        # Create a layout distribution with the resulting language library that can be consumed into the
+                        # isolate resources jar distribution,
+                        resource_base_folder = f'META-INF/resources/engine/{library_config.language}-isolate/<os>/<arch>/libvm'
+                        attrs = {
+                            'description': f'Contains {library_config.language} language library resources',
+                            'hashEntry': f'{resource_base_folder}/sha256',
+                            'fileListEntry': f'{resource_base_folder}/files',
+                            'maven': False,
+                        }
+                        register_distribution(mx.LayoutDirDistribution(
+                            suite=_suite,
+                            name=library_config.isolate_library_layout_distribution,
+                            deps=[],
+                            layout={
+                                f'{resource_base_folder}/': f'dependency:{library_project.name}'
+                            },
+                            path=None,
+                            platformDependent=True,
+                            theLicense=None,
+                            **attrs
+                        ))
             if isinstance(component, mx_sdk.GraalVmLanguage) and component.support_distributions:
                 ni_resources_components = dir_name_to_ni_resources_components.get(component.dir_name)
                 if not ni_resources_components:
@@ -3560,7 +3586,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     mx.warn("Skipping standalone of '{}' because the following components are excluded:\n * {}".format(main_component.name, '\n * '.join(missing_dependency_names)))
             else:
                 # JVM standalones
-                if len(main_component.launcher_configs):
+                if any(type(lc) != mx_sdk.LauncherConfig for lc in main_component.launcher_configs):  # pylint: disable=unidiomatic-typecheck
                     if mx.get_opts().verbose:
                         mx.warn("Skipping JVM standalone of '{}' because it contains launcher configs that are not yet supported".format(main_component.name))
                 else:

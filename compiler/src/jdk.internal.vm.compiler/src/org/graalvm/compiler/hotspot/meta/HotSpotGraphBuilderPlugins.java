@@ -167,9 +167,9 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.word.LocationIdentity;
 
+import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.TargetDescription;
-import jdk.vm.ci.hotspot.VMIntrinsicMethod;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -204,7 +204,7 @@ public class HotSpotGraphBuilderPlugins {
                     OptionValues options,
                     TargetDescription target,
                     BarrierSet barrierSet) {
-        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration, target, options);
+        InvocationPlugins invocationPlugins = new HotSpotInvocationPlugins(graalRuntime, config, compilerConfiguration, options);
 
         Plugins plugins = new Plugins(invocationPlugins);
         plugins.appendNodePlugin(new HotSpotExceptionDispatchPlugin(config, wordTypes.getWordKind()));
@@ -250,7 +250,7 @@ public class HotSpotGraphBuilderPlugins {
                 StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
                 registerArrayPlugins(invocationPlugins, replacements, config);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
-                registerArraysSupportPlugins(invocationPlugins, replacements);
+                registerArraysSupportPlugins(invocationPlugins, replacements, target.arch);
                 registerReferencePlugins(invocationPlugins, replacements);
                 registerTrufflePlugins(invocationPlugins, wordTypes, config);
                 registerInstrumentationImplPlugins(invocationPlugins, config, replacements);
@@ -784,17 +784,6 @@ public class HotSpotGraphBuilderPlugins {
         }
     }
 
-    public static boolean isIntrinsicName(GraalHotSpotVMConfig config, String className, String name) {
-        for (VMIntrinsicMethod intrinsic : config.getStore().getIntrinsics()) {
-            if (className.equals(intrinsic.declaringClass)) {
-                if (name.equals(intrinsic.name)) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
     private static ResolvedJavaType resolveTypeAESCrypt(ResolvedJavaType context) {
         return UnresolvedJavaType.create("Lcom/sun/crypto/provider/AESCrypt;").resolve(context);
     }
@@ -1047,7 +1036,7 @@ public class HotSpotGraphBuilderPlugins {
         boolean useSha512 = config.useSHA512Intrinsics();
         boolean useSha3 = config.sha3ImplCompressMultiBlock != 0L;
 
-        boolean implCompressMultiBlock0Enabled = isIntrinsicName(config, "sun/security/provider/DigestBase", "implCompressMultiBlock0") && (useMD5 || useSha1 || useSha256 || useSha512 || useSha3);
+        boolean implCompressMultiBlock0Enabled = useMD5 || useSha1 || useSha256 || useSha512 || useSha3;
         Registration r = new Registration(plugins, "sun.security.provider.DigestBase", replacements);
         r.registerConditional(implCompressMultiBlock0Enabled, new SnippetSubstitutionInvocationPlugin<>(DigestBaseSnippets.Templates.class,
                         "implCompressMultiBlock0", Receiver.class, byte[].class, int.class, int.class) {
@@ -1214,7 +1203,7 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerArraysSupportPlugins(InvocationPlugins plugins, Replacements replacements) {
+    private static void registerArraysSupportPlugins(InvocationPlugins plugins, Replacements replacements, Architecture arch) {
         Registration r = new Registration(plugins, "jdk.internal.util.ArraysSupport", replacements);
         r.register(new InvocationPlugin("vectorizedMismatch", Object.class, long.class, Object.class, long.class, int.class, int.class) {
             @Override
@@ -1224,6 +1213,13 @@ public class HotSpotGraphBuilderPlugins {
                 ValueNode bAddr = b.add(new ComputeObjectAddressNode(bObject, bOffset));
                 b.addPush(JavaKind.Int, new VectorizedMismatchNode(aAddr, bAddr, length, log2ArrayIndexScale));
                 return true;
+            }
+
+            @Override
+            public boolean isGraalOnly() {
+                // On AArch64 HotSpot, this intrinsic is not implemented and
+                // UseVectorizedMismatchIntrinsic defaults to false.
+                return arch instanceof AArch64;
             }
         });
     }

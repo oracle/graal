@@ -172,6 +172,8 @@ public final class PolyglotNativeAPI {
         PolyglotStatus lastErrorCode = poly_ok;
 
         CallbackException callbackException = null;
+
+        ObjectHandle recurringCallbackInfoHandle = WordFactory.nullPointer();
     }
 
     private static void nullCheck(PointerBase ptr, String fieldName) {
@@ -2395,6 +2397,7 @@ public final class PolyglotNativeAPI {
         }
         if (callback.isNull()) {
             Threading.registerRecurringCallback(-1, null, null);
+            setNewInfoHandle(WordFactory.nullPointer());
             return poly_ok;
         }
         PolyglotCallbackInfoInternal info = new PolyglotCallbackInfoInternal(new ObjectHandle[0], data);
@@ -2416,8 +2419,24 @@ public final class PolyglotNativeAPI {
                 }
             }
         };
-        Threading.registerRecurringCallback(intervalNanos, TimeUnit.NANOSECONDS, recurringCallback);
+        try {
+            Threading.registerRecurringCallback(intervalNanos, TimeUnit.NANOSECONDS, recurringCallback);
+        } catch (Throwable t) {
+            objectHandles.destroy(infoHandle);
+            throw t;
+        }
+
+        setNewInfoHandle(infoHandle);
+
         return poly_ok;
+    }
+
+    private static void setNewInfoHandle(ObjectHandle infoHandle) {
+        ObjectHandle previousInfoHandle = threadLocals.get().recurringCallbackInfoHandle;
+        if (WordFactory.nullPointer().notEqual(previousInfoHandle)) {
+            objectHandles.destroy(previousInfoHandle);
+        }
+        threadLocals.get().recurringCallbackInfoHandle = infoHandle;
     }
 
     private static class PolyglotCallbackInfoInternal {
@@ -2488,10 +2507,7 @@ public final class PolyglotNativeAPI {
 
     private static List<Language> sortedLangs(Engine engine) {
 
-        return engine.getLanguages().entrySet().stream()
-                        .sorted(Comparator.comparing(Entry::getKey))
-                        .map(Entry::getValue)
-                        .collect(Collectors.toList());
+        return engine.getLanguages().entrySet().stream().sorted(Comparator.comparing(Entry::getKey)).map(Entry::getValue).collect(Collectors.toList());
     }
 
     private static void resetErrorState() {

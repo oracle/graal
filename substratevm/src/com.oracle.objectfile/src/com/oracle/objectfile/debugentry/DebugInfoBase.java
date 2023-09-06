@@ -299,6 +299,7 @@ public abstract class DebugInfoBase {
             Path filePath = debugTypeInfo.filePath();
             addTypeEntry(idType, typeName, fileName, filePath, byteSize, typeKind);
         }));
+        debugInfoProvider.recordActivity();
 
         /* Now we can cross reference static and instance field details. */
         debugInfoProvider.typeInfoProvider().forEach(debugTypeInfo -> debugTypeInfo.debugContext((debugContext) -> {
@@ -310,6 +311,7 @@ public abstract class DebugInfoBase {
             TypeEntry typeEntry = (idType != null ? lookupTypeEntry(idType) : lookupHeaderType());
             typeEntry.addDebugInfo(this, debugTypeInfo, debugContext);
         }));
+        debugInfoProvider.recordActivity();
 
         debugInfoProvider.codeInfoProvider().forEach(debugCodeInfo -> debugCodeInfo.debugContext((debugContext) -> {
             /*
@@ -335,6 +337,7 @@ public abstract class DebugInfoBase {
              */
             EconomicMap<DebugLocationInfo, SubRange> subRangeIndex = EconomicMap.create();
             debugCodeInfo.locationInfoProvider().forEach(debugLocationInfo -> addSubrange(debugLocationInfo, primaryRange, classEntry, subRangeIndex, debugContext));
+            debugInfoProvider.recordActivity();
         }));
 
         debugInfoProvider.dataInfoProvider().forEach(debugDataInfo -> debugDataInfo.debugContext((debugContext) -> {

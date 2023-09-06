@@ -56,6 +56,8 @@ import mx_native
 import mx_sdk
 import mx_sdk_vm
 import mx_unittest
+import mx_jardistribution
+import mx_pomdistribution
 import tck
 from mx_gate import Task
 from mx_javamodules import as_java_module, get_module_name
@@ -224,50 +226,54 @@ def _get_enterprise_truffle():
     return mx.distribution('graal-enterprise:TRUFFLE_ENTERPRISE', False)
 
 def resolve_sl_dist_names(use_optimized_runtime=True, use_enterprise=True):
-    return ['TRUFFLE_SL', 'TRUFFLE_SL_LAUNCHER'] + resolve_truffle_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
+    return ['TRUFFLE_SL', 'TRUFFLE_SL_LAUNCHER', 'TRUFFLE_NFI_LIBFFI'] + resolve_truffle_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
 
 def sl(args):
     """run an SL program"""
     vm_args, sl_args = mx.extract_VM_args(args)
-    return mx.run(_sl_command(vm_args, sl_args, force_cp=False))
+    return mx.run(_sl_command(mx.get_jdk(tag="graalvm"), vm_args, sl_args, force_cp=False))
 
-def _sl_command(vm_args, sl_args, use_optimized_runtime=True, use_enterprise=True, force_cp=False):
-    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
-    java_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('java'))
+
+def _sl_command(jdk, vm_args, sl_args, use_optimized_runtime=True, use_enterprise=True, force_cp=False):
     dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
     if force_cp:
         main_class = ["com.oracle.truffle.sl.launcher.SLMain"]
     else:
         main_class = ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"]
-    return [java_path] + vm_args + mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp) + main_class + sl_args
+    return [jdk.java] + vm_args + mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp) + main_class + sl_args
+
 
 def slnative(args):
     """build a native image of an SL program"""
     vm_args, sl_args = mx.extract_VM_args(args)
     target_dir = tempfile.mkdtemp()
-    image = _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, force_cp=False)
+    jdk = mx.get_jdk(tag='graalvm')
+    image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, force_cp=False)
     if not image:
         mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(mx_sdk_vm.graalvm_home(fatalIfMissing=True)))
     mx.log("Image build completed. Running {}".format(" ".join([image] + sl_args)))
     result = mx.run([image] + sl_args)
     return result
 
-def _native_image_sl(vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, force_cp=False):
-    graalvm_home = mx_sdk_vm.graalvm_home(fatalIfMissing=True)
-    native_image_path = os.path.join(graalvm_home, 'bin', mx.exe_suffix('native-image'))
+
+def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, force_cp=False):
+    native_image_path = jdk.exe_path('native-image')
     if not exists(native_image_path):
-        native_image_path = os.path.join(graalvm_home, 'bin', mx.cmd_suffix('native-image'))
+        native_image_path = os.path.join(jdk.home, 'bin', mx.cmd_suffix('native-image'))
         if not exists(native_image_path):
-            mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(graalvm_home))
+            mx.warn("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(jdk.home))
             return None
+
     target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
     dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
 
-    if not force_cp:
-        vm_args += ['-p', mx.classpath('TRUFFLE_NFI_LIBFFI')]
-
     vm_args += mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp)
-    vm_args += ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain", target_path]
+    if force_cp:
+        vm_args += ["com.oracle.truffle.sl.launcher.SLMain"]
+    else:
+        vm_args += ["--module", "org.graalvm.sl_launcher/com.oracle.truffle.sl.launcher.SLMain"]
+    vm_args += [target_path]
+    mx.log("Running {} {}".format(mx.exe_suffix('native-image'), " ".join(vm_args)))
     mx.run([native_image_path] + vm_args)
     return target_path
 
@@ -300,11 +306,15 @@ def _truffle_gate_runner(args, tasks):
     with Task('Validate parsers', tasks) as t:
         if t: validate_parsers()
 
-# invoked by vm gate runner in unchained configuration
+# Run in vm suite with:
+# mx --env ce --native-images=. build
+# mx --env ce --native-images=. gate -o -s "Truffle Unchained Truffle ModulePath Unit Tests"
 def truffle_jvm_module_path_unit_tests_gate():
     unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--verbose', '--max-class-failures=25']))
 
-# invoked by vm gate runner in unchained configuration
+# Run in VM suite with:
+# mx --env ce --native-images=. build
+# mx --env ce --native-images=. gate -o -s "Truffle Unchained Truffle ClassPath Unit Tests"
 def truffle_jvm_class_path_unit_tests_gate():
     # unfortunately with class-path isolation we cannot run all the unit tests
     # as many of the truffle unit tests expect no class loader isolation between polyglot and truffle
@@ -316,40 +326,75 @@ def truffle_jvm_class_path_unit_tests_gate():
         ]
     unittest(list(['--suite', 'truffle', '--use-graalvm', '--enable-timing', '--force-classpath', '--verbose', '--max-class-failures=25'] + test_classes))
 
-# invoked by vm gate runner in unchained configuration
+# Run in VM suite with:
+# mx --env ce --native-images=. build
+# mx --env ce --native-images=. gate -o -s "Truffle Unchained SL JVM"
 def sl_jvm_gate_tests():
-    def run_jvm_fallback(test_file):
-        return _sl_command([], [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false'], use_optimized_runtime=False)
-    def run_jvm_optimized(test_file):
-        return _sl_command([], [test_file, '--disable-launcher-output'], use_optimized_runtime=True)
-    def run_jvm_optimized_immediately(test_file):
-        return _sl_command([], [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'], use_optimized_runtime=True)
+    _sl_jvm_gate_tests(mx.get_jdk(tag='graalvm'), force_cp=False, supports_optimization=True)
+    _sl_jvm_gate_tests(mx.get_jdk(tag='graalvm'), force_cp=True, supports_optimization=True)
 
-    mx.log("Run SL JVM Fallback Test")
+    _sl_jvm_gate_tests(mx.get_jdk(tag='default'), force_cp=False, supports_optimization=False)
+    _sl_jvm_gate_tests(mx.get_jdk(tag='default'), force_cp=True, supports_optimization=False)
+
+
+def _sl_jvm_gate_tests(jdk, force_cp=False, supports_optimization=True):
+    default_args = []
+    if not supports_optimization:
+        default_args += ['--engine.WarnInterpreterOnly=false']
+
+    def run_jvm_fallback(test_file):
+        return _sl_command(jdk, [], [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false'] + default_args, use_optimized_runtime=False, force_cp=force_cp)
+    def run_jvm_optimized(test_file):
+        return _sl_command(jdk, [], [test_file, '--disable-launcher-output'] + default_args, use_optimized_runtime=True, force_cp=force_cp)
+    def run_jvm_optimized_immediately(test_file):
+        return _sl_command(jdk, [], [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'] + default_args, use_optimized_runtime=True, force_cp=force_cp)
+    def run_jvmci_disabled(test_file):
+        return _sl_command(jdk, [], [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false', '-XX:-EnableJVMCI'] + default_args, use_optimized_runtime=True, force_cp=force_cp)
+
+    mx.log(f'Run SL JVM Fallback Test on {jdk.home} force_cp={force_cp}')
     _run_sl_tests(run_jvm_fallback)
-    mx.log("Run SL JVM Optimized Test")
+    mx.log(f'Run SL JVM Optimized Test on {jdk.home} force_cp={force_cp}')
     _run_sl_tests(run_jvm_optimized)
-    mx.log("Run SL JVM Optimized Immediately Test")
-    _run_sl_tests(run_jvm_optimized_immediately)
+    mx.log(f'Run SL JVM JVMCI disabled on {jdk.home} force_cp={force_cp}')
+    _run_sl_tests(run_jvmci_disabled)
+
+    if supports_optimization:
+        mx.log(f'Run SL JVM Optimized Immediately Test on {jdk.home} force_cp={force_cp}')
+        _run_sl_tests(run_jvm_optimized_immediately)
 
     # test if the enterprise compiler is in use
-    # that everything works fine if truffle-enterprise.jar is not availble
+    # that everything works fine if truffle-enterprise.jar is not available
     enterprise = _get_enterprise_truffle()
     if enterprise:
         def run_jvm_no_enterprise_optimized(test_file):
-            return _sl_command([], [test_file, '--disable-launcher-output'], use_optimized_runtime=True, use_enterprise=False)
+            return _sl_command(jdk, [], [test_file, '--disable-launcher-output'] + default_args, use_optimized_runtime=True, use_enterprise=False, force_cp=force_cp)
         def run_jvm_no_enterprise_optimized_immediately(test_file):
-            return _sl_command([], [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'], use_optimized_runtime=True, use_enterprise=False)
+            return _sl_command(jdk, [], [test_file, '--disable-launcher-output', '--engine.CompileImmediately', '--engine.BackgroundCompilation=false'] + default_args, use_optimized_runtime=True, use_enterprise=False, force_cp=force_cp)
+        def run_jvm_no_enterprise_jvmci_disabled(test_file):
+            return _sl_command(jdk, [], [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false', '-XX:-EnableJVMCI'] + default_args, use_optimized_runtime=True, use_enterprise=False, force_cp=force_cp)
 
-        mx.log("Run SL JVM Optimized  Test No Truffle Enterprise")
+        mx.log(f'Run SL JVM Optimized  Test No Truffle Enterprise on {jdk.home} force_cp={force_cp}')
         _run_sl_tests(run_jvm_no_enterprise_optimized)
-        mx.log("Run SL JVM Optimized Immediately Test No Truffle Enterprise")
-        _run_sl_tests(run_jvm_no_enterprise_optimized_immediately)
 
+        if supports_optimization:
+            mx.log(f'Run SL JVM Optimized Immediately Test No Truffle Enterprise on {jdk.home} force_cp={force_cp}')
+            _run_sl_tests(run_jvm_no_enterprise_optimized_immediately)
+
+        mx.log(f'Run SL JVM Optimized  Test No Truffle Enterprise JVMCI disabled on {jdk.home} force_cp={force_cp}')
+        _run_sl_tests(run_jvm_no_enterprise_jvmci_disabled)
+
+
+# Run in VM suite with:
+# mx --env ce --native-images=. build
+# mx --env ce --native-images=. gate -o -s "Truffle Unchained SL Native Optimized"
 def sl_native_optimized_gate_tests():
-    # invoked by vm gate runner in ce-unchained configuration
+    _sl_native_optimized_gate_tests(force_cp=False)
+    _sl_native_optimized_gate_tests(force_cp=True)
+
+def _sl_native_optimized_gate_tests(force_cp):
     target_dir = tempfile.mkdtemp()
-    image = _native_image_sl([], target_dir, use_optimized_runtime=True, use_enterprise=True)
+    jdk = mx.get_jdk(tag='graalvm')
+    image = _native_image_sl(jdk, [], target_dir, use_optimized_runtime=True, use_enterprise=True)
 
     def run_native_optimized(test_file):
         return [image] + [test_file, '--disable-launcher-output']
@@ -368,7 +413,7 @@ def sl_native_optimized_gate_tests():
     enterprise = _get_enterprise_truffle()
     if enterprise:
         target_dir = tempfile.mkdtemp()
-        image = _native_image_sl([], target_dir, use_optimized_runtime=True, use_enterprise=False)
+        image = _native_image_sl(jdk, [], target_dir, use_optimized_runtime=True, use_enterprise=False, force_cp=force_cp)
 
         def run_no_enterprise_native_optimized(test_file):
             return [image] + [test_file, '--disable-launcher-output']
@@ -382,10 +427,17 @@ def sl_native_optimized_gate_tests():
 
         shutil.rmtree(target_dir)
 
+# Run in VM suite with:
+# mx --env ce --native-images=. build
+# mx --env ce --native-images=. gate -o -s "Truffle Unchained SL Native Fallback"
 def sl_native_fallback_gate_tests():
-    # invoked by vm gate runner in ce-unchained configuration
+    _sl_native_fallback_gate_tests(force_cp=False)
+    _sl_native_fallback_gate_tests(force_cp=True)
+
+def _sl_native_fallback_gate_tests(force_cp):
     target_dir = tempfile.mkdtemp()
-    image = _native_image_sl([], target_dir, use_optimized_runtime=False)
+    jdk = mx.get_jdk(tag='graalvm')
+    image = _native_image_sl(jdk, [], target_dir, use_optimized_runtime=False, force_cp=force_cp)
 
     def run_native_fallback(test_file):
         return [image] + [test_file, '--disable-launcher-output', '--engine.WarnInterpreterOnly=false']
@@ -875,6 +927,95 @@ def validate_parser(grammar_project, grammar_path, create_command, args=None, ou
             mx.abort(f"Content generated from {grammar_path} does not match content of {path}:{nl}" +
                     f"{diff}{nl}" +
                     "Make sure the grammar files are up to date with the generated code. You can regenerate the generated code using mx.")
+
+
+def register_polyglot_isolate_distributions(register_distribution, language_id, language_distribution, isolate_library_layout_distribution, internal_resource_project):
+    """
+    Registers the polyglot isolate resource distribution and isolate resource meta-POM distribution.
+    The created polyglot isolate resource distribution is named `<ID>_ISOLATE_RESOURCES`, inheriting the Maven group ID
+    from the given `language_distribution`, and the Maven artifact ID is `<id>-isolate`.
+    The meta-POM distribution is named `<ID>_ISOLATE`, having the Maven group ID `org.graalvm.polyglot`,
+    and the Maven artifact ID is `<id>-isolate`.
+
+    :param register_distribution: A callback to dynamically register the distribution, obtained as a parameter from `mx_register_dynamic_suite_constituents`.
+    :type register_distribution: (mx.Distribution) -> None
+    :param language_id: The language ID.
+    :param language_distribution: The language distribution used to inherit distribution properties.
+    :param isolate_library_layout_distribution: The layout distribution with polyglot isolate library.
+    :param internal_resource_project: The internal resource project used for unpacking the polyglot isolate library.
+    """
+    assert language_distribution
+    assert isolate_library_layout_distribution
+    assert internal_resource_project
+    owner_suite = language_distribution.suite
+    resources_dist_name = f'{language_id.upper()}_ISOLATE_RESOURCES'
+    isolate_dist_name = f'{language_id.upper()}_ISOLATE'
+    layout_dist_qualified_name = f'{isolate_library_layout_distribution.suite.name}:{isolate_library_layout_distribution.name}'
+    maven_group_id = language_distribution.maven_group_id()
+    maven_artifact_id = f'{language_id}-isolate'
+    module_name = f'{get_module_name(language_distribution)}.isolate'
+    licenses = set()
+    licenses.update(language_distribution.theLicense)
+    licenses.update(owner_suite.defaultLicense)
+    attrs = {
+        'description': f'Polyglot isolate resources for {language_id}.',
+        'moduleInfo': {
+            'name': module_name,
+        },
+        'maven': {
+            'groupId': maven_group_id,
+            'artifactId': maven_artifact_id,
+            'tag': ['default', 'public'],
+        },
+        'mavenNoJavadoc': True,
+        'mavenNoSources': True,
+    }
+    isolate_library_dist = mx_jardistribution.JARDistribution(
+        suite=owner_suite,
+        name=resources_dist_name,
+        subDir=language_distribution.subDir,
+        path=None,
+        sourcesPath=None,
+        deps=[
+            internal_resource_project.name,
+            layout_dist_qualified_name,
+        ],
+        mainClass=None,
+        excludedLibs=[],
+        distDependencies=['truffle:TRUFFLE_API'],
+        javaCompliance=str(internal_resource_project.javaCompliance)+'+',
+        platformDependent=True,
+        theLicense=list(licenses),
+        compress=True,
+        **attrs
+    )
+    register_distribution(isolate_library_dist)
+    attrs = {
+        'description': f'The {language_id} polyglot isolate.',
+        'maven': {
+            'groupId': 'org.graalvm.polyglot',
+            'artifactId': maven_artifact_id,
+            'tag': ['default', 'public'],
+        },
+    }
+    # the graal-enterprise may not be fully loaded
+    # we need to use suiteDict to get the license
+    graal_enterprise = mx.suite('graal-enterprise')
+    graal_enterprise_license = graal_enterprise.suiteDict.get('defaultLicense')
+    if isinstance(graal_enterprise_license, str):
+        graal_enterprise_license = [graal_enterprise_license]
+    licenses.update(graal_enterprise_license)
+    meta_pom_dist = mx_pomdistribution.POMDistribution(
+        suite=owner_suite,
+        name=isolate_dist_name,
+        distDependencies=[],
+        runtimeDependencies=[
+            resources_dist_name,
+            'graal-enterprise:TRUFFLE_ENTERPRISE',
+        ],
+        theLicense=sorted(list(licenses)),
+        **attrs)
+    register_distribution(meta_pom_dist)
 
 class LibffiBuilderProject(mx.AbstractNativeProject, mx_native.NativeDependency):  # pylint: disable=too-many-ancestors
     """Project for building libffi from source.

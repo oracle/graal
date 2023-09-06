@@ -74,6 +74,7 @@ import com.oracle.truffle.espresso.redefinition.HotSwapClassInfo;
 import com.oracle.truffle.espresso.redefinition.InnerClassRedefiner;
 import com.oracle.truffle.espresso.redefinition.RedefinitionNotSupportedException;
 import com.oracle.truffle.espresso.redefinition.plugins.impl.RedefinitionPluginHandler;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 
 public final class JDWPContextImpl implements JDWPContext {
@@ -567,9 +568,13 @@ public final class JDWPContextImpl implements JDWPContext {
 
     @Override
     public void exit(int exitCode) {
-        // TODO - implement proper system exit for Espresso
-        // tracked here: /browse/GR-20496
-        System.exit(exitCode);
+        Object previous = null;
+        try {
+            previous = controller.enterTruffleContext();
+            context.truffleExit(null, exitCode);
+        } finally {
+            controller.leaveTruffleContext(previous);
+        }
     }
 
     @Override

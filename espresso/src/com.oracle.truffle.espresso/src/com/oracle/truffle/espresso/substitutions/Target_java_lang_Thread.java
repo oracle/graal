@@ -47,7 +47,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.threads.State;
 import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.threads.Transition;
@@ -391,6 +391,18 @@ public final class Target_java_lang_Thread {
             assert access.getThread() == Thread.currentThread();
             result = InterpreterToVM.getStackTrace(InterpreterToVM.DefaultHiddenFramesFilter.INSTANCE, maxDepth);
         }
+    }
+
+    @Substitution(versionFilter = VersionFilter.Java20OrLater.class)
+    public static @JavaType(Object[].class) StaticObject scopedValueCache(@Inject EspressoContext context) {
+        StaticObject platformThread = context.getCurrentPlatformThread();
+        return context.getThreadAccess().getScopedValueCache(platformThread);
+    }
+
+    @Substitution(versionFilter = VersionFilter.Java20OrLater.class)
+    public static void setScopedValueCache(@JavaType(Object[].class) StaticObject cache, @Inject EspressoContext context) {
+        StaticObject platformThread = context.getCurrentPlatformThread();
+        context.getThreadAccess().setScopedValueCache(platformThread, cache);
     }
 
     @Substitution(versionFilter = VersionFilter.Java20OrLater.class, isTrivial = true)

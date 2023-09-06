@@ -1019,6 +1019,7 @@ driver_build_args = [
 ] + svm_experimental_options([
     '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
+    f'-R:MaxHeapSize={256 * 1024 * 1024}',
 ])
 
 additional_ni_dependencies = []
@@ -1288,6 +1289,7 @@ libgraal_build_args = [
     '-H:+AllowFoldMethods',
     '-Djdk.vm.ci.services.aot=true',
     '-Dtruffle.TruffleRuntime=',
+    '-H:+JNIEnhancedErrorCodes',
     '-H:InitialCollectionPolicy=LibGraal',
 
     # These 2 arguments provide walkable call stacks for a crash in libgraal

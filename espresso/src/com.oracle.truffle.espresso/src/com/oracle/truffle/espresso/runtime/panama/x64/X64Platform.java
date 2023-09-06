@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,25 +20,32 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
+package com.oracle.truffle.espresso.runtime.panama.x64;
 
-import java.util.function.Function;
+import com.oracle.truffle.espresso.runtime.panama.Platform;
+import com.oracle.truffle.espresso.runtime.panama.StorageType;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
-import com.oracle.svm.core.annotate.TargetClass;
-
-@Platforms(Platform.HOSTED_ONLY.class)
-public class Package_jdk_jfr_internal_event_helper implements Function<TargetClass, String> {
+public abstract class X64Platform extends Platform {
+    @Override
+    public StorageType getStorageType(byte id) {
+        return X64StorageType.get(id);
+    }
 
     @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            return "jdk.jfr.internal.event." + annotation.className();
+    protected String getIntegerRegisterName(int idx, int maskOrSize) {
+        if (maskOrSize == X64Regs.REG64_MASK) {
+            return X64Regs.getIntegerRegisterName(idx);
         } else {
-            return "jdk.jfr.internal." + annotation.className();
+            return "?INT_REG?[" + idx + ", " + maskOrSize + "]";
+        }
+    }
+
+    @Override
+    protected String getVectorRegisterName(int idx, int maskOrSize) {
+        if (maskOrSize == X64Regs.XMM_MASK) {
+            return X64Regs.getVectorRegisterName(idx);
+        } else {
+            return "?VEC_REG?[" + idx + ", " + maskOrSize + "]";
         }
     }
 }

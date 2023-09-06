@@ -1,12 +1,10 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
  * under the terms of the GNU General Public License version 2 only, as
- * published by the Free Software Foundation.  Oracle designates this
- * particular file as subject to the "Classpath" exception as provided
- * by Oracle in the LICENSE file that accompanied this code.
+ * published by the Free Software Foundation.
  *
  * This code is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
@@ -22,18 +20,22 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr;
+package com.oracle.truffle.espresso.runtime.panama.aarch64;
 
-import com.oracle.svm.core.annotate.Substitute;
-import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.util.VMError;
+import static com.oracle.truffle.espresso.runtime.panama.aarch64.AArch64Regs.r0;
+import static com.oracle.truffle.espresso.runtime.panama.aarch64.AArch64Regs.v0;
 
-@TargetClass(className = "jdk.jfr.internal.EventHandlerCreator", onlyWith = {HasJfrSupport.class, JDK17OrEarlier.class})
-public final class Target_jdk_jfr_internal_EventHandlerCreator {
-    @Substitute
-    @SuppressWarnings("static-method")
-    public Class<? extends Target_jdk_jfr_internal_handlers_EventHandler> makeEventHandlerClass() {
-        throw VMError.shouldNotReachHereSubstitution();
+import com.oracle.truffle.espresso.runtime.panama.ArgumentsCalculator;
+import com.oracle.truffle.espresso.runtime.panama.DarwinAArch64ArgumentsCalculator;
+
+public final class DarwinAAPCS64 extends AAPCS64 {
+    public static final DarwinAAPCS64 INSTANCE = new DarwinAAPCS64();
+
+    private DarwinAAPCS64() {
+    }
+
+    @Override
+    public ArgumentsCalculator getArgumentsCalculator() {
+        return new DarwinAArch64ArgumentsCalculator(this, CALL_INT_REGS, CALL_FLOAT_REGS, r0, v0);
     }
 }

@@ -29,6 +29,7 @@ import static org.graalvm.compiler.test.SubprocessUtil.java;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Predicate;
@@ -54,15 +55,29 @@ public abstract class SubprocessTest extends GraalCompilerTest {
      *         {@link Subprocess} instance describing the process after its successful termination.
      */
     public SubprocessUtil.Subprocess launchSubprocess(Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(null, true, getClass(), runnable, args);
+        return launchSubprocess(null, null, true, getClass(), runnable, args);
+    }
+
+    public SubprocessUtil.Subprocess launchSubprocess(Predicate<String> vmArgsFilter, Runnable runnable, String... args) throws InterruptedException, IOException {
+        return launchSubprocess(null, vmArgsFilter, true, getClass(), runnable, args);
     }
 
     public static SubprocessUtil.Subprocess launchSubprocess(Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(null, true, testClass, runnable, args);
+        return launchSubprocess(null, null, true, testClass, runnable, args);
     }
 
-    public static SubprocessUtil.Subprocess launchSubprocess(Predicate<List<String>> testPredicate, boolean expectNormalExit, Class<? extends GraalCompilerTest> testClass, Runnable runnable,
-                    String... args)
+    private static List<String> filter(List<String> args, Predicate<String> vmArgsFilter) {
+        List<String> result = new ArrayList<>(args.size());
+        for (String arg : args) {
+            if (vmArgsFilter.test(arg)) {
+                result.add(arg);
+            }
+        }
+        return result;
+    }
+
+    public static SubprocessUtil.Subprocess launchSubprocess(Predicate<List<String>> testPredicate, Predicate<String> vmArgsFilter, boolean expectNormalExit,
+                    Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args)
                     throws InterruptedException, IOException {
         String recursionPropName = testClass.getSimpleName() + ".Subprocess";
         if (Boolean.getBoolean(recursionPropName)) {
@@ -73,6 +88,9 @@ public abstract class SubprocessTest extends GraalCompilerTest {
             vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
             vmArgs.add("-D" + recursionPropName + "=true");
             vmArgs.addAll(Arrays.asList(args));
+            if (vmArgsFilter != null) {
+                vmArgs = filter(vmArgs, vmArgsFilter);
+            }
             boolean verbose = Boolean.getBoolean(testClass.getSimpleName() + ".verbose");
             if (verbose) {
                 System.err.println(String.join(" ", vmArgs));

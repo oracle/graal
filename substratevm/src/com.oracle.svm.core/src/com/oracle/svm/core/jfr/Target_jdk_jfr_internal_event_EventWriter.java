@@ -26,28 +26,17 @@ package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK19OrLater;
 
-@TargetClass(className = "EventWriter", classNameProvider = Package_jdk_jfr_internal_event_helper.class, onlyWith = HasJfrSupport.class)
-public final class Target_jdk_jfr_internal_EventWriter {
-
+@TargetClass(className = "jdk.jfr.internal.event.EventWriter", onlyWith = HasJfrSupport.class)
+public final class Target_jdk_jfr_internal_event_EventWriter {
     @Alias //
-    @TargetElement(onlyWith = JDK19OrLater.class) boolean excluded;
+    boolean excluded;
 
     @Alias //
     long threadID;
 
     @Alias
     @SuppressWarnings("unused")
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    Target_jdk_jfr_internal_EventWriter(long committedPos, long maxPos, long committedPosAddress, long threadID, boolean valid) {
-    }
-
-    @Alias
-    @SuppressWarnings("unused")
-    @TargetElement(onlyWith = JDK19OrLater.class)
-    Target_jdk_jfr_internal_EventWriter(long committedPos, long maxPos, long threadID, boolean valid, boolean excluded) {
+    Target_jdk_jfr_internal_event_EventWriter(long committedPos, long maxPos, long threadID, boolean valid, boolean excluded) {
     }
 }

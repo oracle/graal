@@ -30,13 +30,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.HashSet;
-import java.util.IdentityHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -70,7 +67,6 @@ import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
-import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;
@@ -92,8 +88,6 @@ import com.oracle.svm.hosted.option.HostedOptionProvider;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.UnsafePartitionKind;
 
-import jdk.vm.ci.meta.JavaConstant;
-import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
 
 @SuppressWarnings("deprecation")
@@ -584,47 +578,7 @@ public class FeatureImpl {
 
         @Override
         public void registerAsImmutable(Object root, Predicate<Object> includeObject) {
-            Deque<Object> worklist = new ArrayDeque<>();
-            IdentityHashMap<Object, Boolean> registeredObjects = new IdentityHashMap<>();
-
-            worklist.push(root);
-
-            while (!worklist.isEmpty()) {
-                Object cur = worklist.pop();
-                registerAsImmutable(cur);
-
-                if (!getMetaAccess().optionalLookupJavaType(cur.getClass()).isPresent()) {
-                    /*
-                     * The type is unused (actually was never created by the static analysis), so we
-                     * do not need to follow any children.
-                     */
-                } else if (cur instanceof Object[]) {
-                    for (Object element : ((Object[]) cur)) {
-                        addToWorklist(aUniverse.replaceObject(element), includeObject, worklist, registeredObjects);
-                    }
-                } else {
-                    JavaConstant constant = aUniverse.getSnippetReflection().forObject(cur);
-                    for (HostedField field : getMetaAccess().lookupJavaType(constant).getInstanceFields(true)) {
-                        if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
-                            Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, heap.hConstantReflection.readFieldValue(field, constant));
-                            addToWorklist(fieldValue, includeObject, worklist, registeredObjects);
-                        }
-                    }
-                }
-            }
-        }
-
-        private static void addToWorklist(Object object, Predicate<Object> includeObject, Deque<Object> worklist, IdentityHashMap<Object, Boolean> registeredObjects) {
-            if (object == null || registeredObjects.containsKey(object)) {
-                return;
-            } else if (object instanceof DynamicHub || object instanceof Class) {
-                /* Classes are handled specially, some fields of it are immutable and some not. */
-                return;
-            } else if (!includeObject.test(object)) {
-                return;
-            }
-            registeredObjects.put(object, Boolean.TRUE);
-            worklist.push(object);
+            heap.registerAsImmutable(root, includeObject);
         }
 
         public HostedMetaAccess getMetaAccess() {
@@ -686,6 +640,13 @@ public class FeatureImpl {
 
         public NativeImageCodeCache getCodeCache() {
             return codeCache;
+        }
+    }
+
+    public static class BeforeHeapLayoutAccessImpl extends CompilationAccessImpl implements Feature.BeforeHeapLayoutAccess {
+        public BeforeHeapLayoutAccessImpl(FeatureHandler featureHandler, ImageClassLoader imageClassLoader, AnalysisUniverse aUniverse, HostedUniverse hUniverse, NativeImageHeap heap,
+                        DebugContext debugContext, RuntimeConfiguration runtimeConfiguration, NativeLibraries nativeLibraries) {
+            super(featureHandler, imageClassLoader, aUniverse, hUniverse, heap, debugContext, runtimeConfiguration, nativeLibraries);
         }
     }
 

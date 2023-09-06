@@ -141,7 +141,7 @@ import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.OS;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -179,6 +179,7 @@ public final class VM extends NativeEnv {
 
     private final @Pointer TruffleObject getJavaVM;
     private final @Pointer TruffleObject mokapotAttachThread;
+    private final @Pointer TruffleObject mokapotCaptureState;
     private final @Pointer TruffleObject getPackageAt;
 
     private final long rtldDefaultValue;
@@ -342,6 +343,10 @@ public final class VM extends NativeEnv {
                             "mokapotAttachThread",
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER));
 
+            mokapotCaptureState = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "mokapotCaptureState",
+                            NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT));
+
             @Pointer
             TruffleObject mokapotGetRTLDDefault = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "mokapotGetRTLD_DEFAULT",
@@ -480,6 +485,10 @@ public final class VM extends NativeEnv {
     }
 
     // Checkstyle: stop method name check
+
+    public TruffleObject getMokapotCaptureState() {
+        return mokapotCaptureState;
+    }
 
     // region system
 

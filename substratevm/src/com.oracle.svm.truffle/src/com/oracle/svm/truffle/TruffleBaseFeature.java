@@ -86,6 +86,7 @@ import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeResourceSupport;
+import org.graalvm.polyglot.Engine;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -151,7 +152,6 @@ import com.oracle.truffle.api.staticobject.StaticShape;
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.polyglot.Engine;
 
 /**
  * Base feature for using Truffle in the SVM. If only this feature is used (not included through
@@ -230,6 +230,7 @@ public final class TruffleBaseFeature implements InternalFeature {
     private boolean profilingEnabled;
     private boolean needsAllEncodings;
 
+    private Field uncachedDispatchField;
     private Field layoutInfoMapField;
     private Field layoutMapField;
     private Field libraryFactoryCacheField;
@@ -436,6 +437,7 @@ public final class TruffleBaseFeature implements InternalFeature {
         DuringSetupAccessImpl config = (DuringSetupAccessImpl) access;
         metaAccess = config.getMetaAccess();
 
+        uncachedDispatchField = config.findField(LibraryFactory.class, "uncachedDispatch");
         layoutInfoMapField = config.findField("com.oracle.truffle.object.DefaultLayout$LayoutInfo", "LAYOUT_INFO_MAP");
         layoutMapField = config.findField("com.oracle.truffle.object.DefaultLayout", "LAYOUT_MAP");
         libraryFactoryCacheField = config.findField("com.oracle.truffle.api.library.LibraryFactory$ResolvedDispatch", "CACHE");
@@ -542,7 +544,7 @@ public final class TruffleBaseFeature implements InternalFeature {
             if (!a.isReachable(type.getJavaClass())) {
                 continue;
             }
-            initializeTruffleLibrariesAtBuildTime(type);
+            initializeTruffleLibrariesAtBuildTime(access, type);
             initializeDynamicObjectLayouts(type);
         }
         access.rescanRoot(layoutInfoMapField);
@@ -566,6 +568,10 @@ public final class TruffleBaseFeature implements InternalFeature {
         FeatureImpl.AfterCompilationAccessImpl config = (FeatureImpl.AfterCompilationAccessImpl) access;
 
         graalGraphObjectReplacer.updateSubstrateDataAfterCompilation(config.getUniverse(), config.getProviders());
+    }
+
+    @Override
+    public void beforeHeapLayout(BeforeHeapLayoutAccess access) {
         graalGraphObjectReplacer.registerImmutableObjects(access);
     }
 
@@ -707,12 +713,14 @@ public final class TruffleBaseFeature implements InternalFeature {
      *
      * @see #registerTruffleLibrariesAsInHeap
      */
-    private static void initializeTruffleLibrariesAtBuildTime(AnalysisType type) {
+    private void initializeTruffleLibrariesAtBuildTime(DuringAnalysisAccessImpl access, AnalysisType type) {
         if (type.isAnnotationPresent(GenerateLibrary.class)) {
             /* Eagerly resolve library type. */
             LibraryFactory<? extends Library> factory = LibraryFactory.resolve(type.getJavaClass().asSubclass(Library.class));
             /* Trigger computation of uncachedDispatch. */
             factory.getUncached();
+            /* Manually rescan the field since this is during analysis. */
+            access.rescanField(factory, uncachedDispatchField);
         }
         if (type.isAnnotationPresent(ExportLibrary.class) || type.isAnnotationPresent(ExportLibrary.Repeat.class)) {
             /* Eagerly resolve receiver type. */

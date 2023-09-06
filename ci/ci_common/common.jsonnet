@@ -11,11 +11,17 @@ common + common.frequencies + {
 
   # Add a guard to `build` that prevents it from running in the gate
   # for a PR that only touches *.md files, the docs, are config files for GitHub
-  add_excludes_guard(build):: build + {
-    guard+: {
-      excludes+: ["**.md", "<graal>/**.md", "<graal>/docs/**", "<graal>/.devcontainer/**", "<graal>/.github/**", "<graal>/vm/ce-release-artifacts.json"]
-    }
-  },
+  #
+  # To avoid skipping the deployment of some artifacts, only `gate` jobs and
+  # post-merges that do not have the `deploy` target are considered.
+  add_excludes_guard(build):: build
+  + (
+    if (std.length(std.find('gate', build.targets)) > 0 || std.length(std.find('deploy', build.targets)) == 0) then {
+      guard+: {
+        excludes+: ["**.md", "<graal>/**.md", "<graal>/docs/**", "<graal>/.devcontainer/**", "<graal>/.github/**", "<graal>/vm/ce-release-artifacts.json"]
+      }
+    } else {}
+  ),
 
   // Heap settings
   // *************

@@ -486,7 +486,7 @@ public class SubstrateJVM {
      * See {@link JVM#flush}.
      */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
+    public boolean flush(Target_jdk_jfr_internal_event_EventWriter writer, int uncommittedSize, int requestedSize) {
         assert writer != null;
         assert uncommittedSize >= 0;
 
@@ -627,14 +627,14 @@ public class SubstrateJVM {
     /**
      * See {@link JVM#getEventWriter}.
      */
-    public Target_jdk_jfr_internal_EventWriter getEventWriter() {
+    public Target_jdk_jfr_internal_event_EventWriter getEventWriter() {
         return JfrThreadLocal.getEventWriter();
     }
 
     /**
      * See {@link JVM#newEventWriter}.
      */
-    public Target_jdk_jfr_internal_EventWriter newEventWriter() {
+    public Target_jdk_jfr_internal_event_EventWriter newEventWriter() {
         return threadLocal.newEventWriter();
     }
 

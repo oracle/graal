@@ -260,6 +260,26 @@ local devkits = graal_common.devkits;
     targets+: ['post-merge', 'deploy'],
   },
 
+  deploy_vm_darwin_amd64: self.vm_darwin_amd64 + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
+  deploy_vm_darwin_aarch64: self.vm_darwin_aarch64 + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
+  deploy_vm_windows: self.vm_windows + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
+  deploy_vm_windows_jdk17: self.vm_windows_jdk17 + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
+  deploy_vm_windows_jdk21: self.vm_windows_jdk21 + {
+    targets+: ['post-merge', 'deploy'],
+  },
+
   deploy_daily_vm_linux_amd64: self.vm_linux_amd64 + {
     targets+: ['daily', 'deploy'],
   },
@@ -337,6 +357,10 @@ local devkits = graal_common.devkits;
   },
 
   weekly_vm_windows: self.vm_windows + {
+    targets+: ['weekly'],
+  },
+  
+  weekly_vm_windows_amd64: self.vm_windows + {
     targets+: ['weekly'],
   },
 
@@ -523,15 +547,20 @@ local devkits = graal_common.devkits;
 
     only_native_dists:: 'TRUFFLE_NFI_NATIVE,SVM_HOSTED_NATIVE',
 
-    build(os, arch):: [
-      self.mx_cmd_base(os, arch) + ['build'],
+    build(os, arch, mx_args=[], build_args=[]):: [
+      self.mx_cmd_base(os, arch) + mx_args + ['build'] + build_args,
     ],
-    build_only_native(os, arch):: [
-      self.mx_cmd_base_only_native(os, arch) + ['build', '--dependencies', self.only_native_dists],
-    ],
+
+    pd_layouts_archive_name(platform):: 'pd-layouts-' + platform + '.tgz',
+
+    pd_layouts_artifact_name(platform, dry_run):: 'pd-layouts-' + (if dry_run then 'dry-run-' else '') + platform,
 
     mvn_args: ['maven-deploy', '--tags=public', '--all-distribution-types', '--validate=full', '--version-suite=vm'],
     mvn_args_only_native: self.mvn_args + ['--all-suites', '--only', self.only_native_dists],
+
+    main_platform:: 'linux-amd64',
+    other_platforms:: ['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64'],
+    is_main_platform(os, arch):: os + '-' + arch == self.main_platform,
 
     deploy(os, arch, dry_run, repo_strings):: [
       self.mx_cmd_base(os, arch)
@@ -550,34 +579,60 @@ local devkits = graal_common.devkits;
       + repo_strings,
     ],
 
-    run_block(os, arch, target, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo)::
-      # we always need a full build for the local deployment of resource bundles, even when `type==only_native`
-      self.build(os, arch)
-      + (
-        if (target=='all') then
-          self.deploy(os, arch, dry_run, [remote_mvn_repo])
-        else if (target == 'native_and_bundle') then
-          self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
-        else if (target == 'bundle') then
-          [['echo', 'Deploying only the resource bundles']]
-        else
-          error "Unknown target " + target
-      ) + [
-        # resource bundle
-        ['set-export', 'VERSION_STRING', self.mx_cmd_base(os, arch) + ['--quiet', 'graalvm-version']],
-        ['set-export', 'LOCAL_MAVEN_REPO_REL_PATH', 'maven-resource-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
-        ['set-export', 'LOCAL_MAVEN_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REPO_REL_PATH}']],
-      ]
-      + self.deploy(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
-      + (
-        if (dry_run) then
-          [['echo', 'Skipping the archiving and the final maven deployment']]
-        else [
-          ['set-export', 'MAVEN_RESOURCE_BUNDLE', '${LOCAL_MAVEN_REPO_REL_PATH}'],
-          ['mx', 'build', '--dependencies', 'MAVEN_RESOURCE_BUNDLE'],
-          ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
+    run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo)::
+      if (self.is_main_platform(os, arch)) then (
+        [
+          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name(platform)] for platform in self.other_platforms
         ]
+        + self.build(os, arch, mx_args=['--multi-platform-layout-directories=' + std.join(',', [self.main_platform] + self.other_platforms)], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}'])  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
+        + self.deploy(os, arch, dry_run, [remote_mvn_repo])
+        + [
+          # resource bundle
+          ['set-export', 'VERSION_STRING', self.mx_cmd_base(os, arch) + ['--quiet', 'graalvm-version']],
+          ['set-export', 'LOCAL_MAVEN_REPO_REL_PATH', 'maven-resource-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
+          ['set-export', 'LOCAL_MAVEN_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REPO_REL_PATH}']],
+        ]
+        + self.deploy(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+        + (
+          if (dry_run) then
+            [['echo', 'Skipping the archiving and the final maven deployment']]
+          else [
+            ['set-export', 'MAVEN_RESOURCE_BUNDLE', '${LOCAL_MAVEN_REPO_REL_PATH}'],
+            ['mx', 'build', '--targets', 'MAVEN_RESOURCE_BUNDLE'],
+            ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
+          ]
+        )
+      ) else (
+        self.build(os, arch, build_args=['--targets=' + self.only_native_dists + ',{PLATFORM_DEPENDENT_LAYOUT_DIR_DISTRIBUTIONS}'])
+        + (
+          if (vm.maven_deploy_base_functions.edition == 'ce') then
+            self.deploy_only_native(os, arch, dry_run, [remote_mvn_repo])
+          else
+            [['echo', 'Skipping the deployment of ' + self.only_native_dists + ': It is already deployed by the ce job']]
+        )
+        + [self.mx_cmd_base(os, arch) + ['archive-pd-layouts', self.pd_layouts_archive_name(os + '-' + arch)]]
       ),
+
+    base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo):: {
+      run: $.maven_deploy_base_functions.run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo),
+    } + if (self.is_main_platform(os, arch)) then {
+       requireArtifacts+: [
+         {
+           name: $.maven_deploy_base_functions.pd_layouts_artifact_name(platform, dry_run),
+           dir: vm.vm_dir,
+           autoExtract: true,
+         } for platform in $.maven_deploy_base_functions.other_platforms
+       ],
+     }
+    else {
+      publishArtifacts+: [
+        {
+           name: $.maven_deploy_base_functions.pd_layouts_artifact_name(os + '-' + arch, dry_run),
+           dir: vm.vm_dir,
+           patterns: [$.maven_deploy_base_functions.pd_layouts_archive_name(os + '-' + arch)],
+        },
+      ],
+    },
   },
 
   deploy_build: {
@@ -743,7 +798,7 @@ local devkits = graal_common.devkits;
       $.upload_file_sizes,
     ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "windows", "amd64", java_version),
     notify_groups:: ['deploy'],
-    timelimit: '2:00:00',
+    timelimit: '2:30:00',
   },
 
   deploy_graalvm_ruby(os, arch, java_version): {
@@ -758,13 +813,15 @@ local devkits = graal_common.devkits;
 
   deploy_graalvm_espresso(os, arch, java_version): {
     run: vm.collect_profiles() + (
-      if os == 'windows' then [
-        ['set-export', 'VM_ENV', "${VM_ENV}-win-espresso"],
+      if ((os == 'linux' || os == 'darwin') && arch == 'amd64') then [
+        ['set-export', 'VM_ENV', "${VM_ENV}-llvm-espresso"],
       ] else [
         ['set-export', 'VM_ENV', "${VM_ENV}-espresso"],
       ]
     ) + $.build_base_graalvm_image + $.deploy_sdk_base(os, 'espresso') + [
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
+      ['set-export', 'DACAPO_JAR', $.mx_vm_common + ['--quiet', '--no-warning', 'paths', '--download', 'DACAPO_MR1_2baec49']],
+      ['${GRAALVM_HOME}/bin/java', '-jar', '${DACAPO_JAR}', 'luindex'],
     ] + $.create_releaser_notifier_artifact,
     notify_groups:: ['deploy'],
     timelimit: '1:45:00',
@@ -805,11 +862,11 @@ local devkits = graal_common.devkits;
   # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
   #
 
-  deploy_vm_espresso_java21_linux_amd64: vm.vm_java_21 + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_espresso('linux', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-linux-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_espresso('linux', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-linux-amd64', notify_groups:: ["deploy"]},
   deploy_vm_espresso_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_espresso('linux', 'aarch64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-linux-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_darwin_amd64: vm.vm_java_21 + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_espresso('darwin', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-darwin-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_espresso('darwin', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-darwin-amd64', notify_groups:: ["deploy"]},
   deploy_vm_espresso_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_espresso('darwin', 'aarch64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-darwin-aarch64', notify_groups:: ["deploy"]},
-  deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.deploy_build + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
+  deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.sulong_windows + self.deploy_build + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
 
   local builds = [
     #

@@ -303,7 +303,11 @@ final class InternalResourceCache {
         if (res == null) {
             assert ImageInfo.inImageRuntimeCode() : "Can be called only in the native-image execution time.";
             Path executable = Path.of(ProcessProperties.getExecutableName());
-            Path cache = executable.resolve("resources");
+            Path parent = executable.getParent();
+            if (parent == null) {
+                throw new IllegalStateException("Could not locate native-image resources.");
+            }
+            Path cache = parent.resolve("resources");
             res = Pair.create(cache, false);
             cacheRoot = res;
         }
@@ -395,9 +399,10 @@ final class InternalResourceCache {
                 result |= cache.copyResourcesForNativeImage(target);
             }
         }
-        // Always install Truffle runtime resource caches
-        for (InternalResource resource : EngineAccessor.RUNTIME.getInternalResources()) {
-            result |= createRuntimeResourceCache(resource).copyResourcesForNativeImage(target);
+        // Always install engine resources
+        for (String resourceId : getEngineResourceIds()) {
+            InternalResourceCache cache = getEngineResource(resourceId);
+            result |= cache.copyResourcesForNativeImage(target);
         }
         return result;
     }
@@ -415,6 +420,17 @@ final class InternalResourceCache {
         } else {
             return true;
         }
+    }
+
+    static Collection<String> getEngineResourceIds() {
+        Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.locatorOrDefaultLoaders()).get(PolyglotEngineImpl.ENGINE_ID);
+        return engineResources != null ? engineResources.keySet() : List.of();
+    }
+
+    static InternalResourceCache getEngineResource(String resourceId) {
+        Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.locatorOrDefaultLoaders()).get(PolyglotEngineImpl.ENGINE_ID);
+        Supplier<InternalResourceCache> resourceSupplier = engineResources != null ? engineResources.get(resourceId) : null;
+        return resourceSupplier != null ? resourceSupplier.get() : null;
     }
 
     static Map<String, Map<String, Supplier<InternalResourceCache>>> loadOptionalInternalResources(List<AbstractClassLoaderSupplier> suppliers) {
@@ -455,7 +471,7 @@ final class InternalResourceCache {
     }
 
     private static boolean hasSameCodeSource(OptionalResourceSupplier first, OptionalResourceSupplier second) {
-        return first.optionalResource.getClass() == second.optionalResource.getClass();
+        return first.optionalResourceProvider.getClass() == second.optionalResourceProvider.getClass();
     }
 
     private static boolean isValidLoader(ClassLoader loader) {
@@ -569,18 +585,31 @@ final class InternalResourceCache {
         }
     }
 
-    private record OptionalResourceSupplier(InternalResourceProvider optionalResource) implements Supplier<InternalResourceCache> {
+    private static final class OptionalResourceSupplier implements Supplier<InternalResourceCache> {
+        private final InternalResourceProvider optionalResourceProvider;
+        private volatile InternalResourceCache cachedResource;
 
-        private OptionalResourceSupplier {
-            Objects.requireNonNull(optionalResource, "OptionalResource must be non null");
+        private OptionalResourceSupplier(InternalResourceProvider optionalResourceProvider) {
+            Objects.requireNonNull(optionalResourceProvider, "OptionalResourceProvider must be non null");
+            this.optionalResourceProvider = optionalResourceProvider;
         }
 
         @Override
         public InternalResourceCache get() {
-            return new InternalResourceCache(
-                            EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(optionalResource),
-                            EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(optionalResource),
-                            () -> EngineAccessor.LANGUAGE_PROVIDER.createInternalResource(optionalResource));
+            InternalResourceCache res = cachedResource;
+            if (res == null) {
+                synchronized (this) {
+                    res = cachedResource;
+                    if (res == null) {
+                        res = new InternalResourceCache(
+                                        EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(optionalResourceProvider),
+                                        EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(optionalResourceProvider),
+                                        () -> EngineAccessor.LANGUAGE_PROVIDER.createInternalResource(optionalResourceProvider));
+                        cachedResource = res;
+                    }
+                }
+            }
+            return res;
         }
     }
 }

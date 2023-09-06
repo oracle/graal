@@ -42,7 +42,7 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.EconomicSet;
+import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -88,7 +88,7 @@ public final class Resources {
      * com.oracle.svm.hosted.ModuleLayerFeature}.
      */
     private final EconomicMap<Pair<Module, String>, ResourceStorageEntryBase> resources = ImageHeapMap.create();
-    private final EconomicSet<ModuleResourcePair> includePatterns = EconomicSet.create();
+    private final EconomicMap<ModuleResourcePair, Boolean> includePatterns = ImageHeapMap.create();
 
     public record ModuleResourcePair(String module, String resource) {
     }
@@ -280,7 +280,7 @@ public final class Resources {
         assert MissingRegistrationUtils.throwMissingRegistrationErrors();
         synchronized (includePatterns) {
             updateTimeStamp();
-            includePatterns.add(new ModuleResourcePair(module, pattern));
+            includePatterns.put(new ModuleResourcePair(module, pattern), Boolean.TRUE);
         }
     }
 
@@ -321,7 +321,9 @@ public final class Resources {
         ResourceStorageEntryBase entry = resources.get(createStorageKey(module, canonicalResourceName));
         if (entry == null) {
             if (MissingRegistrationUtils.throwMissingRegistrationErrors()) {
-                for (ModuleResourcePair moduleResourcePair : includePatterns) {
+                MapCursor<ModuleResourcePair, Boolean> cursor = includePatterns.getEntries();
+                while (cursor.advance()) {
+                    ModuleResourcePair moduleResourcePair = cursor.getKey();
                     if (Objects.equals(moduleName, moduleResourcePair.module) &&
                                     (matchResource(moduleResourcePair.resource, resourceName) || matchResource(moduleResourcePair.resource, canonicalResourceName))) {
                         return null;

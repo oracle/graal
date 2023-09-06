@@ -198,8 +198,8 @@ mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_f
 mx_sdk_vm.register_vm_config('community', ce_unchained_components, _suite, env_file='ce')
 # Other GraalVMs
 mx_sdk_vm.register_vm_config('ruby-community', ce_ruby_components, _suite, env_file='ce-ruby')
-mx_sdk_vm.register_vm_config('espresso-community', ['antlr4', 'ejc', 'ejvm', 'ellvm', 'gvm', 'java', 'llp', 'llrc', 'llrlf', 'llrn', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='ce-espresso')
-mx_sdk_vm.register_vm_config('espresso-community', ['ejc', 'ejvm', 'gvm', 'java', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='ce-win-espresso')
+mx_sdk_vm.register_vm_config('espresso-community', ['antlr4', 'ejc', 'ejvm', 'ellvm', 'gvm', 'java', 'llp', 'llrc', 'llrlf', 'llrn', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='ce-llvm-espresso')
+mx_sdk_vm.register_vm_config('espresso-community', ['ejc', 'ejvm', 'gvm', 'java', 'nfi', 'nfi-libffi', 'nr_lib_javavm', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'tfl', 'tfla', 'tflc', 'tflm'], _suite, env_file='ce-espresso')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'jsl', 'jss', 'rgx', 'bnative-image', 'snative-image-agent', 'snative-image-diagnostics-agent'], _suite, dist_name='ce-js', env_file='ce-js')
 mx_sdk_vm.register_vm_config('ce', ce_components + ['icu4j', 'js', 'jsl', 'jss', 'njs', 'njsl', 'rgx', 'sjsvm'], _suite, dist_name='ce', env_file='ce-nodejs')
 mx_sdk_vm.register_vm_config('ce', ce_components_minimal + ['antlr4', 'llrn', 'llp', 'llrc', 'llrl', 'llrlf'], _suite, env_file='ce-llvm')
@@ -249,8 +249,8 @@ _community_tools_meta_distributions = [
 # When this list is changed, the _enterprise_languages_meta_distributions
 # in the mx_vm_enterprise.py must also be updated.
 _community_languages_meta_distributions = [
-    'espresso:JAVA_COMMUNITY',
     'graal-js:JS_COMMUNITY',
+    'espresso:JAVA_COMMUNITY',
     'graalpython:PYTHON_COMMUNITY',
     'sulong:LLVM_NATIVE_COMMUNITY',
     'sulong:LLVM_COMMUNITY',
@@ -459,10 +459,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             './': 'file:' + os.path.realpath(maven_resource_bundle)
         }, None, True, None, maven={
             'groupId': 'org.graalvm.polyglot',
-            'artifactId': 'maven-{edition}-resource-bundle-{os}-{arch}'.format(
+            'artifactId': 'maven-{edition}-resource-bundle'.format(
                 edition='ee' if mx.suite('vm-enterprise', fatalIfMissing=False) else 'ce',
-                os=mx.get_os(),
-                arch=mx.get_arch()
             ),
             'version': mx_sdk_vm_impl.graalvm_version('graalvm'),
             'tag': 'resource-bundle',
