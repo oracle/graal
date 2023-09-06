@@ -90,7 +90,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     edition:: 'ce',
 
     mx_args(os, arch)::
-      [],
+      ['--native-images=false'],
 
     dynamic_imports(os, arch)::
       ['--dynamicimports', vm_common.maven_deploy_base_functions.dynamic_ce_imports(os, arch)],
