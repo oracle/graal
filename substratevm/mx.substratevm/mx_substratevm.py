@@ -26,8 +26,6 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-from __future__ import print_function
-
 import os
 import re
 import tempfile
@@ -38,6 +36,7 @@ import pipes
 from argparse import ArgumentParser
 import fnmatch
 import collections
+from io import StringIO
 
 import mx
 import mx_compiler
@@ -56,10 +55,6 @@ from mx_unittest import _run_tests, _VMLauncher
 import sys
 
 
-if sys.version_info[0] < 3:
-    from StringIO import StringIO
-else:
-    from io import StringIO
 
 suite = mx.suite('substratevm')
 svmSuites = [suite]
