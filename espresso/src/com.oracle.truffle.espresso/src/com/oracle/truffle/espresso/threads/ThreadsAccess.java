@@ -148,7 +148,6 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         return meta.java_lang_Thread_eetop.getLong(thread);
     }
 
-
     int fromRunnable(StaticObject self, State state) {
         int old = getState(self);
         assert (old & State.RUNNABLE.value) != 0 || old == State.NEW.value : old;
