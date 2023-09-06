@@ -365,7 +365,7 @@ abstract class CVSymbolSubrecord {
         private static final int GAP_ARRAY_SIZE = 5;
         protected final String procName;
         protected final int procOffset;
-        protected short range;
+        protected short length;
         private List<Gap> gaps = null;
 
         /* It might be more efficient to use an array of shorts instead of a List of Gaps. */
@@ -379,11 +379,11 @@ abstract class CVSymbolSubrecord {
             }
         }
 
-        protected CVSymbolDefRangeBase(CVDebugInfo debugInfo, short recordType, String procName, int procOffset, short range) {
+        protected CVSymbolDefRangeBase(CVDebugInfo debugInfo, short recordType, String procName, int procOffset, short length) {
             super(debugInfo, recordType);
             this.procName = procName;
             this.procOffset = procOffset;
-            this.range = range;
+            this.length = length;
         }
 
         void addGap(short start, short length) {
@@ -396,7 +396,7 @@ abstract class CVSymbolSubrecord {
         int computeRange(byte[] buffer, int initialPos) {
             /* Emit CV_LVAR_ADDR_RANGE. */
             int pos = cvDebugInfo.getCVSymbolSection().markRelocationSite(buffer, initialPos, procName, procOffset);
-            pos = CVUtil.putShort(range, buffer, pos);
+            pos = CVUtil.putShort(length, buffer, pos);
             return pos;
         }
 
@@ -473,7 +473,7 @@ abstract class CVSymbolSubrecord {
 
         @Override
         public String toString() {
-            return String.format("S_DEFRANGE_REGISTER r%d attr=0x%x %s+0x%x range=0x%x gaps=%d)%s", register, attr, procName, procOffset, range, gapCount(), gapString());
+            return String.format("S_DEFRANGE_REGISTER r%d attr=0x%x %s+0x%x length=0x%x gaps=%d)%s", register, attr, procName, procOffset, length, gapCount(), gapString());
         }
     }
 
@@ -505,7 +505,7 @@ abstract class CVSymbolSubrecord {
 
         @Override
         public String toString() {
-            return String.format("S_DEFRANGE_REGISTER_REL r%d spilled=%d parentOffset=0x%x %s+0x%x range=0x%x gaps=%d)%s", baseRegister, spilledUdtMember, parentOffset, procName, procOffset, range,
+            return String.format("S_DEFRANGE_REGISTER_REL r%d spilled=%d parentOffset=0x%x %s+0x%x length=0x%x gaps=%d)%s", baseRegister, spilledUdtMember, parentOffset, procName, procOffset, length,
                             gapCount(), gapString());
         }
     }
@@ -559,7 +559,7 @@ abstract class CVSymbolSubrecord {
 
         @Override
         public String toString() {
-            return String.format("S_DEFRANGE_FRAMEPOINTER_REL  name=%s+0x%x range=0x%x fpOffset=0x%x)%s", procName, procOffset, range, fpOffset, gapString());
+            return String.format("S_DEFRANGE_FRAMEPOINTER_REL  name=%s+0x%x length=0x%x fpOffset=0x%x)%s", procName, procOffset, length, fpOffset, gapString());
         }
     }
 

@@ -175,8 +175,7 @@ final class CVSymbolSubsectionBuilder {
         final Range primaryRange = primaryEntry.getPrimary();
         /* The name as exposed to the linker. */
         final String externalName = primaryRange.getSymbolName();
-
-        MethodEntry method = primaryRange.isPrimary() ? primaryRange.getMethodEntry() : primaryRange.getFirstCallee().getMethodEntry();
+        final MethodEntry method = primaryRange.isPrimary() ? primaryRange.getMethodEntry() : primaryRange.getFirstCallee().getMethodEntry();
 
         /* define 'this' as a local just as we define other object pointers */
         if (!Modifier.isStatic(method.getModifiers())) {
@@ -221,7 +220,7 @@ final class CVSymbolSubsectionBuilder {
                     /* if we can, merge records */
                     currentHigh = subrange.getHi();
                     if (currentRecord != null) {
-                        currentRecord.range = (short) (currentHigh - currentRecord.procOffset);
+                        currentRecord.length = (short) (currentHigh - currentRecord.procOffset - range.getLo());
                     }
                     continue;
                 }
