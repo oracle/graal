@@ -29,7 +29,7 @@ echo For more details and information on migration options, please visit:
 echo.
 echo https://github.com/oracle/graal/issues/6855
 echo.
-echo (Note that \$JAVA_HOME/bin/gu will be removed entirely in a future release.)
+echo (Note that $JAVA_HOME\bin\gu.cmd will be removed entirely in a future release.)
 echo.
 
 exit /b 1
