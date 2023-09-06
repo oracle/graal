@@ -563,9 +563,11 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             Integer length = providers.getConstantReflection().readArrayLength(original);
             if (length != null && accumulateNewArraySize(countersScope, arrayType, length, node.asNode())) {
                 var array = ImageHeapArray.create(arrayType, length);
-                SimulatedHeapTracing.instance.traceClone(new CausalityExport.BuildTimeClassInitialization(clusterMember.type.getJavaClass()), originalImageHeapConstant, array);
+                var clinitEvent = new CausalityExport.BuildTimeClassInitialization(clusterMember.type.getJavaClass());
+                SimulatedHeapTracing.instance.traceAllocation(clinitEvent, array);
                 for (int i = 0; i < length; i++) {
                     array.setElement(i, adaptForImageHeap(providers.getConstantReflection().readArrayElement(original, i), arrayType.getComponentType().getStorageKind()));
+                    SimulatedHeapTracing.instance.traceWrite(clinitEvent, array, i);
                 }
                 currentActiveObjects.add(array);
                 return ConstantNode.forConstant(array, metaAccess);

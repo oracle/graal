@@ -2,8 +2,9 @@ package com.oracle.graal.pointsto.reports;
 
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
 import java.util.Map;
-import java.util.WeakHashMap;
 
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
@@ -78,8 +79,8 @@ public class SimulatedHeapTracing {
     }
 
     public static final class Impl extends SimulatedHeapTracing {
-        private final Map<ImageHeapConstant, HeapConstantContext> objects = Collections.synchronizedMap(new WeakHashMap<>());
-        private final Map<AnalysisField, CausalityExport.Event> staticFields = Collections.synchronizedMap(new WeakHashMap<>());
+        private final Map<ImageHeapConstant, HeapConstantContext> objects = Collections.synchronizedMap(new IdentityHashMap<>());
+        private final Map<AnalysisField, CausalityExport.Event> staticFields = Collections.synchronizedMap(new HashMap<>());
 
         public void traceAllocation(CausalityExport.Event cause, ImageHeapInstance instance, AnalysisType type) {
             objects.put(instance, new HeapInstanceContext(cause, type));
@@ -104,9 +105,7 @@ public class SimulatedHeapTracing {
         }
 
         public void traceClone(CausalityExport.Event cause, ImageHeapConstant original, ImageHeapConstant cloned) {
-            if (original instanceof ImageHeapInstance || original instanceof ImageHeapObjectArray) {
-                objects.put(cloned, objects.get(original).clone(cause));
-            }
+            objects.put(cloned, objects.get(original).clone(cause));
         }
 
         public CausalityExport.Event getHeapObjectCreator(ImageHeapConstant constant) {
