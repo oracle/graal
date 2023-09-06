@@ -307,8 +307,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createReadVariadic());
         operationNodeGen.add(createMergeVariadic());
 
-        // Define a helper to read all of the locals.
+        // Define helpers for local reading/copying.
         operationNodeGen.add(createGetLocals());
+        operationNodeGen.addAll(createCopyLocals());
 
         // Define helpers for bci lookups.
         operationNodeGen.add(createFindBciOfOperationNode());
@@ -1022,6 +1023,29 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.startReturn().string("result").end();
 
         return ex;
+    }
+
+    private List<CodeExecutableElement> createCopyLocals() {
+        CodeExecutableElement copyAllLocals = GeneratorUtils.overrideImplement(types.OperationRootNode, "copyLocals", 2);
+        CodeTreeBuilder copyAllLocalsBuilder = copyAllLocals.createBuilder();
+        copyAllLocalsBuilder.startStatement().startCall("copyLocals");
+        copyAllLocalsBuilder.string("source");
+        copyAllLocalsBuilder.string("destination");
+        copyAllLocalsBuilder.string("numLocals - USER_LOCALS_START_IDX");
+        copyAllLocalsBuilder.end(2);
+
+        CodeExecutableElement copyLocals = GeneratorUtils.overrideImplement(types.OperationRootNode, "copyLocals", 3);
+        copyLocals.addAnnotationMirror(createExplodeLoopAnnotation(null));
+        CodeTreeBuilder copyLocalsBuilder = copyLocals.createBuilder();
+        copyLocalsBuilder.startStatement().startCall("ACCESS.copyTo");
+        copyLocalsBuilder.string("source");
+        copyLocalsBuilder.string("USER_LOCALS_START_IDX");
+        copyLocalsBuilder.string("destination");
+        copyLocalsBuilder.string("USER_LOCALS_START_IDX");
+        copyLocalsBuilder.string("length");
+        copyLocalsBuilder.end(2);
+
+        return List.of(copyAllLocals, copyLocals);
     }
 
     private CodeExecutableElement createFindBciOfOperationNode() {

@@ -45,11 +45,13 @@ import java.util.List;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -318,6 +320,23 @@ public abstract class OperationsExample extends RootNode implements OperationRoo
         @Specialization
         public static Object doOperation(@Bind("$root") Node rootNode, @Bind("$bci") int bci) {
             return ((OperationsExample) rootNode).getSourceSectionAtBci(bci);
+        }
+    }
+
+    @Operation
+    public static final class CopyLocalsToFrame {
+        @Specialization
+        public static Frame doSomeLocals(VirtualFrame frame, int length, @Bind("$root") Node rootNode) {
+            Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
+            ((OperationsExample) rootNode).copyLocals(frame, newFrame, length);
+            return newFrame;
+        }
+
+        @Specialization(guards = {"length == null"})
+        public static Frame doAllLocals(VirtualFrame frame, @SuppressWarnings("unused") Object length, @Bind("$root") Node rootNode) {
+            Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
+            ((OperationsExample) rootNode).copyLocals(frame, newFrame);
+            return newFrame;
         }
     }
 }
