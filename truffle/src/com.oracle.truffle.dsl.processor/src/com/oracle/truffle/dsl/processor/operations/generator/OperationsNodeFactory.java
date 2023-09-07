@@ -1035,7 +1035,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         copyAllLocalsBuilder.end(2);
 
         CodeExecutableElement copyLocals = GeneratorUtils.overrideImplement(types.OperationRootNode, "copyLocals", 3);
-        copyLocals.addAnnotationMirror(createExplodeLoopAnnotation(null));
         CodeTreeBuilder copyLocalsBuilder = copyLocals.createBuilder();
         copyLocalsBuilder.startStatement().startCall("ACCESS.copyTo");
         copyLocalsBuilder.string("source");
