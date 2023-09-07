@@ -87,7 +87,7 @@ class ReflectionProcessor extends AbstractProcessor {
         }
         TypeConfiguration configuration = configurationSet.getReflectionConfiguration();
         String callerClass = (String) entry.get("caller_class");
-        boolean isLoadClass = function.equals("loadClass");
+        boolean isLoadClass = function.equals("loadClass") || function.equals("findSystemClass");
         if (isLoadClass || function.equals("forName") || function.equals("findClass")) {
             String name = singleElement(args);
             if (isLoadClass) { // different array syntax

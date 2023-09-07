@@ -747,6 +747,13 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    private static boolean findSystemClass(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        JNIObjectHandle callerClass = state.getDirectCallerClass();
+        JNIObjectHandle className = getObjectArgument(thread, 1);
+        traceReflectBreakpoint(jni, bp.clazz, nullHandle(), callerClass, bp.specification.methodName, true, state.getFullStackTraceOrNull(), fromJniString(jni, className));
+        return true;
+    }
+
     private static boolean isLoadClassInvocation(JNIObjectHandle clazz, JNIMethodId method, int bci, String methodName, String signature) {
         CIntPointer lengthPtr = StackValue.get(CIntPointer.class);
         CCharPointerPointer bytecodesPtr = StackValue.get(CCharPointerPointer.class);
@@ -1515,6 +1522,9 @@ final class BreakpointInterceptor {
                     brk("java/lang/Class", "newInstance", "()Ljava/lang/Object;", BreakpointInterceptor::newInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstance),
                     brk("java/lang/reflect/Array", "newInstance", "(Ljava/lang/Class;[I)Ljava/lang/Object;", BreakpointInterceptor::newArrayInstanceMulti),
+
+                    brk("java/lang/ClassLoader", "findSystemClass", "(Ljava/lang/String;)Ljava/lang/Class;",
+                                    BreakpointInterceptor::findSystemClass),
 
                     brk("jdk/internal/loader/BuiltinClassLoader", "findResource", "(Ljava/lang/String;Ljava/lang/String;)Ljava/net/URL;", BreakpointInterceptor::findResource),
                     brk("jdk/internal/loader/BuiltinClassLoader", "findResourceAsStream", "(Ljava/lang/String;Ljava/lang/String;)Ljava/io/InputStream;", BreakpointInterceptor::findResource),
