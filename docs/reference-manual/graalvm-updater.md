@@ -6,4 +6,4 @@ permalink: /reference-manual/graalvm-updater/
 redirect_from: /docs/graalvm-updater/
 ---
 
-This tool is no longer available. For more information, see [issue #6855](https://github.com/oracle/graal/issues/6855).
+The GraalVM Updater was removed in GraalVM for JDK 21. For more details and information on migration options, see [issue #6855](https://github.com/oracle/graal/issues/6855).
