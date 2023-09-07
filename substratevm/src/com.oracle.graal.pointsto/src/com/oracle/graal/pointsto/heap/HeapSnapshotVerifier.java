@@ -37,6 +37,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanner.ReusableSet;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.util.AnalysisError;
@@ -79,7 +80,7 @@ public class HeapSnapshotVerifier {
         int reachableTypesBefore = bb.getUniverse().getReachableTypes();
         iterations++;
         scannedObjects.reset();
-        ObjectScanner objectScanner = installObjectScanner(executor);
+        ObjectScanner objectScanner = installObjectScanner(metaAccess, executor);
         executor.start();
         scanTypes(objectScanner);
         objectScanner.scanBootImageHeapRoots();
@@ -114,7 +115,7 @@ public class HeapSnapshotVerifier {
         return analysisModified || verificationReachableTypes > 0;
     }
 
-    protected ObjectScanner installObjectScanner(CompletionExecutor executor) {
+    protected ObjectScanner installObjectScanner(@SuppressWarnings("unused") UniverseMetaAccess metaAccess, CompletionExecutor executor) {
         return new ObjectScanner(bb, executor, scannedObjects, new ScanningObserver());
     }
 

@@ -207,7 +207,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private boolean analysisModified() {
         boolean analysisModified;
         try (Timer.StopTimer ignored = verifyHeapTimer.start()) {
-            analysisModified = universe.getHeapVerifier().checkHeapSnapshot(executor, "after analysis", true);
+            analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "after analysis", true);
         }
         /* Initialize for the next iteration. */
         executor.init(getTiming());

@@ -158,7 +158,8 @@ public class ObjectScanner {
                 return;
             }
             assert isUnwrapped(receiver);
-            JavaConstant fieldValue = bb.getUniverse().getHeapScanner().readFieldValue(field, receiver);
+
+            JavaConstant fieldValue = readFieldValue(field, receiver);
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
                 buildObjectBacktrace(bb, reason, backtrace);
@@ -187,6 +188,10 @@ public class ObjectScanner {
         } catch (UnsupportedFeatureException ex) {
             unsupportedFeatureDuringFieldScan(bb, field, receiver, ex, reason);
         }
+    }
+
+    protected JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
+        return bb.getConstantReflectionProvider().readFieldValue(field, receiver);
     }
 
     /**
