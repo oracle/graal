@@ -24,14 +24,16 @@
  */
 package com.oracle.svm.core.posix.linux;
 
+import static com.oracle.svm.core.Uninterruptible.CALLED_FROM_UNINTERRUPTIBLE_CODE;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -44,7 +46,7 @@ import com.oracle.svm.core.posix.headers.Semaphore;
 import com.oracle.svm.core.posix.pthread.PthreadVMLockSupport;
 
 /**
- * Support of {@link VMSemaphore} in multithreaded environments on LINUX.
+ * Support of unnamed {@link VMSemaphore} in multithreaded environments on LINUX.
  */
 @AutomaticallyRegisteredFeature
 final class LinuxVMSemaphoreFeature implements InternalFeature {
@@ -69,10 +71,8 @@ final class LinuxVMSemaphoreFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        LinuxVMSemaphore[] semaphores = semaphoreReplacer.getReplacements().toArray(new LinuxVMSemaphore[0]);
-
         LinuxVMSemaphoreSupport semaphoreSupport = (LinuxVMSemaphoreSupport) PosixVMSemaphoreSupport.singleton();
-        semaphoreSupport.semaphores = semaphores;
+        semaphoreSupport.semaphores = semaphoreReplacer.getReplacements().toArray(new LinuxVMSemaphore[0]);
     }
 }
 
@@ -83,27 +83,8 @@ final class LinuxVMSemaphoreSupport extends PosixVMSemaphoreSupport {
     LinuxVMSemaphore[] semaphores;
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    public boolean initialize() {
-        for (LinuxVMSemaphore semaphore : semaphores) {
-            if (semaphore.init() != 0) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    @Override
-    @Uninterruptible(reason = "The isolate teardown is in progress.")
-    public void destroy() {
-        for (LinuxVMSemaphore semaphore : semaphores) {
-            semaphore.destroy();
-        }
-    }
-
-    @Override
-    public LinuxVMSemaphore[] getSemaphores() {
+    @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
+    public VMSemaphore[] getSemaphores() {
         return semaphores;
     }
 }
@@ -123,15 +104,15 @@ final class LinuxVMSemaphore extends VMSemaphore {
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected int init() {
+    @Uninterruptible(reason = "Too early for safepoints.")
+    public int initialize() {
         return Semaphore.NoTransitions.sem_init(getStructPointer(), WordFactory.signed(0), WordFactory.unsigned(0));
     }
 
     @Override
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    protected void destroy() {
-        PthreadVMLockSupport.checkResult(Semaphore.NoTransitions.sem_destroy(getStructPointer()), "sem_destroy");
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    public int destroy() {
+        return Semaphore.NoTransitions.sem_destroy(getStructPointer());
     }
 
     @Override

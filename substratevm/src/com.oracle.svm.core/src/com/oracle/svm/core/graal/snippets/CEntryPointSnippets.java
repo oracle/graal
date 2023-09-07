@@ -327,8 +327,8 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
         long initStateAddr = FIRST_ISOLATE_INIT_STATE.get().rawValue();
         boolean firstIsolate = Unsafe.getUnsafe().compareAndSetInt(null, initStateAddr, FirstIsolateInitStates.UNINITIALIZED, FirstIsolateInitStates.IN_PROGRESS);
 
-        Isolates.setCurrentIsFirstIsolate(firstIsolate);
-        Isolates.setCurrentStartTime();
+        Isolates.assignIsolateId(firstIsolate);
+        Isolates.assignCurrentStartTime();
 
         if (!firstIsolate) {
             int state = Unsafe.getUnsafe().getInt(initStateAddr);

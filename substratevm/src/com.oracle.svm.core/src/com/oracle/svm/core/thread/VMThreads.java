@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
+import com.oracle.svm.core.locks.VMLockSupport;
 import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.replacements.ReplacementsUtil;
@@ -217,7 +218,18 @@ public abstract class VMThreads {
      * initialization of native OS resources.
      */
     @Uninterruptible(reason = "Called from uninterruptible code. Too early for safepoints.")
-    protected abstract boolean initializeOnce();
+    protected boolean initializeOnce() {
+        return VMLockSupport.singleton().initialize();
+    }
+
+    /**
+     * Must be called once during isolate teardown. Subclasses can perform destroying of native OS
+     * resources. Please note that this method is not called until we fix GR-39879.
+     */
+    @Uninterruptible(reason = "The isolate teardown is in progress.")
+    protected boolean destroy() {
+        return VMLockSupport.singleton().destroy();
+    }
 
     /*
      * Stores the unaligned memory address returned by calloc, so that we can properly free the
@@ -482,7 +494,7 @@ public abstract class VMThreads {
         ThreadingSupportImpl.pauseRecurringCallback("Execution of arbitrary code is prohibited during the last teardown steps.");
 
         IsolateThread curThread = CurrentIsolate.getCurrentThread();
-        VMThreads.threadExit(curThread);
+        threadExit(curThread);
         /* Only uninterruptible code may be executed from now on. */
         PlatformThreads.afterThreadExit(curThread);
 
