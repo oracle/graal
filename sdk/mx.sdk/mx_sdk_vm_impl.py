@@ -206,6 +206,7 @@ def registered_graalvm_components(stage1=False):
                         # the `GraalVmNativeImage` project has a build-time dependency to Stage1
                         jar_distributions=[],
                         build_args=[
+                               '-J-Xms20G',
                                '-Dgraalvm.libpolyglot=true',
                                '-Dorg.graalvm.polyglot.install_name_id=@rpath/<jre_home>/lib/polyglot/<lib:polyglot>',
                                '--tool:all',
