@@ -573,6 +573,60 @@ final class BreakpointInterceptor {
         return true;
     }
 
+    private static boolean jimageReaderFindLocation1(
+                    JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        // jdk.internal.jimage.ImageLocation jdk.internal.jimage.BasicImageReader.findLocation(
+        // java.lang.String name);
+        final JNIObjectHandle self = getReceiver(thread);
+        final JNIObjectHandle resourceNameObj = getObjectArgument(thread, 1);
+        final JNIObjectHandle returnValue = Support.callObjectMethodL(
+                        jni, self, bp.method, resourceNameObj);
+        final boolean resourceFound = clearException(jni) ? false : returnValue.notEqual(nullHandle());
+
+        JNIObjectHandle selfClazz = nullHandle();
+        if (self.notEqual(nullHandle())) {
+            selfClazz = jniFunctions().getGetObjectClass().invoke(jni, self);
+            if (clearException(jni)) {
+                selfClazz = nullHandle();
+            }
+        }
+
+        final JNIObjectHandle callerClass = state.getDirectCallerClass();
+        final String resourceName = fromJniString(jni, resourceNameObj);
+
+        traceReflectBreakpoint(jni, selfClazz, nullHandle(), callerClass, bp.specification.methodName,
+                        resourceFound, state.getFullStackTraceOrNull(), resourceName);
+        return true;
+    }
+
+    private static boolean jimageReaderFindLocation2(
+                    JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
+        // jdk.internal.jimage.ImageLocation jdk.internal.jimage.BasicImageReader.findLocation(
+        // java.lang.String module, java.lang.String name);
+        final JNIObjectHandle self = getReceiver(thread);
+        final JNIObjectHandle moduleNameObj = getObjectArgument(thread, 1);
+        final JNIObjectHandle resourceNameObj = getObjectArgument(thread, 2);
+        final JNIObjectHandle returnValue = Support.callObjectMethodLL(
+                        jni, self, bp.method, moduleNameObj, resourceNameObj);
+        final boolean resourceFound = clearException(jni) ? false : returnValue.notEqual(nullHandle());
+
+        JNIObjectHandle selfClazz = nullHandle();
+        if (self.notEqual(nullHandle())) {
+            selfClazz = jniFunctions().getGetObjectClass().invoke(jni, self);
+            if (clearException(jni)) {
+                selfClazz = nullHandle();
+            }
+        }
+
+        final JNIObjectHandle callerClass = state.getDirectCallerClass();
+        final String moduleName = fromJniString(jni, moduleNameObj);
+        final String resourceName = fromJniString(jni, resourceNameObj);
+
+        traceReflectBreakpoint(jni, selfClazz, nullHandle(), callerClass, bp.specification.methodName,
+                        resourceFound, state.getFullStackTraceOrNull(), moduleName, resourceName);
+        return true;
+    }
+
     private static boolean findResource(JNIEnvironment jni, JNIObjectHandle thread, Breakpoint bp, InterceptedState state) {
         JNIObjectHandle callerClass = state.getDirectCallerClass();
         JNIObjectHandle module = getObjectArgument(thread, 1);
@@ -1110,7 +1164,7 @@ final class BreakpointInterceptor {
             Breakpoint bp = installedBreakpoints.get(method.rawValue());
             InterceptedState state = interceptedStateSupplier.get();
             if (bp.specification.handler.dispatch(jni, rectifiedThread, bp, state)) {
-                guarantee(!testException(jni));
+                guarantee(!testException(jni), bp.specification.handler.toString());
             }
         } catch (Throwable t) {
             VMError.shouldNotReachHere(t);
@@ -1552,6 +1606,19 @@ final class BreakpointInterceptor {
                     brk("java/lang/ClassLoader", "getResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", BreakpointInterceptor::getResources),
                     brk("java/lang/ClassLoader", "getSystemResource", "(Ljava/lang/String;)Ljava/net/URL;", BreakpointInterceptor::getSystemResource),
                     brk("java/lang/ClassLoader", "getSystemResources", "(Ljava/lang/String;)Ljava/util/Enumeration;", BreakpointInterceptor::getSystemResources),
+
+                    // jdk.internal.jimage.ImageLocation
+                    // jdk.internal.jimage.BasicImageReader.findLocation(java.lang.String name);
+                    brk("jdk/internal/jimage/BasicImageReader", "findLocation",
+                                    "(Ljava/lang/String;)Ljdk/internal/jimage/ImageLocation;",
+                                    BreakpointInterceptor::jimageReaderFindLocation1),
+                    // jdk.internal.jimage.ImageLocation
+                    // jdk.internal.jimage.BasicImageReader.findLocation(
+                    // java.lang.String module, java.lang.String name);
+                    brk("jdk/internal/jimage/BasicImageReader", "findLocation",
+                                    "(Ljava/lang/String;Ljava/lang/String;)Ljdk/internal/jimage/ImageLocation;",
+                                    BreakpointInterceptor::jimageReaderFindLocation2),
+
                     /*
                      * NOTE: get(System)ResourceAsStream() generallys call get(System)Resource(), no
                      * additional breakpoints necessary
