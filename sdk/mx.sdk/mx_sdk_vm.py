@@ -201,6 +201,7 @@ class LanguageLibraryConfig(LibraryConfig):
         """
         :param str language
         :param str main_class
+        :param isolate_library_layout_distribution dict
         """
         kwargs.pop('destination', None)
         super(LanguageLibraryConfig, self).__init__('lib/<lib:' + language + 'vm>', jar_distributions, build_args, home_finder=True, headers=headers, **kwargs)

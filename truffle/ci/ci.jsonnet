@@ -95,11 +95,6 @@
       ["./sl", "-disassemble", "language/tests/Add.sl"],
       ["./sl", "language/tests/Add.sl"],
       ["./native/slnative", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/gu", "install", "-L", "component/sl-component.jar"],
-      ["$JAVA_HOME/bin/sl", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/slnative", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/polyglot", "--jvm", "--language", "sl", "--file", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/gu", "remove", "sl"],
     ],
   },
 

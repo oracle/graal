@@ -33,7 +33,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "39d8f35138f892aeb200e9a8ed43f5533f3c4d31",
+                "version": "85841f2b0ba9986eab186ae3fb26d10020eced39",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -42,7 +42,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "39d8f35138f892aeb200e9a8ed43f5533f3c4d31",
+                "version": "85841f2b0ba9986eab186ae3fb26d10020eced39",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -221,6 +221,29 @@ suite = {
             "description": "GraalVM Installer support distribution for the GraalVM",
             "layout": {
                 "components/polyglot/.registry" : "string:",
+            },
+            "maven": False,
+        },
+        "INSTALLER_DEPRECATED_GRAALVM_SUPPORT": {
+            "native": True,
+            "description": "Deprecated GraalVM Updater launchers support for the GraalVM",
+            "platformDependent": True,
+            "os": {
+                "linux": {
+                    "layout": {
+                        "bin/gu": "file:mx.vm/gu-deprecated",
+                    },
+                },
+                "darwin": {
+                    "layout": {
+                        "bin/gu": "file:mx.vm/gu-deprecated",
+                    },
+                },
+                "windows": {
+                    "layout": {
+                        "bin/gu.cmd": "file:mx.vm/gu-deprecated.cmd",
+                    },
+                },
             },
             "maven": False,
         },
