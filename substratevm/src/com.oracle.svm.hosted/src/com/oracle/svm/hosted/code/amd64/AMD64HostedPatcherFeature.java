@@ -126,6 +126,7 @@ class AMD64HostedPatcher extends CompilationResult.CodeAnnotation implements Hos
             VMConstant constant = ((ConstantReference) ref).getConstant();
             Object relocVal = ref;
             if (constant instanceof SubstrateMethodPointerConstant) {
+                VMError.guarantee(!Platform.includedIn(Platform.DARWIN_AMD64.class), "[GR-43389] method pointer relocations should not be inlined.");
                 MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
                 HostedMethod hMethod = (HostedMethod) pointer.getMethod();
                 VMError.guarantee(hMethod.isCompiled(), "Method %s is not compiled although there is a method pointer constant created for it.", hMethod);
