@@ -26,7 +26,7 @@ The GraalVM LLVM runtime utilizes this information to find and load dependencies
 
 ## LLVM Toolchain for Compiling C/C++
 
-To simplify compiling C/C++ to executables with embedded bitcode, GraalVM comes with a prebuilt LLVM toolchain.
+To simplify compiling C/C++ to executables with embedded bitcode, the LLVM runtime comes with a prebuilt LLVM toolchain.
 The toolchain contains compilers such as `clang` for C or `clang++` for C++, but also other tools that are needed
 for building native projects such as a linker (`ld`), or an archiver (`ar`) for creating static libraries.
 

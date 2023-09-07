@@ -28,7 +28,7 @@ Java on Truffle passes the Java Compatibility Kit (JCK or TCK for Java SE).
 
 ## Getting Started
 
-Starting of GraalVM for JDK 21, Java on Truffle (known as Espresso) is available as a standalone distribution. 
+As of GraalVM for JDK 21, Java on Truffle (known as Espresso) is available as a standalone distribution. 
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
 1. Navigate to [GitHub releases of GraalVM for JDK 21](https://github.com/graalvm/graalvm-ce-builds/releases) and download the Java on Truffle (Espresso) standalone for your operating system. 
