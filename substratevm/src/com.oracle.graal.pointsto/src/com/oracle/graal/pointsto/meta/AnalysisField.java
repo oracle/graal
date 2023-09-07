@@ -262,7 +262,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     public boolean registerAsAccessed(Object reason) {
         assert isValidReason(reason) : "Registering a field as accessed needs to provide a valid reason.";
-        CausalityExport.get().registerEvent(new CausalityExport.FieldRead(this));
+        CausalityExport.registerEvent(new CausalityExport.FieldRead(this));
         boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isAccessedUpdater);
         notifyUpdateAccessInfo();
         if (firstAttempt) {
@@ -278,7 +278,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      */
     public boolean registerAsRead(Object reason) {
         assert isValidReason(reason) : "Registering a field as read needs to provide a valid reason.";
-        CausalityExport.get().registerEvent(new CausalityExport.FieldRead(this));
+        CausalityExport.registerEvent(new CausalityExport.FieldRead(this));
         boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isReadUpdater);
         notifyUpdateAccessInfo();
         if (readBy != null) {

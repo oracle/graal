@@ -307,7 +307,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         int paramCount = signature.getParameterCount(!isStatic);
         PointsToAnalysisMethod originalPTAMethod = assertPointsToAnalysisMethod(aMethod);
 
-        CausalityExport.get().registerEvent(new CausalityExport.RootMethodRegistration(aMethod));
+        CausalityExport.registerEvent(new CausalityExport.RootMethodRegistration(aMethod));
 
         if (isStatic) {
             /*
@@ -316,7 +316,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * initialized with the corresponding parameter declared type.
              */
             Consumer<PointsToAnalysisMethod> triggerStaticMethodFlow = (pointsToMethod) -> {
-                CausalityExport.get().registerEvent(new CausalityExport.MethodImplementationInvoked(pointsToMethod));
+                CausalityExport.registerEvent(new CausalityExport.MethodImplementationInvoked(pointsToMethod));
                 postTask(() -> {
                     pointsToMethod.registerAsDirectRootMethod(reason);
                     pointsToMethod.registerAsImplementationInvoked(reason.toString());
@@ -362,11 +362,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * (currently) used for runtime compilation; in this use case, all necessary linking
              * will be done during callee resolution.
              */
-
             if(invokeSpecial) {
-                CausalityExport.get().registerEvent(new CausalityExport.MethodReachable(originalPTAMethod));
+                CausalityExport.registerEvent(new CausalityExport.MethodReachable(originalPTAMethod));
             }
-
             postTask(() -> {
                 if (invokeSpecial) {
                     originalPTAMethod.registerAsDirectRootMethod(reason);

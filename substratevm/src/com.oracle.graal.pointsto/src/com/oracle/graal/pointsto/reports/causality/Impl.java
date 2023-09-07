@@ -25,7 +25,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport {
+import static com.oracle.graal.pointsto.reports.CausalityExport.*;
+
+public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.AbstractImpl {
     private final ConcurrentHashMap<Graph.DirectEdge, Boolean> direct_edges = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Graph.HyperEdge, Boolean> hyper_edges = new ConcurrentHashMap<>();
 
@@ -56,11 +58,11 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport {
             public final Event event;
             public final HeapTracing level;
 
-            public CauseToken(Event event, HeapTracing level) {
+            public CauseToken(Event event, HeapTracing level, boolean overwriteSilently) {
                 this.event = event;
                 this.level = level;
 
-                if(!causes.empty() && event != null && causes.peek().event != null && !causes.peek().event.equals(event) && event != Ignored.Instance && causes.peek().event != Ignored.Instance && !(causes.peek().event instanceof Feature) && !causes.peek().event.root())
+                if(!overwriteSilently && !causes.empty() && causes.peek().event != null && !causes.peek().event.equals(event) && event != Ignored.Instance && causes.peek().event != Ignored.Instance && !(causes.peek().event instanceof Feature) && !causes.peek().event.root())
                     throw new RuntimeException("Stacking Rerooting requests!");
                 causes.push(this);
                 updateHeapTracing(this);
@@ -117,17 +119,17 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport {
         if(callingMethod == null && invocation.getTargetMethod().getContextInsensitiveVirtualInvoke(invocation.getCallerMultiMethodKey()) != invocation)
             throw new RuntimeException("CausalityExport has made an invalid assumption!");
 
-        CausalityExport.Event callerEvent = callingMethod != null
-                ? new CausalityExport.InlinedMethodCode(callingMethod) /* TODO: Take inlining into account */
+        Event callerEvent = callingMethod != null
+                ? new InlinedMethodCode(callingMethod) /* TODO: Take inlining into account */
                 : new RootMethodRegistration(invocation.getTargetMethod());
 
         registerEdge(
                 callerEvent,
-                new CausalityExport.VirtualMethodInvoked(invocation.getTargetMethod()));
+                new VirtualMethodInvoked(invocation.getTargetMethod()));
         registerConjunctiveEdge(
-                new CausalityExport.VirtualMethodInvoked(invocation.getTargetMethod()),
-                new CausalityExport.TypeInstantiated(concreteTargetType),
-                new CausalityExport.MethodImplementationInvoked(concreteTargetMethod)
+                new VirtualMethodInvoked(invocation.getTargetMethod()),
+                new TypeInstantiated(concreteTargetType),
+                new MethodImplementationInvoked(concreteTargetMethod)
         );
     }
 
@@ -223,18 +225,13 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport {
     }
 
     @Override
-    public void registerEvent(Event event) {
-        registerEdge(null, event);
-    }
-
-    @Override
     public Event getCause() {
         return threadContexts.get().topCause();
     }
 
     @Override
-    public NonThrowingAutoCloseable setCause(Event event, HeapTracing level) {
-        return threadContexts.get().new CauseToken(event, level);
+    protected NonThrowingAutoCloseable setCause(Event event, HeapTracing level, boolean overwriteSilently) {
+        return threadContexts.get().new CauseToken(event, level, overwriteSilently);
     }
 
     protected void forEachEvent(Consumer<Event> callback) {

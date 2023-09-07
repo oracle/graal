@@ -206,7 +206,7 @@ public class JNIAccessFeature implements Feature {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             abortIfSealed();
             registerConditionalConfiguration(condition, () -> {
-                CausalityExport.get().registerEvent(new CausalityExport.JNIRegistration(clazz));
+                CausalityExport.registerEvent(new CausalityExport.JNIRegistration(clazz));
                 newClasses.add(clazz);
             });
         }
@@ -215,8 +215,8 @@ public class JNIAccessFeature implements Feature {
         public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods) {
             abortIfSealed();
             registerConditionalConfiguration(condition, () -> {
-                for(Executable m : methods) {
-                    CausalityExport.get().registerEvent(new CausalityExport.JNIRegistration(m));
+                for (Executable m : methods) {
+                    CausalityExport.registerEvent(new CausalityExport.JNIRegistration(m));
                 }
                 newMethods.addAll(Arrays.asList(methods));
             });
@@ -230,7 +230,7 @@ public class JNIAccessFeature implements Feature {
 
         private void registerFields(boolean finalIsWritable, Field[] fields) {
             for (Field field : fields) {
-                CausalityExport.get().registerEvent(new CausalityExport.JNIRegistration(field));
+                CausalityExport.registerEvent(new CausalityExport.JNIRegistration(field));
                 boolean writable = finalIsWritable || !Modifier.isFinal(field.getModifiers());
                 newFields.put(field, writable);
             }
@@ -323,14 +323,14 @@ public class JNIAccessFeature implements Feature {
         }
 
         for (Class<?> clazz : newClasses) {
-            try(var ignored = CausalityExport.get().setCause(new CausalityExport.JNIRegistration(clazz))) {
+            try (var ignored = CausalityExport.setCause(new CausalityExport.JNIRegistration(clazz))) {
                 addClass(clazz, access);
             }
         }
         newClasses.clear();
 
         for (Executable method : newMethods) {
-            try(var ignored = CausalityExport.get().setCause(new CausalityExport.JNIRegistration(method))) {
+            try (var ignored = CausalityExport.setCause(new CausalityExport.JNIRegistration(method))) {
                 addMethod(method, access);
             }
         }
@@ -338,7 +338,7 @@ public class JNIAccessFeature implements Feature {
 
         newFields.forEach((field, writable) -> {
             // Ignore writable for now... Causality-TODO
-            try(var ignored = CausalityExport.get().setCause(new CausalityExport.JNIRegistration(field))) {
+            try (var ignored = CausalityExport.setCause(new CausalityExport.JNIRegistration(field))) {
                 addField(field, writable, access);
             }
         });
@@ -410,10 +410,9 @@ public class JNIAccessFeature implements Feature {
 
     private JNIJavaCallVariantWrapperGroup createJavaCallVariantWrappers(DuringAnalysisAccessImpl access, SimpleSignature wrapperSignature, boolean nonVirtual) {
         var map = nonVirtual ? nonvirtualCallVariantWrappers : callVariantWrappers;
-        CausalityExport.get().registerEvent(new CausalityExport.JniCallVariantWrapper(wrapperSignature, !nonVirtual));
+        CausalityExport.registerEvent(new CausalityExport.JniCallVariantWrapper(wrapperSignature, !nonVirtual));
         return map.computeIfAbsent(wrapperSignature, signature -> {
-            try (var ignored0 = CausalityExport.get().setCause(null);
-                 var ignored = CausalityExport.get().setCause(new CausalityExport.JniCallVariantWrapper(wrapperSignature, !nonVirtual))) {
+            try (var ignored = CausalityExport.overwriteCause(new CausalityExport.JniCallVariantWrapper(wrapperSignature, !nonVirtual))) {
                 MetaAccessProvider originalMetaAccess = access.getUniverse().getOriginalMetaAccess();
                 WordTypes wordTypes = access.getBigBang().getWordTypes();
                 var varargs = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.VARARGS, nonVirtual, originalMetaAccess, wordTypes);

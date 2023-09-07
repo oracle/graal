@@ -72,12 +72,8 @@ public final class SourceTypeFlow extends TypeFlow<BytecodePosition> {
     @Override
     public void initFlow(PointsToAnalysis bb) {
         /* Propagate the source state when the type is marked as instantiated. */
-        declaredType.registerInstantiatedCallback(a -> {
-            SingleTypeState exactTypeState = TypeState.forExactType(bb, declaredType, false);
-            addState(bb, exactTypeState);
-        });
-
-        CausalityExport.get().registerTypeFlowEdge(declaredType.instantiatedTypes, this);
+        declaredType.registerInstantiatedCallback(a -> addState(bb, TypeState.forExactType(bb, declaredType, false)));
+        CausalityExport.registerTypeFlowEdge(declaredType.instantiatedTypes, this);
     }
 
     @Override

@@ -974,7 +974,7 @@ public class SubstrateGraphBuilderPlugins {
                         AnalysisType type = (AnalysisType) b.getMetaAccess().lookupJavaType(clazz);
                         for (int i = 0; i < dimensionCount; i++) {
                             type = type.getArrayClass();
-                            try (var ignored = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(AbstractAnalysisEngine.sourcePosition(clazzNode)))) {
+                            try (var ignored = CausalityExport.setCause(new CausalityExport.InlinedMethodCode(AbstractAnalysisEngine.sourcePosition(clazzNode)))) {
                                 type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(clazzNode));
                             }
                         }

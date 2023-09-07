@@ -170,9 +170,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         checkNotSealed();
         register(analysisUniverse -> registerConditionalConfiguration(condition,
                 () -> {
-                    CausalityExport.get().registerEvent(new CausalityExport.ReflectionRegistration(clazz)); // TODO: Differentiate on "unsafeInstantiated"
+                    CausalityExport.registerEvent(new CausalityExport.ReflectionRegistration(clazz)); // TODO: Differentiate on "unsafeInstantiated"
                     analysisUniverse.getBigbang().postTask(debug -> {
-                        try (var ignored = CausalityExport.get().setCause(new CausalityExport.ReflectionRegistration(clazz))) {
+                        try (var ignored = CausalityExport.setCause(new CausalityExport.ReflectionRegistration(clazz))) {
                             registerClass(clazz, unsafeInstantiated);
                         }
                     });
@@ -280,9 +280,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         checkNotSealed();
         register(analysisUniverse -> registerConditionalConfiguration(condition, () -> {
             for (Executable executable : executables) {
-                CausalityExport.get().registerEvent(new CausalityExport.ReflectionRegistration(executable));
+                CausalityExport.registerEvent(new CausalityExport.ReflectionRegistration(executable));
                 analysisUniverse.getBigbang().postTask(debug -> {
-                    try (var ignored = CausalityExport.get().setCause(new CausalityExport.ReflectionRegistration(executable))) {
+                    try (var ignored = CausalityExport.setCause(new CausalityExport.ReflectionRegistration(executable))) {
                         registerMethod(queriedOnly, executable);
                     }
                 });
@@ -417,9 +417,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     private void registerInternal(ConfigurationCondition condition, Field... fields) {
         register(analysisUniverse -> registerConditionalConfiguration(condition, () -> {
             for (Field field : fields) {
-                CausalityExport.get().registerEvent(new CausalityExport.ReflectionRegistration(field));
+                CausalityExport.registerEvent(new CausalityExport.ReflectionRegistration(field));
                 analysisUniverse.getBigbang().postTask(debug -> {
-                    try (var ignored = CausalityExport.get().setCause(new CausalityExport.ReflectionRegistration(field))) {
+                    try (var ignored = CausalityExport.setCause(new CausalityExport.ReflectionRegistration(field))) {
                         registerField(field);
                     }
                 });
@@ -983,7 +983,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         DynamicHub hub = (DynamicHub) object;
         Class<?> javaClass = hub.getHostedJavaClass();
         if (heapDynamicHubs.add(hub) && !SubstitutionReflectivityFilter.shouldExclude(javaClass, metaAccess, universe)) {
-            try (var ignored = CausalityExport.get().setCause(new CausalityExport.TypeReachable(metaAccess.lookupJavaType(javaClass)))) {
+            try (var ignored = CausalityExport.setCause(new CausalityExport.TypeReachable(metaAccess.lookupJavaType(javaClass)))) {
                 registerTypesForClass(metaAccess.lookupJavaType(javaClass), javaClass);
             }
         }
@@ -1000,9 +1000,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         assert !sealed;
         var inHeap = new CausalityExport.ReflectionObjectInHeap(reflectField);
         var reflRegistration = new CausalityExport.ReflectionRegistration(reflectField);
-        CausalityExport.get().registerEdgeFromHeapObject(reflectField, reason, inHeap);
-        CausalityExport.get().registerEdge(inHeap, reflRegistration);
-        try (var ignored = CausalityExport.get().setCause(reflRegistration)) {
+        CausalityExport.registerEdgeFromHeapObject(reflectField, reason, inHeap);
+        CausalityExport.registerEdge(inHeap, reflRegistration);
+        try (var ignored = CausalityExport.setCause(reflRegistration)) {
             AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
             if (heapFields.put(analysisField, reflectField) == null && !SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
                 registerTypesForField(analysisField, reflectField);
@@ -1018,9 +1018,9 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         assert !sealed;
         var inHeap = new CausalityExport.ReflectionObjectInHeap(reflectExecutable);
         var reflRegistration = new CausalityExport.ReflectionRegistration(reflectExecutable);
-        CausalityExport.get().registerEdgeFromHeapObject(reflectExecutable, reason, inHeap);
-        CausalityExport.get().registerEdge(inHeap, reflRegistration);
-        try (var ignored = CausalityExport.get().setCause(reflRegistration)) {
+        CausalityExport.registerEdgeFromHeapObject(reflectExecutable, reason, inHeap);
+        CausalityExport.registerEdge(inHeap, reflRegistration);
+        try (var ignored = CausalityExport.setCause(reflRegistration)) {
             AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
             if (heapMethods.put(analysisMethod, reflectExecutable) == null && !SubstitutionReflectivityFilter.shouldExclude(reflectExecutable, metaAccess, universe)) {
                 registerTypesForMethod(analysisMethod, reflectExecutable);

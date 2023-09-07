@@ -173,7 +173,7 @@ public class FeatureHandler {
         Function<Class<?>, Class<?>> specificClassProvider = specificAutomaticFeatures::get;
 
         for (Class<?> featureClass : automaticFeatures) {
-            try(var ignored = CausalityExport.get().setCause(CausalityExport.AutomaticFeatureRegistration.Instance)) {
+            try (var ignored = CausalityExport.setCause(CausalityExport.AutomaticFeatureRegistration.Instance)) {
                 registerFeature(featureClass, specificClassProvider, access);
             }
         }
@@ -185,7 +185,7 @@ public class FeatureHandler {
             } catch (ClassNotFoundException e) {
                 throw UserError.abort("Feature %s class not found on the classpath. Ensure that the name is correct and that the class is on the classpath.", featureName);
             }
-            try(var ignored = CausalityExport.get().setCause(CausalityExport.UserEnabledFeatureRegistration.Instance)) {
+            try (var ignored = CausalityExport.setCause(CausalityExport.UserEnabledFeatureRegistration.Instance)) {
                 registerFeature(featureClass, specificClassProvider, access);
             }
         }
@@ -210,7 +210,7 @@ public class FeatureHandler {
 
         if (registeredFeatures.contains(baseFeatureClass)) {
             if (ImageSingletons.contains(baseFeatureClass)) {
-                CausalityExport.get().registerEvent(new CausalityExport.Feature(ImageSingletons.lookup((Class<Feature>) baseFeatureClass)));
+                CausalityExport.registerEvent(new CausalityExport.Feature(ImageSingletons.lookup((Class<Feature>) baseFeatureClass)));
             }
             return;
         }
@@ -254,14 +254,12 @@ public class FeatureHandler {
             throw handleFeatureError(feature, t);
         }
         for (Class<? extends Feature> requiredFeatureClass : requiredFeatures) {
-            try(var ignored = CausalityExport.get().setCause(null)) {
-                try(var ignored1 = CausalityExport.get().setCause(new CausalityExport.Feature(feature))) {
-                    registerFeature(requiredFeatureClass, specificClassProvider, access);
-                }
+            try (var ignored = CausalityExport.overwriteCause(new CausalityExport.Feature(feature))) {
+                registerFeature(requiredFeatureClass, specificClassProvider, access);
             }
         }
 
-        CausalityExport.get().registerEvent(new CausalityExport.Feature(feature));
+        CausalityExport.registerEvent(new CausalityExport.Feature(feature));
         featureInstances.add(feature);
     }
 

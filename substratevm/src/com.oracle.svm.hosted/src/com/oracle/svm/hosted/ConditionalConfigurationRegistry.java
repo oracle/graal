@@ -31,20 +31,20 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.oracle.graal.pointsto.reports.CausalityExport;
 import org.graalvm.nativeimage.hosted.Feature;
+import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 import com.oracle.svm.core.TypeResult;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
 public abstract class ConditionalConfigurationRegistry {
     private final Map<String, Collection<Runnable>> pendingReachabilityHandlers = new ConcurrentHashMap<>();
 
     protected void registerConditionalConfiguration(ConfigurationCondition condition, Runnable runnable) {
-        if (org.graalvm.nativeimage.impl.ConfigurationCondition.alwaysTrue().equals(condition)) {
+        if (ConfigurationCondition.alwaysTrue().equals(condition)) {
             /* analysis optimization to include new types as early as possible */
             runnable.run();
         } else {
             Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getTypeName(), key -> new ConcurrentLinkedQueue<>());
-            CausalityExport.get().registerEvent(new CausalityExport.ConfigurationCondition(condition.getTypeName()));
+            CausalityExport.registerEvent(new CausalityExport.ConfigurationCondition(condition.getTypeName()));
             handlers.add(runnable);
         }
     }
@@ -52,7 +52,7 @@ public abstract class ConditionalConfigurationRegistry {
     public void flushConditionalConfiguration(Feature.BeforeAnalysisAccess b) {
         for (Map.Entry<String, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
             TypeResult<Class<?>> typeResult = ((FeatureImpl.BeforeAnalysisAccessImpl) b).getImageClassLoader().findClass(reachabilityEntry.getKey());
-            try (var ignored = CausalityExport.get().setCause(new CausalityExport.ConfigurationCondition(reachabilityEntry.getKey()))) {
+            try (var ignored = CausalityExport.setCause(new CausalityExport.ConfigurationCondition(reachabilityEntry.getKey()))) {
                 b.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), typeResult.get());
             }
         }

@@ -99,8 +99,8 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
     public void registerReachabilityNotification(ElementNotification notification) {
         ConcurrentLightHashSet.addElement(this, reachableNotificationsUpdater, notification);
-        CausalityExport.Event eventForRegistration = CausalityExport.get().getCause();
-        CausalityExport.get().registerConjunctiveEdge(eventForRegistration, CausalityExport.ReachableEvent.create(this), new CausalityExport.ReachabilityNotificationCallback(notification.callback));
+        CausalityExport.Event eventForRegistration = CausalityExport.getCause();
+        CausalityExport.registerConjunctiveEdge(eventForRegistration, CausalityExport.ReachableEvent.create(this), new CausalityExport.ReachabilityNotificationCallback(notification.callback));
     }
 
     public void notifyReachabilityCallback(AnalysisUniverse universe, ElementNotification notification) {
@@ -147,10 +147,8 @@ public abstract class AnalysisElement implements AnnotatedElement {
             }
 
             AnalysisFuture<Void> newValue = new AnalysisFuture<>(() -> {
-                try(var ignore0 = CausalityExport.get().setCause(null)) {
-                    try(var ignored = CausalityExport.get().setCause(new CausalityExport.ReachabilityNotificationCallback(callback))) {
-                        callback.accept(universe.getConcurrentAnalysisAccess());
-                    }
+                try (var ignored = CausalityExport.overwriteCause(new CausalityExport.ReachabilityNotificationCallback(callback))) {
+                    callback.accept(universe.getConcurrentAnalysisAccess());
                 }
                 return null;
             });
@@ -177,13 +175,13 @@ public abstract class AnalysisElement implements AnnotatedElement {
         public AnalysisFuture<Void> notifyCallback(AnalysisUniverse universe, AnalysisType reachableSubtype) {
             assert reachableSubtype.isReachable();
             return seenSubtypes.computeIfAbsent(reachableSubtype, k -> {
-                CausalityExport.get().registerConjunctiveEdge(
+                CausalityExport.registerConjunctiveEdge(
                         new CausalityExport.SubtypeReachableNotificationCallback(callback),
                         new CausalityExport.TypeReachable(reachableSubtype),
                         new CausalityExport.SubtypeReachableNotificationCallbackInvocation(callback, reachableSubtype)
                 );
                 AnalysisFuture<Void> newValue = new AnalysisFuture<>(() -> {
-                    try (var ignored = CausalityExport.get().setCause(new CausalityExport.SubtypeReachableNotificationCallbackInvocation(callback, reachableSubtype))) {
+                    try (var ignored = CausalityExport.setCause(new CausalityExport.SubtypeReachableNotificationCallbackInvocation(callback, reachableSubtype))) {
                         callback.accept(universe.getConcurrentAnalysisAccess(), reachableSubtype.getJavaClass());
                     }
                     return null;
@@ -208,12 +206,12 @@ public abstract class AnalysisElement implements AnnotatedElement {
             if (seenOverride.add(reachableOverride)) {
                 Executable javaMethod = reachableOverride.getJavaMethod();
                 if (javaMethod != null) {
-                    CausalityExport.get().registerConjunctiveEdge(
+                    CausalityExport.registerConjunctiveEdge(
                             new CausalityExport.OverrideReachableNotificationCallback(callback),
                             new CausalityExport.MethodReachable(reachableOverride),
                             new CausalityExport.OverrideReachableNotificationCallbackInvocation(callback, reachableOverride));
                     execute(universe, () -> {
-                        try (var ignored = CausalityExport.get().setCause(new CausalityExport.OverrideReachableNotificationCallbackInvocation(callback, reachableOverride))) {
+                        try (var ignored = CausalityExport.setCause(new CausalityExport.OverrideReachableNotificationCallbackInvocation(callback, reachableOverride))) {
                             callback.accept(universe.getConcurrentAnalysisAccess(), javaMethod);
                         }
                     });

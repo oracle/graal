@@ -91,7 +91,6 @@ public class FieldTypeFlow extends TypeFlow<AnalysisField> {
          * any subtype of its declared type.
          */
         getDeclaredType().getTypeFlow(bb, true).addUse(bb, this);
-        // Christoph-TODO: export the fact that these types are originally still coming from this node!
     }
 
     /** The filter flow is used for unsafe writes and initialized on demand. */

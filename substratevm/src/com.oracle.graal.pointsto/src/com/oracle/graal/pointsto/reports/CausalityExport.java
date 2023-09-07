@@ -13,7 +13,6 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.causality.Impl;
 import com.oracle.graal.pointsto.reports.causality.Graph;
 import com.oracle.graal.pointsto.reports.causality.TypeflowImpl;
-import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -27,7 +26,6 @@ import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
@@ -40,17 +38,17 @@ public class CausalityExport {
     public enum Level {
         DISABLED,
         ENABLED_WITHOUT_TYPEFLOW,
-        ENABLED;
+        ENABLED
     }
 
     private static Level requestedLevel = Level.DISABLED;
 
     public static final class InitializationOnDemandHolder {
         private static final Level frozenLevel = CausalityExport.requestedLevel;
-        private static final CausalityExport instance = switch(CausalityExport.requestedLevel) {
+        private static final AbstractImpl instance = switch(CausalityExport.requestedLevel) {
             case ENABLED -> TypeflowImpl.createWithTypeflowTracking();
             case ENABLED_WITHOUT_TYPEFLOW -> Impl.create();
-            case DISABLED -> new CausalityExport();
+            case DISABLED -> new AbstractImpl();
         };
     }
 
@@ -60,7 +58,7 @@ public class CausalityExport {
     public static void activate(Level level) {
         requestedLevel = level;
         if (level != InitializationOnDemandHolder.frozenLevel) {
-            throw AnalysisError.shouldNotReachHere("Causality Export must have been activated before the first usage of CausalityExport.get()");
+            throw AnalysisError.shouldNotReachHere("Causality Export must have been activated before the first usage of CausalityExport");
         }
     }
 
@@ -68,47 +66,56 @@ public class CausalityExport {
         return InitializationOnDemandHolder.frozenLevel;
     }
 
-    public static CausalityExport get() {
-        return InitializationOnDemandHolder.instance;
-    }
-
     public static synchronized void dump(PointsToAnalysis bb, ZipOutputStream zip, boolean exportTypeflowNames) throws java.io.IOException {
         Graph g = get().createCausalityGraph(bb);
         g.export(bb, zip, exportTypeflowNames);
     }
 
-
-    // --- Registration ---
-
-    public void addVirtualInvokeTypeFlow(AbstractVirtualInvokeTypeFlow invocation) {}
-
-    public void registerVirtualInvocation(PointsToAnalysis bb, AbstractVirtualInvokeTypeFlow invocation, AnalysisMethod concreteTargetMethod, AnalysisType concreteTargetType) {}
-
-    public void registerTypeFlowEdge(TypeFlow<?> from, TypeFlow<?> to) {}
-
-    public NonThrowingAutoCloseable setSaturationHappening() {
-        return null;
+    protected static AbstractImpl get() {
+        return InitializationOnDemandHolder.instance;
     }
 
-    public void registerEvent(Event event) {}
+    public static class AbstractImpl {
+        protected void addVirtualInvokeTypeFlow(AbstractVirtualInvokeTypeFlow invocation) {}
 
-    public void registerEdge(Event cause, Event consequence) {}
+        protected void registerVirtualInvocation(PointsToAnalysis bb, AbstractVirtualInvokeTypeFlow invocation, AnalysisMethod concreteTargetMethod, AnalysisType concreteTargetType) {}
 
-    public void registerConjunctiveEdge(Event cause1, Event cause2, Event consequence) {}
+        protected void registerTypeFlowEdge(TypeFlow<?> from, TypeFlow<?> to) {}
 
-    public void registerEdgeFromHeapObject(BigBang bb, JavaConstant heapObject, ObjectScanner.ScanReason reason, Event consequence) {}
+        protected NonThrowingAutoCloseable setSaturationHappening() {
+            return null;
+        }
 
-    public void registerEdgeFromHeapObject(Object heapObject, ObjectScanner.ScanReason reason, Event consequence) {}
+        protected void registerEdge(Event cause, Event consequence) {}
 
-    public Event getHeapFieldAssigner(BigBang analysis, JavaConstant receiver, AnalysisField field, JavaConstant value) {
-        return null;
+        protected void registerConjunctiveEdge(Event cause1, Event cause2, Event consequence) {}
+
+        protected void registerEdgeFromHeapObject(BigBang bb, JavaConstant heapObject, ObjectScanner.ScanReason reason, Event consequence) {}
+
+        protected void registerEdgeFromHeapObject(Object heapObject, ObjectScanner.ScanReason reason, Event consequence) {}
+
+        protected Event getHeapFieldAssigner(BigBang analysis, JavaConstant receiver, AnalysisField field, JavaConstant value) {
+            return null;
+        }
+
+        protected Event getHeapArrayAssigner(BigBang analysis, JavaConstant array, int elementIndex, JavaConstant value) {
+            return null;
+        }
+
+        protected void registerTypeEntering(PointsToAnalysis bb, Event cause, TypeFlow<?> destination, AnalysisType type) {}
+
+        protected NonThrowingAutoCloseable setCause(Event event, CausalityExport.HeapTracing level, boolean overwriteSilently) {
+            return null;
+        }
+
+        protected Event getCause() {
+            return null;
+        }
+
+        protected Graph createCausalityGraph(PointsToAnalysis bb) {
+            throw new UnsupportedOperationException();
+        }
     }
-
-    public Event getHeapArrayAssigner(BigBang analysis, JavaConstant array, int elementIndex, JavaConstant value) {
-        return null;
-    }
-
-    public void registerTypeEntering(PointsToAnalysis bb, Event cause, TypeFlow<?> destination, AnalysisType type) {}
 
     public enum HeapTracing {
         None,
@@ -116,26 +123,78 @@ public class CausalityExport {
         Full
     }
 
-    public NonThrowingAutoCloseable setCause(Event event, HeapTracing level) {
-        return null;
+    public static void addVirtualInvokeTypeFlow(AbstractVirtualInvokeTypeFlow invocation) {
+        get().addVirtualInvokeTypeFlow(invocation);
     }
 
-    public final NonThrowingAutoCloseable setCause(Event event) {
+    public static void registerVirtualInvocation(PointsToAnalysis bb, AbstractVirtualInvokeTypeFlow invocation, AnalysisMethod concreteTargetMethod, AnalysisType concreteTargetType) {
+        get().registerVirtualInvocation(bb, invocation, concreteTargetMethod, concreteTargetType);
+    }
+
+    public static void registerTypeFlowEdge(TypeFlow<?> from, TypeFlow<?> to) {
+        get().registerTypeFlowEdge(from, to);
+    }
+
+    public static NonThrowingAutoCloseable setSaturationHappening() {
+        return get().setSaturationHappening();
+    }
+
+    public static void registerEvent(Event event) {
+        registerEdge(null, event);
+    }
+
+    public static void registerEdge(Event cause, Event consequence) {
+        get().registerEdge(cause, consequence);
+    }
+
+    public static void registerConjunctiveEdge(Event cause1, Event cause2, Event consequence) {
+        get().registerConjunctiveEdge(cause1, cause2, consequence);
+    }
+
+    public static void registerEdgeFromHeapObject(BigBang bb, JavaConstant heapObject, ObjectScanner.ScanReason reason, Event consequence) {
+        get().registerEdgeFromHeapObject(bb, heapObject, reason, consequence);
+    }
+
+    public static void registerEdgeFromHeapObject(Object heapObject, ObjectScanner.ScanReason reason, Event consequence) {
+        get().registerEdgeFromHeapObject(heapObject, reason, consequence);
+    }
+
+    public static Event getHeapFieldAssigner(BigBang analysis, JavaConstant receiver, AnalysisField field, JavaConstant value) {
+        return get().getHeapFieldAssigner(analysis, receiver, field, value);
+    }
+
+    public static Event getHeapArrayAssigner(BigBang analysis, JavaConstant array, int elementIndex, JavaConstant value) {
+        return get().getHeapArrayAssigner(analysis, array, elementIndex, value);
+    }
+
+    public static void registerTypeEntering(PointsToAnalysis bb, Event cause, TypeFlow<?> destination, AnalysisType type) {
+        get().registerTypeEntering(bb, cause, destination, type);
+    }
+
+    public static NonThrowingAutoCloseable setCause(Event event, HeapTracing level) {
+        return get().setCause(event, level, false);
+    }
+
+    public static NonThrowingAutoCloseable setCause(Event event) {
         return setCause(event, HeapTracing.None);
+    }
+
+    public static NonThrowingAutoCloseable overwriteCause(Event event) {
+        return get().setCause(event, HeapTracing.None, true);
+    }
+
+    public static NonThrowingAutoCloseable resetCause() {
+        return overwriteCause(null);
+    }
+
+    public static Event getCause() {
+        return get().getCause();
     }
 
     // Allows the simple usage of accountRootRegistrationsTo() in a try-with-resources statement
     public interface NonThrowingAutoCloseable extends AutoCloseable {
         @Override
         void close();
-    }
-
-    public Event getCause() {
-        return null;
-    }
-
-    protected Graph createCausalityGraph(PointsToAnalysis bb) {
-        throw new UnsupportedOperationException();
     }
 
 
@@ -1120,13 +1179,11 @@ public class CausalityExport {
 
     private static String reflectionObjectToString(Object reflectionObject)
     {
-        if(reflectionObject instanceof Class<?>) {
-            return ((Class<?>) reflectionObject).getTypeName();
-        } else if(reflectionObject instanceof Constructor<?>) {
-            Constructor<?> c = ((Constructor<?>) reflectionObject);
+        if(reflectionObject instanceof Class<?> clazz) {
+            return clazz.getTypeName();
+        } else if(reflectionObject instanceof Constructor<?> c) {
             return c.getDeclaringClass().getTypeName() + ".<init>(" + Arrays.stream(c.getParameterTypes()).map(Class::getTypeName).collect(Collectors.joining(", ")) + ')';
-        } else if(reflectionObject instanceof Method) {
-            Method m = ((Method) reflectionObject);
+        } else if(reflectionObject instanceof Method m) {
             return m.getDeclaringClass().getTypeName() + '.' + m.getName() + '(' + Arrays.stream(m.getParameterTypes()).map(Class::getTypeName).collect(Collectors.joining(", ")) + ')';
         } else {
             Field f = ((Field) reflectionObject);

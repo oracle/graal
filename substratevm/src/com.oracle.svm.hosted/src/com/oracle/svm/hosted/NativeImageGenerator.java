@@ -774,7 +774,7 @@ public class NativeImageGenerator {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 ServiceCatalogSupport.singleton().enableServiceCatalogMapTransformer(config);
                 featureHandler.forEachFeature(feature -> {
-                    try(var ignored2 = CausalityExport.get().setCause(new CausalityExport.Feature(feature), CausalityExport.HeapTracing.Allocations)) {
+                    try (var ignored2 = CausalityExport.setCause(new CausalityExport.Feature(feature), CausalityExport.HeapTracing.Allocations)) {
                         feature.beforeAnalysis(config);
                     }
                 });
@@ -791,7 +791,7 @@ public class NativeImageGenerator {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
                             featureHandler.forEachFeature(feature -> {
-                                try(var ignored2 = CausalityExport.get().setCause(new CausalityExport.Feature(feature), CausalityExport.HeapTracing.Allocations)) {
+                                try (var ignored2 = CausalityExport.setCause(new CausalityExport.Feature(feature), CausalityExport.HeapTracing.Allocations)) {
                                     feature.duringAnalysis(config);
                                 }
                             });
@@ -880,7 +880,7 @@ public class NativeImageGenerator {
                 Providers originalProviders = GraalAccess.getOriginalProviders();
                 MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
 
-                if(AnalysisReportsOptions.PrintCausalityGraph.getValue(options)) {
+                if (AnalysisReportsOptions.PrintCausalityGraph.getValue(options)) {
                     // This cannot be done in the "CausalityExporter"-Feature since Feature-registration should already
                     // be logged by CausalityExport...
                     CausalityExport.activate(AnalysisReportsOptions.CausalityGraphWithTypeflow.getValue(options)
@@ -916,7 +916,7 @@ public class NativeImageGenerator {
                 featureHandler.registerFeatures(loader, debug);
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> {
-                    try (var ignored0 = CausalityExport.get().setCause(new CausalityExport.Feature(feature), CausalityExport.HeapTracing.Allocations)) {
+                    try (var ignored0 = CausalityExport.setCause(new CausalityExport.Feature(feature), CausalityExport.HeapTracing.Allocations)) {
                         feature.afterRegistration(access);
                     }
                 });
@@ -986,7 +986,7 @@ public class NativeImageGenerator {
                 try (Indent ignored2 = debug.logAndIndent("process startup initializers")) {
                     FeatureImpl.DuringSetupAccessImpl config = new FeatureImpl.DuringSetupAccessImpl(featureHandler, loader, bb, debug);
                     featureHandler.forEachFeature(feature -> {
-                        try (var ignored0 = CausalityExport.get().setCause(new CausalityExport.Feature(feature), CausalityExport.HeapTracing.Allocations)) {
+                        try (var ignored0 = CausalityExport.setCause(new CausalityExport.Feature(feature), CausalityExport.HeapTracing.Allocations)) {
                             feature.duringSetup(config);
                         }
                     });
@@ -1102,66 +1102,65 @@ public class NativeImageGenerator {
          * allocations of these classes seen during the static analysis. The heap chunks are one
          * good example.
          */
-        try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods")) {
-            try (var ignored2 = CausalityExport.get().setCause(CausalityExport.InitialRegistration.Instance)) {
-                bb.registerTypeAsInHeap(bb.addRootClass(Object.class, false, false), "root class");
-                bb.addRootField(DynamicHub.class, "vtable");
-                bb.registerTypeAsInHeap(bb.addRootClass(String.class, false, false), "root class");
-                bb.registerTypeAsInHeap(bb.addRootClass(String[].class, false, false), "root class");
-                bb.registerTypeAsInHeap(bb.addRootField(String.class, "value"), "root class");
-                bb.registerTypeAsInHeap(bb.addRootClass(long[].class, false, false), "root class");
-                bb.registerTypeAsInHeap(bb.addRootClass(byte[].class, false, false), "root class");
-                bb.registerTypeAsInHeap(bb.addRootClass(byte[][].class, false, false), "root class");
-                bb.registerTypeAsInHeap(bb.addRootClass(Object[].class, false, false), "root class");
-                bb.registerTypeAsInHeap(bb.addRootClass(CFunctionPointer[].class, false, false), "root class");
-                bb.registerTypeAsInHeap(bb.addRootClass(PointerBase[].class, false, false), "root class");
+        try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods");
+             var ignored2 = CausalityExport.setCause(CausalityExport.InitialRegistration.Instance)) {
+            bb.registerTypeAsInHeap(bb.addRootClass(Object.class, false, false), "root class");
+            bb.addRootField(DynamicHub.class, "vtable");
+            bb.registerTypeAsInHeap(bb.addRootClass(String.class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(String[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootField(String.class, "value"), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(long[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(byte[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(byte[][].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(Object[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(CFunctionPointer[].class, false, false), "root class");
+            bb.registerTypeAsInHeap(bb.addRootClass(PointerBase[].class, false, false), "root class");
 
-                bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true,
-                                "Runtime support, registered in " + NativeImageGenerator.class);
-                bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, "Runtime support, registered in " + NativeImageGenerator.class);
+            bb.addRootMethod(ReflectionUtil.lookupMethod(SubstrateArraycopySnippets.class, "doArraycopy", Object.class, int.class, Object.class, int.class, int.class), true,
+                            "Runtime support, registered in " + NativeImageGenerator.class);
+            bb.addRootMethod(ReflectionUtil.lookupMethod(Object.class, "getClass"), true, "Runtime support, registered in " + NativeImageGenerator.class);
 
-                for (JavaKind kind : JavaKind.values()) {
-                    if (kind.isPrimitive() && kind != JavaKind.Void) {
-                        bb.addRootClass(kind.toJavaClass(), false, true);
-                        bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInHeap("root class");
-                        bb.addRootField(kind.toBoxedJavaClass(), "value");
-                        bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true, "Runtime support, registered in " + NativeImageGenerator.class);
-                        bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true, "Runtime support, registered in " + NativeImageGenerator.class);
-                        /*
-                         * Register the cache location as reachable.
-                         * BoxingSnippets$Templates#getCacheLocation accesses the cache field.
-                         */
-                        Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
-                        if (innerClasses != null && innerClasses.length > 0) {
-                            bb.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable("inner class of root class");
-                        }
+            for (JavaKind kind : JavaKind.values()) {
+                if (kind.isPrimitive() && kind != JavaKind.Void) {
+                    bb.addRootClass(kind.toJavaClass(), false, true);
+                    bb.addRootClass(kind.toBoxedJavaClass(), false, true).registerAsInHeap("root class");
+                    bb.addRootField(kind.toBoxedJavaClass(), "value");
+                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), "valueOf", kind.toJavaClass()), true, "Runtime support, registered in " + NativeImageGenerator.class);
+                    bb.addRootMethod(ReflectionUtil.lookupMethod(kind.toBoxedJavaClass(), kind.getJavaName() + "Value"), true, "Runtime support, registered in " + NativeImageGenerator.class);
+                    /*
+                     * Register the cache location as reachable.
+                     * BoxingSnippets$Templates#getCacheLocation accesses the cache field.
+                     */
+                    Class<?>[] innerClasses = kind.toBoxedJavaClass().getDeclaredClasses();
+                    if (innerClasses != null && innerClasses.length > 0) {
+                        bb.getMetaAccess().lookupJavaType(innerClasses[0]).registerAsReachable("inner class of root class");
                     }
                 }
-                /* SubstrateTemplates#toLocationIdentity accesses the Counter.value field. */
-                bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
-                bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable("root class");
-                bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable("root class");
+            }
+            /* SubstrateTemplates#toLocationIdentity accesses the Counter.value field. */
+            bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
+            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable("root class");
+            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable("root class");
 
-                NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
-                        bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget(), supportsStubBasedPlugins);
-                registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls);
+            NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
+                            bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget(), supportsStubBasedPlugins);
+            registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls);
 
-                Collection<StructuredGraph> snippetGraphs = aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
-                if (bb instanceof NativeImagePointsToAnalysis) {
-                    for (StructuredGraph graph : snippetGraphs) {
-                        CausalityExport.Event snippetRegistrationEvent = new CausalityExport.MethodSnippet((AnalysisMethod) graph.method());
-                        CausalityExport.get().registerEvent(snippetRegistrationEvent); // Is directly catching the "[Initial Registrations]" reason from above
-                        CausalityExport.get().registerEdge(snippetRegistrationEvent, new CausalityExport.InlinedMethodCode((AnalysisMethod) graph.method()));
-                        HostedConfiguration.instance().registerUsedElements((PointsToAnalysis) bb, graph, false);
-                    }
-                } else if (bb instanceof NativeImageReachabilityAnalysisEngine) {
-                    NativeImageReachabilityAnalysisEngine reachabilityAnalysis = (NativeImageReachabilityAnalysisEngine) bb;
-                    for (StructuredGraph graph : snippetGraphs) {
-                        reachabilityAnalysis.processGraph(graph);
-                    }
-                } else {
-                    throw VMError.shouldNotReachHere("Unknown analysis type - please specify how to handle snippets");
+            Collection<StructuredGraph> snippetGraphs = aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
+            if (bb instanceof NativeImagePointsToAnalysis) {
+                for (StructuredGraph graph : snippetGraphs) {
+                    CausalityExport.Event snippetRegistrationEvent = new CausalityExport.MethodSnippet((AnalysisMethod) graph.method());
+                    CausalityExport.registerEvent(snippetRegistrationEvent);
+                    CausalityExport.registerEdge(snippetRegistrationEvent, new CausalityExport.InlinedMethodCode((AnalysisMethod) graph.method()));
+                    HostedConfiguration.instance().registerUsedElements((PointsToAnalysis) bb, graph, false);
                 }
+            } else if (bb instanceof NativeImageReachabilityAnalysisEngine) {
+                NativeImageReachabilityAnalysisEngine reachabilityAnalysis = (NativeImageReachabilityAnalysisEngine) bb;
+                for (StructuredGraph graph : snippetGraphs) {
+                    reachabilityAnalysis.processGraph(graph);
+                }
+            } else {
+                throw VMError.shouldNotReachHere("Unknown analysis type - please specify how to handle snippets");
             }
         }
     }

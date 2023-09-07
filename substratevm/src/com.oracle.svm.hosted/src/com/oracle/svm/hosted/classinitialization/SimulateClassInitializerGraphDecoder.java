@@ -375,7 +375,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
     private Node handleEnsureClassInitializedNode(EnsureClassInitializedNode node) {
         var classInitType = (AnalysisType) node.constantTypeOrNull(providers.getConstantReflection());
         if (classInitType != null) {
-            CausalityExport.get().registerEdge(
+            CausalityExport.registerEdge(
                     new CausalityExport.BuildTimeClassInitialization(clusterMember.type.getJavaClass()),
                     new CausalityExport.BuildTimeClassInitialization(classInitType.getJavaClass()));
             if (support.trySimulateClassInitializer(graph.getDebug(), classInitType, clusterMember)) {

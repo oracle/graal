@@ -489,12 +489,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         assert isValidReason(reason) : "Registering a type as in-heap needs to provide a valid reason.";
         var inHeap = new CausalityExport.TypeInHeap(this);
         var instantiated = new CausalityExport.TypeInstantiated(this);
-        CausalityExport.get().registerEvent(inHeap);
-        CausalityExport.get().registerEdge(inHeap, instantiated);
-        try(var ignored0 = CausalityExport.get().setCause(null)) { // Causality-TODO: Get rid of this ugliness...
-            try (var ignored = CausalityExport.get().setCause(instantiated)) {
-                registerAsReachable(reason);
-            }
+        CausalityExport.registerEvent(inHeap);
+        CausalityExport.registerEdge(inHeap, instantiated);
+        try (var ignored = CausalityExport.overwriteCause(instantiated)) {
+            registerAsReachable(reason);
         }
         if (AtomicUtils.atomicSet(this, reason, isInHeapUpdater)) {
             onInstantiated(UsageKind.InHeap);
@@ -510,11 +508,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     public boolean registerAsAllocated(Object reason) {
         assert isValidReason(reason) : "Registering a type as allocated needs to provide a valid reason.";
-        CausalityExport.get().registerEvent(new CausalityExport.TypeInstantiated(this));
-        try(var ignored0 = CausalityExport.get().setCause(null)) { // Causality-TODO: Get rid of this ugliness...
-            try (var ignored = CausalityExport.get().setCause(new CausalityExport.TypeInstantiated(this))) {
-                registerAsReachable(reason);
-            }
+        CausalityExport.registerEvent(new CausalityExport.TypeInstantiated(this));
+        try (var ignored = CausalityExport.overwriteCause(new CausalityExport.TypeInstantiated(this))) {
+            registerAsReachable(reason);
         }
         if (AtomicUtils.atomicSet(this, reason, isAllocatedUpdater)) {
             onInstantiated(UsageKind.Allocated);
@@ -571,12 +567,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public boolean registerAsReachable(Object reason) {
         assert isValidReason(reason) : "Registering a type as reachable needs to provide a valid reason.";
-        CausalityExport.get().registerEvent(new CausalityExport.TypeReachable(this));
+        CausalityExport.registerEvent(new CausalityExport.TypeReachable(this));
         if (!AtomicUtils.isSet(this, isReachableUpdater)) {
             /* Mark this type and all its super types as reachable. */
             forAllSuperTypes(type -> {
                 if(type != this) {
-                    CausalityExport.get().registerEdge(new CausalityExport.TypeReachable(this), new CausalityExport.TypeReachable(type));
+                    CausalityExport.registerEdge(new CausalityExport.TypeReachable(this), new CausalityExport.TypeReachable(type));
                 }
                 AtomicUtils.atomicSetAndRun(type, reason, isReachableUpdater, type::onReachable);
             });
@@ -626,16 +622,14 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
-        CausalityExport.Event eventForRegistration = CausalityExport.get().getCause();
+        CausalityExport.Event eventForRegistration = CausalityExport.getCause();
         CausalityExport.Event callbackEvent = new CausalityExport.ReachabilityNotificationCallback(callback);
-        CausalityExport.get().registerConjunctiveEdge(eventForRegistration, new CausalityExport.TypeInstantiated(this), callbackEvent);
+        CausalityExport.registerConjunctiveEdge(eventForRegistration, new CausalityExport.TypeInstantiated(this), callbackEvent);
 
         if (this.isInstantiated()) {
-            try (var ignored0 = CausalityExport.get().setCause(null)) {
-                try (var ignored1 = CausalityExport.get().setCause(callbackEvent)) {
-                    /* If the type is already instantiated just trigger the callback. */
-                    callback.accept(universe.getConcurrentAnalysisAccess());
-                }
+            try (var ignored = CausalityExport.overwriteCause(callbackEvent)) {
+                /* If the type is already instantiated just trigger the callback. */
+                callback.accept(universe.getConcurrentAnalysisAccess());
             }
         } else {
             ElementNotification notification = new ElementNotification(callback);

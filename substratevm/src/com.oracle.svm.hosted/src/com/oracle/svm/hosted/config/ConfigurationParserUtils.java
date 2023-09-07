@@ -128,7 +128,7 @@ public final class ConfigurationParserUtils {
             } else {
                 uri = ((URL) location).toURI();
             }
-            try (var ignored = CausalityExport.get().setCause(new CausalityExport.ConfigurationFile(uri))) {
+            try (var ignored = CausalityExport.setCause(new CausalityExport.ConfigurationFile(uri))) {
                 parser.parseAndRegister(uri);
             }
         } catch (IOException | URISyntaxException | JSONParserException e) {

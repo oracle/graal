@@ -48,7 +48,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
         super(cloneLocation, inputType);
         this.allocationContext = null;
         this.input = input;
-        CausalityExport.get().registerTypeFlowEdge(input, this);
+        CausalityExport.registerTypeFlowEdge(input, this);
     }
 
     public CloneTypeFlow(PointsToAnalysis bb, CloneTypeFlow original, MethodFlowsGraph methodFlows, AnalysisContext allocationContext) {

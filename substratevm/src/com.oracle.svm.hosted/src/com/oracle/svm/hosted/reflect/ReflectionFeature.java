@@ -131,17 +131,19 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
     @Override
     public SubstrateAccessor getOrCreateAccessor(Executable member) {
-        try(var ignored = CausalityExport.get().setCause(new CausalityExport.ReflectionRegistration(member))) {
-            SubstrateAccessor existing = accessors.get(member);
-            if (existing != null) {
-                return existing;
-            }
-
-            if (analysisAccess == null) {
-                throw VMError.shouldNotReachHere("New Method or Constructor found as reachable after static analysis: " + member);
-            }
-            return accessors.computeIfAbsent(member, this::createAccessor);
+        SubstrateAccessor existing = accessors.get(member);
+        if (existing != null) {
+            return existing;
         }
+
+        if (analysisAccess == null) {
+            throw VMError.shouldNotReachHere("New Method or Constructor found as reachable after static analysis: " + member);
+        }
+        return accessors.computeIfAbsent(member, m -> {
+            try (var ignored = CausalityExport.setCause(new CausalityExport.ReflectionRegistration(m))) {
+                return createAccessor(m);
+            }
+        });
     }
 
     /**

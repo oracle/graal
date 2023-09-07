@@ -69,7 +69,7 @@ public final class DynamicNewInstanceTypeFlow extends TypeFlow<BytecodePosition>
     @Override
     public void initFlow(PointsToAnalysis bb) {
         this.newTypeFlow.addObserver(bb, this);
-        CausalityExport.get().registerTypeFlowEdge(newTypeFlow, this);
+        CausalityExport.registerTypeFlowEdge(newTypeFlow, this);
     }
 
     @Override

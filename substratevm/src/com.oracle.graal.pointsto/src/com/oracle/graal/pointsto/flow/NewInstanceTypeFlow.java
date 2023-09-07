@@ -71,9 +71,8 @@ public class NewInstanceTypeFlow extends TypeFlow<BytecodePosition> {
              * context sensitivity is enabled the default graph is kept clean and used as a template
              * for clones. For clones the state is provided by createCloneState(), on creation.
              */
-            TypeState exactTypeState = TypeState.forExactType(bb, declaredType, false);
-            addState(bb, exactTypeState);
-            CausalityExport.get().registerTypeFlowEdge(null, this);
+            addState(bb, TypeState.forExactType(bb, declaredType, false));
+            CausalityExport.registerTypeFlowEdge(null, this);
         }
     }
 

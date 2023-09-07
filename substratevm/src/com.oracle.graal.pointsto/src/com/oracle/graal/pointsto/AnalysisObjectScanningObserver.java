@@ -69,9 +69,8 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         /* Add the constant value object to the field's type flow. */
         FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
         /* Add the new constant to the field's flow state. */
-        TypeState state = bb.analysisPolicy().constantTypeState(analysis, fieldValue, fieldType);
-        CausalityExport.get().registerTypeEntering(analysis, CausalityExport.get().getHeapFieldAssigner(analysis, receiver, field, fieldValue), fieldTypeFlow, fieldType);
-        return fieldTypeFlow.addState(analysis, state);
+        CausalityExport.registerTypeEntering(analysis, CausalityExport.getHeapFieldAssigner(analysis, receiver, field, fieldValue), fieldTypeFlow, fieldType);
+        return fieldTypeFlow.addState(analysis, bb.analysisPolicy().constantTypeState(analysis, fieldValue, fieldType));
     }
 
     /**
@@ -109,8 +108,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         ArrayElementsTypeFlow arrayObjElementsFlow = getArrayElementsFlow(array, arrayType);
         PointsToAnalysis analysis = getAnalysis();
         /* Add the constant element to the constant's array type flow. */
-        TypeState state = bb.analysisPolicy().constantTypeState(analysis, elementConstant, elementType);
-        CausalityExport.get().registerTypeEntering(analysis, CausalityExport.get().getHeapArrayAssigner(analysis, array, elementIndex, elementConstant), arrayObjElementsFlow, elementType);
+        CausalityExport.registerTypeEntering(analysis, CausalityExport.getHeapArrayAssigner(analysis, array, elementIndex, elementConstant), arrayObjElementsFlow, elementType);
         return arrayObjElementsFlow.addState(analysis, bb.analysisPolicy().constantTypeState(analysis, elementConstant, elementType));
     }
 
@@ -130,8 +128,8 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         AnalysisType type = bb.getMetaAccess().lookupJavaType(valueObj.getClass());
 
         var inHeap = new CausalityExport.TypeInHeap(type);
-        CausalityExport.get().registerEdgeFromHeapObject(analysis, value, reason, inHeap);
-        try(var ignored = CausalityExport.get().setCause(inHeap)) {
+        CausalityExport.registerEdgeFromHeapObject(analysis, value, reason, inHeap);
+        try (var ignored = CausalityExport.setCause(inHeap)) {
             type.registerAsInHeap(reason);
         }
     }

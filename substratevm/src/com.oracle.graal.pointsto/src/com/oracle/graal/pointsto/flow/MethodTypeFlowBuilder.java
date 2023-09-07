@@ -189,7 +189,7 @@ public class MethodTypeFlowBuilder {
         AnalysisParsedGraph analysisParsedGraph = forceReparse ? method.reparseGraph(bb) : method.ensureGraphParsed(bb);
 
         if (analysisParsedGraph.isIntrinsic()) {
-            try (var ignored = CausalityExport.get().setCause(CausalityExport.Ignored.Instance)) {
+            try (var ignored = CausalityExport.setCause(CausalityExport.Ignored.Instance)) {
                 method.registerAsIntrinsicMethod(reason);
             }
         }
@@ -199,7 +199,7 @@ public class MethodTypeFlowBuilder {
         }
 
         // This is for capturing sideeffects e.g. by SubstrateGraphBuilderPlugin.interceptUpdaterInvoke(...) which adds reflection
-        try (var ignored = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(method))) {
+        try (var ignored = CausalityExport.setCause(new CausalityExport.InlinedMethodCode(method))) {
             graph = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
         }
 
@@ -256,7 +256,7 @@ public class MethodTypeFlowBuilder {
         HostedProviders providers = bb.getProviders(method);
         for (Node n : graph.getNodes()) {
             BytecodePosition reason = n instanceof ValueNode vn ? AbstractAnalysisEngine.sourcePosition(vn) : AbstractAnalysisEngine.syntheticSourcePosition(n, method);
-            try (var ignored = CausalityExport.get().setCause(new CausalityExport.InlinedMethodCode(reason))) {
+            try (var ignored = CausalityExport.setCause(new CausalityExport.InlinedMethodCode(reason))) {
                 if (n instanceof InstanceOfNode) {
                     InstanceOfNode node = (InstanceOfNode) n;
                     AnalysisType type = (AnalysisType) node.type().getType();
@@ -1515,14 +1515,6 @@ public class MethodTypeFlowBuilder {
         return invokePosition;
     }
 
-    private static AnalysisMethod getPotentiallyInlinedCaller(ValueNode invoke) {
-        NodeSourcePosition nsp = invoke.getNodeSourcePosition();
-        while (nsp.getCaller() != null && nsp.getBCI() == BytecodeFrame.UNWIND_BCI) {
-            nsp = nsp.getCaller();
-        }
-        return (AnalysisMethod) nsp.getMethod();
-    }
-
     protected void processMethodInvocation(TypeFlowsOfNodes state, ValueNode invoke, InvokeKind invokeKind, PointsToAnalysisMethod targetMethod,
                     NodeInputList<ValueNode> arguments,
                     boolean installResult, BytecodePosition invokeLocation, boolean createDeoptInvokeTypeFlow) {
@@ -1585,12 +1577,12 @@ public class MethodTypeFlowBuilder {
                 CausalityExport.Event logicalCallerEvent = new CausalityExport.InlinedMethodCode(invoke.getNodeSourcePosition());
                 switch (invokeKind) {
                     case Static:
-                        CausalityExport.get().registerEdge(logicalCallerEvent, new CausalityExport.MethodImplementationInvoked(targetMethod));
+                        CausalityExport.registerEdge(logicalCallerEvent, new CausalityExport.MethodImplementationInvoked(targetMethod));
                         invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                         break;
                     case Special:
                         // Causality-TODO: This adds one kind of overapproximation: When the DefaultSpecialInvokeTypeFlow can prove that the receiver is null, it won't make the target reachable.
-                        CausalityExport.get().registerEdge(logicalCallerEvent, new CausalityExport.MethodImplementationInvoked(targetMethod));
+                        CausalityExport.registerEdge(logicalCallerEvent, new CausalityExport.MethodImplementationInvoked(targetMethod));
                         invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                         break;
                     case Virtual:

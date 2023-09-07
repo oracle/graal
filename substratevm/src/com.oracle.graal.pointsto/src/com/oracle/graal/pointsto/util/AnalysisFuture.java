@@ -61,7 +61,7 @@ public class AnalysisFuture<V> extends FutureTask<V> {
              * when get() is invoked. We report any error eagerly as a GraalError as soon as it is
              * encountered.
              */
-            try (var ignored = CausalityExport.get().setCause(null)) {
+            try (var ignored = CausalityExport.resetCause()) {
                 run();
             }
             return get();
