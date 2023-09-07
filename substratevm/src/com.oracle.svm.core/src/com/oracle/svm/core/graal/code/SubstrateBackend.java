@@ -27,7 +27,20 @@ package com.oracle.svm.core.graal.code;
 import static com.oracle.svm.core.util.VMError.intentionallyUnimplemented;
 
 import java.lang.reflect.Method;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Deque;
+import java.util.List;
+import java.util.Objects;
 
+import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
+import jdk.vm.ci.code.BytecodeFrame;
+import jdk.vm.ci.code.DebugInfo;
+import jdk.vm.ci.code.site.Call;
+import jdk.vm.ci.code.site.ImplicitExceptionDispatch;
+import jdk.vm.ci.code.site.Infopoint;
+import jdk.vm.ci.meta.JavaKind;
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.alloc.RegisterAllocationConfig;
@@ -153,11 +166,164 @@ public abstract class SubstrateBackend extends Backend {
             @Override
             public void close(OptionValues options) {
                 /*
-                 * Do nothing, we do not want our CompilationResult to be closed because we
+                 * Do nothing, other than compress the Infopoint frame chains by merging common
+                 * frames into a tree. We do not want our CompilationResult to be closed because we
                  * aggregate all data items and machine code in the native image heap.
                  */
+                FrameOptimizer.compressInfoPoints(this);
             }
         };
+    }
+
+    private static class FrameOptimizer {
+        /**
+         * Equivalence class that can be used to compare chains of BytecodeFrame instances.
+         *
+         * This class makes up for some deficiencies in the current implementation of equals on
+         * class BytecodeFrame.
+         */
+
+        private static void compressInfoPoints(CompilationResult result) {
+            List<Infopoint> infopointsCopy = new ArrayList<>(result.getInfopoints());
+            result.clearInfopoints();
+            EconomicMap<BytecodeFrame, BytecodeFrame> frameMap = EconomicMap.create();
+            for (Infopoint infopoint : infopointsCopy) {
+                Infopoint newInfopoint = removeDuplicates(infopoint, frameMap);
+                assert verifyEqual(newInfopoint, infopoint) : "new " + newInfopoint + "\n    !=\n" + infopoint;
+                result.addInfopoint(newInfopoint);
+                assert (infopoint instanceof Call == newInfopoint instanceof Call);
+                if (newInfopoint != infopoint && infopoint instanceof Call && !result.isValidCallDeoptimizationState((Call) infopoint)) {
+                    // result must discount the replacement infopoint as a deopt location
+                    result.recordCallInvalidForDeoptimization((Call) newInfopoint);
+                }
+            }
+        }
+
+        private static Infopoint removeDuplicates(Infopoint infopoint, EconomicMap<BytecodeFrame, BytecodeFrame> frameMap) {
+            DebugInfo debugInfo = infopoint.debugInfo;
+            if (debugInfo != null && debugInfo.frame() != null) {
+                BytecodeFrame frame = debugInfo.frame();
+                Deque<BytecodeFrame> frames = new ArrayDeque<>();
+                // for efficiency process the frames top down
+                while (frame != null) {
+                    frames.push(frame);
+                    frame = frame.caller();
+                }
+                BytecodeFrame lastFrame = null;
+                while (!frames.isEmpty()) {
+                    BytecodeFrame nextFrame = frames.pop();
+                    // try to insert a shallow copy that shares common parents
+                    BytecodeFrame newFrame = (lastFrame == null ? nextFrame : shallowCopy(nextFrame, lastFrame));
+                    BytecodeFrame existingFrame = frameMap.putIfAbsent(newFrame, newFrame);
+                    if (existingFrame != null) {
+                        assert verifyEqual(newFrame, existingFrame);
+                        // the frame is a duplicate so reuse the one we already have
+                        lastFrame = existingFrame;
+                    } else {
+                        lastFrame = newFrame;
+                    }
+                }
+
+                DebugInfo newDebugInfo = new DebugInfo(lastFrame, debugInfo.getVirtualObjectMapping());
+                newDebugInfo.setCalleeSaveInfo(debugInfo.getCalleeSaveInfo());
+                newDebugInfo.setReferenceMap(debugInfo.getReferenceMap());
+                if (infopoint instanceof Call) {
+                    Call callInfoPoint = (Call) infopoint;
+                    return new Call(callInfoPoint.target, callInfoPoint.pcOffset, callInfoPoint.size, callInfoPoint.direct, newDebugInfo);
+                } else if (infopoint instanceof ImplicitExceptionDispatch) {
+                    ImplicitExceptionDispatch dispatchInfoPoint = (ImplicitExceptionDispatch) infopoint;
+                    return new ImplicitExceptionDispatch(dispatchInfoPoint.pcOffset, dispatchInfoPoint.dispatchOffset, newDebugInfo);
+                } else if (infopoint instanceof DeoptEntryInfopoint) {
+                    return new DeoptEntryInfopoint(infopoint.pcOffset, newDebugInfo);
+                } else {
+                    assert infopoint.getClass() == Infopoint.class : "unexpected info point : " + infopoint;
+                    return new Infopoint(infopoint.pcOffset, newDebugInfo, infopoint.reason);
+                }
+            } else {
+                return infopoint;
+            }
+        }
+
+        private static final JavaKind[] EMPTY_KINDS = new JavaKind[0];
+
+        private static BytecodeFrame shallowCopy(BytecodeFrame frame, BytecodeFrame caller) {
+            int localsCount = frame.numLocals;
+            int stackCount = frame.numStack;
+            int valueCount = localsCount + stackCount;
+            JavaKind[] valueKinds = (valueCount > 0 ? new JavaKind[valueCount] : EMPTY_KINDS);
+            for (int i = 0; i < localsCount; i++) {
+                valueKinds[i] = frame.getLocalValueKind(i);
+            }
+            for (int i = 0; i < stackCount; i++) {
+                valueKinds[localsCount + i] = frame.getStackValueKind(i);
+            }
+            return new BytecodeFrame(caller, frame.getMethod(), frame.getBCI(), frame.rethrowException, frame.duringCall, frame.values, valueKinds, frame.numLocals, frame.numStack, frame.numLocks);
+        }
+
+        private static boolean verifyEqual(Infopoint newInfopoint, Infopoint oldInfopoint) {
+            if (newInfopoint == oldInfopoint) {
+                return true;
+            }
+            assert newInfopoint.getClass() == oldInfopoint.getClass() : "wrong class";
+            assert newInfopoint.pcOffset == oldInfopoint.pcOffset : "wrong offset";
+            assert newInfopoint.reason == oldInfopoint.reason : "wrong reason";
+            if (newInfopoint.getClass() == Call.class) {
+                Call newCall = (Call) newInfopoint;
+                Call oldCall = (Call) oldInfopoint;
+                assert newCall.target == oldCall.target : "wrong target";
+                assert newCall.direct == oldCall.direct : "wrong direct";
+                assert newCall.size == oldCall.size : "wrong size";
+            }
+            if (newInfopoint.getClass() == ImplicitExceptionDispatch.class) {
+                ImplicitExceptionDispatch newImplicitExceptionDispatch = (ImplicitExceptionDispatch) newInfopoint;
+                ImplicitExceptionDispatch oldImplicitExceptionDispatch = (ImplicitExceptionDispatch) oldInfopoint;
+                assert newImplicitExceptionDispatch.dispatchOffset == oldImplicitExceptionDispatch.dispatchOffset : "wrong dispathcOffset";
+            }
+            if (newInfopoint.debugInfo != oldInfopoint.debugInfo && (newInfopoint.debugInfo != null)) {
+                return verifyEqual(newInfopoint.debugInfo, oldInfopoint.debugInfo);
+            }
+            return true;
+        }
+
+        private static boolean verifyEqual(DebugInfo oldDebugInfo, DebugInfo newDebugInfo) {
+            assert oldDebugInfo.getReferenceMap() == newDebugInfo.getReferenceMap() : "wrong ref map";
+            assert oldDebugInfo.getVirtualObjectMapping() == newDebugInfo.getVirtualObjectMapping() : "wrong virt obj map";
+            assert oldDebugInfo.getCalleeSaveInfo() == newDebugInfo.getCalleeSaveInfo() : "wrong callee save info";
+            if (oldDebugInfo.frame() != newDebugInfo.frame()) {
+                return verifyEqual(oldDebugInfo.frame(), newDebugInfo.frame());
+            }
+            return true;
+        }
+
+        private static boolean verifyEqual(BytecodeFrame oldFrame, BytecodeFrame newFrame) {
+            if (oldFrame == newFrame) {
+                return true;
+            }
+            assert oldFrame != null && newFrame != null : "odd caller chain" + oldFrame + "\n\n" + newFrame;
+            assert oldFrame.getBCI() == newFrame.getBCI() : "wrong bci";
+            assert Objects.equals(oldFrame.getMethod(), newFrame.getMethod());
+            assert Objects.equals(oldFrame.caller(), newFrame.caller());
+            assert oldFrame.duringCall == newFrame.duringCall : "wrong duringCall";
+            assert oldFrame.rethrowException == newFrame.rethrowException : "wrong rethrowException";
+            assert oldFrame.numLocks == newFrame.numLocks : "wrong numLocks";
+            assert oldFrame.numLocals == newFrame.numLocals : "wrong numLocals";
+            assert oldFrame.numStack == newFrame.numStack : "wrong numStack";
+            for (int i = 0; i < oldFrame.numLocals; i++) {
+                assert oldFrame.getLocalValueKind(i) == newFrame.getLocalValueKind(i) : "bad local value kind" + i;
+                assert oldFrame.getLocalValue(i).equals(newFrame.getLocalValue(i)) : "bad local value" + i;
+            }
+            for (int i = 0; i < oldFrame.numStack; i++) {
+                assert oldFrame.getStackValueKind(i) == newFrame.getStackValueKind(i) : "bad stack value kind" + i;
+                assert oldFrame.getStackValue(i).equals(newFrame.getStackValue(i)) : "bad stack value" + i;
+            }
+            for (int i = 0; i < oldFrame.numLocks; i++) {
+                assert oldFrame.getLockValue(i).equals(newFrame.getLockValue(i)) : "bad lock value" + i;
+            }
+            if (oldFrame.caller() != newFrame.caller()) {
+                return verifyEqual(oldFrame.caller(), newFrame.caller());
+            }
+            return true;
+        }
     }
 
     @Override
