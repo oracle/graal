@@ -14,7 +14,7 @@ This allows seamless interoperability with the dynamic languages supported by Gr
 
 ## Getting Started
 
-Starting of GraalVM for JDK 21, GraalVM LLVM runtime is available as a standalone distribution. 
+As of GraalVM for JDK 21, the GraalVM LLVM runtime is available as a standalone distribution. 
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
 1. Navigate to [GitHub releases of GraalVM for JDK 21](https://github.com/graalvm/graalvm-ce-builds/releases) and download the LLVM standalone for your operating system. 

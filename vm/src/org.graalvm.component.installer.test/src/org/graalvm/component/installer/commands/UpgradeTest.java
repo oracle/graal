@@ -256,7 +256,7 @@ public class UpgradeTest extends CommandTestBase {
 
     /**
      * Checks installation without core , even though the user has specified the version. Simulates
-     * Ruby 1.0.1.0 installation which ought to install 1.0.1.1
+     * "gu install ruby" on 1.0.1.0 installation which ought to install 1.0.1.1
      */
     @Test
     public void testInstallWithoutCoreUpgrade() throws Exception {

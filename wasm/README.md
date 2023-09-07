@@ -23,32 +23,37 @@ To build GraalWasm, you need to follow the standard workflow for Graal projects.
 We summarize the basic steps below:
 
 1. Create a new folder where your repositories `mx` and `graal` should be located:
-    ```bash
-    $ mkdir graalvm
-    $ cd graalvm
-    ```
+
+```bash
+$ mkdir graalvm
+$ cd graalvm
+```
 
 2. Clone `mx` and add it to the `PATH`:
-    ```bash
-    $ git clone https://github.com/graalvm/mx.git
-    $ export PATH=$PWD/mx:$PATH
-    ```
+
+```bash
+$ git clone https://github.com/graalvm/mx.git
+$ export PATH=$PWD/mx:$PATH
+```
 
 3. Clone the `graal` repository and enter the wasm directory:
-    ```bash
-    $ git clone https://github.com/oracle/graal.git
-    $ cd graal/wasm
-    ```
+
+```bash
+$ git clone https://github.com/oracle/graal.git
+$ cd graal/wasm
+```
 
 4. Set `JAVA_HOME`:
-    ```bash
-    $ export JAVA_HOME=[path to JDK]
-    ```
+
+```bash
+$ export JAVA_HOME=[path to JDK]
+```
 
 5. Build the project:
-    ```bash
-    $ mx --dy /truffle,/compiler build
-    ```
+
+```bash
+$ mx --dy /truffle,/compiler build
+```
 
 These steps will build the `wasm.jar` file in the `mxbuild/dists/jdk<version>` directory,
 which contains the GraalWasm implementation.
@@ -62,9 +67,10 @@ WebAssembly binary toolkit is needed.
 
 1. Download the binary of the [WebAssembly binary toolkit(wabt)](https://github.com/WebAssembly/wabt) and extract it.
 2. Set `WABT_DIR`:
-    ```bash
-    $ export WABT_DIR=[path to wabt]/bin
-    ```
+
+```bash
+$ export WABT_DIR=[path to wabt]/bin
+```
 
 ### Run Basic Tests
 
@@ -111,41 +117,45 @@ To build these additional tests and benchmarks, you need to:
 
 1. Install the [Emscripten SDK](https://emscripten.org/docs/getting_started/downloads.html). We currently test against
    Emscripten **1.39.13**.
-    ```bash
-    $ cd [preferred emsdk install location]
 
-    # Clone repository
-    $ git clone https://github.com/emscripten-core/emsdk.git
+```bash
+$ cd [preferred emsdk install location]
 
-    # Move to folder
-    $ cd emsdk
+# Clone repository
+$ git clone https://github.com/emscripten-core/emsdk.git
 
-    # Install sdk
-    $ ./emsdk install [version number]
+# Move to folder
+$ cd emsdk
 
-    # Activate sdk
-    $ ./emsdk activate [version number]
+# Install sdk
+$ ./emsdk install [version number]
 
-    # Set up environment
-    $ source ./emsdk_env.sh
-    ```
+# Activate sdk
+$ ./emsdk activate [version number]
+
+# Set up environment
+$ source ./emsdk_env.sh
+```
 
 2. Set `EMCC_DIR` and `GCC_DIR`:
-    ```bash
-    $ export EMCC_DIR=[path to emsdk]/upstream/emscripten
-    $ export GCC_DIR=[path to gcc (usually /usr/bin)]
-    ```
+
+```bash
+$ export EMCC_DIR=[path to emsdk]/upstream/emscripten
+$ export GCC_DIR=[path to gcc (usually /usr/bin)]
+```
 
 3. Run `emscripten-init`:
-    ```bash
-    $ cd grallvm/graal/wasm
-    $ mx emscripten-init ~/.emscripten [path to emsdk] --local
-    ```
+
+```bash
+$ cd grallvm/graal/wasm
+$ mx emscripten-init ~/.emscripten [path to emsdk] --local
+```
 
 4. Build with additional dependencies:
-    ```bash
-    $ mx --dy /truffle,/compiler build --all
-    ```
+
+```bash
+$ mx --dy /truffle,/compiler build --all
+```
 
 This will build several additional JARs in `mxbuild/dists/jdk<version>`:
 `wasm-testcases.jar` and `wasm-benchmarkcases.jar`.
@@ -297,7 +307,7 @@ the relative contribution to the overall memory overhead.
 
 ## Running WebAssembly Programs Using a Native Launcher
 
-Starting of GraalVM for JDK 21, GraalWasm is available as a standalone distribution. 
+As of GraalVM for JDK 21, GraalWasm is available as a standalone distribution. 
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
 1. Navigate to the [latest GraalVM release on GitHub](https://github.com/graalvm/graalvm-ce-builds/releases) and download the Wasm standalone for your operating system. 

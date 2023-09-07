@@ -60,21 +60,20 @@ Using a host Ruby application that embeds some Java, you will now dump compiler 
       payload: (1..10).to_a
     }
     encoded = JSON.dump(obj)
-    js_obj = Polyglot.eval('js', 'JSON.parse').call(encoded)
     puts js_obj[:time]
     puts js_obj[:msg]
     puts js_obj[:payload].join(' ')
     ```
 
-2. [Install Ruby from a TruffleRuby standalone](https://www.graalvm.org/reference-manual/ruby/#getting-started). 
-Check its version to make sure you are running the GraalVM Ruby distribution:
+2. [Install Ruby from a TruffleRuby standalone](https://www.graalvm.org/reference-manual/ruby/#getting-started) using a Ruby manager/installer.
+Check its version to make sure you are running the TruffleRuby distribution:
     ```shell
     ruby --version
     ```
 
 3. Run the application, connecting the process to the running IGV:
     ```shell
-    ruby --jvm --polyglot --vm.Dgraal.Dump=:1 --vm.Dgraal.PrintGraph=Network Test.rb
+    ruby --jvm --vm.Dgraal.Dump=:1 --vm.Dgraal.PrintGraph=Network Test.rb
     ```
 
 This dumps compiler graphs, in the IGV format, over the network to an IGV process listening on _127.0.0.1:4445_. 
