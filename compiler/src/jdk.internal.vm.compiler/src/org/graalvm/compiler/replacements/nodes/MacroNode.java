@@ -314,6 +314,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
      * trusted {@code newStamp}.
      */
     protected MacroParams copyParamsWithImprovedStamp(ObjectStamp newStamp) {
+        GraalError.guarantee(newStamp.join(returnStamp.getTrustedStamp()).equals(newStamp), "stamp should improve from %s to %s", returnStamp, newStamp);
         StampPair improvedReturnStamp = StampPair.createSingle(newStamp);
         return new MacroParams(invokeKind, callerMethod, targetMethod, bci, improvedReturnStamp, toArgumentArray());
     }

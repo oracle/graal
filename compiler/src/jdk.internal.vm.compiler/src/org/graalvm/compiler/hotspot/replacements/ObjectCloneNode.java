@@ -84,6 +84,15 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
     @Override
     @SuppressWarnings("try")
     public void lower(LoweringTool tool) {
+        /* Check if we previously inferred a concrete type but somehow lost track of it. */
+        ResolvedJavaType concreteInputType = ObjectClone.getConcreteType(getObject().stamp(NodeView.DEFAULT));
+        ResolvedJavaType cachedConcreteType = ObjectClone.getConcreteType(stamp(NodeView.DEFAULT));
+        if ((concreteInputType == null && cachedConcreteType != null) || (concreteInputType != null && !concreteInputType.equals(cachedConcreteType))) {
+            throw GraalError.shouldNotReachHere("object %s stamp %s concrete type %s; this %s stamp %s concrete type %s".formatted(
+                            getObject(), getObject().stamp(NodeView.DEFAULT), ObjectClone.getConcreteType(getObject().stamp(NodeView.DEFAULT)),
+                            this, stamp(NodeView.DEFAULT), ObjectClone.getConcreteType(stamp(NodeView.DEFAULT))));
+        }
+
         StructuredGraph replacementGraph = getLoweredSnippetGraph(tool);
 
         if (replacementGraph != null) {
