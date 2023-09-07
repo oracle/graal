@@ -67,7 +67,7 @@ local sc = (import "ci_common/sulong-common.jsonnet");
     [
       [sc.linux_amd64,    [sc.labsjdk21]],
       [sc.darwin_amd64,   [sc.labsjdk21]],
-      [sc.windows_amd64,  [sc.labsjdk21]],
+      [sc.windows_amd64 + { capabilities+: ["windows_server_2016"] /* work around native-image bug GR-48515 */ },  [sc.labsjdk21]],
       [sc.linux_aarch64,  [sc.labsjdk21]],
       [sc.darwin_aarch64, [sc.labsjdk21]],
     ],
