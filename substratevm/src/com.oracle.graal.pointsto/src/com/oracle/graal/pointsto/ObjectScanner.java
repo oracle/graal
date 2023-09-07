@@ -362,12 +362,18 @@ public class ObjectScanner {
             return "null";
         }
         AnalysisType type = bb.getMetaAccess().lookupJavaType(constant);
-        if (constant instanceof ImageHeapConstant) {
-            // Checkstyle: allow Class.getSimpleName
-            return constant.getClass().getSimpleName() + "<" + type.toJavaName() + ">";
-            // Checkstyle: disallow Class.getSimpleName
+        JavaConstant hosted = constant;
+        if (constant instanceof ImageHeapConstant heapConstant) {
+            JavaConstant hostedObject = heapConstant.getHostedObject();
+            if (hostedObject == null) {
+                // Checkstyle: allow Class.getSimpleName
+                return constant.getClass().getSimpleName() + "<" + type.toJavaName() + ">";
+                // Checkstyle: disallow Class.getSimpleName
+            }
+            hosted = hostedObject;
         }
-        Object obj = constantAsObject(bb, constant);
+
+        Object obj = constantAsObject(bb, hosted);
         String str = type.toJavaName() + '@' + Integer.toHexString(System.identityHashCode(obj));
         if (appendToString) {
             try {
@@ -612,15 +618,21 @@ public class ObjectScanner {
 
     public static class ArrayScan extends ScanReason {
         final AnalysisType arrayType;
+        final int idx;
 
         public ArrayScan(AnalysisType arrayType, JavaConstant array, ScanReason previous) {
+            this(arrayType, array, previous, -1);
+        }
+
+        public ArrayScan(AnalysisType arrayType, JavaConstant array, ScanReason previous, int idx) {
             super(previous, array);
             this.arrayType = arrayType;
+            this.idx = idx;
         }
 
         @Override
         public String toString(BigBang bb) {
-            return "indexing into array " + asString(bb, constant);
+            return "indexing into array " + asString(bb, constant) + (idx != -1 ? " at index " + idx : "");
         }
 
         @Override

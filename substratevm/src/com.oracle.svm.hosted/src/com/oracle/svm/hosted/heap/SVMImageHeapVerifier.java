@@ -43,8 +43,8 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
     }
 
     @Override
-    public boolean requireAnalysisIteration(CompletionExecutor executor) throws InterruptedException {
-        return super.requireAnalysisIteration(executor) || imageStateModified();
+    public boolean checkHeapSnapshot(CompletionExecutor executor, String phase, boolean forAnalysis) {
+        return super.checkHeapSnapshot(executor, phase, forAnalysis) || imageStateModified();
     }
 
     /**

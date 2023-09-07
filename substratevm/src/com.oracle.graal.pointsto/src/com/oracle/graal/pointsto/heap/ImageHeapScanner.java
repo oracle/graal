@@ -460,16 +460,18 @@ public abstract class ImageHeapScanner {
 
         markTypeInstantiated(objectType, reason);
         if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {
+            AnalysisType arrayType = (AnalysisType) imageHeapArray.getType(metaAccess);
             for (int idx = 0; idx < imageHeapArray.getLength(); idx++) {
                 JavaConstant elementValue = imageHeapArray.readElementValue(idx);
-                markReachable(elementValue, reason, onAnalysisModified);
-                notifyAnalysis(imageHeapArray, (AnalysisType) imageHeapArray.getType(metaAccess), idx, reason, onAnalysisModified, elementValue);
+                ArrayScan arrayScanReason = new ArrayScan(arrayType, imageHeapArray, reason, idx);
+                markReachable(elementValue, arrayScanReason, onAnalysisModified);
+                notifyAnalysis(imageHeapArray, arrayType, idx, arrayScanReason, onAnalysisModified, elementValue);
             }
         } else if (imageHeapConstant instanceof ImageHeapInstance imageHeapInstance) {
             for (ResolvedJavaField javaField : objectType.getInstanceFields(true)) {
                 AnalysisField field = (AnalysisField) javaField;
                 if (field.isRead()) {
-                    updateInstanceField(field, imageHeapInstance, reason, onAnalysisModified);
+                    updateInstanceField(field, imageHeapInstance, new FieldScan(field, imageHeapInstance, reason), onAnalysisModified);
                 }
             }
         }
