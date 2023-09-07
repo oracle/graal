@@ -256,6 +256,7 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport {
         var direct_edges = this.direct_edges.keySet();
         var hyper_edges = this.hyper_edges.keySet();
 
+        direct_edges.removeIf(pair -> pair.from != null && pair.from.unused() || pair.to.unused());
         direct_edges.removeIf(pair -> pair.to instanceof MethodReachable mr && mr.element.isClassInitializer());
 
         HashSet<Event> rootEvents = new HashSet<>();
@@ -267,16 +268,7 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport {
         rootEvents.forEach(e -> g.add(new Graph.DirectEdge(null, e)));
 
         for (var e : direct_edges) {
-            Event from = e.from;
-            Event to = e.to;
-
-            if(from != null && from.unused())
-                continue;
-
-            if(to.unused())
-                continue;
-
-            g.add(new Graph.DirectEdge(from, to));
+            g.add(e);
         }
 
         for (AnalysisType t : bb.getUniverse().getTypes()) {
@@ -293,32 +285,31 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport {
             Set<BuildTimeClassInitialization> buildTimeClinits = new HashSet<>();
             Set<BuildTimeClassInitialization> buildTimeClinitsWithReason = new HashSet<>();
 
-            direct_edges.stream().map(p -> p.from).filter(l -> l instanceof BuildTimeClassInitialization).map(l -> (BuildTimeClassInitialization) l).forEach(init -> {
-                if (buildTimeClinits.contains(init))
-                    return;
-
-                for (;;) {
-                    buildTimeClinits.add(init);
-                    Object outerInitReason = HeapAssignmentTracing.getInstance().getBuildTimeClinitResponsibleForBuildTimeClinit(init.clazz);
-                    if (outerInitReason == null)
-                        break;
-                    buildTimeClinitsWithReason.add(init);
-                    if (outerInitReason instanceof Class<?> outerInitClass) {
-                        BuildTimeClassInitialization outerInit = new BuildTimeClassInitialization(outerInitClass);
-                        g.add(new Graph.DirectEdge(outerInit, init));
-                        init = outerInit;
-                    } else {
-                        g.add(new Graph.DirectEdge((Event) outerInitReason, init));
-                        break;
+            for (var e : direct_edges) {
+                if (e.from instanceof BuildTimeClassInitialization init && !buildTimeClinits.contains(init)) {
+                    for (;;) {
+                        buildTimeClinits.add(init);
+                        Object outerInitReason = HeapAssignmentTracing.getInstance().getBuildTimeClinitResponsibleForBuildTimeClinit(init.clazz);
+                        if (outerInitReason == null)
+                            break;
+                        buildTimeClinitsWithReason.add(init);
+                        if (outerInitReason instanceof Class<?> outerInitClass) {
+                            BuildTimeClassInitialization outerInit = new BuildTimeClassInitialization(outerInitClass);
+                            g.add(new Graph.DirectEdge(outerInit, init));
+                            init = outerInit;
+                        } else {
+                            g.add(new Graph.DirectEdge((Event) outerInitReason, init));
+                            break;
+                        }
                     }
                 }
-            });
+            }
 
-            direct_edges.stream()
-                    .map(p -> p.to)
-                    .filter(e -> e instanceof BuildTimeClassInitialization)
-                    .map(e -> (BuildTimeClassInitialization) e)
-                    .forEach(buildTimeClinitsWithReason::add);
+            for(var e : direct_edges) {
+                if (e.to instanceof BuildTimeClassInitialization clinit) {
+                    buildTimeClinitsWithReason.add(clinit);
+                }
+            }
 
             buildTimeClinits.stream().sorted(Comparator.comparing(init -> init.clazz.getTypeName())).forEach(init -> {
                 AnalysisType t;
