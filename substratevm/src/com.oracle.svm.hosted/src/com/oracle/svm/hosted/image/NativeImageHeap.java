@@ -44,7 +44,6 @@ import java.util.function.Predicate;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.type.CompressibleConstant;
 import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -53,6 +52,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -361,7 +361,7 @@ public final class NativeImageHeap implements ImageHeap {
              * initialize the hash field. This is safe because Enum.hashCode() is a final method,
              * i.e., cannot be overwritten by the user.
              */
-            forceHashCodeComputation(enumConstant);
+            ImageHeapScanner.forceHashCodeComputation(enumConstant);
         }
 
         final ObjectInfo existing = objects.get(uncompressed);
@@ -457,21 +457,12 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private void handleImageString(final String str) {
-        forceHashCodeComputation(str);
+        ImageHeapScanner.forceHashCodeComputation(str);
         if (HostedStringDeduplication.isInternedString(str)) {
             /* The string is interned by the host VM, so it must also be interned in our image. */
             assert internedStrings.containsKey(str) || internStringsPhase.isAllowed() : "Should not intern string during phase " + internStringsPhase.toString();
             internedStrings.put(str, str);
         }
-    }
-
-    /**
-     * For immutable Strings and other objects in the native image heap, force eager computation of
-     * the hash field.
-     */
-    @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "eager hash field computation")
-    private static void forceHashCodeComputation(Object object) {
-        object.hashCode();
     }
 
     /**

@@ -143,6 +143,11 @@ public class HeapSnapshotVerifier {
         }
 
         @Override
+        public boolean forPrimitiveFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+            return verifyFieldValue(receiver, field, fieldValue, reason);
+        }
+
+        @Override
         public boolean forNullFieldValue(JavaConstant receiver, AnalysisField field, ScanReason reason) {
             boolean result = false;
             ObjectScanningObserver scanningObserver = scanner.getScanningObserver();
@@ -157,6 +162,10 @@ public class HeapSnapshotVerifier {
 
         @Override
         public boolean forNonNullFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+            return verifyFieldValue(receiver, field, fieldValue, reason);
+        }
+
+        private boolean verifyFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
             /*
              * We don't care if a field in the shadow heap was not yet read, i.e., the future is not
              * yet materialized. This can happen with lazy fields that become available but may have
@@ -403,7 +412,7 @@ public class HeapSnapshotVerifier {
     }
 
     private void warning(ScanReason reason, String format, Object... args) {
-        LogUtils.warning(message(reason, format, "Object was reached by", args));
+        LogUtils.warning(message(reason, format, "Value was reached by", args));
     }
 
     private void analysisWarning(ScanReason reason, String format, Object... args) {

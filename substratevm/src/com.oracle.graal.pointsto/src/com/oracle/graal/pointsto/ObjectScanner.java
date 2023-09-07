@@ -98,7 +98,7 @@ public class ObjectScanner {
             fields = fieldsList;
         }
         for (AnalysisField field : fields) {
-            if (Modifier.isStatic(field.getModifiers()) && field.getJavaKind() == JavaKind.Object && field.isRead()) {
+            if (Modifier.isStatic(field.getModifiers()) && field.isRead()) {
                 execute(() -> scanRootField(field));
             }
         }
@@ -180,6 +180,8 @@ public class ObjectScanner {
                  * referenced elements are being scanned.
                  */
                 scanConstant(fieldValue, reason);
+            } else if (fieldValue.getJavaKind().isNumericInteger()) {
+                scanningObserver.forPrimitiveFieldValue(receiver, field, fieldValue, reason);
             }
 
         } catch (UnsupportedFeatureException ex) {
@@ -373,6 +375,10 @@ public class ObjectScanner {
             hosted = hostedObject;
         }
 
+        if (hosted.getJavaKind().isPrimitive()) {
+            return hosted.toValueString();
+        }
+
         Object obj = constantAsObject(bb, hosted);
         String str = type.toJavaName() + '@' + Integer.toHexString(System.identityHashCode(obj));
         if (appendToString) {
@@ -410,7 +416,7 @@ public class ObjectScanner {
                 /* Scan constant's instance fields. */
                 for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
                     AnalysisField field = (AnalysisField) javaField;
-                    if (field.getJavaKind() == JavaKind.Object && field.isRead()) {
+                    if (field.isRead()) {
                         assert !Modifier.isStatic(field.getModifiers());
                         scanField(field, entry.constant, entry.reason);
                     }
