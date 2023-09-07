@@ -57,10 +57,6 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
         this.merged = other.merged;
     }
 
-    protected BitSet bitSet() {
-        return typesBitSet;
-    }
-
     /**
      * Returns an array of all type ids from the {@link #objects} array. This mitigates the CPU
      * cache misses when iterating over all AnalysisObject and dereferencing the type field over and
@@ -92,8 +88,8 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
             assert (o0.type().equals(o1.type()) && o0.getId() < o1.getId()) || o0.type().getId() < o1.type().getId() : "Analysis objects must be sorted by type ID and ID.";
 
             /* Check that the bit is set for the types. */
-            assert typesBitSet.get(o0.type().getId());
-            assert typesBitSet.get(o1.type().getId());
+            assert containsType(o0.type());
+            assert containsType(o1.type());
         }
 
         return true;
@@ -266,7 +262,8 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
 
         ContextSensitiveMultiTypeState that = (ContextSensitiveMultiTypeState) o;
         return this.canBeNull == that.canBeNull &&
-                        this.typesCount == that.typesCount && this.typesBitSet.equals(that.typesBitSet) &&
+                        this.typesCount == that.typesCount &&
+                        this.bitSetEquals(that) &&
                         Arrays.equals(this.objects, that.objects);
     }
 

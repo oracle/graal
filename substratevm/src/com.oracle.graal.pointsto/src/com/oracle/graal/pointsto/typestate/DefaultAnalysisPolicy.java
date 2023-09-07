@@ -352,7 +352,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
          * No need for a deep equality check (which would need to iterate the arrays), since the
          * speculation logic below is doing that anyway.
          */
-        if (s1.typesBitSet() == s2.typesBitSet()) {
+        if (s1.bitSetShallowEquals(s2)) {
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
 
@@ -389,12 +389,12 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
         /* Speculate that s1 and s2 have either the same types, or no types in common. */
 
-        if (s1.typesBitSet().equals(s2.typesBitSet())) {
+        if (s1.bitSetEquals(s2)) {
             /* Speculate that s1 and s2 have the same types, i.e., the result is s1. */
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
 
-        if (!s1.typesBitSet().intersects(s2.typesBitSet())) {
+        if (!s1.intersects(s2)) {
             /* Speculate that s1 and s2 have no types in common, i.e., the result is empty. */
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         }
@@ -447,12 +447,12 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
         /* Speculate that s1 and s2 have either the same types, or no types in common. */
 
-        if (s1.typesBitSet().equals(s2.typesBitSet())) {
+        if (s1.bitSetEquals(s2)) {
             /* Speculate that s1 and s2 have the same types, i.e., the result is empty set. */
             return TypeState.forEmpty().forCanBeNull(bb, resultCanBeNull);
         }
 
-        if (!s1.typesBitSet().intersects(s2.typesBitSet())) {
+        if (!s1.intersects(s2)) {
             /* Speculate that s1 and s2 have no types in common, i.e., the result is s1. */
             return s1.forCanBeNull(bb, resultCanBeNull);
         }
