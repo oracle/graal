@@ -1,7 +1,6 @@
 package com.oracle.graal.pointsto.reports.causality;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualParameterTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;
@@ -19,7 +18,6 @@ import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import org.graalvm.collections.Pair;
 
-import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -181,6 +179,34 @@ public class TypeflowImpl extends Impl {
         }
     }
 
+    private static void addSubtypeImplementations(PointsToAnalysis bb, Map<AnalysisType, AnalysisMethod> implementationsByDeclaringClass, AnalysisType type, AnalysisMethod method, Map<AnalysisMethod, TypeState> result) {
+        AnalysisMethod override = implementationsByDeclaringClass.get(type);
+        if (override != null)
+            method = override;
+
+        result.compute(method, (m, existingTypes) -> {
+            if (existingTypes == null)
+                existingTypes = TypeState.forEmpty();
+            return TypeState.forUnion(bb, existingTypes, TypeState.forExactType(bb, type, false));
+        });
+        for (AnalysisType subType : type.getSubTypes()) {
+            if (subType == type)
+                continue;
+            addSubtypeImplementations(bb, implementationsByDeclaringClass, subType, method, result);
+        }
+    }
+
+    private static Map<AnalysisMethod, TypeState> collectImplementationWithTypes(PointsToAnalysis bb, AnalysisMethod baseMethod) {
+        var implementations = baseMethod.getImplementations();
+        HashMap<AnalysisType, AnalysisMethod> implementationsByDeclaringClass = new HashMap<>(implementations.length);
+        for (AnalysisMethod impl : implementations) {
+            implementationsByDeclaringClass.put(impl.getDeclaringClass(), impl);
+        }
+        Map<AnalysisMethod, TypeState> result = new HashMap<>();
+        addSubtypeImplementations(bb, implementationsByDeclaringClass, baseMethod.getDeclaringClass(), baseMethod, result);
+        return result;
+    }
+
     @Override
     public Graph createCausalityGraph(PointsToAnalysis bb) {
         Graph g = super.createCausalityGraph(bb);
@@ -204,33 +230,25 @@ public class TypeflowImpl extends Impl {
 
         Map<AnalysisMethod, Pair<Set<AbstractVirtualInvokeTypeFlow>, TypeState>> virtual_invokes = new HashMap<>();
 
+        Map<AnalysisMethod, Map<AnalysisMethod, TypeState>> implementationsAndTheirTypes = new HashMap<>();
+        for (var e : originalInvokeReceivers.keySet()) {
+            implementationsAndTheirTypes.computeIfAbsent(e.getTargetMethod(), targetMethod -> collectImplementationWithTypes(bb, targetMethod));
+        }
+
         for (var e : originalInvokeReceivers.entrySet()) {
             PointsToAnalysisMethod targetMethod = e.getKey().getTargetMethod();
             TypeState receiverState = bb.getAllInstantiatedTypeFlow().getState();
             if (e.getValue() != null)
                 receiverState = e.getValue().filter(bb, receiverState);
 
-            for (AnalysisType type : receiverState.types(bb)) {
-                AnalysisMethod method = null;
-                try {
-                    method = type.resolveConcreteMethod(targetMethod);
-                } catch (UnsupportedFeatureException ignored) {
-                }
-
-                if (method == null || Modifier.isAbstract(method.getModifiers())) {
+            for (var implementationWithTypes : implementationsAndTheirTypes.get(targetMethod).entrySet()) {
+                TypeState and = TypeState.forIntersection(bb, receiverState, implementationWithTypes.getValue());
+                if (and.typesCount() == 0)
                     continue;
-                }
 
-                var calleeList = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(method), targetMethod, e.getKey().getCallerMultiMethodKey(), e.getKey());
+                var calleeList = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(implementationWithTypes.getKey()), targetMethod, e.getKey().getCallerMultiMethodKey(), e.getKey());
                 for (PointsToAnalysisMethod callee : calleeList) {
                     assert callee.getTypeFlow().getMethod().equals(callee);
-
-                    /*
-                     * Different receiver type can yield the same target method; although it is correct
-                     * in a context insensitive analysis to link the callee only if it was not linked
-                     * before, in a context sensitive analysis the callee should be linked for each
-                     * different context.
-                     */
 
                     virtual_invokes.compute(callee, (m, pair) -> {
                         Set<AbstractVirtualInvokeTypeFlow> invokes;
@@ -245,7 +263,7 @@ public class TypeflowImpl extends Impl {
                         }
 
                         invokes.add(e.getKey());
-                        return Pair.create(invokes, TypeState.forUnion(bb, targetReachingTypes, TypeState.forExactType(bb, type, false)));
+                        return Pair.create(invokes, TypeState.forUnion(bb, targetReachingTypes, and));
                     });
                 }
             }
