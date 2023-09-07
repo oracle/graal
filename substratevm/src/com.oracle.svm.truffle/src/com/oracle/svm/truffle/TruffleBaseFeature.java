@@ -1365,6 +1365,21 @@ final class Target_com_oracle_truffle_polyglot_InternalResourceCache {
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private static volatile Pair<Path, Boolean> cacheRoot;
+
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = AllowExecutableNameComputer.class, isFinal = true) //
+    private static boolean allowExecutableName;
+
+    private static final class AllowExecutableNameComputer implements FieldValueTransformerWithAvailability {
+        @Override
+        public ValueAvailability valueAvailability() {
+            return ValueAvailability.BeforeAnalysis;
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            return TruffleBaseFeature.Options.CopyLanguageResources.getValue();
+        }
+    }
 }
 
 @TargetClass(className = "com.oracle.truffle.polyglot.InternalResourceCache$ResettableCachedRoot", onlyWith = TruffleBaseFeature.IsEnabled.class)
