@@ -370,11 +370,11 @@ abstract class CVSymbolSubrecord {
 
         /* It might be more efficient to use an array of shorts instead of a List of Gaps. */
         private static class Gap {
-            public final short start;
+            public final short gapStart;
             public final short gapLength;
 
-            Gap(short start, short gapLength) {
-                this.start = start;
+            Gap(short gapStart, short gapLength) {
+                this.gapStart = gapStart;
                 this.gapLength = gapLength;
             }
         }
@@ -386,11 +386,11 @@ abstract class CVSymbolSubrecord {
             this.length = length;
         }
 
-        void addGap(short start, short length) {
+        void addGap(short gapStart, short gapLength) {
             if (gaps == null) {
                 gaps = new ArrayList<>(GAP_ARRAY_SIZE);
             }
-            gaps.add(new Gap(start, length));
+            gaps.add(new Gap(gapStart, gapLength));
         }
 
         int computeRange(byte[] buffer, int initialPos) {
@@ -404,7 +404,7 @@ abstract class CVSymbolSubrecord {
             int pos = initialPos;
             if (gaps != null) {
                 for (Gap gap : gaps) {
-                    pos = CVUtil.putShort(gap.start, buffer, pos);
+                    pos = CVUtil.putShort(gap.gapStart, buffer, pos);
                     pos = CVUtil.putShort(gap.gapLength, buffer, pos);
                 }
             }
@@ -424,7 +424,7 @@ abstract class CVSymbolSubrecord {
             String s = "";
             if (gaps != null) {
                 for (Gap gap : gaps) {
-                    s = String.format("%s%n     - gap=0x%x len=0x%x last=0x%x", s, gap.start, gap.gapLength, gap.start + gap.gapLength - 1);
+                    s = String.format("%s%n     - gap=0x%x len=0x%x last=0x%x", s, gap.gapStart, gap.gapLength, gap.gapStart + gap.gapLength - 1);
                 }
             }
             return s;
