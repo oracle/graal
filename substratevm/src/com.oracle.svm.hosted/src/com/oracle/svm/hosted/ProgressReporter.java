@@ -331,13 +331,13 @@ public class ProgressReporter {
                     if (lmov.getValuesWithOrigins().allMatch(o -> o.getRight().isStable())) {
                         continue;
                     } else {
-                        origins = lmov.getValuesWithOrigins().map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
+                        origins = lmov.getValuesWithOrigins().filter(p -> !isStableOrInternalOrigin(p.getRight())).map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
                         alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(hok, p.getLeft().toString())).filter(c -> !c.startsWith(hostedOptionPrefix))
                                         .collect(Collectors.joining(", "));
                     }
                 } else {
                     OptionOrigin origin = hok.getLastOrigin();
-                    if (origin == null /* unknown */ || origin.isStable() || origin.isInternal()) {
+                    if (origin == null /* unknown */ || isStableOrInternalOrigin(origin)) {
                         continue;
                     }
                     origins = origin.toString();
@@ -368,6 +368,10 @@ public class ProgressReporter {
         for (var optionAndDetails : experimentalOptions.entrySet()) {
             l().a(" - '%s'%s", optionAndDetails.getKey(), optionAndDetails.getValue().toSuffix()).println();
         }
+    }
+
+    private static boolean isStableOrInternalOrigin(OptionOrigin origin) {
+        return origin.isStable() || origin.isInternal();
     }
 
     private void printResourceInfo() {
