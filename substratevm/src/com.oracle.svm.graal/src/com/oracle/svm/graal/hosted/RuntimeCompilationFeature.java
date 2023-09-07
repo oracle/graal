@@ -122,7 +122,6 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.services.Services;
 
 /**
  * The main handler for running the Graal compiler in the Substrate VM at run time. This feature
@@ -367,10 +366,11 @@ public abstract class RuntimeCompilationFeature {
     }
 
     protected static List<Class<? extends Feature>> getRequiredFeaturesHelper() {
-        if (Services.IS_BUILDING_NATIVE_IMAGE) {
+        if (SubstrateUtil.isBuildingLibgraal()) {
             return List.of(FieldsOffsetsFeature.class);
+        } else {
+            return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, FieldsOffsetsFeature.class);
         }
-        return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, FieldsOffsetsFeature.class);
     }
 
     public void setUniverseFactory(SubstrateUniverseFactory universeFactory) {
@@ -474,6 +474,12 @@ public abstract class RuntimeCompilationFeature {
         SubstrateReplacements replacements = (SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements();
         for (NodeClass<?> nodeClass : replacements.getSnippetNodeClasses()) {
             config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
+        }
+        /*
+         * Ensure runtime snippet graphs are analyzed.
+         */
+        if (!SubstrateUtil.isBuildingLibgraal()) {
+            NativeImageGenerator.performSnippetGraphAnalysis(config.getBigBang(), replacements, config.getBigBang().getOptions());
         }
 
         /*

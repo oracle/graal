@@ -139,7 +139,6 @@ import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanningObserver;
-import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.context.bytecode.BytecodeSensitiveAnalysisPolicy;
@@ -1123,19 +1122,22 @@ public class NativeImageGenerator {
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget(), supportsStubBasedPlugins);
             registerReplacements(debug, featureHandler, null, aProviders, true, initForeignCalls);
 
-            Collection<StructuredGraph> snippetGraphs = aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
-            if (bb instanceof NativeImagePointsToAnalysis) {
-                for (StructuredGraph graph : snippetGraphs) {
-                    HostedConfiguration.instance().registerUsedElements((PointsToAnalysis) bb, graph, false);
-                }
-            } else if (bb instanceof NativeImageReachabilityAnalysisEngine) {
-                NativeImageReachabilityAnalysisEngine reachabilityAnalysis = (NativeImageReachabilityAnalysisEngine) bb;
-                for (StructuredGraph graph : snippetGraphs) {
-                    reachabilityAnalysis.processGraph(graph);
-                }
-            } else {
-                throw VMError.shouldNotReachHere("Unknown analysis type - please specify how to handle snippets");
+            performSnippetGraphAnalysis(bb, aReplacements, options);
+        }
+    }
+
+    public static void performSnippetGraphAnalysis(BigBang bb, SubstrateReplacements replacements, OptionValues options) {
+        Collection<StructuredGraph> snippetGraphs = replacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
+        if (bb instanceof NativeImagePointsToAnalysis pointsToAnalysis) {
+            for (StructuredGraph graph : snippetGraphs) {
+                HostedConfiguration.instance().registerUsedElements(pointsToAnalysis, graph, false);
             }
+        } else if (bb instanceof NativeImageReachabilityAnalysisEngine reachabilityAnalysis) {
+            for (StructuredGraph graph : snippetGraphs) {
+                reachabilityAnalysis.processGraph(graph);
+            }
+        } else {
+            throw VMError.shouldNotReachHere("Unknown analysis type - please specify how to handle snippets");
         }
     }
 
