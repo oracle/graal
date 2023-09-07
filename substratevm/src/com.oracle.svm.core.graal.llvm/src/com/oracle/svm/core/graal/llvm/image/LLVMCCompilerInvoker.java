@@ -42,7 +42,7 @@ public class LLVMCCompilerInvoker extends CCompilerInvoker {
     @Override
     protected void verify() {
         if (!Files.exists(getCCompilerPath())) {
-            throw UserError.abort("The LLVM toolchain is missing.");
+            throw UserError.abort("GraalVM needs to be rebuilt to include the LLVM toolchain. For instructions, please see https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/LLVMBackend.md.");
         }
     }
 
