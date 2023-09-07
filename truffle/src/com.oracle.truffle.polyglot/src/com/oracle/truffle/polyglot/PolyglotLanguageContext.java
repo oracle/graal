@@ -884,7 +884,9 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
     }
 
     boolean patch(PolyglotContextConfig newConfig) {
-        if (isCreated()) {
+        Set<PolyglotLanguage> configuredLanguages = newConfig.getConfiguredLanguages();
+        boolean requested = language.isHost() || language.cache.isInternal() || configuredLanguages.isEmpty() || configuredLanguages.contains(language);
+        if (requested && isCreated()) {
             try {
                 OptionValuesImpl newOptionValues = newConfig.getLanguageOptionValues(language).copy();
                 lazy.computeAccessPermissions(newConfig);
@@ -906,6 +908,10 @@ final class PolyglotLanguageContext implements PolyglotImpl.VMObject {
                 throw silenceException(RuntimeException.class, t);
             }
         } else {
+            if (LOG.isLoggable(Level.FINER)) {
+                LOG.log(Level.FINER, "The language context patching for {0} is being skipped due to requested: {1}, created: {2}.",
+                                new Object[]{this.language.getId(), requested, isCreated()});
+            }
             return true;
         }
     }
