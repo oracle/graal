@@ -23,26 +23,38 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
 public class TypeflowImpl extends Impl {
-    private final HashSet<Pair<TypeFlow<?>, TypeFlow<?>>> interflows = new HashSet<>();
+    private static final ConcurrentHashMap<Pair<TypeFlow<?>, TypeFlow<?>>, Boolean> interflows = new ConcurrentHashMap<>();
 
     /**
      * Saves for each virtual invocation the receiver typeflow before it may have been replaced during saturation.
      */
     private final HashMap<AbstractVirtualInvokeTypeFlow, TypeFlow<?>> originalInvokeReceivers = new HashMap<>();
-    private final HashMap<Pair<Event, TypeFlow<?>>, TypeState> flowingFromHeap = new HashMap<>();
+    private final HashMap<Pair<Event, TypeFlow<?>>, HashSet<AnalysisType>> flowingFromHeap = new HashMap<>();
 
 
     public TypeflowImpl() {
     }
 
+    private static <K, V> void mergeMap(Map<K, V> dst, Map<K, V> src, BiFunction<V, V, V> merger) {
+        src.forEach((k, v) -> dst.merge(k, v, merger));
+    }
+
+    private static <K> void mergeTypeFlowMap(Map<K, HashSet<AnalysisType>> dst, Map<K, HashSet<AnalysisType>> src, PointsToAnalysis bb) {
+        mergeMap(dst, src, (v1, v2) -> {
+            v1.addAll(v2);
+            return v1;
+        });
+    }
+
     public TypeflowImpl(Iterable<TypeflowImpl> instances, PointsToAnalysis bb) {
         super(instances, bb);
         for (TypeflowImpl i : instances) {
-            interflows.addAll(i.interflows);
             originalInvokeReceivers.putAll(i.originalInvokeReceivers);
             mergeTypeFlowMap(flowingFromHeap, i.flowingFromHeap, bb);
         }
@@ -59,7 +71,7 @@ public class TypeflowImpl extends Impl {
             else
                 assert to.isContextInsensitive() || from instanceof ActualReturnTypeFlow && to instanceof ActualReturnTypeFlow || to instanceof ActualParameterTypeFlow;
 
-        interflows.add(Pair.create(from, to));
+        interflows.put(Pair.create(from, to), Boolean.TRUE);
     }
 
 
@@ -78,8 +90,8 @@ public class TypeflowImpl extends Impl {
     }
 
     @Override
-    public void registerTypesEntering(PointsToAnalysis bb, Event cause, TypeFlow<?> destination, TypeState types) {
-        flowingFromHeap.compute(Pair.create(cause, destination), (p, state) -> state == null ? types : TypeState.forUnion(bb, state, types));
+    public void registerTypeEntering(PointsToAnalysis bb, Event cause, TypeFlow<?> destination, AnalysisType type) {
+        flowingFromHeap.computeIfAbsent(Pair.create(cause, destination), p -> new HashSet<>()).add(type);
     }
 
 
@@ -94,7 +106,7 @@ public class TypeflowImpl extends Impl {
     }
 
     protected void forEachTypeflow(Consumer<TypeFlow<?>> callback) {
-        for (var e : interflows) {
+        for (var e : interflows.keySet()) {
             callback.accept(e.getLeft());
             callback.accept(e.getRight());
         }
@@ -308,7 +320,7 @@ public class TypeflowImpl extends Impl {
             }
         }
 
-        for (Pair<TypeFlow<?>, TypeFlow<?>> e : interflows) {
+        for (Pair<TypeFlow<?>, TypeFlow<?>> e : interflows.keySet()) {
             Graph.RealFlowNode left = null;
 
             if(e.getLeft() != null) {
@@ -335,7 +347,7 @@ public class TypeflowImpl extends Impl {
             });
         }
 
-        for (Map.Entry<Pair<Event, TypeFlow<?>>, TypeState> e : flowingFromHeap.entrySet()) {
+        for (Map.Entry<Pair<Event, TypeFlow<?>>, HashSet<AnalysisType>> e : flowingFromHeap.entrySet()) {
             Graph.RealFlowNode fieldNode = flowMapper.apply(e.getKey().getRight());
 
             if (fieldNode == null)
@@ -347,24 +359,17 @@ public class TypeflowImpl extends Impl {
             // These will be added to allInstantiated immeadiatly.
             // In practice this only shows in big projects and rarely (e.g. 3 times in 170MB spring-petclinic)
             // Therefore we simply employ this quick fix:
-            if(e.getValue().typesCount() <= 20) {
-                Graph.FlowNode intermediate = new Graph.FlowNode("Virtual Flow from Heap", e.getKey().getLeft(), e.getValue());
+            AnalysisType[] types = e.getValue().toArray(AnalysisType[]::new);
+            for(int i = 0; i < types.length; i += 20) {
+                TypeState state = TypeState.forEmpty();
+
+                for(int j = i; j < i + 20 && j < types.length; j++) {
+                    state = TypeState.forUnion(bb, state, TypeState.forExactType(bb, types[j], false));
+                }
+
+                Graph.FlowNode intermediate = new Graph.FlowNode("Virtual Flow from Heap", e.getKey().getLeft(), state);
                 g.add(new Graph.FlowEdge(null, intermediate));
                 g.add(new Graph.FlowEdge(intermediate, fieldNode));
-            } else {
-                AnalysisType[] types = e.getValue().typesStream(bb).toArray(AnalysisType[]::new);
-
-                for(int i = 0; i < types.length; i += 20) {
-                    TypeState state = TypeState.forEmpty();
-
-                    for(int j = i; j < i + 20 && j < types.length; j++) {
-                        state = TypeState.forUnion(bb, state, TypeState.forExactType(bb, types[j], false));
-                    }
-
-                    Graph.FlowNode intermediate = new Graph.FlowNode("Virtual Flow from Heap", e.getKey().getLeft(), state);
-                    g.add(new Graph.FlowEdge(null, intermediate));
-                    g.add(new Graph.FlowEdge(intermediate, fieldNode));
-                }
             }
         }
 

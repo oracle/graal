@@ -70,7 +70,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         FieldTypeFlow fieldTypeFlow = getFieldTypeFlow(field, receiver);
         /* Add the new constant to the field's flow state. */
         TypeState state = bb.analysisPolicy().constantTypeState(analysis, fieldValue, fieldType);
-        CausalityExport.get().registerTypesEntering(analysis, CausalityExport.get().getHeapFieldAssigner(analysis, receiver, field, fieldValue), fieldTypeFlow, state);
+        CausalityExport.get().registerTypeEntering(analysis, CausalityExport.get().getHeapFieldAssigner(analysis, receiver, field, fieldValue), fieldTypeFlow, fieldType);
         return fieldTypeFlow.addState(analysis, state);
     }
 
@@ -110,7 +110,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         PointsToAnalysis analysis = getAnalysis();
         /* Add the constant element to the constant's array type flow. */
         TypeState state = bb.analysisPolicy().constantTypeState(analysis, elementConstant, elementType);
-        CausalityExport.get().registerTypesEntering(analysis, CausalityExport.get().getHeapArrayAssigner(analysis, array, elementIndex, elementConstant), arrayObjElementsFlow, state);
+        CausalityExport.get().registerTypeEntering(analysis, CausalityExport.get().getHeapArrayAssigner(analysis, array, elementIndex, elementConstant), arrayObjElementsFlow, elementType);
         return arrayObjElementsFlow.addState(analysis, bb.analysisPolicy().constantTypeState(analysis, elementConstant, elementType));
     }
 

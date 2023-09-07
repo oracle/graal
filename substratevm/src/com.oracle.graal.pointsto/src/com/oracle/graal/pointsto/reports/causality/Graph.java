@@ -26,6 +26,7 @@ import java.nio.channels.Channels;
 import java.nio.channels.WritableByteChannel;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.BitSet;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,6 +36,8 @@ import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
 import java.util.Stack;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -91,9 +94,7 @@ public class Graph {
         public final CausalityExport.Event from, to;
 
         DirectEdge(CausalityExport.Event from, CausalityExport.Event to) {
-            if (to == null)
-                throw new NullPointerException();
-
+            assert to != null;
             this.from = from;
             this.to = to;
         }
@@ -121,9 +122,9 @@ public class Graph {
         public final CausalityExport.Event from1, from2, to;
 
         HyperEdge(CausalityExport.Event from1, CausalityExport.Event from2, CausalityExport.Event to) {
-            if (from1 == null || from2 == null || to == null)
-                throw new NullPointerException();
-
+            assert from1 != null;
+            assert from2 != null;
+            assert to != null;
             this.from1 = from1;
             this.from2 = from2;
             this.to = to;
@@ -233,8 +234,8 @@ public class Graph {
         }
     }
 
-    private HashSet<DirectEdge> directEdges = new HashSet<>();
-    private HashSet<HyperEdge> hyperEdges = new HashSet<>();
+    private ArrayList<DirectEdge> directEdges = new ArrayList<>();
+    private ArrayList<HyperEdge> hyperEdges = new ArrayList<>();
     private HashSet<FlowEdge> interflows = new HashSet<>();
 
     public void add(DirectEdge e) {
@@ -283,15 +284,17 @@ public class Graph {
     }
 
     private static void collectNodesLeadingSomewhere(
-            Set<Object> neededNodes,
-            Map<Object, ArrayList<Object>> backwardAdj) {
+            BitSet neededNodes,
+            int[][] backwardAdj) {
 
-        Queue<Object> worklist = new ArrayDeque<>(neededNodes);
+        Queue<Integer> worklist = new ArrayDeque<>(neededNodes.cardinality());
+        neededNodes.stream().forEach(worklist::add);
 
         while(!worklist.isEmpty()) {
-            var u = worklist.poll();
-            for(var v : backwardAdj.get(u)) {
-                if (v != null && neededNodes.add(v)) {
+            int u = worklist.poll();
+            for(int v : backwardAdj[u]) {
+                if (!neededNodes.get(v)) {
+                    neededNodes.set(v);
                     worklist.add(v);
                 }
             }
@@ -336,37 +339,58 @@ public class Graph {
     private Set<Object> collectNeededAbstractNodes() {
         Set<CausalityExport.Event> methods = collectNodes();
         Set<FlowNode> typeflows = collectFlowNodes();
+        Object[] nodes = Stream.concat(Stream.concat(Stream.of((CausalityExport.Event) null), methods.stream()), typeflows.stream()).toArray();
+        HashMap<Object, Integer> nodesInverse = new HashMap<>();
+        for (int i = 0; i < nodes.length; i++) {
+            nodesInverse.put(nodes[i], i);
+        }
 
-        Set<Object> needed = methods.stream().filter(CausalityExport.Event::essential).collect(Collectors.toSet());
+        BitSet needed = new BitSet(nodes.length);
+        methods.stream().filter(CausalityExport.Event::essential).map(nodesInverse::get).forEach(needed::set);
 
         {
-            Map<Object, ArrayList<Object>> adjReverse = new HashMap<>(methods.size() + typeflows.size());
-            for (var n : methods)
-                adjReverse.put(n, new ArrayList<>());
-            for (var f : typeflows)
-                adjReverse.put(f, new ArrayList<>());
-            for (FlowEdge e : interflows)
-                adjReverse.get(e.to).add(e.from);
-            for (var e : directEdges)
-                adjReverse.get(e.to).add(e.from);
-            for (var he : hyperEdges) {
-                adjReverse.get(he.to).add(he.from1);
-                adjReverse.get(he.to).add(he.from2);
-            }
-            for (var f : typeflows) {
-                if (f.containing != null) {
-                    if (f.makesContainingReachable()) {
-                        adjReverse.get(f.containing).add(f);
-                    } else {
-                        adjReverse.get(f).add(f.containing);
+            int[] adjReverseLens = new int[nodes.length];
+
+            Consumer<BiConsumer<Object, Object>> forAllEdges = visitor -> {
+                for (FlowEdge e : interflows)
+                    visitor.accept(e.from, e.to);
+                for (var e : directEdges)
+                    visitor.accept(e.from, e.to);
+                for (var he : hyperEdges) {
+                    visitor.accept(he.from1, he.to);
+                    visitor.accept(he.from2, he.to);
+                }
+                for (var f : typeflows) {
+                    if (f.containing != null) {
+                        if (f.makesContainingReachable()) {
+                            visitor.accept(f, f.containing);
+                        } else {
+                            visitor.accept(f.containing, f);
+                        }
                     }
                 }
-            }
+            };
+
+            forAllEdges.accept((from, to) -> {
+                adjReverseLens[nodesInverse.get(to)]++;
+            });
+
+            int[][] adjReverse = new int[nodes.length][];
+            for (int i = 0; i < adjReverse.length; i++)
+                adjReverse[i] = new int[adjReverseLens[i]];
+
+            int[] adjReversePositions = new int[nodes.length];
+
+            forAllEdges.accept((from, to) -> {
+                int toIndex = nodesInverse.get(to);
+                adjReverse[toIndex][adjReversePositions[toIndex]++] = nodesInverse.get(from);
+            });
 
             collectNodesLeadingSomewhere(needed, adjReverse);
         }
 
-        return needed;
+        needed.set(0, false);
+        return needed.stream().mapToObj(i -> nodes[i]).collect(Collectors.toSet());
     }
 
     private static <T> Stream<T> filterType(Class<T> type, Stream<?> s) {

@@ -16,30 +16,121 @@ import com.oracle.graal.pointsto.reports.HeapAssignmentTracing;
 import com.oracle.graal.pointsto.reports.SimulatedHeapTracing;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import jdk.vm.ci.meta.JavaConstant;
 import org.graalvm.collections.Pair;
 
+import java.lang.reflect.Array;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicIntegerArray;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 
 public class Impl extends CausalityExport {
-    private final HashSet<Pair<Event, Event>> direct_edges = new HashSet<>();
-    private final HashSet<Graph.HyperEdge> hyper_edges = new HashSet<>();
+    private static final ConcurrentHashMap<Event, Integer> uniqueEventIds = new ConcurrentHashMap<>();
+    private static final AtomicInteger nextUniqueId = new AtomicInteger(1);
+
+    private static int eventToId(Event e) {
+        if (e == null)
+            return 0;
+        return uniqueEventIds.computeIfAbsent(e, unused -> nextUniqueId.getAndIncrement());
+    }
+
+    protected static class IntegerArrayList {
+        protected int[] arr;
+        protected int size = 0;
+
+        public IntegerArrayList(int capacity) {
+            arr = new int[capacity];
+        }
+
+        public void clear() {
+            size = 0;
+        }
+
+        public void kill() {
+            arr = null;
+            size = 0;
+        }
+
+        public void addAll(IntegerArrayList other) {
+            if (size + other.size > arr.length) {
+                arr = Arrays.copyOf(arr, Math.max(size + other.size, arr.length * 2));
+            }
+            System.arraycopy(other.arr, 0, arr, size, other.size);
+            size += other.size;
+        }
+    }
+
+    private static class DirectEdgeList extends IntegerArrayList {
+        public DirectEdgeList() {
+            super(2 * 10);
+        }
+
+        public void add(int from, int to) {
+            if (size >= arr.length) {
+                arr = Arrays.copyOf(arr, arr.length * 2);
+            }
+            arr[size++] = from;
+            arr[size++] = to;
+        }
+
+        public void add(Event from, Event to) {
+            add(eventToId(from), eventToId(to));
+        }
+
+        public HashSet<Pair<Event, Event>> toSet(Event[] eventsById) {
+            HashSet<Pair<Event, Event>> result = new HashSet<>();
+
+            for (int i = 0; i < size; i += 2) {
+                result.add(Pair.create(eventsById[arr[i]], eventsById[arr[i + 1]]));
+            }
+
+            return result;
+        }
+    }
+
+    private static class HyperEdgeList extends IntegerArrayList {
+        public HyperEdgeList() {
+            super(3 * 10);
+        }
+
+        public void add(int from1, int from2, int to) {
+            if (size + 3 > arr.length) {
+                arr = Arrays.copyOf(arr, arr.length * 2);
+            }
+            arr[size++] = from1;
+            arr[size++] = from2;
+            arr[size++] = to;
+        }
+
+        public void add(Event from1, Event from2, Event to) {
+            add(eventToId(from1), eventToId(from2), eventToId(to));
+        }
+
+        public HashSet<Graph.HyperEdge> toSet(Event[] eventsById) {
+            HashSet<Graph.HyperEdge> result = new HashSet<>();
+
+            for (int i = 0; i < size; i += 3) {
+                result.add(new Graph.HyperEdge(eventsById[arr[i]], eventsById[arr[i + 1]], eventsById[arr[i + 2]]));
+            }
+
+            return result;
+        }
+    }
+
+    private final DirectEdgeList direct_edges = new DirectEdgeList();
+    private final HyperEdgeList hyper_edges = new HyperEdgeList();
 
     public Impl() {
-    }
-
-    protected static <K, V> void mergeMap(Map<K, V> dst, Map<K, V> src, BiFunction<V, V, V> merger) {
-        src.forEach((k, v) -> dst.merge(k, v, merger));
-    }
-
-    protected static <K> void mergeTypeFlowMap(Map<K, TypeState> dst, Map<K, TypeState> src, PointsToAnalysis bb) {
-        mergeMap(dst, src, (v1, v2) -> TypeState.forUnion(bb, v1, v2));
     }
 
     public Impl(Iterable<? extends Impl> instances, PointsToAnalysis bb) {
@@ -60,7 +151,7 @@ public class Impl extends CausalityExport {
         } else if(cause2 == null) {
             registerEdge(cause1, consequence);
         } else {
-            hyper_edges.add(new Graph.HyperEdge(cause1, cause2, consequence));
+            hyper_edges.add(cause1, cause2, consequence);
         }
     }
 
@@ -73,7 +164,7 @@ public class Impl extends CausalityExport {
             }
         }
 
-        direct_edges.add(Pair.create(cause, consequence));
+        direct_edges.add(cause, consequence);
     }
 
     @Override
@@ -224,24 +315,38 @@ public class Impl extends CausalityExport {
     }
 
     protected void forEachEvent(Consumer<Event> callback) {
-        for (Pair<Event, Event> e : direct_edges) {
-            callback.accept(e.getLeft());
-            callback.accept(e.getRight());
-        }
-        for (var he : hyper_edges) {
-            callback.accept(he.from1);
-            callback.accept(he.from2);
-            callback.accept(he.to);
-        }
     }
 
     public Graph createCausalityGraph(PointsToAnalysis bb) {
         Graph g = new Graph();
 
-        direct_edges.removeIf(pair -> pair.getRight() instanceof MethodReachable && ((MethodReachable)pair.getRight()).element.isClassInitializer());
+        Event[] eventsById = new Event[nextUniqueId.get()];
+        for (var entry : uniqueEventIds.entrySet()) {
+            eventsById[entry.getValue()] = entry.getKey();
+        }
+
+        var direct_edges = this.direct_edges.toSet(eventsById);
+        this.direct_edges.kill();
+        var hyper_edges = this.hyper_edges.toSet(eventsById);
+        this.hyper_edges.kill();
+
+        Consumer<Consumer<Event>> forEachEventLocal = (Consumer<Event> callback) -> {
+            for (Pair<Event, Event> e : direct_edges) {
+                callback.accept(e.getLeft());
+                callback.accept(e.getRight());
+            }
+            for (var he : hyper_edges) {
+                callback.accept(he.from1);
+                callback.accept(he.from2);
+                callback.accept(he.to);
+            }
+        };
+
+        direct_edges.removeIf(pair -> pair.getRight() instanceof MethodReachable mr && mr.element.isClassInitializer());
 
         HashSet<Event> events = new HashSet<>();
         forEachEvent(events::add);
+        forEachEventLocal.accept(events::add);
         for (Event e : events) {
             if (e != null && !e.unused() && e.root()) {
                 g.add(new Graph.DirectEdge(null, e));

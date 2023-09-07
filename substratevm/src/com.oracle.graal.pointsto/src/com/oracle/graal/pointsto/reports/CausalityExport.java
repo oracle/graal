@@ -134,7 +134,7 @@ public class CausalityExport {
         return null;
     }
 
-    public void registerTypesEntering(PointsToAnalysis bb, Event cause, TypeFlow<?> destination, TypeState types) {}
+    public void registerTypeEntering(PointsToAnalysis bb, Event cause, TypeFlow<?> destination, AnalysisType type) {}
 
     public enum HeapTracing {
         None,
