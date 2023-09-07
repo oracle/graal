@@ -344,6 +344,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> createMemoryManager = StaticSymbols.putName("createMemoryManager");
         public static final Symbol<Name> createGarbageCollector = StaticSymbols.putName("createGarbageCollector");
         public static final Symbol<Name> tid = StaticSymbols.putName("tid");
+        public static final Symbol<Name> eetop = StaticSymbols.putName("eetop");
         public static final Symbol<Name> getFromClass = StaticSymbols.putName("getFromClass");
 
         // MemberName
