@@ -1483,6 +1483,7 @@ suite = {
                     "* to org.graalvm.nativeimage.builder",
                 ],
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1511,6 +1512,7 @@ suite = {
                     "static hamcrest",
                 ]
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1542,6 +1544,7 @@ suite = {
                 ],
               }
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1671,6 +1674,7 @@ suite = {
                 ],
             },
             "description" : "SubstrateVM image builder native components",
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1799,6 +1803,7 @@ suite = {
                     "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                 ],
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1854,6 +1859,7 @@ suite = {
                 ],
               }
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1896,6 +1902,7 @@ suite = {
                     ]
                 }
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -2105,6 +2112,7 @@ suite = {
             "description" : "Truffle TCK",
             "dependencies" : ["com.oracle.svm.truffle.tck"],
             "distDependencies" : ["SVM", "truffle:TRUFFLE_RUNTIME"],
+            "noMavenJavadoc": True,
             "maven" : {
                 "tag": ["default", "public"],
             },
