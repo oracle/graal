@@ -157,6 +157,7 @@ public class ObjectScanner {
                 /* The value is not available yet. */
                 return;
             }
+            assert isUnwrapped(receiver);
             JavaConstant fieldValue = bb.getUniverse().getHeapScanner().readFieldValue(field, receiver);
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
@@ -187,12 +188,33 @@ public class ObjectScanner {
     }
 
     /**
+     * Must unwrap the receiver if it is an ImageHeapConstant to scan the hosted value, if any, for
+     * verification, otherwise the verification just compares shadow heap with shadow heap for
+     * embedded roots, which is completely useless.
+     */
+    private static JavaConstant maybeUnwrap(JavaConstant receiver) {
+        if (receiver instanceof ImageHeapConstant heapConstant && heapConstant.getHostedObject() != null) {
+            return heapConstant.getHostedObject();
+        }
+        return receiver;
+    }
+
+    private static boolean isUnwrapped(JavaConstant receiver) {
+        if (receiver instanceof ImageHeapConstant heapConstant) {
+            // Non hosted backed ImageHeapConstant is considered unwrapped
+            return heapConstant.getHostedObject() == null;
+        }
+        return true;
+    }
+
+    /**
      * Scans constant arrays, one element at the time.
      *
      * @param array the array to be scanned
      */
     protected final void scanArray(JavaConstant array, ScanReason prevReason) {
 
+        assert isUnwrapped(array);
         AnalysisType arrayType = bb.getMetaAccess().lookupJavaType(array);
         ScanReason reason = new ArrayScan(arrayType, array, prevReason);
 
@@ -246,13 +268,14 @@ public class ObjectScanner {
             bb.registerTypeAsInHeap(bb.getMetaAccess().lookupJavaType(value), reason);
             return;
         }
-        Object valueObj = (value instanceof ImageHeapConstant) ? value : constantAsObject(bb, value);
+        JavaConstant unwrappedValue = maybeUnwrap(value);
+        Object valueObj = unwrappedValue instanceof ImageHeapConstant ? unwrappedValue : constantAsObject(bb, unwrappedValue);
         if (scannedObjects.putAndAcquire(valueObj) == null) {
             try {
-                scanningObserver.forScannedConstant(value, reason);
+                scanningObserver.forScannedConstant(unwrappedValue, reason);
             } finally {
                 scannedObjects.release(valueObj);
-                WorklistEntry worklistEntry = new WorklistEntry(value, reason);
+                WorklistEntry worklistEntry = new WorklistEntry(unwrappedValue, reason);
                 if (executor != null) {
                     executor.execute(debug -> doScan(worklistEntry));
                 } else {
