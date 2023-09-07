@@ -28,9 +28,7 @@ import java.lang.reflect.Field;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.nativeimage.impl.InternalPlatform;
 
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
@@ -54,7 +52,7 @@ public class ContinuationsFeature implements InternalFeature {
         boolean supportLoom = false;
         if (JavaVersionUtil.JAVA_SPEC >= firstLoomPreviewVersion) {
             boolean haveLoom;
-            if (JavaVersionUtil.JAVA_SPEC > lastLoomPreviewVersion && Platform.includedIn(InternalPlatform.NATIVE_ONLY.class)) {
+            if (JavaVersionUtil.JAVA_SPEC > lastLoomPreviewVersion) {
                 haveLoom = true;
             } else {
                 try {
