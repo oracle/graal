@@ -2803,7 +2803,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             if self.is_jvm:
                 add_jars_from_component(comp, force_modules_as_jars)
 
-                for lib_dist in comp.support_libraries_distributions:
+                for lib_dist in [ld for ld in comp.support_libraries_distributions if ld not in self.jvm_libs]:
                     layout.setdefault(default_jvm_libs_dir, []).append({
                         'source_type': 'extracted-dependency',
                         'dependency': lib_dist,
@@ -3021,7 +3021,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             # Here we add `support_libraries_distributions` to the `jvmLibs` directory.
             # For the other component dependencies, this is done as part of `add_files_from_component()`.
             for jvm_component in GraalVmStandaloneComponent.default_jvm_components():
-                for lib_dist in jvm_component.support_libraries_distributions:
+                for lib_dist in [ld for ld in jvm_component.support_libraries_distributions if ld not in self.jvm_libs]:
                     layout.setdefault(default_jvm_libs_dir, []).append({
                         'source_type': 'extracted-dependency',
                         'dependency': lib_dist,
