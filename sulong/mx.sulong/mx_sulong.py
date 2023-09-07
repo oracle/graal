@@ -613,7 +613,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     standalone_dependencies_enterprise={**standalone_dependencies_common, **{
         'LLVM Runtime Enterprise': ('lib/sulong', []),
         'LLVM Runtime Native Enterprise': ('lib/sulong', []),
-        'LLVM Runtime Managed': ('lib/sulong', []),
+        **({} if mx.is_windows() else {
+            'LLVM Runtime Managed': ('lib/sulong', []),
+        }),
         'LLVM Runtime License Files EE': ('', []),
         'GraalVM enterprise license files': ('', ['LICENSE.txt', 'GRAALVM-README.md']),
     }},
