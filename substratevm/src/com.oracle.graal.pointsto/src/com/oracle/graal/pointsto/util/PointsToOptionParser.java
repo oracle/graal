@@ -113,7 +113,8 @@ public final class PointsToOptionParser {
                 Class<?> clazz = optionKey.getClass();
                 // All classes from com.oracle.graal.pointsto.api.PointstoOptions are taken as
                 // non-hosted options.
-                if (clazz.getName().startsWith("com.oracle.graal.pointsto.api.PointstoOptions")) {
+                if (clazz.getName().startsWith("com.oracle.graal.pointsto.api.PointstoOptions") ||
+                                clazz.getName().startsWith("com.oracle.graal.pointsto.standalone")) {
                     return false;
                 }
                 if (!clazz.equals(OptionKey.class) && OptionKey.class.isAssignableFrom(clazz)) {

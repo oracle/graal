@@ -165,7 +165,7 @@ import jdk.vm.ci.code.BytecodePosition;
  */
 class PointsToJsonObject extends JsonObject {
 
-    private final OnAnalysisExitAccess access;
+    private final BigBang bigBang;
     private boolean built = false;
 
     static class InflatableArrayList<T> extends ArrayList<T> {
@@ -186,8 +186,13 @@ class PointsToJsonObject extends JsonObject {
     private final BitSet known = new BitSet();
     private List<AnalysisWrapper> flows = new InflatableArrayList<>();
 
+    PointsToJsonObject(BigBang bigBang) {
+        this.bigBang = bigBang;
+    }
+
     PointsToJsonObject(OnAnalysisExitAccess access) {
-        this.access = access;
+        FeatureImpl.OnAnalysisExitAccessImpl config = (FeatureImpl.OnAnalysisExitAccessImpl) access;
+        bigBang = config.getBigBang();
     }
 
     @Override
@@ -482,11 +487,8 @@ class PointsToJsonObject extends JsonObject {
         if (built) {
             return;
         }
-        FeatureImpl.OnAnalysisExitAccessImpl config = (FeatureImpl.OnAnalysisExitAccessImpl) access;
-        BigBang bb = config.getBigBang();
-        VMError.guarantee(bb instanceof PointsToAnalysis, "Printing points-to statistics only make sense when point-to analysis is on.");
-        serializeMethods(bb);
-        connectFlowsToEnclosingMethods(bb);
+        serializeMethods(bigBang);
+        connectFlowsToEnclosingMethods(bigBang);
         matchInputsAndUses();
         built = true;
     }

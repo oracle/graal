@@ -37,6 +37,7 @@ import java.util.Map;
 import org.graalvm.graphio.GraphOutput;
 import org.graalvm.graphio.GraphStructure;
 
+import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -47,6 +48,12 @@ import com.oracle.svm.hosted.FeatureImpl.OnAnalysisExitAccessImpl;
 
 @AutomaticallyRegisteredFeature
 public class DashboardDumpFeature implements InternalFeature {
+
+    private BigBang bb = null;
+
+    public void setBB(BigBang bb) {
+        this.bb = bb;
+    }
 
     private static boolean isHeapBreakdownDumped() {
         return DashboardOptions.DashboardAll.getValue() || DashboardOptions.DashboardHeap.getValue();
@@ -120,6 +127,7 @@ public class DashboardDumpFeature implements InternalFeature {
     @Override
     public void onAnalysisExit(OnAnalysisExitAccess access) {
         if (isPointsToDumped()) {
+            PointsToJsonObject pointsToJsonObject = bb == null ? new PointsToJsonObject(access) : new PointsToJsonObject(bb);
             if (isJsonFormat()) {
                 ReportUtils.report(
                                 "Dashboard PointsTo analysis JSON dump",
@@ -127,7 +135,7 @@ public class DashboardDumpFeature implements InternalFeature {
                                 true,
                                 os -> {
                                     try (PrintWriter pw = new PrintWriter(os)) {
-                                        dumper.put(pw, "points-to", new PointsToJsonObject(access));
+                                        dumper.put(pw, "points-to", pointsToJsonObject);
                                     }
                                 });
             }
@@ -139,7 +147,7 @@ public class DashboardDumpFeature implements InternalFeature {
                                 os -> {
                                     try (GraphOutput<?, ?> out = GraphOutput.newBuilder(VoidGraphStructure.INSTANCE).embedded(true).build(Channels.newChannel(os))) {
                                         out.beginGroup(null, "points-to", null, null, 0, Collections.emptyMap());
-                                        new PointsToJsonObject(access).dump(out);
+                                        pointsToJsonObject.dump(out);
                                         out.endGroup();
                                     } catch (IOException ex) {
                                         ((OnAnalysisExitAccessImpl) access).getDebugContext().log("Dump of PointsTo analysis failed with: %s", ex);
