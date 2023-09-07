@@ -2903,12 +2903,12 @@ public class OperationsNodeFactory implements ElementHelpers {
             } else {
                 assert operation.instruction != null;
                 buildEmitOperationInstruction(b, operation);
-
-                b.startStatement().startCall("afterChild");
-                b.string("" + !operation.isVoid);
-                b.string("bci - " + operation.instruction.getInstructionLength());
-                b.end(2);
             }
+
+            b.startStatement().startCall("afterChild");
+            b.string("" + !operation.isVoid);
+            b.string(operation.instruction != null ? "bci - " + operation.instruction.getInstructionLength() : "-1");
+            b.end(2);
 
             return ex;
         }
@@ -3124,7 +3124,8 @@ public class OperationsNodeFactory implements ElementHelpers {
                             if (i != 0) {
                                 b.string(" || ");
                             }
-                            b.string("childIndex == " + valueChildren.get(i));
+                            String operator = (op.isVariadic && valueChildren.get(i) == op.childrenMustBeValues.length - 1) ? ">=" : "==";
+                            b.string("childIndex " + operator + " " + valueChildren.get(i));
                         }
                         b.string(") && !producedValue");
                         b.end().startBlock();
@@ -3140,7 +3141,8 @@ public class OperationsNodeFactory implements ElementHelpers {
                             if (i != 0) {
                                 b.string(" || ");
                             }
-                            b.string("childIndex == " + nonValueChildren.get(i));
+                            String operator = (op.isVariadic && nonValueChildren.get(i) == op.childrenMustBeValues.length - 1) ? ">=" : "==";
+                            b.string("childIndex " + operator + " " + nonValueChildren.get(i));
                         }
                         b.string(") && producedValue");
                         b.end().startBlock();
