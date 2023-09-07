@@ -312,7 +312,7 @@ final class InternalResourceCache {
 
     private static Path getExecutablePath() {
         assert ImageInfo.inImageRuntimeCode();
-        if (allowExecutableName) {
+        if (useInternalResources) {
             return Path.of(ProcessProperties.getExecutableName());
         } else {
             throw new IllegalArgumentException("Lookup an executable name is restricted. " +
@@ -323,9 +323,9 @@ final class InternalResourceCache {
     /**
      * Recomputed before the analyses by a substitution in the {@code TruffleBaseFeature} based on
      * the {@code CopyLanguageResources} option value. The field must not be declared as
-     * {@code final} to make the substitution to function correctly.
+     * {@code final} to make the substitution function correctly.
      */
-    private static boolean allowExecutableName = true;
+    private static boolean useInternalResources = true;
 
     /**
      * Collects optional internal resources for native-image build. This method is called
