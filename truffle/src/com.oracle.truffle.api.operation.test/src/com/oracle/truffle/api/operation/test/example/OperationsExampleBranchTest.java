@@ -263,4 +263,48 @@ public class OperationsExampleBranchTest extends AbstractOperationsExampleTest {
         });
     }
 
+    @Test
+    public void testDanglingLabel() {
+        // {
+        //   x = 42
+        //   goto lbl;
+        //   x = 123;
+        //   456      // this should get popped, otherwise the stack heights don't match
+        //   lbl:
+        // }
+        // return x;
+
+        RootCallTarget root = parse("branchForward", b -> {
+            b.beginRoot(LANGUAGE);
+            OperationLocal x = b.createLocal();
+
+            b.beginBlock();
+            OperationLabel lbl = b.createLabel();
+
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(42L);
+            b.endStoreLocal();
+
+            b.emitBranch(lbl);
+
+            b.beginStoreLocal(x);
+            b.emitLoadConstant(123L);
+            b.endStoreLocal();
+
+            b.emitLoadConstant(456L);
+
+            b.emitLabel(lbl);
+
+            b.endBlock();
+
+            b.beginReturn();
+            b.emitLoadLocal(x);
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(42L, root.call());
+    }
+
 }
