@@ -24,40 +24,41 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-public class TypeflowImpl extends Impl {
-    private static final ConcurrentHashMap<Pair<TypeFlow<?>, TypeFlow<?>>, Boolean> interflows = new ConcurrentHashMap<>();
+public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
+    private final ConcurrentHashMap<Pair<TypeFlow<?>, TypeFlow<?>>, Boolean> interflows = new ConcurrentHashMap<>();
 
     /**
      * Saves for each virtual invocation the receiver typeflow before it may have been replaced during saturation.
      */
-    private final HashMap<AbstractVirtualInvokeTypeFlow, TypeFlow<?>> originalInvokeReceivers = new HashMap<>();
-    private final HashMap<Pair<Event, TypeFlow<?>>, HashSet<AnalysisType>> flowingFromHeap = new HashMap<>();
+    private final ConcurrentHashMap<AbstractVirtualInvokeTypeFlow, TypeFlow<?>> originalInvokeReceivers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Pair<Event, TypeFlow<?>>, HashSet<AnalysisType>> flowingFromHeap = new ConcurrentHashMap<>();
 
+    public static final class ThreadContext extends Impl.ThreadContext {
+        public int currentlySaturatingDepth; // Inhibits the registration of new typeflow edges
 
-    public TypeflowImpl() {
-    }
+        public final class SaturationHappeningToken implements NonThrowingAutoCloseable {
+            SaturationHappeningToken() {
+                currentlySaturatingDepth++;
+            }
 
-    private static <K, V> void mergeMap(Map<K, V> dst, Map<K, V> src, BiFunction<V, V, V> merger) {
-        src.forEach((k, v) -> dst.merge(k, v, merger));
-    }
-
-    private static <K> void mergeTypeFlowMap(Map<K, HashSet<AnalysisType>> dst, Map<K, HashSet<AnalysisType>> src, PointsToAnalysis bb) {
-        mergeMap(dst, src, (v1, v2) -> {
-            v1.addAll(v2);
-            return v1;
-        });
-    }
-
-    public TypeflowImpl(Iterable<TypeflowImpl> instances, PointsToAnalysis bb) {
-        super(instances, bb);
-        for (TypeflowImpl i : instances) {
-            originalInvokeReceivers.putAll(i.originalInvokeReceivers);
-            mergeTypeFlowMap(flowingFromHeap, i.flowingFromHeap, bb);
+            @Override
+            public void close() {
+                currentlySaturatingDepth--;
+                if (currentlySaturatingDepth < 0)
+                    throw new RuntimeException();
+            }
         }
+    }
+
+    protected TypeflowImpl() {
+        super(ThreadContext::new);
+    }
+
+    public static TypeflowImpl createWithTypeflowTracking() {
+        return new TypeflowImpl();
     }
 
     @Override
@@ -65,28 +66,17 @@ public class TypeflowImpl extends Impl {
         if (from == to)
             return;
 
-        if (currentlySaturatingDepth > 0)
-            if (from instanceof AllInstantiatedTypeFlow)
+        if (from instanceof AllInstantiatedTypeFlow)
+            if (getContext().currentlySaturatingDepth > 0)
                 return;
-            else
-                assert to.isContextInsensitive() || from instanceof ActualReturnTypeFlow && to instanceof ActualReturnTypeFlow || to instanceof ActualParameterTypeFlow;
 
+        assert getContext().currentlySaturatingDepth == 0 || to.isContextInsensitive() || from instanceof ActualReturnTypeFlow && to instanceof ActualReturnTypeFlow || to instanceof ActualParameterTypeFlow;
         interflows.put(Pair.create(from, to), Boolean.TRUE);
     }
 
-
-    int currentlySaturatingDepth; // Inhibits the registration of new typeflow edges
-
     @Override
-    public void beginSaturationHappening() {
-        currentlySaturatingDepth++;
-    }
-
-    @Override
-    public void endSaturationHappening() {
-        currentlySaturatingDepth--;
-        if (currentlySaturatingDepth < 0)
-            throw new RuntimeException();
+    public NonThrowingAutoCloseable setSaturationHappening() {
+        return getContext().new SaturationHappeningToken();
     }
 
     @Override
@@ -94,15 +84,14 @@ public class TypeflowImpl extends Impl {
         flowingFromHeap.computeIfAbsent(Pair.create(cause, destination), p -> new HashSet<>()).add(type);
     }
 
-
-
     @Override
     public void registerVirtualInvocation(PointsToAnalysis bb, AbstractVirtualInvokeTypeFlow invocation, AnalysisMethod concreteTargetMethod, AnalysisType concreteTargetType) {
     }
 
     @Override
     public void addVirtualInvokeTypeFlow(AbstractVirtualInvokeTypeFlow invocation) {
-        originalInvokeReceivers.put(invocation, invocation.method() == null ? null : invocation.getReceiver());
+        if (invocation.method() != null)
+            originalInvokeReceivers.put(invocation, invocation.getReceiver());
     }
 
     protected void forEachTypeflow(Consumer<TypeFlow<?>> callback) {
@@ -220,7 +209,7 @@ public class TypeflowImpl extends Impl {
     }
 
     @Override
-    public Graph createCausalityGraph(PointsToAnalysis bb) {
+    protected Graph createCausalityGraph(PointsToAnalysis bb) {
         Graph g = super.createCausalityGraph(bb);
 
         HashMap<TypeFlow<?>, Graph.RealFlowNode> flowMapping = new HashMap<>();
@@ -372,6 +361,10 @@ public class TypeflowImpl extends Impl {
                 g.add(new Graph.FlowEdge(intermediate, fieldNode));
             }
         }
+
+        this.interflows.clear();
+        this.flowingFromHeap.clear();
+        this.originalInvokeReceivers.clear();
 
         return g;
     }

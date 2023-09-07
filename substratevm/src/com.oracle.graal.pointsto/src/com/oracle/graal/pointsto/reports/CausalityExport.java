@@ -47,6 +47,11 @@ public class CausalityExport {
 
     public static final class InitializationOnDemandHolder {
         private static final Level frozenLevel = CausalityExport.requestedLevel;
+        private static final CausalityExport instance = switch(CausalityExport.requestedLevel) {
+            case ENABLED -> TypeflowImpl.createWithTypeflowTracking();
+            case ENABLED_WITHOUT_TYPEFLOW -> Impl.create();
+            case DISABLED -> new CausalityExport();
+        };
     }
 
     /**
@@ -63,28 +68,12 @@ public class CausalityExport {
         return InitializationOnDemandHolder.frozenLevel;
     }
 
-    private static final CausalityExport dummyInstance = new CausalityExport();
-    private static ThreadLocal<Impl> instances = ThreadLocal.withInitial(CausalityExport::createInstance);
-    private static List<Impl> instancesOfAllThreads = new ArrayList<>();
-
-    private static synchronized Impl createInstance() {
-        Impl instance = InitializationOnDemandHolder.frozenLevel == Level.ENABLED ? new TypeflowImpl() : new Impl();
-        instancesOfAllThreads.add(instance);
-        return instance;
-    }
-
     public static CausalityExport get() {
-        if (InitializationOnDemandHolder.frozenLevel == Level.DISABLED || instances == null)
-            return dummyInstance;
-        return instances.get();
+        return InitializationOnDemandHolder.instance;
     }
 
     public static synchronized void dump(PointsToAnalysis bb, ZipOutputStream zip, boolean exportTypeflowNames) throws java.io.IOException {
-        Impl data = InitializationOnDemandHolder.frozenLevel == Level.ENABLED ? new TypeflowImpl((Iterable<TypeflowImpl>)(Iterable<? extends Impl>) instancesOfAllThreads, bb) : new Impl(instancesOfAllThreads, bb);
-        // Let GC collect intermediate data structures
-        instances = null;
-        instancesOfAllThreads = null;
-        Graph g = data.createCausalityGraph(bb);
+        Graph g = get().createCausalityGraph(bb);
         g.export(bb, zip, exportTypeflowNames);
     }
 
@@ -97,23 +86,8 @@ public class CausalityExport {
 
     public void registerTypeFlowEdge(TypeFlow<?> from, TypeFlow<?> to) {}
 
-    public final SaturationHappeningToken setSaturationHappening()
-    {
-        beginSaturationHappening();
-        return new SaturationHappeningToken();
-    }
-
-    protected void beginSaturationHappening() {}
-
-    protected void endSaturationHappening() {}
-
-    public class SaturationHappeningToken implements AutoCloseable {
-        @Override
-        public void close() {
-            endSaturationHappening();
-        }
-
-        SaturationHappeningToken() { }
+    public NonThrowingAutoCloseable setSaturationHappening() {
+        return null;
     }
 
     public void registerEvent(Event event) {}
@@ -142,38 +116,26 @@ public class CausalityExport {
         Full
     }
 
-    public final CauseToken setCause(Event event, HeapTracing level) {
-        var token = new CauseToken(event, level);
-        beginCauseRegion(token);
-        return token;
+    public NonThrowingAutoCloseable setCause(Event event, HeapTracing level) {
+        return null;
     }
 
-    public final CauseToken setCause(Event event) {
+    public final NonThrowingAutoCloseable setCause(Event event) {
         return setCause(event, HeapTracing.None);
     }
 
-    protected void beginCauseRegion(CauseToken token) {}
-
-    protected void endCauseRegion(CauseToken token) {}
-
     // Allows the simple usage of accountRootRegistrationsTo() in a try-with-resources statement
-    public class CauseToken implements AutoCloseable {
-        public final Event event;
-        public final HeapTracing level;
-
-        CauseToken(Event event, HeapTracing level) {
-            this.event = event;
-            this.level = level;
-        }
-
+    public interface NonThrowingAutoCloseable extends AutoCloseable {
         @Override
-        public void close() {
-            endCauseRegion(this);
-        }
+        void close();
     }
 
     public Event getCause() {
         return null;
+    }
+
+    protected Graph createCausalityGraph(PointsToAnalysis bb) {
+        throw new UnsupportedOperationException();
     }
 
 

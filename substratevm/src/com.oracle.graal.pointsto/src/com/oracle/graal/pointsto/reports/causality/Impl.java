@@ -14,130 +14,74 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.CausalityExport;
 import com.oracle.graal.pointsto.reports.HeapAssignmentTracing;
 import com.oracle.graal.pointsto.reports.SimulatedHeapTracing;
-import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.graal.pointsto.util.ConcurrentLightHashMap;
 import jdk.vm.ci.meta.JavaConstant;
-import org.graalvm.collections.Pair;
 
-import java.lang.reflect.Array;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.Iterator;
-import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicIntegerArray;
-import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
-public class Impl extends CausalityExport {
-    private static final ConcurrentHashMap<Event, Integer> uniqueEventIds = new ConcurrentHashMap<>();
-    private static final AtomicInteger nextUniqueId = new AtomicInteger(1);
+public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport {
+    private final ConcurrentHashMap<Graph.DirectEdge, Boolean> direct_edges = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Graph.HyperEdge, Boolean> hyper_edges = new ConcurrentHashMap<>();
 
-    private static int eventToId(Event e) {
-        if (e == null)
-            return 0;
-        return uniqueEventIds.computeIfAbsent(e, unused -> nextUniqueId.getAndIncrement());
+    private final ThreadLocal<TContext> threadContexts;
+
+    protected TContext getContext() {
+        return threadContexts.get();
     }
 
-    protected static class IntegerArrayList {
-        protected int[] arr;
-        protected int size = 0;
+    public static class ThreadContext {
+        private final Stack<CauseToken> causes = new Stack<>();
 
-        public IntegerArrayList(int capacity) {
-            arr = new int[capacity];
+        public Event topCause() {
+            return causes.empty() ? null : causes.peek().event;
         }
 
-        public void clear() {
-            size = 0;
+        public CauseToken topCauseToken() {
+            return causes.empty() ? null : causes.peek();
         }
 
-        public void kill() {
-            arr = null;
-            size = 0;
+        private void updateHeapTracing(CauseToken top) {
+            Event cause = top == null || top.level == HeapTracing.None ? null : top.event;
+            boolean recordHeapAssignments = top != null && top.level == HeapTracing.Full;
+            HeapAssignmentTracing.getInstance().setCause(cause, recordHeapAssignments);
         }
 
-        public void addAll(IntegerArrayList other) {
-            if (size + other.size > arr.length) {
-                arr = Arrays.copyOf(arr, Math.max(size + other.size, arr.length * 2));
-            }
-            System.arraycopy(other.arr, 0, arr, size, other.size);
-            size += other.size;
-        }
-    }
+        public final class CauseToken implements NonThrowingAutoCloseable {
+            public final Event event;
+            public final HeapTracing level;
 
-    private static class DirectEdgeList extends IntegerArrayList {
-        public DirectEdgeList() {
-            super(2 * 10);
-        }
+            public CauseToken(Event event, HeapTracing level) {
+                this.event = event;
+                this.level = level;
 
-        public void add(int from, int to) {
-            if (size >= arr.length) {
-                arr = Arrays.copyOf(arr, arr.length * 2);
-            }
-            arr[size++] = from;
-            arr[size++] = to;
-        }
-
-        public void add(Event from, Event to) {
-            add(eventToId(from), eventToId(to));
-        }
-
-        public HashSet<Pair<Event, Event>> toSet(Event[] eventsById) {
-            HashSet<Pair<Event, Event>> result = new HashSet<>();
-
-            for (int i = 0; i < size; i += 2) {
-                result.add(Pair.create(eventsById[arr[i]], eventsById[arr[i + 1]]));
+                if(!causes.empty() && event != null && causes.peek().event != null && !causes.peek().event.equals(event) && event != Ignored.Instance && causes.peek().event != Ignored.Instance && !(causes.peek().event instanceof Feature) && !causes.peek().event.root())
+                    throw new RuntimeException("Stacking Rerooting requests!");
+                causes.push(this);
+                updateHeapTracing(this);
             }
 
-            return result;
+            @Override
+            public void close() {
+                if(causes.empty() || causes.pop() != this) {
+                    throw new RuntimeException("Invalid Call to endAccountingRootRegistrationsTo()");
+                }
+                updateHeapTracing(topCauseToken());
+            }
         }
     }
 
-    private static class HyperEdgeList extends IntegerArrayList {
-        public HyperEdgeList() {
-            super(3 * 10);
-        }
-
-        public void add(int from1, int from2, int to) {
-            if (size + 3 > arr.length) {
-                arr = Arrays.copyOf(arr, arr.length * 2);
-            }
-            arr[size++] = from1;
-            arr[size++] = from2;
-            arr[size++] = to;
-        }
-
-        public void add(Event from1, Event from2, Event to) {
-            add(eventToId(from1), eventToId(from2), eventToId(to));
-        }
-
-        public HashSet<Graph.HyperEdge> toSet(Event[] eventsById) {
-            HashSet<Graph.HyperEdge> result = new HashSet<>();
-
-            for (int i = 0; i < size; i += 3) {
-                result.add(new Graph.HyperEdge(eventsById[arr[i]], eventsById[arr[i + 1]], eventsById[arr[i + 2]]));
-            }
-
-            return result;
-        }
+    protected Impl(Supplier<TContext> contextSupplier) {
+        threadContexts = ThreadLocal.withInitial(contextSupplier);
     }
 
-    private final DirectEdgeList direct_edges = new DirectEdgeList();
-    private final HyperEdgeList hyper_edges = new HyperEdgeList();
-
-    public Impl() {
-    }
-
-    public Impl(Iterable<? extends Impl> instances, PointsToAnalysis bb) {
-        for (Impl i : instances) {
-            direct_edges.addAll(i.direct_edges);
-            hyper_edges.addAll(i.hyper_edges);
-        }
+    public static Impl<ThreadContext> create() {
+        return new Impl<>(ThreadContext::new);
     }
 
     private static <T> T asObject(BigBang bb, Class<T> tClass, JavaConstant constant) {
@@ -151,20 +95,19 @@ public class Impl extends CausalityExport {
         } else if(cause2 == null) {
             registerEdge(cause1, consequence);
         } else {
-            hyper_edges.add(cause1, cause2, consequence);
+            hyper_edges.put(new Graph.HyperEdge(cause1, cause2, consequence), Boolean.TRUE);
         }
     }
 
     @Override
     public void registerEdge(Event cause, Event consequence) {
-        if((cause == null || cause.root()) && !causes.empty()) {
-            Event topCause = causes.peek().event;
+        if (cause == null || cause.root()) {
+            Event topCause = threadContexts.get().topCause();
             if (topCause != null) {
                 cause = topCause;
             }
         }
-
-        direct_edges.add(cause, consequence);
+        direct_edges.put(new Graph.DirectEdge(cause, consequence), Boolean.TRUE);
     }
 
     @Override
@@ -188,7 +131,7 @@ public class Impl extends CausalityExport {
         );
     }
 
-    private Event getEventForHeapReason(Object customReason, Object o) {
+    private static Event getEventForHeapReason(Object customReason, Object o) {
         if (customReason == null) {
             return new UnknownHeapObject(o.getClass());
         } else if (customReason instanceof Event) {
@@ -200,16 +143,16 @@ public class Impl extends CausalityExport {
         }
     }
 
-    private Event getHeapObjectCreator(Object heapObject, ObjectScanner.ScanReason reason) {
+    private static Event getHeapObjectCreator(Object heapObject) {
         Object responsible = HeapAssignmentTracing.getInstance().getResponsibleClass(heapObject);
         return getEventForHeapReason(responsible, heapObject);
     }
 
-    private Event getHeapObjectCreator(BigBang bb, JavaConstant heapObject, ObjectScanner.ScanReason reason) {
+    private static Event getHeapObjectCreator(BigBang bb, JavaConstant heapObject) {
         if (heapObject instanceof ImageHeapConstant imageHeapConstant && !imageHeapConstant.isBackedByHostedObject()) {
             return SimulatedHeapTracing.instance.getHeapObjectCreator(imageHeapConstant);
         }
-        return getHeapObjectCreator(asObject(bb, Object.class, heapObject), reason);
+        return getHeapObjectCreator(asObject(bb, Object.class, heapObject));
     }
 
     private static Event forScanReason(ObjectScanner.ScanReason reason) {
@@ -224,14 +167,14 @@ public class Impl extends CausalityExport {
 
     @Override
     public void registerEdgeFromHeapObject(BigBang bb, JavaConstant heapObject, ObjectScanner.ScanReason reason, Event consequence) {
-        Event writerCause = getHeapObjectCreator(bb, heapObject, reason);
+        Event writerCause = getHeapObjectCreator(bb, heapObject);
         Event readerCause = forScanReason(reason);
         registerConjunctiveEdge(writerCause, readerCause, consequence);
     }
 
     @Override
     public void registerEdgeFromHeapObject(Object heapObject, ObjectScanner.ScanReason reason, Event consequence) {
-        Event writerCause = getHeapObjectCreator(heapObject, reason);
+        Event writerCause = getHeapObjectCreator(heapObject);
         Event readerCause = forScanReason(reason);
         registerConjunctiveEdge(writerCause, readerCause, consequence);
     }
@@ -286,76 +229,46 @@ public class Impl extends CausalityExport {
 
     @Override
     public Event getCause() {
-        return causes.empty() ? null : causes.peek().event;
-    }
-
-    private final Stack<CauseToken> causes = new Stack<>();
-
-    private void updateHeapTracing() {
-        CauseToken token = causes.empty() ? null : causes.peek();
-        Event cause = token == null || token.level == HeapTracing.None ? null : token.event;
-        boolean recordHeapAssignments = token != null && token.level == HeapTracing.Full;
-        HeapAssignmentTracing.getInstance().setCause(cause, recordHeapAssignments);
+        return threadContexts.get().topCause();
     }
 
     @Override
-    protected void beginCauseRegion(CauseToken token) {
-        if(!causes.empty() && token.event != null && causes.peek().event != null && !causes.peek().event.equals(token.event) && token.event != Ignored.Instance && causes.peek().event != Ignored.Instance && !(causes.peek().event instanceof Feature) && !causes.peek().event.root())
-            throw new RuntimeException("Stacking Rerooting requests!");
-        causes.push(token);
-        updateHeapTracing();
-    }
-
-    @Override
-    protected void endCauseRegion(CauseToken token) {
-        if(causes.empty() || causes.pop() != token) {
-            throw new RuntimeException("Invalid Call to endAccountingRootRegistrationsTo()");
-        }
-        updateHeapTracing();
+    public NonThrowingAutoCloseable setCause(Event event, HeapTracing level) {
+        return threadContexts.get().new CauseToken(event, level);
     }
 
     protected void forEachEvent(Consumer<Event> callback) {
+        for (var e : direct_edges.keySet()) {
+            callback.accept(e.from);
+            callback.accept(e.to);
+        }
+        for (var he : hyper_edges.keySet()) {
+            callback.accept(he.from1);
+            callback.accept(he.from2);
+            callback.accept(he.to);
+        }
     }
 
-    public Graph createCausalityGraph(PointsToAnalysis bb) {
+    @Override
+    protected Graph createCausalityGraph(PointsToAnalysis bb) {
         Graph g = new Graph();
 
-        Event[] eventsById = new Event[nextUniqueId.get()];
-        for (var entry : uniqueEventIds.entrySet()) {
-            eventsById[entry.getValue()] = entry.getKey();
-        }
+        var direct_edges = this.direct_edges.keySet();
+        var hyper_edges = this.hyper_edges.keySet();
 
-        var direct_edges = this.direct_edges.toSet(eventsById);
-        this.direct_edges.kill();
-        var hyper_edges = this.hyper_edges.toSet(eventsById);
-        this.hyper_edges.kill();
+        direct_edges.removeIf(pair -> pair.to instanceof MethodReachable mr && mr.element.isClassInitializer());
 
-        Consumer<Consumer<Event>> forEachEventLocal = (Consumer<Event> callback) -> {
-            for (Pair<Event, Event> e : direct_edges) {
-                callback.accept(e.getLeft());
-                callback.accept(e.getRight());
+        HashSet<Event> rootEvents = new HashSet<>();
+        forEachEvent(e -> {
+            if (e != null && e.root() && !e.unused()) {
+                rootEvents.add(e);
             }
-            for (var he : hyper_edges) {
-                callback.accept(he.from1);
-                callback.accept(he.from2);
-                callback.accept(he.to);
-            }
-        };
+        });
+        rootEvents.forEach(e -> g.add(new Graph.DirectEdge(null, e)));
 
-        direct_edges.removeIf(pair -> pair.getRight() instanceof MethodReachable mr && mr.element.isClassInitializer());
-
-        HashSet<Event> events = new HashSet<>();
-        forEachEvent(events::add);
-        forEachEventLocal.accept(events::add);
-        for (Event e : events) {
-            if (e != null && !e.unused() && e.root()) {
-                g.add(new Graph.DirectEdge(null, e));
-            }
-        }
-
-        for (Pair<Event, Event> e : direct_edges) {
-            Event from = e.getLeft();
-            Event to = e.getRight();
+        for (var e : direct_edges) {
+            Event from = e.from;
+            Event to = e.to;
 
             if(from != null && from.unused())
                 continue;
@@ -380,7 +293,7 @@ public class Impl extends CausalityExport {
             Set<BuildTimeClassInitialization> buildTimeClinits = new HashSet<>();
             Set<BuildTimeClassInitialization> buildTimeClinitsWithReason = new HashSet<>();
 
-            direct_edges.stream().map(Pair::getLeft).filter(l -> l instanceof BuildTimeClassInitialization).map(l -> (BuildTimeClassInitialization) l).forEach(init -> {
+            direct_edges.stream().map(p -> p.from).filter(l -> l instanceof BuildTimeClassInitialization).map(l -> (BuildTimeClassInitialization) l).forEach(init -> {
                 if (buildTimeClinits.contains(init))
                     return;
 
@@ -402,7 +315,7 @@ public class Impl extends CausalityExport {
             });
 
             direct_edges.stream()
-                    .map(Pair::getRight)
+                    .map(p -> p.to)
                     .filter(e -> e instanceof BuildTimeClassInitialization)
                     .map(e -> (BuildTimeClassInitialization) e)
                     .forEach(buildTimeClinitsWithReason::add);
@@ -430,6 +343,9 @@ public class Impl extends CausalityExport {
 
             g.add(andEdge);
         }
+
+        this.direct_edges.clear();
+        this.hyper_edges.clear();
 
         return g;
     }
