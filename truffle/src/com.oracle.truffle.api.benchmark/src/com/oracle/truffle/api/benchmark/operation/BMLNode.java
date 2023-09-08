@@ -52,6 +52,7 @@ import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 
 public abstract class BMLNode extends Node {
 
@@ -198,6 +199,7 @@ class IfNode extends BMLNode {
     @Child BMLNode condition;
     @Child BMLNode thenBranch;
     @Child BMLNode elseBranch;
+    private final CountingConditionProfile profile;
 
     public static IfNode create(BMLNode condition, BMLNode thenBranch, BMLNode elseBranch) {
         return new IfNode(condition, thenBranch, elseBranch);
@@ -207,11 +209,12 @@ class IfNode extends BMLNode {
         this.condition = condition;
         this.thenBranch = thenBranch;
         this.elseBranch = elseBranch;
+        this.profile = CountingConditionProfile.create();
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        if (condition.execute(frame) == Boolean.TRUE) {
+        if (profile.profile(condition.execute(frame) == Boolean.TRUE)) {
             thenBranch.execute(frame);
         } else {
             elseBranch.execute(frame);
@@ -224,6 +227,7 @@ class WhileNode extends BMLNode {
 
     @Child private BMLNode condition;
     @Child private BMLNode body;
+    private final CountingConditionProfile profile;
 
     public static WhileNode create(BMLNode condition, BMLNode body) {
         return new WhileNode(condition, body);
@@ -232,13 +236,13 @@ class WhileNode extends BMLNode {
     WhileNode(BMLNode condition, BMLNode body) {
         this.condition = condition;
         this.body = body;
-
+        this.profile = CountingConditionProfile.create();
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
         int count = 0;
-        while (condition.execute(frame) == Boolean.TRUE) {
+        while (profile.profile(condition.execute(frame) == Boolean.TRUE)) {
             body.execute(frame);
             count++;
         }

@@ -57,7 +57,8 @@ public final class Argument {
         CONSTANT,
         CHILD_OFFSET,
         VARIADIC,
-        BRANCH_OFFSET;
+        BRANCH_OFFSET,
+        PROFILE;
 
         public String toString(Object value) {
             switch (this) {
@@ -75,6 +76,8 @@ public final class Argument {
                     return String.format("variadic(%d)", (short) value);
                 case BRANCH_OFFSET:
                     return String.format("branch(%04x)", (short) value);
+                case PROFILE:
+                    return String.format("profile(%s)", printProfile(value));
                 default:
                     throw new UnsupportedOperationException("Unexpected value: " + this);
             }
@@ -87,6 +90,16 @@ public final class Argument {
             String typeString = value.getClass().getSimpleName();
             String valueString = value.getClass().isArray() ? printArray(value) : value.toString();
             return String.format("%s %s", typeString, valueString);
+        }
+
+        private static String printProfile(Object value) {
+            int[] profile = (int[]) value;
+            int total = profile[0] + profile[1];
+            if (total == 0) {
+                return "never executed";
+            }
+            double frequency = (profile[0] + 0.0d) / (total);
+            return String.format("%.2f", frequency);
         }
 
         private static String printArray(Object array) {

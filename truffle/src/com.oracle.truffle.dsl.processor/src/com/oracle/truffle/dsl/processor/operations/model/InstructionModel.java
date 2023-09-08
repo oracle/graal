@@ -86,7 +86,8 @@ public class InstructionModel implements PrettyPrintable {
         LOCAL_SETTER("setter"),
         LOCAL_SETTER_RANGE_START("setter_range_start"),
         LOCAL_SETTER_RANGE_LENGTH("setter_range_length"),
-        NODE("node");
+        NODE("node"),
+        PROFILE("profile");
 
         final String shortName;
 
