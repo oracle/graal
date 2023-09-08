@@ -56,7 +56,6 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -506,10 +505,6 @@ public final class ModuleLayerFeature implements InternalFeature {
     }
 
     private void replicateNativeAccess(AfterAnalysisAccessImpl accessImpl, Set<Module> analysisReachableNamedModules) {
-        if (JavaVersionUtil.JAVA_SPEC < 19) {
-            return;
-        }
-
         Map<Module, Module> modulePairs = analysisReachableNamedModules
                         .stream()
                         .collect(Collectors.toMap(m -> m, m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));

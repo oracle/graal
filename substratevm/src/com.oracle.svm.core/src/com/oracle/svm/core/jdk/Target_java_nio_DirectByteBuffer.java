@@ -52,12 +52,12 @@ public final class Target_java_nio_DirectByteBuffer {
 
     @Alias
     @SuppressWarnings("unused")
-    public Target_java_nio_DirectByteBuffer(long addr, long cap) {
+    Target_java_nio_DirectByteBuffer(long addr, long cap) {
         throw VMError.shouldNotReachHere("This is an alias to the original constructor in the target class, so this code is unreachable");
     }
 
     @Alias
-    protected Target_java_nio_DirectByteBuffer(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync,
+    Target_java_nio_DirectByteBuffer(int cap, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync,
                     Target_java_lang_foreign_MemorySegment segment) {
         throw VMError.shouldNotReachHere("This is an alias to the original constructor in the target class, so this code is unreachable");
     }

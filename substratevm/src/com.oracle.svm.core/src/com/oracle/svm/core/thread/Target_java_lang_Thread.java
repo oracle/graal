@@ -34,7 +34,6 @@ import java.util.concurrent.ThreadFactory;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.replacements.ReplacementsUtil;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -273,9 +272,7 @@ public final class Target_java_lang_Thread {
         boolean inheritThreadLocals = (characteristics & NO_INHERIT_THREAD_LOCALS) == 0;
         JavaThreads.initNewThreadLocalsAndLoader(this, inheritThreadLocals, Thread.currentThread());
 
-        if (JavaVersionUtil.JAVA_SPEC >= 20) {
-            this.scopedValueBindings = NEW_THREAD_BINDINGS;
-        }
+        this.scopedValueBindings = NEW_THREAD_BINDINGS;
     }
 
     @SuppressWarnings("hiding")

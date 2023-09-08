@@ -51,7 +51,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -115,11 +114,8 @@ import jdk.internal.misc.Unsafe;
  * @see JavaThreads
  */
 public abstract class PlatformThreads {
-    private static final Field FIELDHOLDER_STATUS_FIELD = (JavaVersionUtil.JAVA_SPEC >= 19 && ImageInfo.inImageCode())
+    private static final Field FIELDHOLDER_STATUS_FIELD = ImageInfo.inImageCode()
                     ? ReflectionUtil.lookupField(Target_java_lang_Thread_FieldHolder.class, "threadStatus")
-                    : null;
-    private static final Field THREAD_STATUS_FIELD = (JavaVersionUtil.JAVA_SPEC < 19 && ImageInfo.inImageCode())
-                    ? ReflectionUtil.lookupField(Target_java_lang_Thread.class, "threadStatus")
                     : null;
 
     @Fold
@@ -1058,11 +1054,7 @@ public abstract class PlatformThreads {
 
     static boolean compareAndSetThreadStatus(Thread thread, int expectedStatus, int newStatus) {
         assert !isVirtual(thread);
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            return Unsafe.getUnsafe().compareAndSetInt(toTarget(thread).holder, Unsafe.getUnsafe().objectFieldOffset(FIELDHOLDER_STATUS_FIELD), expectedStatus, newStatus);
-        } else {
-            return Unsafe.getUnsafe().compareAndSetInt(thread, Unsafe.getUnsafe().objectFieldOffset(THREAD_STATUS_FIELD), expectedStatus, newStatus);
-        }
+        return Unsafe.getUnsafe().compareAndSetInt(toTarget(thread).holder, Unsafe.getUnsafe().objectFieldOffset(FIELDHOLDER_STATUS_FIELD), expectedStatus, newStatus);
     }
 
     static boolean isAlive(Thread thread) {

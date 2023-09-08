@@ -27,7 +27,6 @@ package com.oracle.svm.core.thread;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -132,7 +131,6 @@ class ThreadStatusRecomputation implements FieldValueTransformer {
 class ThreadHolderRecomputation implements FieldValueTransformer {
     @Override
     public Object transform(Object receiver, Object originalValue) {
-        assert JavaVersionUtil.JAVA_SPEC >= 19 : "ThreadHolder only exists on JDK 19+";
         int threadStatus = ReflectionUtil.readField(ReflectionUtil.lookupClass(false, "java.lang.Thread$FieldHolder"), "threadStatus", receiver);
         if (threadStatus == ThreadStatus.TERMINATED) {
             return ThreadStatus.TERMINATED;

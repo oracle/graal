@@ -34,7 +34,6 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -115,13 +114,6 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * java.lang.ref.ReferenceQueue internally.
              */
             HashSet<Class<?>> monitorTypes = new HashSet<>();
-            if (JavaVersionUtil.JAVA_SPEC <= 17) {
-                /*
-                 * Until JDK 17, the ReferenceQueue uses the inner static class Lock for all its
-                 * locking needs.
-                 */
-                monitorTypes.add(Class.forName("java.lang.ref.ReferenceQueue$Lock"));
-            }
             /* The WeakIdentityHashMap also synchronizes on its internal ReferenceQueue field. */
             monitorTypes.add(java.lang.ref.ReferenceQueue.class);
 
@@ -325,7 +317,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
     @Override
     protected void doWait(Object obj, long timeoutMillis) throws InterruptedException {
         /*
-         * JDK 19 and later: our monitor implementation does not pin virtual threads, so avoid
+         * Our monitor implementation does not pin virtual threads, so avoid
          * jdk.internal.misc.Blocker which expects and asserts that a virtual thread is pinned
          * unless the thread is pinned for other reasons. Also, we get interrupted on the virtual
          * thread instead of the carrier thread, which clears the carrier thread's interrupt status
@@ -333,7 +325,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          * clear the virtual thread interrupt.
          */
         long compensation = -1;
-        boolean pinned = JavaVersionUtil.JAVA_SPEC >= 19 && VirtualThreads.isSupported() &&
+        boolean pinned = VirtualThreads.isSupported() &&
                         VirtualThreads.singleton().isVirtual(Thread.currentThread()) && VirtualThreads.singleton().isCurrentPinned();
         if (pinned) {
             compensation = Target_jdk_internal_misc_Blocker.begin();
