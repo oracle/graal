@@ -119,7 +119,7 @@ public class ManualBytecodeNode extends BaseBytecodeNode {
                 case OP_JUMP_FALSE: {
                     boolean cond = frame.getBoolean(sp - 1);
                     sp -= 1;
-                    if (!cond) {
+                    if (branchProfile(bci, !cond)) {
                         bci = localBc[bci + 1];
                         continue loop;
                     } else {
@@ -226,7 +226,7 @@ class ManualUnsafeBytecodeNode extends BaseBytecodeNode {
                 case OP_JUMP_FALSE: {
                     boolean cond = UFA.getBoolean(frame, sp - 1);
                     sp -= 1;
-                    if (!cond) {
+                    if (branchProfile(bci, !cond)) {
                         bci = UFA.shortArrayRead(localBc, bci + 1);
                         continue loop;
                     } else {
@@ -273,9 +273,16 @@ abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
     protected BaseBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
         super(language, frameDescriptor);
         this.bc = bc;
+        /**
+         * Simplification: allocate enough space for every bci to have a branch. The operation
+         * interpreter will allocate just enough space for the branches, but for small programs this
+         * overhead should be insignificant.
+         */
+        this.branchProfiles = new int[bc.length * 2];
     }
 
     @CompilationFinal(dimensions = 1) protected short[] bc;
+    @CompilationFinal(dimensions = 1) protected int[] branchProfiles;
 
     static final short OP_JUMP = 1;
     static final short OP_CONST = 2;
@@ -314,6 +321,49 @@ abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
         }
 
         return null;
+    }
+
+    // Code copied from CountingConditionProfile.
+    private static final int MAX_PROFILE_COUNT = 0x3fffffff;
+
+    protected final boolean branchProfile(int bci, boolean condition) {
+        int t = branchProfiles[bci * 2];
+        int f = branchProfiles[bci * 2 + 1];
+        boolean val = condition;
+        if (val) {
+            if (t == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            if (f == 0) {
+                // Make this branch fold during PE
+                val = true;
+            }
+            if (CompilerDirectives.inInterpreter()) {
+                if (t < MAX_PROFILE_COUNT) {
+                    branchProfiles[bci * 2] = t + 1;
+                }
+            }
+        } else {
+            if (f == 0) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+            }
+            if (t == 0) {
+                // Make this branch fold during PE
+                val = false;
+            }
+            if (CompilerDirectives.inInterpreter()) {
+                if (f < MAX_PROFILE_COUNT) {
+                    branchProfiles[bci * 2 + 1] = f + 1;
+                }
+            }
+        }
+        if (CompilerDirectives.inInterpreter()) {
+            // no branch probability calculation in the interpreter
+            return val;
+        } else {
+            int sum = t + f;
+            return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
+        }
     }
 
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
@@ -396,7 +446,7 @@ class ManualBytecodeNodeNBE extends BaseBytecodeNode {
                     boolean cond = frame.getObject(sp - 1) == Boolean.TRUE;
                     frame.clear(sp - 1);
                     sp -= 1;
-                    if (!cond) {
+                    if (branchProfile(bci, !cond)) {
                         bci = localBc[bci + 1];
                         continue loop;
                     } else {
@@ -541,7 +591,7 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
                 case OP_JUMP_FALSE: {
                     boolean cond = UFA.getBoolean(frame, sp - 1);
                     sp -= 1;
-                    if (!cond) {
+                    if (branchProfile(bci, !cond)) {
                         bci = UFA.shortArrayRead(localBc, bci + 1);
                         continue loop;
                     } else {
@@ -658,7 +708,7 @@ class ManualBytecodeNodedNodeNBE extends BaseBytecodeNode {
                 case OP_JUMP_FALSE: {
                     boolean cond = UFA.getObject(frame, sp - 1) == Boolean.TRUE;
                     sp -= 1;
-                    if (!cond) {
+                    if (branchProfile(bci, !cond)) {
                         bci = UFA.shortArrayRead(localBc, bci + 1);
                         continue loop;
                     } else {

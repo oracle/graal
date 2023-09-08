@@ -122,6 +122,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     public static final String USER_LOCALS_START_IDX = "USER_LOCALS_START_IDX";
     public static final String BASELINE_BCI_IDX = "BASELINE_BCI_IDX";
     public static final String COROUTINE_FRAME_IDX = "COROUTINE_FRAME_IDX";
+    public static final String MAX_PROFILE_COUNT = "MAX_PROFILE_COUNT";
 
     private final ProcessorContext context = ProcessorContext.getInstance();
     private final TruffleTypes types = context.getTypes();
@@ -241,6 +242,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Define a loop counter class to track how many back-edges have been taken.
         operationNodeGen.add(createLoopCounter());
 
+        // Define a method to profile conditional branches.
+        operationNodeGen.add(createProfileBranch());
+
         // Define the static method to create a root node.
         operationNodeGen.add(createCreate());
 
@@ -290,11 +294,13 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), operationNodesImpl.asType(), "nodes")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "constants")));
-        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), new ArrayCodeTypeMirror(types.Node), "cachedNodes")));
+        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), arrayOf(types.Node), "cachedNodes")));
+        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), arrayOf(context.getType(int.class)), "branchProfiles")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "handlers")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, VOLATILE), context.getType(int[].class), "sourceInfo")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes")));
+        operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numConditionalBranches")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex")));
         if (model.enableBaselineInterpreter) {
             operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "baselineExecuteCount")).createInitBuilder().string("16");
@@ -341,6 +347,11 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createGetCachedNodes());
         operationNodeGen.add(createInitializeCachedNodes());
         operationNodeGen.add(createCreateCachedNodes());
+
+        // Define helpers for obtaining and initializing branch profiles.
+        operationNodeGen.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, MAX_PROFILE_COUNT, "0x3fffffff"));
+        operationNodeGen.add(createGetBranchProfiles());
+        operationNodeGen.add(createInitializeBranchProfiles());
 
         // TODO: this method is here for debugging and should probably be omitted before we release
         operationNodeGen.add(createDumpBytecode());
@@ -580,6 +591,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(context.getType(int[].class), "handlers"),
                         new CodeVariableElement(context.getType(int.class), "numLocals"),
                         new CodeVariableElement(context.getType(int.class), "numNodes"),
+                        new CodeVariableElement(context.getType(int.class), "numConditionalBranches"),
                         new CodeVariableElement(context.getType(int.class), "buildIndex")));
         if (model.enableTracing) {
             params.add(new CodeVariableElement(context.getType(int[].class), "basicBlockBoundary"));
@@ -663,6 +675,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             } else {
                 // Obtain the cached nodes, forcing initialization if necessary
                 b.statement("Node[] cachedNodes = getCachedNodes()");
+                b.statement("int[] branchProfiles = getBranchProfiles()");
             }
             b.startAssign("state").startCall(tier.interpreterClassName() + ".continueAt");
             b.string("this, frame");
@@ -673,6 +686,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.string("constants");
             if (!tier.isUncached) {
                 b.string("cachedNodes");
+                b.string("branchProfiles");
             }
             b.string("state");
             b.end(2);
@@ -735,6 +749,63 @@ public class OperationsNodeFactory implements ElementHelpers {
         addField(loopCounter, Set.of(PRIVATE), int.class, "value");
 
         return loopCounter;
+    }
+
+    private CodeExecutableElement createProfileBranch() {
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), context.getType(boolean.class), "profileBranch");
+        ex.addParameter(new CodeVariableElement(arrayOf(context.getType(int.class)), "branchProfiles"));
+        ex.addParameter(new CodeVariableElement(context.getType(int.class), "profileIndex"));
+        ex.addParameter(new CodeVariableElement(context.getType(boolean.class), "condition"));
+
+        CodeTreeBuilder b = ex.getBuilder();
+        // This code mirrors the implementation of CountingConditionProfile.
+
+        // @formatter:off
+        b.declaration(context.getType(int.class), "t", "branchProfiles[profileIndex * 2]");
+        b.declaration(context.getType(int.class), "f", "branchProfiles[profileIndex * 2 + 1]");
+        b.declaration(context.getType(boolean.class), "val", "condition");
+        b.startIf().string("val").end().startBlock();
+            b.startIf().string("t == 0").end().startBlock();
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.end();
+            b.startIf().string("f == 0").end().startBlock();
+                b.lineComment("Make this branch fold during PE");
+                b.startAssign("val").string("true").end();
+            b.end();
+            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(2).startBlock();
+                b.startIf().string("t < " + MAX_PROFILE_COUNT).end().startBlock();
+                    b.startAssign("branchProfiles[profileIndex * 2]").string("t + 1").end();
+                b.end();
+            b.end();
+        b.end();
+        b.end().startElseBlock();
+            b.startIf().string("f == 0").end().startBlock();
+                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
+            b.end();
+            b.startIf().string("t == 0").end().startBlock();
+                b.lineComment("Make this branch fold during PE");
+                b.startAssign("val").string("false").end();
+            b.end();
+            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(2).startBlock();
+                b.startIf().string("t < " + MAX_PROFILE_COUNT).end().startBlock();
+                    b.startAssign("branchProfiles[profileIndex * 2 + 1]").string("f + 1").end();
+                b.end();
+            b.end();
+        b.end();
+
+        b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(2).startBlock();
+            b.lineComment("no branch probability calculation in the interpreter");
+            b.startReturn().string("val").end();
+        b.end().startElseBlock();
+            b.declaration(context.getType(int.class), "sum", "t + f");
+            b.startReturn().startStaticCall(types.CompilerDirectives, "injectBranchProbability");
+                b.string("(double) t / (double) sum");
+                b.string("val");
+            b.end(2);
+        b.end();
+        // @formatter:on
+
+        return ex;
     }
 
     private CodeExecutableElement createCreate() {
@@ -894,8 +965,11 @@ public class OperationsNodeFactory implements ElementHelpers {
             switch (instr.kind) {
                 case BRANCH:
                 case BRANCH_BACKWARD:
+                    buildIntrospectionArgument(b, "BRANCH_OFFSET", readBc("bci + 1"));
+                    break;
                 case BRANCH_FALSE:
                     buildIntrospectionArgument(b, "BRANCH_OFFSET", readBc("bci + 1"));
+                    buildIntrospectionArgument(b, "PROFILE", "new int[] {" + readProfile(readBc("bci + 2") + " * 2") + ", " + readProfile(readBc("bci + 2") + " * 2 + 1") + "}");
                     break;
                 case LOAD_CONSTANT:
                     buildIntrospectionArgument(b, "CONSTANT", readConst(readBc("bci + 1")));
@@ -1310,7 +1384,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeTreeBuilder b = ex.createBuilder();
 
         b.tree(createNeverPartOfCompilation());
-        b.declaration(new ArrayCodeTypeMirror(types.Node), "result", "this.cachedNodes");
+        b.declaration(nodeArrayType, "result", "this.cachedNodes");
 
         b.startIf().string("result != null").end().startBlock();
         b.startReturn().string("result").end();
@@ -1331,7 +1405,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), nodeArrayType, "getCachedNodes");
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.declaration(new ArrayCodeTypeMirror(types.Node), "result", "this.cachedNodes");
+        b.declaration(nodeArrayType, "result", "this.cachedNodes");
 
         b.startIf().string("result == null").end().startBlock();
         b.tree(createTransferToInterpreterAndInvalidate("this"));
@@ -1340,6 +1414,43 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         b.startReturn().string("result").end();
         b.end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createGetBranchProfiles() {
+        TypeMirror intArrayType = arrayOf(context.getType(int.class));
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), intArrayType, "getBranchProfiles");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.declaration(intArrayType, "result", "this.branchProfiles");
+
+        b.startIf().string("result == null").end().startBlock();
+        b.tree(createTransferToInterpreterAndInvalidate("this"));
+        b.startAssign("result").startCall("initializeBranchProfiles").end(2);
+        b.end();
+
+        b.startReturn().string("result").end();
+        b.end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createInitializeBranchProfiles() {
+        TypeMirror intArrayType = arrayOf(context.getType(int.class));
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), intArrayType, "initializeBranchProfiles");
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.tree(createNeverPartOfCompilation());
+        b.declaration(intArrayType, "result", "this.branchProfiles");
+
+        b.startIf().string("result != null").end().startBlock();
+        b.startReturn().string("result").end();
+        b.end();
+
+        b.startAssign("result").string("new int[numConditionalBranches * 2]").end();
+        b.startAssign("this.branchProfiles").string("result").end();
+        b.startReturn().string("result").end();
 
         return ex;
     }
@@ -1543,6 +1654,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLabels"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numConditionalBranches"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceIndexStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceIndexSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceLocationStack"),
@@ -1832,6 +1944,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             builder.add(createFinish());
             builder.add(createDoEmitLeaves());
             builder.add(createAllocateNode());
+            builder.add(createAllocateBranchProfile());
             builder.add(createInFinallyTryHandler());
             builder.add(createGetFinallyTryHandlerSequenceNumber());
             if (model.enableSerialization) {
@@ -2740,6 +2853,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.string("Arrays.copyOf(exHandlers, exHandlerCount)"); // handlers
             b.string("numLocals");
             b.string("numNodes");
+            b.string("numConditionalBranches");
             b.string("buildIndex");
             if (model.enableTracing) {
                 b.string("Arrays.copyOf(basicBlockBoundary, bci)");
@@ -2998,7 +3112,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         yield "localSetterRangeLength" + (localSetterRangeIndex++);
                     }
                     case NODE -> "allocateNode()";
-                    case INTEGER, CONSTANT -> throw new AssertionError("Operation " + operation.name + " takes an immediate " + immediate.name + " with unexpected kind " + immediate.kind +
+                    case INTEGER, CONSTANT, PROFILE -> throw new AssertionError("Operation " + operation.name + " takes an immediate " + immediate.name + " with unexpected kind " + immediate.kind +
                                     ". This is a bug in the Operation DSL processor.");
                 };
             }
@@ -3159,7 +3273,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("((int[]) data)[0] = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
-                        buildEmitInstruction(b, model.branchFalseInstruction, new String[]{UNINIT});
+                        buildEmitInstruction(b, model.branchFalseInstruction, new String[]{UNINIT, "allocateBranchProfile()"});
                         b.end().startElseBlock();
                         b.statement("int toUpdate = ((int[]) data)[0]");
                         b.statement(writeBc("toUpdate", "(short) bci"));
@@ -3173,7 +3287,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("((int[]) data)[0] = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
-                        buildEmitInstruction(b, model.branchFalseInstruction, new String[]{UNINIT});
+                        buildEmitInstruction(b, model.branchFalseInstruction, new String[]{UNINIT, "allocateBranchProfile()"});
                         b.end().startElseIf().string("childIndex == 1").end().startBlock();
                         b.statement("((int[]) data)[1] = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
@@ -3196,7 +3310,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.startIf().string("childIndex == 0").end().startBlock();
                         b.statement("((int[]) data)[1] = bci + 1");
                         emitFinallyRelativeBranchCheck(b, 1);
-                        buildEmitInstruction(b, model.branchFalseInstruction, new String[]{UNINIT});
+                        buildEmitInstruction(b, model.branchFalseInstruction, new String[]{UNINIT, "allocateBranchProfile()"});
                         b.end().startElseBlock();
                         emitFinallyRelativeBranchCheck(b, 1);
                         buildEmitInstruction(b, model.branchBackwardInstruction, new String[]{"(short) ((int[]) data)[0]"});
@@ -3724,6 +3838,17 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
+        private CodeExecutableElement createAllocateBranchProfile() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(int.class), "allocateBranchProfile");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startReturn();
+            b.string("numConditionalBranches++");
+            b.end();
+
+            return ex;
+        }
+
         private CodeExecutableElement createInFinallyTryHandler() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(boolean.class), "inFinallyTryHandler");
             ex.addParameter(new CodeVariableElement(finallyTryContext.asType(), "context"));
@@ -3924,6 +4049,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "constants"));
             if (!tier.isUncached) {
                 ex.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(types.Node), "cachedNodes"));
+                ex.addParameter(new CodeVariableElement(new ArrayCodeTypeMirror(context.getType(int.class)), "branchProfiles"));
             }
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "startState"));
 
@@ -4025,9 +4151,20 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("continue loop");
                         break;
                     case BRANCH_FALSE:
-                        b.startIf().string("(Boolean) " + getFrameObject("sp - 1") + " == Boolean.TRUE").end().startBlock();
+                        String booleanValue = "(Boolean) " + getFrameObject("sp - 1") + " == Boolean.TRUE";
+                        b.startIf();
+                        if (tier.isUncached) {
+                            b.string(booleanValue);
+                        } else {
+                            b.startCall("profileBranch");
+                            b.string("branchProfiles");
+                            b.string(readBc("bci + 2"));
+                            b.string(booleanValue);
+                            b.end();
+                        }
+                        b.end().startBlock();
                         b.statement("sp -= 1");
-                        b.statement("bci += 2");
+                        b.statement("bci += " + instr.getInstructionLength());
                         b.statement("continue loop");
                         b.end().startElseBlock();
                         b.statement("sp -= 1");
@@ -4882,6 +5019,10 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private static String readConst(String index) {
         return String.format("ACCESS.objectArrayRead(constants, %s)", index);
+    }
+
+    private static String readProfile(String index) {
+        return String.format("branchProfiles == null ? 0 : ACCESS.intArrayRead(branchProfiles, %s)", index);
     }
 
     private static String readNode(TypeMirror expectedType, String index) {

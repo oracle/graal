@@ -139,7 +139,9 @@ public class OperationsModel extends Template implements PrettyPrintable {
         popInstruction = instruction(InstructionKind.POP, "pop");
         branchInstruction = instruction(InstructionKind.BRANCH, "branch").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
         branchBackwardInstruction = instruction(InstructionKind.BRANCH_BACKWARD, "branch.backward").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
-        branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
+        branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false") //
+                        .addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target") //
+                        .addImmediate(ImmediateKind.PROFILE, "branch_profile");
         throwInstruction = instruction(InstructionKind.THROW, "throw").addImmediate(ImmediateKind.INTEGER, "exception_local");
 
         blockOperation = operation(OperationKind.BLOCK, "Block") //
