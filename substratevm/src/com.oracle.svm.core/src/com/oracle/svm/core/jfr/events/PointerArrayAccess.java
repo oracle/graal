@@ -48,7 +48,7 @@ public class PointerArrayAccess {
 
     public static PointerBase get(PointerArray array, int i) {
         assert i >= 0 && i < array.getSize();
-        return array.getData().addressOf(i).read();
+        return array.getData().addressOf(i).read();//*** compute address of i'th element. Read the value of that address (which is a pointer to c struct)
     }
 
     public static void write(PointerArray array, int i, WordBase word) {

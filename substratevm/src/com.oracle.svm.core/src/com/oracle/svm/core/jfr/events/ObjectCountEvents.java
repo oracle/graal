@@ -32,30 +32,30 @@ import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
-import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.jfr.SubstrateJVM;
-import org.graalvm.compiler.word.Word;
-import org.graalvm.nativeimage.StackValue;
 import com.oracle.svm.core.thread.VMOperation;
+import org.graalvm.nativeimage.StackValue;
 
-import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
-
-public class ObjectCountEvent {
-    /** Should only be called during garbage collection at a safepoint */
-// @com.oracle.svm.core.heap.RestrictHeapAccess(access = NO_ALLOCATION, reason = "Object Counting
-// must not allocate.")
-    public static void emit(long startTick) {
+/** This class is used for both jdk.ObjectCount and jdk.ObjectCountAfterGC since they contain identical information.*/
+public class ObjectCountEvents {
+    public static void emit(JfrEvent eventType, long startTick, long traceId, long count, long size, int gcId) {
         assert VMOperation.isInProgressAtSafepoint();
         if (HasJfrSupport.get()) {
-            // TODO check here if we should emit before we do an expensive heap walk (similar to
-            // objectAllocationSample)
-            com.oracle.svm.core.jfr.events.ObjectCountEventSupport.countObjects();
-            // For each object in data structure
-            emit0(null, 0, 0);
+            emit0(eventType, startTick, traceId, count, size, gcId);
         }
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emit0(Class<?> clazz, long count, long size) {
+    public static void emit0(JfrEvent eventType, long startTick,  long traceId, long count, long size, int gcId) {
+        if (eventType.shouldEmit()){
+            JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
+            JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+            JfrNativeEventWriter.beginSmallEvent(data, eventType);
+            JfrNativeEventWriter.putLong(data, startTick);
+            JfrNativeEventWriter.putInt(data, gcId);
+            JfrNativeEventWriter.putLong(data, traceId);
+            JfrNativeEventWriter.putLong(data, count);
+            JfrNativeEventWriter.putLong(data, size);
+            JfrNativeEventWriter.endSmallEvent(data);
+        }
     }
 }
