@@ -29,6 +29,7 @@ import static org.junit.Assume.assumeTrue;
 import java.io.UnsupportedEncodingException;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
+import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -52,7 +53,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
  * {@link org.graalvm.compiler.replacements.amd64.AMD64GraphBuilderPlugins}.
  */
 @AddExports({"java.base/java.lang"})
-public final class StringCompressInflateTest extends MethodSubstitutionTest {
+public final class StringCompressInflateTest extends HotSpotGraalCompilerTest {
 
     static final int N = 1000;
 
@@ -127,7 +128,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         Class<?> javaclass = Class.forName("java.lang.StringLatin1");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "inflate", byte[].class, int.class, byte[].class, int.class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
+        StructuredGraph graph = getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
         assertInGraph(graph, StringLatin1InflateNode.class);
 
         InstalledCode code = getCode(caller, graph);
@@ -165,7 +166,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         Class<?> javaclass = Class.forName("java.lang.StringLatin1");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "inflate", byte[].class, int.class, char[].class, int.class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
+        StructuredGraph graph = getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
         assertInGraph(graph, StringLatin1InflateNode.class);
 
         InstalledCode code = getCode(caller, graph);
@@ -230,7 +231,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         Class<?> javaclass = Class.forName("java.lang.StringUTF16");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "compress", byte[].class, int.class, byte[].class, int.class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
+        StructuredGraph graph = getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
         assertInGraph(graph, StringUTF16CompressNode.class);
 
         InstalledCode code = getCode(caller, graph);
@@ -266,7 +267,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         Class<?> javaclass = Class.forName("java.lang.StringUTF16");
 
         ResolvedJavaMethod caller = getResolvedJavaMethod(javaclass, "compress", char[].class, int.class, byte[].class, int.class, int.class);
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
+        StructuredGraph graph = getIntrinsicGraph(caller, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
         assertInGraph(graph, StringUTF16CompressNode.class);
 
         InstalledCode code = getCode(caller, graph);
@@ -341,7 +342,7 @@ public final class StringCompressInflateTest extends MethodSubstitutionTest {
         TestMethods(String testmname, Class<?> javaclass, Class<?> intrinsicClass, String javamname, Class<?>... params) {
             javamethod = getResolvedJavaMethod(javaclass, javamname, params);
             testmethod = getResolvedJavaMethod(testmname);
-            testgraph = getReplacements().getIntrinsicGraph(javamethod, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
+            testgraph = getIntrinsicGraph(javamethod, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), AllowAssumptions.YES, null);
             assertInGraph(testgraph, intrinsicClass);
 
             assert javamethod != null;

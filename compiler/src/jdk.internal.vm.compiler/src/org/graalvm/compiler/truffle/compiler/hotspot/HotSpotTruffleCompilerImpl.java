@@ -55,6 +55,7 @@ import org.graalvm.compiler.hotspot.HotSpotGraalCompilerFactory;
 import org.graalvm.compiler.hotspot.HotSpotGraalOptionValues;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
 import org.graalvm.compiler.hotspot.HotSpotGraalServices;
+import org.graalvm.compiler.hotspot.HotSpotGraphBuilderInstance;
 import org.graalvm.compiler.hotspot.meta.HotSpotLoweringProvider;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilderFactory;
@@ -371,7 +372,7 @@ public final class HotSpotTruffleCompilerImpl extends TruffleCompilerImpl implem
                         .compilationId(compilationId) //
                         .build();
 
-        new GraphBuilderPhase.Instance(lastTierProviders, newBuilderConfig, OptimisticOptimizations.ALL, null).apply(graph);
+        new HotSpotGraphBuilderInstance(lastTierProviders, newBuilderConfig, OptimisticOptimizations.ALL, null).apply(graph);
 
         PhaseSuite<HighTierContext> graphBuilderSuite = getGraphBuilderSuite(codeCache, backend.getSuites());
         return compileGraph(graph, javaMethod, lastTierProviders, backend, graphBuilderSuite, OptimisticOptimizations.ALL, graph.getProfilingInfo(), newSuites, tier.lirSuites(),

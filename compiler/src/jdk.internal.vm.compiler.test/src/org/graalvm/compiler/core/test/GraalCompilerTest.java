@@ -146,6 +146,7 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -1319,6 +1320,22 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
         assert receiver == null : "no receiver for constructor invokes";
         return ((Constructor<?>) method).newInstance(applyArgSuppliers(args));
+    }
+
+    protected static Object executeVarargsSafe(InstalledCode code, Object... args) {
+        try {
+            return code.executeVarargs(args);
+        } catch (InvalidInstalledCodeException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected Object invokeSafe(ResolvedJavaMethod method, Object receiver, Object... args) {
+        try {
+            return invoke(method, receiver, args);
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | InstantiationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**

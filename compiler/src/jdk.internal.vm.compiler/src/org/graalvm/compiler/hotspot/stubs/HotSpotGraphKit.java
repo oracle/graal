@@ -30,6 +30,7 @@ import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.Compi
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.hotspot.HotSpotGraphBuilderInstance;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -106,6 +107,6 @@ public class HotSpotGraphKit extends GraphKit {
     protected GraphBuilderPhase.Instance createGraphBuilderInstance(GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts,
                     IntrinsicContext initialIntrinsicContext) {
         /* There is no HotSpot-specific subclass of GraphBuilderPhase yet. */
-        return new GraphBuilderPhase.Instance(getProviders(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
+        return new HotSpotGraphBuilderInstance(getProviders(), graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
     }
 }

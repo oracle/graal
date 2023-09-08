@@ -1031,7 +1031,7 @@ public class SymbolicSnippetEncoder {
         }
     }
 
-    class HotSpotSnippetBytecodeParser extends BytecodeParser {
+    class HotSpotSnippetBytecodeParser extends HotSpotBytecodeParser {
         HotSpotSnippetBytecodeParser(GraphBuilderPhase.Instance graphBuilderInstance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI,
                         IntrinsicContext intrinsicContext) {
             super(graphBuilderInstance, graph, parent, method, entryBCI, intrinsicContext);
