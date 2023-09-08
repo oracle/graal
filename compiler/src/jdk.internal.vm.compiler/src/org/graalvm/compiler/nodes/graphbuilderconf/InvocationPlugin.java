@@ -67,6 +67,13 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         ValueNode get(boolean performNullCheck);
 
         /**
+         * Gets the receiver value, asserting that its stamp is non-null. This does not emit any
+         * code but discharges the requirement that an invocation plugin must ensure the receiver of
+         * a non-static method is non-null.
+         */
+        ValueNode requireNonNull();
+
+        /**
          * Determines if the receiver is constant.
          */
         default boolean isConstant() {
@@ -393,7 +400,7 @@ public abstract class InvocationPlugin implements GraphBuilderPlugin {
         Class<?> c = getClass();
         for (Method m : c.getDeclaredMethods()) {
             if (m.getName().equals("apply") || m.getName().equals("defaultHandler")) {
-                return String.format("%s.%s()", m.getClass().getName(), m.getName());
+                return String.format("%s.%s()", m.getDeclaringClass().getName(), m.getName());
             }
         }
         if (IS_IN_NATIVE_IMAGE) {

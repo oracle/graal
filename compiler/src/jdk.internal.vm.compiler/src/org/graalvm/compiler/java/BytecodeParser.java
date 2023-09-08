@@ -259,7 +259,6 @@ import static org.graalvm.compiler.java.BytecodeParserOptions.TraceParserPlugins
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_DURING_PARSING;
-import static org.graalvm.compiler.nodes.type.StampTool.isPointerNonNull;
 
 import java.util.ArrayList;
 import java.util.BitSet;
@@ -2133,6 +2132,10 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
     }
 
+    static String pluginErrorMessage(InvocationPlugin plugin, String format, Object... a) {
+        return String.format(format, a) + String.format("%n\tplugin at %s", plugin.getSourceLocation());
+    }
+
     /**
      * Contains all the assertion checking logic around the application of an
      * {@link InvocationPlugin}. This class is only loaded when assertions are enabled.
@@ -2143,7 +2146,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         final ResolvedJavaMethod targetMethod;
         final JavaKind resultType;
         final int beforeStackSize;
-        final boolean needsNullCheck;
         final int nodeCount;
         final Mark mark;
 
@@ -2154,13 +2156,12 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
             this.args = args;
             this.resultType = resultType;
             this.beforeStackSize = frameState.stackSize();
-            this.needsNullCheck = !targetMethod.isStatic() && args[0].getStackKind() == JavaKind.Object && !StampTool.isPointerNonNull(args[0].stamp(NodeView.DEFAULT));
             this.nodeCount = graph.getNodeCount();
             this.mark = graph.getMark();
         }
 
         String error(String format, Object... a) {
-            return String.format(format, a) + String.format("%n\tplugin at %s", plugin.getSourceLocation());
+            return pluginErrorMessage(plugin, format, a);
         }
 
         boolean check(boolean pluginResult) {
@@ -2175,8 +2176,6 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                                 frameState.stackSize());
 
                 NodeIterable<Node> newNodes = graph.getNewNodes(mark);
-                assert !needsNullCheck || isPointerNonNull(args[0].stamp(NodeView.DEFAULT)) : error("plugin needs to null check the receiver of %s: receiver=%s", targetMethod.format("%H.%n(%p)"),
-                                args[0]);
                 for (Node n : newNodes) {
                     if (n instanceof StateSplit) {
                         StateSplit stateSplit = (StateSplit) n;
@@ -2299,10 +2298,17 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         assert invokeKind.isDirect() : "Cannot apply invocation plugin on an indirect call site.";
 
         InvocationPluginAssertions assertions = Assertions.assertionsEnabled() ? new InvocationPluginAssertions(plugin, args, targetMethod, resultType) : null;
+        boolean needsReceiverNullCheck = !(plugin instanceof GeneratedInvocationPlugin) && !targetMethod.isStatic() && args[0].getStackKind() == JavaKind.Object;
         try (DebugCloseable context = openNodeContext(targetMethod); InvocationPluginScope pluginScope = new InvocationPluginScope(invokeKind, args, targetMethod, resultType, plugin)) {
             Mark mark = graph.getMark();
             if (plugin.execute(this, targetMethod, pluginReceiver, args)) {
                 checkDeoptAfterPlugin(mark, targetMethod);
+                if (needsReceiverNullCheck && !pluginReceiver.nullCheckPerformed()) {
+                    throw new GraalError(pluginErrorMessage(plugin,
+                                    "plugin needs to null check the receiver of %s: receiver=%s",
+                                    targetMethod.format("%H.%n(%p)"),
+                                    args[0]));
+                }
                 assert assertions.check(true);
                 return true;
             } else {
