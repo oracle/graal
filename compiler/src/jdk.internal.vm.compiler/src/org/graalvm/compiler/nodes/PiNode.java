@@ -304,7 +304,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     private static void tryEvacuate(SimplifierTool tool, GuardingNode guard, boolean recurse) {
         ValueNode guardNode = guard.asNode();
-        if (!guardNode.hasUsages()) {
+        if (guardNode.hasNoUsages()) {
             return;
         }
         for (PiNode pi : guardNode.usages().filter(PiNode.class).snapshot()) {
