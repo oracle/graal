@@ -48,7 +48,12 @@ import com.oracle.truffle.api.provider.InternalResourceProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.polyglot.io.FileSystem;
 
 import java.io.IOError;
@@ -313,7 +318,13 @@ final class InternalResourceCache {
     private static Path getExecutablePath() {
         assert ImageInfo.inImageRuntimeCode();
         if (useInternalResources) {
-            return Path.of(ProcessProperties.getExecutableName());
+            if (ImageInfo.isExecutable()) {
+                return Path.of(ProcessProperties.getExecutableName());
+            } else if (ImageInfo.isSharedLibrary()) {
+                return Path.of(ProcessProperties.getObjectFile(InternalResourceCacheSymbol.SYMBOL));
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("Should only be invoked within native image runtime code.");
+            }
         } else {
             throw new IllegalArgumentException("Lookup an executable name is restricted. " +
                             "To enable it, use '-H:+CopyLanguageResources' during the native image build.");
@@ -611,5 +622,37 @@ final class InternalResourceCache {
             }
             return res;
         }
+    }
+}
+
+/**
+ * A C entry point utilized for determining the shared library's location. This entry point is
+ * explicitly activated by the {@code TruffleBaseFeature} through reflective invocation of the
+ * {@link InternalResourceCacheSymbol#initialize()} method.
+ */
+final class InternalResourceCacheSymbol implements BooleanSupplier {
+
+    static final CEntryPointLiteral<CFunctionPointer> SYMBOL = CEntryPointLiteral.create(InternalResourceCacheSymbol.class,
+                    "internalResourceCacheSymbol", IsolateThread.class);
+
+    private InternalResourceCacheSymbol() {
+    }
+
+    @Override
+    public boolean getAsBoolean() {
+        return ImageSingletons.contains(InternalResourceCacheSymbol.class);
+    }
+
+    /**
+     * Enables {@link #internalResourceCacheSymbol(IsolateThread)} entrypoint. Called reflectively
+     * by the {@code TruffleBaseFeature#afterRegistration()}.
+     */
+    static void initialize() {
+        ImageSingletons.add(InternalResourceCacheSymbol.class, new InternalResourceCacheSymbol());
+    }
+
+    @CEntryPoint(name = "graal_resource_cache_symbol", publishAs = CEntryPoint.Publish.SymbolOnly, include = InternalResourceCacheSymbol.class)
+    @SuppressWarnings("unused")
+    private static void internalResourceCacheSymbol(IsolateThread thread) {
     }
 }
