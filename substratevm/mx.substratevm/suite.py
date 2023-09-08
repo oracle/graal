@@ -186,7 +186,7 @@ suite = {
             "requiresConcealed" : {
                 "java.base" : ["jdk.internal.module"],
             },
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -206,7 +206,7 @@ suite = {
                     "jdk.vm.ci.meta",
                 ]
             },
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -224,7 +224,7 @@ suite = {
             "requires" : [
                 "java.compiler" # javax.annotation.processing.*
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "checkstyle" : "com.oracle.svm.core",
             "workingSets" : "SVM",
             "jacoco" : "exclude",
@@ -294,7 +294,7 @@ suite = {
                     "jdk.vm.ci.code",
                 ],
             },
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "checkstyleVersion" : "10.7.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -327,7 +327,7 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -348,7 +348,7 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -368,7 +368,7 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -388,7 +388,7 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -415,7 +415,7 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -442,7 +442,7 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -465,7 +465,7 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -494,7 +494,7 @@ suite = {
                 ]
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -517,7 +517,7 @@ suite = {
                 ]
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -547,7 +547,7 @@ suite = {
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -565,7 +565,7 @@ suite = {
                 ]
             },
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
             ],
@@ -626,7 +626,7 @@ suite = {
                     "jdk.jfr.internal.jfc",
                 ],
             },
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "checkstyleVersion": "10.7.0",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
@@ -836,7 +836,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -853,7 +853,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -874,7 +874,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -907,7 +907,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -926,7 +926,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "spotbugs": "false",
             "testProject": True,
             "jacoco" : "exclude",
@@ -937,7 +937,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : ["sdk:NATIVEIMAGE"],
             "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "workingSets" : "SVM",
             "spotbugs" : "false",
             "jacoco" : "exclude",
@@ -961,7 +961,7 @@ suite = {
                 ],
             },
             "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -988,7 +988,7 @@ suite = {
                 ],
             },
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1019,7 +1019,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "spotbugs": "false",
             "testProject": True,
             "jacoco" : "exclude",
@@ -1032,7 +1032,7 @@ suite = {
                 "com.oracle.svm.util",
             ],
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1048,7 +1048,7 @@ suite = {
                 "sdk:NATIVEIMAGE",
             ],
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1075,7 +1075,7 @@ suite = {
                 ]
             },
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1087,7 +1087,7 @@ suite = {
         "com.oracle.svm.truffle.nfi.none": {
             "subDir": "src",
             "sourceDirs": ["src"],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "workingSets": "SVM",
             "jacoco" : "exclude",
         },
@@ -1099,7 +1099,7 @@ suite = {
                 "com.oracle.svm.truffle",
             ],
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1117,7 +1117,7 @@ suite = {
                 "com.oracle.svm.core.posix",
             ],
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1135,7 +1135,7 @@ suite = {
                 "com.oracle.svm.core.windows",
             ],
             "checkstyle": "com.oracle.svm.hosted",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1157,7 +1157,7 @@ suite = {
                 "com.oracle.svm.graal",
             ],
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1179,7 +1179,7 @@ suite = {
                 "com.oracle.svm.hosted",
             ],
             "checkstyle": "com.oracle.svm.core",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors" : [
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
@@ -1212,7 +1212,7 @@ suite = {
                 ]
             },
             "checkstyle" : "com.oracle.svm.hosted",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "annotationProcessors": [
                 "truffle:TRUFFLE_LIBGRAAL_PROCESSOR",
                 "compiler:GRAAL_PROCESSOR",
@@ -1240,7 +1240,7 @@ suite = {
             "workingSets": "SVM",
             "annotationProcessors": [
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -1259,7 +1259,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -1286,7 +1286,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -1312,7 +1312,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "spotbugs": "false",
             "jacoco" : "exclude",
         },
@@ -1336,7 +1336,7 @@ suite = {
                 "compiler:GRAAL_PROCESSOR",
                 "SVM_PROCESSOR",
             ],
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "jacoco" : "exclude",
         },
     },
@@ -1483,6 +1483,7 @@ suite = {
                     "* to org.graalvm.nativeimage.builder",
                 ],
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1511,6 +1512,7 @@ suite = {
                     "static hamcrest",
                 ]
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1542,6 +1544,7 @@ suite = {
                 ],
               }
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1635,7 +1638,7 @@ suite = {
         "GRAAL_HOTSPOT_LIBRARY": {
             "subDir": "src",
             "description" : "SubstrateVM HotSpot Graal library support",
-            "javaCompliance" : "17+",
+            "javaCompliance" : "21+",
             "dependencies": [
                 "com.oracle.svm.graal.hotspot.libgraal",
             ],
@@ -1671,6 +1674,7 @@ suite = {
                 ],
             },
             "description" : "SubstrateVM image builder native components",
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1799,6 +1803,7 @@ suite = {
                     "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                 ],
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1854,6 +1859,7 @@ suite = {
                 ],
               }
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -1896,6 +1902,7 @@ suite = {
                     ]
                 }
             },
+            "noMavenJavadoc": True,
             "maven": {
                 "tag": ["default", "public"],
             },
@@ -2105,6 +2112,7 @@ suite = {
             "description" : "Truffle TCK",
             "dependencies" : ["com.oracle.svm.truffle.tck"],
             "distDependencies" : ["SVM", "truffle:TRUFFLE_RUNTIME"],
+            "noMavenJavadoc": True,
             "maven" : {
                 "tag": ["default", "public"],
             },
