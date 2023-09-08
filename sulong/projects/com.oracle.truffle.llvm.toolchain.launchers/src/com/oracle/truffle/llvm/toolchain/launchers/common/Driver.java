@@ -195,7 +195,11 @@ public class Driver {
             // wait for process termination
             p.waitFor();
             // set exit code
-            return p.exitValue();
+            int exitCode = p.exitValue();
+            if (verbose) {
+                System.out.println("exit code: " + exitCode);
+            }
+            return exitCode;
         } catch (IOException ioe) {
             // can only occur on ProcessBuilder#start, no destroying necessary
             if (isBundledTool) {
