@@ -294,19 +294,20 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
     }
 
     /**
-     * Perform Pi canonicalizations on any PiNodes anchored at {@code user} in an attempt to
+     * Perform Pi canonicalizations on any PiNodes anchored at {@code guard} in an attempt to
      * eliminate all of them. This purely done to enable earlier elimination of the user of these
      * PiNodes.
      */
-    public static void tryEvacuate(SimplifierTool tool, Node user) {
-        tryEvacuate(tool, user, true);
+    public static void tryEvacuate(SimplifierTool tool, GuardingNode guard) {
+        tryEvacuate(tool, guard, true);
     }
 
-    private static void tryEvacuate(SimplifierTool tool, Node user, boolean recurse) {
-        if (!user.hasUsages()) {
+    private static void tryEvacuate(SimplifierTool tool, GuardingNode guard, boolean recurse) {
+        ValueNode guardNode = guard.asNode();
+        if (!guardNode.hasUsages()) {
             return;
         }
-        for (PiNode pi : user.usages().filter(PiNode.class).snapshot()) {
+        for (PiNode pi : guardNode.usages().filter(PiNode.class).snapshot()) {
             if (!pi.isAlive()) {
                 continue;
             }
@@ -324,15 +325,15 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
             if (recurse && pi.getOriginalNode() instanceof PiNode) {
                 // It's not uncommon for one extra level of PiNode to inhibit removal of
                 // this PiNode so try to simplify the input first.
-                GuardingNode guard = ((PiNode) pi.getOriginalNode()).guard;
-                if (guard != null) {
-                    tryEvacuate(tool, guard.asNode(), false);
+                GuardingNode otherGuard = ((PiNode) pi.getOriginalNode()).guard;
+                if (otherGuard != null) {
+                    tryEvacuate(tool, otherGuard, false);
                 }
             }
             Node canonical = pi.canonical(tool);
             if (canonical != pi) {
                 if (!canonical.isAlive()) {
-                    canonical = user.graph().addOrUniqueWithInputs(canonical);
+                    canonical = guardNode.graph().addOrUniqueWithInputs(canonical);
                 }
                 pi.replaceAtUsages(canonical);
                 pi.safeDelete();
