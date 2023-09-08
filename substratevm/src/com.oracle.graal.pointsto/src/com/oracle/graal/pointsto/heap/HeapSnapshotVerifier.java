@@ -73,6 +73,12 @@ public class HeapSnapshotVerifier {
         verbosity = Options.HeapVerifierVerbosity.getValue(bb.getOptions());
     }
 
+    /**
+     * Heap verification does a complete scan from roots (static fields and embedded constant) and
+     * compares the object graph against the shadow heap. If any new reachable objects or primitive
+     * values are found then the verifier automatically patches the shadow heap. If this is during
+     * analysis then the heap scanner will also notify the analysis of the new objects.
+     */
     public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, CompletionExecutor executor, String phase, boolean forAnalysis) {
         info("Verifying the heap snapshot %s%s ...", phase, (forAnalysis ? ", iteration " + iterations : ""));
         analysisModified = false;

@@ -534,24 +534,6 @@ public abstract class ImageHeapScanner {
         return false;
     }
 
-    /**
-     * When a re-scanning is triggered while the analysis is running in parallel, it is necessary to
-     * do the re-scanning in a separate executor task to avoid deadlocks. For example,
-     * lookupJavaField might need to wait for the reachability handler to be finished that actually
-     * triggered the re-scanning.
-     *
-     * In the (legacy) Feature.duringAnalysis state, the executor is not running and we must not
-     * schedule new tasks, because that would be treated as "the analysis has not finished yet". So
-     * in that case we execute the task directly.
-     */
-    private void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
-        if (bb.executorIsStarted()) {
-            bb.postTask(task);
-        } else {
-            task.run(null);
-        }
-    }
-
     public void rescanRoot(Field reflectionField) {
         if (skipScanning()) {
             return;
@@ -726,7 +708,31 @@ public abstract class ImageHeapScanner {
         return metaAccess.lookupJavaField(ReflectionUtil.lookupField(getClass(className), fieldName));
     }
 
-    public void postTask(Runnable task) {
-        universe.getBigbang().postTask(debug -> task.run());
+    /**
+     * When a re-scanning is triggered while the analysis is running in parallel, it is necessary to
+     * do the re-scanning in a separate executor task to avoid deadlocks. For example,
+     * lookupJavaField might need to wait for the reachability handler to be finished that actually
+     * triggered the re-scanning. We reuse the analysis executor, whose lifetime is controlled by
+     * the analysis engine.
+     *
+     * In the (legacy) Feature.duringAnalysis state, the executor is not running and we must not
+     * schedule new tasks, because that would be treated as "the analysis has not finished yet". So
+     * in that case we execute the task directly.
+     */
+    private void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
+        if (bb.executorIsStarted()) {
+            bb.postTask(task);
+        } else {
+            task.run(null);
+        }
+    }
+
+    /**
+     * Post the task to the analysis executor. Its lifetime is controlled by the analysis engine or
+     * the heap verifier such that all heap scanning tasks are also completed when analysis reaches
+     * a stable state or heap verification is completed.
+     */
+    private void postTask(Runnable task) {
+        bb.postTask(debug -> task.run());
     }
 }
