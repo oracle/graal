@@ -458,6 +458,21 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     }
     #endif
 
+    #if defined(LAUNCHER_EXTRACTED_LIB_NAMES) && defined(LAUNCHER_EXTRACTED_LIB_PATHS)
+    if (jvmMode) {
+        const char *extractedLibNames[] = LAUNCHER_EXTRACTED_LIB_NAMES;
+        const char *extractedLibPaths[] = LAUNCHER_EXTRACTED_LIB_PATHS;
+        int extractedLibCnt = sizeof(extractedLibNames) / sizeof(*extractedLibNames);
+        for (int i = 0; i < extractedLibCnt; i++) {
+            std::stringstream ss;
+            std::stringstream relativePath;
+            relativePath << exeDir << DIR_SEP_STR << extractedLibPaths[i];
+            ss << "-D" << extractedLibNames[i] << "=" << canonicalize(relativePath.str());
+            vmArgs.push_back(ss.str());
+        }
+    }
+    #endif
+
     /* Handle launcher default vm arguments. We apply these first, so they can
        be overridden by explicit arguments on the commandline. */
     #ifdef LAUNCHER_DEFAULT_VM_ARGS

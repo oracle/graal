@@ -105,6 +105,7 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
         self.build_time = build_time
         self.build_args_enterprise = build_args_enterprise or []
         self.relative_home_paths = {}
+        self.relative_extracted_lib_paths = {}
 
         assert isinstance(self.jar_distributions, list)
         assert isinstance(self.build_args, (list, types.GeneratorType))
@@ -140,6 +141,12 @@ class AbstractNativeImageConfig(object, metaclass=ABCMeta):
             raise Exception('the relative home path of {} is already set to {} and cannot also be set to {} for {}'.format(
                 language, self.relative_home_paths[language], path, self.destination))
         self.relative_home_paths[language] = path
+
+    def add_relative_extracted_lib_path(self, name, path):
+        if name in self.relative_extracted_lib_paths and self.relative_extracted_lib_paths[name] != path:
+            raise Exception('the relative extracted lib path of {} is already set to {} and cannot also be set to {} for {}'.format(
+                name, self.relative_extracted_lib_paths[name], path, self.destination))
+        self.relative_extracted_lib_paths[name] = path
 
 class LauncherConfig(AbstractNativeImageConfig):
     def __init__(self, destination, jar_distributions, main_class, build_args, is_main_launcher=True,
