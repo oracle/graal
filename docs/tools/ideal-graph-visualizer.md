@@ -73,7 +73,7 @@ Check its version to make sure you are running the TruffleRuby distribution:
 
 3. Run the application, connecting the process to the running IGV:
     ```shell
-    ruby --jvm --vm.Dgraal.Dump=:1 --vm.Dgraal.PrintGraph=Network Test.rb
+    ruby --vm.Dgraal.Dump=:1 --vm.Dgraal.PrintGraph=Network Test.rb
     ```
 
 This dumps compiler graphs, in the IGV format, over the network to an IGV process listening on _127.0.0.1:4445_. 
