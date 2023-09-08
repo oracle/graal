@@ -1416,7 +1416,7 @@ public class ProgressReporter {
             if (filenameOnly) {
                 Path filename = normalized.getFileName();
                 if (filename != null) {
-                    name = normalized.toString();
+                    name = filename.toString();
                 } else {
                     throw VMError.shouldNotReachHere("filename should never be null, illegal path: " + path);
                 }
