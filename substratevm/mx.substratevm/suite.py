@@ -287,6 +287,7 @@ suite = {
                 "jdk.jfr": [
                     "jdk.jfr.events",
                     "jdk.jfr.internal",
+                    "jdk.jfr.internal.event",
                     "jdk.jfr.internal.jfc",
                 ],
                 "jdk.internal.vm.ci": [
@@ -623,6 +624,7 @@ suite = {
                 ],
                 "jdk.jfr": [
                     "jdk.jfr.internal",
+                    "jdk.jfr.internal.event",
                     "jdk.jfr.internal.jfc",
                 ],
             },
