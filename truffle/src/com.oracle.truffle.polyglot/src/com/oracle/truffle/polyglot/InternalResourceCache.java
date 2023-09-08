@@ -302,17 +302,30 @@ final class InternalResourceCache {
         Pair<Path, Boolean> res = cacheRoot;
         if (res == null) {
             assert ImageInfo.inImageRuntimeCode() : "Can be called only in the native-image execution time.";
-            Path executable = Path.of(ProcessProperties.getExecutableName());
-            Path parent = executable.getParent();
-            if (parent == null) {
-                throw new IllegalStateException("Could not locate native-image resources.");
-            }
-            Path cache = parent.resolve("resources");
+            Path executable = getExecutablePath();
+            Path cache = executable.resolveSibling("resources");
             res = Pair.create(cache, false);
             cacheRoot = res;
         }
         return res.getLeft();
     }
+
+    private static Path getExecutablePath() {
+        assert ImageInfo.inImageRuntimeCode();
+        if (useInternalResources) {
+            return Path.of(ProcessProperties.getExecutableName());
+        } else {
+            throw new IllegalArgumentException("Lookup an executable name is restricted. " +
+                            "To enable it, use '-H:+CopyLanguageResources' during the native image build.");
+        }
+    }
+
+    /**
+     * Recomputed before the analyses by a substitution in the {@code TruffleBaseFeature} based on
+     * the {@code CopyLanguageResources} option value. The field must not be declared as
+     * {@code final} to make the substitution function correctly.
+     */
+    private static boolean useInternalResources = true;
 
     /**
      * Collects optional internal resources for native-image build. This method is called
