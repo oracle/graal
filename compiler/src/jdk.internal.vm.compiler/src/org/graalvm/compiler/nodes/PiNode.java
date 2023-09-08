@@ -295,13 +295,14 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
 
     /**
      * Perform Pi canonicalizations on any PiNodes anchored at {@code user} in an attempt to
-     * eliminate all of them.
+     * eliminate all of them. This purely done to enable earlier elimination of the user of these
+     * PiNodes.
      */
-    public static void evacuate(SimplifierTool tool, Node user) {
-        evacuate(tool, user, true);
+    public static void tryEvacuate(SimplifierTool tool, Node user) {
+        tryEvacuate(tool, user, true);
     }
 
-    private static void evacuate(SimplifierTool tool, Node user, boolean recurse) {
+    private static void tryEvacuate(SimplifierTool tool, Node user, boolean recurse) {
         if (!user.hasUsages()) {
             return;
         }
@@ -325,7 +326,7 @@ public class PiNode extends FloatingGuardedNode implements LIRLowerable, Virtual
                 // this PiNode so try to simplify the input first.
                 GuardingNode guard = ((PiNode) pi.getOriginalNode()).guard;
                 if (guard != null) {
-                    evacuate(tool, guard.asNode(), false);
+                    tryEvacuate(tool, guard.asNode(), false);
                 }
             }
             Node canonical = pi.canonical(tool);

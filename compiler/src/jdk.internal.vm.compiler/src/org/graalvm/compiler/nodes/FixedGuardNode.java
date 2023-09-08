@@ -92,12 +92,12 @@ public final class FixedGuardNode extends AbstractFixedGuardNode implements Lowe
             if (hasUsages()) {
                 /*
                  * Try to eliminate any exposed usages. We could always just insert the
-                 * ValueAnchorNode and let canonicalization clean it up but since it almost always
+                 * ValueAnchorNode and let canonicalization clean it up but since it's almost always
                  * trivially removable it's better to clean it up here. This also means that any
                  * actual insertions of a ValueAnchorNode by this code indicates a real mismatch
-                 * between the piStamp and it's input.
+                 * between the piStamp and its input.
                  */
-                PiNode.evacuate(tool, this);
+                PiNode.tryEvacuate(tool, this);
             }
             if (hasUsages()) {
                 /*
