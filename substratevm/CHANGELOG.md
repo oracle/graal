@@ -10,7 +10,7 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-45841) BellSoft added support for the JFR event ThreadCPULoad.
 * (GR-45994) Removed the option `-H:EnableSignalAPI`. Please use the runtime option `EnableSignalHandling` if it is necessary to enable or disable signal handling explicitly.
 * (GR-39406) Simulation of class initializer: Class initializer of classes that are not marked for initialization at image build time are simulated at image build time to avoid executing them at image run time.
-* (GR-39406) All classes can now be used at image build time, even when they are not explicitly configured as `--initialize-at-build-time`. Note, however, that still only classes configured as `--initialize-at-build-time` are allowed in the image heap.
+* (GR-39406) New option `--strict-image-heap`: All classes can now be used at image build time, even when they are not explicitly configured as `--initialize-at-build-time`. Note, however, that still only classes configured as `--initialize-at-build-time` are allowed in the image heap. Adopt this option as it will become the default in the next release of GraalVM.
 * (GR-46392) Add `--parallelism` option to control how many threads are used by the build process.
 * (GR-46392) Add build resources section to the build output that shows the memory and thread limits of the build process.
 * (GR-38994) Together with Red Hat, we added support for `-XX:+HeapDumpOnOutOfMemoryError`.

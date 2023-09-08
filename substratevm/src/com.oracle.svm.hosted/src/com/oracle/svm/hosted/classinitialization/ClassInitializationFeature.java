@@ -168,13 +168,16 @@ public class ClassInitializationFeature implements InternalFeature {
                 }
             });
 
-            if (!ClassInitializationOptions.UseDeprecatedOldClassInitialization.getValue()) {
+            if (ClassInitializationOptions.StrictImageHeap.getValue()) {
                 msg += """
-
-                                If you see this error while migrating to a newer GraalVM release, please note that the class initialization strategy has changed in GraalVM for JDK 21.
-                                All classes can now be used at image build time. However, only classes explicitly marked as --initialize-at-build-time are allowed to be in the image heap.
-                                This rule is now strictly enforced, i.e., the problem might be solvable by registering the reported type as --initialize-at-build-time.
-                                """.replaceAll("\n", System.lineSeparator());
+                                If you are seeing this message after enabling %s, this means that some objects ended up in the image heap without their type being marked with --initialize-at-build-time.
+                                To fix this, include %s in your configuration. If the classes do not originate from your code, it is advised to update all library or framework dependencies to the latest version before addressing this error.
+                                Please address this problem to be prepared for future releases of GraalVM.
+                                """
+                                .replaceAll("\n", System.lineSeparator())
+                                .formatted(
+                                                SubstrateOptionsParser.commandArgument(ClassInitializationOptions.StrictImageHeap, typeName, "strict-image-heap", true, false),
+                                                SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, typeName, "initialize-at-build-time", true, false));
             }
 
             msg += System.lineSeparator() + "The following detailed trace displays from which field in the code the object was reached.";
