@@ -204,10 +204,10 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected abstract CompletionExecutor.Timing getTiming();
 
     @SuppressWarnings("try")
-    private boolean analysisModified() throws InterruptedException {
+    private boolean analysisModified() {
         boolean analysisModified;
         try (Timer.StopTimer ignored = verifyHeapTimer.start()) {
-            analysisModified = universe.getHeapVerifier().requireAnalysisIteration(executor);
+            analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "after analysis", true);
         }
         /* Initialize for the next iteration. */
         executor.init(getTiming());

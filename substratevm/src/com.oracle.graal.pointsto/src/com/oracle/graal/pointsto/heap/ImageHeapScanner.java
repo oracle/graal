@@ -34,6 +34,7 @@ import java.util.function.Consumer;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.word.WordBase;
 
@@ -306,6 +307,9 @@ public abstract class ImageHeapScanner {
         } else if (unwrapped instanceof ImageHeapConstant) {
             throw GraalError.shouldNotReachHere(formatReason("Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable.", reason)); // ExcludeFromJacocoGeneratedReport
         }
+        if (unwrapped instanceof String || unwrapped instanceof Enum<?>) {
+            forceHashCodeComputation(unwrapped);
+        }
 
         /* Run all registered object replacers. */
         if (constant.getJavaKind() == JavaKind.Object) {
@@ -322,6 +326,15 @@ public abstract class ImageHeapScanner {
 
         }
         return Optional.empty();
+    }
+
+    /**
+     * For immutable Strings and other objects in the native image heap, force eager computation of
+     * the hash field.
+     */
+    @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "eager hash field computation")
+    public static void forceHashCodeComputation(Object object) {
+        object.hashCode();
     }
 
     JavaConstant onFieldValueReachable(AnalysisField field, JavaConstant fieldValue, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
@@ -460,16 +473,18 @@ public abstract class ImageHeapScanner {
 
         markTypeInstantiated(objectType, reason);
         if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {
+            AnalysisType arrayType = (AnalysisType) imageHeapArray.getType(metaAccess);
             for (int idx = 0; idx < imageHeapArray.getLength(); idx++) {
                 JavaConstant elementValue = imageHeapArray.readElementValue(idx);
-                markReachable(elementValue, reason, onAnalysisModified);
-                notifyAnalysis(imageHeapArray, (AnalysisType) imageHeapArray.getType(metaAccess), idx, reason, onAnalysisModified, elementValue);
+                ArrayScan arrayScanReason = new ArrayScan(arrayType, imageHeapArray, reason, idx);
+                markReachable(elementValue, arrayScanReason, onAnalysisModified);
+                notifyAnalysis(imageHeapArray, arrayType, idx, arrayScanReason, onAnalysisModified, elementValue);
             }
         } else if (imageHeapConstant instanceof ImageHeapInstance imageHeapInstance) {
             for (ResolvedJavaField javaField : objectType.getInstanceFields(true)) {
                 AnalysisField field = (AnalysisField) javaField;
                 if (field.isRead()) {
-                    updateInstanceField(field, imageHeapInstance, reason, onAnalysisModified);
+                    updateInstanceField(field, imageHeapInstance, new FieldScan(field, imageHeapInstance, reason), onAnalysisModified);
                 }
             }
         }

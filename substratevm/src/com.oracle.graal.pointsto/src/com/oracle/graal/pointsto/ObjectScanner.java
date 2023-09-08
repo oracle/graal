@@ -98,7 +98,7 @@ public class ObjectScanner {
             fields = fieldsList;
         }
         for (AnalysisField field : fields) {
-            if (Modifier.isStatic(field.getModifiers()) && field.getJavaKind() == JavaKind.Object && field.isRead()) {
+            if (Modifier.isStatic(field.getModifiers()) && field.isRead()) {
                 execute(() -> scanRootField(field));
             }
         }
@@ -157,7 +157,9 @@ public class ObjectScanner {
                 /* The value is not available yet. */
                 return;
             }
-            JavaConstant fieldValue = bb.getUniverse().getHeapScanner().readFieldValue(field, receiver);
+            assert isUnwrapped(receiver);
+
+            JavaConstant fieldValue = readFieldValue(field, receiver);
             if (fieldValue == null) {
                 StringBuilder backtrace = new StringBuilder();
                 buildObjectBacktrace(bb, reason, backtrace);
@@ -179,11 +181,37 @@ public class ObjectScanner {
                  * referenced elements are being scanned.
                  */
                 scanConstant(fieldValue, reason);
+            } else if (fieldValue.getJavaKind().isNumericInteger()) {
+                scanningObserver.forPrimitiveFieldValue(receiver, field, fieldValue, reason);
             }
 
         } catch (UnsupportedFeatureException ex) {
             unsupportedFeatureDuringFieldScan(bb, field, receiver, ex, reason);
         }
+    }
+
+    protected JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
+        return bb.getConstantReflectionProvider().readFieldValue(field, receiver);
+    }
+
+    /**
+     * Must unwrap the receiver if it is an ImageHeapConstant to scan the hosted value, if any, for
+     * verification, otherwise the verification just compares shadow heap with shadow heap for
+     * embedded roots, which is completely useless.
+     */
+    private static JavaConstant maybeUnwrap(JavaConstant receiver) {
+        if (receiver instanceof ImageHeapConstant heapConstant && heapConstant.getHostedObject() != null) {
+            return heapConstant.getHostedObject();
+        }
+        return receiver;
+    }
+
+    private static boolean isUnwrapped(JavaConstant receiver) {
+        if (receiver instanceof ImageHeapConstant heapConstant) {
+            // Non hosted backed ImageHeapConstant is considered unwrapped
+            return heapConstant.getHostedObject() == null;
+        }
+        return true;
     }
 
     /**
@@ -193,6 +221,7 @@ public class ObjectScanner {
      */
     protected final void scanArray(JavaConstant array, ScanReason prevReason) {
 
+        assert isUnwrapped(array);
         AnalysisType arrayType = bb.getMetaAccess().lookupJavaType(array);
         ScanReason reason = new ArrayScan(arrayType, array, prevReason);
 
@@ -246,13 +275,14 @@ public class ObjectScanner {
             bb.registerTypeAsInHeap(bb.getMetaAccess().lookupJavaType(value), reason);
             return;
         }
-        Object valueObj = (value instanceof ImageHeapConstant) ? value : constantAsObject(bb, value);
+        JavaConstant unwrappedValue = maybeUnwrap(value);
+        Object valueObj = unwrappedValue instanceof ImageHeapConstant ? unwrappedValue : constantAsObject(bb, unwrappedValue);
         if (scannedObjects.putAndAcquire(valueObj) == null) {
             try {
-                scanningObserver.forScannedConstant(value, reason);
+                scanningObserver.forScannedConstant(unwrappedValue, reason);
             } finally {
                 scannedObjects.release(valueObj);
-                WorklistEntry worklistEntry = new WorklistEntry(value, reason);
+                WorklistEntry worklistEntry = new WorklistEntry(unwrappedValue, reason);
                 if (executor != null) {
                     executor.execute(debug -> doScan(worklistEntry));
                 } else {
@@ -339,12 +369,22 @@ public class ObjectScanner {
             return "null";
         }
         AnalysisType type = bb.getMetaAccess().lookupJavaType(constant);
-        if (constant instanceof ImageHeapConstant) {
-            // Checkstyle: allow Class.getSimpleName
-            return constant.getClass().getSimpleName() + "<" + type.toJavaName() + ">";
-            // Checkstyle: disallow Class.getSimpleName
+        JavaConstant hosted = constant;
+        if (constant instanceof ImageHeapConstant heapConstant) {
+            JavaConstant hostedObject = heapConstant.getHostedObject();
+            if (hostedObject == null) {
+                // Checkstyle: allow Class.getSimpleName
+                return constant.getClass().getSimpleName() + "<" + type.toJavaName() + ">";
+                // Checkstyle: disallow Class.getSimpleName
+            }
+            hosted = hostedObject;
         }
-        Object obj = constantAsObject(bb, constant);
+
+        if (hosted.getJavaKind().isPrimitive()) {
+            return hosted.toValueString();
+        }
+
+        Object obj = constantAsObject(bb, hosted);
         String str = type.toJavaName() + '@' + Integer.toHexString(System.identityHashCode(obj));
         if (appendToString) {
             try {
@@ -381,7 +421,7 @@ public class ObjectScanner {
                 /* Scan constant's instance fields. */
                 for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
                     AnalysisField field = (AnalysisField) javaField;
-                    if (field.getJavaKind() == JavaKind.Object && field.isRead()) {
+                    if (field.isRead()) {
                         assert !Modifier.isStatic(field.getModifiers());
                         scanField(field, entry.constant, entry.reason);
                     }
@@ -589,15 +629,21 @@ public class ObjectScanner {
 
     public static class ArrayScan extends ScanReason {
         final AnalysisType arrayType;
+        final int idx;
 
         public ArrayScan(AnalysisType arrayType, JavaConstant array, ScanReason previous) {
+            this(arrayType, array, previous, -1);
+        }
+
+        public ArrayScan(AnalysisType arrayType, JavaConstant array, ScanReason previous, int idx) {
             super(previous, array);
             this.arrayType = arrayType;
+            this.idx = idx;
         }
 
         @Override
         public String toString(BigBang bb) {
-            return "indexing into array " + asString(bb, constant);
+            return "indexing into array " + asString(bb, constant) + (idx != -1 ? " at index " + idx : "");
         }
 
         @Override
