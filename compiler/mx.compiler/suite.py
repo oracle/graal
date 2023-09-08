@@ -1822,6 +1822,9 @@ suite = {
         "org.graalvm.compiler.truffle.test",
       ],
       "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.vm.annotation",
+        ],
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
         ],
