@@ -128,7 +128,7 @@ public class InvokeJavaMethodStub extends AbstractForeignCallStub {
         }
         assert HotSpotHostForeignCallsProvider.INVOKE_STATIC_METHOD_ONE_ARG.getResultType() == long.class;
         Stamp returnStamp = StampFactory.forKind(JavaKind.Long);
-        ValueNode result = kit.append(new StubForeignCallNode(providers.getForeignCalls(), returnStamp, HotSpotHostForeignCallsProvider.INVOKE_STATIC_METHOD_ONE_ARG, targetArguments));
+        ValueNode result = kit.append(new StubForeignCallNode(returnStamp, HotSpotHostForeignCallsProvider.INVOKE_STATIC_METHOD_ONE_ARG, targetArguments));
         return result;
     }
 
