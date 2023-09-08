@@ -304,7 +304,6 @@ More precisely, this mode reduces the number of optimizations performed by the G
 The quick build mode is not only useful for development, it can also cause the generated executable file to be smaller in size.
 Note, however, that the overall peak throughput of the executable may be lower due to the reduced number of optimizations.
 
-
 ## Resource Usage Statistics
 
 #### <a name="glossary-garbage-collection"></a>Garbage Collections
@@ -339,6 +338,12 @@ Traceback (most recent call last):
   File "<string>", line 1, in <module>
 AssertionError: Too many reachable methods: 12128
 ```
+
+## Colourful Build Output
+
+You can instruct the `native-image` builder to color the build output for better readability with the option `--color[=WHEN]`.
+Replace `WHEN` with `always`, `never`, or `auto`. 
+This API option supersedes the experimental option `-H:+BuildOutputColorful`.
 
 ## Related Documentation
 
