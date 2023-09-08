@@ -344,6 +344,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> createMemoryManager = StaticSymbols.putName("createMemoryManager");
         public static final Symbol<Name> createGarbageCollector = StaticSymbols.putName("createGarbageCollector");
         public static final Symbol<Name> tid = StaticSymbols.putName("tid");
+        public static final Symbol<Name> eetop = StaticSymbols.putName("eetop");
         public static final Symbol<Name> getFromClass = StaticSymbols.putName("getFromClass");
 
         // MemberName
@@ -530,6 +531,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Name> HIDDEN_THREAD_BLOCKED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_BLOCKED_COUNT");
         public static final Symbol<Name> HIDDEN_THREAD_WAITED_COUNT = StaticSymbols.putName("0HIDDEN_THREAD_WAITED_COUNT");
         public static final Symbol<Name> HIDDEN_THREAD_DEPTH_FIRST_NUMBER = StaticSymbols.putName("0HIDDEN_THREAD_DEPTH_FIRST_NUMBER");
+        public static final Symbol<Name> HIDDEN_THREAD_SCOPED_VALUE_CACHE = StaticSymbols.putName("0HIDDEN_THREAD_SCOPED_VALUE_CACHE");
 
         // Class
         public static final Symbol<Name> HIDDEN_MIRROR_KLASS = StaticSymbols.putName("0HIDDEN_MIRROR_KLASS");

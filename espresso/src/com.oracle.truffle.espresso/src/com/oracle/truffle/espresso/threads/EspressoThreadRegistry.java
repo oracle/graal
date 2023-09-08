@@ -279,6 +279,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
             if (getJavaVersion().java17OrEarlier()) {
                 getThreadAccess().setPriority(guestThread, Thread.NORM_PRIORITY);
             }
+            getThreadAccess().setEETopAlive(guestThread);
             getThreadAccess().initializeHiddenFields(guestThread, hostThread, managedByEspresso);
             registerThread(hostThread, guestThread);
             assert getThreadAccess().getCurrentGuestThread() != null;
@@ -322,6 +323,7 @@ public final class EspressoThreadRegistry extends ContextAccessImpl {
         if (getJavaVersion().java17OrEarlier()) {
             getThreadAccess().setPriority(mainThread, Thread.NORM_PRIORITY);
         }
+        getThreadAccess().setEETopAlive(mainThread);
         getThreadAccess().initializeHiddenFields(mainThread, hostThread, false);
         registerMainThread(hostThread, mainThread);
 

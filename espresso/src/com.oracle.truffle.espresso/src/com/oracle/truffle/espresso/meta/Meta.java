@@ -412,6 +412,11 @@ public final class Meta extends ContextAccessImpl {
         HIDDEN_DEPRECATION_SUPPORT = java_lang_Thread.requireHiddenField(Name.HIDDEN_DEPRECATION_SUPPORT);
         HIDDEN_THREAD_UNPARK_SIGNALS = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_UNPARK_SIGNALS);
         HIDDEN_THREAD_PARK_LOCK = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PARK_LOCK);
+        if (getJavaVersion().java19OrLater()) {
+            HIDDEN_THREAD_SCOPED_VALUE_CACHE = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_SCOPED_VALUE_CACHE);
+        } else {
+            HIDDEN_THREAD_SCOPED_VALUE_CACHE = null;
+        }
 
         if (context.getEspressoEnv().EnableManagement) {
             HIDDEN_THREAD_PENDING_MONITOR = java_lang_Thread.requireHiddenField(Name.HIDDEN_THREAD_PENDING_MONITOR);
@@ -479,6 +484,7 @@ public final class Meta extends ContextAccessImpl {
             java_lang_Thread$FieldHolder_daemon = java_lang_Thread$FieldHolder.requireDeclaredField(Name.daemon, Type._boolean);
         }
         java_lang_Thread_tid = java_lang_Thread.requireDeclaredField(Name.tid, Type._long);
+        java_lang_Thread_eetop = java_lang_Thread.requireDeclaredField(Name.eetop, Type._long);
         java_lang_Thread_contextClassLoader = java_lang_Thread.requireDeclaredField(Name.contextClassLoader, Type.java_lang_ClassLoader);
 
         java_lang_Thread_name = java_lang_Thread.requireDeclaredField(Name.name, java_lang_String.getType());
@@ -706,12 +712,6 @@ public final class Meta extends ContextAccessImpl {
                         .klass(VERSION_8_OR_LOWER, Type.sun_reflect_ConstructorAccessorImpl) //
                         .klass(VERSION_9_OR_HIGHER, Type.jdk_internal_reflect_ConstructorAccessorImpl) //
                         .klass();
-
-        sun_misc_VM = diff() //
-                        .klass(VERSION_8_OR_LOWER, Type.sun_misc_VM) //
-                        .klass(VERSION_9_OR_HIGHER, Type.jdk_internal_misc_VM) //
-                        .klass();
-        sun_misc_VM_toThreadState = sun_misc_VM.requireDeclaredMethod(Name.toThreadState, Signature.Thread$State_int);
 
         sun_misc_Signal = diff() //
                         .klass(VERSION_8_OR_LOWER, Type.sun_misc_Signal) //
@@ -1332,6 +1332,7 @@ public final class Meta extends ContextAccessImpl {
     public final Field java_lang_Thread_threadGroup;
     public final Field java_lang_Thread$FieldHolder_group;
     public final Field java_lang_Thread_tid;
+    public final Field java_lang_Thread_eetop;
     public final ObjectKlass java_lang_Thread$Constants;
     public final Field java_lang_Thread$Constants_VTHREAD_GROUP;
     public final Field java_lang_Thread_contextClassLoader;
@@ -1354,6 +1355,7 @@ public final class Meta extends ContextAccessImpl {
     public final Field HIDDEN_THREAD_BLOCKED_COUNT;
     public final Field HIDDEN_THREAD_WAITED_COUNT;
     public final Field HIDDEN_THREAD_DEPTH_FIRST_NUMBER;
+    public final Field HIDDEN_THREAD_SCOPED_VALUE_CACHE;
 
     public final Field java_lang_Thread_name;
     public final Field java_lang_Thread_priority;
@@ -1366,8 +1368,6 @@ public final class Meta extends ContextAccessImpl {
     public final ObjectKlass java_lang_ref_Reference$ReferenceHandler;
     public final ObjectKlass misc_InnocuousThread;
 
-    public final ObjectKlass sun_misc_VM;
-    public final Method sun_misc_VM_toThreadState;
     public final ObjectKlass sun_reflect_ConstantPool;
 
     public final ObjectKlass sun_misc_Signal;

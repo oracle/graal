@@ -113,9 +113,12 @@ public class NFINativeAccess implements NativeAccess {
         StringBuilder sb = new StringBuilder(64);
         sb.append('(');
         boolean isFirst = true;
-        for (int i = 0; i < nativeSignature.getParameterCount(); ++i) {
+        for (int i = 0; i < nativeSignature.getParameterCount() + nativeSignature.getVarArgsParameterCount(); ++i) {
             if (!isFirst) {
                 sb.append(',');
+            }
+            if (i == nativeSignature.getParameterCount()) {
+                sb.append("...");
             }
             sb.append(nfiType(nativeSignature.parameterTypeAt(i)));
             isFirst = false;
@@ -245,7 +248,7 @@ public class NFINativeAccess implements NativeAccess {
 
         @ExplodeLoop
         Object doExecute(Object[] arguments, InteropLibrary delegateInterop) throws ArityException {
-            final int paramCount = nativeSignature.getParameterCount();
+            final int paramCount = nativeSignature.getParameterCount() + nativeSignature.getVarArgsParameterCount();
             CompilerAsserts.partialEvaluationConstant(paramCount);
             if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();
@@ -377,7 +380,7 @@ public class NFINativeAccess implements NativeAccess {
 
         @ExplodeLoop
         Object doExecute(Object[] arguments, InteropLibrary delegateInterop) throws ArityException {
-            final int paramCount = nativeSignature.getParameterCount();
+            final int paramCount = nativeSignature.getParameterCount() + nativeSignature.getVarArgsParameterCount();
             CompilerAsserts.partialEvaluationConstant(paramCount);
             if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();
