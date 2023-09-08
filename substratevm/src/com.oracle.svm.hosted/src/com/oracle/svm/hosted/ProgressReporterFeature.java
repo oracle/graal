@@ -27,7 +27,6 @@ package com.oracle.svm.hosted;
 import java.util.List;
 import java.util.function.Supplier;
 
-import com.oracle.svm.util.LogUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.BuildArtifacts;
@@ -38,12 +37,15 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jni.access.JNIAccessibleClass;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter.DirectPrinter;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
+import com.oracle.svm.util.LogUtils;
 
 @AutomaticallyRegisteredFeature
 public class ProgressReporterFeature implements InternalFeature {
@@ -90,6 +92,10 @@ public class ProgressReporterFeature implements InternalFeature {
 
     protected List<UserRecommendation> getRecommendations() {
         return List.of(// in order of appearance:
+                        new UserRecommendation("INIT",
+                                        "Adopt " + SubstrateOptionsParser.commandArgument(ClassInitializationOptions.StrictImageHeap, "+", "strict-initial-heap", true, false) +
+                                                        " to prepare for the next GraalVM release.",
+                                        () -> !ClassInitializationOptions.StrictImageHeap.getValue()),
                         new UserRecommendation("AWT", "Use the tracing agent to collect metadata for AWT.", ProgressReporterFeature::recommendTraceAgentForAWT),
                         new UserRecommendation("HEAP", "Set max heap for improved and more predictable memory usage.", () -> SubstrateGCOptions.MaxHeapSize.getValue() == 0),
                         new UserRecommendation("CPU", "Enable more CPU features with '-march=native' for improved performance.", ProgressReporterFeature::recommendMArchNative));
@@ -126,7 +132,8 @@ public class ProgressReporterFeature implements InternalFeature {
     public record UserRecommendation(String id, String description, Supplier<Boolean> isApplicable) {
         public UserRecommendation(String id, String description, Supplier<Boolean> isApplicable) {
             assert id.toUpperCase().equals(id) && id.length() < 5 : "id must be uppercase and have fewer than 5 chars";
-            assert description.length() < 74 : "description must have fewer than 74 chars to fit in terminal";
+            int maxLength = 74;
+            assert description.length() < maxLength : "description must have fewer than " + maxLength + " chars to fit in terminal. Length: " + description.length();
             this.id = id;
             this.description = description;
             this.isApplicable = isApplicable;
