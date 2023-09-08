@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import com.oracle.svm.core.BuildDirectoryProvider;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -352,12 +353,12 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
             boolean useLld = false;
             if (useFallback) {
-                Path lld = LLVMToolchain.getLLVMBinDir().resolve("ld64.lld").toAbsolutePath();
+                Path lld = BuildDirectoryProvider.singleton().getHome().resolve("lib").resolve("svm").resolve("bin").resolve("ld64.lld").toAbsolutePath();
                 if (Files.exists(lld)) {
                     useLld = true;
                     additionalPreOptions.add("-fuse-ld=" + lld);
                 } else {
-                    throw new RuntimeException("The Native Image build ran into a ld64 limitation. Please use ld64.lld via `gu install llvm-toolchain` and run the same command again.");
+                    throw new RuntimeException("This should not happen. ld64.lld should be shipped as part of Native Image, please report.");
                 }
             }
 
@@ -407,7 +408,13 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         public boolean shouldRunFallback(String message) {
             if (Platform.includedIn(Platform.AARCH64.class)) {
                 /* detect ld64 limitation around inserting branch islands, retry with LLVM linker */
-                return message.contains("branch out of range") || message.contains("Unable to insert branch island");
+                if (message.contains("branch out of range") || message.contains("Unable to insert branch island")) {
+                    return true;
+                }
+
+                // slightly different message with "the new linker" (~Xcode 15), e.g.:
+                // > ld: B/BL out of range -178777824 (max +/-128MB) to '_throw_internal_error'
+                return message.contains("out of range");
             }
             return false;
         }
