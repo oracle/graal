@@ -4012,6 +4012,14 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
     }
 
+    /**
+     * Tries to refine the access kind for an array access. That is, if the given {@code kind} is
+     * {@link JavaKind#Byte}, tries to determine if the array access ({@code baload} or
+     * {@code bastore}) refers to a {@code byte} or a {@code boolean} array and returns
+     * {@link JavaKind#Byte} or {@link JavaKind#Boolean} accordingly. If {@code array}'s stamp does
+     * not provide enough information to determine the correct kind, returns {@code null}. Returns
+     * the input {@code kind} unchanged if it is not {@link JavaKind#Byte}.
+     */
     private JavaKind refineComponentType(ValueNode array, JavaKind kind) {
         if (kind == JavaKind.Byte) {
             JavaType type = array.stamp(NodeView.DEFAULT).javaType(getMetaAccess());
@@ -4023,6 +4031,13 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
                     return refinedKind;
                 }
             }
+            /*
+             * We weren't able to recover enough type information from the array input. This can be
+             * the case for certain loop phi shapes where we don't have precise type information
+             * available during parsing. It can also be the case during OSR compilations where entry
+             * proxies deliberately coarsen stamps.
+             */
+            return null;
         }
         return kind;
     }
@@ -4041,7 +4056,40 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         JavaKind actualKind = refineComponentType(array, kind);
-        frameState.push(actualKind, append(genLoadIndexed(array, index, boundsCheck, actualKind)));
+        if (actualKind != null) {
+            frameState.push(actualKind, append(genLoadIndexed(array, index, boundsCheck, actualKind)));
+        } else {
+            GraalError.guarantee(kind == JavaKind.Byte, "refineComponentType should not have failed for %s", kind);
+            genByteSizedLoadIndexed(index, array, boundsCheck);
+        }
+    }
+
+    /**
+     * Build code for a byte-sized array element load where we don't know if the load is from a
+     * {@code byte} or a {@code boolean} array. This builds both kinds of load and a type check to
+     * choose one or the other dynamically. After the whole graph is built, canonicalization can
+     * usually recover concrete types for loop phis and OSR entry proxies. We expect this check to
+     * fold away, and only the correct load to remain.
+     */
+    private void genByteSizedLoadIndexed(ValueNode index, ValueNode array, GuardingNode boundsCheck) {
+        LoadIndexedNode loadByte = graph.add(new LoadIndexedNode(graph.getAssumptions(), array, index, boundsCheck, JavaKind.Byte));
+        EndNode loadByteEnd = graph.add(new EndNode());
+        loadByte.setNext(loadByteEnd);
+        LoadIndexedNode loadBoolean = graph.add(new LoadIndexedNode(graph.getAssumptions(), array, index, boundsCheck, JavaKind.Boolean));
+        EndNode loadBooleanEnd = graph.add(new EndNode());
+        loadBoolean.setNext(loadBooleanEnd);
+
+        LogicNode isByteArray = createInstanceOfAllowNull(TypeReference.createExactTrusted(getMetaAccess().lookupJavaType(byte[].class)), array, null);
+        ValueNode ifNode = genIfNode(isByteArray, loadByte, loadBoolean, BranchProbabilityData.unknown());
+        postProcessIfNode(ifNode);
+        append(ifNode);
+
+        MergeNode merge = graph.add(new MergeNode());
+        merge.addForwardEnd(loadByteEnd);
+        merge.addForwardEnd(loadBooleanEnd);
+        frameState.push(JavaKind.Byte, add(new ValuePhiNode(loadByte.stamp(NodeView.DEFAULT), merge, loadByte, loadBoolean)));
+        setStateAfter(merge);
+        updateLastInstruction(merge);
     }
 
     private void genStoreIndexed(JavaKind kind) {
@@ -4060,7 +4108,39 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
         }
 
         JavaKind actualKind = refineComponentType(array, kind);
-        genStoreIndexed(array, index, boundsCheck, storeCheck, actualKind, maskSubWordValue(value, actualKind));
+        if (actualKind != null) {
+            genStoreIndexed(array, index, boundsCheck, storeCheck, actualKind, maskSubWordValue(value, actualKind));
+        } else {
+            GraalError.guarantee(kind == JavaKind.Byte, "refineComponentType should not have failed for %s", kind);
+            genByteSizedStoreIndexed(value, index, array, boundsCheck, storeCheck);
+        }
+    }
+
+    /**
+     * Build code for a byte-sized array element store where we don't know if the store is to a
+     * {@code byte} or a {@code boolean} array. This builds both kinds of store and a type check to
+     * choose one or the other dynamically. After the whole graph is built, canonicalization can
+     * usually recover concrete types for loop phis and OSR entry proxies. We expect this check to
+     * fold away, and only the correct store to remain.
+     */
+    private void genByteSizedStoreIndexed(ValueNode value, ValueNode index, ValueNode array, GuardingNode boundsCheck, GuardingNode storeCheck) {
+        StoreIndexedNode storeByte = graph.add(new StoreIndexedNode(array, index, boundsCheck, storeCheck, JavaKind.Byte, maskSubWordValue(value, JavaKind.Byte)));
+        setStateAfter(storeByte);
+        EndNode storeByteEnd = graph.add(new EndNode());
+        storeByte.setNext(storeByteEnd);
+        StoreIndexedNode storeBoolean = graph.add(new StoreIndexedNode(array, index, boundsCheck, storeCheck, JavaKind.Boolean, maskSubWordValue(value, JavaKind.Boolean)));
+        setStateAfter(storeBoolean);
+        EndNode storeBooleanEnd = graph.add(new EndNode());
+        storeBoolean.setNext(storeBooleanEnd);
+
+        LogicNode isByteArray = createInstanceOfAllowNull(TypeReference.createExactTrusted(getMetaAccess().lookupJavaType(byte[].class)), array, null);
+        ValueNode ifNode = genIfNode(isByteArray, storeByte, storeBoolean, BranchProbabilityData.unknown());
+        postProcessIfNode(ifNode);
+        append(ifNode);
+
+        MergeNode merge = add(new MergeNode());
+        merge.addForwardEnd(storeByteEnd);
+        merge.addForwardEnd(storeBooleanEnd);
     }
 
     private void genArithmeticOp(JavaKind kind, int opcode) {
