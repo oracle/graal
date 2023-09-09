@@ -318,6 +318,9 @@ public final class TruffleBaseFeature implements InternalFeature {
         // pre-initialize TruffleLogger$LoggerCache.INSTANCE
         invokeStaticMethod("com.oracle.truffle.api.TruffleLogger$LoggerCache", "getInstance", Collections.emptyList());
 
+        // enable InternalResourceCacheSymbol entry point for shared library path lookup
+        invokeStaticMethod("com.oracle.truffle.polyglot.InternalResourceCacheSymbol", "initialize", List.of());
+
         profilingEnabled = false;
     }
 
@@ -1365,6 +1368,21 @@ final class Target_com_oracle_truffle_polyglot_InternalResourceCache {
      */
     @Alias @RecomputeFieldValue(kind = Kind.Reset) //
     private static volatile Pair<Path, Boolean> cacheRoot;
+
+    @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = UseInternalResourcesComputer.class, isFinal = true) //
+    private static boolean useInternalResources;
+
+    private static final class UseInternalResourcesComputer implements FieldValueTransformerWithAvailability {
+        @Override
+        public ValueAvailability valueAvailability() {
+            return ValueAvailability.BeforeAnalysis;
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            return TruffleBaseFeature.Options.CopyLanguageResources.getValue();
+        }
+    }
 }
 
 @TargetClass(className = "com.oracle.truffle.polyglot.InternalResourceCache$ResettableCachedRoot", onlyWith = TruffleBaseFeature.IsEnabled.class)
