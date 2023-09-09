@@ -172,7 +172,28 @@ suite = {
                     }
                 }
             },
-        }
+        },
+        "LLVM_LLD_STANDALONE": {
+            "license" : "Apache-2.0-LLVM",
+            "version" : "16.0.1-4-gad8c248269-bg7bf7e45f73",
+            "host" : "https://lafo.ssw.uni-linz.ac.at/pub/llvm-org",
+            "os_arch": {
+                "darwin": {
+                    "aarch64": {
+                        "urls": ["{host}/llvm-lldonly-llvmorg-{version}-darwin-aarch64.tar.gz"],
+                        "digest": "sha512:2a8d1853deb238fa4ee14df0ebb8224b7191eb5f955e9c0f51ff2c6993a9de243eb4721e8af3f785a1ce2ba7e908ec7100e4ba70df7cf61688d6d433892b60f8",
+                    },
+                    "<others>": {
+                        "optional": True,
+                    },
+                },
+                "<others>": {
+                    "<others>": {
+                        "optional": True,
+                    }
+                }
+            }
+        },
     },
 
     "projects": {
@@ -1971,6 +1992,18 @@ suite = {
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/lib/" : ["dependency:com.oracle.svm.native.reporterchelper"],
+                "./": [
+                  {
+                    "source_type": "extracted-dependency",
+                    "dependency": "LLVM_LLD_STANDALONE",
+                    "path": "*",
+                    "exclude": [
+                      "lib/*",
+                      "include/*",
+                      "share/*",
+                    ]
+                  },
+                ],
             },
         },
 
