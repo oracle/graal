@@ -459,7 +459,10 @@ local devkits = graal_common.devkits;
             downloads+: {
               JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17'],
               EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-' + edition + '-21'],
-            }
+            },
+            environment+: {
+              JVMCI_VERSION_CHECK: 'ignore',
+            },
           }
         else if (edition == 'ee') then
           {

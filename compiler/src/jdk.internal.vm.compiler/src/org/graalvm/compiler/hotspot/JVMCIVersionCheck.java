@@ -46,7 +46,7 @@ public final class JVMCIVersionCheck {
     /**
      * Minimum JVMCI version supported by Graal.
      */
-    private static final Version JVMCI_MIN_VERSION = new Version(23, 0, 13);
+    private static final Version JVMCI_MIN_VERSION = new Version(23, 1, 15);
 
     /**
      * Minimum Java release supported by Graal.
