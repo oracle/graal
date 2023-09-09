@@ -339,11 +339,11 @@ Traceback (most recent call last):
 AssertionError: Too many reachable methods: 12128
 ```
 
-## Colourful Build Output
+## Colorful Build Output
 
-You can instruct the `native-image` builder to color the build output for better readability with the option `--color[=WHEN]`.
-Replace `WHEN` with `always`, `never`, or `auto`. 
-This API option supersedes the experimental option `-H:+BuildOutputColorful`.
+By default, the `native-image` builder colors the build output for better readability when it finds an appropriate terminal.
+It also honors the <a href="https://no-color.org" target="_target">`NO_COLOR`</a>, `CI`, and `TERM` environment variables when checking for color support.
+To explicitly control colorful output, set the `--color` option to `always`, `never`, or `auto` (default).
 
 ## Related Documentation
 
