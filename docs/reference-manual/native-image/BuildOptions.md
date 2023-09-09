@@ -49,11 +49,12 @@ Depending on the GraalVM version, the options to the `native-image` builder may 
 * `--parallelism`: specify the maximum number of threads to use concurrently during native executable generation
 * `--pgo`: provide a comma-separated list of files from which to read the data collected for Profile-guided optimization of AOT-compiled code (reads from  _default.iprof_ if nothing is specified). Each file must contain a single `PGOProfiles` object, serialized in JSON format, optionally compressed by gzip. (Not available in GraalVM Community Edition.)
 * `--pgo-instrument`: instrument AOT-compiled code to collect data for Profile-guided optimization into the _default.iprof_ file. (Not available in GraalVM Community Edition.)
-* `--pgo-sampling`: perform profiling by sampling the AOT compiled code to collect data for Profile-guided optimization
+* `--pgo-sampling`: perform profiling by sampling the AOT compiled code to collect data for Profile-guided optimization. (Not available in GraalVM Community Edition.)
 * `--report-unsupported-elements-at-runtime`: report the usage of unsupported methods and fields at run time when they are accessed the first time, instead of an error during executable's building
 * `--shared`: build a shared library
 * `--silent`: silence build output
 * `--static`: build a statically-linked executable (requires `libc` and `zlib` static libraries)
+* `--strict-image-heap`:  enable the strict image heap mode that allows all classes to be used at build-time but also requires types of all objects in the heap to be explicitly marked for build-time initialization.
 * `--target`: select the compilation target for `native-image` (in the `<OS>-<architecture>` format). It defaults to host's OS-architecture pair.
 * `--trace-class-initialization`: provide a comma-separated list of fully-qualified class names that a class initialization is traced for
 * `--trace-object-instantiation`: provide a comma-separated list of fully-qualified class names that an object instantiation is traced for

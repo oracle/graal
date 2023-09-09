@@ -118,7 +118,7 @@ The following options are available with `-H:InitialCollectionPolicy=BySpaceAndT
 
 ## G1 Garbage Collector
 
-Oracle GraalVM also provides the Garbage-First (G1) garbage collector, which is based on the G1 GC from the Java HotSpot VM. 
+Oracle GraalVM also provides the Garbage-First (G1) garbage collector, which is based on the G1 GC from the Java HotSpot VM.
 Currently, G1 Garbage Collector can be used with Native Image on the Linux AMD64 and AArch64 architectures. (Not available in GraalVM Community Edition.)
 
 To enable it, pass the option `--gc=G1` to the `native-image` builder.
