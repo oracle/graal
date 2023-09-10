@@ -46,6 +46,7 @@ import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.AbstractMap;
 import java.util.AbstractSet;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
 import java.util.List;
@@ -947,6 +948,24 @@ class PolyglotMap<K, V> extends AbstractMap<K, V> implements PolyglotWrapper {
         @Override
         public Type getOwnerType() {
             return null;
+        }
+
+        @Override
+        public int hashCode() {
+            int res = rawType.hashCode();
+            res = res * 31 + Arrays.hashCode(typeParameters);
+            return res;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            } else if (obj == null || getClass() != obj.getClass()) {
+                return false;
+            }
+            ParameterizedTypeImpl other = (ParameterizedTypeImpl) obj;
+            return rawType == other.rawType && Arrays.equals(typeParameters, typeParameters);
         }
     }
 }
