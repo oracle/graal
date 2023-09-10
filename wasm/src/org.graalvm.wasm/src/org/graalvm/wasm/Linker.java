@@ -63,6 +63,7 @@ import static org.graalvm.wasm.WasmType.I64_TYPE;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -1330,7 +1331,7 @@ public class Linker {
         private final Map<Sym, Resolver> resolutions;
 
         ResolutionDag() {
-            this.resolutions = new HashMap<>();
+            this.resolutions = new LinkedHashMap<>();
         }
 
         void resolveLater(Sym element, Sym[] dependencies, Runnable action) {
