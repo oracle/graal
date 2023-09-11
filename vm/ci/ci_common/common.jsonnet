@@ -738,38 +738,47 @@ local devkits = graal_common.devkits;
       else error "arch not found: " + arch
     else error "os not found: " + os,
 
-  deploy_graalvm_linux_amd64(java_version): vm.check_structure + {
+  deploy_graalvm_base_linux_amd64(java_version): vm.check_structure + {
+    run: $.patch_env('linux', 'amd64', java_version) + vm.collect_profiles() + $.build_base_graalvm_image + [
+      $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
+      $.upload_file_sizes,
+    ] + $.deploy_sdk_base(self.os) + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "amd64", java_version),
+    notify_groups:: ['deploy'],
+    timelimit: "1:00:00"
+  },
+
+  deploy_graalvm_installables_linux_amd64(java_version): vm.check_structure + {
     run: $.patch_env('linux', 'amd64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.collect_profiles() + $.build_base_graalvm_image + [
-      $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
-      $.upload_file_sizes,
-    ] + $.deploy_sdk_base(self.os) + [
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "amd64", java_version) + [
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "amd64", java_version),
+    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "amd64", java_version),
     notify_groups:: ['deploy'],
     timelimit: "1:30:00"
   },
 
-  deploy_graalvm_linux_aarch64(java_version): vm.check_structure + {
+  deploy_graalvm_base_linux_aarch64(java_version): vm.check_structure + {
+    run: $.patch_env('linux', 'aarch64', java_version) + vm.collect_profiles() + $.build_base_graalvm_image + [
+      $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
+      $.upload_file_sizes,
+    ] + $.deploy_sdk_base(self.os) + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "aarch64", java_version),
+    notify_groups:: ['deploy'],
+    timelimit: '1:30:00',
+    capabilities+: ["!xgene3"]
+  },
+
+  deploy_graalvm_installables_linux_aarch64(java_version): vm.check_structure + {
     run: $.patch_env('linux', 'aarch64', java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
+      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.collect_profiles() + $.build_base_graalvm_image + [
-      $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
-      $.upload_file_sizes,
-    ] + $.deploy_sdk_base(self.os) + $.create_releaser_notifier_artifact + $.check_base_graalvm_image("linux", "aarch64", java_version) + [
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "aarch64", java_version),
+    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, "linux", "aarch64", java_version),
     notify_groups:: ['deploy'],
     timelimit: '1:30:00',
     capabilities+: ["!xgene3"]
@@ -863,10 +872,12 @@ local devkits = graal_common.devkits;
   #
 
   # Linux/AMD64
-  deploy_vm_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_linux_amd64("java21") + {name: 'post-merge-deploy-vm-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
+  deploy_vm_base_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_base_linux_amd64("java21") + {name: 'post-merge-deploy-vm-base-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
+  deploy_vm_installable_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_installables_linux_amd64("java21") + {name: 'post-merge-deploy-vm-installable-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
 
   # Linux/AARCH64
-  deploy_vm_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_linux_aarch64("java21") + {name: 'daily-deploy-vm-java21-linux-aarch64', notify_groups:: ["deploy"]},
+  deploy_vm_base_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_base_linux_aarch64("java21") + {name: 'daily-deploy-vm-base-java21-linux-aarch64', notify_groups:: ["deploy"]},
+  deploy_vm_installable_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_installables_linux_aarch64("java21") + {name: 'daily-deploy-vm-installable-java21-linux-aarch64', notify_groups:: ["deploy"]},
 
   # Darwin/AMD64
   deploy_vm_base_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base_darwin_amd64("java21") + {name: 'daily-deploy-vm-base-java21-darwin-amd64', notify_groups:: ["deploy"]},

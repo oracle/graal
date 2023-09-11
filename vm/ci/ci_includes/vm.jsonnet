@@ -52,8 +52,10 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
         ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_releaser_service,
     ],
     requireArtifacts: [
-      {name: 'post-merge-deploy-vm-java21-linux-amd64'},
-      {name: 'daily-deploy-vm-java21-linux-aarch64'},
+      {name: 'post-merge-deploy-vm-base-java21-linux-amd64'},
+      {name: 'post-merge-deploy-vm-installable-java21-linux-amd64'},
+      {name: 'daily-deploy-vm-base-java21-linux-aarch64'},
+      {name: 'daily-deploy-vm-installable-java21-linux-aarch64'},
       {name: 'daily-deploy-vm-base-java21-darwin-amd64'},
       {name: 'daily-deploy-vm-installable-java21-darwin-amd64'},
       {name: 'daily-deploy-vm-base-java21-darwin-aarch64'},
@@ -195,10 +197,12 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     #
 
     # Linux/AMD64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java21_linux_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_linux_amd64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_linux_amd64),
 
     # Linux/AARCH64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java21_linux_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_linux_aarch64),
+    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_linux_aarch64),
 
     # Darwin/AMD64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_darwin_amd64),
