@@ -783,8 +783,7 @@ local devkits = graal_common.devkits;
 
   # Linux/AMD64
   deploy_vm_base_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_base("java21") + {name: 'post-merge-deploy-vm-base-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
-  deploy_vm_installable_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_components("java21", "installable,standalone") + {name: 'post-merge-deploy-vm-installable-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
-
+  deploy_vm_installable_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_components("java21", "installable,standalone") + {name: 'daily-deploy-vm-installable-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
   # Linux/AARCH64
   deploy_vm_base_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_base("java21") + {name: 'daily-deploy-vm-base-java21-linux-aarch64', notify_groups:: ["deploy"], timelimit: '1:30:00', capabilities+: ["!xgene3"]},
   deploy_vm_installable_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_components("java21", "installable,standalone") + {name: 'daily-deploy-vm-installable-java21-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
