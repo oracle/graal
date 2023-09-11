@@ -55,7 +55,7 @@ public class OperationsExampleFindBciTest {
          * @formatter:on
          */
 
-        List<FrameInstance> frames = new ArrayList<>();
+        List<Integer> bytecodeIndices = new ArrayList<>();
 
         Source bazSource = Source.newBuilder("test", "<trace>; 4", "baz").build();
         OperationsExample baz = parseNodeWithSource(interpreterClass, "baz", b -> {
@@ -70,7 +70,7 @@ public class OperationsExampleFindBciTest {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Truffle.getRuntime().iterateFrames(f -> {
-                        frames.add(f);
+                        bytecodeIndices.add(OperationRootNode.findBci(f));
                         return null;
                     });
                     return null;
@@ -90,7 +90,7 @@ public class OperationsExampleFindBciTest {
         });
 
         Source barSource = Source.newBuilder("test", "(1 + arg0) + baz()", "bar").build();
-        OperationsExample bar = parseNodeWithSource(OperationsExampleBase.class, "bar", b -> {
+        OperationsExample bar = parseNodeWithSource(interpreterClass, "bar", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(barSource);
 
@@ -116,7 +116,7 @@ public class OperationsExampleFindBciTest {
         });
 
         Source fooSource = Source.newBuilder("test", "1 + bar(2)", "foo").build();
-        OperationsExample foo = parseNodeWithSource(OperationsExampleBase.class, "foo", b -> {
+        OperationsExample foo = parseNodeWithSource(interpreterClass, "foo", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(fooSource);
 
@@ -140,28 +140,27 @@ public class OperationsExampleFindBciTest {
         });
 
         assertEquals(8L, foo.getCallTarget().call());
-        assertEquals(4, frames.size());
+        assertEquals(4, bytecodeIndices.size());
 
         // <anon>
-        assertNull(frames.get(0).getCallNode());
-        assertEquals(-1, OperationRootNode.findBci(frames.get(0)));
+        assertEquals(-1, (int) bytecodeIndices.get(0));
 
         // baz
-        int bazBci = OperationRootNode.findBci(frames.get(1));
+        int bazBci = bytecodeIndices.get(1);
         assertNotEquals(-1, bazBci);
         SourceSection bazSourceSection = baz.getSourceSectionAtBci(bazBci);
         assertEquals(bazSource, bazSourceSection.getSource());
         assertEquals("<trace>", bazSourceSection.getCharacters());
 
         // bar
-        int barBci = OperationRootNode.findBci(frames.get(2));
+        int barBci = bytecodeIndices.get(2);
         assertNotEquals(-1, barBci);
         SourceSection barSourceSection = bar.getSourceSectionAtBci(barBci);
         assertEquals(barSource, barSourceSection.getSource());
         assertEquals("baz()", barSourceSection.getCharacters());
 
         // foo
-        int fooBci = OperationRootNode.findBci(frames.get(3));
+        int fooBci = bytecodeIndices.get(3);
         assertNotEquals(-1, fooBci);
         SourceSection fooSourceSection = foo.getSourceSectionAtBci(fooBci);
         assertEquals(fooSource, fooSourceSection.getSource());
@@ -188,15 +187,15 @@ public class OperationsExampleFindBciTest {
          * @formatter:on
          */
         Source bazSource = Source.newBuilder("test", "if (arg0) <trace1> else <trace2>", "baz").build();
-        CallTarget collectFrames = new RootNode(LANGUAGE) {
+        CallTarget collectBcis = new RootNode(LANGUAGE) {
             @Override
             public Object execute(VirtualFrame frame) {
-                List<FrameInstance> frames = new ArrayList<>();
+                List<Integer> bytecodeIndices = new ArrayList<>();
                 Truffle.getRuntime().iterateFrames(f -> {
-                    frames.add(f);
+                    bytecodeIndices.add(OperationRootNode.findBci(f));
                     return null;
                 });
-                return frames;
+                return bytecodeIndices;
             }
         }.getCallTarget();
 
@@ -209,21 +208,21 @@ public class OperationsExampleFindBciTest {
 
             b.emitLoadArgument(0);
 
+            b.beginReturn();
             b.beginSourceSection(10, 8);
-            b.beginReturn();
             b.beginInvoke();
-            b.emitLoadConstant(collectFrames);
+            b.emitLoadConstant(collectBcis);
             b.endInvoke();
-            b.endReturn();
             b.endSourceSection();
+            b.endReturn();
 
-            b.beginSourceSection(24, 8);
             b.beginReturn();
+            b.beginSourceSection(24, 8);
             b.beginInvoke();
-            b.emitLoadConstant(collectFrames);
+            b.emitLoadConstant(collectBcis);
             b.endInvoke();
-            b.endReturn();
             b.endSourceSection();
+            b.endReturn();
 
             b.endIfThenElse();
 
@@ -245,14 +244,14 @@ public class OperationsExampleFindBciTest {
             b.endYield();
             b.endStoreLocal();
 
-            b.beginSourceSection(13, 6);
             b.beginReturn();
+            b.beginSourceSection(13, 6);
             b.beginInvoke();
             b.emitLoadConstant(baz);
             b.emitLoadLocal(x);
             b.endInvoke();
-            b.endReturn();
             b.endSourceSection();
+            b.endReturn();
 
             b.endBlock();
             b.endSource();
@@ -273,14 +272,14 @@ public class OperationsExampleFindBciTest {
             b.endInvoke();
             b.endStoreLocal();
 
-            b.beginSourceSection(11, 17);
             b.beginReturn();
+            b.beginSourceSection(11, 17);
             b.beginContinue();
             b.emitLoadLocal(c);
             b.emitLoadArgument(0);
             b.endContinue();
-            b.endReturn();
             b.endSourceSection();
+            b.endReturn();
 
             b.endBlock();
             b.endSource();
@@ -292,15 +291,14 @@ public class OperationsExampleFindBciTest {
             assertTrue(result instanceof List<?>);
 
             @SuppressWarnings("unchecked")
-            List<FrameInstance> frames = (List<FrameInstance>) result;
-            assertEquals(4, frames.size());
+            List<Integer> bytecodeIndices = (List<Integer>) result;
+            assertEquals(4, bytecodeIndices.size());
 
             // <anon>
-            assertNull(frames.get(0).getCallNode());
-            assertEquals(-1, OperationRootNode.findBci(frames.get(0)));
+            assertEquals(-1, (int) bytecodeIndices.get(0));
 
             // baz
-            int bazBci = OperationRootNode.findBci(frames.get(1));
+            int bazBci = bytecodeIndices.get(1);
             assertNotEquals(-1, bazBci);
             SourceSection bazSourceSection = baz.getSourceSectionAtBci(bazBci);
             assertEquals(bazSource, bazSourceSection.getSource());
@@ -311,14 +309,14 @@ public class OperationsExampleFindBciTest {
             }
 
             // bar
-            int barBci = OperationRootNode.findBci(frames.get(2));
+            int barBci = bytecodeIndices.get(2);
             assertNotEquals(-1, barBci);
             SourceSection barSourceSection = bar.getSourceSectionAtBci(barBci);
             assertEquals(barSource, barSourceSection.getSource());
             assertEquals("baz(x)", barSourceSection.getCharacters());
 
             // foo
-            int fooBci = OperationRootNode.findBci(frames.get(3));
+            int fooBci = bytecodeIndices.get(3);
             assertNotEquals(-1, fooBci);
             SourceSection fooSourceSection = foo.getSourceSectionAtBci(fooBci);
             assertEquals(fooSource, fooSourceSection.getSource());

@@ -90,17 +90,18 @@ public class OperationsModel extends Template implements PrettyPrintable {
 
     private final Map<String, OperationModel> operationNames = new HashMap<>();
 
-    public boolean enableYield;
-    public boolean enableSerialization = true;
-    public boolean allowUnsafe;
     public DeclaredType languageClass;
+    public boolean enableBaselineInterpreter;
+    public boolean enableSerialization;
+    public boolean allowUnsafe;
+    public boolean enableYield;
+    public boolean storeBciInFrame;
 
     public ExecutableElement fdConstructor;
     public ExecutableElement fdBuilderConstructor;
     public ExecutableElement executeProlog;
     public ExecutableElement executeEpilog;
 
-    public boolean enableBaselineInterpreter;
     public TypeSystemData typeSystem;
     public Set<TypeMirror> boxingEliminatedTypes;
     public List<VariableElement> serializedFields;
@@ -314,6 +315,10 @@ public class OperationsModel extends Template implements PrettyPrintable {
             }
         }
         return null;
+    }
+
+    public boolean needsBciSlot() {
+        return enableBaselineInterpreter || storeBciInFrame;
     }
 
     @Override
