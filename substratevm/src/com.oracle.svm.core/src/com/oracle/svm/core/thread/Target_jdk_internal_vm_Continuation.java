@@ -39,7 +39,7 @@ import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "Continuation", classNameProvider = Package_jdk_internal_vm_helper.class, onlyWith = NotLoomJDK.class)
+@TargetClass(className = "jdk.internal.vm.Continuation", onlyWith = NotLoomJDK.class)
 @Substitute
 @SuppressWarnings("unused")
 final class Target_jdk_internal_vm_Continuation__WithoutLoom {
@@ -59,7 +59,7 @@ final class Target_jdk_internal_vm_Continuation__WithoutLoom {
     }
 }
 
-@TargetClass(className = "Continuation", classNameProvider = Package_jdk_internal_vm_helper.class, onlyWith = LoomJDK.class)
+@TargetClass(className = "jdk.internal.vm.Continuation", onlyWith = LoomJDK.class)
 public final class Target_jdk_internal_vm_Continuation {
     @Substitute
     private static void registerNatives() {
