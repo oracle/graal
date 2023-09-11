@@ -120,7 +120,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     private static final Name Uncached_Name = CodeNames.of("Uncached");
 
     public static final String USER_LOCALS_START_IDX = "USER_LOCALS_START_IDX";
-    public static final String BASELINE_BCI_IDX = "BASELINE_BCI_IDX";
+    public static final String BCI_IDX = "BCI_IDX";
     public static final String COROUTINE_FRAME_IDX = "COROUTINE_FRAME_IDX";
     public static final String MAX_PROFILE_COUNT = "MAX_PROFILE_COUNT";
 
@@ -364,9 +364,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         int reserved = 0;
 
         int baselineBciIndex = -1;
-        if (model.enableBaselineInterpreter) {
+        if (model.needsBciSlot()) {
             baselineBciIndex = reserved++;
-            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, BASELINE_BCI_IDX, baselineBciIndex + ""));
+            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, BCI_IDX, baselineBciIndex + ""));
         }
 
         int coroutineFrameIndex = 1;
@@ -1193,10 +1193,10 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationRootNode, "readBciFromFrame");
 
         CodeTreeBuilder b = ex.createBuilder();
-        if (model.enableBaselineInterpreter) {
-            b.startReturn().string("ACCESS.getInt(frame, " + BASELINE_BCI_IDX + ")").end();
+        if (model.needsBciSlot()) {
+            b.startReturn().string("ACCESS.getInt(frame, " + BCI_IDX + ")").end();
         } else {
-            b.lineComment("The bci is only stored in the frame for baseline interpreters.");
+            b.lineComment("The bci is not stored in the frame.");
             b.startReturn().string("-1").end();
         }
 
@@ -4064,10 +4064,10 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("int bci = startState & 0xffff");
             b.statement("int sp = (startState >> 16) & 0xffff");
             b.declaration(loopCounter.asType(), "loopCounter", CodeTreeBuilder.createBuilder().startNew(loopCounter.asType()).end());
-            if (model.enableBaselineInterpreter && !tier.isUncached) {
-                // Non-baseline interpreters don't use the bci slot. Set it to an invalid value just
-                // in case it gets read during a stack walk.
-                b.statement("ACCESS.setInt(frame, " + BASELINE_BCI_IDX + ", -1)");
+            if (model.needsBciSlot() && !model.storeBciInFrame && !tier.isUncached) {
+                // If a bci slot is allocated but not used for non-baseline interpreters, set it to
+                // an invalid value just in case it gets read during a stack walk.
+                b.statement("ACCESS.setInt(" + localFrame() + ", " + BCI_IDX + ", -1)");
             }
 
             if (model.enableTracing) {
@@ -4212,6 +4212,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         } else {
                             emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
                         }
+                        storeBciInFrameIfNecessary(b);
 
                         b.statement("return ((sp - 1) << 16) | 0xffff");
                         break;
@@ -4230,6 +4231,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("throw sneakyThrow((Throwable) " + getFrameObject(localFrame(), readBc("bci + 1")) + ")");
                         break;
                     case YIELD:
+                        storeBciInFrameIfNecessary(b);
                         emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
                         b.statement("int numLocals = $this.numLocals");
                         b.statement(copyFrameTo("frame", "numLocals", "localFrame", "numLocals", "(sp - 1 - numLocals)"));
@@ -4297,6 +4299,8 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             DeclaredType abstractTruffleException = context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException");
             b.startCatchBlock(context.getDeclaredType("java.lang.Throwable"), "throwable");
+
+            storeBciInFrameIfNecessary(b);
             /*
              * We can handle throwable if it's an AbstractTruffleException or
              * interceptInternalException converts it to one.
@@ -4446,11 +4450,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             // Since an instruction produces at most one value, stackEffect is at most 1.
             int stackEffect = (isVoid ? 0 : 1) - instr.signature.valueCount;
 
-            if (tier.isUncached) {
-                // If in the baseline interpreter, we need to store the bci in the frame in case the
-                // stack is inspected.
-                b.statement("ACCESS.setInt(frame, " + BASELINE_BCI_IDX + ", bci)");
-            } else {
+            storeBciInFrameIfNecessary(b);
+
+            if (!tier.isUncached) {
                 // If not in the baseline interpreter, we need to retrieve the node for the call.
                 InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
                 String nodeIndex = readBc("bci + " + imm.offset);
@@ -4566,6 +4568,18 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             return helper;
+        }
+
+        /**
+         * When in the baseline interpreter or an interpreter with storeBciInFrame set to true, we
+         * need to store the bci in the frame before escaping operations (e.g., returning, yielding,
+         * throwing) or potentially-escaping operations (e.g., a custom operation that could invoke
+         * another root node).
+         */
+        private void storeBciInFrameIfNecessary(CodeTreeBuilder b) {
+            if (tier.isUncached || model.storeBciInFrame) {
+                b.statement("ACCESS.setInt(" + localFrame() + ", " + BCI_IDX + ", bci)");
+            }
         }
 
         private String customInstructionHelperName(InstructionModel instr) {

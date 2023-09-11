@@ -179,11 +179,11 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
     @SuppressWarnings("unchecked")
     private void parseOperationsModel(TypeElement typeElement, OperationsModel model, AnnotationMirror generateOperationsMirror) {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass").getValue();
-        model.enableYield = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableYield", true).getValue();
-        model.enableSerialization = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableSerialization", true).getValue();
         model.enableBaselineInterpreter = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableBaselineInterpreter", true).getValue();
+        model.enableSerialization = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableSerialization", true).getValue();
         model.allowUnsafe = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "allowUnsafe", true).getValue();
-
+        model.enableYield = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableYield", true).getValue();
+        model.storeBciInFrame = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "storeBciInFrame", true).getValue();
         model.addDefault();
 
         // check basic declaration properties

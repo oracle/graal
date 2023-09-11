@@ -190,8 +190,6 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
                 data.addError("Operation class must not be declared private. Remove the private modifier to make it visible.");
             }
 
-            // TODO: Add cross-package visibility check
-
             if (!ElementUtils.isObject(typeElement.getSuperclass()) || !typeElement.getInterfaces().isEmpty()) {
                 data.addError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.");
             }
@@ -215,21 +213,20 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
             }
         }
 
-        // The generated Node for this instruction does not subclass the original class defining the
-        // specializations. Thus, each specialization should:
-        // - be declared as static
-        // - be visible from the generated Node (i.e., public or package-private and in the same
-        // package as the root node)
-        //
-        // Specialization visibility can be checked easily before we try to generate the node.
-        //
-        // Similarly, the members (methods and fields) used in guard/cache expressions should:
-        // - not be instance fields/methods of the receiver
-        // - be visible from the generated Node
-        //
-        // The former is "enforced" when we filter non-static members from the Node; the {@link
-        // DSLExpressionResolver} should fail to resolve any instance member references. The latter
-        // is checked during the regular resolution process.
+        /**
+         * The generated Node for this instruction does not subclass the original class defining the
+         * specializations. Thus, each specialization should (1) be declared as static and (2) be
+         * visible from the generated Node (i.e., public or package-private and in the same package
+         * as the root node). Specialization visibility can be checked easily before we try to
+         * generate the node.
+         *
+         * Similarly, the members (methods and fields) used in guard/cache expressions should (1)
+         * not be instance fields/methods of the receiver and (2) be visible from the generated
+         * Node. The first condition is "enforced" when we filter non-static members from the Node;
+         * the {@link DSLExpressionResolver} should fail to resolve any instance member references.
+         * The latter condition is checked during the regular resolution process.
+         *
+         */
         for (ExecutableElement specialization : findSpecializations(typeElement)) {
             if (!specialization.getModifiers().contains(Modifier.STATIC)) {
                 // TODO: add docs explaining how to convert a non-static specialization method and
@@ -592,7 +589,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
                 valueParams.add(param);
                 hasVariadic = true;
             } else if (isDSLParameter(param)) {
-                // nothing, we ignore these
+                // these do not affect the signature
             } else {
                 if (hasVariadic) {
                     data.addError(param, "Non-variadic value parameters must precede variadic parameters.");
@@ -659,7 +656,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
 
     private boolean errorIfDSLParameter(OperationModel data, TypeMirror paramType, VariableElement param) {
         if (isDSLParameter(param)) {
-            data.addError(param, "%s parameters must not be annotated with @%s or @%s.",
+            data.addError(param, "%s parameters must not be annotated with @%s, @%s, or @%s.",
                             getSimpleName(paramType),
                             getSimpleName(types.Cached),
                             getSimpleName(types.CachedLibrary),
