@@ -207,7 +207,20 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     private boolean analysisModified() {
         boolean analysisModified;
         try (Timer.StopTimer ignored = verifyHeapTimer.start()) {
-            analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "after analysis", true);
+            /*
+             * After the analysis reaches a stable state check if the shadow heap contains all
+             * objects reachable from roots. If this leads to analysis state changes, an additional
+             * analysis iteration will be run.
+             * 
+             * We reuse the analysis executor, which at this point should be in before-start state:
+             * the analysis finished and it re-initialized the executor for the next iteration. The
+             * verifier controls the life cycle of the executor: it starts it and then waits until
+             * all operations are completed. The same executor is implicitly used by the shadow heap
+             * scanner and the verifier also passes it to the root scanner, so when
+             * checkHeapSnapshot returns all heap scanning and verification tasks are completed.
+             */
+            assert executor.isBeforeStart();
+            analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "during analysis", true);
         }
         /* Initialize for the next iteration. */
         executor.init(getTiming());

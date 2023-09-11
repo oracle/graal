@@ -307,9 +307,7 @@ public abstract class ImageHeapScanner {
         } else if (unwrapped instanceof ImageHeapConstant) {
             throw GraalError.shouldNotReachHere(formatReason("Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable.", reason)); // ExcludeFromJacocoGeneratedReport
         }
-        if (unwrapped instanceof String || unwrapped instanceof Enum<?>) {
-            forceHashCodeComputation(unwrapped);
-        }
+        maybeForceHashCodeComputation(unwrapped);
 
         /* Run all registered object replacers. */
         if (constant.getJavaKind() == JavaKind.Object) {
@@ -328,12 +326,26 @@ public abstract class ImageHeapScanner {
         return Optional.empty();
     }
 
+    public static void maybeForceHashCodeComputation(Object constant) {
+        if (constant instanceof String stringConstant) {
+            forceHashCodeComputation(stringConstant);
+        } else if (constant instanceof Enum<?> enumConstant) {
+            /*
+             * Starting with JDK 21, Enum caches the identity hash code in a separate hash field. We
+             * want to allow Enum values to be manually marked as immutable objects, so we eagerly
+             * initialize the hash field. This is safe because Enum.hashCode() is a final method,
+             * i.e., cannot be overwritten by the user.
+             */
+            forceHashCodeComputation(enumConstant);
+        }
+    }
+
     /**
      * For immutable Strings and other objects in the native image heap, force eager computation of
      * the hash field.
      */
     @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "eager hash field computation")
-    public static void forceHashCodeComputation(Object object) {
+    private static void forceHashCodeComputation(Object object) {
         object.hashCode();
     }
 
@@ -522,24 +534,6 @@ public abstract class ImageHeapScanner {
         return false;
     }
 
-    /**
-     * When a re-scanning is triggered while the analysis is running in parallel, it is necessary to
-     * do the re-scanning in a separate executor task to avoid deadlocks. For example,
-     * lookupJavaField might need to wait for the reachability handler to be finished that actually
-     * triggered the re-scanning.
-     *
-     * In the (legacy) Feature.duringAnalysis state, the executor is not running and we must not
-     * schedule new tasks, because that would be treated as "the analysis has not finished yet". So
-     * in that case we execute the task directly.
-     */
-    private void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
-        if (bb.executorIsStarted()) {
-            bb.postTask(task);
-        } else {
-            task.run(null);
-        }
-    }
-
     public void rescanRoot(Field reflectionField) {
         if (skipScanning()) {
             return;
@@ -714,7 +708,31 @@ public abstract class ImageHeapScanner {
         return metaAccess.lookupJavaField(ReflectionUtil.lookupField(getClass(className), fieldName));
     }
 
-    public void postTask(Runnable task) {
-        universe.getBigbang().postTask(debug -> task.run());
+    /**
+     * When a re-scanning is triggered while the analysis is running in parallel, it is necessary to
+     * do the re-scanning in a separate executor task to avoid deadlocks. For example,
+     * lookupJavaField might need to wait for the reachability handler to be finished that actually
+     * triggered the re-scanning. We reuse the analysis executor, whose lifetime is controlled by
+     * the analysis engine.
+     *
+     * In the (legacy) Feature.duringAnalysis state, the executor is not running and we must not
+     * schedule new tasks, because that would be treated as "the analysis has not finished yet". So
+     * in that case we execute the task directly.
+     */
+    private void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
+        if (bb.executorIsStarted()) {
+            bb.postTask(task);
+        } else {
+            task.run(null);
+        }
+    }
+
+    /**
+     * Post the task to the analysis executor. Its lifetime is controlled by the analysis engine or
+     * the heap verifier such that all heap scanning tasks are also completed when analysis reaches
+     * a stable state or heap verification is completed.
+     */
+    private void postTask(Runnable task) {
+        bb.postTask(debug -> task.run());
     }
 }
