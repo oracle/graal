@@ -106,15 +106,14 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
-import com.oracle.svm.core.jni.headers.JNIVersionJDK19OrLater;
-import com.oracle.svm.core.jni.headers.JNIVersionJDK20OrLater;
-import com.oracle.svm.core.jni.headers.JNIVersionJDK21OrLater;
+import com.oracle.svm.core.jni.headers.JNIVersionJDK22OrLater;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.Target_java_lang_BaseVirtualThread;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.Utf8;
@@ -159,10 +158,14 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
-        return JavaVersionUtil.JAVA_SPEC >= 21 ? JNIVersionJDK21OrLater.JNI_VERSION_21()
-                        : JavaVersionUtil.JAVA_SPEC >= 20 ? JNIVersionJDK20OrLater.JNI_VERSION_20()
-                                        : JavaVersionUtil.JAVA_SPEC >= 19 ? JNIVersionJDK19OrLater.JNI_VERSION_19()
-                                                        : JNIVersion.JNI_VERSION_10();
+        switch (JavaVersionUtil.JAVA_SPEC) {
+            case 21:
+                return JNIVersion.JNI_VERSION_21();
+            case 22:
+                return JNIVersionJDK22OrLater.JNI_VERSION_22();
+            default:
+                throw VMError.shouldNotReachHere("Unsupported Java version " + JavaVersionUtil.JAVA_SPEC);
+        }
     }
 
     /*
@@ -1120,6 +1123,16 @@ public final class JNIFunctions {
         CTypeConversion.asByteBuffer(buf, bufLen).get(data);
         Class<?> clazz = PredefinedClassesSupport.loadClass(classLoader, name, data, 0, data.length, null);
         return JNIObjectHandles.createLocal(clazz);
+    }
+
+    /*
+     * jboolean (JNICALL *IsVirtualThread) (JNIEnv *env, jobject obj);
+     */
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static boolean IsVirtualThread(JNIEnvironment env, JNIObjectHandle handle) {
+        Object obj = JNIObjectHandles.getObject(handle);
+        return obj instanceof Target_java_lang_BaseVirtualThread;
     }
 
     // Checkstyle: resume
