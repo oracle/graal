@@ -26,10 +26,11 @@ package jdk.graal.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
-import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
-import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
@@ -178,6 +179,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         Class<?> resultType = descriptor.getResultType();
         GraalError.guarantee(descriptor.getTransition() != SAFEPOINT || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType),
                         "non-leaf foreign calls must return objects in thread local storage: %s", descriptor);
+        GraalError.guarantee(outgoingCcType.equals(NativeCall), "only NativeCall");
         return register(HotSpotForeignCallLinkageImpl.create(metaAccess,
                         codeCache,
                         wordTypes,
@@ -244,9 +246,8 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         HotSpotForeignCallLinkage targetLinkage = stub.getTargetLinkage();
         linkage.setCompiledStub(stub);
         register(linkage);
-        if (foreignCalls.get(targetLinkage.getDescriptor().getSignature()) == null) {
-            register(targetLinkage);
-        }
+        HotSpotForeignCallLinkage registeredTargetLinkage = foreignCalls.get(targetLinkage.getDescriptor().getSignature());
+        GraalError.guarantee(registeredTargetLinkage != null, "%s should already be registered", targetLinkage);
     }
 
     public static final boolean PREPEND_THREAD = true;

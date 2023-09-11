@@ -325,17 +325,25 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
     private void registerStubCallFunctions(OptionValues options, HotSpotProviders providers, GraalHotSpotVMConfig config) {
         long invokeJavaMethodAddress = config.invokeJavaMethodAddress;
-        if (invokeJavaMethodAddress == 0 || IS_IN_NATIVE_IMAGE) {
+        if (invokeJavaMethodAddress == 0) {
             return;
         }
-        // These functions are only used for testing purposes but their registration also ensures
-        // that libgraal has support for InvokeJavaMethodStub built into the image, which is
-        // required for support of Truffle. Because of the lazy initialization of this support in
-        // Truffle we rely on this code to ensure the support is built into the image.
-        for (JavaKind kind : TestForeignCalls.KINDS) {
-            HotSpotForeignCallDescriptor desc = TestForeignCalls.createStubCallDescriptor(kind);
-            ResolvedJavaMethod method = findMethod(providers.getMetaAccess(), TestForeignCalls.class, desc.getName());
-            invokeJavaMethodStub(options, providers, desc, invokeJavaMethodAddress, method);
+        registerForeignCall(INVOKE_STATIC_METHOD_ONE_ARG, invokeJavaMethodAddress, NativeCall);
+
+        if (!IS_IN_NATIVE_IMAGE) {
+            /*
+             * These functions are only used for testing purposes but their registration also
+             * ensures that libgraal has support for InvokeJavaMethodStub built into the image,
+             * which is required for support of Truffle. Because of the lazy initialization of this
+             * support in Truffle we rely on this code to ensure the support is built into the
+             * image. In particular this results in InvokeJavaMethodStub being in the image but not
+             * TestForeignCalls itself.
+             */
+            for (JavaKind kind : TestForeignCalls.KINDS) {
+                HotSpotForeignCallDescriptor desc = TestForeignCalls.createStubCallDescriptor(kind);
+                ResolvedJavaMethod method = findMethod(providers.getMetaAccess(), TestForeignCalls.class, desc.getName());
+                invokeJavaMethodStub(options, providers, desc, invokeJavaMethodAddress, method);
+            }
         }
     }
 
