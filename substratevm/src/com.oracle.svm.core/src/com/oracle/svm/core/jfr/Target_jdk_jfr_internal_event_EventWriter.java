@@ -35,6 +35,13 @@ public final class Target_jdk_jfr_internal_event_EventWriter {
     @Alias //
     long threadID;
 
+    @Alias //
+    long startPosition;
+    @Alias //
+    long currentPosition;
+    @Alias //
+    long maxPosition;
+
     @Alias
     @SuppressWarnings("unused")
     Target_jdk_jfr_internal_event_EventWriter(long committedPos, long maxPos, long threadID, boolean valid, boolean excluded) {

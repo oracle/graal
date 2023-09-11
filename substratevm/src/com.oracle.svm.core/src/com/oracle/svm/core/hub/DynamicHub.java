@@ -100,8 +100,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.jdk.JDK19OrLater;
-import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
@@ -862,7 +860,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native boolean isAnonymousClass();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK21OrLater.class)
+    @TargetElement
     private native boolean isUnnamedClass();
 
     @Substitute
@@ -1305,7 +1303,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static Class<?> forName(String className, Class<?> caller) throws Throwable {
         return forName(className, true, caller.getClassLoader(), caller);
@@ -1318,7 +1315,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
         /*
@@ -1338,7 +1334,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws Throwable {
         if (name == null) {
             throw new NullPointerException();

@@ -45,7 +45,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -299,7 +298,7 @@ final class Target_javax_crypto_JceSecurity {
     private static Map<Provider, Object> verifyingProviders;
 
     @Alias //
-    @TargetElement(onlyWith = JDK21OrLater.class) //
+    @TargetElement //
     private static ReferenceQueue<Object> queue;
 
     @Substitute
@@ -318,9 +317,7 @@ final class Target_javax_crypto_JceSecurity {
     static Exception getVerificationResult(Provider p) {
         /* Start code block copied from original method. */
         /* The verification results map key is an identity wrapper object. */
-        Object key = JavaVersionUtil.JAVA_SPEC <= 20 ? // JDK-8168469
-                        new Target_javax_crypto_JceSecurity_IdentityWrapper(p) : //
-                        new Target_javax_crypto_JceSecurity_WeakIdentityWrapper(p, queue);
+        Object key = new Target_javax_crypto_JceSecurity_WeakIdentityWrapper(p, queue);
         Object o = verificationResults.get(key);
         if (o == PROVIDER_VERIFIED) {
             return null;
@@ -346,15 +343,7 @@ final class Target_javax_crypto_JceSecurity {
     }
 }
 
-@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "IdentityWrapper", onlyWith = JDK20OrEarlier.class)
-@SuppressWarnings({"unused"})
-final class Target_javax_crypto_JceSecurity_IdentityWrapper {
-    @Alias //
-    Target_javax_crypto_JceSecurity_IdentityWrapper(Provider obj) {
-    }
-}
-
-@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper", onlyWith = JDK21OrLater.class)
+@TargetClass(className = "javax.crypto.JceSecurity", innerClass = "WeakIdentityWrapper")
 @SuppressWarnings({"unused"})
 final class Target_javax_crypto_JceSecurity_WeakIdentityWrapper {
 

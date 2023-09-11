@@ -40,7 +40,6 @@ import java.util.stream.Stream;
 import com.oracle.svm.core.BuildDirectoryProvider;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionStability;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -526,10 +525,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             cmd.add("secur32.lib");
             cmd.add("iphlpapi.lib");
             cmd.add("userenv.lib");
-            if (JavaVersionUtil.JAVA_SPEC >= 20) {
-                /* JDK-8295231 removed implicit linking via pragma directives in source files. */
-                cmd.add("mswsock.lib");
-            }
+            /* JDK-8295231 removed implicit linking via pragma directives in source files. */
+            cmd.add("mswsock.lib");
 
             if (SubstrateOptions.EnableWildcardExpansion.getValue() && imageKind == AbstractImage.NativeImageKind.EXECUTABLE) {
                 /*
