@@ -60,9 +60,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       {name: 'daily-deploy-vm-installable-java21-darwin-aarch64'},
       {name: 'daily-deploy-vm-base-java21-windows-amd64'},
       {name: 'daily-deploy-vm-installable-java21-windows-amd64'},
-      {name: 'daily-deploy-vm-ruby-java21-linux-amd64'},
-      {name: 'daily-deploy-vm-ruby-java21-darwin-amd64'},
-      {name: 'daily-deploy-vm-ruby-java21-darwin-aarch64'},
       {name: 'daily-deploy-vm-espresso-java21-linux-amd64'},
       {name: 'daily-deploy-vm-espresso-java21-linux-aarch64'},
       {name: 'daily-deploy-vm-espresso-java21-darwin-amd64'},
@@ -214,13 +211,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     # Windows/AMD64
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_windows_amd64),
     self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_windows_amd64),
-
-    #
-    # Deploy the GraalVM Ruby image (GraalVM Base + ruby)
-    #
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_linux_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_darwin_aarch64),
 
     #
     # Deploy the GraalVM Espresso image (GraalVM Base + espresso)
