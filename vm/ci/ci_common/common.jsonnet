@@ -429,9 +429,10 @@ local devkits = graal_common.devkits;
   artifact_deploy_sdk_base_dry_run(os, base_dist_name): self.deploy_artifacts_sdk(os, base_dist_name) + ['--tags', 'graalvm', '--dry-run'],
   deploy_sdk_base_dry_run(os, base_dist_name=null):     [self.mx_vm_common + vm.vm_profiles + self.maven_deploy_sdk_base_dry_run, self.mx_vm_common + vm.vm_profiles + self.artifact_deploy_sdk_base_dry_run(os, base_dist_name)],
 
-  maven_deploy_sdk_components:    self.maven_deploy_sdk +      ['--tags', 'installable,standalone',              vm.binaries_repository],
-  artifact_deploy_sdk_components(os): self.deploy_artifacts_sdk(os) +  ['--tags', 'installable,standalone',                ],
-  deploy_sdk_components(os):          [$.mx_vm_installables + self.maven_deploy_sdk_components, $.mx_vm_installables + self.artifact_deploy_sdk_components(os)],
+  deploy_sdk_components(os): [
+    $.mx_vm_installables + self.maven_deploy_sdk + ['--tags', 'installable,standalone', vm.binaries_repository],
+    $.mx_vm_installables + self.deploy_artifacts_sdk(os) + ['--tags', 'installable,standalone']
+  ],
 
   maven_deploy_sdk_components_dry_run:    self.maven_deploy_sdk +     ['--tags', 'installable,standalone', '--dry-run', vm.binaries_repository],
   artifact_deploy_sdk_components_dry_run(os): self.deploy_artifacts_sdk(os) + ['--tags', 'installable,standalone',                '--dry-run'],
