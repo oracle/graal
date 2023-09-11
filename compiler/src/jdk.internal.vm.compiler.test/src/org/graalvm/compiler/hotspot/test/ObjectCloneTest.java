@@ -71,6 +71,7 @@ public class ObjectCloneTest extends GraalCompilerTest {
         return suites;
     }
 
+    @BytecodeParserNeverInline
     public static Object cloneArray(int[] array) {
         return array.clone();
     }
@@ -93,6 +94,11 @@ public class ObjectCloneTest extends GraalCompilerTest {
 
     public static Integer[] cloneConcreteObjectArray(ArrayHolder<Integer> holder) {
         return holder.array.clone();
+    }
+
+    @BytecodeParserNeverInline
+    public static <T> T[] cloneArrayGeneric(T[] array) {
+        return array.clone();
     }
 
     public static Object cloneList(ArrayList<?> list) {
@@ -193,5 +199,45 @@ public class ObjectCloneTest extends GraalCompilerTest {
     @Test
     public void testCloneArrayWithImpreciseStamp() {
         test("cloneArrayWithImpreciseStamp", ARRAY, ARRAY.length);
+    }
+
+    public static Object cloneArrayWithImpreciseStampInlined(int[] inputArray, int count) {
+        int[] array = inputArray;
+        for (int j = 0; j < count; j++) {
+            for (int i = 0; i < j; i++) {
+                if (i > 3) {
+                    array = new int[i];
+                    array[i - 1] = i;
+                }
+                GraalDirectives.controlFlowAnchor();
+            }
+            GraalDirectives.controlFlowAnchor();
+        }
+        return cloneArray(array);
+    }
+
+    @Test
+    public void testCloneArrayWithImpreciseStampInlined() {
+        test("cloneArrayWithImpreciseStampInlined", ARRAY, ARRAY.length);
+    }
+
+    public static Object cloneArrayWithImpreciseStampInlinedGeneric(Integer[] inputArray, int count) {
+        Integer[] array = inputArray;
+        for (int j = 0; j < count; j++) {
+            for (int i = 0; i < j; i++) {
+                if (i > 3) {
+                    array = new Integer[i];
+                    array[i - 1] = i;
+                }
+                GraalDirectives.controlFlowAnchor();
+            }
+            GraalDirectives.controlFlowAnchor();
+        }
+        return cloneArrayGeneric(array);
+    }
+
+    @Test
+    public void testCloneArrayWithImpreciseStampInlinedGeneric() {
+        test("cloneArrayWithImpreciseStampInlinedGeneric", new Integer[]{1, 2, 3, 4}, ARRAY.length);
     }
 }
