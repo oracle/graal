@@ -82,6 +82,7 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.jfr.JfrGCWhen;
 import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.events.AllocationRequiringGCEvent;
+import com.oracle.svm.core.jfr.events.ObjectCountEventSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.os.CommittedMemoryProvider;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
@@ -177,7 +178,7 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = "Avoid races with other threads that also try to trigger a GC")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of garbage collection.")
-    boolean collectWithoutAllocating(GCCause cause, boolean forceFullGC) {
+    public boolean collectWithoutAllocating(GCCause cause, boolean forceFullGC) {
         VMError.guarantee(!hasNeverCollectPolicy());
 
         int size = SizeOf.get(CollectionVMOperationData.class);
@@ -244,6 +245,7 @@ public final class GCImpl implements GC {
             }
         } finally {
             JfrGCEvents.emitGarbageCollectionEvent(getCollectionEpoch(), cause, startTicks);
+            ObjectCountEventSupport.emitEvents((int) getCollectionEpoch().rawValue(), startTicks);
         }
         return outOfMemory;
     }

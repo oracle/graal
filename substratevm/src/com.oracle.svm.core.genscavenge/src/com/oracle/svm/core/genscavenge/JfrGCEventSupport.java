@@ -25,10 +25,12 @@
  */
 package com.oracle.svm.core.genscavenge;
 
+import jdk.jfr.FlightRecorder;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
@@ -136,6 +138,18 @@ class JfrGCEventSupport {
         assert currentPhase > 0;
         return --currentPhase;
     }
+
+    public static RuntimeSupport.Hook startupHook() {
+        return isFirstIsolate -> {
+            FlightRecorder.addPeriodicEvent(EveryChunkNativeGCPeriodicEvents.class, EveryChunkNativeGCPeriodicEvents::emit);
+        };
+    }
+
+    public static RuntimeSupport.Hook shutdownHook() {
+        return isFirstIsolate -> {
+            FlightRecorder.removePeriodicEvent(EveryChunkNativeGCPeriodicEvents::emit);
+        };
+    }
 }
 
 @AutomaticallyRegisteredFeature
@@ -150,6 +164,10 @@ class JfrGCEventFeature implements InternalFeature {
         if (HasJfrSupport.get()) {
             JfrGCName name = JfrGCNames.singleton().addGCName("serial");
             ImageSingletons.add(JfrGCEventSupport.class, new JfrGCEventSupport(name));
+
+            RuntimeSupport runtime = RuntimeSupport.getRuntimeSupport();
+            runtime.addStartupHook(JfrGCEventSupport.startupHook());
+            runtime.addShutdownHook(JfrGCEventSupport.shutdownHook());
         }
     }
 }

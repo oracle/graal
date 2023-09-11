@@ -35,7 +35,10 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.thread.VMOperation;
 import org.graalvm.nativeimage.StackValue;
 
-/** This class is used for both jdk.ObjectCount and jdk.ObjectCountAfterGC since they contain identical information.*/
+/**
+ * This class is used for both jdk.ObjectCount and jdk.ObjectCountAfterGC since they contain
+ * identical information.
+ */
 public class ObjectCountEvents {
     public static void emit(JfrEvent eventType, long startTick, long traceId, long count, long size, int gcId) {
         assert VMOperation.isInProgressAtSafepoint();
@@ -45,8 +48,8 @@ public class ObjectCountEvents {
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void emit0(JfrEvent eventType, long startTick,  long traceId, long count, long size, int gcId) {
-        if (eventType.shouldEmit()){
+    public static void emit0(JfrEvent eventType, long startTick, long traceId, long count, long size, int gcId) {
+        if (eventType.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
             JfrNativeEventWriter.beginSmallEvent(data, eventType);

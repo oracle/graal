@@ -49,6 +49,7 @@ public class GCCause {
     @DuplicatedInNativeCode public static final GCCause HintedGC = new GCCause("Hinted GC", 3);
     @DuplicatedInNativeCode public static final GCCause JvmtiForceGC = new GCCause("JvmtiEnv ForceGarbageCollection", 4);
     @DuplicatedInNativeCode public static final GCCause HeapDump = new GCCause("Heap Dump Initiated GC ", 5);
+    @DuplicatedInNativeCode public static final GCCause JfrObjectCount = new GCCause("Required for JFR object counting", 6);
 
     @UnknownObjectField(availability = ReadyForCompilation.class) protected static GCCause[] GCCauses;
 

@@ -1,5 +1,6 @@
 /*
  * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Red Hat Inc. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,7 +23,8 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jfr.events;
+
+package com.oracle.svm.core.jfr.utils;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import org.graalvm.compiler.api.replacements.Fold;
@@ -32,23 +34,24 @@ import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.WordFactory;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
-import com.oracle.svm.core.jfr.events.PointerArray;
 
 public class PointerArrayAccess {
-    public static void initialize(PointerArray array, int initialCapacity) {
+    public static boolean initialize(PointerArray array, int initialCapacity) {
         WordPointer newData = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(WordFactory.unsigned(initialCapacity).multiply(wordSize()));
-// UnmanagedMemoryUtil.fill((Pointer) newData, WordFactory.unsigned(initialCapacity), (byte) 0);
-// TODO newData may be null
+        if (newData.isNull()) {
+            return false;
+        }
         array.setData(newData);
-        for (int i = 0; i < initialCapacity; i++) { // TODO why does this loop make any difference?
+        for (int i = 0; i < initialCapacity; i++) {
             array.getData().addressOf(i).write(WordFactory.nullPointer());
         }
         array.setSize(initialCapacity);
+        return true;
     }
 
     public static PointerBase get(PointerArray array, int i) {
         assert i >= 0 && i < array.getSize();
-        return array.getData().addressOf(i).read();//*** compute address of i'th element. Read the value of that address (which is a pointer to c struct)
+        return array.getData().addressOf(i).read();
     }
 
     public static void write(PointerArray array, int i, WordBase word) {
@@ -57,11 +60,11 @@ public class PointerArrayAccess {
     }
 
     public static void freeData(PointerArray array) {
-        if (array.isNull()) {
+        if (array.isNull() || array.getData().isNull()) {
             return;
         }
         for (int i = 0; i < array.getSize(); i++) {
-            PointerBase ptr = com.oracle.svm.core.jfr.events.PointerArrayAccess.get(array, i);
+            PointerBase ptr = PointerArrayAccess.get(array, i);
             if (ptr.isNonNull()) {
                 ImageSingletons.lookup(UnmanagedMemorySupport.class).free(ptr);
             }
