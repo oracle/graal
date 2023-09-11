@@ -187,10 +187,9 @@ public final class PolyglotImpl extends AbstractPolyglotImpl {
     public Object initializeModuleToUnnamedAccess(Lookup unnamedLookup, Object unnamedAccess, Object unnamedAPIAccess, Object unnamedIOAccess, Object unnamedManagementAccess) {
         ModuleToUnnamedBridge bridge = ModuleToUnnamedBridge.create(unnamedLookup, unnamedAccess, unnamedAPIAccess, unnamedIOAccess, unnamedManagementAccess);
         AbstractPolyglotImpl impl = getRootImpl();
-        initializeModuleToUnnamedBridge(impl, bridge);
-        while (impl != this) {
-            impl = impl.getNext();
+        while (impl != null) {
             initializeModuleToUnnamedBridge(impl, bridge);
+            impl = impl.getNextOrNull();
         }
         return bridge.getModuleAccess();
     }
