@@ -400,8 +400,10 @@ public class Linker {
                     boolean shared) {
         final String importedModuleName = importDescriptor.moduleName;
         final String importedMemoryName = importDescriptor.memberName;
+        // Special import of main module memory into WASI built-in module.
+        final boolean importsMainMemory = instance.module().isBuiltin() && importedModuleName.equals("main") && importedMemoryName.equals("memory");
         final Runnable resolveAction = () -> {
-            final WasmInstance importedInstance = context.lookupModuleInstance(importedModuleName);
+            final WasmInstance importedInstance = importsMainMemory ? context.lookupMainModule() : context.lookupModuleInstance(importedModuleName);
             if (importedInstance == null) {
                 throw WasmException.create(Failure.UNKNOWN_IMPORT, String.format("The module '%s', referenced in the import of memory '%s' in module '%s', does not exist",
                                 importedModuleName, importedMemoryName, instance.name()));
