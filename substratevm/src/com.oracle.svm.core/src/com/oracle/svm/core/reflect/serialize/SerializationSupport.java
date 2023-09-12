@@ -31,15 +31,16 @@ import java.io.Serializable;
 import java.lang.invoke.SerializedLambda;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Modifier;
-import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
 public class SerializationSupport implements SerializationRegistry {
@@ -114,11 +115,11 @@ public class SerializationSupport implements SerializationRegistry {
         }
     }
 
-    private final Map<SerializationLookupKey, Object> constructorAccessors;
+    private final EconomicMap<SerializationLookupKey, Object> constructorAccessors;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public SerializationSupport(Constructor<?> stubConstructor) {
-        constructorAccessors = new ConcurrentHashMap<>();
+        constructorAccessors = ImageHeapMap.create();
         this.stubConstructor = stubConstructor;
     }
 

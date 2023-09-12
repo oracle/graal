@@ -715,6 +715,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     }
 
     @Override
+    public void beforeHeapLayout(BeforeHeapLayoutAccess a) {
+        super.beforeHeapLayoutHelper(a);
+    }
+
+    @Override
     public void afterHeapLayout(AfterHeapLayoutAccess a) {
         afterHeapLayoutHelper(a);
     }

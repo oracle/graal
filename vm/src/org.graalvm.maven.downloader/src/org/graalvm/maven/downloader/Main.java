@@ -106,7 +106,8 @@ public class Main {
 
         if (repoUrl == null) {
             repoUrl = OptionProperties.getDefaultRepo();
-        } else if (!repoUrl.endsWith("/")) {
+        }
+        if (!repoUrl.endsWith("/")) {
             repoUrl = repoUrl + "/";
         }
         if (outputDir == null) {

@@ -28,9 +28,9 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -40,6 +40,7 @@ import com.oracle.graal.pointsto.infrastructure.SubstitutionProcessor;
 import com.oracle.svm.core.jfr.JfrEventWriterAccess;
 import com.oracle.svm.core.jfr.JfrJavaEvents;
 import com.oracle.svm.core.jfr.JfrJdkCompatibility;
+import com.oracle.svm.core.util.ObservableImageHeapMapProvider;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
@@ -63,7 +64,7 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
     private final ConcurrentHashMap<ResolvedJavaType, Boolean> typeSubstitution;
     private final ConcurrentHashMap<ResolvedJavaMethod, ResolvedJavaMethod> methodSubstitutions;
     private final ConcurrentHashMap<ResolvedJavaField, ResolvedJavaField> fieldSubstitutions;
-    private final EconomicMap<String, Class<? extends jdk.jfr.Event>> mirrorEventMapping;
+    private final Map<String, Class<? extends jdk.jfr.Event>> mirrorEventMapping;
 
     JfrEventSubstitution(MetaAccessProvider metaAccess) {
         baseEventType = metaAccess.lookupJavaType(jdk.internal.event.Event.class);
@@ -225,8 +226,8 @@ public class JfrEventSubstitution extends SubstitutionProcessor {
      * mirror event is registered as well. Otherwise, incorrect JFR metadata would be emitted.
      */
     @SuppressWarnings("unchecked")
-    private static EconomicMap<String, Class<? extends jdk.jfr.Event>> createMirrorEventsMapping() {
-        EconomicMap<String, Class<? extends jdk.jfr.Event>> result = EconomicMap.create();
+    private static Map<String, Class<? extends jdk.jfr.Event>> createMirrorEventsMapping() {
+        Map<String, Class<? extends jdk.jfr.Event>> result = ObservableImageHeapMapProvider.create();
         Class<? extends Annotation> mirrorEventAnnotationClass = (Class<? extends Annotation>) ReflectionUtil.lookupClass(false, "jdk.jfr.internal.MirrorEvent");
         Class<?> jdkEventsClass = ReflectionUtil.lookupClass(false, "jdk.jfr.internal.instrument.JDKEvents");
         Class<?>[] mirrorEventClasses = ReflectionUtil.readStaticField(jdkEventsClass, "mirrorEventClasses");

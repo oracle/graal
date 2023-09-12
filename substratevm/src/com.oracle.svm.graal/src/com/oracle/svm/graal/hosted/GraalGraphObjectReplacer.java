@@ -41,7 +41,7 @@ import org.graalvm.compiler.hotspot.SnippetResolvedJavaType;
 import org.graalvm.compiler.nodes.FieldLocationIdentity;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
-import org.graalvm.nativeimage.hosted.Feature.CompilationAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -465,7 +465,7 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         }
     }
 
-    public void registerImmutableObjects(CompilationAccess access) {
+    public void registerImmutableObjects(BeforeHeapLayoutAccess access) {
         for (SubstrateMethod method : methods.values()) {
             access.registerAsImmutable(method);
             access.registerAsImmutable(method.getRawImplementations());
