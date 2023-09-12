@@ -206,6 +206,7 @@
     "gate-compiler-test_zgc-labsjdk-21-darwin-aarch64": t("1:00:00"),
 
     "gate-compiler-style-labsjdk-21-linux-amd64": t("45:00"),
+    "gate-compiler-build-labsjdk-latest-linux-amd64": t("25:00"),
 
     "gate-compiler-ctw-labsjdk-21-linux-amd64": c.mach5_target,
     "gate-compiler-ctw-labsjdk-21-windows-amd64": t("1:50:00"),
@@ -436,10 +437,16 @@
   ],
 
   local style_builds = [self.make_build("21", "linux-amd64", "style").build + {
-    environment+: {
-      # Run the strict JVMCI version check, i.e., that JVMCIVersionCheck.JVMCI_MIN_VERSION matches the versions in common.json.
-      JVMCI_VERSION_CHECK: "strict",
-    }
+      environment+: {
+        # Run the strict JVMCI version check, i.e., that JVMCIVersionCheck.JVMCI_MIN_VERSION matches the versions in common.json.
+        JVMCI_VERSION_CHECK: "strict",
+      },
+  }],
+  local jdk_latest_version_check_builds = [self.make_build("Latest", "linux-amd64", "build", extra_tasks={build:: s.base("build"),}).build + {
+      environment+: {
+        # Run the strict JVMCI version check, i.e., that JVMCIVersionCheck.JVMCI_MIN_VERSION matches the versions in common.json.
+        JVMCI_VERSION_CHECK: "strict",
+      },
   }],
 
   # Builds run on only on linux-amd64-jdk21Debug
@@ -455,6 +462,7 @@
     all_zgc_builds +
     all_serialgc_builds +
     style_builds +
+    jdk_latest_version_check_builds +
     linux_amd64_jdk21_builds +
     linux_amd64_jdk21Debug_builds,
 
