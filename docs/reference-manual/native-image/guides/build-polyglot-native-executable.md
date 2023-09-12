@@ -52,7 +52,7 @@ Copy paste the following content into the file:
           <version>${graalvm.version}</version>
       </dependency>
       ```
-    - To enable Java on Truffle:
+    - To enable Javascript:
       ```xml
       <dependency>
           <groupId>org.graalvm.polyglot</groupId>

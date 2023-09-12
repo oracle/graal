@@ -60,6 +60,7 @@ Using a host Ruby application that embeds some Java, you will now dump compiler 
       payload: (1..10).to_a
     }
     encoded = JSON.dump(obj)
+    js_obj = Polyglot.eval('js', 'JSON.parse').call(encoded)
     puts js_obj[:time]
     puts js_obj[:msg]
     puts js_obj[:payload].join(' ')
