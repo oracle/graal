@@ -1142,8 +1142,7 @@ def _check_latest_jvmci_version():
     ``common.json`` file and issues a warning if not.
     """
     jvmci_re = re.compile(r'(?:ce|ee)-(?P<jdk_version>.+)-jvmci(?:-(?P<jvmci_major>\d+)\.(?P<jvmci_minor>\d+))?-b(?P<jvmci_build>\d+)')
-    suite = mx.suite('graal-enterprise', fatalIfMissing=False) or _suite
-    common_path = join(suite.dir, '..', 'common.json')
+    common_path = join(_suite.dir, '..', 'common.json')
 
     if _jdk_jvmci_version is None:
         # Not using a JVMCI JDK
@@ -1164,7 +1163,7 @@ def _check_latest_jvmci_version():
                 current = (JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
                 if current[0] == _jdk_jvmci_version[0]:
                     # only compare the same major versions
-                    if isinstance(latest, str):
+                    if latest == 'not found':
                         latest = current
                     elif latest != current:
                         # All JVMCI JDKs in common.json with the same major version
