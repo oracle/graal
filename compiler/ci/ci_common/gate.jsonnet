@@ -295,7 +295,7 @@
              dailies_manifest=dailies,
              weeklies_manifest=weeklies,
              monthlies_manifest=monthlies):: {
-    local base_name = "%s-%s-%s-%s-%s" % [suite, task, jdk_name, jdk, os_arch],
+    local base_name = "%s-%s-%s-%s-%s" % [suite, task, jdk_name, if std.startsWith(jdk, "Latest") then "l" + jdk[1:] else jdk, os_arch],
     local gate_name = "gate-" + base_name,
     local daily_name = "daily-" + base_name,
     local weekly_name = "weekly-" + base_name,

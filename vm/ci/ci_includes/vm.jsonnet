@@ -8,7 +8,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
 {
   vm_java_21:: graal_common.labsjdk21 + vm_common.vm_env_mixin('21'),
-  vm_java_22:: graal_common.oraclejdk22 + vm_common.vm_env_mixin('22'),
+  vm_java_Latest::
+    local jdk = graal_common.labsjdkLatest;
+    jdk + vm_common.vm_env_mixin(std.toString(jdk.jdk_version)),
 
   vm_java_21_llvm:: self.vm_java_21 + graal_common['labsjdk-ce-21-llvm'],
 
