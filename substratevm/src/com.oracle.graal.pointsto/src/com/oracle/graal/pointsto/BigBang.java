@@ -58,7 +58,7 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
  *
  * @see PointsToAnalysis
  */
-public interface BigBang extends ReachabilityAnalysis, HeapScanning {
+public interface BigBang extends ReachabilityAnalysis {
     HostVM getHostVM();
 
     UnsupportedFeatures getUnsupportedFeatures();
