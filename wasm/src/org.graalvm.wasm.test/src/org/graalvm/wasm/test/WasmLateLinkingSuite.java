@@ -82,7 +82,7 @@ public class WasmLateLinkingSuite {
         final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", textWithExportFun));
         final ByteSequence binaryMain = ByteSequence.create(compileWat("file1", textWithImportFunExportFun));
         final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "m1").build();
-        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "m2").build();
+        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "main").build();
         try (Context context = Context.newBuilder(WasmLanguage.ID).build()) {
             context.eval(sourceMain); // main
             context.eval(sourceAux); // m1
@@ -96,7 +96,7 @@ public class WasmLateLinkingSuite {
         final ByteSequence binaryAux = ByteSequence.create(compileWat("file1", textWithExportFun));
         final ByteSequence binaryMain = ByteSequence.create(compileWat("file1", textWithImportFunExportFun));
         final Source sourceAux = Source.newBuilder(WasmLanguage.ID, binaryAux, "m1").build();
-        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "m2").build();
+        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "main").build();
         try (Engine engine = Engine.create()) {
             for (int i = 0; i < N_CONTEXTS; i++) {
                 try (Context context = Context.newBuilder(WasmLanguage.ID).engine(engine).build()) {
@@ -116,7 +116,7 @@ public class WasmLateLinkingSuite {
         final ByteSequence binaryMain = ByteSequence.create(compileWat("file0", textWithImportFunExportFun));
         final ByteSequence binaryAux1 = ByteSequence.create(compileWat("file1", textWithExportFun));
         final ByteSequence binaryAux2 = ByteSequence.create(compileWat("file1", textWithExportFun2));
-        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "m0").build();
+        final Source sourceMain = Source.newBuilder(WasmLanguage.ID, binaryMain, "main").build();
         final Source sourceAux1 = Source.newBuilder(WasmLanguage.ID, binaryAux1, "m1").build();
         final Source sourceAux2 = Source.newBuilder(WasmLanguage.ID, binaryAux2, "m1").build();
         try (Engine engine = Engine.create()) {
@@ -259,7 +259,7 @@ public class WasmLateLinkingSuite {
                         (module
                         (type (func (param i32) (result i32)))
                         (type (func (result i32)))
-                        (import "main" "table" (table 1 1 funcref))
+                        (import "exportModule" "table" (table 1 1 funcref))
                         (func (type 0) (param i32) (result i32) local.get 0 call_indirect (type 1))
                         (export "testFunc" (func 0))
                         )
