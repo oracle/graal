@@ -96,11 +96,13 @@ public final class ObjectCloneNode extends BasicObjectCloneNode {
         StructuredGraph replacementGraph = getLoweredSnippetGraph(tool);
 
         if (replacementGraph != null) {
-            // Replace this node with an invoke but disable verification of the stamp since the
-            // invoke only exists for the purpose of performing the inling.
+            /*
+             * Replace this node with an invoke for inlining. Verify the stamp, it must be in sync
+             * with the cloned object's stamp.
+             */
             InvokeNode invoke;
             try (InliningLog.UpdateScope updateScope = InliningLog.openUpdateScopeTrackingReplacement(graph().getInliningLog(), this)) {
-                invoke = createInvoke(false);
+                invoke = createInvoke(true);
                 graph().replaceFixedWithFixed(this, invoke);
             }
 
