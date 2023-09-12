@@ -12,8 +12,6 @@ This includes languages like C/C++, Fortran and others.
 In contrast to static compilation that is normally used for LLVM-based languages, GraalVM's implementation of the `lli` tool first interprets LLVM bitcode and then dynamically compiles the hot parts of the program using the Graal compiler.
 This allows seamless interoperability with the dynamic languages supported by GraalVM.
 
-> Note: The LLVM runtime and the LLVM toolchain are deprecated for removal in GraalVM for JDK 23.
-
 ## Install LLVM Runtime
 
 Since GraalVM 22.2, the LLVM runtime is packaged in a separate GraalVM component. It can be installed with GraalVM Updater:
