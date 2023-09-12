@@ -64,7 +64,7 @@ Hello, World!
 ## Debugging the Runtime
 
 For debugging the internals of the runtime, it is recommended to run the GraalVM
-LLVM runtime in the JVM mode (from a JVM standalone). Then a regular Java debugger can be
+LLVM runtime in JVM mode (i.e., from a JVM standalone). Then a regular Java debugger can be
 attached.
 
 If running with `mx`, the `-d` option can be used to enable debugging:
