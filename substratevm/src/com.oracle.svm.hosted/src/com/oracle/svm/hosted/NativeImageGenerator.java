@@ -688,6 +688,10 @@ public class NativeImageGenerator {
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
                 BuildPhaseProvider.markCompilationFinished();
             }
+
+            /* Re-run shadow heap verification after compilation. */
+            aUniverse.getHeapVerifier().checkHeapSnapshot(hMetaAccess, compilationExecutor, "after compilation");
+
             CodeCacheProvider codeCacheProvider = runtimeConfiguration.getBackendForNormalMethod().getProviders().getCodeCache();
             reporter.printCreationStart();
             try (Indent indent = debug.logAndIndent("create native image")) {
@@ -703,6 +707,9 @@ public class NativeImageGenerator {
 
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
+
+                        /* Re-run shadow heap verification after heap layout. */
+                        aUniverse.getHeapVerifier().checkHeapSnapshot(hMetaAccess, compilationExecutor, "after heap layout");
 
                         createAbstractImage(k, hostedEntryPoints, heap, hMetaAccess, codeCache);
 

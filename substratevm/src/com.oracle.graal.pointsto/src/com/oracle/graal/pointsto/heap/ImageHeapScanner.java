@@ -522,15 +522,7 @@ public abstract class ImageHeapScanner {
         return constantReflection.readFieldValue(field, receiver);
     }
 
-    protected boolean skipScanning() {
-        return false;
-    }
-
     public void rescanRoot(Field reflectionField) {
-        if (skipScanning()) {
-            return;
-        }
-
         maybeRunInExecutor(unused -> {
             AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
             if (type.isReachable()) {
@@ -546,9 +538,6 @@ public abstract class ImageHeapScanner {
     }
 
     public void rescanField(Object receiver, Field reflectionField) {
-        if (skipScanning()) {
-            return;
-        }
         maybeRunInExecutor(unused -> {
             AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
             if (type.isReachable()) {
@@ -618,9 +607,6 @@ public abstract class ImageHeapScanner {
      * Add the object to the image heap.
      */
     public void rescanObject(Object object, ScanReason reason) {
-        if (skipScanning()) {
-            return;
-        }
         if (object == null) {
             return;
         }

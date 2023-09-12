@@ -49,6 +49,8 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     private MethodTypeFlow typeFlow;
+    /** The parsing context in which given method was parsed, preserved after analysis. */
+    private final Object parsingReason;
 
     private Set<InvokeTypeFlow> invokedBy;
     private Set<InvokeTypeFlow> implementationInvokedBy;
@@ -69,11 +71,13 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
     public PointsToAnalysisMethod(AnalysisUniverse universe, ResolvedJavaMethod wrapped) {
         super(universe, wrapped, MultiMethod.ORIGINAL_METHOD, null);
         typeFlow = declaringClass.universe.analysisPolicy().createMethodTypeFlow(this);
+        parsingReason = typeFlow.getParsingReason();
     }
 
     private PointsToAnalysisMethod(AnalysisMethod original, MultiMethodKey multiMethodKey) {
         super(original, multiMethodKey);
         typeFlow = declaringClass.universe.analysisPolicy().createMethodTypeFlow(this);
+        parsingReason = typeFlow.getParsingReason();
     }
 
     @Override
@@ -149,7 +153,7 @@ public final class PointsToAnalysisMethod extends AnalysisMethod {
 
     @Override
     public Object getParsingReason() {
-        return typeFlow.getParsingReason();
+        return parsingReason;
     }
 
     public InvokeTypeFlow initAndGetContextInsensitiveInvoke(PointsToAnalysis bb, BytecodePosition originalLocation, boolean isSpecial, MultiMethodKey callerMultiMethodKey) {
