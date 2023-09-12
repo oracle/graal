@@ -171,10 +171,10 @@ public class GraalCompiler {
                 if (r.verifySourcePositions) {
                     assert r.graph.verifySourcePositions(true);
                 }
+                checkForRequestedCrash(r.graph);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
-            checkForRequestedCrash(r.graph);
             checkForRequestedDelay(r.graph);
             return r.compilationResult;
         }
