@@ -90,8 +90,6 @@ public final class WasmScope implements TruffleObject {
         Object value = instances.get(member);
         if (value != null) {
             return value;
-        } else if (context.hasMainModule() && "main".equals(member)) {
-            return context.lookupMainModule();
         }
         throw UnknownIdentifierException.create(member);
     }
@@ -100,21 +98,14 @@ public final class WasmScope implements TruffleObject {
     @CompilerDirectives.TruffleBoundary
     boolean isMemberReadable(String member) {
         var instances = instances();
-        return instances.containsKey(member) || (context.hasMainModule() && "main".equals(member));
+        return instances.containsKey(member);
     }
 
     @ExportMessage
     @CompilerDirectives.TruffleBoundary
     Object getMembers(@SuppressWarnings("unused") boolean includeInternal) {
         var instances = instances();
-        String[] keys;
-        if (!context.hasMainModule() || instances.containsKey("main")) {
-            keys = instances.keySet().toArray(new String[instances.size()]);
-        } else {
-            keys = new String[instances.size() + 1];
-            instances.keySet().toArray(keys);
-            keys[instances.size()] = "main";
-        }
+        String[] keys = instances.keySet().toArray(new String[instances.size()]);
         return new InstanceNamesObject(keys);
     }
 
