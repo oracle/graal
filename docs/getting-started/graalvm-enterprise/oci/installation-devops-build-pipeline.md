@@ -27,7 +27,7 @@ The DevOps CI/CD platform reads the file and runs the commands one by one.
 You do not need to run a YUM package manager command manually.
 
 RPMs for Oracle GraalVM are available with the package names `graalvm-17-native-image`, `graalvm-20-native-image`, and `graalvm-21-native-image`. 
-Each package includes both JDK and Natime Image.
+Each package includes the JDK and Native Image.
 
 To install and use Oracle GraalVM in your DevOps Build Pipeline, update your build specification file as shown in the following example.
 

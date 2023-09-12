@@ -17,7 +17,7 @@ To replicate the steps in this guide, [create a Compute instance and connect to 
 ## Install Oracle GraalVM
 
 For convenience, Oracle GraalVM RPMs are available in the Oracle YUM repository.
-RPMs for Oracle GraalVM for JDK 17, Oracle GraalVM for JDK 20, and Oracle GraalVM for JDK 21 are available with the package names `graalvm-17-native-image`, `graalvm-20-native-image`, and `graalvm-21-native-image` respectively.
+RPMs for Oracle GraalVM for JDK 17, Oracle GraalVM for JDK 20, and Oracle GraalVM for JDK 21 are available with the package names `graalvm-17-native-image`, `graalvm-20-native-image`, and `graalvm-21-native-image`, respectively.
 These Oracle GraalVM distributions include a JDK and Natime Image.
 Each Oracle GraalVM RPM is self-contained and all required dependencies will be automatically resolved during the installation.
 
@@ -114,7 +114,7 @@ Now you have a ready-to-go OCI Compute instance with Oracle GraalVM installed.
 
 ## Install Additional Features
 
-Oracle GraalVM provides more technologies such as the Javascript runtime, Java on Truffle, etc., each of which can be installed as an add-on.
+Oracle GraalVM provides more technologies such as the Javascript runtime and Java on Truffle, each of which can be installed separately.
 
 1. Check what additional features are available for your current Oracle GraalVM installation:
 

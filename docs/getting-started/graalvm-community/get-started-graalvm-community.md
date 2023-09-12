@@ -72,8 +72,8 @@ Larger Java examples can be found in the [GraalVM Demos repository on GitHub](ht
 
 ### Advanced Users
 
-Developers who are more experienced with GraalVM or want to do more with GraalVM can proceed directly to [Reference Manuals](../../reference-manual/reference-manuals.md) for in-depth documentation. 
+Developers who are more experienced with GraalVM or want to do more with GraalVM can proceed directly to [Reference Manuals](../../reference-manual/reference-manuals.md) for in-depth documentation.
 
-You can find information on GraalVM's security model in the [Security Guide](../../security/security-guide.md), rich API documentation in the [GraalVM SDK Javadoc](https://www.graalvm.org/sdk/javadoc/) and [Truffle Javadoc](https://www.graalvm.org/truffle/javadoc/).
+You can find information on GraalVM's security model in the [Security Guide](../../security/security-guide.md), and rich API documentation in the [GraalVM SDK Javadoc](https://www.graalvm.org/sdk/javadoc/) and [Truffle Javadoc](https://www.graalvm.org/truffle/javadoc/).
 
 We also recommend checking our [GraalVM Team Blog](https://medium.com/graalvm).
