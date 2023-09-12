@@ -78,7 +78,47 @@ def get_vm_prefix(asList=True):
 #: The JDK used to build and run Graal.
 jdk = mx.get_jdk(tag='default')
 
-#: 3-tuple (major, minor, build) of JVMCI version, if any, denoted by `jdk`
+
+class JavaLangRuntimeVersion(mx.Comparable):
+    """Wrapper for by java.lang.Runtime.Version"""
+
+    _cmp_cache = {}
+
+    def __init__(self, version, jdk=None):
+        self.version = version
+        self.jdk = jdk or mx.get_jdk()
+
+    def __str__(self):
+        return self.version
+
+    def __cmp__(self, other):
+        if not isinstance(other, JavaLangRuntimeVersion):
+            raise TypeError(f'Cannot compare {JavaLangRuntimeVersion.__name__} to {type(other).__name__}')
+        this_version = self.version
+        other_version = other.version
+        return JavaLangRuntimeVersion.compare(this_version, other_version, jdk)
+
+    @staticmethod
+    def compare(this_version, other_version, jdk):
+        if this_version == other_version:
+            return 0
+        key = (this_version, other_version)
+        cached = JavaLangRuntimeVersion._cmp_cache.get(key, None)
+        if cached is not None:
+            return cached
+        source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'org', 'graalvm', 'compiler',
+                           'hotspot',
+                           'JVMCIVersionCompare.java')
+        out = mx.OutputCapture()
+        mx.run([jdk.java, '-Xlog:disable', source_path, this_version, other_version], out=out)
+        ret = int(out.data)
+        JavaLangRuntimeVersion._cmp_cache[key] = ret
+        return ret
+
+
+#: 4-tuple (jdk_version, jvmci_major, jvmci_minor, jvmci_build) of JVMCI version, if any, denoted by `jdk`
+# jdk_version is a JavaLangRuntimeVersion
+# jvmci_major and jvmci_minor might be 0 if not needed (JDK 22+)
 _jdk_jvmci_version = None
 _jdk_min_jvmci_version = None
 
@@ -95,7 +135,8 @@ def _check_jvmci_version(jdk):
         _run_jvmci_version_check(args, jdk=jdk, out=out)
         if out.data:
             try:
-                return tuple([int(jdk.version.versionString)] + [int(n) for n in out.data.split(',')])
+                (jdk_version, jvmci_major, jvmci_minor, jvmci_build) = out.data.split(',')
+                return (JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
             except ValueError:
                 mx.warn(f'Could not parse jvmci version from JVMCIVersionCheck output:\n{out.data}')
             return None
@@ -1100,7 +1141,7 @@ def _check_latest_jvmci_version():
     the JVMCI version of the JVMCI JDKs in the "jdks" section of the
     ``common.json`` file and issues a warning if not.
     """
-    jvmci_re = re.compile(r'(?:ce|ee)-(\d+).*-jvmci-(\d+)\.(\d+)-b(\d+)')
+    jvmci_re = re.compile(r'(?:ce|ee)-(?P<jdk_version>.+)-jvmci(?:-(?P<jvmci_major>\d+)\.(?P<jvmci_minor>\d+))?-b(?P<jvmci_build>\d+)')
     suite = mx.suite('graal-enterprise', fatalIfMissing=False) or _suite
     common_path = join(suite.dir, '..', 'common.json')
 
@@ -1116,7 +1157,11 @@ def _check_latest_jvmci_version():
         for distribution in common_cfg['jdks']:
             version = common_cfg['jdks'][distribution].get('version', None)
             if version and '-jvmci-' in version:
-                current = tuple(int(n) for n in jvmci_re.match(version).group(1, 2, 3, 4))
+                match = jvmci_re.match(version)
+                if not match:
+                    mx.abort(f'Cannot parse version {version}')
+                (jdk_version, jvmci_major, jvmci_minor, jvmci_build) = match.groups(default=0)
+                current = (JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
                 if current[0] == _jdk_jvmci_version[0]:
                     # only compare the same major versions
                     if isinstance(latest, str):
@@ -1130,8 +1175,11 @@ def _check_latest_jvmci_version():
         return not isinstance(latest, str), latest
 
     def jvmci_version_str(version):
-        jdk_major, major, minor, build = version
-        return f'labsjdk-(ce|ee)-{jdk_major}-jvmci-{major}.{minor}-b{build:02d}'
+        jdk_major, jdk_build, jvmci_major, jvmci_minor, jvmci_build = version
+        if jvmci_major == 0:
+            return f'labsjdk-(ce|ee)-{jdk_major}+{jdk_build}-jvmci-b{jvmci_build:02d}'
+        else:
+            return f'labsjdk-(ce|ee)-{jdk_major}+{jdk_build}-jvmci-{jvmci_major}.{jvmci_minor}-b{jvmci_build:02d}'
 
     version_check_setting = os.environ.get('JVMCI_VERSION_CHECK', None)
 
