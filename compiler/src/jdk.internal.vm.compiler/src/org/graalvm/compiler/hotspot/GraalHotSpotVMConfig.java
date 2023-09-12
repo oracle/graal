@@ -105,6 +105,11 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return selected;
     }
 
+    /**
+     * Determines if {@code -Xcomp} (or the equivalent thereof) was specified as a JVM argument.
+     */
+    public final boolean xcompMode = !access.getFlag("UseInterpreter", Boolean.class);
+
     public final boolean ropProtection = access.getFieldValue("VM_Version::_rop_protection", Boolean.class, "bool", false);
 
     public final boolean cAssertions = getConstant("ASSERT", Boolean.class);

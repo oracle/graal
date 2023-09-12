@@ -33,7 +33,7 @@ suite = {
                 "name": "graal-nodejs",
                 "subdir": True,
                 "dynamic": True,
-                "version": "39d8f35138f892aeb200e9a8ed43f5533f3c4d31",
+                "version": "42faffdba5c047ffbfb922a8ac5a7a8803dcdc52",
                 "urls" : [
                     {"url" : "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -42,7 +42,7 @@ suite = {
                 "name": "graal-js",
                 "subdir": True,
                 "dynamic": True,
-                "version": "39d8f35138f892aeb200e9a8ed43f5533f3c4d31",
+                "version": "42faffdba5c047ffbfb922a8ac5a7a8803dcdc52",
                 "urls": [
                     {"url": "https://github.com/graalvm/graaljs.git", "kind" : "git"},
                 ]
@@ -57,7 +57,7 @@ suite = {
             },
             {
                 "name": "fastr",
-                "version": "4d2fdc9f4b2a5e6e41c1e55283dbeb174d22f626",
+                "version": "c32d80d9904181b0af617e1ae230ae5cd8183145",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/oracle/fastr.git", "kind": "git"},
@@ -65,7 +65,7 @@ suite = {
             },
             {
                 "name": "graalpython",
-                "version": "cbb9985782bf0f68969ae6f2eb6101fd02eb4db4",
+                "version": "a2317278d32219a79fdf4ded07a9f0ddd6d0490b",
                 "dynamic": True,
                 "urls": [
                     {"url": "https://github.com/graalvm/graalpython.git", "kind": "git"},
@@ -83,19 +83,6 @@ suite = {
     },
 
     "projects": {
-        "org.graalvm.maven.downloader" : {
-            "subDir" : "src",
-            "sourceDirs" : ["src"],
-            "javaCompliance" : "17+",
-            "license" : "UPL",
-            "dependencies": [
-                "sdk:NATIVEIMAGE",
-            ],
-            "requires": [
-                "java.logging",
-                "java.xml",
-            ],
-        },
         "org.graalvm.component.installer" : {
             "subDir" : "src",
             "sourceDirs" : ["src"],
@@ -204,17 +191,6 @@ suite = {
     },
 
     "distributions": {
-        "MAVEN_DOWNLOADER": {
-            "defaultBuild": False,
-            "mainClass": "org.graalvm.maven.downloader.Main",
-            "dependencies": [
-                "org.graalvm.maven.downloader",
-            ],
-            "distDependencies": [
-                "sdk:NATIVEIMAGE",
-            ],
-            "maven": False,
-        },
         "INSTALLER": {
             "subDir": "src",
             "mainClass": "org.graalvm.component.installer.ComponentInstaller",
@@ -245,6 +221,29 @@ suite = {
             "description": "GraalVM Installer support distribution for the GraalVM",
             "layout": {
                 "components/polyglot/.registry" : "string:",
+            },
+            "maven": False,
+        },
+        "INSTALLER_DEPRECATED_GRAALVM_SUPPORT": {
+            "native": True,
+            "description": "Deprecated GraalVM Updater launchers support for the GraalVM",
+            "platformDependent": True,
+            "os": {
+                "linux": {
+                    "layout": {
+                        "bin/gu": "file:mx.vm/gu-deprecated",
+                    },
+                },
+                "darwin": {
+                    "layout": {
+                        "bin/gu": "file:mx.vm/gu-deprecated",
+                    },
+                },
+                "windows": {
+                    "layout": {
+                        "bin/gu.cmd": "file:mx.vm/gu-deprecated.cmd",
+                    },
+                },
             },
             "maven": False,
         },

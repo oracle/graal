@@ -62,6 +62,7 @@ public final class JfrEvent {
     public static final JfrEvent JavaMonitorInflate = create("jdk.JavaMonitorInflate", true);
     public static final JfrEvent ObjectAllocationInNewTLAB = create("jdk.ObjectAllocationInNewTLAB", false);
     public static final JfrEvent GCHeapSummary = create("jdk.GCHeapSummary", false);
+    public static final JfrEvent ThreadAllocationStatistics = create("jdk.ThreadAllocationStatistics", false);
 
     private final long id;
     private final String name;
@@ -92,17 +93,23 @@ public final class JfrEvent {
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean shouldEmit() {
         assert !hasDuration;
-        return shouldEmit0();
+        return shouldEmit0() && !SubstrateJVM.get().isExcluded(Thread.currentThread());
+    }
+
+    @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
+    public boolean shouldEmit(Thread thread) {
+        assert !hasDuration;
+        return shouldEmit0() && !SubstrateJVM.get().isExcluded(thread);
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean shouldEmit(long durationTicks) {
         assert hasDuration;
-        return shouldEmit0() && durationTicks >= SubstrateJVM.get().getThresholdTicks(this);
+        return shouldEmit0() && durationTicks >= SubstrateJVM.get().getThresholdTicks(this) && !SubstrateJVM.get().isExcluded(Thread.currentThread());
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     private boolean shouldEmit0() {
-        return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this) && !SubstrateJVM.get().isCurrentThreadExcluded();
+        return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this);
     }
 }

@@ -91,7 +91,7 @@ final class Target_java_lang_Object {
 
     @Substitute
     @TargetElement(name = "getClass")
-    private Object getClassSubst() {
+    private DynamicHub getClassSubst() {
         return readHub(this);
     }
 
@@ -139,11 +139,12 @@ final class Target_java_lang_Enum {
          * The original implementation creates and caches a HashMap to make the lookup faster. For
          * simplicity, we do a linear search for now.
          */
-        Enum<?>[] enumConstants = DynamicHub.fromClass(enumType).getEnumConstantsShared();
+        Object[] enumConstants = DynamicHub.fromClass(enumType).getEnumConstantsShared();
         if (enumConstants == null) {
             throw new IllegalArgumentException(enumType.getName() + " is not an enum type");
         }
-        for (Enum<?> e : enumConstants) {
+        for (Object o : enumConstants) {
+            Enum<?> e = (Enum<?>) o;
             if (e.name().equals(name)) {
                 return e;
             }

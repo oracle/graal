@@ -375,6 +375,7 @@ class BaseQuarkusBenchmarkSuite(BaseMicroserviceBenchmarkSuite):
                 '-H:+AllowFoldMethods',
                 '-H:-UseServiceLoaderFeature',
                 '-H:+AllowDeprecatedBuilderClassesOnImageClasspath', # needs to be removed once GR-41746 is fixed
+                '-H:+DisableSubstitutionReturnTypeCheck',  # remove once Quarkus fixed their substitutions (GR-48152)
         ]) + super(BaseQuarkusBenchmarkSuite, self).extra_image_build_argument(benchmark, args)
 
 

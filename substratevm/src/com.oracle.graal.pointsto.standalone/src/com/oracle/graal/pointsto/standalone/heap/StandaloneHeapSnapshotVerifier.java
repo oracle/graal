@@ -31,6 +31,7 @@ import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
 import com.oracle.graal.pointsto.heap.ImageHeap;
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
+import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.standalone.StandaloneObjectScanner;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 
@@ -40,7 +41,7 @@ public class StandaloneHeapSnapshotVerifier extends HeapSnapshotVerifier {
     }
 
     @Override
-    protected ObjectScanner installObjectScanner(CompletionExecutor executor) {
+    protected ObjectScanner installObjectScanner(UniverseMetaAccess metaAccess, CompletionExecutor executor) {
         StandaloneImageHeapScanner standaloneImageHeapScanner = (StandaloneImageHeapScanner) this.scanner;
         return new StandaloneObjectScanner(bb, executor, scannedObjects, new ScanningObserver(), standaloneImageHeapScanner.getShouldScanConstant(),
                         standaloneImageHeapScanner.getShouldScanField());

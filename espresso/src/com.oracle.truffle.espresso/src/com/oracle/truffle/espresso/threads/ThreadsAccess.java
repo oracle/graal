@@ -48,6 +48,7 @@ import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
  */
 public final class ThreadsAccess extends ContextAccessImpl implements GuestInterrupter<StaticObject> {
 
+    public static final long ALIVE_EETOP = 0XCAFEBABEL;
     private final Meta meta;
 
     @Override
@@ -133,6 +134,18 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
             StaticObject holder = meta.java_lang_Thread_holder.getObject(thread);
             meta.java_lang_Thread$FieldHolder_priority.setInt(holder, priority);
         }
+    }
+
+    void setEETopAlive(StaticObject thread) {
+        meta.java_lang_Thread_eetop.setLong(thread, ALIVE_EETOP);
+    }
+
+    void setEETopDead(StaticObject thread) {
+        meta.java_lang_Thread_eetop.setLong(thread, 0);
+    }
+
+    long getEETop(StaticObject thread) {
+        return meta.java_lang_Thread_eetop.getLong(thread);
     }
 
     int fromRunnable(StaticObject self, State state) {
@@ -356,6 +369,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         }
         String guestName = getContext().getThreadAccess().getThreadName(guest);
         host.setName(guestName);
+        getThreadAccess().setEETopAlive(guest);
         // Make the thread known to the context
         getContext().registerThread(host, guest);
         setState(guest, State.RUNNABLE.value);
@@ -436,18 +450,25 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
     void terminate(StaticObject thread, DirectCallNode exit) {
         DeprecationSupport support = getDeprecationSupport(thread, true);
         support.exit();
-        if (!getContext().isTruffleClosed()) {
-            try {
-                if (exit == null) {
-                    meta.java_lang_Thread_exit.invokeDirect(thread);
-                } else {
-                    exit.call(thread);
+        long eetop = getEETop(thread);
+        // check eetop to avoid re-executing `exit`
+        if (eetop != 0) {
+            assert eetop == ALIVE_EETOP;
+            if (!getContext().isTruffleClosed()) {
+                try {
+                    if (exit == null) {
+                        meta.java_lang_Thread_exit.invokeDirect(thread);
+                    } else {
+                        exit.call(thread);
+                    }
+                } catch (AbstractTruffleException e) {
+                    // just drop it
                 }
-            } catch (AbstractTruffleException e) {
-                // just drop it
             }
+            setTerminateStatusAndNotify(thread);
+        } else {
+            assert getState(thread) == State.TERMINATED.value;
         }
-        setTerminateStatusAndNotify(thread);
     }
 
     /**
@@ -468,6 +489,7 @@ public final class ThreadsAccess extends ContextAccessImpl implements GuestInter
         guest.getLock(getContext()).lock();
         try {
             setState(guest, State.TERMINATED.value);
+            setEETopDead(guest);
             // Notify waiting threads you are done working
             guest.getLock(getContext()).signalAll();
         } finally {

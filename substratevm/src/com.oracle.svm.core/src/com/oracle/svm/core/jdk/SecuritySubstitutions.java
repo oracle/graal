@@ -169,9 +169,13 @@ final class Target_java_lang_SecurityManager {
 @SuppressWarnings({"static-method", "unused"})
 final class Target_javax_crypto_JceSecurityManager {
     @Substitute
-    Object getCryptoPermission(String var1) {
-        return Target_javax_crypto_CryptoAllPermission.INSTANCE;
+    Target_javax_crypto_CryptoPermission getCryptoPermission(String var1) {
+        return SubstrateUtil.cast(Target_javax_crypto_CryptoAllPermission.INSTANCE, Target_javax_crypto_CryptoPermission.class);
     }
+}
+
+@TargetClass(className = "javax.crypto.CryptoPermission")
+final class Target_javax_crypto_CryptoPermission {
 }
 
 @TargetClass(className = "javax.crypto.CryptoAllPermission")

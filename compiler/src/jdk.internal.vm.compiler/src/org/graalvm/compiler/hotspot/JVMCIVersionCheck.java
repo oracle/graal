@@ -46,12 +46,13 @@ public final class JVMCIVersionCheck {
     /**
      * Minimum JVMCI version supported by Graal.
      */
-    private static final Version JVMCI_MIN_VERSION = new Version(23, 0, 13);
+    private static final Map<String, Version> JVMCI_MIN_VERSIONS = Map.of(
+                    "21", new Version(23, 1, 15));
 
     /**
      * Minimum Java release supported by Graal.
      */
-    private static final int JAVA_MIN_RELEASE = 17;
+    private static final int JAVA_MIN_RELEASE = 21;
 
     public static class Version {
         private final int major;
@@ -162,8 +163,9 @@ public final class JVMCIVersionCheck {
     }
 
     static void check(Map<String, String> props, boolean exitOnFailure, String format) {
-        JVMCIVersionCheck checker = new JVMCIVersionCheck(props, props.get("java.specification.version"), props.get("java.vm.version"));
-        checker.run(exitOnFailure, JVMCI_MIN_VERSION, format);
+        String javaSpecVersion = props.get("java.specification.version");
+        JVMCIVersionCheck checker = new JVMCIVersionCheck(props, javaSpecVersion, props.get("java.vm.version"));
+        checker.run(exitOnFailure, JVMCI_MIN_VERSIONS.get(javaSpecVersion), format);
     }
 
     /**
@@ -190,18 +192,16 @@ public final class JVMCIVersionCheck {
             }
             if (vmVersion.contains("-jvmci-")) {
                 // A "labsjdk"
+                if (minVersion == null) {
+                    failVersionCheck(exitOnFailure, "No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
+                }
                 Version v = Version.parse(vmVersion);
                 if (v != null) {
                     if (format != null) {
                         System.out.printf(format + "%n", v.major, v.minor, v.build);
                     }
-                    Version actualMinVersion = minVersion;
-                    if (javaSpecVersion.equals("19")) {
-                        // Last JVMCI update for JDK 19
-                        actualMinVersion = new Version(23, 0, 5);
-                    }
-                    if (v.isLessThan(actualMinVersion)) {
-                        failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, actualMinVersion);
+                    if (v.isLessThan(minVersion)) {
+                        failVersionCheck(exitOnFailure, "The VM does not support the minimum JVMCI API version required by Graal: %s < %s.%n", v, minVersion);
                     }
                     return;
                 }
@@ -223,13 +223,26 @@ public final class JVMCIVersionCheck {
             props.put(name, sprops.getProperty(name));
         }
         String format = "%d,%d,%d";
+        boolean minVersion = false;
         for (String arg : args) {
             if (arg.equals("--as-tag")) {
                 format = Version.AS_TAG_FORMAT;
+            } else if (arg.equals("--min-version")) {
+                minVersion = true;
             } else {
                 throw new IllegalArgumentException("Unknown argument: " + arg);
             }
         }
-        check(props, true, format);
+        if (minVersion) {
+            String javaSpecVersion = props.get("java.specification.version");
+            Version v = JVMCI_MIN_VERSIONS.get(javaSpecVersion);
+            if (v == null) {
+                System.out.printf("No minimum JVMCI version specified for JDK version %s.%n", javaSpecVersion);
+            } else {
+                System.out.printf(format + "%n", v.major, v.minor, v.build);
+            }
+        } else {
+            check(props, true, format);
+        }
     }
 }

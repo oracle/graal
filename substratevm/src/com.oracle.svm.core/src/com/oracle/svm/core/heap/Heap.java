@@ -102,6 +102,7 @@ public abstract class Heap {
     public abstract boolean walkCollectedHeapObjects(ObjectVisitor visitor);
 
     /** Returns the number of classes in the heap (initialized as well as uninitialized). */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public abstract int getClassCount();
 
     /** Visits all loaded classes in the heap (see {@link PredefinedClassesSupport}). */

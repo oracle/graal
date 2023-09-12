@@ -782,9 +782,9 @@ def gate_maven_downloader(tasks):
         if t:
             mx.suite('sulong')
             mx_sdk.maven_deploy_public([], licenses=['EPL-2.0', 'GPLv2-CPE', 'ICU,GPLv2', 'BSD-new', 'UPL', 'MIT'], deploy_snapshots=False)
-            mx.build(["--dep", "MAVEN_DOWNLOADER"])
+            mx.build(["--dep", "sdk:MAVEN_DOWNLOADER"])
             jdk = mx.get_jdk()
-            mvnDownloader = mx.distribution("MAVEN_DOWNLOADER")
+            mvnDownloader = mx.distribution("sdk:MAVEN_DOWNLOADER")
             vm_args = mx.get_runtime_jvm_args([mvnDownloader], jdk=jdk)
             vm_args.append(mvnDownloader.mainClass)
             output_dir = os.path.join(_suite.get_mx_output_dir(), 'downloaded-mvn-modules')

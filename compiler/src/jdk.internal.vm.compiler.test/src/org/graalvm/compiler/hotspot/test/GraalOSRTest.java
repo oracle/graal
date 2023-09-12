@@ -28,6 +28,8 @@ import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.junit.Assert;
 import org.junit.Test;
 
+import sun.misc.Unsafe;
+
 /**
  * Test on-stack-replacement with Graal. The test manually triggers a Graal OSR-compilation which is
  * later invoked when hitting the backedge counter overflow.
@@ -56,6 +58,11 @@ public class GraalOSRTest extends GraalOSRTestBase {
     @Test
     public void testOSR04() {
         testOSR(getInitialOptions(), "testDeoptAfterCountedLoop");
+    }
+
+    @Test
+    public void testOSR05() {
+        testOSR(getInitialOptions(), "testBooleanArray");
     }
 
     static int limit = 10000;
@@ -114,5 +121,19 @@ public class GraalOSRTest extends GraalOSRTestBase {
         }
         GraalDirectives.controlFlowAnchor();
         return ret + 1 == limit * limit ? ReturnValue.SUCCESS : ReturnValue.FAILURE;
+    }
+
+    public static ReturnValue testBooleanArray() {
+        boolean[] array = new boolean[16];
+        for (int i = 0; GraalDirectives.injectIterationCount(17, i < array.length); i++) {
+            array[i] = !array[i];
+
+            byte rawValue = UNSAFE.getByte(array, Unsafe.ARRAY_BYTE_BASE_OFFSET + i * Unsafe.ARRAY_BYTE_INDEX_SCALE);
+            if (rawValue != 1) {
+                return ReturnValue.FAILURE;
+            }
+        }
+        GraalDirectives.controlFlowAnchor();
+        return ReturnValue.SUCCESS;
     }
 }

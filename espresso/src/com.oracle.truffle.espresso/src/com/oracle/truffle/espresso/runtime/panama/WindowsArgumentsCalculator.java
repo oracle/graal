@@ -26,7 +26,7 @@ import com.oracle.truffle.espresso.impl.Klass;
 
 public class WindowsArgumentsCalculator extends AbstractArgumentsCalculator {
     private int globalIndex;
-    private boolean skipNext;
+    private boolean inVarArg;
 
     public WindowsArgumentsCalculator(Platform platform, VMStorage[] callIntRegs, VMStorage[] callFloatRegs, VMStorage intReturn, VMStorage floatReturn) {
         super(platform, callIntRegs, callFloatRegs, intReturn, floatReturn);
@@ -36,15 +36,20 @@ public class WindowsArgumentsCalculator extends AbstractArgumentsCalculator {
     public int getNextInputIndex(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType) {
         // TODO this currently depends on order but doesn't actually need to
         assert isInt(type) || isFloat(type) : platform.toString(reg) + ": " + type;
-        if (skipNext) {
-            skipNext = false;
-            return SKIP;
-        }
-        if (isVarArg(reg, type, nextReg, nextType)) {
-            skipNext = true;
+        if (inVarArg) {
+            if (skipExtraVarArgMove(reg, type)) {
+                return SKIP;
+            }
+            inVarArg = false;
+        } else if (isVarArg(reg, type, nextReg, nextType)) {
+            // start of 2 registers used for the same argument
+            inVarArg = true;
+            if (skipExtraVarArgMove(reg, type)) {
+                return SKIP;
+            }
         }
         if (globalIndex < callIntRegs.length && callIntRegs[globalIndex].equals(reg)) {
-            assert isInt(type) || (skipNext && isFloat(type)) : platform.toString(reg) + ": " + type;
+            assert isInt(type) : platform.toString(reg) + ": " + type;
             return globalIndex++;
         }
         if (globalIndex < callFloatRegs.length && callFloatRegs[globalIndex].equals(reg)) {
@@ -71,6 +76,10 @@ public class WindowsArgumentsCalculator extends AbstractArgumentsCalculator {
             return true;
         }
         return false;
+    }
+
+    private boolean skipExtraVarArgMove(VMStorage reg, Klass type) {
+        return isFloat(type) && reg.type(platform).isInteger();
     }
 
     @Override

@@ -25,7 +25,9 @@
 package com.oracle.svm.core.jdk;
 
 import java.io.FileDescriptor;
+import java.nio.MappedByteBuffer;
 
+import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -61,13 +63,13 @@ final class Target_java_nio_DirectByteBufferR_JDK19OrLater {
 final class Target_sun_nio_ch_Util_JDK19OrLater {
 
     @Substitute
-    private static Target_java_nio_DirectByteBuffer_JDK19OrLater newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
-        return new Target_java_nio_DirectByteBuffer_JDK19OrLater(size, addr, fd, unmapper, isSync, null);
+    private static MappedByteBuffer newMappedByteBuffer(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
+        return SubstrateUtil.cast(new Target_java_nio_DirectByteBuffer_JDK19OrLater(size, addr, fd, unmapper, isSync, null), MappedByteBuffer.class);
     }
 
     @Substitute
-    static Target_java_nio_DirectByteBufferR_JDK19OrLater newMappedByteBufferR(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
-        return new Target_java_nio_DirectByteBufferR_JDK19OrLater(size, addr, fd, unmapper, isSync, null);
+    static MappedByteBuffer newMappedByteBufferR(int size, long addr, FileDescriptor fd, Runnable unmapper, boolean isSync) {
+        return SubstrateUtil.cast(new Target_java_nio_DirectByteBufferR_JDK19OrLater(size, addr, fd, unmapper, isSync, null), MappedByteBuffer.class);
     }
 
 }
