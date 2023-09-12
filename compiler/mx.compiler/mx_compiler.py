@@ -83,6 +83,7 @@ class JavaLangRuntimeVersion(mx.Comparable):
     """Wrapper for by java.lang.Runtime.Version"""
 
     _cmp_cache = {}
+    _feature_re = re.compile('[1-9][0-9]*')
 
     def __init__(self, version, jdk=None):
         self.version = version
@@ -114,6 +115,11 @@ class JavaLangRuntimeVersion(mx.Comparable):
         ret = int(out.data)
         JavaLangRuntimeVersion._cmp_cache[key] = ret
         return ret
+
+    def feature(self):
+        if not hasattr(self, '_feature'):
+            self._feature = int(JavaLangRuntimeVersion._feature_re.match(self.version).group(0))
+        return self._feature
 
 
 #: 4-tuple (jdk_version, jvmci_major, jvmci_minor, jvmci_build) of JVMCI version, if any, denoted by `jdk`
@@ -1161,7 +1167,7 @@ def _check_latest_jvmci_version():
                     mx.abort(f'Cannot parse version {version}')
                 (jdk_version, jvmci_major, jvmci_minor, jvmci_build) = match.groups(default=0)
                 current = (JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
-                if current[0] == _jdk_jvmci_version[0]:
+                if current[0].feature() == _jdk_jvmci_version[0].feature():
                     # only compare the same major versions
                     if latest == 'not found':
                         latest = current
@@ -1174,11 +1180,11 @@ def _check_latest_jvmci_version():
         return not isinstance(latest, str), latest
 
     def jvmci_version_str(version):
-        jdk_major, jdk_build, jvmci_major, jvmci_minor, jvmci_build = version
+        jdk_version, jvmci_major, jvmci_minor, jvmci_build = version
         if jvmci_major == 0:
-            return f'labsjdk-(ce|ee)-{jdk_major}+{jdk_build}-jvmci-b{jvmci_build:02d}'
+            return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-b{jvmci_build:02d}'
         else:
-            return f'labsjdk-(ce|ee)-{jdk_major}+{jdk_build}-jvmci-{jvmci_major}.{jvmci_minor}-b{jvmci_build:02d}'
+            return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-{jvmci_major}.{jvmci_minor}-b{jvmci_build:02d}'
 
     version_check_setting = os.environ.get('JVMCI_VERSION_CHECK', None)
 
