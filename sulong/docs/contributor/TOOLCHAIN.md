@@ -147,7 +147,8 @@ Note that they expect a toolchain name as the first argument. See for example th
 On the implementation side, _the toolchain_ consists of multiple ingredients:
 
 * The **LLVM.org component** is similar to a regular [LLVM release](https://llvm.org) (clang, lld, llvm-* tools).
-  Starting from GraalVM for JDK 21 (23.1.0), the LLVM.org component is no longer present in `$GRAALVM/lib/` and should be downloaded from [GitHub](https://github.com/graalvm/graalvm-ce-builds/releases). Download the LLVM standalone distribution for your operating system and unzip the archive. 
+  Starting from GraalVM for JDK 21 (23.1.0), the LLVM.org component is no longer present in `$GRAALVM/lib/` and should be downloaded from [GitHub](https://github.com/graalvm/graalvm-ce-builds/releases).
+  Download the LLVM standalone distribution for your operating system and unzip the archive. 
   The LLVM standalone comes with a JVM in addition to its native launcher.
   This component is considered as internal and should not be directly used.
 * The **toolchain wrappers** are GraalVM launchers that invoke the tools from the LLVM.org component with special flags
