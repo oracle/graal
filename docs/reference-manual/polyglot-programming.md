@@ -33,7 +33,7 @@ Throughout this section you learn how to combine multiple languages using GraalV
 The following examples are designed to get you started with a basic polyglot application.
 Select a section for your *Start Language* and then select a tab for the *Target Language*.
 
-The below examples should work equally from a JVM language standalone or a language native launcher.
+The below examples are expected to work equally from a JVM or native standalone distribution.
 For native launchers and native executables using Java as a Target Language and accessing classes other than Java arrays, it is required to recompile the image and provide a [reflection configuration file](native-image/Reflection.md).
 
 Note: To start an application with LLVM as a Target Language, make sure to precompile the _polyglot.c_ file provided below.
