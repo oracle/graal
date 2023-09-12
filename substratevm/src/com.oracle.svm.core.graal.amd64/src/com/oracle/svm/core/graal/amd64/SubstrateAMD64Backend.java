@@ -181,6 +181,7 @@ import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.amd64.AMD64;
+import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -754,8 +755,7 @@ public class SubstrateAMD64Backend extends SubstrateBackend implements LIRGenera
 
         @Override
         public void emitProcid(AllocatableValue dst) {
-            // GR-43733: Replace string by feature when we remove support for Java 17
-            if (supportsCPUFeature("RDPID")) {
+            if (supportsCPUFeature(CPUFeature.RDPID)) {
                 append(new AMD64ReadProcid(dst));
             } else {
                 AMD64ReadTimestampCounterWithProcid procid = new AMD64ReadTimestampCounterWithProcid();
