@@ -130,19 +130,14 @@ public final class WasmContext {
 
     @TruffleBoundary
     public WasmInstance lookupModuleInstance(String name) {
-        WasmInstance instance = moduleInstances.get(name);
-        if (instance == null && "main".equals(name)) {
-            return lookupMainModule();
-        }
-        return instance;
+        return moduleInstances.get(name);
     }
 
+    /**
+     * Returns the first module evaluated in this context (not including built-in modules).
+     */
     public WasmInstance lookupMainModule() {
         return mainModuleInstance;
-    }
-
-    public boolean hasMainModule() {
-        return lookupMainModule() != null;
     }
 
     public void register(WasmInstance instance) {
