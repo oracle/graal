@@ -12,9 +12,10 @@ This LLVM backend enables users to [target alternative architectures](#how-to-ad
 
 ## Installing and Usage
 
-The LLVM Backend is shipped as a separate component to Native Image and can be installed with GraalVM Updater:
+The LLVM Backend is not included by default as part of Native Image. To use it, you need to <a href="https://github.com/oracle/graal/blob/master/vm/README.md" target="_blank">build GraalVM from source</a> using the following <a href="https://github.com/graalvm/mx/" target="_blank">mx</a> commands:
 ```shell
-gu install native-image-llvm-backend
+mx --dynamicimports /substratevm build
+export JAVA_HOME=$(mx --dynamicimports /substratevm graalvm-home)
 ```
 
 To enable the LLVM backend, pass the `-H:CompilerBackend=llvm` option to the `native-image` command. 
