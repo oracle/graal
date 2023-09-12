@@ -109,6 +109,7 @@ public class ImportModule extends BuiltinModule {
             defineExternalGlobal(module, globalName, global);
         }
         assert module.numFunctions() == functions.size();
+        instance.createLinkActions();
         return instance;
     }
 

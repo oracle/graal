@@ -163,11 +163,8 @@ public class Linker {
             maxStartFunctionIndex = Math.max(maxStartFunctionIndex, instance.startFunctionIndex());
             if (instance.isNonLinked()) {
                 instance.setLinkInProgress();
-                if (!instance.module().hasLinkActions()) {
-                    continue;
-                }
                 try {
-                    for (BiConsumer<WasmContext, WasmInstance> action : instance.module().linkActions()) {
+                    for (BiConsumer<WasmContext, WasmInstance> action : instance.linkActions()) {
                         action.accept(context, instance);
                     }
                 } catch (Throwable e) {
@@ -176,9 +173,7 @@ public class Linker {
                     instance.setLinkFailed();
                     failures.add(e);
                 } finally {
-                    if (!context.language().isMultiContext()) {
-                        instance.module().removeLinkActions();
-                    }
+                    instance.removeLinkActions();
                 }
             }
         }
