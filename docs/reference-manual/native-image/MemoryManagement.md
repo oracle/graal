@@ -18,9 +18,9 @@ When the heap becomes full, a garbage collection is triggered to reclaim memory 
 For managing the Java heap, Native Image provides different garbage collector (GC) implementations:
 * The **Serial GC** is the default GC in GraalVM.
 It is optimized for low memory footprint and small Java heap sizes.
-* The **G1 GC** (not available in GraalVM Community Edition) is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency, while achieving high throughput.
-To enable G1, specify the option `--gc=G1` at image build time.
-Currently, G1 can only be used in native images that are built on Linux for AMD64.
+* The **G1 GC** is a multi-threaded GC that is optimized to reduce stop-the-world pauses and therefore improve latency, while achieving high throughput.
+To enable it, pass the option `--gc=G1` to the `native-image` builder.
+Currently, G1 Garbage Collector can be used with Native Image on the Linux AMD64 and AArch64 architectures. (Not available in GraalVM Community Edition.)
 * The **Epsilon GC** (available with GraalVM 21.2 or later) is a no-op garbage collector that does not do any garbage collection and therefore never frees any allocated memory.
 The primary use case for this GC are very short running applications that only allocate a small amount of memory.
 To enable the Epsilon GC, specify the option `--gc=epsilon` at image build time.
@@ -119,9 +119,9 @@ The following options are available with `-H:InitialCollectionPolicy=BySpaceAndT
 ## G1 Garbage Collector
 
 Oracle GraalVM also provides the Garbage-First (G1) garbage collector, which is based on the G1 GC from the Java HotSpot VM.
-Currently, G1 can only be used in native images that are built on Linux for AMD64.
-To enable it, pass the option `--gc=G1` to the native image builder.
+Currently, G1 Garbage Collector can be used with Native Image on the Linux AMD64 and AArch64 architectures. (Not available in GraalVM Community Edition.)
 
+To enable it, pass the option `--gc=G1` to the `native-image` builder.
 ```shell
 # Build a native image that uses the G1 GC with default settings
 native-image --gc=G1 HelloWorld
