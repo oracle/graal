@@ -487,6 +487,10 @@ public abstract class AbstractPolyglotImpl {
         return next;
     }
 
+    public final AbstractPolyglotImpl getNextOrNull() {
+        return next;
+    }
+
     public final void setIO(IOAccessor ioAccess) {
         Objects.requireNonNull(ioAccess, "IOAccess must be non null.");
         this.io = ioAccess;
