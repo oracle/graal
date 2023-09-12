@@ -24,7 +24,7 @@ Choose your operating system and proceed to the installation steps for your spec
 
 ## Start Running Applications
 
-GraalVM includes the Java Development Kit (JDK), the just-in-time compiler (the Graal compiler), Native Image, and other regular Java tools.
+GraalVM includes the Java Development Kit (JDK), the just-in-time compiler (the Graal compiler), Native Image, and standard JDK tools.
 You can use the GraalVM JDK just like any other JDK in your IDE, so having installed GraalVM, you can run any Java application unmodified.
 
 The `java` launcher runs the JVM with Graal as the last-tier compiler.
