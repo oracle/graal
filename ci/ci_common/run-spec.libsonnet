@@ -8,7 +8,7 @@ local examples   = (import "run-spec-examples.libsonnet").examples;
   // Supported platforms
   supported_oss_names:: ["linux", "darwin", "windows"],
   supported_archs_names:: ["amd64", "aarch64"],
-  supported_jdks_names:: ["jdk17", "jdk19", "jdk20", "jdk21", "jdk22"],
+  supported_jdks_names:: ["jdk17", "jdk19", "jdk20", "jdk21", "jdk-latest"],
 
   // This will turn a task dictionary into a list of build objects.
   process(task_dict)::
