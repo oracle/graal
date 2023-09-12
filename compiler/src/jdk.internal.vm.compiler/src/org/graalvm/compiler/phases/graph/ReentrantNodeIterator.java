@@ -110,7 +110,6 @@ public final class ReentrantNodeIterator {
 
         StateT state = initialState;
         FixedNode current = start;
-        // very high number of nodes, abort if we ever hit that in a single apply
         do {
             CompilationAlarm.checkProgress(start.graph());
             while (current instanceof FixedWithNextNode) {

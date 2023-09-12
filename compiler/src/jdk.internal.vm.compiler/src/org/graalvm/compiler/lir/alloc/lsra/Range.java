@@ -118,7 +118,7 @@ public final class Range {
                     }
                 }
             }
-        } while (true);  // TERMINATION ARGUMENT: guarded by processes all ranges reachable from
+        } while (true);  // TERMINATION ARGUMENT: guarded by the number of ranges reachable from
                          // this and other
     }
 

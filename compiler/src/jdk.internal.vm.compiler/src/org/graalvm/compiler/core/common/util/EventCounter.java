@@ -31,7 +31,7 @@ package org.graalvm.compiler.core.common.util;
 public interface EventCounter {
 
     /**
-     * Determine if the current counter overflows max and reset it.
+     * Increment the current counter and determine if it overflows max and reset it if so.
      */
     boolean eventCounterOverflows(int max);
 }

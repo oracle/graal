@@ -173,7 +173,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             osr.prepareDelete();
             GraphUtil.removeFixedWithUnusedInputs(osr);
             debug.dump(DebugContext.DETAILED_LEVEL, graph, "OnStackReplacement loop peeling result");
-        } while (true); // TERMINATION ARGUMENT: bound by max iterations
+        } while (true); // TERMINATION ARGUMENT: bounded by max iterations
 
         StartNode start = graph.start();
         FrameState osrState = osr.stateAfter();

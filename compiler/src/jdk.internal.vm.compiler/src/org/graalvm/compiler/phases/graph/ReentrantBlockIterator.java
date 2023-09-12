@@ -140,7 +140,7 @@ public final class ReentrantBlockIterator {
         CompilationAlarm compilationAlarm = CompilationAlarm.current();
 
         while (true) { // TERMINATION ARGUMENT: processing all blocks reverse post order until end
-                       // of cfg or
+                       // of cfg or until a bailout is triggered because of a long compile
             CompilationAlarm.checkProgress(start.getCfg().graph);
             if (compilationAlarm.hasExpired()) {
                 double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
