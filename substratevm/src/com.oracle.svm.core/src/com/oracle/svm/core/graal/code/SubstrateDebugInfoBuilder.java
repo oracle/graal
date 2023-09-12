@@ -24,10 +24,12 @@
  */
 package com.oracle.svm.core.graal.code;
 
+import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.core.gen.DebugInfoBuilder;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.NodeValueMap;
 
 import com.oracle.svm.core.meta.SharedMethod;
@@ -36,6 +38,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.StackLockValue;
 import jdk.vm.ci.code.VirtualObject;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.JavaValue;
@@ -44,15 +47,26 @@ import jdk.vm.ci.meta.Value;
 public final class SubstrateDebugInfoBuilder extends DebugInfoBuilder {
 
     private final SharedMethod method;
+    private final SnippetReflectionProvider snippetReflection;
 
-    public SubstrateDebugInfoBuilder(StructuredGraph graph, MetaAccessExtensionProvider metaAccessExtensionProvider, NodeValueMap nodeValueMap) {
+    public SubstrateDebugInfoBuilder(StructuredGraph graph, SnippetReflectionProvider snippetReflection, MetaAccessExtensionProvider metaAccessExtensionProvider, NodeValueMap nodeValueMap) {
         super(nodeValueMap, metaAccessExtensionProvider, graph.getDebug());
         this.method = (SharedMethod) graph.method();
+        this.snippetReflection = snippetReflection;
     }
 
     @Override
     protected JavaKind storageKind(JavaType type) {
         return ((SharedType) type).getStorageKind();
+    }
+
+    @Override
+    protected JavaValue toJavaValue(ValueNode valueNode) {
+        JavaValue value = super.toJavaValue(valueNode);
+        if (value instanceof JavaConstant constant) {
+            return snippetReflection.unwrapConstant(constant);
+        }
+        return value;
     }
 
     @Override
