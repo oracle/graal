@@ -94,6 +94,7 @@ public abstract class BuiltinModule {
         final WasmModule module = language.getOrCreateBuiltinModule(this, bm -> createModule(language, context, name));
 
         final WasmInstance instance = new WasmInstance(context, module);
+        instance.createLinkActions();
         for (int i = 0; i < module.numFunctions(); i++) {
             var target = module.function(i).target();
             if (target != null && instance.target(i) == null) {
