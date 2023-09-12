@@ -1994,18 +1994,8 @@ suite = {
                 "clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/clibraries/" : ["extracted-dependency:substratevm:SVM_HOSTED_NATIVE"],
                 "builder/lib/" : ["dependency:com.oracle.svm.native.reporterchelper"],
-                "./": [
-                  {
-                    "source_type": "extracted-dependency",
-                    "dependency": "LLVM_LLD_STANDALONE",
-                    "path": "*",
-                    "exclude": [
-                      "lib/*",
-                      "include/*",
-                      "share/*",
-                    ]
-                  },
-                ],
+                # Note: `ld64.lld` is a symlink to `lld`, but it is dereferenced here.
+                "bin/" : ["extracted-dependency:LLVM_LLD_STANDALONE/bin/ld64.lld"],
             },
         },
 
