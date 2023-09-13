@@ -91,9 +91,6 @@ public abstract class ImageHeapScanner {
 
     protected ObjectScanningObserver scanningObserver;
 
-    /** Marker object installed when encountering scanning issues like illegal objects. */
-    private static final ImageHeapConstant NULL_IMAGE_HEAP_OBJECT = new ImageHeapInstance(null, JavaConstant.NULL_POINTER, 0);
-
     public ImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
                     ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
         this.bb = bb;
@@ -225,10 +222,6 @@ public abstract class ImageHeapScanner {
 
         Optional<JavaConstant> replaced = maybeReplace(constant, reason);
         if (replaced.isPresent()) {
-            if (replaced.get().isNull()) {
-                /* There was some problem during replacement, install a marker object. */
-                return NULL_IMAGE_HEAP_OBJECT;
-            }
             /*
              * This ensures that we have a unique ImageHeapObject for the original and replaced
              * object. As a side effect, this runs all object transformer again on the replaced
@@ -318,8 +311,10 @@ public abstract class ImageHeapScanner {
                     return Optional.of(replacedConstant);
                 }
             } catch (UnsupportedFeatureException e) {
-                ObjectScanner.unsupportedFeatureDuringConstantScan(universe.getBigbang(), constant, e, reason);
-                return Optional.of(JavaConstant.NULL_POINTER);
+                /* Enhance the unsupported feature message with the object trace and rethrow. */
+                StringBuilder backtrace = new StringBuilder();
+                ObjectScanner.buildObjectBacktrace(bb, reason, backtrace);
+                throw new UnsupportedFeatureException(e.getMessage() + System.lineSeparator() + backtrace);
             }
 
         }
