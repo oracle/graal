@@ -103,7 +103,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     private MonitorIdNode[] monitorIds;
     private final StructuredGraph graph;
-    private final boolean clearNonLiveLocals;
+    private final boolean shouldRetainLocals;
     private FrameState outerFrameState;
     private NodeSourcePosition outerSourcePosition;
 
@@ -125,11 +125,11 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     /**
      * Creates a new frame state builder for the given code attribute, method and the given target
-     * graph. Additionally specifies if nonLiveLocals should be retained.
+     * graph. Additionally, specifies if nonLiveLocals should be retained.
      *
      * @param code the bytecode in which the frame exists
      * @param graph the target graph of Graal nodes created by the builder
-     * @param shouldRetainLocalVariables specifies if nonLiveLocals should be retained in state.
+     * @param shouldRetainLocalVariables specifies if nonLiveLocals should be retained in state
      */
     public FrameStateBuilder(GraphBuilderTool tool, Bytecode code, StructuredGraph graph, boolean shouldRetainLocalVariables) {
         this.tool = tool;
@@ -147,7 +147,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
         this.monitorIds = EMPTY_MONITOR_ARRAY;
         this.graph = graph;
-        this.clearNonLiveLocals = !shouldRetainLocalVariables;
+        this.shouldRetainLocals = shouldRetainLocalVariables;
         this.canVerifyKind = true;
         this.verifyState = true;
     }
@@ -295,7 +295,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
         assert other.graph != null;
         graph = other.graph;
-        clearNonLiveLocals = other.clearNonLiveLocals;
+        shouldRetainLocals = other.shouldRetainLocals;
         monitorIds = other.monitorIds.length == 0 ? other.monitorIds : other.monitorIds.clone();
 
         assert lockedObjects.length == monitorIds.length;
@@ -734,14 +734,13 @@ public final class FrameStateBuilder implements SideEffectsState {
      */
     public void clearNonLiveLocals(BciBlock block, LocalLiveness liveness, boolean liveIn) {
         /*
-         * Non-live local clearing is mandatory for the entry block of an OSR compilation so that
-         * dead object slots at the OSR entry are cleared. It's not sufficient to rely on PiNodes
-         * with Kind.Illegal, because the conflicting branch might not have been parsed.
+         * Clearing of dead oops for an OSR compilation is done in
+         * OnStackReplacementPhase.initLocal.
          */
-        boolean isOSREntryBlock = graph.isOSR() && getMethod().equals(graph.method()) && graph.getEntryBCI() == block.startBci;
-        if (!clearNonLiveLocals && !isOSREntryBlock) {
+        if (shouldRetainLocals) {
             return;
         }
+
         if (liveIn) {
             for (int i = 0; i < locals.length; i++) {
                 if (!liveness.localIsLiveIn(block, i)) {
