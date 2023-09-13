@@ -44,6 +44,7 @@ import java.io.IOException;
 
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
@@ -60,7 +61,7 @@ public final class WasiFdCloseNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
         return fdClose(context, (int) WasmArguments.getArgument(args, 0));
     }

@@ -45,6 +45,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.WasmOptions;
@@ -62,7 +63,7 @@ public class WasmMemoryOverheadModeRootNode extends WasmRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         throw WasmException.create(Failure.MEMORY_OVERHEAD_MODE, this, "WebAssembly functions cannot be executed with memory overhead mode enabled, since this can lead to unexpected behavior.");
     }
 }

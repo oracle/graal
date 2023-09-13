@@ -42,6 +42,7 @@ package org.graalvm.wasm.predefined.emscripten;
 
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
@@ -54,7 +55,7 @@ public class EmscriptenNotifyMemoryGrowthNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         return WasmConstant.VOID;
     }
 

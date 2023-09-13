@@ -42,6 +42,7 @@ package org.graalvm.wasm.predefined.wasi;
 
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
@@ -59,7 +60,7 @@ public final class WasiFdReadNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
         return fdRead(context, memory(frame),
                         (int) WasmArguments.getArgument(args, 0),

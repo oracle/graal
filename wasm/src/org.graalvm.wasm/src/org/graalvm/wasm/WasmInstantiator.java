@@ -489,7 +489,7 @@ public class WasmInstantiator {
         if (context.language().isMultiContext()) {
             function.setTarget(callTarget);
         } else {
-            functionNode.setBoundModuleInstance(instance);
+            rootNode.setBoundModuleInstance(instance);
         }
         return callTarget;
     }

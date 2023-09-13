@@ -63,6 +63,7 @@ import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -78,6 +79,8 @@ public class WasmRootNode extends RootNode {
     private SourceSection sourceSection;
     @Child private WasmInstrumentableFunctionNode functionNode;
     private final BranchProfile nonLinkedProfile = BranchProfile.create();
+    /** Bound module instance (single-context mode only). */
+    @CompilationFinal private WasmInstance boundInstance;
 
     public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstrumentableFunctionNode functionNode) {
         super(language, frameDescriptor);
@@ -106,11 +109,22 @@ public class WasmRootNode extends RootNode {
         }
     }
 
-    /**
-     * Overridden by {@link org.graalvm.wasm.predefined.WasmBuiltinRootNode}.
-     */
-    protected WasmInstance instance(VirtualFrame frame) {
-        return functionNode.instance(frame);
+    protected final WasmInstance instance(VirtualFrame frame) {
+        WasmInstance instance = boundInstance;
+        if (instance == null) {
+            instance = WasmArguments.getModuleInstance(frame.getArguments());
+        } else {
+            CompilerAsserts.partialEvaluationConstant(instance);
+            assert instance == WasmArguments.getModuleInstance(frame.getArguments());
+        }
+        assert instance == WasmContext.get(this).lookupModuleInstance(module());
+        return instance;
+    }
+
+    public final void setBoundModuleInstance(WasmInstance boundInstance) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert this.boundInstance == null;
+        this.boundInstance = boundInstance;
     }
 
     protected final WasmMemory memory(VirtualFrame frame) {
@@ -125,11 +139,12 @@ public class WasmRootNode extends RootNode {
     public final Object execute(VirtualFrame frame) {
         assert WasmArguments.isValid(frame.getArguments());
         final WasmContext context = getContext();
-        tryInitialize(context, instance(frame));
-        return executeWithContext(frame, context);
+        final WasmInstance instance = instance(frame);
+        tryInitialize(context, instance);
+        return executeWithContext(frame, context, instance);
     }
 
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         // WebAssembly structure dictates that a function's arguments are provided to the function
         // as local variables, followed by any additional local variables that the function
         // declares. A VirtualFrame contains a special array for the arguments, so we need to move
@@ -156,7 +171,7 @@ public class WasmRootNode extends RootNode {
         }
 
         try {
-            functionNode.execute(frame, context);
+            functionNode.execute(frame, context, instance);
         } catch (StackOverflowError e) {
             functionNode.enterErrorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);

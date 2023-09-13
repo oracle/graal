@@ -55,7 +55,6 @@ import org.graalvm.wasm.debugging.data.DebugFunction;
 import org.graalvm.wasm.debugging.representation.DebugObjectDisplayValue;
 import org.graalvm.wasm.memory.WasmMemory;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
@@ -100,13 +99,8 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         this.instrumentation = node.instrumentation;
     }
 
-    final WasmInstance instance(VirtualFrame frame) {
-        return functionNode.instance(frame);
-    }
-
-    public void setBoundModuleInstance(WasmInstance boundInstance) {
-        CompilerAsserts.neverPartOfCompilation();
-        functionNode.setBoundModuleInstance(boundInstance);
+    private WasmInstance instance(VirtualFrame frame) {
+        return ((WasmRootNode) getRootNode()).instance(frame);
     }
 
     private WasmMemory memory0(MaterializedFrame frame) {
@@ -125,8 +119,8 @@ public class WasmInstrumentableFunctionNode extends Node implements Instrumentab
         return codeEntry.resultCount();
     }
 
-    void execute(VirtualFrame frame, WasmContext context) {
-        functionNode.execute(frame, context);
+    void execute(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+        functionNode.execute(frame, context, instance);
     }
 
     void enterErrorBranch() {

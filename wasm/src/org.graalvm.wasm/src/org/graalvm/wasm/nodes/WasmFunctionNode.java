@@ -145,8 +145,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @CompilationFinal private int bytecodeEndOffset;
     @CompilationFinal(dimensions = 1) private byte[] bytecode;
     @CompilationFinal private WasmNotifyFunction notifyFunction;
-    /** Bound module instance (single-context mode only). */
-    @CompilationFinal private WasmInstance boundInstance;
 
     public WasmFunctionNode(WasmModule module, WasmCodeEntry codeEntry, int bytecodeStartOffset, int bytecodeEndOffset) {
         this.module = module;
@@ -178,24 +176,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         this.notifyFunction = notifyFunction;
     }
 
-    WasmInstance instance(VirtualFrame frame) {
-        WasmInstance instance = boundInstance;
-        if (instance == null) {
-            instance = WasmArguments.getModuleInstance(frame.getArguments());
-        } else {
-            CompilerAsserts.partialEvaluationConstant(instance);
-            assert instance == WasmArguments.getModuleInstance(frame.getArguments());
-        }
-        assert instance == WasmContext.get(this).lookupModuleInstance(module);
-        return instance;
-    }
-
-    void setBoundModuleInstance(WasmInstance boundInstance) {
-        CompilerAsserts.neverPartOfCompilation();
-        assert this.boundInstance == null;
-        this.boundInstance = boundInstance;
-    }
-
     private WasmMemory memory(WasmInstance instance) {
         return memory(instance, 0);
     }
@@ -219,7 +199,8 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         WasmOSRInterpreterState state = (WasmOSRInterpreterState) interpreterState;
         WasmContext context = WasmContext.get(this);
-        return executeBodyFromOffset(context, osrFrame, target, state.stackPointer, state.line);
+        WasmInstance instance = ((WasmRootNode) getRootNode()).instance(osrFrame);
+        return executeBodyFromOffset(context, instance, osrFrame, target, state.stackPointer, state.line);
     }
 
     @Override
@@ -245,14 +226,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int count;
     }
 
-    public void execute(VirtualFrame frame, WasmContext context) {
-        executeBodyFromOffset(context, frame, bytecodeStartOffset, codeEntry.localCount(), -1);
+    public void execute(VirtualFrame frame, WasmContext context, WasmInstance instance) {
+        executeBodyFromOffset(context, instance, frame, bytecodeStartOffset, codeEntry.localCount(), -1);
     }
 
     @BytecodeInterpreterSwitch
     @ExplodeLoop(kind = ExplodeLoop.LoopExplosionKind.MERGE_EXPLODE)
     @SuppressWarnings({"UnusedAssignment", "hiding"})
-    public Object executeBodyFromOffset(WasmContext context, VirtualFrame frame, int startOffset, int startStackPointer, int startLine) {
+    public Object executeBodyFromOffset(WasmContext context, WasmInstance instance, VirtualFrame frame, int startOffset, int startStackPointer, int startLine) {
         final int localCount = codeEntry.localCount();
         final byte[] bytecode = this.bytecode;
 
@@ -266,7 +247,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         int stackPointer = startStackPointer;
         int line = startLine;
 
-        final WasmInstance instance = instance(frame);
         // Note: The module may not have any memories.
         final WasmMemory zeroMemory = module.memoryCount() == 0 ? null : memory(instance);
 
