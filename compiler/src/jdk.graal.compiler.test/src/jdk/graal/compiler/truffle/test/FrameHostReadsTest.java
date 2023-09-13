@@ -70,7 +70,6 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
         int fieldReads = 0;
         int arrayReads = 0;
         int arrayLengthReads = 0;
-        int otherReads = 0;
 
         for (ReadNode read : graph.getNodes(ReadNode.TYPE)) {
             LocationIdentity identity = read.getLocationIdentity();
@@ -81,7 +80,10 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
             } else if (identity == NamedLocationIdentity.ARRAY_LENGTH_LOCATION) {
                 arrayLengthReads++;
             } else {
-                otherReads++;
+                /*
+                 * [GR-48430] Since NotCompiledExceptionHandler deopts are not turned into guards
+                 * anymore, remaining reads belong to the explicit handling of the assertion.
+                 */
             }
         }
 
@@ -105,7 +107,6 @@ public class FrameHostReadsTest extends TruffleCompilerImplTest {
          * FrameWithoutBoxing.indexedTags and one for FrameWithoutBoxing.indexedPrimitiveLocals.
          */
         Assert.assertEquals(2, arrayLengthReads);
-        Assert.assertEquals(0, otherReads);
     }
 
     @SuppressWarnings({"serial"})
