@@ -67,7 +67,7 @@ Here is an example Maven dependency setup that you can put into your project:
 
 Language and tool dependencies use the [GFTC license](https://www.oracle.com/downloads/licenses/graal-free-license.html).
 To use community-licensed versions instead, add the `-community` suffix to each artifact (e.g., `js-community`).
-To access [polyglot isolate](#polyglot-isolates) artifacts, the `-isolate` suffix may be used (e.g. `js-isolate`).
+To access [polyglot isolate](#polyglot-isolates) artifacts, the `-isolate` suffix may be used instead (e.g. `js-isolate`).
 
 The artifacts `languages` and `tools` include all available languages and tools as dependencies. 
 This artifact might grow or shrink between major releases. We recommend selecting only the needed languages for a production deployment.
@@ -110,24 +110,22 @@ tab4type="java" tab4id="Hello_Polyglot_Python" tab4name="Python" tab4path="embed
 R currently requires the `allowAllAccess` flag to be set to `true` to run the example.
 - `eval` evaluates the specified snippet of guest language code.
 - The `try` with resource statement initializes the `Context` and ensures that it
-is closed after use. Closing the context ensures that all resources including
-potential native resources are freed eagerly. Closing a context is optional but
-recommended. Even if a context is not closed and no longer referenced it will be
-freed by the garbage collector automatically.
+is closed after use. Closing the context ensures that all resources, including
+potential native resources, are freed eagerly. Closing a context is optional but
+recommended. If a context is not closed and no longer referenced, the garbage collector will automatically free it.
 
-3&#46; Run `javac -cp polyglot-23.1.0.jar HelloPolyglot.java` to compile `HelloPolyglot.java` with
-GraalVM.
+3&#46; Clone the [polyglot-embedding-demo](https://github.com/graalvm/polyglot-embedding-demo/) repository using `git clone https://github.com/graalvm/polyglot-embedding-demo.git`.
 
-4&#46; Run `java -cp polyglot-23.1.0.jar HelloPolyglot` to run the application on GraalVM.
+4&#46; Insert the example code into the [Main](https://github.com/graalvm/polyglot-embedding-demo/blob/main/src/main/java/org/example/embedding/Main.java) class.
+
+5&#46; Update the Maven [pom.xml](https://github.com/graalvm/polyglot-embedding-demo/blob/main/pom.xml) dependency configuration to include the languages to run as described in the [previous section](#dependency-setup).
+
+6&#46; Download and setup GraalVM by setting the `JAVA_HOME` environment variable to point to a JDK, ideally GraalVM.
+
+7&#46; Run `mvn package exec:exec` to build and execute the sample code.
 
 You now have a polyglot application that consists of a Java host application and guest language code that run on GraalVM.
 You can use this application with other code examples to demonstrate more advanced capabilities of the Polyglot API.
-
-To use other code examples in this section, you simply need to do the following:
-
-1&#46; Add the code snippet to the main method of `HelloPolyglot.java`.
-
-2&#46; Compile and run your polyglot application.
 
 
 ## Define Guest Language Functions as Java Values
@@ -439,10 +437,8 @@ This table shows the level of optimizations the Java runtimes currently provide:
 
 | Java Runtime                                  | Runtime Optimization Level                        |
 |-----------------------------------------------|---------------------------------------------------|
-| Oracle GraalVM (JVM)                          | Optimized with additional compiler passes         |
-| Oracle GraalVM (Native)                       | Optimized with additional compiler passes         |
-| GraalVM Community Edition (JVM)               | Optimized                                         |
-| GraalVM Community Edition (Native)            | Optimized                                         |
+| Oracle GraalVM                                | Optimized with additional compiler passes         |
+| GraalVM Community Edition                     | Optimized                                         |
 | Oracle JDK                                    | Optimized if enabled via experimental VM option   |
 | OpenJDK                                       | Optimized if enabled via experimental VM option   |
 | JDK without JVMCI capability                  | No runtime optimizations (interpreter-only)       |
@@ -708,6 +704,12 @@ For example, a dependency on isolated JavaScript can be configured by adding a M
 ```xml
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>polyglot</artifactId>
+    <version>${graalvm.version}</version>
+    <type>jar</type>
+</dependency>
+<dependency>
+    <groupId>org.graalvm.polyglot</groupId>
     <artifactId>js-isolate</artifactId>
     <version>${graalvm.version}</version>
     <type>pom</type>
@@ -806,8 +808,8 @@ Exceeding the maximum heap size will automatically close the context and raise a
 
 ### Ensuring Host Callback Stack Headroom
 
-With Polyglot Isolates, the `--engine.HostCallStackHeadRoom` option can require a minimum stack size that is guaranteed when performing a host callback.
-If the available stack size drops below the specified threshold, the host callback fails.
+With Polyglot Isolates, the `--engine.HostCallStackHeadRoom` ensures a minimum stack space available when performing a host callback.
+The host callback fails if the available stack size drops below the specified threshold.
 
 ### Memory Protection
 
