@@ -57,8 +57,8 @@ import org.graalvm.wasm.WasmOptions;
  */
 public class WasmMemoryOverheadModeRootNode extends WasmRootNode {
 
-    public WasmMemoryOverheadModeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstrumentableFunctionNode function) {
-        super(language, frameDescriptor, function);
+    public WasmMemoryOverheadModeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstrumentableFunctionNode functionNode) {
+        super(language, frameDescriptor, functionNode);
     }
 
     @Override
