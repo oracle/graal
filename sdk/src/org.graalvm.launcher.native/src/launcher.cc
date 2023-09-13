@@ -90,14 +90,19 @@
 #define VM_ARG_PREFIX "--vm."
 #define VM_CP_ARG_PREFIX "--vm.cp="
 #define VM_CLASSPATH_ARG_PREFIX "--vm.classpath="
+#define VM_P_ARG_PREFIX "--vm.p="
 #define VM_MODULE_PATH_ARG_PREFIX "--vm.-module-path="
+
 #define VM_ARG_OFFSET (sizeof(VM_ARG_PREFIX)-1)
 #define VM_CP_ARG_OFFSET (sizeof(VM_CP_ARG_PREFIX)-1)
 #define VM_CLASSPATH_ARG_OFFSET (sizeof(VM_CLASSPATH_ARG_PREFIX)-1)
+#define VM_P_ARG_OFFSET (sizeof(VM_P_ARG_PREFIX)-1)
 #define VM_MODULE_PATH_ARG_OFFSET (sizeof(VM_MODULE_PATH_ARG_PREFIX)-1)
+
 #define IS_VM_ARG(ARG) (ARG.rfind(VM_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_CP_ARG(ARG) (ARG.rfind(VM_CP_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_CLASSPATH_ARG(ARG) (ARG.rfind(VM_CLASSPATH_ARG_PREFIX, 0) != std::string::npos)
+#define IS_VM_P_ARG(ARG) (ARG.rfind(VM_P_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_MODULE_PATH_ARG(ARG) (ARG.rfind(VM_MODULE_PATH_ARG_PREFIX, 0) != std::string::npos)
 
 #define NMT_ARG_NAME "XX:NativeMemoryTracking"
@@ -294,6 +299,8 @@ void parse_vm_option(std::vector<std::string> *vmArgs, std::stringstream *cp, st
         *cp << CP_SEP_STR << option.substr(VM_CP_ARG_OFFSET);
     } else if (IS_VM_CLASSPATH_ARG(option)) {
         *cp << CP_SEP_STR << option.substr(VM_CLASSPATH_ARG_OFFSET);
+    } else if (IS_VM_P_ARG(option)) {
+        *modulePath << CP_SEP_STR << option.substr(VM_P_ARG_OFFSET);
     } else if (IS_VM_MODULE_PATH_ARG(option)) {
         *modulePath << CP_SEP_STR << option.substr(VM_MODULE_PATH_ARG_OFFSET);
     } else if (IS_VM_ARG(option)) {
