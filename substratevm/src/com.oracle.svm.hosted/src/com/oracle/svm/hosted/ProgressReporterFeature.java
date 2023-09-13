@@ -93,7 +93,7 @@ public class ProgressReporterFeature implements InternalFeature {
     protected List<UserRecommendation> getRecommendations() {
         return List.of(// in order of appearance:
                         new UserRecommendation("INIT",
-                                        "Adopt " + SubstrateOptionsParser.commandArgument(ClassInitializationOptions.StrictImageHeap, "+", "strict-initial-heap", true, false) +
+                                        "Adopt " + SubstrateOptionsParser.commandArgument(ClassInitializationOptions.StrictImageHeap, "+", "strict-image-heap", true, false) +
                                                         " to prepare for the next GraalVM release.",
                                         () -> !ClassInitializationOptions.StrictImageHeap.getValue()),
                         new UserRecommendation("AWT", "Use the tracing agent to collect metadata for AWT.", ProgressReporterFeature::recommendTraceAgentForAWT),
