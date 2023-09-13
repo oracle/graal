@@ -344,20 +344,6 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
 
     /* construct classpath - only needed for jvm mode */
     std::stringstream cp;
-    cp << "-Djava.class.path=";
-    #ifdef LAUNCHER_CLASSPATH
-    if (jvmMode) {
-        /* add the launcher classpath */
-        const char *launcherCpEntries[] = LAUNCHER_CLASSPATH;
-        int launcherCpCnt = sizeof(launcherCpEntries) / sizeof(*launcherCpEntries);
-        for (int i = 0; i < launcherCpCnt; i++) {
-            cp << exeDir << DIR_SEP_STR << launcherCpEntries[i];
-            if (i < launcherCpCnt-1) {
-                cp << CP_SEP_STR;
-            }
-        }
-    }
-    #endif
 
     /* construct module path - only needed for jvm mode */
     std::stringstream modulePath;
@@ -394,7 +380,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
             if (dir) {
                 std::string canonicalDir = canonicalize(absoluteDir);
                 struct dirent* entry;
-                while (entry = readdir(dir)) {
+                while ((entry = readdir(dir))) {
                     char* name = entry->d_name;
                     if (name[0] != '.') {
                         modulePath << CP_SEP_STR << canonicalDir << DIR_SEP_STR << name;
@@ -536,7 +522,9 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
 
     /* set classpath and module path arguments - only needed for jvm mode */
     if (jvmMode) {
-        vmArgs.push_back(cp.str());
+        if (!cp.str().empty()) {
+            vmArgs.push_back("-Djava.class.path=" + cp.str());
+        }
 #ifdef LAUNCHER_MODULE_PATH
         vmArgs.push_back(modulePath.str());
         vmArgs.push_back("-Djdk.module.main=" LAUNCHER_MAIN_MODULE_STR);
