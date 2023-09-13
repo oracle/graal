@@ -92,18 +92,21 @@
 #define VM_CLASSPATH_ARG_PREFIX "--vm.classpath="
 #define VM_P_ARG_PREFIX "--vm.p="
 #define VM_MODULE_PATH_ARG_PREFIX "--vm.-module-path="
+#define VM_LIBRARY_PATH_ARG_PREFIX "--vm.Djava.library.path="
 
 #define VM_ARG_OFFSET (sizeof(VM_ARG_PREFIX)-1)
 #define VM_CP_ARG_OFFSET (sizeof(VM_CP_ARG_PREFIX)-1)
 #define VM_CLASSPATH_ARG_OFFSET (sizeof(VM_CLASSPATH_ARG_PREFIX)-1)
 #define VM_P_ARG_OFFSET (sizeof(VM_P_ARG_PREFIX)-1)
 #define VM_MODULE_PATH_ARG_OFFSET (sizeof(VM_MODULE_PATH_ARG_PREFIX)-1)
+#define VM_LIBRARY_PATH_ARG_OFFSET (sizeof(VM_LIBRARY_PATH_ARG_PREFIX)-1)
 
 #define IS_VM_ARG(ARG) (ARG.rfind(VM_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_CP_ARG(ARG) (ARG.rfind(VM_CP_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_CLASSPATH_ARG(ARG) (ARG.rfind(VM_CLASSPATH_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_P_ARG(ARG) (ARG.rfind(VM_P_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_MODULE_PATH_ARG(ARG) (ARG.rfind(VM_MODULE_PATH_ARG_PREFIX, 0) != std::string::npos)
+#define IS_VM_LIBRARY_PATH_ARG(ARG) (ARG.rfind(VM_LIBRARY_PATH_ARG_PREFIX, 0) != std::string::npos)
 
 #define NMT_ARG_NAME "XX:NativeMemoryTracking"
 #define NMT_ENV_NAME "NMT_LEVEL_"
@@ -294,7 +297,12 @@ std::string vm_path(std::string exeDir, bool jvmMode) {
     return liblangPath.str();
 }
 
-void parse_vm_option(std::vector<std::string> *vmArgs, std::stringstream *cp, std::stringstream *modulePath, std::string option) {
+void parse_vm_option(
+        std::vector<std::string> *vmArgs,
+        std::stringstream *cp,
+        std::stringstream *modulePath,
+        std::stringstream *libraryPath,
+        std::string option) {
     if (IS_VM_CP_ARG(option)) {
         *cp << CP_SEP_STR << option.substr(VM_CP_ARG_OFFSET);
     } else if (IS_VM_CLASSPATH_ARG(option)) {
@@ -303,6 +311,8 @@ void parse_vm_option(std::vector<std::string> *vmArgs, std::stringstream *cp, st
         *modulePath << CP_SEP_STR << option.substr(VM_P_ARG_OFFSET);
     } else if (IS_VM_MODULE_PATH_ARG(option)) {
         *modulePath << CP_SEP_STR << option.substr(VM_MODULE_PATH_ARG_OFFSET);
+    } else if (IS_VM_LIBRARY_PATH_ARG(option)) {
+        *libraryPath << CP_SEP_STR << option.substr(VM_LIBRARY_PATH_ARG_OFFSET);
     } else if (IS_VM_ARG(option)) {
         std::stringstream opt;
         opt << '-' << option.substr(VM_ARG_OFFSET);
@@ -417,22 +427,16 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     }
     #endif
 
+    /* construct java.library.path - only needed for jvm mode */
+    std::stringstream libraryPath;
     #ifdef LAUNCHER_LIBRARY_PATH
     if (jvmMode) {
-        /* construct java.library.path - only needed for jvm mode */
-        std::stringstream libraryPath;
-        libraryPath << "-Djava.library.path=";
         /* add the library path */
         const char *launcherLibraryPathEntries[] = LAUNCHER_LIBRARY_PATH;
         int launcherLibraryPathCnt = sizeof(launcherLibraryPathEntries) / sizeof(*launcherLibraryPathEntries);
         for (int i = 0; i < launcherLibraryPathCnt; i++) {
-            libraryPath << exeDir << DIR_SEP_STR << launcherLibraryPathEntries[i];
-            if (i < launcherLibraryPathCnt-1) {
-                libraryPath << CP_SEP_STR;
-            }
+            libraryPath << CP_SEP_STR << exeDir << DIR_SEP_STR << launcherLibraryPathEntries[i];
         }
-        /* TODO: this overrides -Djava.library.path=, but it should accept a CLI --vm.Djava.library.path= */
-        vmArgs.push_back(libraryPath.str());
     }
     #endif
 
@@ -472,7 +476,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     const char *launcherDefaultVmArgs[] = LAUNCHER_DEFAULT_VM_ARGS;
     for (int i = 0; i < sizeof(launcherDefaultVmArgs)/sizeof(char*); i++) {
         if (IS_VM_ARG(std::string(launcherDefaultVmArgs[i]))) {
-            parse_vm_option(&vmArgs, &cp, &modulePath, launcherDefaultVmArgs[i]);
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, launcherDefaultVmArgs[i]);
         }
     }
     #endif
@@ -480,7 +484,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     /* handle CLI arguments */
     if (!vmArgInfo) {
         for (int i = 0; i < argc; i++) {
-            parse_vm_option(&vmArgs, &cp, &modulePath, std::string(argv[i]));
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, std::string(argv[i]));
         }
     }
 
@@ -498,7 +502,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
                 std::cerr << "VM arguments specified: " << vmArgCount << " but argument " << i << "missing" << std::endl;
                 break;
             }
-            parse_vm_option(&vmArgs, &cp, &modulePath, std::string(cur));
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, std::string(cur));
             /* clean up env variable */
             setenv(envKey, "");
         }
@@ -520,10 +524,10 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         size_t next = 0;
         while ((next = optionLine.find(" ", last)) != std::string::npos) {
             std::string option = optionLine.substr(last, next-last);
-            parse_vm_option(&vmArgs, &cp, &modulePath, option);
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, option);
             last = next + 1;
         };
-        parse_vm_option(&vmArgs, &cp, &modulePath, optionLine.substr(last));
+        parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, optionLine.substr(last));
     }
     #endif
 
@@ -531,6 +535,9 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     if (jvmMode) {
         if (!cp.str().empty()) {
             vmArgs.push_back("-Djava.class.path=" + cp.str());
+        }
+        if (!libraryPath.str().empty()) {
+            vmArgs.push_back("-Djava.library.path=" + libraryPath.str().substr(1));
         }
 #ifdef LAUNCHER_MODULE_PATH
         vmArgs.push_back(modulePath.str());
