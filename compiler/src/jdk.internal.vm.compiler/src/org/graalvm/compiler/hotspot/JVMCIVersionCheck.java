@@ -47,8 +47,8 @@ public final class JVMCIVersionCheck {
      * Minimum JVMCI version supported by Graal.
      */
     private static final Map<String, Version> JVMCI_MIN_VERSIONS = Map.of(
-                    "21", new Version("21+35", 23, 1, 15),
-                    "22", new Version("22+13", JVMCIVersionCheck.NA, JVMCIVersionCheck.NA, 1));
+                    "21", new Version(23, 1, 15),
+                    "22", new Version("22+13", 1));
 
     private static final int NA = 0;
     /**
@@ -61,16 +61,24 @@ public final class JVMCIVersionCheck {
         private final int jvmciMajor;
         private final int jvmciMinor;
         private final int jvmciBuild;
+        private final boolean legacy;
 
         static Version parse(String vmVersion) {
             Matcher m = Pattern.compile("(.+)-jvmci(-(\\d+)\\.(\\d+))?-b(\\d+).*").matcher(vmVersion);
             if (m.matches()) {
                 try {
-                    Runtime.Version jdkVersion = Runtime.Version.parse(m.group(1));
-                    int jvmciMajor = parseIntOrZero(m.group(3));
-                    int jvmciMinor = parseIntOrZero(m.group(4));
-                    int jvmciBuild = parseIntOrZero(m.group(5));
-                    return new Version(jdkVersion, jvmciMajor, jvmciMinor, jvmciBuild);
+                    if (m.group(3) == null) {
+                        assert m.group(4) == null : "if jvmciMajor is null jvmciMinor must also be null";
+                        String jdkVersion = m.group(1);
+                        int jvmciBuild = Integer.parseInt(m.group(5));
+                        return new Version(jdkVersion, jvmciBuild);
+                    } else {
+                        int jvmciMajor = Integer.parseInt(m.group(3));
+                        int jvmciMinor = Integer.parseInt(m.group(4));
+                        int jvmciBuild = Integer.parseInt(m.group(5));
+                        return new Version(jvmciMajor, jvmciMinor, jvmciBuild);
+                    }
+
                 } catch (NumberFormatException e) {
                     // ignore
                 }
@@ -78,11 +86,12 @@ public final class JVMCIVersionCheck {
             return null;
         }
 
-        private static int parseIntOrZero(String group) {
-            if (group == null) {
-                return 0;
-            }
-            return Integer.parseInt(group);
+        /**
+         * Convenience constructor for the current version scheme that only uses the JDK version and
+         * the JVMCI build number.
+         */
+        public Version(String jdkVersionString, int jvmciBuild) {
+            this(jdkVersionString, NA, NA, jvmciBuild, false);
         }
 
         /**
@@ -90,18 +99,19 @@ public final class JVMCIVersionCheck {
          * to {@code 21}. While this is not entirely correct, it works for our purposes.
          */
         public Version(int jvmciMajor, int jvmciMinor, int jvmciBuild) {
-            this("21", jvmciMajor, jvmciMinor, jvmciBuild);
+            this("21", jvmciMajor, jvmciMinor, jvmciBuild, true);
         }
 
-        public Version(String jdkVersionString, int jvmciMajor, int jvmciMinor, int jvmciBuild) {
-            this(Runtime.Version.parse(jdkVersionString), jvmciMajor, jvmciMinor, jvmciBuild);
+        private Version(String jdkVersionString, int jvmciMajor, int jvmciMinor, int jvmciBuild, boolean legacy) {
+            this(Runtime.Version.parse(jdkVersionString), jvmciMajor, jvmciMinor, jvmciBuild, legacy);
         }
 
-        public Version(Runtime.Version jdkVersion, int jvmciMajor, int jvmciMinor, int jvmciBuild) {
+        private Version(Runtime.Version jdkVersion, int jvmciMajor, int jvmciMinor, int jvmciBuild, boolean legacy) {
             this.jdkVersion = jdkVersion;
             this.jvmciMajor = jvmciMajor;
             this.jvmciMinor = jvmciMinor;
             this.jvmciBuild = jvmciBuild;
+            this.legacy = legacy;
         }
 
         boolean isGreaterThan(Version other) {
@@ -116,12 +126,17 @@ public final class JVMCIVersionCheck {
             if (compareTo < 0) {
                 return true;
             }
-            if (compareTo == 0 && this.jvmciMajor == other.jvmciMajor) {
-                if (this.jvmciMinor < other.jvmciMinor) {
+            if (compareTo == 0) {
+                if (this.jvmciMajor < other.jvmciMajor) {
                     return true;
                 }
-                if (this.jvmciMinor == other.jvmciMinor && this.jvmciBuild < other.jvmciBuild) {
-                    return true;
+                if (this.jvmciMajor == other.jvmciMajor) {
+                    if (this.jvmciMinor < other.jvmciMinor) {
+                        return true;
+                    }
+                    if (this.jvmciMinor == other.jvmciMinor && this.jvmciBuild < other.jvmciBuild) {
+                        return true;
+                    }
                 }
             }
             return false;
@@ -145,15 +160,11 @@ public final class JVMCIVersionCheck {
 
         @Override
         public String toString() {
-            if (isJDK22OrLater()) {
+            if (!legacy) {
                 return String.format(AS_TAG_FORMAT_22_AND_LATER, jdkVersion, jvmciBuild);
             } else {
                 return String.format(AS_TAG_FORMAT_21_AND_EARLIER, jvmciMajor, jvmciMinor, jvmciBuild);
             }
-        }
-
-        private boolean isJDK22OrLater() {
-            return jvmciMajor == NA;
         }
 
         public String printFormat(PrintFormat format) {
