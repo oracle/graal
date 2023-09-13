@@ -40,10 +40,14 @@ public class JVMCIVersionCheckMaxValueTest extends GraalCompilerTest {
             String javaVmVersion = String.format("prefix-jvmci-%s-suffix", version);
             try {
                 JVMCIVersionCheck.Version minVersion = new JVMCIVersionCheck.Version(20, 0, 1);
-                JVMCIVersionCheck.check(props, minVersion, "1.8", javaVmVersion, false);
+                // Use a javaSpecVersion that will likely not fail in the near future
+                JVMCIVersionCheck.check(props, minVersion, "99", javaVmVersion, false);
                 Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion);
             } catch (InternalError e) {
-                // pass
+                String expectedMsg = "Cannot read JVMCI version from java.vm.version property";
+                if (!e.getMessage().contains(expectedMsg)) {
+                    throw new AssertionError("Unexpected exception message. Expected: " + expectedMsg, e);
+                }
             }
         }
     }
