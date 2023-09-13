@@ -55,6 +55,7 @@ import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
 import org.graalvm.wasm.globals.WasmGlobal;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.nodes.WasmRootNode;
 import org.graalvm.wasm.predefined.emscripten.EmscriptenModule;
 import org.graalvm.wasm.predefined.go.GoModule;
 import org.graalvm.wasm.predefined.spectest.SpectestModule;
@@ -62,7 +63,7 @@ import org.graalvm.wasm.predefined.testutil.TestutilModule;
 import org.graalvm.wasm.predefined.wasi.WasiModule;
 
 import com.oracle.truffle.api.CompilerAsserts;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.RootCallTarget;
 
 public abstract class BuiltinModule {
     private static final Map<String, BuiltinModule> predefinedModules = new HashMap<>();
@@ -95,10 +96,14 @@ public abstract class BuiltinModule {
 
         final WasmInstance instance = new WasmInstance(context, module);
         instance.createLinkActions();
+        boolean multiContext = context.language().isMultiContext();
         for (int i = 0; i < module.numFunctions(); i++) {
             var target = module.function(i).target();
             if (target != null && instance.target(i) == null) {
                 instance.setTarget(i, target);
+                if (!multiContext) {
+                    ((WasmRootNode) ((RootCallTarget) target).getRootNode()).setBoundModuleInstance(instance);
+                }
             }
         }
         return instance;
@@ -111,7 +116,7 @@ public abstract class BuiltinModule {
         instance.setTarget(function.index(), functionInstance.target());
     }
 
-    protected WasmFunction defineFunction(WasmContext context, WasmModule module, String name, byte[] paramTypes, byte[] retTypes, RootNode rootNode) {
+    protected WasmFunction defineFunction(WasmContext context, WasmModule module, String name, byte[] paramTypes, byte[] retTypes, WasmRootNode rootNode) {
         // Must instantiate RootNode in the right language / sharing layer.
         assert context.language() == rootNode.getLanguage(WasmLanguage.class);
         // We could check if the same function type had already been allocated,
