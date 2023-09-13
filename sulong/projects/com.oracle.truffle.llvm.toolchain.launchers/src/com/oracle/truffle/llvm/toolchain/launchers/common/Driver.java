@@ -232,7 +232,6 @@ public class Driver {
 
     public static void printMissingToolMessage() {
         System.err.println("Tool execution failed. Are you sure the toolchain is available at " + getLLVMBinDir().getParent());
-        System.err.println("You can install it via GraalVM updater: `gu install llvm-toolchain`");
         System.err.println();
         System.err.println("More infos: https://www.graalvm.org/docs/reference-manual/languages/llvm/");
     }
