@@ -24,30 +24,40 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
-import java.util.Map;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.hotspot.JVMCIVersionCheck;
 import org.junit.Assert;
 import org.junit.Test;
 
+/**
+ * Test handling of version components bigger than Integer.MAX_VALUE.
+ */
 public class JVMCIVersionCheckMaxValueTest extends GraalCompilerTest {
+
+    public static final String EXPECTED_MSG = "Cannot read JVMCI version from java.vm.version property";
+
     @Test
-    public void test01() {
-        Map<String, String> props = JVMCIVersionCheckTest.props;
-        // Test handling of version components bigger than Integer.MAX_VALUE
-        for (String version : new String[]{"20.0." + Long.MAX_VALUE, "20." + Long.MAX_VALUE + ".0", Long.MAX_VALUE + ".0.0"}) {
-            String javaVmVersion = String.format("prefix-jvmci-%s-suffix", version);
-            try {
-                JVMCIVersionCheck.Version minVersion = new JVMCIVersionCheck.Version(20, 0, 1);
-                // Use a javaSpecVersion that will likely not fail in the near future
-                JVMCIVersionCheck.check(props, minVersion, "99", javaVmVersion, false);
-                Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion);
-            } catch (InternalError e) {
-                String expectedMsg = "Cannot read JVMCI version from java.vm.version property";
-                if (!e.getMessage().contains(expectedMsg)) {
-                    throw new AssertionError("Unexpected exception message. Expected: " + expectedMsg, e);
-                }
+    public void testLegacyVersion() {
+        for (String version : new String[]{"20.0-b" + Long.MAX_VALUE, "20." + Long.MAX_VALUE + "-b1", Long.MAX_VALUE + ".0-b1"}) {
+            testVersion(String.format("prefix-jvmci-%s-suffix", version));
+        }
+    }
+
+    @Test
+    public void testNewVersion() {
+        // We only want to test jvmciBuild, not Runtime.Version, so we use a fixed jdkVersion string
+        testVersion(String.format("99.0.1-jvmci-b%s-suffix", Long.MAX_VALUE));
+    }
+
+    private static void testVersion(String javaVmVersion) {
+        try {
+            JVMCIVersionCheck.Version minVersion = new JVMCIVersionCheck.Version(20, 0, 1);
+            // Use a javaSpecVersion that will likely not fail in the near future
+            JVMCIVersionCheck.check(JVMCIVersionCheckTest.props, minVersion, "99", javaVmVersion, false);
+            Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion);
+        } catch (InternalError e) {
+            if (!e.getMessage().contains(EXPECTED_MSG)) {
+                throw new AssertionError("Unexpected exception message. Expected: " + EXPECTED_MSG, e);
             }
         }
     }
