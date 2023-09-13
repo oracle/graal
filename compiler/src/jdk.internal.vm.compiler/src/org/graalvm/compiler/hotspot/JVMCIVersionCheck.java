@@ -122,20 +122,25 @@ public final class JVMCIVersionCheck {
         }
 
         public boolean isLessThan(Version other) {
-            int compareTo = this.jdkVersion.compareTo(other.jdkVersion);
-            if (compareTo < 0) {
+            if (this.legacy && !other.legacy) {
                 return true;
             }
-            if (compareTo == 0) {
-                if (this.jvmciMajor < other.jvmciMajor) {
+            if (this.legacy == other.legacy) {
+                int compareTo = this.legacy ? 0 : this.jdkVersion.compareTo(other.jdkVersion);
+                if (compareTo < 0) {
                     return true;
                 }
-                if (this.jvmciMajor == other.jvmciMajor) {
-                    if (this.jvmciMinor < other.jvmciMinor) {
+                if (compareTo == 0) {
+                    if (this.jvmciMajor < other.jvmciMajor) {
                         return true;
                     }
-                    if (this.jvmciMinor == other.jvmciMinor && this.jvmciBuild < other.jvmciBuild) {
-                        return true;
+                    if (this.jvmciMajor == other.jvmciMajor) {
+                        if (this.jvmciMinor < other.jvmciMinor) {
+                            return true;
+                        }
+                        if (this.jvmciMinor == other.jvmciMinor && this.jvmciBuild < other.jvmciBuild) {
+                            return true;
+                        }
                     }
                 }
             }

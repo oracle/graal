@@ -97,12 +97,16 @@ class JavaLangRuntimeVersion(mx.Comparable):
             raise TypeError(f'Cannot compare {JavaLangRuntimeVersion.__name__} to {type(other).__name__}')
         this_version = self.version
         other_version = other.version
+        if this_version == other_version:
+            return 0
+        if self.feature() == 21 and other.feature() == 21:
+            # JDK 21 uses the legacy version scheme where the jdkVersion is irrelevant (and imprecise).
+            # Thus, we do not perform a full version check.
+            return 0
         return JavaLangRuntimeVersion.compare(this_version, other_version, jdk)
 
     @staticmethod
     def compare(this_version, other_version, jdk):
-        if this_version == other_version:
-            return 0
         key = (this_version, other_version)
         cached = JavaLangRuntimeVersion._cmp_cache.get(key, None)
         if cached is not None:
