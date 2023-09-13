@@ -45,11 +45,13 @@ import java.util.function.Consumer;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Initialize the module using the initialization object provided by the test suite. The
@@ -57,19 +59,19 @@ import com.oracle.truffle.api.nodes.RootNode;
  * because certain language backends emit non-WebAssembly code that is used to initialize parts of
  * the memory.
  */
-public class RunCustomInitializationNode extends RootNode {
-    public RunCustomInitializationNode(WasmLanguage language) {
-        super(language, null);
+public class RunCustomInitializationNode extends WasmBuiltinRootNode {
+    public RunCustomInitializationNode(WasmLanguage language, WasmModule module) {
+        super(language, module);
     }
 
     @Override
-    public Object execute(VirtualFrame frame) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         initializeModule(WasmArguments.getArgument(frame.getArguments(), 0));
         return WasmConstant.VOID;
     }
 
     @Override
-    public String getName() {
+    public String builtinNodeName() {
         return TestutilModule.Names.RUN_CUSTOM_INITIALIZATION;
     }
 
