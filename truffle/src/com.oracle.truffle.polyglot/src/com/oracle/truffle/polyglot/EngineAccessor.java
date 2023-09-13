@@ -1988,7 +1988,12 @@ final class EngineAccessor extends Accessor {
 
         @Override
         public AutoCloseable createPolyglotThreadScope() {
-            return PolyglotImpl.findInstance().getRootImpl().createThreadScope();
+            AbstractPolyglotImpl impl = PolyglotImpl.findIsolatePolyglot();
+            if (impl != null) {
+                return impl.createThreadScope();
+            } else {
+                return null;
+            }
         }
 
         @Override
@@ -2072,6 +2077,11 @@ final class EngineAccessor extends Accessor {
                 resourceCache = cache.getResourceCache(resourceId);
                 componentId = cache.getId();
                 supportedResourceIds = cache::getResourceIds;
+            } else if (owner instanceof PolyglotEngineImpl) {
+                cachedRoots = null;
+                resourceCache = InternalResourceCache.getEngineResource(resourceId);
+                componentId = PolyglotEngineImpl.ENGINE_ID;
+                supportedResourceIds = InternalResourceCache::getEngineResourceIds;
             } else {
                 throw CompilerDirectives.shouldNotReachHere("Unsupported owner " + owner);
             }
@@ -2083,15 +2093,39 @@ final class EngineAccessor extends Accessor {
                     return null;
                 }
             }
-            TruffleFile root = cachedRoots.get(resourceId);
+            TruffleFile root = cachedRoots != null ? cachedRoots.get(resourceId) : null;
             if (root == null) {
                 PolyglotEngineImpl polyglotEngine = ((VMObject) owner).getEngine();
                 Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotEngine, resourceCache.getResourceFileSystem(polyglotEngine));
                 root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
-                var prevValue = cachedRoots.putIfAbsent(resourceId, root);
-                root = prevValue != null ? prevValue : root;
+                if (cachedRoots != null) {
+                    var prevValue = cachedRoots.putIfAbsent(resourceId, root);
+                    root = prevValue != null ? prevValue : root;
+                }
             }
             return root;
+        }
+
+        @Override
+        public Collection<String> getResourceIds(String componentId) {
+            if (PolyglotEngineImpl.ENGINE_ID.equals(componentId)) {
+                return InternalResourceCache.getEngineResourceIds();
+            }
+            LanguageCache languageCache = LanguageCache.languages().get(componentId);
+            if (languageCache != null) {
+                return languageCache.getResourceIds();
+            }
+            for (InstrumentCache instrumentCache : InstrumentCache.load()) {
+                if (instrumentCache.getId().equals(componentId)) {
+                    return instrumentCache.getResourceIds();
+                }
+            }
+            throw new IllegalArgumentException(componentId);
+        }
+
+        @Override
+        public void setIsolatePolyglot(AbstractPolyglotImpl instance) {
+            PolyglotImpl.setIsolatePolyglot(instance);
         }
     }
 

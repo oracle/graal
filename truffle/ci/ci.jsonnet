@@ -95,11 +95,6 @@
       ["./sl", "-disassemble", "language/tests/Add.sl"],
       ["./sl", "language/tests/Add.sl"],
       ["./native/slnative", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/gu", "install", "-L", "component/sl-component.jar"],
-      ["$JAVA_HOME/bin/sl", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/slnative", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/polyglot", "--jvm", "--language", "sl", "--file", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/gu", "remove", "sl"],
     ],
   },
 
@@ -116,7 +111,7 @@
         linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
         linux_amd64  + jdk + simple_language_maven_project_gate,
         darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
-      ] for jdk in [common.oraclejdk21, common.oraclejdk17]
+      ] for jdk in [common.oraclejdk21]
     ]) +
   [
     linux_amd64 + common.oraclejdk17 + truffle_gate + guard + {timelimit: "45:00"},

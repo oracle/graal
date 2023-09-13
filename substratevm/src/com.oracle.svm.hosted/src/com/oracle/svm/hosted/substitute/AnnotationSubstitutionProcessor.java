@@ -361,7 +361,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return imageClassLoader.findAnnotatedClasses(TargetClass.class, false);
     }
 
-    private void handleClass(Class<?> annotatedClass) {
+    protected void handleClass(Class<?> annotatedClass) {
         guarantee(Modifier.isFinal(annotatedClass.getModifiers()) || annotatedClass.isInterface(), "Annotated class must be final: %s", annotatedClass);
         guarantee(annotatedClass.getSuperclass() == Object.class || annotatedClass.isInterface(), "Annotated class must inherit directly from Object: %s", annotatedClass);
 
@@ -854,6 +854,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
                 Method originalMethod = originalClass.getDeclaredMethod(originalName, originalParams);
 
                 guarantee(Modifier.isStatic(annotatedMethod.getModifiers()) == Modifier.isStatic(originalMethod.getModifiers()), "Static modifier mismatch: %s, %s", annotatedMethod, originalMethod);
+
+                guarantee(NativeImageOptions.DisableSubstitutionReturnTypeCheck.getValue() || getTargetClass(((Method) annotatedMethod).getReturnType()).equals(originalMethod.getReturnType()),
+                                "Return type mismatch:%n    %s%n    %s", annotatedMethod, originalMethod);
                 return metaAccess.lookupJavaMethod(originalMethod);
 
             } else {
@@ -996,7 +999,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return new ComputedValueField(original, annotated, kind, transformedValueAllowedType, null, targetClass, targetName, isFinal, disableCaching);
     }
 
-    private void reinitializeField(Field annotatedField) {
+    protected void reinitializeField(Field annotatedField) {
         ResolvedJavaField annotated = metaAccess.lookupJavaField(annotatedField);
         ComputedValueField alias = new ComputedValueField(annotated, annotated, Kind.Reset, annotatedField.getDeclaringClass(), "", false);
         register(fieldSubstitutions, annotated, annotated, alias);
@@ -1028,6 +1031,10 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     Class<?> findTargetClass(Class<?> annotatedBaseClass, TargetClass target) {
+        return findTargetClass(annotatedBaseClass, target, true);
+    }
+
+    protected Class<?> findTargetClass(Class<?> annotatedBaseClass, TargetClass target, boolean checkOnlyWith) {
         String className;
         if (target.value() != TargetClass.class) {
             guarantee(target.className().isEmpty(), "Both class and class name specified for substitution");
@@ -1044,28 +1051,30 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
             className = target.className();
         }
 
-        for (Class<?> onlyWithClass : target.onlyWith()) {
-            Object onlyWithProvider;
-            try {
-                onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
-            } catch (ReflectionUtilError ex) {
-                throw UserError.abort(ex.getCause(), "Class specified as onlyWith for %s cannot be loaded or instantiated: %s", annotatedBaseClass.getTypeName(), onlyWithClass.getTypeName());
-            }
+        if (checkOnlyWith) {
+            for (Class<?> onlyWithClass : target.onlyWith()) {
+                Object onlyWithProvider;
+                try {
+                    onlyWithProvider = ReflectionUtil.newInstance(onlyWithClass);
+                } catch (ReflectionUtilError ex) {
+                    throw UserError.abort(ex.getCause(), "Class specified as onlyWith for %s cannot be loaded or instantiated: %s", annotatedBaseClass.getTypeName(), onlyWithClass.getTypeName());
+                }
 
-            boolean onlyWithResult;
-            if (onlyWithProvider instanceof BooleanSupplier) {
-                onlyWithResult = ((BooleanSupplier) onlyWithProvider).getAsBoolean();
-            } else if (onlyWithProvider instanceof Predicate) {
-                @SuppressWarnings("unchecked")
-                Predicate<String> onlyWithPredicate = (Predicate<String>) onlyWithProvider;
-                onlyWithResult = onlyWithPredicate.test(className);
-            } else {
-                throw UserError.abort("Class specified as onlyWith for %s does not implement %s or %s", annotatedBaseClass.getTypeName(),
-                                BooleanSupplier.class.getSimpleName(), Predicate.class.getSimpleName());
-            }
+                boolean onlyWithResult;
+                if (onlyWithProvider instanceof BooleanSupplier) {
+                    onlyWithResult = ((BooleanSupplier) onlyWithProvider).getAsBoolean();
+                } else if (onlyWithProvider instanceof Predicate) {
+                    @SuppressWarnings("unchecked")
+                    Predicate<String> onlyWithPredicate = (Predicate<String>) onlyWithProvider;
+                    onlyWithResult = onlyWithPredicate.test(className);
+                } else {
+                    throw UserError.abort("Class specified as onlyWith for %s does not implement %s or %s", annotatedBaseClass.getTypeName(),
+                                    BooleanSupplier.class.getSimpleName(), Predicate.class.getSimpleName());
+                }
 
-            if (!onlyWithResult) {
-                return null;
+                if (!onlyWithResult) {
+                    return null;
+                }
             }
         }
 

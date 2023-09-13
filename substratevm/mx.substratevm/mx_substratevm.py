@@ -1019,6 +1019,7 @@ driver_build_args = [
 ] + svm_experimental_options([
     '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
+    f'-R:MaxHeapSize={256 * 1024 * 1024}',
 ])
 
 additional_ni_dependencies = []
@@ -1288,6 +1289,7 @@ libgraal_build_args = [
     '-H:+AllowFoldMethods',
     '-Djdk.vm.ci.services.aot=true',
     '-Dtruffle.TruffleRuntime=',
+    '-H:+JNIEnhancedErrorCodes',
     '-H:InitialCollectionPolicy=LibGraal',
 
     # These 2 arguments provide walkable call stacks for a crash in libgraal
@@ -1512,9 +1514,9 @@ def clinittest(args):
         mx.ensure_dir_exists(build_dir)
 
         if new_class_init_policy:
-            policy_args = svm_experimental_options(['-H:-UseDeprecatedOldClassInitialization', '-H:+SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
+            policy_args = svm_experimental_options(['-H:+StrictImageHeap', '-H:+SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
         else:
-            policy_args = svm_experimental_options(['-H:+UseDeprecatedOldClassInitialization', '-H:-SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
+            policy_args = svm_experimental_options(['-H:-SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
 
         # Build and run the example
         binary_path = join(build_dir, 'clinittest')

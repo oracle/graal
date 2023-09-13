@@ -43,12 +43,12 @@ final class Target_java_util_Locale {
     private static Locale defaultFormatLocale;
 
     @Substitute
-    private static Object initDefault() {
+    private static Locale initDefault() {
         throw VMError.shouldNotReachHere("The default Locale must be initialized during image generation");
     }
 
     @Substitute
-    private static Object initDefault(Locale.Category category) {
+    private static Locale initDefault(Locale.Category category) {
         throw VMError.shouldNotReachHere("The default Locale must be initialized during image generation: " + category);
     }
 }

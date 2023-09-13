@@ -49,10 +49,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.invoke.Target_java_lang_invoke_MemberName;
-import com.oracle.svm.core.jdk.JDK20OrEarlier;
 import com.oracle.svm.core.reflect.target.Target_java_lang_reflect_Field;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -120,10 +118,6 @@ final class Target_java_lang_invoke_MethodHandleNatives {
     private static void expand(Target_java_lang_invoke_MemberName self) {
         throw unsupportedFeature("MethodHandleNatives.expand()");
     }
-
-    @Delete
-    @TargetElement(onlyWith = {JDK20OrEarlier.class})
-    private static native int getMembers(Class<?> defc, String matchName, String matchSig, int matchFlags, Class<?> caller, int skip, Target_java_lang_invoke_MemberName[] results);
 
     @Substitute
     private static long objectFieldOffset(Target_java_lang_invoke_MemberName self) {
@@ -370,13 +364,6 @@ final class Target_java_lang_invoke_MethodHandleNatives_Constants {
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_IS_TYPE;
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_CALLER_SENSITIVE;
     @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_REFERENCE_KIND_SHIFT;
-    @TargetElement(onlyWith = {JDK20OrEarlier.class})//
-    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_REFERENCE_KIND_MASK;
-    // The SEARCH_* bits are not for MN.flags but for the matchFlags argument of MHN.getMembers:
-    @TargetElement(onlyWith = {JDK20OrEarlier.class})//
-    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_SEARCH_SUPERCLASSES;
-    @TargetElement(onlyWith = {JDK20OrEarlier.class})//
-    @Alias @RecomputeFieldValue(isFinal = true, kind = Kind.None) static int MN_SEARCH_INTERFACES;
 
     /**
      * Constant pool reference-kind codes, as used by CONSTANT_MethodHandle CP entries.

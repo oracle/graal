@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -1311,6 +1311,7 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
+          "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
         ],
         "exports" : [
           # Qualified exports
@@ -1349,6 +1350,7 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
+          "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
         ],
         "exports" : [
           # Qualified exports
@@ -1563,9 +1565,6 @@ suite = {
       "distDependencies" : [
         "TRUFFLE_NFI",
       ],
-      "javaProperties" : {
-          "truffle.nfi.library" : "<path:TRUFFLE_NFI_NATIVE>/bin/<lib:trufflenfi>"
-      },
       "description" : """Implementation of the Truffle NFI using libffi.""",
       "allowsJavadocWarnings": True,
       "maven": {

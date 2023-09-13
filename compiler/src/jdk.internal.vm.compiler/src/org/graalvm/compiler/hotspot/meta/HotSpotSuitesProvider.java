@@ -116,6 +116,11 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
      * for equality.
      */
     private boolean appendGraphEncoderTest(PhaseSuite<HighTierContext> suite) {
+        if (config.xcompMode) {
+            // Do not do this in -Xcomp mode. It adds too much compilation time.
+            // Testing coverage is provided by Graal unit testing instead.
+            return true;
+        }
         suite.appendPhase(new BasePhase<HighTierContext>() {
             @Override
             public Optional<NotApplicable> notApplicableTo(GraphState graphState) {

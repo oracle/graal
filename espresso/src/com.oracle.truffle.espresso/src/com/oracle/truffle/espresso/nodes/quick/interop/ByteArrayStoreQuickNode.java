@@ -29,7 +29,7 @@ import com.oracle.truffle.espresso.nodes.EspressoFrame;
 import com.oracle.truffle.espresso.nodes.bytecodes.ByteArrayStore;
 import com.oracle.truffle.espresso.nodes.bytecodes.ByteArrayStoreNodeGen;
 import com.oracle.truffle.espresso.nodes.quick.QuickNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * @see ByteArrayStore

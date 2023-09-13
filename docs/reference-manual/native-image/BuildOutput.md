@@ -133,9 +133,9 @@ The memory limit and number of threads used by the build process.
 
 More precisely, the memory limit of the Java heap, so actual memory consumption can be even higher.
 Please check the [peak RSS](#glossary-peak-rss) reported at the end of the build to understand how much memory was actually used.
-By default, the process will only use _available_ memory: memory that the operating system can make available without swapping out memory used by other processes.
-Therefore, consider freeing up memory if your build process is slow, for example, by closing applications that you do not need.
-Note that, by default, the build process will not use more than 32GB available memory.
+By default, the build process tries to only use free memory (to avoid memory pressure on the build machine), and never more than 32GB of memory.
+If less than 8GB of memory are free, the build process falls back to use 85% of total memory.
+Therefore, consider freeing up memory if your machine is slow during a build, for example, by closing applications that you do not need.
 
 By default, the build process uses all available CPU cores to maximize speed.
 Use the `--parallelism` option to set the number of threads explicitly (for example, `--parallelism=4`).
@@ -258,6 +258,15 @@ This feature is currently only available for Linux AArch64 and leverages pointer
 
 The build output may contain one or more of the following recommendations that help you get the best out of Native Image.
 
+#### <a name="recommendation-init"></a>`INIT`: Use the Strict Image Heap Configuration
+
+Start using `--strict-image-heap` to reduce the amount of configuration and prepare for future GraalVM releases where this will be the default.
+This mode requires only the classes that are stored in the image heap to be marked with `--initialize-at-build-time`. 
+This effectively reduces the number of configuration entries necessary to achieve build-time initialization. 
+When adopting the new mode it is best to start introducing build-time initialization from scratch.
+During this process, it is best to select individual classes (as opposed to whole packages) for build time initialization.
+Also, before migrating to the new flag make sure to update all framework dependencies to the latest versions as they might need to migrate too. 
+
 #### <a name="recommendation-awt"></a>`AWT`: Missing Reachability Metadata for Abstract Window Toolkit
 
 The Native Image analysis has included classes from the [`java.awt` package](https://docs.oracle.com/en/java/javase/17/docs/api/java.desktop/java/awt/package-summary.html) but could not find any reachability metadata for it.
@@ -304,7 +313,6 @@ More precisely, this mode reduces the number of optimizations performed by the G
 The quick build mode is not only useful for development, it can also cause the generated executable file to be smaller in size.
 Note, however, that the overall peak throughput of the executable may be lower due to the reduced number of optimizations.
 
-
 ## Resource Usage Statistics
 
 #### <a name="glossary-garbage-collection"></a>Garbage Collections
@@ -339,6 +347,12 @@ Traceback (most recent call last):
   File "<string>", line 1, in <module>
 AssertionError: Too many reachable methods: 12128
 ```
+
+## Colorful Build Output
+
+By default, the `native-image` builder colors the build output for better readability when it finds an appropriate terminal.
+It also honors the <a href="https://no-color.org" target="_target">`NO_COLOR`</a>, `CI`, and `TERM` environment variables when checking for color support.
+To explicitly control colorful output, set the `--color` option to `always`, `never`, or `auto` (default).
 
 ## Related Documentation
 

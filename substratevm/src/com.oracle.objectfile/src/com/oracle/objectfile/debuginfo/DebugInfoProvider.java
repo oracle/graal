@@ -444,4 +444,6 @@ public interface DebugInfoProvider {
     Stream<DebugDataInfo> dataInfoProvider();
 
     Path getCachePath();
+
+    void recordActivity();
 }

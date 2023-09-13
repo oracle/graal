@@ -33,7 +33,6 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 public class JsonWriter implements AutoCloseable {
     private final Writer writer;
@@ -86,8 +85,21 @@ public class JsonWriter implements AutoCloseable {
         return quote(key).appendFieldSeparator().quote(value);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void print(Object value) throws IOException {
+        if (value instanceof Map map) {
+            printMap(map); // Must always be <String, Object>
+        } else if (value instanceof Iterator it) {
+            printIterator(it);
+        } else if (value instanceof List list) {
+            printIterator(list.iterator());
+        } else {
+            quote(value);
+        }
+    }
+
     @SuppressWarnings("unchecked")
-    public void print(Map<String, Object> map) throws IOException {
+    private void printMap(Map<String, Object> map) throws IOException {
         if (map.isEmpty()) {
             append("{}");
             return;
@@ -98,13 +110,7 @@ public class JsonWriter implements AutoCloseable {
             String key = keySetIter.next();
             Object value = map.get(key);
             quote(key).append(':');
-            if (value instanceof Map) {
-                print((Map<String, Object>) value); // Must always be <String, Object>
-            } else if (value instanceof List) {
-                print((List<String>) value); // Must always be <String>
-            } else {
-                quote(value);
-            }
+            print(value);
             if (keySetIter.hasNext()) {
                 append(',');
             }
@@ -112,21 +118,13 @@ public class JsonWriter implements AutoCloseable {
         append('}');
     }
 
-    public void print(List<String> list) throws IOException {
-        print(list, s -> s);
-    }
-
-    public <T> void print(List<T> list, Function<T, String> mapper) throws IOException {
-        if (list.isEmpty()) {
-            append("[]");
-            return;
-        }
+    private void printIterator(Iterator<?> iter) throws IOException {
         append('[');
-        Iterator<T> iter = list.iterator();
-        while (iter.hasNext()) {
-            quote(mapper.apply(iter.next()));
-            if (iter.hasNext()) {
+        if (iter.hasNext()) {
+            print(iter.next());
+            while (iter.hasNext()) {
                 append(',');
+                print(iter.next());
             }
         }
         append(']');

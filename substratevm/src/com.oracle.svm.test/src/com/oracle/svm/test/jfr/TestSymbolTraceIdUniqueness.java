@@ -60,9 +60,7 @@ public class TestSymbolTraceIdUniqueness extends JfrRecordingTest {
         Recording recording = startRecording(events, getDefaultConfiguration(), settings);
 
         // Generate some symbol table entries and trace IDs.
-        for (Class<?> clazz : Heap.getHeap().getLoadedClasses()) {
-            LockSupport.parkNanos(clazz, 1);
-        }
+        Heap.getHeap().visitLoadedClasses((clazz) -> LockSupport.parkNanos(clazz, 1));
 
         // Invoke chunk rotation.
         recording.dump(createTempJfrFile());

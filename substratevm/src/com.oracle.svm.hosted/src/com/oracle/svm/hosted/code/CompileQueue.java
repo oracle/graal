@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -122,7 +123,6 @@ import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
@@ -151,6 +151,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
+import org.graalvm.nativeimage.Platform;
 
 public class CompileQueue {
 
@@ -812,7 +813,7 @@ public class CompileQueue {
             return;
         }
         var providers = runtimeConfig.lookupBackend(method).getProviders();
-        var graph = method.compilationInfo.createGraph(debug, CompilationIdentifier.INVALID_COMPILATION_ID, false);
+        var graph = method.compilationInfo.createGraph(debug, getCustomizedOptions(method, debug), CompilationIdentifier.INVALID_COMPILATION_ID, false);
         try (var s = debug.scope("InlineTrivial", graph, method, this)) {
             var inliningPlugin = new TrivialInliningPlugin();
             var decoder = new InliningGraphDecoder(graph, providers, inliningPlugin);
@@ -1071,11 +1072,9 @@ public class CompileQueue {
                 beforeEncode(method, graph);
                 assert GraphOrder.assertSchedulableGraph(graph);
                 method.compilationInfo.encodeGraph(graph);
-                method.compilationInfo.setCompileOptions(getCustomizedOptions(method, debug));
                 if (checkTrivial(method, graph)) {
                     method.compilationInfo.setTrivialMethod(true);
                 }
-
             } catch (Throwable ex) {
                 GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
                 error.addContext("method: " + method.format("%r %H.%n(%p)"));
@@ -1268,7 +1267,7 @@ public class CompileQueue {
             SubstrateBackend backend = config.lookupBackend(method);
 
             VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: %s", method);
-            StructuredGraph graph = method.compilationInfo.createGraph(debug, compilationIdentifier, true);
+            StructuredGraph graph = method.compilationInfo.createGraph(debug, getCustomizedOptions(method, debug), compilationIdentifier, true);
             customizeGraph(graph, reason);
 
             GraalError.guarantee(graph.getGraphState().getGuardsStage() == GuardsStage.FIXED_DEOPTS,
@@ -1370,15 +1369,29 @@ public class CompileQueue {
         DeoptimizationUtils.removeDeoptTargetOptimizations(lirSuites);
     }
 
+    private void ensureCompiledForMethodPointerConstant(HostedMethod method, CompileReason reason, SubstrateMethodPointerConstant methodPointerConstant) {
+        HostedMethod referencedMethod = (HostedMethod) methodPointerConstant.pointer().getMethod();
+        ensureCompiled(referencedMethod, new MethodPointerConstantReason(method, referencedMethod, reason));
+    }
+
     protected final void ensureCompiledForMethodPointerConstants(HostedMethod method, CompileReason reason, CompilationResult result) {
         for (DataPatch dataPatch : result.getDataPatches()) {
             Reference reference = dataPatch.reference;
-            if (reference instanceof ConstantReference) {
-                VMConstant constant = ((ConstantReference) reference).getConstant();
-                if (constant instanceof SubstrateMethodPointerConstant) {
-                    MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
-                    HostedMethod referencedMethod = (HostedMethod) pointer.getMethod();
-                    ensureCompiled(referencedMethod, new MethodPointerConstantReason(method, referencedMethod, reason));
+            if (reference instanceof ConstantReference constantReference) {
+                VMConstant vmConstant = constantReference.getConstant();
+                if (vmConstant instanceof SubstrateMethodPointerConstant methodPointerConstant) {
+                    ensureCompiledForMethodPointerConstant(method, reason, methodPointerConstant);
+                }
+            }
+        }
+
+        for (DataSection.Data data : result.getDataSection()) {
+            if (data instanceof SubstrateDataBuilder.ObjectData objectData) {
+                VMConstant vmConstant = objectData.getConstant();
+                if (vmConstant instanceof SubstrateMethodPointerConstant methodPointerConstant) {
+                    /* [GR-43389] Only reachable with ld64 workaround on */
+                    VMError.guarantee(Platform.includedIn(Platform.DARWIN_AMD64.class));
+                    ensureCompiledForMethodPointerConstant(method, reason, methodPointerConstant);
                 }
             }
         }

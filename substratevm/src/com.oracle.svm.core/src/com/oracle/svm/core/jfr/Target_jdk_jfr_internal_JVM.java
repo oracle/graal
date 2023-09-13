@@ -39,12 +39,8 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK20OrEarlier;
-import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.internal.JVM;
@@ -233,13 +229,6 @@ public final class Target_jdk_jfr_internal_JVM {
         SubstrateJVM.get().setMemorySize(size);
     }
 
-    /** See {@code JVM#setMethodSamplingInterval}. */
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    public void setMethodSamplingInterval(long type, long intervalMillis) {
-        SubstrateJVM.get().setMethodSamplingInterval(type, intervalMillis);
-    }
-
     /** See {@code JVM#setMethodSamplingPeriod}. */
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
@@ -258,12 +247,6 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
     public static void setForceInstrumentation(boolean force) {
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    public void setSampleThreads(boolean sampleThreads) throws IllegalStateException {
-        SubstrateJVM.get().setSampleThreads(sampleThreads);
     }
 
     /** See {@link JVM#setCompressedIntegers}. */
@@ -343,21 +326,6 @@ public final class Target_jdk_jfr_internal_JVM {
         return 1;
     }
 
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    public boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, Target_jdk_jfr_internal_handlers_EventHandler handler) {
-        // eventHandler fields should all be set at compile time so this method
-        // should never be reached at runtime
-        throw VMError.shouldNotReachHere("eventHandler does not exist for: " + eventClass);
-    }
-
-    /** See {@link SubstrateJVM#getHandler}. */
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    public Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
-        return SubstrateJVM.getHandler(eventClass);
-    }
-
     /** See {@link JVM#getTypeId(Class)}. */
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
@@ -367,29 +335,19 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#getEventWriter}. */
     @Substitute
-    public static Object getEventWriter() {
+    public static Target_jdk_jfr_internal_event_EventWriter getEventWriter() {
         return SubstrateJVM.get().getEventWriter();
     }
 
     /** See {@link JVM#newEventWriter}. */
     @Substitute
-    public static Target_jdk_jfr_internal_EventWriter newEventWriter() {
+    public static Target_jdk_jfr_internal_event_EventWriter newEventWriter() {
         return SubstrateJVM.get().newEventWriter();
-    }
-
-    /**
-     * See {@link JVM#flush}.
-     */
-    @Substitute
-    @TargetElement(name = "flush", onlyWith = JDK20OrEarlier.class)
-    public static boolean flushJDK20(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
-        return SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
     }
 
     /** See {@link JVM#flush}. */
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
-    public static void flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
+    public static void flush(Target_jdk_jfr_internal_event_EventWriter writer, int uncommittedSize, int requestedSize) {
         SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
     }
 
@@ -400,7 +358,6 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
     public static long commit(long nextPosition) {
         return SubstrateJVM.get().commit(nextPosition);
     }

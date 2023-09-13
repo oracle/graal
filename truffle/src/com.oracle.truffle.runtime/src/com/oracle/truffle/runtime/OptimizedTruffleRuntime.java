@@ -262,7 +262,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
      * the {@link TruffleCompiler} with {@link #getTruffleCompiler(TruffleCompilable)
      * getTruffleCompiler}.
      */
-    protected final String getCompilerConfigurationName() {
+    public final String getCompilerConfigurationName() {
         return compilationSupport.getCompilerConfigurationName(this);
     }
 

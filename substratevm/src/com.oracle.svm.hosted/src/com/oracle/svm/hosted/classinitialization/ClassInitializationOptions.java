@@ -37,6 +37,7 @@ import org.graalvm.compiler.options.OptionType;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
+import com.oracle.svm.core.util.UserError;
 
 public final class ClassInitializationOptions {
 
@@ -100,9 +101,13 @@ public final class ClassInitializationOptions {
     @Option(help = "Assert class initialization is specified for all classes.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> AssertInitializationSpecifiedForAllClasses = new HostedOptionKey<>(false);
 
-    @Option(help = "Use the old class initialization strategy that does not allow all classes to be used at image build time.", type = OptionType.Expert, //
-                    deprecated = true, deprecationMessage = "Temporary flag to restore the class initialization behavior of older GraalVM versions. The old class initialization strategy will be removed in a future version of GraalVM.") //
-    public static final HostedOptionKey<Boolean> UseDeprecatedOldClassInitialization = new HostedOptionKey<>(false);
+    @APIOption(name = "strict-image-heap")//
+    @Option(help = "Enable the strict image heap mode that allows all classes to be used at build-time but also requires types of all objects in the heap to be explicitly marked for build-time initialization.", type = OptionType.User) //
+    public static final HostedOptionKey<Boolean> StrictImageHeap = new HostedOptionKey<>(false, k -> {
+        if (k.hasBeenSet() && Boolean.FALSE.equals(k.getValue())) {
+            throw UserError.abort("Strict image heap mode cannot be explicitly disabled.");
+        }
+    });
 
     @Option(help = "Simulate the effects of class initializer at image build time, to avoid class initialization at run time.", type = OptionType.Expert)//
     public static final HostedOptionKey<Boolean> SimulateClassInitializer = new HostedOptionKey<>(true);

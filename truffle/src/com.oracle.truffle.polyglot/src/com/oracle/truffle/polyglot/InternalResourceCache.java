@@ -48,7 +48,12 @@ import com.oracle.truffle.api.provider.InternalResourceProvider;
 import com.oracle.truffle.polyglot.EngineAccessor.AbstractClassLoaderSupplier;
 import org.graalvm.collections.Pair;
 import org.graalvm.nativeimage.ImageInfo;
+import org.graalvm.nativeimage.ImageSingletons;
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.ProcessProperties;
+import org.graalvm.nativeimage.c.function.CEntryPoint;
+import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
+import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.polyglot.io.FileSystem;
 
 import java.io.IOError;
@@ -302,13 +307,36 @@ final class InternalResourceCache {
         Pair<Path, Boolean> res = cacheRoot;
         if (res == null) {
             assert ImageInfo.inImageRuntimeCode() : "Can be called only in the native-image execution time.";
-            Path executable = Path.of(ProcessProperties.getExecutableName());
-            Path cache = executable.resolve("resources");
+            Path executable = getExecutablePath();
+            Path cache = executable.resolveSibling("resources");
             res = Pair.create(cache, false);
             cacheRoot = res;
         }
         return res.getLeft();
     }
+
+    private static Path getExecutablePath() {
+        assert ImageInfo.inImageRuntimeCode();
+        if (useInternalResources) {
+            if (ImageInfo.isExecutable()) {
+                return Path.of(ProcessProperties.getExecutableName());
+            } else if (ImageInfo.isSharedLibrary()) {
+                return Path.of(ProcessProperties.getObjectFile(InternalResourceCacheSymbol.SYMBOL));
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("Should only be invoked within native image runtime code.");
+            }
+        } else {
+            throw new IllegalArgumentException("Lookup an executable name is restricted. " +
+                            "To enable it, use '-H:+CopyLanguageResources' during the native image build.");
+        }
+    }
+
+    /**
+     * Recomputed before the analyses by a substitution in the {@code TruffleBaseFeature} based on
+     * the {@code CopyLanguageResources} option value. The field must not be declared as
+     * {@code final} to make the substitution function correctly.
+     */
+    private static boolean useInternalResources = true;
 
     /**
      * Collects optional internal resources for native-image build. This method is called
@@ -324,19 +352,6 @@ final class InternalResourceCache {
      * {@code TruffleBaseFeature#afterAnalysis}.
      */
     static void resetNativeImageState() {
-        cacheRoot = null;
-        for (LanguageCache language : LanguageCache.languages().values()) {
-            for (String resourceId : language.getResourceIds()) {
-                InternalResourceCache cache = language.getResourceCache(resourceId);
-                cache.resetFileSystemNativeImageState();
-            }
-        }
-        for (InstrumentCache instrument : InstrumentCache.load()) {
-            for (String resourceId : instrument.getResourceIds()) {
-                InternalResourceCache cache = instrument.getResourceCache(resourceId);
-                cache.resetFileSystemNativeImageState();
-            }
-        }
         nativeImageCache.clear();
     }
 
@@ -395,9 +410,10 @@ final class InternalResourceCache {
                 result |= cache.copyResourcesForNativeImage(target);
             }
         }
-        // Always install Truffle runtime resource caches
-        for (InternalResource resource : EngineAccessor.RUNTIME.getInternalResources()) {
-            result |= createRuntimeResourceCache(resource).copyResourcesForNativeImage(target);
+        // Always install engine resources
+        for (String resourceId : getEngineResourceIds()) {
+            InternalResourceCache cache = getEngineResource(resourceId);
+            result |= cache.copyResourcesForNativeImage(target);
         }
         return result;
     }
@@ -415,6 +431,17 @@ final class InternalResourceCache {
         } else {
             return true;
         }
+    }
+
+    static Collection<String> getEngineResourceIds() {
+        Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.locatorOrDefaultLoaders()).get(PolyglotEngineImpl.ENGINE_ID);
+        return engineResources != null ? engineResources.keySet() : List.of();
+    }
+
+    static InternalResourceCache getEngineResource(String resourceId) {
+        Map<String, Supplier<InternalResourceCache>> engineResources = loadOptionalInternalResources(EngineAccessor.locatorOrDefaultLoaders()).get(PolyglotEngineImpl.ENGINE_ID);
+        Supplier<InternalResourceCache> resourceSupplier = engineResources != null ? engineResources.get(resourceId) : null;
+        return resourceSupplier != null ? resourceSupplier.get() : null;
     }
 
     static Map<String, Map<String, Supplier<InternalResourceCache>>> loadOptionalInternalResources(List<AbstractClassLoaderSupplier> suppliers) {
@@ -455,7 +482,7 @@ final class InternalResourceCache {
     }
 
     private static boolean hasSameCodeSource(OptionalResourceSupplier first, OptionalResourceSupplier second) {
-        return first.optionalResource.getClass() == second.optionalResource.getClass();
+        return first.optionalResourceProvider.getClass() == second.optionalResourceProvider.getClass();
     }
 
     private static boolean isValidLoader(ClassLoader loader) {
@@ -569,18 +596,63 @@ final class InternalResourceCache {
         }
     }
 
-    private record OptionalResourceSupplier(InternalResourceProvider optionalResource) implements Supplier<InternalResourceCache> {
+    private static final class OptionalResourceSupplier implements Supplier<InternalResourceCache> {
+        private final InternalResourceProvider optionalResourceProvider;
+        private volatile InternalResourceCache cachedResource;
 
-        private OptionalResourceSupplier {
-            Objects.requireNonNull(optionalResource, "OptionalResource must be non null");
+        private OptionalResourceSupplier(InternalResourceProvider optionalResourceProvider) {
+            Objects.requireNonNull(optionalResourceProvider, "OptionalResourceProvider must be non null");
+            this.optionalResourceProvider = optionalResourceProvider;
         }
 
         @Override
         public InternalResourceCache get() {
-            return new InternalResourceCache(
-                            EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(optionalResource),
-                            EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(optionalResource),
-                            () -> EngineAccessor.LANGUAGE_PROVIDER.createInternalResource(optionalResource));
+            InternalResourceCache res = cachedResource;
+            if (res == null) {
+                synchronized (this) {
+                    res = cachedResource;
+                    if (res == null) {
+                        res = new InternalResourceCache(
+                                        EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceComponentId(optionalResourceProvider),
+                                        EngineAccessor.LANGUAGE_PROVIDER.getInternalResourceId(optionalResourceProvider),
+                                        () -> EngineAccessor.LANGUAGE_PROVIDER.createInternalResource(optionalResourceProvider));
+                        cachedResource = res;
+                    }
+                }
+            }
+            return res;
         }
+    }
+}
+
+/**
+ * A C entry point utilized for determining the shared library's location. This entry point is
+ * explicitly activated by the {@code TruffleBaseFeature} through reflective invocation of the
+ * {@link InternalResourceCacheSymbol#initialize()} method.
+ */
+final class InternalResourceCacheSymbol implements BooleanSupplier {
+
+    static final CEntryPointLiteral<CFunctionPointer> SYMBOL = CEntryPointLiteral.create(InternalResourceCacheSymbol.class,
+                    "internalResourceCacheSymbol", IsolateThread.class);
+
+    private InternalResourceCacheSymbol() {
+    }
+
+    @Override
+    public boolean getAsBoolean() {
+        return ImageSingletons.contains(InternalResourceCacheSymbol.class);
+    }
+
+    /**
+     * Enables {@link #internalResourceCacheSymbol(IsolateThread)} entrypoint. Called reflectively
+     * by the {@code TruffleBaseFeature#afterRegistration()}.
+     */
+    static void initialize() {
+        ImageSingletons.add(InternalResourceCacheSymbol.class, new InternalResourceCacheSymbol());
+    }
+
+    @CEntryPoint(name = "graal_resource_cache_symbol", publishAs = CEntryPoint.Publish.SymbolOnly, include = InternalResourceCacheSymbol.class)
+    @SuppressWarnings("unused")
+    private static void internalResourceCacheSymbol(IsolateThread thread) {
     }
 }

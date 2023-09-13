@@ -145,7 +145,7 @@ public class PartialEscapePhase extends EffectsPhase<CoreProviders> {
     }
 
     @Override
-    protected Closure<?> createEffectsClosure(CoreProviders context, ScheduleResult schedule, ControlFlowGraph cfg) {
+    protected Closure<?> createEffectsClosure(CoreProviders context, ScheduleResult schedule, ControlFlowGraph cfg, OptionValues options) {
         for (VirtualObjectNode virtual : cfg.graph.getNodes(VirtualObjectNode.TYPE)) {
             virtual.resetObjectId();
         }

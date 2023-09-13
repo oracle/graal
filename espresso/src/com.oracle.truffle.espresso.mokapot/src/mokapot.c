@@ -21,12 +21,18 @@
  * questions.
  */
 #define _JNI_IMPLEMENTATION_
+#if defined(_WIN32)
+#include <winsock2.h>
+#include <windows.h>
+#endif
+
 #include "mokapot.h"
 
-#include <trufflenfi.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
+
 
 OS_THREAD_LOCAL MokapotEnv* tls_moka_env = NULL;
 
@@ -44,6 +50,23 @@ JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetRTLD_DEFAULT() {
 
 JNIEXPORT OS_DL_HANDLE JNICALL mokapotGetProcessHandle() {
     return os_get_ProcessHandle();
+}
+
+JNIEXPORT void mokapotCaptureState(int32_t* addr, jint mask) {
+    // see DowncallLinker::capture_state
+#if defined(_WIN32)
+  if (mask & CAPTURABLE_STATE_GET_LAST_ERROR) {
+    *addr = GetLastError();
+  }
+  addr++;
+  if (mask & CAPTURABLE_STATE_WSA_GET_LAST_ERROR) {
+    *addr = WSAGetLastError();
+  }
+  addr++;
+#endif
+  if (mask & CAPTURABLE_STATE_ERRNO) {
+    *addr = errno;
+  }
 }
 
 #define JNI_INVOKE_INTERFACE_METHODS(V) \
