@@ -42,6 +42,7 @@ package org.graalvm.wasm.predefined.wasi;
 
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.WasmExit;
@@ -56,7 +57,7 @@ public final class WasiProcExitNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final int exitCode = (int) WasmArguments.getArgument(frame.getArguments(), 0);
         throw new WasmExit(this, exitCode);
     }

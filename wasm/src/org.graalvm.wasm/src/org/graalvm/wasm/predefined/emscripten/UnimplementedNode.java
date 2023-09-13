@@ -41,6 +41,7 @@
 package org.graalvm.wasm.predefined.emscripten;
 
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.Failure;
@@ -59,7 +60,7 @@ public class UnimplementedNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         throw fail();
     }
 

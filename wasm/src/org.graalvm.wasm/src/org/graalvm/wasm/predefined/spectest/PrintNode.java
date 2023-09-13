@@ -45,6 +45,7 @@ import java.io.PrintStream;
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
@@ -59,7 +60,7 @@ public class PrintNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         for (final Object arg : WasmArguments.getArguments(frame.getArguments())) {
             print(arg);
         }

@@ -42,6 +42,7 @@ package org.graalvm.wasm.predefined.emscripten;
 
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.Failure;
@@ -57,7 +58,7 @@ public class AbortNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         Object[] args = frame.getArguments();
         final int code = WasmArguments.getArgumentCount(args) > 0 ? (int) WasmArguments.getArgument(args, 0) : 0;
         throw fail(code);

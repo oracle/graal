@@ -41,6 +41,7 @@
 package org.graalvm.wasm.predefined.emscripten;
 
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 
@@ -52,7 +53,7 @@ public class EmscriptenResizeHeapNode extends AbortNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         // Heap resizing is not supported by default by emscripten
         // (need to specify `-s ALLOW_MEMORY_GROWTH=1` on compilation).
         return super.execute(frame);

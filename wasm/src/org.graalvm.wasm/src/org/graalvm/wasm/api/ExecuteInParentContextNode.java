@@ -42,6 +42,7 @@ package org.graalvm.wasm.api;
 
 import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.exception.Failure;
@@ -68,7 +69,7 @@ public class ExecuteInParentContextNode extends WasmBuiltinRootNode {
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         // Imported executables come from the parent context
         TruffleContext truffleContext = context.environment().getContext().getParent();
         Object prev = truffleContext.enter(this);
