@@ -62,6 +62,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       {name: 'daily-deploy-vm-standalones-java21-darwin-aarch64'},
       {name: 'daily-deploy-vm-base-java21-windows-amd64'},
       {name: 'daily-deploy-vm-standalones-java21-windows-amd64'},
+      {name: 'daily-deploy-vm-maven-linux-amd64'},
       {name: 'daily-deploy-vm-espresso-java21-linux-amd64'},
       {name: 'daily-deploy-vm-espresso-java21-linux-aarch64'},
       {name: 'daily-deploy-vm-espresso-java21-darwin-amd64'},
@@ -133,11 +134,11 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       name: 'gate-vm-maven-dry-run-linux-amd64',
       timelimit: '1:00:00',
     },
-    vm_common.graalvm_complete_build_deps('ce', 'linux', 'amd64') + vm_common.linux_deploy + vm_common.deploy_daily_vm_linux_amd64 + vm_common.maven_deploy_base_functions.base_object('linux', 'amd64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
+    self.deploy_vm_publish_releaser_artifact(vm_common.graalvm_complete_build_deps('ce', 'linux', 'amd64') + vm_common.linux_deploy + vm_common.deploy_daily_vm_linux_amd64 + vm_common.maven_deploy_base_functions.base_object('linux', 'amd64', dry_run=false, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
       name: 'daily-deploy-vm-maven-linux-amd64',
       timelimit: '1:00:00',
       notify_groups:: ['deploy'],
-    },
+    }),
     # Linux/AARCH64
     vm_common.graalvm_complete_build_deps('ce', 'linux', 'aarch64') + vm_common.linux_deploy + vm_common.gate_vm_linux_aarch64 + vm_common.maven_deploy_base_functions.base_object('linux', 'aarch64', dry_run=true, remote_mvn_repo=$.maven_deploy_repository, remote_non_mvn_repo=$.binaries_repository, local_repo='local') + {
       name: 'gate-vm-maven-dry-run-linux-aarch64',
