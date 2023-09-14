@@ -459,9 +459,11 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     # add jars to the layout of the benchmark distribution
                     _add_project_to_dist(f'./interpreter/{simple_name}.jar', dist_name,
                         source='dependency:{name}/polybench-espresso-' + simple_name.lower() + '.jar')
-    if register_distribution and ('vm', True) in mx.get_dynamic_imports():
-        # Languages and tools distributions can only be added if this suite is not a dynamic import.
-        # If this suite is a dynamic import, languages and tools distributions might not have been loaded yet.
+    if register_distribution and _suite.primary:
+        # Only primary suite can register languages and tools distributions.
+        # If the suite is not a primary suite, languages and tools distributions might not have been loaded yet.
+        # In this case the register_community_tools_distribution and register_community_languages_distribution
+        # are called from the primary suite.
         register_community_tools_distribution(_suite, register_distribution)
         register_community_languages_distribution(_suite, register_distribution)
 
