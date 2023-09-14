@@ -127,4 +127,3 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
         }
     }
 }
-
