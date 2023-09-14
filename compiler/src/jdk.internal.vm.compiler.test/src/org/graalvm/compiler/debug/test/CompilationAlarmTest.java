@@ -94,31 +94,45 @@ public class CompilationAlarmTest extends GraalCompilerTest {
         }
     }
 
-    private Thread getCompilationThreadWithWait(int waitSeconds, String snippet, OptionValues opt, String expectedExceptionTest) {
-        Thread t = new Thread(new Runnable() {
+    private static class TestThread extends Thread {
+        TestThread(Runnable runnable) {
+            super(runnable);
+        }
+
+        boolean success;
+
+    }
+
+    private TestThread getCompilationThreadWithWait(int waitSeconds, String snippet, OptionValues opt, String expectedExceptionTest) {
+        TestThread t = new TestThread(new Runnable() {
 
             @Override
             public void run() {
-                StructuredGraph graph = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.YES, opt);
-                ResolvedJavaMethod codeOwner = graph.method();
-                CompilationIdentifier compilationId = getOrCreateCompilationId(codeOwner, graph);
-                Request<CompilationResult> request = new Request<>(graph, codeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
-                                graph.getProfilingInfo(), getSuites(waitSeconds, opt), createLIRSuites(opt), new CompilationResult(compilationId), CompilationResultBuilderFactory.Default, null, true);
-
                 try {
-                    GraalCompiler.compile(request);
-                    if (expectedExceptionTest != null) {
-                        Assert.fail("Must throw exception");
+                    StructuredGraph graph = parseEager(getResolvedJavaMethod(snippet), AllowAssumptions.YES, opt);
+                    ResolvedJavaMethod codeOwner = graph.method();
+                    CompilationIdentifier compilationId = getOrCreateCompilationId(codeOwner, graph);
+                    Request<CompilationResult> request = new Request<>(graph, codeOwner, getProviders(), getBackend(), getDefaultGraphBuilderSuite(), getOptimisticOptimizations(),
+                                    graph.getProfilingInfo(), getSuites(waitSeconds, opt), createLIRSuites(opt), new CompilationResult(compilationId), CompilationResultBuilderFactory.Default, null,
+                                    true);
+                    try {
+                        GraalCompiler.compile(request);
+                        if (expectedExceptionTest != null) {
+                            Assert.fail("Must throw exception");
+                        }
+                    } catch (Throwable t1) {
+                        if (expectedExceptionTest == null) {
+                            Assert.fail("Must except exception but found no excepted exception but " + t1.getMessage());
+                        }
+                        if (!t1.getMessage().contains(expectedExceptionTest)) {
+                            Assert.fail("Excepted exception to contain text:" + expectedExceptionTest + " but exception did not contain text " + t1.getMessage());
+                            throw t1;
+                        }
                     }
-                } catch (Throwable t1) {
-                    if (expectedExceptionTest == null) {
-                        Assert.fail("Must except exception but found no excepted exception but " + t1.getMessage());
-                    }
-                    if (!t1.getMessage().contains(expectedExceptionTest)) {
-                        Assert.fail("Excepted exception to contain text:" + expectedExceptionTest + " but exception did not contain text " + t1.getMessage());
-                        throw t1;
-                    }
+                } catch (Throwable tt) {
+                    throw tt;
                 }
+                ((TestThread) Thread.currentThread()).success = true;
             }
         });
         return t;
@@ -136,48 +150,61 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
     @Test
     public void testSingleThreadNoTimeout() throws InterruptedException {
-        Thread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
+        TestThread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
         t1.start();
         t1.join();
+
+        assert t1.success;
     }
 
     @Test
     public void testSingleThreadTimeOut() throws InterruptedException {
-        Thread t1 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for 3 seconds");
+        TestThread t1 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for 3 seconds");
         t1.start();
         t1.join();
+
+        assert t1.success;
     }
 
     @Test
     public void testMultiThreadNoTimeout() throws InterruptedException {
-        Thread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
-        Thread t2 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
+        TestThread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
+        TestThread t2 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
         t1.start();
         t2.start();
         t1.join();
         t2.join();
+
+        assert t1.success;
+        assert t2.success;
     }
 
     @Test
     public void testMultiThreadOneTimeout() throws InterruptedException {
-        Thread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
+        TestThread t1 = getCompilationThreadWithWait(1, "snippet", getOptionsWithTimeOut(3, 1), null);
         t1.start();
         t1.join();
 
-        Thread t2 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for 3 seconds");
+        assert t1.success;
+
+        TestThread t2 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for 3 seconds");
         t2.start();
         t2.join();
+
+        assert t2.success;
     }
 
     @Test
     public void testMultiThreadMultiTimeout() throws InterruptedException {
-        Thread t1 = getCompilationThreadWithWait(20, "snippet", getOptionsWithTimeOut(9, 3), "Observed identical stack traces for 9 seconds");
+        TestThread t1 = getCompilationThreadWithWait(20, "snippet", getOptionsWithTimeOut(9, 3), "Observed identical stack traces for 9 seconds");
         t1.start();
         t1.join();
+        assert t1.success;
 
-        Thread t2 = getCompilationThreadWithWait(20, "snippet", getOptionsWithTimeOut(5, 3), "Observed identical stack traces for 5 seconds");
+        TestThread t2 = getCompilationThreadWithWait(20, "snippet", getOptionsWithTimeOut(5, 3), "Observed identical stack traces for 5 seconds");
         t2.start();
         t2.join();
+        assert t2.success;
     }
 
 }

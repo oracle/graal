@@ -49,15 +49,14 @@ public final class CompilationAlarm implements AutoCloseable {
         @Option(help = "Time limit in seconds before a compilation expires (0 to disable the limit) because no progress was "
                         + "made in the compiler.",
                  type = OptionType.Debug)
-         public static final OptionKey<Double> CompilationNoProgressPeriod = new OptionKey<>(30d);
+        public static final OptionKey<Double> CompilationNoProgressPeriod = new OptionKey<>(30d);
         @Option(help = "Delay in seconds before compilation progress detection starts.",
                  type = OptionType.Debug)
-         public static final OptionKey<Double> CompilationNoProgressStartTrackingProgressPeriod = new OptionKey<>(5d);
-        @Option(help = "Log detailed information about compilation progress detection.",
-                 type = OptionType.Debug)
-         public static final OptionKey<Boolean> CompilationAlarmLogProgressDetection = new OptionKey<>(false);
+        public static final OptionKey<Double> CompilationNoProgressStartTrackingProgressPeriod = new OptionKey<>(5d);
         // @formatter:on
     }
+
+    private static final boolean LOG_PROGRESS_DETECTION = false;
 
     private CompilationAlarm(long expiration) {
         this.expiration = expiration;
@@ -166,47 +165,33 @@ public final class CompilationAlarm implements AutoCloseable {
      * hang and throw a bailout.
      */
     private static void assertProgress(OptionValues opt, EventCounter counter) {
-        StackTraceElement[] lastStackTrace = lastStackTraceForThread.get();
-        EventCounter lastCounter = lastCounterForThread.get();
-
+        final EventCounter lastCounter = lastCounterForThread.get();
         if (lastCounter != null && !lastCounter.equals(counter)) {
             resetProgressDetection();
             return;
         }
 
+        final StackTraceElement[] lastStackTrace = lastStackTraceForThread.get();
         if (lastStackTrace == null) {
             Long lastUniqueStackTraceTimeStamp = lastUniqueStackTraceForThread.get();
             if (lastUniqueStackTraceTimeStamp == null) {
-                /*
-                 * First time we assert the progress - do not start collecting the stack traces in
-                 * the first n seconds
-                 */
-                lastUniqueStackTraceForThread.set(System.currentTimeMillis());
-                lastCounterForThread.set(counter);
-
-                if (Options.CompilationAlarmLogProgressDetection.getValue(opt)) {
-                    TTY.printf("CompilationAlarm: Progress detection %s; taking first time stamp, no stack yet%n", counter);
-                }
-
+                assertProgressNoTracking(opt, counter);
                 return;
             } else {
-
-                final double noProgressStartDetectionPriod = (Options.CompilationNoProgressStartTrackingProgressPeriod.getValue(opt) * 1000);
+                final double noProgressStartDetectionPriod = noProgressStartPeriod.get() * 1000;
                 final long currentTimeStamp = System.currentTimeMillis();
                 final long timeDiff = currentTimeStamp - lastUniqueStackTraceTimeStamp;
-                boolean noProgressForPeriodStartDetection = timeDiff > noProgressStartDetectionPriod;
+                final boolean noProgressForPeriodStartDetection = timeDiff > noProgressStartDetectionPriod;
                 if (!noProgressForPeriodStartDetection) {
                     /*
                      * Still not enough no-progress before we start doing something.
                      */
-
-                    if (Options.CompilationAlarmLogProgressDetection.getValue(opt)) {
+                    if (LOG_PROGRESS_DETECTION) {
                         TTY.printf("CompilationAlarm: Progress detection %s; time diff %s not long enough to take stack trace yet%n", counter, timeDiff);
                     }
-
                     return;
                 } else {
-                    if (Options.CompilationAlarmLogProgressDetection.getValue(opt)) {
+                    if (LOG_PROGRESS_DETECTION) {
                         TTY.printf("CompilationAlarm: Progress detection %s; time diff %s long enough to take stack trace yet%n", counter, timeDiff);
                     }
                 }
@@ -218,40 +203,58 @@ public final class CompilationAlarm implements AutoCloseable {
             lastStackTraceForThread.set(currentStackTrace);
             lastUniqueStackTraceForThread.set(System.currentTimeMillis());
             lastCounterForThread.set(counter);
-            return;
         } else {
-            /*
-             * We perform this check inside here since its cheaper to take the last stack trace
-             * (last will be null for the first in the current compile) than actually checking the
-             * option below. In normal compiles we dont often get into this branch in the first
-             * place, most is capture above, and the thread local is very fast.
-             */
-            final double maxNoProgressPeriod = (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
-            if (maxNoProgressPeriod == 0D) {
-                // Feature is disabled, do nothing.
-                return;
-            }
+            assertProgressSlowPath(opt, lastStackTrace, lastCounter, currentStackTrace);
+        }
+    }
 
-            assert Arrays.equals(lastStackTrace, currentStackTrace) : "Must only enter this branch if no progress was made";
-            /*
-             * We have a similar stack trace - fail once the period is longer than the no progress
-             * period.
-             */
-            final long lastUniqueStackTraceTimeStamp = lastUniqueStackTraceForThread.get();
-            final long currentTimeStamp = System.currentTimeMillis();
-            final long timeDiff = currentTimeStamp - lastUniqueStackTraceTimeStamp;
-            boolean noProgressForPeriod = timeDiff > maxNoProgressPeriod;
+    private static void assertProgressNoTracking(OptionValues opt, EventCounter counter) {
+        /*
+         * First time we assert the progress - do not start collecting the stack traces in the first
+         * n seconds
+         */
+        lastUniqueStackTraceForThread.set(System.currentTimeMillis());
+        lastCounterForThread.set(counter);
+        noProgressStartPeriod.set(Options.CompilationNoProgressStartTrackingProgressPeriod.getValue(opt));
 
-            if (Options.CompilationAlarmLogProgressDetection.getValue(opt) && timeDiff / 1000 > 0) {
+        if (LOG_PROGRESS_DETECTION) {
+            TTY.printf("CompilationAlarm: Progress detection %s; taking first time stamp, no stack yet%n", counter);
+        }
+    }
+
+    private static void assertProgressSlowPath(OptionValues opt, StackTraceElement[] lastStackTrace, EventCounter lastCounter, StackTraceElement[] currentStackTrace) {
+        /*
+         * We perform this check inside here since its cheaper to take the last stack trace (last
+         * will be null for the first in the current compile) than actually checking the option
+         * below. In normal compiles we dont often get into this branch in the first place, most is
+         * capture above, and the thread local is very fast.
+         */
+        final double maxNoProgressPeriod = (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
+        if (maxNoProgressPeriod == 0D) {
+            // Feature is disabled, do nothing.
+            return;
+        }
+
+        assert Arrays.equals(lastStackTrace, currentStackTrace) : "Must only enter this branch if no progress was made";
+        /*
+         * We have a similar stack trace - fail once the period is longer than the no progress
+         * period.
+         */
+        final long lastUniqueStackTraceTimeStamp = lastUniqueStackTraceForThread.get();
+        final long currentTimeStamp = System.currentTimeMillis();
+        final long timeDiff = currentTimeStamp - lastUniqueStackTraceTimeStamp;
+        boolean noProgressForPeriod = timeDiff > maxNoProgressPeriod;
+
+        if (LOG_PROGRESS_DETECTION) {
+            if (timeDiff / 1000 > 0) {
                 TTY.printf("CompilationAlarm: Progress detection %s; no progress for %s seconds - progress %s - max no progress period %s %n", lastCounter, timeDiff / 1000, noProgressForPeriod,
                                 maxNoProgressPeriod);
             }
+        }
 
-            if (noProgressForPeriod) {
-                throw new PermanentBailoutException("Observed identical stack traces for %d seconds, indicating a stuck compilation, counter = %s, stack is %n%s", timeDiff / 1000, lastCounter,
-                                Util.toString(lastStackTrace));
-            }
-
+        if (noProgressForPeriod) {
+            throw new PermanentBailoutException("Observed identical stack traces for %d seconds, indicating a stuck compilation, counter = %s, stack is %n%s", timeDiff / 1000, lastCounter,
+                            Util.toString(lastStackTrace));
         }
     }
 
@@ -259,6 +262,7 @@ public final class CompilationAlarm implements AutoCloseable {
         lastStackTraceForThread.set(null);
         lastUniqueStackTraceForThread.set(null);
         lastCounterForThread.set(null);
+        noProgressStartPeriod.set(null);
     }
 
     public static void compilationAlarmExpired(Graph graph) {
@@ -273,4 +277,5 @@ public final class CompilationAlarm implements AutoCloseable {
     private static final ThreadLocal<StackTraceElement[]> lastStackTraceForThread = new ThreadLocal<>();
     private static final ThreadLocal<Long> lastUniqueStackTraceForThread = new ThreadLocal<>();
     private static final ThreadLocal<EventCounter> lastCounterForThread = new ThreadLocal<>();
+    private static final ThreadLocal<Double> noProgressStartPeriod = new ThreadLocal<>();
 }
