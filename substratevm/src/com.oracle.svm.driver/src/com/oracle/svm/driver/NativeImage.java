@@ -48,6 +48,7 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.ListIterator;
@@ -102,6 +103,8 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 import com.oracle.svm.util.StringUtil;
+
+import jdk.internal.jimage.ImageReader;
 
 public class NativeImage {
 
@@ -1543,9 +1546,15 @@ public class NativeImage {
         List<Path> finalImageClassPath = imagecp.stream().map(substituteClassPath).collect(Collectors.toList());
 
         Function<Path, Path> substituteModulePath = useBundle() ? bundleSupport::substituteModulePath : Function.identity();
-        List<Path> finalImageModulePath = imagemp.stream().map(substituteModulePath).toList();
+        List<Path> imageModulePath = imagemp.stream().map(substituteModulePath).collect(Collectors.toList());
+        Map<String, Path> applicationModules = getModulesFromPath(imageModulePath);
 
-        Map<String, Path> applicationModules = getApplicationModules(finalImageModulePath);
+        // Remove modules that we already have built-in
+        applicationModules.keySet().removeAll(getBuiltInModules());
+        // Remove modules that we get from the builder
+        applicationModules.keySet().removeAll(getModulesFromPath(mp).keySet());
+        List<Path> finalImageModulePath = applicationModules.values().stream().toList();
+
         if (!addModules.isEmpty()) {
 
             arguments.add("-D" + ModuleSupport.PROPERTY_IMAGE_EXPLICITLY_ADDED_MODULES + "=" +
@@ -1555,7 +1564,7 @@ public class NativeImage {
             for (String moduleNameInAddModules : addModules) {
                 if (!applicationModules.containsKey(moduleNameInAddModules)) {
                     /*
-                     * Module names given to native-image --add-modules that are not referring
+                     * Module names given to native-image --add-modules that are not referring to
                      * modules that are passed to native-image via -p/--module-path are considered
                      * to be part of the module-layer that contains the builder itself. Those module
                      * names need to be passed as --add-modules arguments to the builder VM.
@@ -1694,25 +1703,36 @@ public class NativeImage {
         }
     }
 
-    private Map<String, Path> getApplicationModules(Collection<Path> modulePath) {
+    private Set<String> getBuiltInModules() {
+        Path jdkRoot = config.rootDir;
+        try {
+            var reader = ImageReader.open(jdkRoot.resolve("lib/modules"));
+            System.out.println("Modules from " + jdkRoot.resolve("lib/modules") + ":");
+            System.out.println(String.join("\n", reader.getModuleNames()));
+            return new LinkedHashSet<>(List.of(reader.getModuleNames()));
+        } catch (IOException e) {
+            throw showError("Unable to determine builtin modules of JDK in " + jdkRoot, e);
+        }
+    }
+
+    private Map<String, Path> getModulesFromPath(Collection<Path> modulePath) {
         if (!config.modulePathBuild || modulePath.isEmpty()) {
             return Map.of();
         }
 
-        Map<String, Path> applicationModules = new HashMap<>();
+        LinkedHashMap<String, Path> mrefs = new LinkedHashMap<>();
         try {
             ModuleFinder finder = ModuleFinder.of(modulePath.toArray(Path[]::new));
             for (ModuleReference mref : finder.findAll()) {
-                Optional<URI> optionalURI = mref.location();
-                if (optionalURI.isEmpty()) {
-                    continue;
-                }
-                applicationModules.put(mref.descriptor().name(), Path.of(optionalURI.get()));
+                String moduleName = mref.descriptor().name();
+                VMError.guarantee(moduleName != null && !moduleName.isEmpty(), "Unnamed module on modulePath");
+                URI moduleLocation = mref.location().orElseThrow(() -> VMError.shouldNotReachHere("ModuleReference for module " + moduleName + " has no location."));
+                mrefs.put(moduleName, Path.of(moduleLocation));
             }
         } catch (FindException e) {
             throw showError("Failed to collect ModuleReferences for module-path entries " + modulePath, e);
         }
-        return applicationModules;
+        return mrefs;
     }
 
     /**
