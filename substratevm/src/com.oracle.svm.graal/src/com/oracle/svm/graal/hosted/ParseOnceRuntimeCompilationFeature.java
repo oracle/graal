@@ -1253,6 +1253,21 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         public boolean insertPlaceholderParamAndReturnFlows(MultiMethod.MultiMethodKey multiMethodKey) {
             return multiMethodKey == DEOPT_TARGET_METHOD || multiMethodKey == RUNTIME_COMPILED_METHOD;
         }
+
+        @Override
+        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod target) {
+            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD) {
+                /*
+                 * If the method may be intrinsified later, the implementation can change.
+                 */
+                var originalTarget = target.getMultiMethod(ORIGINAL_METHOD);
+                var options = bb.getOptions();
+                return (hostedProviders.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(originalTarget, options) != null) ||
+                                hostedProviders.getReplacements().hasSubstitution(originalTarget, options);
+
+            }
+            return false;
+        }
     }
 
     /**
