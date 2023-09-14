@@ -144,8 +144,6 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     @Override
     public void updateSizeParameters() {
-        PhysicalMemory.tryInitialize();
-
         SizeParameters params = computeSizeParameters(sizes);
         SizeParameters previous = sizes;
         if (previous != null && params.equal(previous)) {

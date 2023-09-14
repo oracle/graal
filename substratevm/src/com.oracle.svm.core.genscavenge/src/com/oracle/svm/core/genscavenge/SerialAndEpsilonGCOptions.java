@@ -69,9 +69,6 @@ public final class SerialAndEpsilonGCOptions {
     @Option(help = "After use, Fill memory chunks with a sentinel value. Serial and epsilon GC only.", type = OptionType.Debug) //
     public static final HostedOptionKey<Boolean> ZapConsumedHeapChunks = new HostedOptionKey<>(false, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);
 
-    @Option(help = "Bytes that can be allocated before (re-)querying the physical memory size. Serial and epsilon GC only.", type = OptionType.Debug) //
-    public static final HostedOptionKey<Long> AllocationBeforePhysicalMemorySize = new HostedOptionKey<>(1L * 1024L * 1024L, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);
-
     @Option(help = "Number of bytes at the beginning of each heap chunk that are not used for payload data, i.e., can be freely used as metadata by the heap chunk provider. Serial and epsilon GC only.", type = OptionType.Debug) //
     public static final HostedOptionKey<Integer> HeapChunkHeaderPadding = new HostedOptionKey<>(0, SerialAndEpsilonGCOptions::serialOrEpsilonGCOnly);
 
