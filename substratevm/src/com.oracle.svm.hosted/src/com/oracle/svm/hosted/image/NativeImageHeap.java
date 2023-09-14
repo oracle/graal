@@ -999,7 +999,7 @@ public final class NativeImageHeap implements ImageHeap {
             if (object.getObjectClass().equals(ImageCodeInfo.class)) {
                 result |= ImageCodeInfo.flag;
             }
-            if (object.getObject().getClass().equals(DynamicHub.class) || object.getObject().getClass().equals(DynamicHubCompanion.class)) {
+            if (object.getObject() != null && (object.getObject().getClass().equals(DynamicHub.class) || object.getObject().getClass().equals(DynamicHubCompanion.class))) {
                 result |= DynamicHubs.flag;
             }
             result |= getByReason(firstReason, additionalReasonInfoHashMap);
