@@ -42,7 +42,7 @@
           for f in _fields
         ],
         mxgate_name:: outer.task_name,
-        name: std.join("-", [outer.target, suite_short, self.mxgate_name] + config + ["jdk" + outer.jdk_version] + target_arch_suffix + [outer.os, outer.arch]) + batch_suffix,
+        name: std.join("-", [outer.target, suite_short, self.mxgate_name] + config + [outer.jdk] + target_arch_suffix + [outer.os, outer.arch]) + batch_suffix,
         run+: [["mx", "--kill-with-sigquit", "--strict-compliance"] + dynamic_imports + ["gate", "--strict-mode", "--tags", std.join(",", outer.mxgate_tags)] + outer.mxgate_extra_args],
       }
     })),
