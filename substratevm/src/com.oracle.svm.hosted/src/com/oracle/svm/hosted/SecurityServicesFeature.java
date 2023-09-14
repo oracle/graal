@@ -31,6 +31,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.lang.ref.WeakReference;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -67,7 +68,6 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
-import java.util.function.Predicate;
 
 import javax.crypto.Cipher;
 import javax.crypto.KeyAgreement;
@@ -81,7 +81,6 @@ import javax.security.auth.callback.CallbackHandler;
 import javax.security.auth.login.Configuration;
 
 import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -197,9 +196,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     /** Providers marked as used by the user. */
     private final Set<String> manuallyMarkedUsedProviderClassNames = new HashSet<>();
 
-    /** Provider verification cache cleaner that removes unused providers from the cache. */
-    private Function<Object, Object> verificationCacheCleaner;
-
     /** Provider verification cache that contains only used providers. */
     private Object filteredVerificationCache;
 
@@ -307,7 +303,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         loader = access.getImageClassLoader();
         jceSecurityClass = loader.findClassOrFail("javax.crypto.JceSecurity");
-        verificationCacheCleaner = constructVerificationCacheCleaner();
 
         /* Ensure sun.security.provider.certpath.CertPathHelper.instance is initialized. */
         access.ensureInitialized("java.security.cert.TrustAnchor");
@@ -366,6 +361,9 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     public boolean shouldRemoveProvider(Provider p) {
+        if (p == null) {
+            return true;
+        }
         if (usedProviders.contains(p)) {
             return false;
         }
@@ -373,9 +371,17 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Object cleanVerificationCache(Object cache) {
         if (shouldFilterProviders) {
-            Object cleanedCache = verificationCacheCleaner.apply(cache);
+            /*
+             * The verification cache is an WeakIdentityWrapper -> Verification result
+             * ConcurrentHashMap. We do not care about the private WeakIdentityWrapper class, it
+             * extends WeakReference and so using WeakReference.get() is sufficient for us.
+             */
+            var cleanedCache = new ConcurrentHashMap<>((ConcurrentHashMap<WeakReference<Provider>, Object>) cache);
+            cleanedCache.keySet().removeIf(key -> shouldRemoveProvider(key.get()));
+
             if (filteredVerificationCache == null || !filteredVerificationCache.equals(cleanedCache)) {
                 filteredVerificationCache = cleanedCache;
             }
@@ -827,44 +833,6 @@ public class SecurityServicesFeature extends JNIRegistrationUtil implements Inte
     private static void registerForReflection(Class<?> clazz) {
         RuntimeReflection.register(clazz);
         RuntimeReflection.register(clazz.getConstructors());
-    }
-
-    @SuppressWarnings("unchecked")
-    private Function<Object, Object> constructVerificationCacheCleaner() {
-        /*
-         * The verification cache is an IdentityWrapper -> Verification result ConcurrentHashMap.
-         * The IdentityWrapper contains the actual provider in the 'obj' field.
-         */
-        String className;
-        String fieldName;
-        if (JavaVersionUtil.JAVA_SPEC <= 20) {
-            className = "javax.crypto.JceSecurity$IdentityWrapper";
-            fieldName = "obj";
-        } else {
-            // JDK-8168469
-            className = "java.lang.ref.Reference";
-            fieldName = "referent";
-        }
-        Class<?> identityWrapper = loader.findClassOrFail(className);
-        Field providerField = ReflectionUtil.lookupField(identityWrapper, fieldName);
-
-        Predicate<Object> listRemovalPredicate = wrapper -> {
-            try {
-                return shouldRemoveProvider((Provider) providerField.get(wrapper));
-            } catch (IllegalAccessException e) {
-                throw VMError.shouldNotReachHere(e);
-            }
-        };
-
-        return obj -> {
-            Map<Object, Object> original = (Map<Object, Object>) obj;
-            Map<Object, Object> verificationResults = new ConcurrentHashMap<>(original);
-
-            verificationResults.keySet().removeIf(listRemovalPredicate);
-
-            return verificationResults;
-        };
-
     }
 
     private static boolean isSignature(Service s) {

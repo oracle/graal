@@ -28,23 +28,27 @@ import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.c.CContext;
 import org.graalvm.nativeimage.c.constant.CConstant;
 
-final class JNIHeaderDirectivesJDK21OrLater extends JNIHeaderDirectives {
+final class JNIHeaderDirectivesJDK22OrLater extends JNIHeaderDirectives {
     @Override
     public boolean isInConfiguration() {
-        return JavaVersionUtil.JAVA_SPEC >= 21;
+        return JavaVersionUtil.JAVA_SPEC >= 22;
     }
 }
 
-@CContext(JNIHeaderDirectivesJDK21OrLater.class)
-public final class JNIVersionJDK21OrLater {
+@CContext(JNIHeaderDirectivesJDK22OrLater.class)
+public final class JNIVersionJDK22OrLater {
 
     // Checkstyle: stop
 
-    @CConstant
-    public static native int JNI_VERSION_21();
+    /*
+     * GR-48572: there is not yet a JNI_VERSION_22 constant defined. As soon as it gets available,
+     * the "value" property of the CConstant annotation below must be removed.
+     */
+    @CConstant(value = "JNI_VERSION_21")
+    public static native int JNI_VERSION_22();
 
     // Checkstyle: resume
 
-    private JNIVersionJDK21OrLater() {
+    private JNIVersionJDK22OrLater() {
     }
 }
