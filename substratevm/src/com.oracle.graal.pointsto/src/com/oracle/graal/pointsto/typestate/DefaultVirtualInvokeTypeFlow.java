@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.typestate;
 
 import java.lang.reflect.Modifier;
 import java.util.Collection;
+import java.util.Collections;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -165,7 +166,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
         }
 
         /* Link the saturated invoke. */
-        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false, callerMultiMethodKey);
+        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = getSaturatedTypeFlow(bb);
         contextInsensitiveInvoke.addInvokeLocation(getSource());
 
         /*
@@ -182,6 +183,17 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
             /* Link the actual return. */
             contextInsensitiveInvoke.getActualReturn().addUse(bb, actualReturn);
         }
+    }
+
+    /*
+     * If the invoke has just been set to saturated in a different thread, it is possible that the
+     * context insensitive invoke has yet to be created.
+     */
+    @Override
+    public AbstractVirtualInvokeTypeFlow getSaturatedTypeFlow(PointsToAnalysis bb) {
+        assert isSaturated();
+
+        return (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false, callerMultiMethodKey);
     }
 
     @Override
@@ -209,6 +221,15 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
     public Collection<AnalysisMethod> getAllCallees() {
         if (isSaturated()) {
             return targetMethod.getContextInsensitiveVirtualInvoke(callerMultiMethodKey).getAllCallees();
+        } else {
+            return super.getAllCallees();
+        }
+    }
+
+    public Collection<AnalysisMethod> getCalleesForReturnLinking() {
+        if (isSaturated()) {
+            /* If the invoke has saturated, then it is not necessary to link the callees. */
+            return Collections.emptyList();
         } else {
             return super.getAllCallees();
         }
