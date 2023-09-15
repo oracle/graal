@@ -35,7 +35,7 @@ You can use the tabs beneath each code example to choose between JavaScript, R, 
 
 ## Dependency Setup
 
-Since GraalVM polyglot version 23.1, all necessary artifacts can be downloaded directly from Maven Central.
+Since Polyglot version 23.1, all necessary artifacts can be downloaded directly from Maven Central.
 All artifacts relevant to embedders can be found in the Maven dependency group [`org.graalvm.polyglot`](https://central.sonatype.com/namespace/org.graalvm.polyglot).
 See the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub for a complete runnable example.
 
@@ -45,13 +45,13 @@ Here is an example Maven dependency setup that you can put into your project:
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<artifactId>polyglot</artifactId> 
-	<version>${graalvm.version}</version> 
+	<version>23.1</version> 
 </dependency>
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- select included language -->
 	<artifactId>js|ruby|python|java|llvm|wasm|languages</artifactId> 
-	<version>${graalvm.version}</version> 
+	<version>23.1</version> 
 	<type>pom</type>
 </dependency>
 <!-- add additional languages if needed -->
@@ -59,7 +59,7 @@ Here is an example Maven dependency setup that you can put into your project:
 	<groupId>org.graalvm.polyglot</groupId> 
 	<!-- select included tools -->
 	<artifactId>profiler|inspect|coverage|dap|tools</artifactId> 
-	<version>${graalvm.version}</version> 
+	<version>23.1</version> 
 	<type>pom</type>
 </dependency>
 <!-- add additional tools if needed -->
@@ -475,7 +475,7 @@ Refer to the [polyglot embedding demonstration](https://github.com/graalvm/polyg
 ### Switching to the Fallback Engine
 
 If the need arises, for example, running only trivial scripts or in the resource-constrained systems, you may want to switch to the fallback engine without run-time optimizations.
-Since GraalVM 23.1, the fallback engine can be activated by removing the `truffle-runtime` and `truffle-enterprise` modules from the class or module path.
+Since Polyglot version 23.1, the fallback engine can be activated by removing the `truffle-runtime` and `truffle-enterprise` modules from the class or module path.
 
 This can be achieved with Maven like this:
 
@@ -520,9 +520,8 @@ Removing these dependencies also automatically switches to the fallback engine i
 
 ## Build Native Executables from Polyglot Applications
 
-Since GraalVM 23.1 no special configuration is required anymore to use [Native Image](../native-image/README.md) to build images with embedded polyglot language runtimes.
-Like any other Java dependency, the polyglot language JAR files must be put on the class or module path when building a native executable.
-Obsolete `native-image` options for configuring polyglot languages, e.g., `--language:js` or `--macro:truffle`, were removed in GraalVM for JDK 21 and are no longer supported.
+With Polyglot version 23.1 on GraalVM for JDK 21, no special configuration is required to use [Native Image](../native-image/README.md) to build images with embedded polyglot language runtimes.
+Like any other Java dependency, the polyglot language JAR files must be on the class or module path when building a native executable.
 We recommend to use the [Maven](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html) or [Gradle](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html) Native Image plugins to configure your `native-image` builds.
 A sample Maven and Gradle configuration for Native Image can be found in the [polyglot embedding demonstration repository](https://github.com/graalvm/polyglot-embedding-demo).
 
@@ -573,7 +572,7 @@ At run time, the lookup location may be customized using the `-Dpolyglot.engine.
 To disable the resource creation, the `-H:-CopyLanguageResources` build-time option may be used.
 Note that some languages may not support running without a resources folder.
 
-With GraalVM 23.1 the language home options like `-Dorg.graalvm.home` should no longer be used and were replaced with the resource folder option.
+With Polyglot version 23.1 the language home options like `-Dorg.graalvm.home` should no longer be used and were replaced with the resource folder option.
 The language home options remain functional for compatibility reasons but may be removed in future releases.
 
 
@@ -707,19 +706,19 @@ For example, a dependency on isolated JavaScript can be configured by adding a M
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>polyglot</artifactId>
-    <version>${graalvm.version}</version>
+    <version>23.1</version>
     <type>jar</type>
 </dependency>
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>js-isolate</artifactId>
-    <version>${graalvm.version}</version>
+    <version>23.1</version>
     <type>pom</type>
 </dependency>
 ```
 
 The downloaded dependency is platform-independent, which contains a native-image for each platform.
-We plan to support downloading native images for individual platforms in a future release.
+We plan to support downloading polyglot isolate native images for individual platforms in a future release.
 
 To enable isolate usage with the Polyglot API, the `--engine.SpawnIsolate=true` option must be passed to `Engine` or `Context` when constructed.
 The option `engine.SpawnIsolate` may not be available if used on any other JDK than Oracle GraalVM.
@@ -748,9 +747,9 @@ Currently, we support the following languages as polyglot isolates:
 | Language.                                     | Polyglot Isolate Support                         |
 |-----------------------------------------------|--------------------------------------------------|
 | JavaScript (`js-isolate`)                     | Supported with version 23.1                      |
-| Python (`python-isolate`)                     | Planned with version 24.0                        |
-| Ruby (`ruby-isolate`)                         | Planned with version 24.0                        |
 
+
+We plan to add support for more languages in future versions.
 
 In the previous example, we enable scoped references using `HostAccess.SCOPED`.
 This is necessary because the host GC and the guest GC are unaware of one another, so cyclic references between objects cannot be resolved automatically.
