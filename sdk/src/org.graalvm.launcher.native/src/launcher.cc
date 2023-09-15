@@ -160,6 +160,7 @@ typedef jint(*CreateJVM)(JavaVM **, void **, void *);
 extern char **environ;
 bool debug = false;
 bool relaunch = false;
+bool found_switch_to_jvm_flag = false;
 
 /* platform-independent environment setter, use empty value to clear */
 int setenv(std::string key, std::string value) {
@@ -317,6 +318,8 @@ void parse_vm_option(
         std::stringstream opt;
         opt << '-' << option.substr(VM_ARG_OFFSET);
         vmArgs->push_back(opt.str());
+    } else if (option == "--jvm") {
+        found_switch_to_jvm_flag = true;
     }
 }
 
@@ -676,7 +679,11 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
     vmInitArgs.nOptions = 0;
     parse_vm_options(argc, argv, exeDir, &vmInitArgs, jvmMode);
     vmInitArgs.version = JNI_VERSION_9;
-    vmInitArgs.ignoreUnrecognized = true;
+    /* In general we want to validate VM arguments.
+     * But we must disable it for the case there is a native library and we saw a --jvm argument,
+     * as the VM arguments are then JVM VM arguments and not SVM VM arguments.
+     * In that case we validate them after the execve() when running in --jvm mode. */
+    vmInitArgs.ignoreUnrecognized = found_switch_to_jvm_flag && !jvmMode;
 
     /* load VM library - after parsing arguments s.t. NMT
      * tracking variable is already set */
