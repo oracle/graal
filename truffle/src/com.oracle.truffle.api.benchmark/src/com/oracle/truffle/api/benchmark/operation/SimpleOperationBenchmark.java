@@ -40,15 +40,15 @@
  */
 package com.oracle.truffle.api.benchmark.operation;
 
-import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_ADD;
-import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_CONST;
-import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_JUMP;
-import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_JUMP_FALSE;
-import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_LD_LOC;
-import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_LESS;
-import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_MOD;
-import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_RETURN;
-import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeNode.OP_ST_LOC;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeInterpreter.OP_ADD;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeInterpreter.OP_CONST;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeInterpreter.OP_JUMP;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeInterpreter.OP_JUMP_FALSE;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeInterpreter.OP_LD_LOC;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeInterpreter.OP_LESS;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeInterpreter.OP_MOD;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeInterpreter.OP_RETURN;
+import static com.oracle.truffle.api.benchmark.operation.ManualBytecodeInterpreter.OP_ST_LOC;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
@@ -67,8 +67,8 @@ import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.benchmark.TruffleBenchmark;
-import com.oracle.truffle.api.benchmark.operation.ManualBytecodeNodedNode.AddNode;
-import com.oracle.truffle.api.benchmark.operation.ManualBytecodeNodedNode.ModNode;
+import com.oracle.truffle.api.benchmark.operation.ManualUnsafeNodedInterpreter.AddNode;
+import com.oracle.truffle.api.benchmark.operation.ManualUnsafeNodedInterpreter.ModNode;
 
 @State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 1)
@@ -87,11 +87,11 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     private static final String NAME_OPERATION_BE = "simple:operation-be";
     private static final String NAME_OPERATION_QUICKENED = "simple:operation-quickened";
     private static final String NAME_OPERATION_ALL = "simple:operation-all";
-    private static final String NAME_MANUAL = "simple:manual";
-    private static final String NAME_MANUAL_NO_BE = "simple:manual-no-be";
-    private static final String NAME_MANUAL_UNSAFE = "simple:manual-unsafe";
-    private static final String NAME_MANUAL_NODED = "simple:manual-noded";
-    private static final String NAME_MANUAL_NODED_NO_BE = "simple:manual-noded-no-be";
+    private static final String NAME_MANUAL_BCI = "simple:manual";
+    private static final String NAME_MANUAL_BCI_NO_BE = "simple:manual-no-be";
+    private static final String NAME_MANUAL_BCI_UNSAFE = "simple:manual-unsafe";
+    private static final String NAME_MANUAL_NODED_UNSAFE = "simple:manual-noded-unsafe";
+    private static final String NAME_MANUAL_NODED_UNSAFE_NO_BE = "simple:manual-noded-unsafe-no-be";
     private static final String NAME_AST = "simple:ast";
 
     private static final Source SOURCE_OPERATION = Source.create("bm", NAME_OPERATION);
@@ -100,11 +100,11 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     private static final Source SOURCE_OPERATION_BE = Source.create("bm", NAME_OPERATION_BE);
     private static final Source SOURCE_OPERATION_QUICKENED = Source.create("bm", NAME_OPERATION_QUICKENED);
     private static final Source SOURCE_OPERATION_ALL = Source.create("bm", NAME_OPERATION_ALL);
-    private static final Source SOURCE_MANUAL = Source.create("bm", NAME_MANUAL);
-    private static final Source SOURCE_MANUAL_NO_BE = Source.create("bm", NAME_MANUAL_NO_BE);
-    private static final Source SOURCE_MANUAL_UNSAFE = Source.create("bm", NAME_MANUAL_UNSAFE);
-    private static final Source SOURCE_MANUAL_NODED = Source.create("bm", NAME_MANUAL_NODED);
-    private static final Source SOURCE_MANUAL_NODED_NO_BE = Source.create("bm", NAME_MANUAL_NODED_NO_BE);
+    private static final Source SOURCE_MANUAL_BCI = Source.create("bm", NAME_MANUAL_BCI);
+    private static final Source SOURCE_MANUAL_BCI_NO_BE = Source.create("bm", NAME_MANUAL_BCI_NO_BE);
+    private static final Source SOURCE_MANUAL_BCI_UNSAFE = Source.create("bm", NAME_MANUAL_BCI_UNSAFE);
+    private static final Source SOURCE_MANUAL_NODED_UNSAFE = Source.create("bm", NAME_MANUAL_NODED_UNSAFE);
+    private static final Source SOURCE_MANUAL_NODED_UNSAFE_NO_BE = Source.create("bm", NAME_MANUAL_NODED_UNSAFE_NO_BE);
     private static final Source SOURCE_AST = Source.create("bm", NAME_AST);
 
     // Keep the baseline interpreter around so we can manually reset its invocation threshold.
@@ -115,6 +115,7 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     private static final int LOC_J = 6;
     private static final int LOC_TEMP = 7;
 
+    public static short NUM_BYTECODE_PROFILES = 0;
     private static final short[] BYTECODE = {
                     // i = 0
                     /* 00 */ OP_CONST, 0, 0,
@@ -129,76 +130,77 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
                     /* 10 */ OP_LD_LOC, LOC_I,
                     /* 12 */ OP_CONST, 0, (short) TOTAL_ITERATIONS,
                     /* 15 */ OP_LESS,
-                    /* 16 */ OP_JUMP_FALSE, 83, // while_0_end
+                    /* 16 */ OP_JUMP_FALSE, 86, NUM_BYTECODE_PROFILES++, // while_0_end
 
                     // j = 0
-                    /* 18 */ OP_CONST, 0, 0,
-                    /* 21 */ OP_ST_LOC, LOC_J,
+                    /* 19 */ OP_CONST, 0, 0,
+                    /* 22 */ OP_ST_LOC, LOC_J,
 
                     // while (j < i) {
                     /* while_1_start: */
-                    /* 23 */ OP_LD_LOC, LOC_J, // j
-                    /* 25 */ OP_LD_LOC, LOC_I, // i
-                    /* 27 */ OP_LESS,
-                    /* 28 */ OP_JUMP_FALSE, 66, // while_1_end
+                    /* 24 */ OP_LD_LOC, LOC_J, // j
+                    /* 26 */ OP_LD_LOC, LOC_I, // i
+                    /* 28 */ OP_LESS,
+                    /* 29 */ OP_JUMP_FALSE, 69, NUM_BYTECODE_PROFILES++, // while_1_end
 
                     // if (i % 3 < 1) {
-                    /* 30 */ OP_LD_LOC, LOC_I, // i
-                    /* 32 */ OP_CONST, 0, 3,
-                    /* 35 */ OP_MOD,
-                    /* 36 */ OP_CONST, 0, 1,
-                    /* 39 */ OP_LESS,
-                    /* 40 */ OP_JUMP_FALSE, 49, // if_else
+                    /* 32 */ OP_LD_LOC, LOC_I, // i
+                    /* 34 */ OP_CONST, 0, 3,
+                    /* 37 */ OP_MOD,
+                    /* 38 */ OP_CONST, 0, 1,
+                    /* 41 */ OP_LESS,
+                    /* 42 */ OP_JUMP_FALSE, 52, NUM_BYTECODE_PROFILES++, // if_else
 
                     // temp = 1
-                    /* 42 */ OP_CONST, 0, 1,
-                    /* 45 */ OP_ST_LOC, LOC_TEMP, // temp
+                    /* 45 */ OP_CONST, 0, 1,
+                    /* 48 */ OP_ST_LOC, LOC_TEMP, // temp
 
                     // } else {
-                    /* 47 */ OP_JUMP, 57, // if_end
+                    /* 50 */ OP_JUMP, 60, // if_end
                     /* if_else: */
 
                     // temp = i % 3
-                    /* 49 */ OP_LD_LOC, LOC_I, // i
-                    /* 51 */ OP_CONST, 0, 3,
-                    /* 54 */ OP_MOD,
-                    /* 55 */ OP_ST_LOC, LOC_TEMP, // temp
+                    /* 52 */ OP_LD_LOC, LOC_I, // i
+                    /* 54 */ OP_CONST, 0, 3,
+                    /* 57 */ OP_MOD,
+                    /* 58 */ OP_ST_LOC, LOC_TEMP, // temp
 
                     // } // if end
                     /* if_end: */
 
                     // j = j + temp
-                    /* 57 */ OP_LD_LOC, LOC_J, // j
-                    /* 59 */ OP_LD_LOC, LOC_TEMP, // temp
-                    /* 61 */ OP_ADD,
-                    /* 62 */ OP_ST_LOC, LOC_J, // j
+                    /* 60 */ OP_LD_LOC, LOC_J, // j
+                    /* 62 */ OP_LD_LOC, LOC_TEMP, // temp
+                    /* 64 */ OP_ADD,
+                    /* 65 */ OP_ST_LOC, LOC_J, // j
 
                     // } // while end
-                    /* 64 */ OP_JUMP, 23, // while_1_start
+                    /* 67 */ OP_JUMP, 24, // while_1_start
                     /* while_1_end: */
 
                     // sum = sum + j
-                    /* 66 */ OP_LD_LOC, LOC_SUM, // sum
-                    /* 68 */ OP_LD_LOC, LOC_J, // j
-                    /* 70 */ OP_ADD,
-                    /* 71 */ OP_ST_LOC, LOC_SUM, // sum
+                    /* 69 */ OP_LD_LOC, LOC_SUM, // sum
+                    /* 71 */ OP_LD_LOC, LOC_J, // j
+                    /* 73 */ OP_ADD,
+                    /* 74 */ OP_ST_LOC, LOC_SUM, // sum
 
                     // i = i + 1
-                    /* 73 */ OP_LD_LOC, LOC_I, // i
-                    /* 75 */ OP_CONST, 0, 1,
-                    /* 78 */ OP_ADD,
-                    /* 79 */ OP_ST_LOC, LOC_I, // i
+                    /* 76 */ OP_LD_LOC, LOC_I, // i
+                    /* 79 */ OP_CONST, 0, 1,
+                    /* 80 */ OP_ADD,
+                    /* 82 */ OP_ST_LOC, LOC_I, // i
 
                     // } // while end
-                    /* 81 */ OP_JUMP, 10, // while_0_start
+                    /* 84 */ OP_JUMP, 10, // while_0_start
                     /* while_0_end: */
 
                     // return sum
-                    /* 83 */ OP_LD_LOC, LOC_SUM, // sum
-                    /* 85 */ OP_RETURN,
+                    /* 86 */ OP_LD_LOC, LOC_SUM, // sum
+                    /* 88 */ OP_RETURN,
 
     };
 
+    private static short NUM_BC_SHORT_PROFILES = 0;
     private static final short[] BC_SHORT = {
                     // i = 0
                     /* 00 */ OP_CONST, 0, // 0
@@ -211,86 +213,79 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
                     // while (i < 5000) {
                     /* while_0_start: */
                     /* 08 */ OP_LD_LOC, LOC_I,
-                    /* 10 */ OP_CONST, 9, // TOTAL_ITERATIONS (5000)
+                    /* 10 */ OP_CONST, 3, // TOTAL_ITERATIONS (5000)
                     /* 12 */ OP_LESS,
-                    /* 13 */ OP_JUMP_FALSE, 79, // while_0_end
+                    /* 13 */ OP_JUMP_FALSE, 82, NUM_BC_SHORT_PROFILES++, // while_0_end
 
                     // j = 0
-                    /* 15 */ OP_CONST, 0, // 0
-                    /* 17 */ OP_ST_LOC, LOC_J,
+                    /* 16 */ OP_CONST, 0, // 0
+                    /* 18 */ OP_ST_LOC, LOC_J,
 
                     // while (j < i) {
                     /* while_1_start: */
-                    /* 19 */ OP_LD_LOC, LOC_J,
-                    /* 21 */ OP_LD_LOC, LOC_I,
-                    /* 23 */ OP_LESS,
-                    /* 24 */ OP_JUMP_FALSE, 61, // while_1_end
+                    /* 20 */ OP_LD_LOC, LOC_J,
+                    /* 22 */ OP_LD_LOC, LOC_I,
+                    /* 24 */ OP_LESS,
+                    /* 25 */ OP_JUMP_FALSE, 64, NUM_BC_SHORT_PROFILES++, // while_1_end
 
                     // if (i % 3 < 1) {
-                    /* 26 */ OP_LD_LOC, LOC_I,
-                    /* 28 */ OP_CONST, 2, // 3
-                    /* 30 */ OP_MOD, 0,
-                    /* 32 */ OP_CONST, 1, // 1
-                    /* 34 */ OP_LESS,
-                    /* 35 */ OP_JUMP_FALSE, 43, // if_else
+                    /* 28 */ OP_LD_LOC, LOC_I,
+                    /* 30 */ OP_CONST, 2, // 3
+                    /* 32 */ OP_MOD, 0,
+                    /* 34 */ OP_CONST, 1, // 1
+                    /* 36 */ OP_LESS,
+                    /* 37 */ OP_JUMP_FALSE, 46, NUM_BC_SHORT_PROFILES++, // if_else
 
                     // temp = 1
-                    /* 37 */ OP_CONST, 1, // 1
-                    /* 39 */ OP_ST_LOC, LOC_TEMP,
-                    /* 41 */ OP_JUMP, 51, // if_end
+                    /* 40 */ OP_CONST, 1, // 1
+                    /* 42 */ OP_ST_LOC, LOC_TEMP,
+                    /* 44 */ OP_JUMP, 54, // if_end
                     // } else {
 
                     /* if_else: */
                     // temp = i % 3
-                    /* 43 */ OP_LD_LOC, LOC_I,
-                    /* 45 */ OP_CONST, 2, // 3
-                    /* 47 */ OP_MOD, 1,
-                    /* 49 */ OP_ST_LOC, LOC_TEMP,
+                    /* 46 */ OP_LD_LOC, LOC_I,
+                    /* 48 */ OP_CONST, 2, // 3
+                    /* 50 */ OP_MOD, 1,
+                    /* 52 */ OP_ST_LOC, LOC_TEMP,
 
                     // } // if end
                     /* if_end: */
 
                     // j = j + temp
-                    /* 51 */ OP_LD_LOC, LOC_J,
-                    /* 53 */ OP_LD_LOC, LOC_TEMP,
-                    /* 55 */ OP_ADD, 2,
-                    /* 57 */ OP_ST_LOC, LOC_J,
-                    /* 59 */ OP_JUMP, 19, // while_1_start
+                    /* 54 */ OP_LD_LOC, LOC_J,
+                    /* 56 */ OP_LD_LOC, LOC_TEMP,
+                    /* 58 */ OP_ADD, 2,
+                    /* 60 */ OP_ST_LOC, LOC_J,
+                    /* 62 */ OP_JUMP, 20, // while_1_start
                     // } // while end
                     /* while_1_end: */
 
                     // sum = sum + j
-                    /* 61 */ OP_LD_LOC, LOC_SUM,
-                    /* 63 */ OP_LD_LOC, LOC_J,
-                    /* 65 */ OP_ADD, 3,
-                    /* 67 */ OP_ST_LOC, LOC_SUM,
+                    /* 64 */ OP_LD_LOC, LOC_SUM,
+                    /* 66 */ OP_LD_LOC, LOC_J,
+                    /* 68 */ OP_ADD, 3,
+                    /* 70 */ OP_ST_LOC, LOC_SUM,
 
                     // i = i + 1
-                    /* 69 */ OP_LD_LOC, LOC_I,
-                    /* 71 */ OP_CONST, 1, // 1
-                    /* 73 */ OP_ADD, 4,
-                    /* 75 */ OP_ST_LOC, LOC_I,
-                    /* 77 */ OP_JUMP, 8, // while_0_start
+                    /* 72 */ OP_LD_LOC, LOC_I,
+                    /* 74 */ OP_CONST, 1, // 1
+                    /* 76 */ OP_ADD, 4,
+                    /* 78 */ OP_ST_LOC, LOC_I,
+                    /* 80 */ OP_JUMP, 8, // while_0_start
                     // } // while end
                     /* while_0_end: */
 
                     // return sum
-                    /* 79 */ OP_LD_LOC, LOC_SUM,
-                    /* 81 */ OP_RETURN,
+                    /* 82 */ OP_LD_LOC, LOC_SUM,
+                    /* 84 */ OP_RETURN,
     };
 
     private static final Object[] OBJ_SHORT = {
                     0,
                     1,
                     3,
-                    10,
-                    23,
-                    27,
-                    32,
-                    40,
-                    41,
                     TOTAL_ITERATIONS,
-                    null
     };
 
     private static final Node[] NODE_SHORT = {
@@ -329,7 +324,7 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
      * The result should be 12498333.
      */
     static {
-        if (BYTECODE.length != 86) {
+        if (BYTECODE.length != 89) {
             throw new AssertionError("bad bytecode length: " + BYTECODE.length);
         }
 
@@ -352,34 +347,34 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
         BenchmarkLanguage.registerName(NAME_OPERATION_ALL, BMOperationRootNodeAll.class, (lang, b) -> {
             createSimpleLoop(lang, b);
         });
-        BenchmarkLanguage.registerName(NAME_MANUAL, lang -> {
+        BenchmarkLanguage.registerName(NAME_MANUAL_BCI, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
-            ManualBytecodeNode node = new ManualBytecodeNode(lang, b.build(), BYTECODE);
+            ManualBytecodeInterpreter node = new ManualBytecodeInterpreter(lang, b.build(), BYTECODE);
             return node.getCallTarget();
         });
-        BenchmarkLanguage.registerName(NAME_MANUAL_NO_BE, lang -> {
+        BenchmarkLanguage.registerName(NAME_MANUAL_BCI_NO_BE, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
-            ManualBytecodeNodeNBE node = new ManualBytecodeNodeNBE(lang, b.build(), BYTECODE);
+            ManualBytecodeInterpreterWithoutBE node = new ManualBytecodeInterpreterWithoutBE(lang, b.build(), BYTECODE);
             return node.getCallTarget();
         });
-        BenchmarkLanguage.registerName(NAME_MANUAL_UNSAFE, lang -> {
+        BenchmarkLanguage.registerName(NAME_MANUAL_BCI_UNSAFE, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
-            ManualUnsafeBytecodeNode node = new ManualUnsafeBytecodeNode(lang, b.build(), BYTECODE);
+            ManualUnsafeBytecodeInterpreter node = new ManualUnsafeBytecodeInterpreter(lang, b.build(), BYTECODE);
             return node.getCallTarget();
         });
-        BenchmarkLanguage.registerName(NAME_MANUAL_NODED, lang -> {
+        BenchmarkLanguage.registerName(NAME_MANUAL_NODED_UNSAFE, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
-            ManualBytecodeNodedNode node = new ManualBytecodeNodedNode(lang, b.build(), BC_SHORT, OBJ_SHORT, NODE_SHORT);
+            ManualUnsafeNodedInterpreter node = new ManualUnsafeNodedInterpreter(lang, b.build(), BC_SHORT, OBJ_SHORT, NODE_SHORT);
             return node.getCallTarget();
         });
-        BenchmarkLanguage.registerName(NAME_MANUAL_NODED_NO_BE, lang -> {
+        BenchmarkLanguage.registerName(NAME_MANUAL_NODED_UNSAFE_NO_BE, lang -> {
             FrameDescriptor.Builder b = FrameDescriptor.newBuilder(3);
             b.addSlots(8, FrameSlotKind.Illegal);
-            ManualBytecodeNodedNodeNBE node = new ManualBytecodeNodedNodeNBE(lang, b.build(), BC_SHORT, OBJ_SHORT, NODE_SHORT);
+            ManualUnsafeNodedInterpreterWithoutBE node = new ManualUnsafeNodedInterpreterWithoutBE(lang, b.build(), BC_SHORT, OBJ_SHORT, NODE_SHORT);
             return node.getCallTarget();
         });
         BenchmarkLanguage.registerName(NAME_AST, lang -> {
@@ -594,27 +589,27 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
 
     @Benchmark
     public void manual() {
-        doEval(SOURCE_MANUAL);
+        doEval(SOURCE_MANUAL_BCI);
     }
 
     @Benchmark
     public void manualNoBE() {
-        doEval(SOURCE_MANUAL_NO_BE);
+        doEval(SOURCE_MANUAL_BCI_NO_BE);
     }
 
     @Benchmark
     public void manualUnsafe() {
-        doEval(SOURCE_MANUAL_UNSAFE);
+        doEval(SOURCE_MANUAL_BCI_UNSAFE);
     }
 
     @Benchmark
-    public void manualNoded() {
-        doEval(SOURCE_MANUAL_NODED);
+    public void manualNodedUnsafe() {
+        doEval(SOURCE_MANUAL_NODED_UNSAFE);
     }
 
     @Benchmark
-    public void manualNodedNoBE() {
-        doEval(SOURCE_MANUAL_NODED_NO_BE);
+    public void manualNodedUnsafeNoBE() {
+        doEval(SOURCE_MANUAL_NODED_UNSAFE_NO_BE);
     }
 
     @Benchmark

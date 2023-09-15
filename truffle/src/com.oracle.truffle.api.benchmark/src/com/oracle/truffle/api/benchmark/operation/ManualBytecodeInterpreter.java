@@ -54,12 +54,13 @@ import com.oracle.truffle.api.impl.FastAccess;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.ExplodeLoop.LoopExplosionKind;
+import com.oracle.truffle.api.operation.OperationSupport;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-public class ManualBytecodeNode extends BaseBytecodeNode {
-    protected ManualBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
+public class ManualBytecodeInterpreter extends BaseBytecodeNode {
+    protected ManualBytecodeInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
         super(language, frameDescriptor, bc);
     }
 
@@ -68,6 +69,7 @@ public class ManualBytecodeNode extends BaseBytecodeNode {
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
         short[] localBc = bc;
+        int[] localBranchProfiles = branchProfiles;
         int bci = startBci;
         int sp = startSp;
 
@@ -118,12 +120,14 @@ public class ManualBytecodeNode extends BaseBytecodeNode {
                 // (b -- )
                 case OP_JUMP_FALSE: {
                     boolean cond = frame.getBoolean(sp - 1);
+                    int profileIdx = localBc[bci + 2];
+                    frame.clear(sp - 1);
                     sp -= 1;
-                    if (branchProfile(bci, !cond)) {
+                    if (OperationSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
                         bci = localBc[bci + 1];
                         continue loop;
                     } else {
-                        bci += 2;
+                        bci += 3;
                         continue loop;
                     }
                 }
@@ -161,8 +165,8 @@ public class ManualBytecodeNode extends BaseBytecodeNode {
     }
 }
 
-class ManualUnsafeBytecodeNode extends BaseBytecodeNode {
-    protected ManualUnsafeBytecodeNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
+class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
+    protected ManualUnsafeBytecodeInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
         super(language, frameDescriptor, bc);
     }
 
@@ -173,6 +177,7 @@ class ManualUnsafeBytecodeNode extends BaseBytecodeNode {
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
         short[] localBc = bc;
+        int[] localBranchProfiles = branchProfiles;
         int bci = startBci;
         int sp = startSp;
 
@@ -225,12 +230,14 @@ class ManualUnsafeBytecodeNode extends BaseBytecodeNode {
                 // (b -- )
                 case OP_JUMP_FALSE: {
                     boolean cond = UFA.getBoolean(frame, sp - 1);
+                    int profileIdx = UFA.shortArrayRead(localBc, bci + 2);
+                    UFA.clear(frame, sp - 1);
                     sp -= 1;
-                    if (branchProfile(bci, !cond)) {
+                    if (OperationSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
                         bci = UFA.shortArrayRead(localBc, bci + 1);
                         continue loop;
                     } else {
-                        bci += 2;
+                        bci += 3;
                         continue loop;
                     }
                 }
@@ -278,7 +285,7 @@ abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
          * interpreter will allocate just enough space for the branches, but for small programs this
          * overhead should be insignificant.
          */
-        this.branchProfiles = new int[bc.length * 2];
+        this.branchProfiles = OperationSupport.allocateBranchProfiles(SimpleOperationBenchmark.NUM_BYTECODE_PROFILES);
     }
 
     @CompilationFinal(dimensions = 1) protected short[] bc;
@@ -323,49 +330,6 @@ abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
         return null;
     }
 
-    // Code copied from CountingConditionProfile.
-    private static final int MAX_PROFILE_COUNT = 0x3fffffff;
-
-    protected final boolean branchProfile(int bci, boolean condition) {
-        int t = branchProfiles[bci * 2];
-        int f = branchProfiles[bci * 2 + 1];
-        boolean val = condition;
-        if (val) {
-            if (t == 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (f == 0) {
-                // Make this branch fold during PE
-                val = true;
-            }
-            if (CompilerDirectives.inInterpreter()) {
-                if (t < MAX_PROFILE_COUNT) {
-                    branchProfiles[bci * 2] = t + 1;
-                }
-            }
-        } else {
-            if (f == 0) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-            }
-            if (t == 0) {
-                // Make this branch fold during PE
-                val = false;
-            }
-            if (CompilerDirectives.inInterpreter()) {
-                if (f < MAX_PROFILE_COUNT) {
-                    branchProfiles[bci * 2 + 1] = f + 1;
-                }
-            }
-        }
-        if (CompilerDirectives.inInterpreter()) {
-            // no branch probability calculation in the interpreter
-            return val;
-        } else {
-            int sum = t + f;
-            return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
-        }
-    }
-
     public Object executeOSR(VirtualFrame osrFrame, int target, Object interpreterState) {
         return executeAt(osrFrame, target & 0xffff, target >> 16);
     }
@@ -381,9 +345,9 @@ abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
     }
 }
 
-class ManualBytecodeNodeNBE extends BaseBytecodeNode {
+class ManualBytecodeInterpreterWithoutBE extends BaseBytecodeNode {
 
-    protected ManualBytecodeNodeNBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
+    protected ManualBytecodeInterpreterWithoutBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc) {
         super(language, frameDescriptor, bc);
     }
 
@@ -392,6 +356,7 @@ class ManualBytecodeNodeNBE extends BaseBytecodeNode {
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
         short[] localBc = bc;
+        int[] localBranchProfiles = branchProfiles;
         int bci = startBci;
         int sp = startSp;
 
@@ -444,13 +409,14 @@ class ManualBytecodeNodeNBE extends BaseBytecodeNode {
                 // (b -- )
                 case OP_JUMP_FALSE: {
                     boolean cond = frame.getObject(sp - 1) == Boolean.TRUE;
+                    int profileIdx = localBc[bci + 2];
                     frame.clear(sp - 1);
                     sp -= 1;
-                    if (branchProfile(bci, !cond)) {
+                    if (OperationSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
                         bci = localBc[bci + 1];
                         continue loop;
                     } else {
-                        bci += 2;
+                        bci += 3;
                         continue loop;
                     }
                 }
@@ -491,13 +457,13 @@ class ManualBytecodeNodeNBE extends BaseBytecodeNode {
 }
 
 @SuppressWarnings("truffle-inlining")
-@GeneratedBy(ManualUnsafeBytecodeNode.class) // needed for UFA
-class ManualBytecodeNodedNode extends BaseBytecodeNode {
+@GeneratedBy(ManualUnsafeBytecodeInterpreter.class) // needed for UFA
+class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
 
     @CompilationFinal(dimensions = 1) private final Object[] objs;
     @CompilationFinal(dimensions = 1) private final Node[] nodes;
 
-    protected ManualBytecodeNodedNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc, Object[] objs, Node[] nodes) {
+    protected ManualUnsafeNodedInterpreter(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc, Object[] objs, Node[] nodes) {
         super(language, frameDescriptor, bc);
         this.objs = objs;
         this.nodes = nodes;
@@ -514,7 +480,7 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
         }
 
         public static AddNode create() {
-            return ManualBytecodeNodedNodeFactory.AddNodeGen.create();
+            return ManualUnsafeNodedInterpreterFactory.AddNodeGen.create();
         }
     }
 
@@ -527,7 +493,7 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
         }
 
         public static ModNode create() {
-            return ManualBytecodeNodedNodeFactory.ModNodeGen.create();
+            return ManualUnsafeNodedInterpreterFactory.ModNodeGen.create();
         }
     }
 
@@ -537,6 +503,7 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
     protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
         short[] localBc = bc;
         Object[] localObjs = objs;
+        int[] localBranchProfiles = branchProfiles;
         Node[] localNodes = nodes;
         int bci = startBci;
         int sp = startSp;
@@ -590,12 +557,14 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
                 // (b -- )
                 case OP_JUMP_FALSE: {
                     boolean cond = UFA.getBoolean(frame, sp - 1);
+                    int profileIdx = UFA.shortArrayRead(bc, bci + 2);
+                    UFA.clear(frame, sp - 1);
                     sp -= 1;
-                    if (branchProfile(bci, !cond)) {
+                    if (OperationSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
                         bci = UFA.shortArrayRead(localBc, bci + 1);
                         continue loop;
                     } else {
-                        bci += 2;
+                        bci += 3;
                         continue loop;
                     }
                 }
@@ -634,13 +603,13 @@ class ManualBytecodeNodedNode extends BaseBytecodeNode {
 }
 
 @SuppressWarnings("truffle-inlining")
-@GeneratedBy(ManualUnsafeBytecodeNode.class) // needed for UFA
-class ManualBytecodeNodedNodeNBE extends BaseBytecodeNode {
+@GeneratedBy(ManualUnsafeBytecodeInterpreter.class) // needed for UFA
+class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
 
     @CompilationFinal(dimensions = 1) private final Object[] objs;
     @CompilationFinal(dimensions = 1) private final Node[] nodes;
 
-    protected ManualBytecodeNodedNodeNBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc, Object[] objs, Node[] nodes) {
+    protected ManualUnsafeNodedInterpreterWithoutBE(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, short[] bc, Object[] objs, Node[] nodes) {
         super(language, frameDescriptor, bc);
         this.objs = objs;
         this.nodes = nodes;
@@ -653,6 +622,7 @@ class ManualBytecodeNodedNodeNBE extends BaseBytecodeNode {
     @ExplodeLoop(kind = LoopExplosionKind.MERGE_EXPLODE)
     protected Object executeAt(VirtualFrame frame, int startBci, int startSp) {
         short[] localBc = bc;
+        int[] localBranchProfiles = branchProfiles;
         Object[] localObjs = objs;
         Node[] localNodes = nodes;
         int bci = startBci;
@@ -683,7 +653,7 @@ class ManualBytecodeNodedNodeNBE extends BaseBytecodeNode {
                 case OP_ADD: {
                     int lhs = (int) UFA.getObject(frame, sp - 2);
                     int rhs = (int) UFA.getObject(frame, sp - 1);
-                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), ManualBytecodeNodedNode.AddNode.class).execute(lhs, rhs));
+                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), ManualUnsafeNodedInterpreter.AddNode.class).execute(lhs, rhs));
                     sp -= 1;
                     bci += 2;
                     continue loop;
@@ -692,7 +662,7 @@ class ManualBytecodeNodedNodeNBE extends BaseBytecodeNode {
                 case OP_MOD: {
                     int lhs = (int) UFA.getObject(frame, sp - 2);
                     int rhs = (int) UFA.getObject(frame, sp - 1);
-                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), ManualBytecodeNodedNode.ModNode.class).execute(lhs, rhs));
+                    UFA.setObject(frame, sp - 2, UFA.cast(UFA.objectArrayRead(localNodes, UFA.shortArrayRead(localBc, bci + 1)), ManualUnsafeNodedInterpreter.ModNode.class).execute(lhs, rhs));
                     sp -= 1;
                     bci += 2;
                     continue loop;
@@ -707,12 +677,14 @@ class ManualBytecodeNodedNodeNBE extends BaseBytecodeNode {
                 // (b -- )
                 case OP_JUMP_FALSE: {
                     boolean cond = UFA.getObject(frame, sp - 1) == Boolean.TRUE;
+                    int profileIdx = UFA.shortArrayRead(localBc, bci + 2);
+                    UFA.clear(frame, sp - 1);
                     sp -= 1;
-                    if (branchProfile(bci, !cond)) {
+                    if (OperationSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
                         bci = UFA.shortArrayRead(localBc, bci + 1);
                         continue loop;
                     } else {
-                        bci += 2;
+                        bci += 3;
                         continue loop;
                     }
                 }
