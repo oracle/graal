@@ -78,7 +78,7 @@ public abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
     }
 
     @Override
-    public final Collection<AnalysisMethod> getAllComputedCallees() {
+    public final Collection<AnalysisMethod> getCalleesForReturnLinking() {
         return getAllCalleesHelper(true);
     }
 
