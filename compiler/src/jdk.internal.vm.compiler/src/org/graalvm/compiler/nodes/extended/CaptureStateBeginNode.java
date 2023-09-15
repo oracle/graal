@@ -30,10 +30,14 @@ import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.iterators.NodePredicates;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.BeginNode;
 import org.graalvm.compiler.nodes.BeginStateSplitNode;
+import org.graalvm.compiler.nodes.LoopExitNode;
+import org.graalvm.compiler.nodes.MemoryProxyNode;
+import org.graalvm.compiler.nodes.ValueProxyNode;
 import org.graalvm.compiler.nodes.spi.Canonicalizable;
 import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 
@@ -60,5 +64,18 @@ public class CaptureStateBeginNode extends BeginStateSplitNode implements Canoni
             return new BeginNode();
         }
         return this;
+    }
+
+    @Override
+    public boolean verify() {
+        if (predecessor() instanceof LoopExitNode loopExit) {
+            /*
+             * Must guarantee only value and memory proxies are attached to the loop exit. Anything
+             * else should be attached to this node
+             */
+            assert loopExit.usages().stream().allMatch(NodePredicates.isA(ValueProxyNode.class).or(MemoryProxyNode.class)) : String.format("LoopExit has disallowed usages %s", loopExit);
+        }
+
+        return super.verify();
     }
 }
