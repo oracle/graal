@@ -585,7 +585,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                          */
                         continue;
                     }
-                    latestBlock = calcBlockForUsage(currentNode, usage, latestBlock, currentNodeMap, moveInputsIntoDominator);
+                    latestBlock = calcLatestBlockForUsage(currentNode, usage, earliestBlock, latestBlock, currentNodeMap, moveInputsIntoDominator);
                     checkLatestEarliestRelation(currentNode, earliestBlock, latestBlock, usage);
                 }
 
@@ -687,9 +687,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             return result;
         }
 
-        private static HIRBlock calcBlockForUsage(Node node, Node usage, HIRBlock startBlock, NodeMap<HIRBlock> currentNodeMap, NodeBitMap moveInputsToDominator) {
+        private static HIRBlock calcLatestBlockForUsage(Node node, Node usage, HIRBlock earliestBlock, HIRBlock initialLatestBlock, NodeMap<HIRBlock> currentNodeMap,
+                        NodeBitMap moveInputsToDominator) {
             assert !(node instanceof PhiNode);
-            HIRBlock currentBlock = startBlock;
+            HIRBlock currentBlock = initialLatestBlock;
             if (usage instanceof PhiNode) {
                 // An input to a PhiNode is used at the end of the predecessor block that
                 // corresponds to the PhiNode input. One PhiNode can use an input multiple times.
@@ -711,7 +712,16 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 }
 
                 if (!(node instanceof VirtualState) && !moveInputsToDominator.isNew(usage) && moveInputsToDominator.isMarked(usage)) {
-                    otherBlock = otherBlock.getDominator();
+                    /*
+                     * The usage is marked as forcing its inputs into the dominator. Respect that if
+                     * we can, but the dominator might not be a legal position for the node. This is
+                     * the case for loop-variant floating nodes between a loop phi and a virtual
+                     * state on the loop begin.
+                     */
+                    HIRBlock dominator = otherBlock.getDominator();
+                    if (AbstractControlFlowGraph.dominates(earliestBlock, dominator)) {
+                        otherBlock = dominator;
+                    }
                     GraalError.guarantee(otherBlock != null, "Dominators need to be computed in the CFG");
                 }
 
