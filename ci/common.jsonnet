@@ -9,6 +9,17 @@ local common_json = import "../common.json";
   # JDK definitions
   # ***************
   local variants(name) = [name, name + "Debug", name + "-llvm"],
+  # gets the JDK major version from a labsjdk version string (e.g., "ce-21+35-jvmci-23.1-b15" -> 21)
+  local parse_labsjdk_version(version) =
+    assert std.startsWith(version, "ce-") || std.startsWith(version, "ee-") : "Unsupported labsjdk version: " + version;
+    local number_prefix(str) =
+      if std.length(str) == 0 || std.length(std.findSubstr(str[0], "0123456789")) == 0 then
+        ""
+      else
+        str[0] + number_prefix(str[1:])
+      ;
+    std.parseInt(number_prefix(version[3:]))
+    ,
   local jdks_data = {
     oraclejdk11: common_json.jdks["oraclejdk11"] + { jdk_version:: 11 },
   } + {
@@ -24,8 +35,8 @@ local common_json = import "../common.json";
     [name]: common_json.jdks[name] + { jdk_version:: 21 }
     for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
   } + {
-    [name]: common_json.jdks[name] + { jdk_version:: 22 }
-    for name in variants("labsjdk-ce-22") + variants("labsjdk-ee-22")
+    [name]: common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self.version)}
+    for name in variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   },
   assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
 
