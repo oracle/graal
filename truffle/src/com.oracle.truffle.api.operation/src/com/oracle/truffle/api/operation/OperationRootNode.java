@@ -198,26 +198,6 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
         return -1;
     }
 
-    /**
-     * Gets the {@code bci} associated with a particular point in execution.
-     *
-     * Depending on the execution mode of the interpreter, the {@code bci} will be determined either
-     * via the {@code location} or the {@code frame}, so both parameters are required.
-     *
-     * @param operationRootNode the root node
-     * @param location a node optionally adopted by the root node
-     * @param frame the frame at the current point in execution
-     *
-     * @return the corresponding bytecode index, or -1 if the index could not be found
-     */
-    static int findBci(OperationRootNode operationRootNode, Node location, Frame frame) {
-        /**
-         * See comments on {@link OperationRootNode#findBci(FrameInstance)} above.
-         */
-        int fromCallNode = findBciFromLocation(location);
-        return (fromCallNode != -1) ? fromCallNode : operationRootNode.readBciFromFrame(frame);
-    }
-
     private static int findBciFromLocation(Node location) {
         for (Node operationNode = location; operationNode != null; operationNode = operationNode.getParent()) {
             if (operationNode.getParent() instanceof OperationRootNode rootNode) {
@@ -289,7 +269,7 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
 
     /**
      * Returns a new array containing the current value of each local in the frame. This method
-     * should only be used for slow-path use-cases (like frame introspection). Prefer regular local
+     * should only be used for slow-path use cases (like frame introspection). Prefer regular local
      * load operations (via {@code builder.emitLoadLocal(operationLocal}) when possible.
      *
      * An operation can use this method by binding the root node to a specialization parameter (via
@@ -308,11 +288,34 @@ public interface OperationRootNode extends BytecodeOSRNode, OperationIntrospecti
         throw new AbstractMethodError();
     }
 
+    /**
+     * Copies all locals from the {@code source} frame to the {@code destination} frame. The frames
+     * must have the same {@link Frame#getFrameDescriptor() layouts}.
+     *
+     * @param source the from to copy locals from
+     * @param destination the frame to copy locals into
+     */
     @SuppressWarnings("unused")
     default void copyLocals(Frame source, Frame destination) {
         throw new AbstractMethodError();
     }
 
+    /**
+     * Copies the first {@code length} locals from the {@code source} frame to the
+     * {@code destination} frame. The frames must have the same {@link Frame#getFrameDescriptor()
+     * layouts}. Compared to {@link #copyLocals(Frame, Frame)}, this method allows languages to
+     * selectively copy a subset of the frame's locals.
+     *
+     * For example, suppose that in addition to regular locals, a root node uses temporary locals
+     * for intermediate computations. Suppose also that the node needs to be able to compute the
+     * values of its regular locals (e.g., for frame introspection). This method can be used to only
+     * copy the regular locals and not the temporary locals -- assuming all of the regular locals
+     * were allocated (using {@code createLocal()}) before the temporary locals.
+     *
+     * @param source the from to copy locals from
+     * @param destination the frame to copy locals into
+     * @param length the number of locals to copy.
+     */
     @SuppressWarnings("unused")
     default void copyLocals(Frame source, Frame destination, int length) {
         throw new AbstractMethodError();

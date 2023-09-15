@@ -122,7 +122,6 @@ public class OperationsNodeFactory implements ElementHelpers {
     public static final String USER_LOCALS_START_IDX = "USER_LOCALS_START_IDX";
     public static final String BCI_IDX = "BCI_IDX";
     public static final String COROUTINE_FRAME_IDX = "COROUTINE_FRAME_IDX";
-    public static final String MAX_PROFILE_COUNT = "MAX_PROFILE_COUNT";
 
     private final ProcessorContext context = ProcessorContext.getInstance();
     private final TruffleTypes types = context.getTypes();
@@ -242,9 +241,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Define a loop counter class to track how many back-edges have been taken.
         operationNodeGen.add(createLoopCounter());
 
-        // Define a method to profile conditional branches.
-        operationNodeGen.add(createProfileBranch());
-
         // Define the static method to create a root node.
         operationNodeGen.add(createCreate());
 
@@ -349,7 +345,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createCreateCachedNodes());
 
         // Define helpers for obtaining and initializing branch profiles.
-        operationNodeGen.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, MAX_PROFILE_COUNT, "0x3fffffff"));
         operationNodeGen.add(createGetBranchProfiles());
         operationNodeGen.add(createInitializeBranchProfiles());
 
@@ -749,63 +744,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         addField(loopCounter, Set.of(PRIVATE), int.class, "value");
 
         return loopCounter;
-    }
-
-    private CodeExecutableElement createProfileBranch() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), context.getType(boolean.class), "profileBranch");
-        ex.addParameter(new CodeVariableElement(arrayOf(context.getType(int.class)), "branchProfiles"));
-        ex.addParameter(new CodeVariableElement(context.getType(int.class), "profileIndex"));
-        ex.addParameter(new CodeVariableElement(context.getType(boolean.class), "condition"));
-
-        CodeTreeBuilder b = ex.getBuilder();
-        // This code mirrors the implementation of CountingConditionProfile.
-
-        // @formatter:off
-        b.declaration(context.getType(int.class), "t", "branchProfiles[profileIndex * 2]");
-        b.declaration(context.getType(int.class), "f", "branchProfiles[profileIndex * 2 + 1]");
-        b.declaration(context.getType(boolean.class), "val", "condition");
-        b.startIf().string("val").end().startBlock();
-            b.startIf().string("t == 0").end().startBlock();
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.end();
-            b.startIf().string("f == 0").end().startBlock();
-                b.lineComment("Make this branch fold during PE");
-                b.startAssign("val").string("true").end();
-            b.end();
-            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(2).startBlock();
-                b.startIf().string("t < " + MAX_PROFILE_COUNT).end().startBlock();
-                    b.startAssign("branchProfiles[profileIndex * 2]").string("t + 1").end();
-                b.end();
-            b.end();
-        b.end();
-        b.end().startElseBlock();
-            b.startIf().string("f == 0").end().startBlock();
-                b.tree(GeneratorUtils.createTransferToInterpreterAndInvalidate());
-            b.end();
-            b.startIf().string("t == 0").end().startBlock();
-                b.lineComment("Make this branch fold during PE");
-                b.startAssign("val").string("false").end();
-            b.end();
-            b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(2).startBlock();
-                b.startIf().string("t < " + MAX_PROFILE_COUNT).end().startBlock();
-                    b.startAssign("branchProfiles[profileIndex * 2 + 1]").string("f + 1").end();
-                b.end();
-            b.end();
-        b.end();
-
-        b.startIf().startStaticCall(types.CompilerDirectives, "inInterpreter").end(2).startBlock();
-            b.lineComment("no branch probability calculation in the interpreter");
-            b.startReturn().string("val").end();
-        b.end().startElseBlock();
-            b.declaration(context.getType(int.class), "sum", "t + f");
-            b.startReturn().startStaticCall(types.CompilerDirectives, "injectBranchProbability");
-                b.string("(double) t / (double) sum");
-                b.string("val");
-            b.end(2);
-        b.end();
-        // @formatter:on
-
-        return ex;
     }
 
     private CodeExecutableElement createCreate() {
@@ -1448,7 +1386,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.startReturn().string("result").end();
         b.end();
 
-        b.startAssign("result").string("new int[numConditionalBranches * 2]").end();
+        b.startAssign("result").startStaticCall(types.OperationSupport, "allocateBranchProfiles").string("numConditionalBranches").end(2);
         b.startAssign("this.branchProfiles").string("result").end();
         b.startReturn().string("result").end();
 
@@ -4156,7 +4094,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         if (tier.isUncached) {
                             b.string(booleanValue);
                         } else {
-                            b.startCall("profileBranch");
+                            b.startStaticCall(types.OperationSupport, "profileBranch");
                             b.string("branchProfiles");
                             b.string(readBc("bci + 2"));
                             b.string(booleanValue);
