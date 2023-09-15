@@ -30,14 +30,14 @@ The GraalVM Polyglot API lets you embed and run code from guest languages in JVM
 Throughout this section, you will learn how to create a host application in Java that runs on GraalVM and directly calls a guest language.
 You can use the tabs beneath each code example to choose between JavaScript, R, Ruby, and Python.
 
-**Important:** The usage description for polyglot embedding was revised with the GraalVM release 23.1. If you are still using an older GraalVM version, please ensure the correct version of the documentation is displayed. More information on the change can be found in the 23.1 [release notes](https://www.graalvm.org/release-notes/).
+> Note: The usage description for polyglot embeddings was revised with the GraalVM for JDK 21 (23.1.0) release. If you are still using an older GraalVM version, ensure the correct version of the documentation is displayed. More information on the change can be found in the [release notes](https://www.graalvm.org/release-notes/JDK_21/).
 
 
 ## Dependency Setup
 
 Since GraalVM polyglot version 23.1, all necessary artifacts can be downloaded directly from Maven Central.
 All artifacts relevant to embedders can be found in the Maven dependency group [`org.graalvm.polyglot`](https://central.sonatype.com/namespace/org.graalvm.polyglot).
-Please see the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub for a complete runnable example.
+See the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) on GitHub for a complete runnable example.
 
 Here is an example Maven dependency setup that you can put into your project:
 
@@ -65,14 +65,14 @@ Here is an example Maven dependency setup that you can put into your project:
 <!-- add additional tools if needed -->
 ```
 
-Language and tool dependencies use the [GFTC license](https://www.oracle.com/downloads/licenses/graal-free-license.html).
+Language and tool dependencies use the [GraalVM Free Terms and Conditions (GFTC)](https://www.oracle.com/downloads/licenses/graal-free-license.html) license
 To use community-licensed versions instead, add the `-community` suffix to each artifact (e.g., `js-community`).
-To access [polyglot isolate](#polyglot-isolates) artifacts, the `-isolate` suffix may be used instead (e.g. `js-isolate`).
+To access [polyglot isolate](#polyglot-isolates) artifacts, use the `-isolate` suffix instead (e.g. `js-isolate`).
 
 The artifacts `languages` and `tools` include all available languages and tools as dependencies. 
 This artifact might grow or shrink between major releases. We recommend selecting only the needed languages for a production deployment.
 
-Additionally, your `module-info.java` file should require `org.graalvm.polyglot` when using Java modules.
+Additionally, your _module-info.java_ file should require `org.graalvm.polyglot` when using Java modules.
 
 ```java
 module com.mycompany.app {
@@ -81,7 +81,7 @@ module com.mycompany.app {
 ```
 
 Whether your configuration can run with a Truffle runtime optimization depends on the GraalVM JDK you use.
-For further details, please refer to the [runtime compilation section](#Runtime-Optimization-Support).
+For further details, refer to the [Runtime Compilation section](#Runtime-Optimization-Support).
 
 
 ## Compile and Run a Polyglot Application
@@ -114,13 +114,15 @@ is closed after use. Closing the context ensures that all resources, including
 potential native resources, are freed eagerly. Closing a context is optional but
 recommended. If a context is not closed and no longer referenced, the garbage collector will automatically free it.
 
-3&#46; Clone the [polyglot-embedding-demo](https://github.com/graalvm/polyglot-embedding-demo/) repository using `git clone https://github.com/graalvm/polyglot-embedding-demo.git`.
+3&#46; Clone the [polyglot-embedding-demo](https://github.com/graalvm/polyglot-embedding-demo/) repository:
+```bash
+git clone https://github.com/graalvm/polyglot-embedding-demo.git
 
 4&#46; Insert the example code into the [Main](https://github.com/graalvm/polyglot-embedding-demo/blob/main/src/main/java/org/example/embedding/Main.java) class.
 
 5&#46; Update the Maven [pom.xml](https://github.com/graalvm/polyglot-embedding-demo/blob/main/pom.xml) dependency configuration to include the languages to run as described in the [previous section](#dependency-setup).
 
-6&#46; Download and setup GraalVM by setting the `JAVA_HOME` environment variable to point to a JDK, ideally GraalVM.
+6&#46; [Download and setup GraalVM](../../getting-started/graalvm-community/get-started-graalvm-community.md) by setting the `JAVA_HOME` environment variable to point to a GraalVM JDK.
 
 7&#46; Run `mvn package exec:exec` to build and execute the sample code.
 
@@ -445,18 +447,18 @@ This table shows the level of optimizations the Java runtimes currently provide:
 
 ### Explanations
 
-* **Optimized:** Executed guest application code can be compiled and executed as highly efficient machine code at runtime.
-* **Optimized with additional compiler passes:** Oracle GraalVM implements additional optimizations performed during runtime compilation. For example, it uses a more advanced inlining heuristic. This typically leads to better runtime performance and memory consumption.
-* **Optimized if enabled via experimental VM option:** Optimization is not enabled by default and must be enabled using `-XX:+EnableJVMCI` virtual machine option. In addition, to support compilation, the Graal compiler must be downloaded as a jar file and put on the `--upgrade-module-path`. In this mode, the compiler runs as a Java application and may negatively affect the execution performance of the host application.
+* **Optimized:** Executed guest application code can be compiled and executed as highly efficient machine code at run time.
+* **Optimized with additional compiler passes:** Oracle GraalVM implements additional optimizations performed during run-time compilation. For example, it uses a more advanced inlining heuristic. This typically leads to better run-time performance and memory consumption.
+* **Optimized if enabled via experimental VM option:** Optimization is not enabled by default and must be enabled using `-XX:+EnableJVMCI` virtual machine option. In addition, to support compilation, the Graal compiler must be downloaded as a JAR file and put on the `--upgrade-module-path`. In this mode, the compiler runs as a Java application and may negatively affect the execution performance of the host application.
 * **No runtime optimizations:** With no runtime optimizations or if JVMCI is not enabled, the guest application code is executed in interpreter-only mode. 
 * **JVMCI:** Refers to the [Java-Level JVM Compiler Interface](https://openjdk.org/jeps/243) supported by most Java runtimes.
 
-A project has been created to enable runtime optimization by default for Oracle JDK and OpenJDK.
+A project has been created to enable run-time optimization by default for Oracle JDK and OpenJDK.
 See [Project Galahad](https://openjdk.org/projects/galahad/) for further details.
 
-### Enable Optimization on OpenJDK and OracleJDK
+### Enable Optimization on OpenJDK and Oracle JDK
 
-When running on a JDK runtime optimization enabled by default, like OpenJDK, you might see a warning like this:
+When running on a JDK run-time optimization enabled by default, like OpenJDK, you might see a warning like this:
 
 ```
 [engine] WARNING: The polyglot engine uses a fallback runtime that does not support runtime compilation to machine code.
@@ -465,14 +467,14 @@ Execution without runtime compilation will negatively impact the guest applicati
 
 This indicates that the guest application is executed with no runtime optimizations enabled.
 The warning can be suppressed by either suppressing using the `--engine.WarnInterpreterOnly=false` option or the `-Dpolyglot.engine.WarnInterpreterOnly=false` system property.
-In addition, the `compiler.jar` and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and referred to use the `--upgrade-module-path`. 
-Note that the compiler jar must *not* be put on the module or classpath. 
-Please refer to the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) for an example configuration using Maven or Gradle.
+In addition, the `compiler.jar` and its dependencies must be downloaded from [Maven Central](https://central.sonatype.com/artifact/org.graalvm.compiler/compiler/) and referred to use the option `--upgrade-module-path`. 
+Note that the compiler jar must *not* be put on the module or class path. 
+Refer to the [polyglot embedding demonstration](https://github.com/graalvm/polyglot-embedding-demo) for an example configuration using Maven or Gradle.
 
 
 ### Switching to the Fallback Engine
 
-If the need arises, e.g. for resource-constrained systems or to run only trivial scripts, you may want to switch to the fallback engine without runtime optimizations.
+If the need arises, for example, running only trivial scripts or in the resource-constrained systems, you may want to switch to the fallback engine without run-time optimizations.
 Since GraalVM 23.1, the fallback engine can be activated by removing the `truffle-runtime` and `truffle-enterprise` modules from the class or module path.
 
 This can be achieved with Maven like this:
@@ -497,8 +499,8 @@ This can be achieved with Maven like this:
 </dependencies>
 ```
 
-The extension rule for `truffle-enterprise` is unnecessary if you only use community dependencies.
-Since truffle-enterprise is excluded, the fallback engine does not support advanced extensions like sandbox limits or polyglot isolates.
+The exclusion rule for `truffle-enterprise` is unnecessary if you only use `-community` dependencies.
+Since `truffle-enterprise` is excluded, the fallback engine does not support advanced extensions like sandbox limits or polyglot isolates.
 It may be useful to double-check with `mvn dependency:tree` that the two dependencies are not included elsewhere.
 
 If the runtime was excluded successfully, you should see the following log message:
@@ -511,20 +513,20 @@ For more information see: https://www.graalvm.org/latest/reference-manual/embed-
 To disable this warning use the '--engine.WarnInterpreterOnly=false' option or the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
 ```
 
-You may want to disable this message using the indicated options as an additional step.
+You can disable this message using the indicated options as an additional step.
 
-Removing these dependencies also automatically switches to the fallback engine in native-image builds.
+Removing these dependencies also automatically switches to the fallback engine in Native Image builds.
 
 
 ## Build Native Executables from Polyglot Applications
 
 Since GraalVM 23.1 no special configuration is required anymore to use [Native Image](../native-image/README.md) to build images with embedded polyglot language runtimes.
-Like any other Java dependency, the polyglot language jar files must be put on the class or module path when building the native image.
-Old options to configure native images for polyglot languages like `--language:js` or `--macro:truffle` were removed in 23.1 and are no longer supported.
-We recommend the use of native-image [Maven](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html) and [Gradle](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html) plugins to configure your native-image builds.
-A sample Maven and Gradle configuration for native-image can be found in the [polyglot embedding demonstration repository](https://github.com/graalvm/polyglot-embedding-demo).
+Like any other Java dependency, the polyglot language JAR files must be put on the class or module path when building a native executable.
+Obsolete `native-image` options for configuring polyglot languages, e.g., `--language:js` or `--macro:truffle`, were removed in GraalVM for JDK 21 and are no longer supported.
+We recommend to use the [Maven](https://graalvm.github.io/native-build-tools/latest/maven-plugin.html) or [Gradle](https://graalvm.github.io/native-build-tools/latest/gradle-plugin.html) Native Image plugins to configure your `native-image` builds.
+A sample Maven and Gradle configuration for Native Image can be found in the [polyglot embedding demonstration repository](https://github.com/graalvm/polyglot-embedding-demo).
 
-Here is a Maven profile configuration that allows building native images:
+Here is a Maven profile configuration example:
 ```xml
 <profiles>
     <profile>
@@ -560,15 +562,15 @@ Here is a Maven profile configuration that allows building native images:
 </profiles>
 ```
 
-To build a native-image use:
+To build a native executable with the above configuration, run:
 ```
 mvn -Pnative package
 ```
 
-When building native images with polyglot languages that require additional resources, like Python, by default, a `./resources` folder containing all the required files is created.
+To build a native executable from a polyglot application, for example, a Java-host application embedding Python, a `./resources` folder containing all the required files is created by default.
 By default, the language runtime will look for the resources folder relative to the native executable or library image that was built.
-At runtime, the lookup location may be customized using the `-Dpolyglot.engine.resourcePath=path/to/resources` option.
-To disable the resource creation, the `-H:-CopyLanguageResources` native-image build-time option may be used.
+At run time, the lookup location may be customized using the `-Dpolyglot.engine.resourcePath=path/to/resources` option.
+To disable the resource creation, the `-H:-CopyLanguageResources` build-time option may be used.
 Note that some languages may not support running without a resources folder.
 
 With GraalVM 23.1 the language home options like `-Dorg.graalvm.home` should no longer be used and were replaced with the resource folder option.
@@ -686,7 +688,7 @@ We rely on the garbage collector to do this automatically with the next collecti
 The code cache of an engine is not collected as long as the engine is still strongly referenced and not closed.
 Also, the `Source` instance must be kept alive to ensure the associated code is not collected.
 If a source instance is no longer referenced, but the engine is still referenced, the code cache associated with a source object may be collected by the GC.
-We recommend, therefore, keeping a strong reference to the Source as long as the source should remain cached.
+We recommend, therefore, keeping a strong reference to the `Source` object as long as `Source` should remain cached.
 
 To summarize, the code cache can be controlled by keeping and maintaining strong references to the `Engine` and `Source` objects.
 
@@ -695,8 +697,8 @@ To summarize, the code cache can be controlled by keeping and maintaining strong
 
 On Oracle GraalVM, a Polyglot engine can be configured to run in a dedicated Native Image isolate.
 A polyglot engine in this mode executes within a VM-level fault domain with a dedicated garbage collector and JIT compiler.
-Polyglot isolates are useful for [polyglot sandboxing](../security-guide/polyglot-sandbox/).
-Running languages in a native image isolate works with HotSpot and native image host virtual machines.
+Polyglot isolates are useful for [polyglot sandboxing](../../security/polyglot-sandbox.md).
+Running languages in an isolate works with HotSpot and Native Image host virtual machines.
 
 Languages used as polyglot isolates can be downloaded from Maven Central using the `-isolate` suffix.
 For example, a dependency on isolated JavaScript can be configured by adding a Maven dependency like this:
@@ -719,7 +721,7 @@ For example, a dependency on isolated JavaScript can be configured by adding a M
 The downloaded dependency is platform-independent, which contains a native-image for each platform.
 We plan to support downloading native images for individual platforms in a future release.
 
-To enable isolate usage with the polyglot API, the `--engine.SpawnIsolate=true` option must be passed to the engine or context when constructed.
+To enable isolate usage with the Polyglot API, the `--engine.SpawnIsolate=true` option must be passed to `Engine` or `Context` when constructed.
 The option `engine.SpawnIsolate` may not be available if used on any other JDK than Oracle GraalVM.
 
 
@@ -815,7 +817,7 @@ The host callback fails if the available stack size drops below the specified th
 
 In Linux environments that support Memory Protection Keys, the `--engine.MemoryProtection=true` option can be used to isolate the heaps of Polyglot Isolates at the hardware level.
 If an engine is created with this option, a dedicated protection key will be allocated for the isolated engine's heap.
-GraalVM will only enable access to the engine's heap when executing code of the Polyglot Isolate.
+GraalVM only enables access to the engine's heap when executing code of the Polyglot Isolate.
 
 
 ## Embed Guest Languages in Java
