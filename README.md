@@ -2,6 +2,7 @@
 
 [![GraalVM downloads][badge-dl]][downloads] [![GraalVM docs][badge-docs]][docs] [![GraalVM on Slack][badge-slack]][slack] [![GraalVM on Twitter][badge-twitter]][twitter] [![GraalVM on YouTube][badge-yt]][youtube]  [![GraalVM Gate][badge-gate]][gate] [![License][badge-license]](#license)
 
+
 GraalVM is a high-performance JDK distribution designed to accelerate the execution of applications written in Java and other JVM languages along with support for JavaScript, Ruby, Python, and a number of other popular languages.
 
 The project website at [https://www.graalvm.org/][website] describes how to [get started][getting-started], how to [stay connected][community], and how to [contribute][contributors].
@@ -51,7 +52,6 @@ Name         | Description
 [SimpleLanguage] | A simple example language built with the Truffle framework.
 [SimpleTool] | A simple example tool built with the Truffle framework. 
 [TruffleRuby] | Implementation of the Ruby language.
-[VS Code Extensions][vscode-extensions] | VS Code extensions for GraalVM.
 
 ## License
 
