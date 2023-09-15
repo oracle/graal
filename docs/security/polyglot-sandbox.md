@@ -100,7 +100,7 @@ try (Context context = Context.newBuilder("js")
 }
 ```
 
-Since GraalVM 23.1, the isolated and untrusted policy also requires isolated images of the languages to be specified on the class or module path.
+Since Polyglot version 23.1, the isolated and untrusted policy also requires isolated images of the languages to be specified on the class or module path.
 Isolated versions of the languages can be downloaded from Maven using the following dependency:
 
 ```xml
