@@ -52,7 +52,7 @@ public final class CompilationAlarm implements AutoCloseable {
         public static final OptionKey<Double> CompilationNoProgressPeriod = new OptionKey<>(30d);
         @Option(help = "Delay in seconds before compilation progress detection starts.",
                  type = OptionType.Debug)
-        public static final OptionKey<Double> CompilationNoProgressStartTrackingProgressPeriod = new OptionKey<>(5d);
+        public static final OptionKey<Double> CompilationNoProgressStartTrackingProgressPeriod = new OptionKey<>(10d);
         // @formatter:on
     }
 
@@ -136,16 +136,22 @@ public final class CompilationAlarm implements AutoCloseable {
      * Number of graph events (iterating inputs, usages, etc) before triggering a check on the
      * compilation alarm.
      */
-    public static final int CHECK_BAILOUT_COUNTER = 1024;
+    public static final int CHECK_BAILOUT_COUNTER = 1024 * 4;
 
     public static void checkProgress(Graph graph) {
-        if (graph != null && graph.eventCounterOverflows(CHECK_BAILOUT_COUNTER)) {
+        if (graph == null) {
+            return;
+        }
+        if (graph.eventCounterOverflows(CHECK_BAILOUT_COUNTER)) {
             overflowAction(graph.getOptions(), graph);
         }
     }
 
     public static boolean checkProgress(OptionValues opt, EventCounter eventCounter) {
-        if (opt != null && eventCounter.eventCounterOverflows(CHECK_BAILOUT_COUNTER)) {
+        if (opt == null) {
+            return false;
+        }
+        if (eventCounter.eventCounterOverflows(CHECK_BAILOUT_COUNTER)) {
             overflowAction(opt, eventCounter);
             return true;
         }
@@ -155,8 +161,9 @@ public final class CompilationAlarm implements AutoCloseable {
     private static void overflowAction(OptionValues opt, EventCounter counter) {
         if (CompilationAlarm.current().hasExpired()) {
             compilationAlarmExpired(opt);
+        } else {
+            assertProgress(opt, counter);
         }
-        assertProgress(opt, counter);
     }
 
     /**

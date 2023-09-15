@@ -159,7 +159,7 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
     @Test
     public void testSingleThreadTimeOut() throws InterruptedException {
-        TestThread t1 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for 3 seconds");
+        TestThread t1 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for");
         t1.start();
         t1.join();
 
@@ -187,7 +187,7 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
         assert t1.success;
 
-        TestThread t2 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for 3 seconds");
+        TestThread t2 = getCompilationThreadWithWait(10, "snippet", getOptionsWithTimeOut(3, 1), "Observed identical stack traces for");
         t2.start();
         t2.join();
 
@@ -196,12 +196,12 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
     @Test
     public void testMultiThreadMultiTimeout() throws InterruptedException {
-        TestThread t1 = getCompilationThreadWithWait(20, "snippet", getOptionsWithTimeOut(9, 3), "Observed identical stack traces for 9 seconds");
+        TestThread t1 = getCompilationThreadWithWait(20, "snippet", getOptionsWithTimeOut(9, 3), "Observed identical stack traces for");
         t1.start();
         t1.join();
         assert t1.success;
 
-        TestThread t2 = getCompilationThreadWithWait(20, "snippet", getOptionsWithTimeOut(5, 3), "Observed identical stack traces for 5 seconds");
+        TestThread t2 = getCompilationThreadWithWait(20, "snippet", getOptionsWithTimeOut(5, 3), "Observed identical stack traces for");
         t2.start();
         t2.join();
         assert t2.success;
