@@ -2732,7 +2732,6 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         svm_support = _get_svm_support()
         self.is_jvm = is_jvm
         self.main_comp_dir_name = component.dir_name
-        self.jvm_jars = []
         self.jvm_modules = []
         self.jvm_libs = []
         self.pre_extracted_libs = {}
@@ -2755,7 +2754,6 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         dir_name = component.standalone_dir_name_enterprise if svm_support.is_ee_supported() else component.standalone_dir_name
         self.base_dir_name = graalvm.string_substitutions.substitute(dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
-        default_jvm_jars_dir = base_dir + 'jars/'
         default_jvm_modules_dir = base_dir + 'modules/'
         default_jvm_libs_dir = base_dir + 'jvmlibs/'
         layout = {}
@@ -2772,7 +2770,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                 # not define the home path of a language.
                 home_paths[comp.installable_id] = base_dir + dependency_path
 
-        def add_jars_from_component(comp, force_modules_as_jars=False):
+        def add_jars_from_component(comp):
             jar_dists = comp.jar_distributions
             if isinstance(comp, mx_sdk_vm.GraalVmTruffleLibrary):
                 jar_dists += comp.jvmci_parent_jars
@@ -2780,9 +2778,9 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                 raise mx.warn(f"JVM standalones do not yet support components with `jvmci_parent_jars` outside of the included JVM.\n  Component '{comp.name}' adds '{comp.jvmci_parent_jars}', which is skipped")
 
             for jar_dist in jar_dists:
-                component_list = (self.jvm_jars if force_modules_as_jars else self.jvm_modules)
+                component_list = self.jvm_modules
                 if jar_dist not in component_list:
-                    layout.setdefault(default_jvm_jars_dir if force_modules_as_jars else default_jvm_modules_dir, []).append({
+                    layout.setdefault(default_jvm_modules_dir, []).append({
                         'source_type': 'dependency',
                         'dependency': jar_dist,
                         'exclude': [],
@@ -2790,7 +2788,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     })
                     component_list.append(jar_dist)
 
-        def add_files_from_component(comp, is_main, path_prefix, excluded_paths, force_modules_as_jars=False):
+        def add_files_from_component(comp, is_main, path_prefix, excluded_paths):
             """
             Add to the layout relevant files of a component.
 
@@ -2798,14 +2796,13 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             :type is_main: bool
             :type path_prefix: str
             :type excluded_paths: list[str]
-            :type force_modules_as_jars: bool
             """
             launcher_configs = _get_launcher_configs(comp)
             library_configs = _get_library_configs(comp)
             self.native_image_configs += launcher_configs + library_configs
 
             if self.is_jvm:
-                add_jars_from_component(comp, force_modules_as_jars)
+                add_jars_from_component(comp)
 
                 for lib_dist in [ld for ld in comp.support_libraries_distributions if ld not in self.jvm_libs]:
                     layout.setdefault(default_jvm_libs_dir, []).append({
@@ -3025,7 +3022,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         # component.
                         tool_component_dependencies = GraalVmLayoutDistribution._add_dependencies([tool], excluded_components + added_components)
                         for tool_component_dependency in tool_component_dependencies:
-                            add_files_from_component(tool_component_dependency, is_main=False, path_prefix=default_jvm_jars_dir, excluded_paths=['native-image.properties'])
+                            add_files_from_component(tool_component_dependency, is_main=False, path_prefix=default_jvm_modules_dir, excluded_paths=['native-image.properties'])
                             added_components.append(tool_component_dependency)
 
             # `jvmci_parent_jars` and `boot_jars` of these components are added as modules of `java-standalone-jimage`.
@@ -3342,18 +3339,13 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         _graalvm_home = _get_graalvm_archive_path("")
 
         if self.jvm_standalone is not None:
-            _cp = []
             _mp = []
             _lp = []
-            for jvm_jar in self.jvm_standalone.jvm_jars:
-                for _, jar_name in mx.dependency(jvm_jar).getArchivableResults(single=True):
-                    _cp.append(escaped_path(join('..', 'jars', jar_name)))
             if self.jvm_standalone.jvm_modules:
                 _mp.append(escaped_path(join('..', 'modules')))
             if self.jvm_standalone.jvm_libs:
                 _lp.append(escaped_path(join('..', 'jvmlibs')))
         else:
-            _cp = []
             # launcher classpath for launching via jvm
             _mp = NativePropertiesBuildTask.get_launcher_classpath(_dist, _graalvm_home, self.language_library_config, self.component, exclude_implicit=True)
             _mp = [join(_dist.path_substitutions.substitute('<jdk_base>'), x) for x in _mp]
@@ -3377,8 +3369,6 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
 
         _dynamic_cflags.append('-DLAUNCHER_MAIN_MODULE=' + main_module)
         _dynamic_cflags.append('-DLAUNCHER_CLASS=' + self.language_library_config.main_class)
-        if _cp:
-            _dynamic_cflags.append('-DLAUNCHER_CLASSPATH="{\\"' + '\\", \\"'.join(_cp) + '\\"}"') # TODO: remove
         if _mp:
             _dynamic_cflags.append('-DLAUNCHER_MODULE_PATH="{\\"' + '\\", \\"'.join(_mp) + '\\"}"')
         if _lp:
