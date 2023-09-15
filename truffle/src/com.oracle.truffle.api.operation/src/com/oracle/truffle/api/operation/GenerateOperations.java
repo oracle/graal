@@ -120,13 +120,18 @@ public @interface GenerateOperations {
     boolean enableYield() default false;
 
     /**
-     * For performance reasons, specializing (non-baseline) interpreters do not store the bytecode
-     * index (bci) in the frame by default. This field can be used to force the interpreter to
-     * always store the bci.
+     * Whether the generated interpreter should always store the bytecode index (bci) in the frame.
      *
-     * This flag may be useful, for example, if the language needs precise source position
-     * information for a method while it is executing. When this flag is set, the language can use
-     * {@link OperationRootNode#readBciFromFrame} to get the current bci.
+     * When this flag is set, the language can use {@link OperationRootNode#readBciFromFrame} to
+     * read the bci from the frame. The interpreter does not always store the bci, so it is
+     * undefined behaviour to invoke {@link OperationRootNode#readBciFromFrame} when this flag is
+     * {@code false}.
+     *
+     * Note that this flag can slow down interpreter performance, so it should only be set if the
+     * language needs fast-path access to the bci outside of the current operation (e.g., for
+     * closures or frame introspection). Within the current operation, you can bind the bci as a
+     * parameter {@code @Bind("$bci")} on the fast path; if you only need access to the bci on the
+     * slow path, it can be computed from a stack walk using {@link OperationRootNode#findBci}.
      */
     boolean storeBciInFrame() default false;
 

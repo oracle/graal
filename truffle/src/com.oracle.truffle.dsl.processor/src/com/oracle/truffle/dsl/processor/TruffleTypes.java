@@ -370,6 +370,7 @@ public class TruffleTypes {
     public static final String GenerateOperationsTestVariants_Name = "com.oracle.truffle.api.operation.GenerateOperationsTestVariants";
     public static final String GenerateOperationsTestVariants_Variant_Name = "com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant";
     public static final String FastAccess_Name = "com.oracle.truffle.api.impl.FastAccess";
+    public static final String OperationSupport_Name = "com.oracle.truffle.api.operation.OperationSupport";
 
     public final DeclaredType ContinuationLocation = c.getDeclaredTypeOptional(ContinuationLocation_Name);
     public final DeclaredType ContinuationResult = c.getDeclaredTypeOptional(ContinuationResult_Name);
@@ -404,6 +405,7 @@ public class TruffleTypes {
     public final DeclaredType GenerateOperationsTestVariants = c.getDeclaredTypeOptional(GenerateOperationsTestVariants_Name);
     public final DeclaredType GenerateOperationsTestVariant_Variant = c.getDeclaredTypeOptional(GenerateOperationsTestVariants_Variant_Name);
     public final DeclaredType FastAccess = c.getDeclaredTypeOptional(FastAccess_Name);
+    public final DeclaredType OperationSupport = c.getDeclaredTypeOptional(OperationSupport_Name);
 
     // Library API
     public static final String CachedLibrary_Name = "com.oracle.truffle.api.library.CachedLibrary";
