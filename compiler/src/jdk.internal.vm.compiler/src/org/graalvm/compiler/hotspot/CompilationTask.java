@@ -152,6 +152,18 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
             return HotSpotCompilationRequestResult.failure(t.toString(), false);
         }
 
+        @SuppressWarnings("try")
+        @Override
+        protected void dumpOnError(DebugContext errorContext, Throwable cause) {
+            if (graph != null) {
+                try (DebugContext.Scope s = errorContext.scope("DumpOnError", graph, new DebugDumpScope(getIdString(), true), new DebugDumpScope("Original failure"))) {
+                    errorContext.forceDump(graph, "Exception: %s", cause);
+                } catch (Throwable t) {
+                    throw errorContext.handle(t);
+                }
+            }
+        }
+
         @Override
         protected ExceptionAction lookupAction(OptionValues values, Throwable cause) {
             if (cause instanceof BailoutException) {
