@@ -664,10 +664,7 @@ public abstract class ImageHeapScanner {
         return snippetReflection.asObject(Object.class, constant);
     }
 
-    public JavaConstant asConstant(Object object) {
-        if (object instanceof ImageHeapConstant constant) {
-            return constant;
-        }
+    private JavaConstant asConstant(Object object) {
         return universe.getSnippetReflection().forObject(object);
     }
 

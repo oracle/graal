@@ -197,8 +197,8 @@ public class GraalGraphObjectReplacer implements Function<Object, Object> {
         } else if (source instanceof FieldLocationIdentity && !(source instanceof SubstrateFieldLocationIdentity)) {
             dest = createFieldLocationIdentity((FieldLocationIdentity) source);
         } else if (source instanceof ImageHeapConstant heapConstant) {
+            VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
             dest = heapConstant.getHostedObject();
-            assert dest != null;
         }
 
         assert dest != null;

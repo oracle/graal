@@ -93,6 +93,7 @@ import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -105,7 +106,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public interface GraphMakerFactory {
-        GraphMaker create(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod);
+        GraphMaker create(MetaAccessProvider metaAccess, ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -376,7 +377,7 @@ public class SubstrateReplacements extends ReplacementsImpl {
     @Platforms(Platform.HOSTED_ONLY.class)
     @Override
     protected final GraphMaker createGraphMaker(ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod) {
-        return builder.graphMakerFactory.create(this, substitute, substitutedMethod);
+        return builder.graphMakerFactory.create(providers.getMetaAccess(), this, substitute, substitutedMethod);
     }
 
     private static Object[] prepareConstantArguments(Object receiver) {

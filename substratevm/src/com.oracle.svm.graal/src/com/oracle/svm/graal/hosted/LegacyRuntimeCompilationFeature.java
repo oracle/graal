@@ -300,6 +300,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                     new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
                 }
                 new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, hostedProviders);
+                unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
 
                 graphEncoder.prepare(graph);
                 node.graph = graph;
@@ -466,6 +467,8 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                      * optimizations applied in between can provide new potential.
                      */
                     convertDeoptimizeToGuard.apply(graph, hostedProviders);
+
+                    unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
 
                     graphEncoder.prepare(graph);
                     assert RuntimeCompilationFeature.verifyNodes(graph);

@@ -24,23 +24,22 @@
  */
 package com.oracle.svm.hosted.meta;
 
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import org.graalvm.compiler.word.WordTypes;
 
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
-import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.JavaConstant;
 
-public class AnalysisSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
+public class HostedLookupSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
 
-    public AnalysisSnippetReflectionProvider(WordTypes wordTypes) {
+    public HostedLookupSnippetReflectionProvider(WordTypes wordTypes) {
         super(wordTypes);
     }
 
     @Override
     public JavaConstant forObject(Object object) {
-        VMError.guarantee(!(object instanceof ImageHeapConstant));
+        AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
         return super.forObject(object);
     }
 }

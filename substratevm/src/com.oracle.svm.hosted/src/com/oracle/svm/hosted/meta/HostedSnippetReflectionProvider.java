@@ -35,6 +35,7 @@ import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.SubstrateObjectConstant;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
 
@@ -56,10 +57,7 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
             /* Relocated pointers are subject to relocation, so we don't know their value yet. */
             return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
         }
-        if (object instanceof ImageHeapConstant heapConstant) {
-            /* This could be a simulated constant. */
-            return heapConstant;
-        }
+        AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
         /* Redirect constant lookup through the shadow heap. */
         return heapScanner.createImageHeapConstant(super.forObject(object), OtherReason.UNKNOWN);
     }

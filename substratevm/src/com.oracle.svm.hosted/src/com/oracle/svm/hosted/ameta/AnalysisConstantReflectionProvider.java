@@ -377,12 +377,20 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant forObject(Object object) {
-        if (object instanceof ImageHeapConstant heapConstant) {
-            /* This could be a simulated constant. */
-            return heapConstant;
-        }
+        validateRawObjectConstant(object);
         /* Redirect constant lookup through the shadow heap. */
         return universe.getHeapScanner().createImageHeapConstant(super.forObject(object), ObjectScanner.OtherReason.UNKNOWN);
+    }
+
+    /**
+     * The raw object may never be an {@link ImageHeapConstant}. However, it can be a
+     * {@link SubstrateObjectConstant} coming from graphs prepared for run time compilation. In that
+     * case we'll get a double wrapping: the {@link SubstrateObjectConstant} parameter value will be
+     * wrapped in another {@link SubstrateObjectConstant} which will then be stored in a
+     * {@link ImageHeapConstant} in the shadow heap.
+     */
+    public static void validateRawObjectConstant(Object object) {
+        AnalysisError.guarantee(!(object instanceof ImageHeapConstant), "Unexpected ImageHeapConstant %s", object);
     }
 
     private SVMHost getHostVM() {
