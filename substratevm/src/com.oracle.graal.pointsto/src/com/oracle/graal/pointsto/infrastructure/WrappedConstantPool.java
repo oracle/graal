@@ -64,7 +64,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     }
 
     private JavaConstant lookupConstant(JavaConstant constant) {
-        return universe.shadowHeapLookup(constant);
+        return universe.lookup(constant);
     }
 
     /**

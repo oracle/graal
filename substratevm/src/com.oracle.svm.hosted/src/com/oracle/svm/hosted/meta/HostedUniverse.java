@@ -437,18 +437,9 @@ public class HostedUniverse implements Universe {
     }
 
     @Override
-    public JavaConstant lookup(JavaConstant constant) {
-        // There should not be any conversion necessary for constants.
-        return constant;
-    }
-
-    @Override
-    public JavaConstant shadowHeapLookup(JavaConstant constant) {
-        if (constant == null || constant.isNull() || constant.getJavaKind().isPrimitive()) {
-            return constant;
-        }
-        VMError.guarantee(constant instanceof ImageHeapConstant);
-        return constant;
+    public JavaConstant lookup(JavaConstant c) {
+        VMError.guarantee(c == null || c.isNull() || c.getJavaKind().isPrimitive() || c instanceof ImageHeapConstant);
+        return c;
     }
 
     public Collection<HostedType> getTypes() {

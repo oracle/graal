@@ -27,6 +27,8 @@ package com.oracle.graal.pointsto.infrastructure;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.graal.pointsto.api.HostVM;
+import com.oracle.graal.pointsto.heap.ImageHeap;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
@@ -60,10 +62,12 @@ public interface Universe {
 
     WrappedConstantPool lookup(ConstantPool constantPool, ResolvedJavaType defaultAccessingClass);
 
+    /**
+     * Lookup a constant originating from the underlying VM, via JVMCI, in the analysis universe.
+     * This method will unpack hosted object constants and repack the raw constant object into an
+     * {@link ImageHeapConstant} cached in the {@link ImageHeap}.
+     */
     JavaConstant lookup(JavaConstant constant);
-
-    /** Redirect constant lookup through the shadow heap. */
-    JavaConstant shadowHeapLookup(JavaConstant constant);
 
     ResolvedJavaMethod resolveSubstitution(ResolvedJavaMethod method);
 

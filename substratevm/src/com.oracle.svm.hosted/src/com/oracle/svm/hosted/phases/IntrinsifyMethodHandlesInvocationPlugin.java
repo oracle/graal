@@ -1051,7 +1051,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
 
     private JavaConstant lookup(JavaConstant constant) {
         /* Redirect constant lookup through the shadow heap. */
-        return aUniverse.shadowHeapLookup(constant);
+        return aUniverse.lookup(constant);
     }
 
     private JavaConstant toOriginal(JavaConstant constant) {

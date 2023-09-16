@@ -237,7 +237,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver, UniverseMetaAccess access) {
-        return universe.lookup(ReadableJavaField.readFieldValue(access, classInitializationSupport, field.wrapped, receiver));
+        return universe.fromHosted(ReadableJavaField.readFieldValue(access, classInitializationSupport, field.wrapped, receiver));
     }
 
     /**
