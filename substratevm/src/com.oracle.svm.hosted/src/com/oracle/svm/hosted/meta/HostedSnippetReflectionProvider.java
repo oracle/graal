@@ -53,6 +53,7 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
 
     @Override
     public JavaConstant forObject(Object object) {
+        /* RelocatedPointer values will be represented as a RelocatableConstant by GR-48681. */
         if (object instanceof WordBase word && !(object instanceof RelocatedPointer)) {
             /* Relocated pointers are subject to relocation, so we don't know their value yet. */
             return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());

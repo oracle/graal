@@ -434,6 +434,12 @@ public abstract class ImageHeapScanner {
     }
 
     public boolean isWordType(JavaConstant rawElementValue) {
+        /*
+         * UniverseMetaAccess.isInstanceOf cannot be used here because the object replacers may have
+         * not yet been applied to the object. This can lead to
+         * "Type is not available in this platform" issues when accessing the object type. A proper
+         * fix will add a JavaConstant implementation class for relocatable word values.(GR-48681).
+         */
         Object obj = snippetReflection.asObject(Object.class, rawElementValue);
         return obj instanceof WordBase;
     }
