@@ -33,8 +33,8 @@
         "override_name":"maven-resource-bundle",
         "artifacts": [
             {
-                "os": "linux",
-                "arch": "amd64",
+                "os": "any",
+                "arch": "any",
                 "name_template": "{name}-community-{version}"
             }
         ]
