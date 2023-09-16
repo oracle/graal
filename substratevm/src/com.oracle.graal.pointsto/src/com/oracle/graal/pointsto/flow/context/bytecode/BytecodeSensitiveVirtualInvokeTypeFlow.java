@@ -149,7 +149,7 @@ final class BytecodeSensitiveVirtualInvokeTypeFlow extends AbstractVirtualInvoke
     }
 
     @Override
-    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
+    public Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(PointsToAnalysis bb) {
         return calleesFlows;
     }
 }

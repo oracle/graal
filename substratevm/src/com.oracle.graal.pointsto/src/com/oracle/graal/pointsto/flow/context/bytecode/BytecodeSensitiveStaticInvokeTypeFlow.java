@@ -116,7 +116,7 @@ final class BytecodeSensitiveStaticInvokeTypeFlow extends AbstractStaticInvokeTy
     }
 
     @Override
-    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
+    public Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(PointsToAnalysis bb) {
         return LightImmutableCollection.toCollection(this, CALLEES_FLOWS_ACCESSOR);
     }
 }
