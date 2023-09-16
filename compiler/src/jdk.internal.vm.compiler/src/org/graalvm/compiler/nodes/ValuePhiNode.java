@@ -137,14 +137,14 @@ public class ValuePhiNode extends PhiNode {
                  */
                 return valuesStamp;
             }
-            boolean hasDirectPhiInput = false;
+            boolean hasDirectPhiOrProxyInput = false;
             for (ValueNode value : values()) {
-                if (value instanceof ValuePhiNode) {
-                    hasDirectPhiInput = true;
+                if (value instanceof ValuePhiNode || value instanceof ValueProxyNode) {
+                    hasDirectPhiOrProxyInput = true;
                     break;
                 }
             }
-            if (!hasDirectPhiInput) {
+            if (!hasDirectPhiOrProxyInput) {
                 // Nothing to recurse over.
                 return valuesStamp;
             }
@@ -157,6 +157,8 @@ public class ValuePhiNode extends PhiNode {
                     // Don't use this value's stamp as that is what we are computing.
                 } else if (node instanceof ValuePhiNode phi) {
                     flood.addAll(phi.values());
+                } else if (node instanceof ValueProxyNode proxy) {
+                    flood.add(proxy.value());
                 } else if (node instanceof ValueNode value) {
                     currentStamp = currentStamp.meet(value.stamp(NodeView.DEFAULT));
                     if (currentStamp.equals(valuesStamp)) {

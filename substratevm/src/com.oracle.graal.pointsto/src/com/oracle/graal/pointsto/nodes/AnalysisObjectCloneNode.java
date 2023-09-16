@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,8 +24,10 @@
  */
 package com.oracle.graal.pointsto.nodes;
 
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
+import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 
 @NodeInfo
@@ -34,6 +36,15 @@ public class AnalysisObjectCloneNode extends BasicObjectCloneNode {
     public static final NodeClass<AnalysisObjectCloneNode> TYPE = NodeClass.create(AnalysisObjectCloneNode.class);
 
     public AnalysisObjectCloneNode(MacroParams p) {
-        super(TYPE, p);
+        this(p, null);
+    }
+
+    private AnalysisObjectCloneNode(MacroParams p, FrameState stateAfter) {
+        super(TYPE, p, stateAfter);
+    }
+
+    @Override
+    protected AnalysisObjectCloneNode duplicateWithNewStamp(ObjectStamp newStamp) {
+        return new AnalysisObjectCloneNode(copyParamsWithImprovedStamp(newStamp), stateAfter());
     }
 }

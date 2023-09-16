@@ -71,7 +71,33 @@ public class ObjectCloneTest extends GraalCompilerTest {
         return suites;
     }
 
+    @BytecodeParserNeverInline
     public static Object cloneArray(int[] array) {
+        return array.clone();
+    }
+
+    private static final class ArrayHolder<T> {
+        T[] array;
+
+        private ArrayHolder(T[] array) {
+            this.array = array;
+        }
+    }
+
+    public static Object[] cloneGenericObjectArray(ArrayHolder<Object> holder) {
+        return holder.array.clone();
+    }
+
+    public static Number[] cloneDynamicObjectArray(ArrayHolder<Number> holder) {
+        return holder.array.clone();
+    }
+
+    public static Integer[] cloneConcreteObjectArray(ArrayHolder<Integer> holder) {
+        return holder.array.clone();
+    }
+
+    @BytecodeParserNeverInline
+    public static <T> T[] cloneArrayGeneric(T[] array) {
         return array.clone();
     }
 
@@ -116,6 +142,21 @@ public class ObjectCloneTest extends GraalCompilerTest {
     }
 
     @Test
+    public void testGenericObjectArray() throws Throwable {
+        test("cloneGenericObjectArray", new ArrayHolder<>(new Integer[]{1, 2, 4, 3}));
+    }
+
+    @Test
+    public void testDynamicObjectArray() throws Throwable {
+        test("cloneDynamicObjectArray", new ArrayHolder<>(new Number[]{1, 2, 4, 3}));
+    }
+
+    @Test
+    public void testConcreteObjectArray() throws Throwable {
+        test("cloneConcreteObjectArray", new ArrayHolder<>(new Integer[]{1, 2, 3, 4}));
+    }
+
+    @Test
     public void testList() throws Throwable {
         ArrayList<Object> list = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
@@ -142,10 +183,13 @@ public class ObjectCloneTest extends GraalCompilerTest {
 
     public static Object cloneArrayWithImpreciseStamp(int[] inputArray, int count) {
         int[] array = inputArray;
-        for (int i = 0; i < count; i++) {
-            if (i > 3) {
-                array = new int[i];
-                array[i - 1] = i;
+        for (int j = 0; j < count; j++) {
+            for (int i = 0; i < j; i++) {
+                if (i > 3) {
+                    array = new int[i];
+                    array[i - 1] = i;
+                }
+                GraalDirectives.controlFlowAnchor();
             }
             GraalDirectives.controlFlowAnchor();
         }
@@ -155,5 +199,45 @@ public class ObjectCloneTest extends GraalCompilerTest {
     @Test
     public void testCloneArrayWithImpreciseStamp() {
         test("cloneArrayWithImpreciseStamp", ARRAY, ARRAY.length);
+    }
+
+    public static Object cloneArrayWithImpreciseStampInlined(int[] inputArray, int count) {
+        int[] array = inputArray;
+        for (int j = 0; j < count; j++) {
+            for (int i = 0; i < j; i++) {
+                if (i > 3) {
+                    array = new int[i];
+                    array[i - 1] = i;
+                }
+                GraalDirectives.controlFlowAnchor();
+            }
+            GraalDirectives.controlFlowAnchor();
+        }
+        return cloneArray(array);
+    }
+
+    @Test
+    public void testCloneArrayWithImpreciseStampInlined() {
+        test("cloneArrayWithImpreciseStampInlined", ARRAY, ARRAY.length);
+    }
+
+    public static Object cloneArrayWithImpreciseStampInlinedGeneric(Integer[] inputArray, int count) {
+        Integer[] array = inputArray;
+        for (int j = 0; j < count; j++) {
+            for (int i = 0; i < j; i++) {
+                if (i > 3) {
+                    array = new Integer[i];
+                    array[i - 1] = i;
+                }
+                GraalDirectives.controlFlowAnchor();
+            }
+            GraalDirectives.controlFlowAnchor();
+        }
+        return cloneArrayGeneric(array);
+    }
+
+    @Test
+    public void testCloneArrayWithImpreciseStampInlinedGeneric() {
+        test("cloneArrayWithImpreciseStampInlinedGeneric", new Integer[]{1, 2, 3, 4}, ARRAY.length);
     }
 }
