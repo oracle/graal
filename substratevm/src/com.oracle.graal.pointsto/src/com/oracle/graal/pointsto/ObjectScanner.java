@@ -271,10 +271,6 @@ public class ObjectScanner {
         if (value.isNull() || bb.getMetaAccess().isInstanceOf(value, WordBase.class)) {
             return;
         }
-        if (!bb.scanningPolicy().scanConstant(bb, value)) {
-            bb.registerTypeAsInHeap(bb.getMetaAccess().lookupJavaType(value), reason);
-            return;
-        }
         JavaConstant unwrappedValue = maybeUnwrap(value);
         Object valueObj = unwrappedValue instanceof ImageHeapConstant ? unwrappedValue : constantAsObject(bb, unwrappedValue);
         if (scannedObjects.putAndAcquire(valueObj) == null) {

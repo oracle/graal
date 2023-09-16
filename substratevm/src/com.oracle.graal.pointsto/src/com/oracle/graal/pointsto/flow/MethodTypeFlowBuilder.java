@@ -406,10 +406,7 @@ public class MethodTypeFlowBuilder {
     }
 
     private static void registerEmbeddedRoot(PointsToAnalysis bb, ConstantNode cn) {
-        JavaConstant root = cn.asJavaConstant();
-        if (bb.scanningPolicy().trackConstant(bb, root)) {
-            bb.getUniverse().registerEmbeddedRoot(root, AbstractAnalysisEngine.sourcePosition(cn));
-        }
+        bb.getUniverse().registerEmbeddedRoot(cn.asJavaConstant(), AbstractAnalysisEngine.sourcePosition(cn));
     }
 
     private static void registerForeignCall(PointsToAnalysis bb, ForeignCallsProvider foreignCallsProvider, ForeignCallDescriptor foreignCallDescriptor, ResolvedJavaMethod from) {

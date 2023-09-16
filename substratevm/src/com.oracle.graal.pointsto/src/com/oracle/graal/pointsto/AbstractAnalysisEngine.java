@@ -74,7 +74,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final AnalysisUniverse universe;
     protected final AnalysisMetaAccess metaAccess;
     protected final AnalysisPolicy analysisPolicy;
-    private final HeapScanningPolicy heapScanningPolicy;
 
     protected final Boolean extendedAsserts;
     protected final int maxConstantObjectsPerType;
@@ -124,11 +123,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         maxConstantObjectsPerType = PointstoOptions.MaxConstantObjectsPerType.getValue(options);
         profileConstantObjects = PointstoOptions.ProfileConstantObjects.getValue(options);
         optimizeReturnedParameter = PointstoOptions.OptimizeReturnedParameter.getValue(options);
-
-        this.heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
-                        ? HeapScanningPolicy.scanAll()
-                        : HeapScanningPolicy.skipTypes(skippedHeapTypes());
-
         this.snippetReflectionProvider = snippetReflectionProvider;
         this.constantReflectionProvider = constantReflectionProvider;
         this.wordTypes = wordTypes;
@@ -247,11 +241,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     @Override
-    public AnalysisType[] skippedHeapTypes() {
-        return new AnalysisType[]{metaAccess.lookupJavaType(String.class)};
-    }
-
-    @Override
     public boolean extendedAsserts() {
         return extendedAsserts;
     }
@@ -329,11 +318,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     @Override
     public WordTypes getWordTypes() {
         return wordTypes;
-    }
-
-    @Override
-    public HeapScanningPolicy scanningPolicy() {
-        return heapScanningPolicy;
     }
 
     @Override

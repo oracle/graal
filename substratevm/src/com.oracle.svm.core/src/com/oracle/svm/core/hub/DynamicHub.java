@@ -349,7 +349,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private final DynamicHubCompanion companion;
 
-    private String signature;
+    private final String signature;
 
     @Substitute //
     @InjectAccessors(ClassLoaderAccessors.class) //
@@ -385,7 +385,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
-                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, String simpleBinaryName, Object declaringClass) {
+                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, String simpleBinaryName, Object declaringClass, String signature) {
         this.hostedJavaClass = hostedJavaClass;
         this.module = hostedJavaClass.getModule();
         this.name = name;
@@ -398,6 +398,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.nestHost = nestHost;
         this.simpleBinaryName = simpleBinaryName;
         this.declaringClass = declaringClass;
+        this.signature = signature;
 
         this.flags = NumUtil.safeToUShort(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
@@ -517,11 +518,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             String message = e.getMessage();
             enumConstantsReference = new LazyFinalReference<>(() -> throwNoClassDefFoundErrorAtRuntime(message));
         }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setSignature(String signature) {
-        this.signature = signature;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
