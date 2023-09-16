@@ -71,7 +71,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     private TRegexNFAExecutorNode(NFA nfa, int numberOfTransitions) {
         super(nfa.getAst(), numberOfTransitions);
         this.nfa = nfa;
-        this.searching = !nfa.getAst().getFlags().isSticky() && !nfa.getAst().getRoot().startsWithCaret();
+        this.searching = !nfa.getAst().getFlags().isSticky() && !nfa.getAst().getRoot().startsWithCaret() && nfa.getInitialLoopBackTransition() != null;
         this.trackLastGroup = nfa.getAst().getOptions().getFlavor().usesLastGroupResultField();
     }
 
