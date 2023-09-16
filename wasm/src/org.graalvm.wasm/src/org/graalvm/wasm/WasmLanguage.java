@@ -41,25 +41,37 @@
 package org.graalvm.wasm;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 
-import com.oracle.truffle.api.instrumentation.ProvidedTags;
-import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.ContextThreadLocal;
 import org.graalvm.options.OptionDescriptors;
+import org.graalvm.options.OptionValues;
 import org.graalvm.wasm.api.WebAssembly;
 import org.graalvm.wasm.memory.WasmMemory;
+import org.graalvm.wasm.predefined.BuiltinModule;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.ContextThreadLocal;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.ProvidedTags;
+import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.api.source.SourceSection;
 
-@Registration(id = WasmLanguage.ID, name = WasmLanguage.NAME, defaultMimeType = WasmLanguage.WASM_MIME_TYPE, byteMimeTypes = WasmLanguage.WASM_MIME_TYPE, contextPolicy = TruffleLanguage.ContextPolicy.EXCLUSIVE, //
-                fileTypeDetectors = WasmFileDetector.class, interactive = false, website = "https://www.graalvm.org/")
+@Registration(id = WasmLanguage.ID, //
+                name = WasmLanguage.NAME, //
+                defaultMimeType = WasmLanguage.WASM_MIME_TYPE, //
+                byteMimeTypes = WasmLanguage.WASM_MIME_TYPE, //
+                contextPolicy = TruffleLanguage.ContextPolicy.SHARED, //
+                fileTypeDetectors = WasmFileDetector.class, //
+                interactive = false, //
+                website = "https://www.graalvm.org/")
 @ProvidedTags({StandardTags.RootTag.class, StandardTags.RootBodyTag.class, StandardTags.StatementTag.class})
 public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     public static final String ID = "wasm";
@@ -69,10 +81,29 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     private static final LanguageReference<WasmLanguage> REFERENCE = LanguageReference.create(WasmLanguage.class);
 
-    private boolean isFirst = true;
     @CompilationFinal private volatile boolean isMultiContext;
 
     private final ContextThreadLocal<MultiValueStack> multiValueStackThreadLocal = locals.createContextThreadLocal(((context, thread) -> new MultiValueStack()));
+
+    private final Map<BuiltinModule, WasmModule> builtinModules = new ConcurrentHashMap<>();
+
+    private final Map<SymbolTable.FunctionType, Integer> equivalenceClasses = new ConcurrentHashMap<>();
+    private int nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
+
+    public int equivalenceClassFor(SymbolTable.FunctionType type) {
+        Integer equivalenceClass = equivalenceClasses.get(type);
+        if (equivalenceClass == null) {
+            synchronized (this) {
+                equivalenceClass = equivalenceClasses.get(type);
+                if (equivalenceClass == null) {
+                    equivalenceClass = nextEquivalenceClass++;
+                    Integer prev = equivalenceClasses.put(type, equivalenceClass);
+                    assert prev == null;
+                }
+            }
+        }
+        return equivalenceClass;
+    }
 
     @Override
     protected WasmContext createContext(Env env) {
@@ -86,18 +117,37 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
     @Override
     protected CallTarget parse(ParsingRequest request) {
         final WasmContext context = WasmContext.get(null);
-        final String moduleName = isFirst ? "main" : request.getSource().getName();
-        isFirst = false;
         final Source source = request.getSource();
+        final String moduleName = source.getName();
         final byte[] data = source.getBytes().toByteArray();
         final WasmModule module = context.readModule(moduleName, data, null);
-        final WasmInstance instance = context.readInstance(module);
-        return new RootNode(this) {
-            @Override
-            public WasmInstance execute(VirtualFrame frame) {
-                return instance;
+        return new ParsedWasmModuleRootNode(this, module, source).getCallTarget();
+    }
+
+    private static final class ParsedWasmModuleRootNode extends RootNode {
+        private final WasmModule module;
+        private final Source source;
+
+        private ParsedWasmModuleRootNode(WasmLanguage language, WasmModule module, Source source) {
+            super(language);
+            this.module = module;
+            this.source = source;
+        }
+
+        @Override
+        public WasmInstance execute(VirtualFrame frame) {
+            final WasmContext context = WasmContext.get(this);
+            WasmInstance instance = context.lookupModuleInstance(module);
+            if (instance == null) {
+                instance = context.readInstance(module);
             }
-        }.getCallTarget();
+            return instance;
+        }
+
+        @Override
+        public SourceSection getSourceSection() {
+            return source.createUnavailableSection();
+        }
     }
 
     @Override
@@ -140,6 +190,21 @@ public final class WasmLanguage extends TruffleLanguage<WasmContext> {
 
     public static WasmLanguage get(Node node) {
         return REFERENCE.get(node);
+    }
+
+    public WasmModule getOrCreateBuiltinModule(BuiltinModule builtinModule, Function<? super BuiltinModule, ? extends WasmModule> factory) {
+        return builtinModules.computeIfAbsent(builtinModule, factory);
+    }
+
+    @Override
+    protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
+        if (!firstOptions.hasSetOptions() && !newOptions.hasSetOptions()) {
+            return true;
+        } else if (firstOptions.equals(newOptions)) {
+            return true;
+        } else {
+            return WasmContextOptions.fromOptionValues(firstOptions).equals(WasmContextOptions.fromOptionValues(newOptions));
+        }
     }
 
     public MultiValueStack multiValueStack() {

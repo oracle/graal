@@ -38,44 +38,60 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package org.graalvm.wasm.predefined.wasi;
 
-import org.graalvm.wasm.WasmArguments;
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.memory.WasmMemory;
-import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
-import org.graalvm.wasm.predefined.wasi.fd.Fd;
-import org.graalvm.wasm.predefined.wasi.types.Errno;
+package org.graalvm.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+public final class WasmArguments {
 
-public class WasiPathCreateDirectoryNode extends WasmBuiltinRootNode {
+    public static final int RUNTIME_ARGUMENT_COUNT = 1;
 
-    public WasiPathCreateDirectoryNode(WasmLanguage language, WasmModule module) {
-        super(language, module);
+    private static final int MODULE_INSTANCE_ARGUMENT_INDEX = 0;
+
+    private WasmArguments() {
     }
 
-    @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
-        final Object[] args = frame.getArguments();
-        return pathCreateDirectory(context, memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1), (int) WasmArguments.getArgument(args, 2));
+    public static Object[] createEmpty(int formalArgumentCount) {
+        return new Object[RUNTIME_ARGUMENT_COUNT + formalArgumentCount];
     }
 
-    @TruffleBoundary
-    private int pathCreateDirectory(WasmContext context, WasmMemory memory, int fd, int pathAddress, int pathLength) {
-        final Fd handle = context.fdManager().get(fd);
-        if (handle == null) {
-            return Errno.Badf.ordinal();
-        }
-        return handle.pathCreateDirectory(this, memory, pathAddress, pathLength).ordinal();
+    public static Object[] create(Object instance, Object... formalArguments) {
+        Object[] arguments = new Object[RUNTIME_ARGUMENT_COUNT + formalArguments.length];
+        arguments[MODULE_INSTANCE_ARGUMENT_INDEX] = instance;
+        setArguments(arguments, 0, formalArguments);
+        return arguments;
     }
 
-    @Override
-    public String builtinNodeName() {
-        return "__wasi_path_create_directory";
+    public static int getArgumentCount(Object[] arguments) {
+        return arguments.length - RUNTIME_ARGUMENT_COUNT;
+    }
+
+    public static Object getArgument(Object[] arguments, int index) {
+        return arguments[index + RUNTIME_ARGUMENT_COUNT];
+    }
+
+    public static void setArgument(Object[] arguments, int index, Object value) {
+        arguments[index + RUNTIME_ARGUMENT_COUNT] = value;
+    }
+
+    public static Object[] getArguments(Object[] arguments) {
+        Object[] userArguments = new Object[arguments.length - RUNTIME_ARGUMENT_COUNT];
+        System.arraycopy(arguments, RUNTIME_ARGUMENT_COUNT, userArguments, 0, userArguments.length);
+        return userArguments;
+    }
+
+    public static void setArguments(Object[] arguments, int index, Object[] formalArguments) {
+        System.arraycopy(formalArguments, 0, arguments, RUNTIME_ARGUMENT_COUNT + index, formalArguments.length);
+    }
+
+    public static WasmInstance getModuleInstance(Object[] arguments) {
+        return (WasmInstance) arguments[MODULE_INSTANCE_ARGUMENT_INDEX];
+    }
+
+    public static void setModuleInstance(Object[] arguments, WasmInstance instance) {
+        arguments[MODULE_INSTANCE_ARGUMENT_INDEX] = instance;
+    }
+
+    public static boolean isValid(Object[] arguments) {
+        return arguments.length >= RUNTIME_ARGUMENT_COUNT && arguments[0] instanceof WasmInstance;
     }
 }

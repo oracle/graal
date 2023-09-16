@@ -40,7 +40,6 @@
  */
 package org.graalvm.wasm;
 
-import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -50,6 +49,7 @@ import org.graalvm.wasm.parser.bytecode.BytecodeParser;
 import org.graalvm.wasm.predefined.BuiltinModule;
 import org.graalvm.wasm.predefined.wasi.fd.FdManager;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
 import com.oracle.truffle.api.TruffleLanguage.Env;
 import com.oracle.truffle.api.nodes.Node;
@@ -57,13 +57,12 @@ import com.oracle.truffle.api.nodes.Node;
 public final class WasmContext {
     private final Env env;
     private final WasmLanguage language;
-    private final Map<SymbolTable.FunctionType, Integer> equivalenceClasses;
-    private int nextEquivalenceClass;
     private final MemoryRegistry memoryRegistry;
     private final GlobalRegistry globals;
     private final TableRegistry tableRegistry;
     private final Linker linker;
     private final Map<String, WasmInstance> moduleInstances;
+    private WasmInstance mainModuleInstance;
     private int moduleNameCount;
     private final FdManager filesManager;
     private final WasmContextOptions contextOptions;
@@ -72,8 +71,6 @@ public final class WasmContext {
         this.env = env;
         this.language = language;
         this.contextOptions = WasmContextOptions.fromOptionValues(env.getOptions());
-        this.equivalenceClasses = new HashMap<>();
-        this.nextEquivalenceClass = SymbolTable.FIRST_EQUIVALENCE_CLASS;
         this.globals = new GlobalRegistry(contextOptions.supportBulkMemoryAndRefTypes());
         this.tableRegistry = new TableRegistry();
         this.memoryRegistry = new MemoryRegistry();
@@ -108,18 +105,9 @@ public final class WasmContext {
         return linker;
     }
 
-    public Integer equivalenceClassFor(SymbolTable.FunctionType type) {
-        Integer equivalenceClass = equivalenceClasses.get(type);
-        if (equivalenceClass == null) {
-            equivalenceClass = nextEquivalenceClass++;
-            equivalenceClasses.put(type, equivalenceClass);
-        }
-        return equivalenceClass;
-    }
-
     @SuppressWarnings("unused")
     public Object getScope() {
-        return new WasmScope(moduleInstances);
+        return new WasmScope(this);
     }
 
     public FdManager fdManager() {
@@ -133,11 +121,33 @@ public final class WasmContext {
         return moduleInstances;
     }
 
+    @TruffleBoundary
+    public WasmInstance lookupModuleInstance(WasmModule module) {
+        WasmInstance instance = moduleInstances.get(module.name());
+        assert instance == null || instance.module() == module;
+        return instance;
+    }
+
+    @TruffleBoundary
+    public WasmInstance lookupModuleInstance(String name) {
+        return moduleInstances.get(name);
+    }
+
+    /**
+     * Returns the first module evaluated in this context (not including built-in modules).
+     */
+    public WasmInstance lookupMainModule() {
+        return mainModuleInstance;
+    }
+
     public void register(WasmInstance instance) {
         if (moduleInstances.containsKey(instance.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INTERNAL, "Context already contains an instance named '" + instance.name() + "'.");
         }
         moduleInstances.put(instance.name(), instance);
+        if (mainModuleInstance == null && !instance.isBuiltin()) {
+            mainModuleInstance = instance;
+        }
     }
 
     private void instantiateBuiltinInstances() {
@@ -174,6 +184,7 @@ public final class WasmContext {
         return module;
     }
 
+    @TruffleBoundary
     public WasmInstance readInstance(WasmModule module) {
         if (moduleInstances.containsKey(module.name())) {
             throw WasmException.create(Failure.UNSPECIFIED_INVALID, null, "Module " + module.name() + " is already instantiated in this context.");
@@ -198,10 +209,7 @@ public final class WasmContext {
         if (reinitMemory) {
             BytecodeParser.resetMemoryState(this, instance.module(), instance);
             BytecodeParser.resetTableState(this, instance.module(), instance);
-            final WasmFunction startFunction = instance.symbolTable().startFunction();
-            if (startFunction != null) {
-                instance.target(startFunction.index()).call();
-            }
+            Linker.runStartFunction(instance);
         }
     }
 
@@ -233,7 +241,7 @@ public final class WasmContext {
      * Updates the size of the multi-value stack if needed. In case of a resize, the values are not
      * copied. Therefore, resizing should occur before any call to a function that uses the
      * multi-value stack.
-     * 
+     *
      * @param expectedSize The minimum expected size.
      */
     public void resizeMultiValueStack(int expectedSize) {

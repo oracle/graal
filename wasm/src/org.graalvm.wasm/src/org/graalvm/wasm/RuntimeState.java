@@ -51,7 +51,7 @@ import org.graalvm.wasm.memory.WasmMemory;
  * Represents the state of a WebAssembly module.
  */
 @SuppressWarnings("static-method")
-public class RuntimeState {
+public abstract class RuntimeState {
     private static final int INITIAL_GLOBALS_SIZE = 64;
     private static final int INITIAL_TABLES_SIZE = 1;
     private static final int INITIAL_MEMORIES_SIZE = 1;
@@ -206,6 +206,10 @@ public class RuntimeState {
         return module;
     }
 
+    protected WasmInstance instance() {
+        return null;
+    }
+
     public CallTarget target(int index) {
         return targets[index];
     }
@@ -252,7 +256,7 @@ public class RuntimeState {
         int functionIndex = function.index();
         WasmFunctionInstance functionInstance = functionInstances[functionIndex];
         if (functionInstance == null) {
-            functionInstance = new WasmFunctionInstance(context(), function, target(functionIndex));
+            functionInstance = new WasmFunctionInstance(instance(), function, target(functionIndex));
             functionInstances[functionIndex] = functionInstance;
         }
         return functionInstance;

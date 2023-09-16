@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,21 +40,19 @@
  */
 package org.graalvm.wasm.predefined.testutil;
 
-import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmInstance;
-import org.graalvm.wasm.WasmLanguage;
-import org.graalvm.wasm.WasmModule;
-import org.graalvm.wasm.predefined.BuiltinModule;
+import static org.graalvm.wasm.WasmType.I32_TYPE;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import static org.graalvm.wasm.WasmType.I32_TYPE;
+import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.predefined.BuiltinModule;
 
 public class TestutilModule extends BuiltinModule {
-    private static final int NUMBER_OF_FUNCTIONS = 2;
 
     public static class Options {
         static final String KEEP_TEMP_FILES = System.getProperty("wasmtest.keepTempFiles", "false");
@@ -82,17 +80,16 @@ public class TestutilModule extends BuiltinModule {
     }
 
     @Override
-    protected WasmInstance createInstance(WasmLanguage language, WasmContext context, String name) {
+    protected WasmModule createModule(WasmLanguage language, WasmContext context, String name) {
         final Path temporaryDirectory = createTemporaryDirectory();
-        WasmInstance instance = new WasmInstance(context, WasmModule.createBuiltin(name), NUMBER_OF_FUNCTIONS);
+        WasmModule module = WasmModule.createBuiltin(name);
 
         // Note: in the following methods, the types are not important here, since these methods
         // are not accessed by Wasm code.
-        defineFunction(instance, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitializationNode(language));
+        defineFunction(context, module, Names.RUN_CUSTOM_INITIALIZATION, types(), types(), new RunCustomInitializationNode(language, module));
 
         // The following methods are exposed to the Wasm test programs.
-        defineFunction(instance, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFileNode(language, instance, temporaryDirectory));
-
-        return instance;
+        defineFunction(context, module, Names.SAVE_BINARY_FILE, types(I32_TYPE, I32_TYPE, I32_TYPE), types(), new SaveBinaryFileNode(language, module, temporaryDirectory));
+        return module;
     }
 }
