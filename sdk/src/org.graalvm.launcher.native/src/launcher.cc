@@ -534,7 +534,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     /* set classpath and module path arguments - only needed for jvm mode */
     if (jvmMode) {
         if (!cp.str().empty()) {
-            vmArgs.push_back("-Djava.class.path=" + cp.str());
+            vmArgs.push_back("-Djava.class.path=" + cp.str().substr(1));
         }
         if (!libraryPath.str().empty()) {
             vmArgs.push_back("-Djava.library.path=" + libraryPath.str().substr(1));
