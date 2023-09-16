@@ -25,7 +25,9 @@
 package org.graalvm.compiler.hotspot.test;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import org.graalvm.compiler.core.test.SubprocessTest;
 import org.junit.Test;
@@ -50,16 +52,22 @@ public class HumongousReferenceObjectTest extends SubprocessTest {
     }
 
     public void runSubprocessTest(String... args) throws IOException, InterruptedException {
+        List<String> newArgs = new ArrayList<>();
+        Collections.addAll(newArgs, args);
+        // Filter out any explicitly selected GC
+        newArgs.remove("-XX:+UseZGC");
+        newArgs.remove("-XX:+UseG1GC");
+        newArgs.remove("-XX:+UseParallelGC");
+
         launchSubprocess(() -> {
             test("testSnippet");
-        }, args);
+        }, newArgs.toArray(new String[0]));
 
         // Test without assertions as well
-        String[] newArgs = Arrays.copyOf(args, args.length + 1);
-        newArgs[args.length] = "-da";
+        newArgs.add("-da");
         launchSubprocess(() -> {
             test("testSnippet");
-        }, newArgs);
+        }, newArgs.toArray(new String[0]));
     }
 
     @Test
