@@ -45,6 +45,7 @@ import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.HeapSnapshotVerifier;
@@ -514,6 +515,14 @@ public class AnalysisUniverse implements Universe {
         } else {
             return constant;
         }
+    }
+
+    @Override
+    public JavaConstant shadowHeapLookup(JavaConstant constant) {
+        if (constant == null || constant.isNull() || constant.getJavaKind().isPrimitive()) {
+            return constant;
+        }
+        return heapScanner.createImageHeapConstant(lookup(constant), ObjectScanner.OtherReason.UNKNOWN);
     }
 
     public JavaConstant toHosted(JavaConstant constant) {

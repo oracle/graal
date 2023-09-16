@@ -28,7 +28,9 @@ import org.graalvm.compiler.word.WordTypes;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.ObjectScanner.OtherReason;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
@@ -37,9 +39,15 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
+    private ImageHeapScanner heapScanner;
 
-    public HostedSnippetReflectionProvider(WordTypes wordTypes) {
+    public HostedSnippetReflectionProvider(ImageHeapScanner heapScanner, WordTypes wordTypes) {
         super(wordTypes);
+        this.heapScanner = heapScanner;
+    }
+
+    public void setHeapScanner(ImageHeapScanner heapScanner) {
+        this.heapScanner = heapScanner;
     }
 
     @Override
@@ -48,7 +56,20 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
             /* Relocated pointers are subject to relocation, so we don't know their value yet. */
             return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
         }
-        return super.forObject(object);
+        if (object instanceof ImageHeapConstant heapConstant) {
+            /* This could be a simulated constant. */
+            return heapConstant;
+        }
+        /* Redirect constant lookup through the shadow heap. */
+        return heapScanner.createImageHeapConstant(super.forObject(object), OtherReason.UNKNOWN);
+    }
+
+    @Override
+    public JavaConstant unwrapConstant(JavaConstant constant) {
+        if (constant instanceof ImageHeapConstant heapConstant && heapConstant.getHostedObject() != null) {
+            return heapConstant.getHostedObject();
+        }
+        return constant;
     }
 
     @Override

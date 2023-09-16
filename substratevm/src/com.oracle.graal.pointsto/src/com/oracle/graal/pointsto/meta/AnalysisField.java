@@ -537,7 +537,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @Override
     public JavaConstant getConstantValue() {
-        return getUniverse().lookup(getWrapped().getConstantValue());
+        return getUniverse().shadowHeapLookup(getWrapped().getConstantValue());
     }
 
     public void addAnalysisFieldObserver(AnalysisFieldObserver observer) {

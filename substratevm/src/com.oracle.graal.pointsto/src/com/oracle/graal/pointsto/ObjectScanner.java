@@ -497,6 +497,7 @@ public class ObjectScanner {
     }
 
     public static class OtherReason extends ScanReason {
+        public static final ScanReason UNKNOWN = new OtherReason("manually created constant");
         public static final ScanReason RESCAN = new OtherReason("manually triggered rescan");
         public static final ScanReason HUB = new OtherReason("scanning a class constant");
 

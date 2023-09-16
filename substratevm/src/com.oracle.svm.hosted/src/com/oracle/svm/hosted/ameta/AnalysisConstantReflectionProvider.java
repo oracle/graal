@@ -34,6 +34,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;
 
+import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.ImageHeapArray;
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.heap.ImageHeapInstance;
@@ -364,6 +365,24 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
         return SubstrateObjectConstant.forObject(getHostVM().dynamicHub(type));
+    }
+
+    @Override
+    public JavaConstant forString(String value) {
+        if (value == null) {
+            return JavaConstant.NULL_POINTER;
+        }
+        return universe.getHeapScanner().createImageHeapConstant(super.forString(value), ObjectScanner.OtherReason.UNKNOWN);
+    }
+
+    @Override
+    public JavaConstant forObject(Object object) {
+        if (object instanceof ImageHeapConstant heapConstant) {
+            /* This could be a simulated constant. */
+            return heapConstant;
+        }
+        /* Redirect constant lookup through the shadow heap. */
+        return universe.getHeapScanner().createImageHeapConstant(super.forObject(object), ObjectScanner.OtherReason.UNKNOWN);
     }
 
     private SVMHost getHostVM() {

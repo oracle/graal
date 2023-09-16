@@ -49,7 +49,6 @@ import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -196,9 +195,6 @@ public abstract class ImageHeapScanner {
         ScanReason nonNullReason = Objects.requireNonNull(reason);
         Object existingTask = imageHeap.getSnapshot(javaConstant);
         if (existingTask == null) {
-            if (universe.sealed()) {
-                throw AnalysisError.shouldNotReachHere("Universe is sealed. New constant reachable: " + javaConstant.toValueString());
-            }
             AnalysisFuture<ImageHeapConstant> newTask = new AnalysisFuture<>(() -> {
                 ImageHeapConstant imageHeapConstant = createImageHeapObject(javaConstant, nonNullReason);
                 /* When the image heap object is created replace the future in the map. */
@@ -434,11 +430,12 @@ public abstract class ImageHeapScanner {
     }
 
     private boolean isNonNullObjectConstant(JavaConstant constant) {
-        return constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && !isWordType(constant, metaAccess);
+        return constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && !isWordType(constant);
     }
 
-    public static boolean isWordType(JavaConstant rawElementValue, UniverseMetaAccess metaAccess) {
-        return metaAccess.isInstanceOf(rawElementValue, WordBase.class);
+    public boolean isWordType(JavaConstant rawElementValue) {
+        Object obj = snippetReflection.asObject(Object.class, rawElementValue);
+        return obj instanceof WordBase;
     }
 
     private boolean notifyAnalysis(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, int elementIndex, ScanReason reason) {
@@ -446,7 +443,7 @@ public abstract class ImageHeapScanner {
         if (elementValue.isNull()) {
             analysisModified = scanningObserver.forNullArrayElement(array, arrayType, elementIndex, reason);
         } else {
-            if (isWordType(elementValue, metaAccess)) {
+            if (isWordType(elementValue)) {
                 return false;
             }
             AnalysisType elementType = metaAccess.lookupJavaType(elementValue);
@@ -682,7 +679,10 @@ public abstract class ImageHeapScanner {
     }
 
     public JavaConstant asConstant(Object object) {
-        return snippetReflection.forObject(object);
+        if (object instanceof ImageHeapConstant constant) {
+            return constant;
+        }
+        return universe.getSnippetReflection().forObject(object);
     }
 
     public void cleanupAfterAnalysis() {

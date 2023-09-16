@@ -111,6 +111,16 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
         return hUniverse.lookup(aConstantReflection.readValue(hMetaAccess, hField.getWrapped(), receiver, true));
     }
 
+    @Override
+    public JavaConstant forString(String value) {
+        return aConstantReflection.forString(value);
+    }
+
+    @Override
+    protected JavaConstant forObject(Object object) {
+        return aConstantReflection.forObject(object);
+    }
+
     private boolean checkHub(JavaConstant constant) {
         if (hMetaAccess.isInstanceOf(constant, Class.class)) {
             Object classObject = hUniverse.getSnippetReflection().asObject(Object.class, constant);

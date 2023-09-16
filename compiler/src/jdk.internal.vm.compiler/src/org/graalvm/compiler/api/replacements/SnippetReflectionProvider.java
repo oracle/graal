@@ -65,6 +65,13 @@ public interface SnippetReflectionProvider {
     <T> T asObject(Class<T> type, JavaConstant constant);
 
     /**
+     * Get the wrapped constant object, if any.
+     */
+    default JavaConstant unwrapConstant(JavaConstant constant) {
+        return constant;
+    }
+
+    /**
      * Creates a boxed constant for the given kind from an Object. The object needs to be of the
      * Java boxed type corresponding to the kind.
      *

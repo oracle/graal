@@ -75,7 +75,7 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
 
         if (a instanceof Object[]) {
             Object element = ((Object[]) a)[index];
-            return SubstrateObjectConstant.forObject(element);
+            return forObject(element);
         } else {
             return JavaConstant.forBoxedPrimitive(Array.get(a, index));
         }
@@ -92,10 +92,9 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
             return;
         }
 
-        if (obj instanceof Object[]) {
-            Object[] a = (Object[]) obj;
+        if (obj instanceof Object[] a) {
             for (int index = 0; index < a.length; index++) {
-                consumer.accept((SubstrateObjectConstant.forObject(a[index])), index);
+                consumer.accept((forObject(a[index])), index);
             }
         } else {
             for (int index = 0; index < Array.getLength(obj); index++) {
@@ -126,6 +125,10 @@ public abstract class SharedConstantReflectionProvider implements ConstantReflec
     @Override
     public JavaConstant forString(String value) {
         return SubstrateObjectConstant.forObject(value);
+    }
+
+    protected JavaConstant forObject(Object object) {
+        return SubstrateObjectConstant.forObject(object);
     }
 
     @Override
