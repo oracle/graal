@@ -52,6 +52,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
+import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
 import com.oracle.truffle.sl.nodes.util.SLToMemberNode;
@@ -70,6 +71,7 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @NodeInfo(shortName = ".")
 @NodeChild("receiverNode")
 @NodeChild("nameNode")
+@OperationProxy.Proxyable
 public abstract class SLReadPropertyNode extends SLExpressionNode {
 
     public static final int LIBRARY_LIMIT = 3;

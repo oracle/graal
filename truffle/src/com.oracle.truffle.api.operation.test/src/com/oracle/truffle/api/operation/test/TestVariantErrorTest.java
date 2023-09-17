@@ -77,6 +77,7 @@ public class TestVariantErrorTest {
 }
 
 @SuppressWarnings("truffle-inlining")
+@OperationProxy.Proxyable(allowBaseline = true)
 abstract class ConstantOperation extends Node {
     public abstract long execute();
 

@@ -87,7 +87,7 @@ import com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant;
 @GenerateAOT
 @ShortCircuitOperation(booleanConverter = OperationsExample.ToBoolean.class, name = "ScAnd", continueWhen = true)
 @ShortCircuitOperation(booleanConverter = OperationsExample.ToBoolean.class, name = "ScOr", continueWhen = false)
-@OperationProxy(value = ContinuationResult.ContinueNode.class, operationName = "Continue")
+@OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
 public abstract class OperationsExample extends RootNode implements OperationRootNode {
 
     protected OperationsExample(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

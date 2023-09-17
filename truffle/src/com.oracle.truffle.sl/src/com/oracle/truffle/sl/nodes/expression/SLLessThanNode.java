@@ -51,6 +51,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
 import com.oracle.truffle.sl.runtime.SLBigInteger;
@@ -60,6 +61,7 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
  * specialized methods return {@code boolean} instead of the input types.
  */
 @NodeInfo(shortName = "<")
+@OperationProxy.Proxyable
 public abstract class SLLessThanNode extends SLBinaryNode {
 
     @Specialization

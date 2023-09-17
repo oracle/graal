@@ -61,6 +61,7 @@ import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.library.LibraryData;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 import com.oracle.truffle.dsl.processor.model.NodeData;
+import com.oracle.truffle.dsl.processor.operations.model.OperationsModelList;
 
 /**
  * THIS IS NOT PUBLIC API.
@@ -122,7 +123,7 @@ public abstract class AbstractParser<M extends MessageContainer> {
             if (emitErrors) {
                 model.emitMessages(log);
             }
-            if (model instanceof NodeData || model instanceof LibraryData) {
+            if (model instanceof NodeData || model instanceof LibraryData || model instanceof OperationsModelList) {
                 return model;
             } else {
                 return emitErrors ? filterErrorElements(model) : model;

@@ -53,6 +53,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.SLLanguage;
@@ -72,6 +73,7 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
  * is generated that provides, e.g., {@link SLAddNodeGen#create node creation}.
  */
 @NodeInfo(shortName = "+")
+@OperationProxy.Proxyable
 public abstract class SLAddNode extends SLBinaryNode {
 
     /**

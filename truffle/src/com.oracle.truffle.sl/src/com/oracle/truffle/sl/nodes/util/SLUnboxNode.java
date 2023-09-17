@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
@@ -63,6 +64,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
  */
 @TypeSystemReference(SLTypes.class)
 @NodeChild
+@OperationProxy.Proxyable
 public abstract class SLUnboxNode extends SLExpressionNode {
 
     public static final int LIMIT = 5;

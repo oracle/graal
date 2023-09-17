@@ -185,7 +185,6 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     public CodeTypeElement create() {
-
         // Print a summary of the model in a docstring at the start.
         operationNodeGen.createDocBuilder().startDoc().lines(model.pp()).end();
 
@@ -1898,9 +1897,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                             context.getType(void.class), "serialize");
             method.addParameter(new CodeVariableElement(type(DataOutput.class), "buffer"));
             method.addParameter(new CodeVariableElement(types.OperationSerializer, "callback"));
-
             method.addThrownType(context.getType(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
+
             b.statement("this.serialization = new SerializationState(builtNodes, buffer, callback)");
 
             b.startTryBlock();
@@ -2734,7 +2733,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createEndRoot(OperationModel rootOperation) {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "endRoot");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), model.templateType.asType(), "endRoot");
             CodeTreeBuilder b = ex.getBuilder();
 
             if (model.enableSerialization) {
@@ -2751,8 +2750,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 });
                 b.end();
             }
-
-            ex.setReturnType(model.templateType.asType());
 
             b.startStatement().startCall("endOperation");
             b.tree(createOperationConstant(rootOperation));
@@ -4894,6 +4891,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private CodeTree createTransferToInterpreterAndInvalidate(String root) {
+
         if (model.templateType.getSimpleName().toString().equals("BoxingOperations")) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
             b.statement(root + ".transferToInterpreterAndInvalidate()");
@@ -5019,5 +5017,164 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private static String childString(int numChildren) {
         return numChildren + ((numChildren == 1) ? " child" : " children");
+    }
+
+    /**
+     * User code directly references some generated types and methods, like builder methods. When
+     * there is an error in the model, this factory generates stubs for the user-accessible names to
+     * prevent the compiler for emitting many unhelpful error messages about unknown types/methods.
+     */
+    public static final class ErrorFactory {
+        private final ProcessorContext context = ProcessorContext.getInstance();
+        private final TruffleTypes types = context.getTypes();
+
+        private final OperationsModel model;
+        private final CodeTypeElement operationNodeGen;
+
+        private final CodeTypeElement builder = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
+        private final DeclaredType operationBuilderType = new GeneratedTypeMirror("", builder.getSimpleName().toString(), builder.asType());
+        private final TypeMirror parserType = generic(types.OperationParser, operationBuilderType);
+
+        public ErrorFactory(OperationsModel model) {
+            assert model.hasErrors();
+            this.model = model;
+            this.operationNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.getName(), model.templateType.asType());
+        }
+
+        public CodeTypeElement create() {
+            operationNodeGen.add(createExecute());
+            operationNodeGen.add(createConstructor());
+            operationNodeGen.add(createCreate());
+            if (model.enableSerialization) {
+                operationNodeGen.add(createSerialize());
+                operationNodeGen.add(createDeserialize());
+            }
+
+            operationNodeGen.add(new BuilderFactory().create());
+            return operationNodeGen;
+        }
+
+        private CodeExecutableElement createExecute() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.RootNode, "execute");
+            CodeTreeBuilder b = ex.createBuilder();
+            emitThrowNotImplemented(b);
+            return ex;
+        }
+
+        private CodeExecutableElement createConstructor() {
+            CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, operationNodeGen.getSimpleName().toString());
+            ctor.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
+            ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
+            CodeTreeBuilder b = ctor.getBuilder();
+            b.startStatement().startCall("super");
+            b.string("language");
+            if (model.fdBuilderConstructor != null) {
+                b.string("builder");
+            } else {
+                b.string("builder.build()");
+            }
+            b.end(2);
+            emitThrowNotImplemented(b);
+            return ctor;
+        }
+
+        private CodeExecutableElement createCreate() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.OperationNodes, model.templateType.asType()), "create");
+            ex.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
+            ex.addParameter(new CodeVariableElement(generic(types.OperationParser, builder.asType()), "generator"));
+            CodeTreeBuilder b = ex.getBuilder();
+            emitThrowNotImplemented(b);
+            return ex;
+        }
+
+        private CodeExecutableElement createSerialize() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), context.getType(void.class), "serialize");
+            method.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
+            method.addParameter(new CodeVariableElement(context.getType(DataOutput.class), "buffer"));
+            method.addParameter(new CodeVariableElement(types.OperationSerializer, "callback"));
+            method.addParameter(new CodeVariableElement(parserType, "parser"));
+            method.addThrownType(context.getType(IOException.class));
+            CodeTreeBuilder b = method.createBuilder();
+            emitThrowNotImplemented(b);
+            return method;
+        }
+
+        private CodeExecutableElement createDeserialize() {
+            CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
+                            generic(types.OperationNodes, model.getTemplateType().asType()), "deserialize");
+            method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
+            method.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
+            method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));
+            method.addParameter(new CodeVariableElement(types.OperationDeserializer, "callback"));
+            method.addThrownType(context.getType(IOException.class));
+            CodeTreeBuilder b = method.createBuilder();
+            emitThrowNotImplemented(b);
+            return method;
+        }
+
+        private void emitThrowNotImplemented(CodeTreeBuilder b) {
+            b.startThrow().startNew(context.getType(AbstractMethodError.class));
+            b.string("\"There are error(s) with the operation node specification. Please resolve the error(s) and recompile.\"");
+            b.end(2);
+        }
+
+        private final class BuilderFactory {
+            private CodeTypeElement create() {
+                builder.setSuperClass(types.OperationBuilder);
+                builder.setEnclosingElement(operationNodeGen);
+                mergeSuppressWarnings(builder, "all");
+
+                builder.add(createMethodStub(new CodeExecutableElement(Set.of(PUBLIC), types.OperationLocal, "createLocal")));
+                builder.add(createMethodStub(new CodeExecutableElement(Set.of(PUBLIC), types.OperationLabel, "createLabel")));
+
+                for (OperationModel operation : model.getOperations()) {
+                    if (operation.hasChildren()) {
+                        builder.add(createBegin(operation));
+                        builder.add(createEnd(operation));
+                    } else {
+                        builder.add(createEmit(operation));
+                    }
+                }
+
+                return builder;
+            }
+
+            private CodeExecutableElement createMethodStub(CodeExecutableElement method) {
+                emitThrowNotImplemented(method.createBuilder());
+                return method;
+            }
+
+            private CodeExecutableElement createBegin(OperationModel operation) {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "begin" + operation.name);
+
+                int argIndex = 0;
+                for (TypeMirror argument : operation.operationArguments) {
+                    ex.addParameter(new CodeVariableElement(argument, "arg" + argIndex));
+                    argIndex++;
+                }
+
+                return createMethodStub(ex);
+            }
+
+            private CodeExecutableElement createEnd(OperationModel operation) {
+                return createMethodStub(new CodeExecutableElement(Set.of(PUBLIC),
+                                operation.kind == OperationKind.ROOT ? model.templateType.asType() : context.getType(void.class),
+                                "end" + operation.name));
+            }
+
+            private CodeExecutableElement createEmit(OperationModel operation) {
+                CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "emit" + operation.name);
+
+                if (operation.operationArguments != null) {
+                    int argIndex = 0;
+                    for (TypeMirror argument : operation.operationArguments) {
+                        ex.addParameter(new CodeVariableElement(argument, "arg" + argIndex));
+                        argIndex++;
+                    }
+                }
+
+                return createMethodStub(ex);
+            }
+        }
     }
 }

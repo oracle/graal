@@ -116,6 +116,9 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
         }
 
         OperationsModelList modelList = new OperationsModelList(context, typeElement, topLevelAnnotationMirror, models);
+        if (modelList.hasErrors()) {
+            return modelList;
+        }
 
         for (OperationsModel model : models) {
             parseOperationsModel(typeElement, model, model.getTemplateTypeAnnotation());
@@ -123,9 +126,10 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
                 // we only need one copy of the error messages.
                 break;
             }
-        }
 
+        }
         return modelList;
+
     }
 
     private List<OperationsModel> parseGenerateOperationsTestVariants(TypeElement typeElement, AnnotationMirror mirror) {
@@ -372,14 +376,22 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
         }
 
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.OperationProxy)) {
-            TypeMirror proxiedType = getTypeMirror(ElementUtils.getAnnotationValue(mir, "value"));
+            AnnotationValue mirrorValue = ElementUtils.getAnnotationValue(mir, "value");
+            TypeMirror proxiedType = getTypeMirror(mirrorValue);
 
             if (proxiedType.getKind() != TypeKind.DECLARED) {
-                model.addError("Could not proxy operation: the proxied type must be a class, not %s.", proxiedType);
+                model.addError(mir, mirrorValue, "Could not proxy operation: the proxied type must be a class, not %s.", proxiedType);
                 continue;
             }
 
             TypeElement te = (TypeElement) ((DeclaredType) proxiedType).asElement();
+            AnnotationMirror proxyable = ElementUtils.findAnnotationMirror(te.getAnnotationMirrors(), types.OperationProxy_Proxyable);
+            if (proxyable == null) {
+                model.addError(mir, mirrorValue, "Could not use %s as an operation proxy: the class must be annotated with %s.", te.getQualifiedName(), types.OperationProxy_Proxyable);
+            }
+            if (model.enableBaselineInterpreter && !ElementUtils.getAnnotationValue(Boolean.class, proxyable, "allowBaseline")) {
+                model.addError(mir, mirrorValue, "Could not use %s as an operation proxy: the class does not allow a baseline implementation.", te.getQualifiedName());
+            }
 
             CustomOperationParser.forOperationProxy(model, mir).parse(te);
         }

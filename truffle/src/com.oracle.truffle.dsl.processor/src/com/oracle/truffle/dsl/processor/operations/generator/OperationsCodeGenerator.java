@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
 import javax.lang.model.element.Modifier;
@@ -52,6 +53,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.util.ElementFilter;
 
 import com.oracle.truffle.dsl.processor.AnnotationProcessor;
+import com.oracle.truffle.dsl.processor.ExpectError;
 import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
@@ -66,8 +68,18 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsMo
     public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, OperationsModelList modelList) {
         List<CodeTypeElement> results = new ArrayList<>();
 
+        // For testing: when using {@code @ExpectError}, we don't want to actually generate the
+        // code, since compilation will likely fail.
+        if (hasExpectErrors(modelList.getTemplateType())) {
+            return results;
+        }
+
         for (OperationsModel model : modelList.getModels()) {
-            results.add(new OperationsNodeFactory(model).create());
+            if (modelList.hasErrors()) {
+                results.add(new OperationsNodeFactory.ErrorFactory(model).create());
+            } else {
+                results.add(new OperationsNodeFactory(model).create());
+            }
         }
 
         if (results.size() == 1) {
@@ -95,7 +107,8 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsMo
                 }
             }
 
-            if (!first) {
+            // If there's already issues with the model, validating the interfaces just adds noise.
+            if (!first && !modelList.hasErrors()) {
                 Set<String> missing = new HashSet<>();
                 Set<String> remaining = publicMethodNames;
 
@@ -142,6 +155,20 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsMo
 
         return results;
 
+    }
+
+    private boolean hasExpectErrors(Element element) {
+        if (!ExpectError.getExpectedErrors(element).isEmpty()) {
+            return true;
+        }
+
+        for (Element enclosed : element.getEnclosedElements()) {
+            if (hasExpectErrors(enclosed)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 }
