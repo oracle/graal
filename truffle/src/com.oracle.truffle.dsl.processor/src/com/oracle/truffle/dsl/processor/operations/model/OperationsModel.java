@@ -259,15 +259,26 @@ public class OperationsModel extends Template implements PrettyPrintable {
         return new DeclaredCodeTypeMirror((TypeElement) el.asElement(), List.of(args));
     }
 
-    public OperationModel operation(OperationKind kind, String name) {
-        return operation(null, kind, name);
+    private OperationModel operation(OperationKind kind, String name) {
+        try {
+            return operation(null, kind, name);
+        } catch (DuplicateOperationException ex) {
+            throw new AssertionError("built-in operations should not have clashing names");
+        }
     }
 
-    public OperationModel operation(TypeElement template, OperationKind kind, String name) {
+    public OperationModel operation(TypeElement template, OperationKind kind, String name) throws DuplicateOperationException {
         OperationModel op = new OperationModel(this, template, operationId++, kind, name);
         operations.add(op);
+        if (operationNames.containsKey(name)) {
+            throw new DuplicateOperationException();
+        }
         operationNames.put(name, op);
         return op;
+    }
+
+    public class DuplicateOperationException extends Exception {
+        private static final long serialVersionUID = 1L;
     }
 
     public InstructionModel instruction(InstructionKind kind, String name) {

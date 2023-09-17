@@ -542,6 +542,32 @@ public class ErrorTests {
         }
     }
 
+    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @ExpectError({"Multiple operations declared with name MyOperation. Operation names must be distinct."})
+    @OperationProxy(value = AddOperation.class, name = "MyOperation")
+    @OperationProxy(value = SubOperation.class, name = "MyOperation")
+    public abstract static class DuplicateOperationNameTest extends RootNode implements OperationRootNode {
+        protected DuplicateOperationNameTest(TruffleLanguage<?> language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+    }
+
+    @OperationProxy.Proxyable
+    public static final class AddOperation {
+        @Specialization
+        static int add(int x, int y) {
+            return x + y;
+        }
+    }
+
+    @OperationProxy.Proxyable
+    public static final class SubOperation {
+        @Specialization
+        static int sub(int x, int y) {
+            return x - y;
+        }
+    }
+
 // todo: test for bad quicken decision when we parse those
     @ExpectError({
                     "Unknown optimization decision type: 'MadeUpType'.",
