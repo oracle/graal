@@ -35,12 +35,12 @@
     "labsjdk-ee-20-llvm": {"name": "labsjdk",   "version": "ee-20.0.2+2-jvmci-23.1-b02-sulong", "platformspecific": true },
 
     "oraclejdk21":        {"name": "jpg-jdk",   "version": "21",      "build_id": "33", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]},
-    "labsjdk-ce-21":      {"name": "labsjdk",   "version": "ce-21+35-jvmci-23.1-b15", "platformspecific": true },
-    "labsjdk-ce-21Debug": {"name": "labsjdk",   "version": "ce-21+35-jvmci-23.1-b15-debug", "platformspecific": true },
-    "labsjdk-ce-21-llvm": {"name": "labsjdk",   "version": "ce-21+35-jvmci-23.1-b15-sulong", "platformspecific": true },
-    "labsjdk-ee-21":      {"name": "labsjdk",   "version": "ee-21+35-jvmci-23.1-b15", "platformspecific": true },
-    "labsjdk-ee-21Debug": {"name": "labsjdk",   "version": "ee-21+35-jvmci-23.1-b15-debug", "platformspecific": true },
-    "labsjdk-ee-21-llvm": {"name": "labsjdk",   "version": "ee-21+35-jvmci-23.1-b15-sulong", "platformspecific": true },
+    "labsjdk-ce-21":      {"name": "labsjdk",   "version": "ce-21.0.1+10-jvmci-23.1-b16-20230914224232-cc82d6a86a", "platformspecific": true },
+    "labsjdk-ce-21Debug": {"name": "labsjdk",   "version": "ce-21.0.1+10-jvmci-23.1-b16-20230914224232-cc82d6a86a-debug", "platformspecific": true },
+    "labsjdk-ce-21-llvm": {"name": "labsjdk",   "version": "ce-21.0.1+10-jvmci-23.1-b16-20230914224232-cc82d6a86a-sulong", "platformspecific": true },
+    "labsjdk-ee-21":      {"name": "labsjdk",   "version": "ee-21.0.1+10-jvmci-23.1-b16-20230910204253-28c82f8bce+d40016bd5e", "platformspecific": true },
+    "labsjdk-ee-21Debug": {"name": "labsjdk",   "version": "ee-21.0.1+10-jvmci-23.1-b16-20230910204253-28c82f8bce+d40016bd5e-debug", "platformspecific": true },
+    "labsjdk-ee-21-llvm": {"name": "labsjdk",   "version": "ee-21.0.1+10-jvmci-23.1-b16-20230910204253-28c82f8bce+d40016bd5e-sulong", "platformspecific": true },
 
     "oraclejdk22":        {"name": "jpg-jdk",   "version": "22",      "build_id": "2", "release": true, "platformspecific": true, "extrabundles": ["static-libs"]}
   },
