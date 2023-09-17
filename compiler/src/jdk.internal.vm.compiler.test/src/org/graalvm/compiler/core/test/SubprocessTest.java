@@ -36,15 +36,8 @@ import java.util.function.Predicate;
 
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
-import org.junit.Assume;
-import org.junit.Before;
 
 public abstract class SubprocessTest extends GraalCompilerTest {
-
-    @Before
-    public void checkJavaAgent() {
-        Assume.assumeFalse("Java Agent found -> skipping", SubprocessUtil.isJavaAgentAttached());
-    }
 
     /**
      * Launches the {@code runnable} in a subprocess, with any extra {@code args} passed as
@@ -79,7 +72,7 @@ public abstract class SubprocessTest extends GraalCompilerTest {
     public static SubprocessUtil.Subprocess launchSubprocess(Predicate<List<String>> testPredicate, Predicate<String> vmArgsFilter, boolean expectNormalExit,
                     Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args)
                     throws InterruptedException, IOException {
-        String recursionPropName = testClass.getSimpleName() + ".Subprocess";
+        String recursionPropName = testClass.getName() + ".subprocess";
         if (Boolean.getBoolean(recursionPropName)) {
             runnable.run();
             return null;
@@ -91,7 +84,9 @@ public abstract class SubprocessTest extends GraalCompilerTest {
             if (vmArgsFilter != null) {
                 vmArgs = filter(vmArgs, vmArgsFilter);
             }
-            boolean verbose = Boolean.getBoolean(testClass.getSimpleName() + ".verbose");
+
+            String verboseProperty = testClass.getName() + ".verbose";
+            boolean verbose = Boolean.getBoolean(verboseProperty);
             if (verbose) {
                 System.err.println(String.join(" ", vmArgs));
             }
@@ -104,10 +99,18 @@ public abstract class SubprocessTest extends GraalCompilerTest {
                     System.err.println(line);
                 }
             }
+            String suffix = "";
+            if (!Boolean.getBoolean(SubprocessUtil.KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME)) {
+                suffix = String.format("%s%n%nSet -D%s=true to preserve subprocess temp files.", suffix, SubprocessUtil.KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME);
+            }
+            if (!verbose) {
+                suffix = String.format("%s%n%nSet -D%s=true for verbose output.", suffix, verboseProperty);
+            }
+            int exitCode = proc.exitCode;
             if (expectNormalExit) {
-                assertTrue(proc.exitCode == 0, proc.toString() + " produced exit code " + proc.exitCode + ", but expected 0.");
+                assertTrue(exitCode == 0, String.format("%s produced exit code %d, but expected 0.%s", proc, exitCode, suffix));
             } else {
-                assertTrue(proc.exitCode != 0, proc.toString() + " produced normal exit code " + proc.exitCode + ", but expected abnormal exit.");
+                assertTrue(exitCode != 0, String.format("%s produced normal exit code %d, but expected abnormal exit%s", proc, exitCode, suffix));
             }
             return proc;
         }

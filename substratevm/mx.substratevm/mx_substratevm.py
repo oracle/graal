@@ -1284,7 +1284,13 @@ libgraal_build_args = [
     '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
 
     '-H:+ReportExceptionStackTraces',
-] + svm_experimental_options([
+
+    # Set minimum based on libgraal-ee-pgo
+    '-J-Xms7g'
+] + ([
+    # If building on the console, use as many cores as available
+    f'--parallelism={mx.cpu_count()}',
+] if mx.is_interactive() else []) + svm_experimental_options([
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-Djdk.vm.ci.services.aot=true',
