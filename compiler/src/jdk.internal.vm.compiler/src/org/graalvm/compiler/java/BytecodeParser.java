@@ -5539,4 +5539,12 @@ public class BytecodeParser extends CoreProvidersDelegate implements GraphBuilde
     static String nSpaces(int n) {
         return n == 0 ? "" : format("%" + n + "s", "");
     }
+
+    /**
+     * Determines if non-live locals at an OSR entry block must be cleared, even if
+     * {@link GraphBuilderConfiguration#retainLocalVariables()} is true.
+     */
+    protected boolean mustClearNonLiveLocalsAtOSREntry() {
+        return true;
+    }
 }

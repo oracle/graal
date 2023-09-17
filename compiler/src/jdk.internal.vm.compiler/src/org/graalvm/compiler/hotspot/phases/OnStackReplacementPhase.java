@@ -192,7 +192,7 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             final int locksSize = osrState.locksSize();
 
             ResolvedJavaMethod osrStateMethod = osrState.getMethod();
-            GraalError.guarantee(localsSize == osrStateMethod.getMaxLocals(), "%d != %d", localsSize, osrStateMethod.getMaxLocals());
+            GraalError.guarantee(localsSize == osrStateMethod.getMaxLocals(), "%s@%d: locals size %d != %d", osrStateMethod, osrState.bci, localsSize, osrStateMethod.getMaxLocals());
             BitSet oopMap = getOopMapAt(osrStateMethod, osrState.bci);
 
             for (int i = 0; i < localsSize + locksSize; i++) {
@@ -317,10 +317,31 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
      */
     private static ValueNode initLocal(StructuredGraph graph, Stamp unrestrictedStamp, BitSet oopMap, int i) {
         if (unrestrictedStamp.isObjectStamp() && (oopMap != null && !oopMap.get(i))) {
-            // Our FrameState has tracked this value as an Object but the
-            // interpreter doesn't consider the local to contain a valid object so
-            // treat this as if we read a null. For an example, see
-            // org.graalvm.compiler.hotspot.test.GraalOSRTest.testOopMap().
+            // @formatter:off
+            // The OSR entry FrameState says that this value is "available" here.
+            // That is, all *parsed* control flow paths to the frame state had a
+            // definition of the value. However, the interpreter oop map shows
+            // the value is not available here based on *all* control flow paths.
+            // See GraalOSRTest.testOopMap() for an example where Graal
+            // does not parse a non-taken exception handler path.
+            // We need to use the interpreter's view in this case since it's
+            // guaranteed to be complete, and so we treat the value as null.
+            //
+            // The interpreter view also helps preserve object values for the
+            // lifetime expected by a debugger. For example:
+            //
+            // 1: int foo(int i1, Object o2) {
+            // 2:     int h = o2.hashCode();
+            // 3:     h *= i1;
+            // 4:     bar(h);
+            // 5:     return h;
+            // 6: }
+            //
+            // The availability of o2 according to the interpreter is from line 1
+            // to line 5 (i.e. o2's source file scope). Without the oop map, we would use
+            // compiler liveness for o2's availability which would only be
+            // from line 1 to line 2 since it's not read after line 2.
+            // @formatter:on
             return ConstantNode.defaultForKind(JavaKind.Object, graph);
         }
         return graph.addOrUnique(new OSRLocalNode(i, unrestrictedStamp));

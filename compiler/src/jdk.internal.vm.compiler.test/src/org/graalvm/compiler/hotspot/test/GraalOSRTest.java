@@ -31,9 +31,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.compiler.api.directives.GraalDirectives;
 import org.graalvm.compiler.bytecode.BytecodeDisassembler;
-import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.junit.Assert;
-import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.code.stack.InspectedFrame;
@@ -172,11 +170,10 @@ public class GraalOSRTest extends GraalOSRTestBase {
         }
 
         // 3. Merge of 1 and 2. If an exception never occurred, Graal only
-        // parses block 1 so local4 is a live object here. In contrast,
-        // the interpreter says local4 is dead here. In an OSR
-        // compilation that enters here, we must use the interpreter view.
-        // Without the clearing, the code crashes due to a speculative
-        // type check on local4 (see OnStackReplacementPhase.narrowOsrLocal)
+        // parses block 1 so local4 is available here. In contrast,
+        // the interpreter says local4 is dead here.
+        //
+        // See OnStackReplacementPhase.narrowOsrLocal for more detail.
         while (local1.decrementAndGet() >= 0) {
             if (local2 != null) {
                 local2.run();
@@ -220,13 +217,10 @@ public class GraalOSRTest extends GraalOSRTestBase {
     // @formatter:on
 
     /**
-     * Tests that dead oops are cleared at OSR entry points. This test will crash if the JDK support
-     * for doing the clearing is unavailable.
+     * Tests that dead oops are cleared at OSR entry points.
      */
     @Test
     public void testOSR06() {
-        Assume.assumeTrue(HotSpotGraalServices.hasGetOopMapAt());
-
         // Check that javap produced what we expect
         ResolvedJavaMethod method = getResolvedJavaMethod("testOopMap");
         String dis = new BytecodeDisassembler().disassemble(method);

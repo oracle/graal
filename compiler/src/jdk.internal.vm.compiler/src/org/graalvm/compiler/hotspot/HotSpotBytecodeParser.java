@@ -74,4 +74,14 @@ public class HotSpotBytecodeParser extends BytecodeParser {
          */
         return add(new FixedGuardNode(condition, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.None, !negated));
     }
+
+    /**
+     * {@code OnStackReplacementPhase.initLocal()} can only clear non-live oop locals if JVMCI can
+     * supply the oop map for a method at specific BCI. Without this, we need to fall back to
+     * compiler liveness analysis to do the clearing.
+     */
+    @Override
+    protected boolean mustClearNonLiveLocalsAtOSREntry() {
+        return !HotSpotGraalServices.hasGetOopMapAt();
+    }
 }
