@@ -224,6 +224,7 @@ public class ErrorTests {
         }
 
         @GenerateCached(false)
+        @OperationProxy.Proxyable
         public static final class NodeWithNoCache extends Node {
             @Specialization
             public static int doInt() {
@@ -242,6 +243,7 @@ public class ErrorTests {
                     "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.NonStaticMemberOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.BadSignatureOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.Underscored_Operation_Proxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
+                    "Could not use com.oracle.truffle.api.operation.test.ErrorTests.UnproxyableOperationProxy as an operation proxy: the class must be annotated with com.oracle.truffle.api.operation.OperationProxy.Proxyable.",
     })
     @OperationProxy(NonFinalOperationProxy.class)
     @OperationProxy(NonStaticInnerOperationProxy.class)
@@ -250,6 +252,7 @@ public class ErrorTests {
     @OperationProxy(NonStaticMemberOperationProxy.class)
     @OperationProxy(BadSignatureOperationProxy.class)
     @OperationProxy(Underscored_Operation_Proxy.class)
+    @OperationProxy(UnproxyableOperationProxy.class)
     public abstract static class OperationErrorTests extends RootNode implements OperationRootNode {
         protected OperationErrorTests(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
@@ -410,21 +413,26 @@ public class ErrorTests {
 // Proxy node definitions
 
     @ExpectError("Operation class must be declared final. Inheritance in operation specifications is not supported.")
+    @OperationProxy.Proxyable
     public static class NonFinalOperationProxy {
     }
 
     @ExpectError("Operation class must not be an inner class (non-static nested class). Declare the class as static.")
+    @OperationProxy.Proxyable
     public final class NonStaticInnerOperationProxy {
     }
 
     @ExpectError("Operation class must not be declared private. Remove the private modifier to make it visible.")
+    @OperationProxy.Proxyable
     private static final class PrivateOperationProxy {
     }
 
     @ExpectError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.")
+    @OperationProxy.Proxyable
     public static final class CloneableOperationProxy implements Cloneable {
     }
 
+    @OperationProxy.Proxyable
     public static final class NonStaticMemberOperationProxy {
 
         @ExpectError("Operation class must not contain non-static members.") public int field;
@@ -444,6 +452,7 @@ public class ErrorTests {
 
     // These specializations should not be a problem. See {@link
     // OperationErrorTests.PackagePrivateSpecializationOperation}
+    @OperationProxy.Proxyable
     public abstract static class PackagePrivateSpecializationOperationProxy extends Node {
         public abstract Object execute(Object x, Object y);
 
@@ -458,6 +467,7 @@ public class ErrorTests {
         }
     }
 
+    @OperationProxy.Proxyable
     public static final class BadSignatureOperationProxy {
         @Specialization
         public static void valueAfterVariadic(VirtualFrame f, @Variadic Object[] a, @ExpectError("Non-variadic value parameters must precede variadic parameters.") Object b) {
@@ -493,7 +503,43 @@ public class ErrorTests {
     }
 
     @ExpectError("Operation class name cannot contain underscores.")
+    @OperationProxy.Proxyable
     public static final class Underscored_Operation_Proxy {
+    }
+
+    public static final class UnproxyableOperationProxy {
+        @Specialization
+        static int add(int x, int y) {
+            return x + y;
+        }
+    }
+
+    @GenerateOperations(languageClass = ErrorLanguage.class, enableBaselineInterpreter = true)
+    @ExpectError({
+                    "Could not use com.oracle.truffle.api.operation.test.ErrorTests.NoBaselineOperationProxy as an operation proxy: the class does not allow a baseline implementation.",
+    })
+    @OperationProxy(BaselineOperationProxy.class)
+    @OperationProxy(NoBaselineOperationProxy.class)
+    public abstract static class OperationErrorBaselineTests extends RootNode implements OperationRootNode {
+        protected OperationErrorBaselineTests(TruffleLanguage<?> language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+    }
+
+    @OperationProxy.Proxyable(allowBaseline = true)
+    public static final class BaselineOperationProxy {
+        @Specialization
+        static int add(int x, int y) {
+            return x + y;
+        }
+    }
+
+    @OperationProxy.Proxyable(allowBaseline = false)
+    public static final class NoBaselineOperationProxy {
+        @Specialization
+        static int add(int x, int y) {
+            return x + y;
+        }
     }
 
 // todo: test for bad quicken decision when we parse those

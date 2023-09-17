@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.NodeChild;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.nodes.SLExpressionNode;
@@ -62,6 +63,7 @@ import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
  */
 @NodeInfo(shortName = "func")
 @NodeChild("functionName")
+@OperationProxy.Proxyable
 public abstract class SLFunctionLiteralNode extends SLExpressionNode {
 
     @SuppressWarnings({"unused", "truffle-neverdefault"})

@@ -4,7 +4,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.operation.OperationProxy;
 
+@OperationProxy.Proxyable
 @SuppressWarnings("truffle-inlining")
 public abstract class NestedNodeOperationProxy extends Node {
     public abstract Object execute(VirtualFrame frame, Object obj);

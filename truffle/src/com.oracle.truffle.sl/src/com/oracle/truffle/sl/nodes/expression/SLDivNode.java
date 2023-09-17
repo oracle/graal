@@ -51,6 +51,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.sl.SLException;
 import com.oracle.truffle.sl.nodes.SLBinaryNode;
 import com.oracle.truffle.sl.runtime.SLBigInteger;
@@ -61,6 +62,7 @@ import com.oracle.truffle.sl.runtime.SLBigInteger;
  * the code simple.
  */
 @NodeInfo(shortName = "/")
+@OperationProxy.Proxyable
 public abstract class SLDivNode extends SLBinaryNode {
 
     @Specialization(rewriteOn = ArithmeticException.class)

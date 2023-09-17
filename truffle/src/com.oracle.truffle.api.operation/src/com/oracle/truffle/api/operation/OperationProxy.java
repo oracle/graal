@@ -52,5 +52,11 @@ import java.lang.annotation.Target;
 public @interface OperationProxy {
     Class<?> value();
 
-    String operationName() default "";
+    String name() default "";
+
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(ElementType.TYPE)
+    @interface Proxyable {
+        boolean allowBaseline() default false;
+    }
 }

@@ -41,7 +41,6 @@
 package com.oracle.truffle.dsl.processor.operations.parser;
 
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.getQualifiedName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getSimpleName;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.getTypeElement;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.isAssignable;

@@ -80,6 +80,7 @@ public final class ContinuationResult {
     }
 
     @GenerateInline(true)
+    @OperationProxy.Proxyable(allowBaseline = true)
     public abstract static class ContinueNode extends Node {
 
         public final Object execute(ContinuationResult result, Object value) {

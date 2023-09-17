@@ -353,6 +353,7 @@ public class TruffleTypes {
     public static final String OperationRootNode_Name = "com.oracle.truffle.api.operation.OperationRootNode";
     public static final String OperationNodes_Name = "com.oracle.truffle.api.operation.OperationNodes";
     public static final String OperationProxy_Name = "com.oracle.truffle.api.operation.OperationProxy";
+    public static final String OperationProxy_Proxyable_Name = "com.oracle.truffle.api.operation.OperationProxy.Proxyable";
     public static final String OperationBuilder_Name = "com.oracle.truffle.api.operation.OperationBuilder";
     public static final String OperationSerializer_Name = "com.oracle.truffle.api.operation.serialization.OperationSerializer";
     public static final String OperationSerializer_SerializerContext_Name = "com.oracle.truffle.api.operation.serialization.OperationSerializer.SerializerContext";
@@ -388,6 +389,7 @@ public class TruffleTypes {
     public final DeclaredType OperationRootNode = c.getDeclaredTypeOptional(OperationRootNode_Name);
     public final DeclaredType OperationNodes = c.getDeclaredTypeOptional(OperationNodes_Name);
     public final DeclaredType OperationProxy = c.getDeclaredTypeOptional(OperationProxy_Name);
+    public final DeclaredType OperationProxy_Proxyable = c.getDeclaredTypeOptional(OperationProxy_Proxyable_Name);
     public final DeclaredType OperationBuilder = c.getDeclaredTypeOptional(OperationBuilder_Name);
     public final DeclaredType OperationSerializer = c.getDeclaredTypeOptional(OperationSerializer_Name);
     public final DeclaredType OperationSerializer_SerializerContext = c.getDeclaredTypeOptional(OperationSerializer_SerializerContext_Name);

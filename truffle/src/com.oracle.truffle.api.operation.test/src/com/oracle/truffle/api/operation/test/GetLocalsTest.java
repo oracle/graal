@@ -499,7 +499,7 @@ public class GetLocalsTest {
                 @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true)),
                 @Variant(suffix = "WithBaseline", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableBaselineInterpreter = true))
 })
-@OperationProxy(value = ContinuationResult.ContinueNode.class, operationName = "Continue")
+@OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
 abstract class OperationNodeWithLocalIntrospection extends RootNode implements OperationRootNode {
     @CompilationFinal(dimensions = 1) String[] localNames;
 
