@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,27 +22,24 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.hosted.code;
+package com.oracle.svm.hosted.meta;
 
-import jdk.vm.ci.meta.MetaAccessProvider;
-import org.graalvm.compiler.replacements.ReplacementsImpl;
-import org.graalvm.compiler.replacements.ReplacementsImpl.GraphMaker;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import org.graalvm.compiler.word.WordTypes;
 
-import com.oracle.svm.core.graal.meta.SubstrateReplacements;
+import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 
-import jdk.vm.ci.meta.ResolvedJavaMethod;
+import jdk.vm.ci.meta.JavaConstant;
 
-public class SubstrateGraphMakerFactory implements SubstrateReplacements.GraphMakerFactory {
+public class HostedLookupSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
 
-    protected final WordTypes wordTypes;
-
-    public SubstrateGraphMakerFactory(WordTypes wordTypes) {
-        this.wordTypes = wordTypes;
+    public HostedLookupSnippetReflectionProvider(WordTypes wordTypes) {
+        super(wordTypes);
     }
 
     @Override
-    public GraphMaker create(MetaAccessProvider metaAccess, ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod) {
-        return new SubstrateGraphMaker(replacements, substitute, substitutedMethod, wordTypes);
+    public JavaConstant forObject(Object object) {
+        AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
+        return super.forObject(object);
     }
 }

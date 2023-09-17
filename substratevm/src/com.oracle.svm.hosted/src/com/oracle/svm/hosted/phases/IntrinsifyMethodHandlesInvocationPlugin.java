@@ -124,6 +124,7 @@ import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.meta.HostedMethod;
+import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.snippets.IntrinsificationPluginRegistry;
@@ -201,6 +202,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final HostedProviders universeProviders;
     private final AnalysisUniverse aUniverse;
     private final HostedUniverse hUniverse;
+    private final HostedSnippetReflectionProvider hostedSnippetReflection;
 
     private final ClassInitializationPlugin classInitializationPlugin;
 
@@ -209,11 +211,13 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     private final ResolvedJavaType methodHandleType;
     private final ResolvedJavaType varHandleType;
 
-    public IntrinsifyMethodHandlesInvocationPlugin(ParsingReason reason, HostedProviders providers, AnalysisUniverse aUniverse, HostedUniverse hUniverse) {
+    public IntrinsifyMethodHandlesInvocationPlugin(ParsingReason reason, HostedSnippetReflectionProvider hostedSnippetReflection, HostedProviders providers, AnalysisUniverse aUniverse,
+                    HostedUniverse hUniverse) {
         this.reason = reason;
         this.aUniverse = aUniverse;
         this.hUniverse = hUniverse;
         this.universeProviders = providers;
+        this.hostedSnippetReflection = hostedSnippetReflection;
 
         Providers originalProviders = GraalAccess.getOriginalProviders();
         this.parsingProviders = new Providers(originalProviders).copyWith(new MethodHandlesMetaAccessExtensionProvider());
@@ -337,7 +341,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
                  * initialization has happened. We force initialization by invoking the method
                  * VarHandle.vform.getMethodType_V(0).
                  */
-                VarHandle varHandle = aUniverse.getSnippetReflection().asObject(VarHandle.class, args[0].asJavaConstant());
+                VarHandle varHandle = hostedSnippetReflection.asObject(VarHandle.class, args[0].asJavaConstant());
                 Object varForm = varHandleVFormField.get(varHandle);
                 varFormInitMethod.invoke(varForm, 0);
 
@@ -980,18 +984,6 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             } else {
                 throw bailout();
             }
-
-            if (tConstant.getJavaKind() == JavaKind.Object) {
-                /*
-                 * The object replacer are not invoked when parsing in the HotSpot universe, so we
-                 * also need to do call the replacer here.
-                 */
-                Object oldObject = aUniverse.getSnippetReflection().asObject(Object.class, tConstant);
-                Object newObject = aUniverse.replaceObject(oldObject);
-                if (newObject != oldObject) {
-                    return aUniverse.getSnippetReflection().forObject(newObject);
-                }
-            }
             return tConstant;
         }
 
@@ -1058,11 +1050,18 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
     }
 
     private JavaConstant lookup(JavaConstant constant) {
+        /* Redirect constant lookup through the shadow heap. */
         return aUniverse.lookup(constant);
     }
 
     private JavaConstant toOriginal(JavaConstant constant) {
-        return aUniverse.toHosted(constant);
+        if (constant == null) {
+            return null;
+        } else if (constant.getJavaKind().isObject() && !constant.isNull()) {
+            return GraalAccess.getOriginalSnippetReflection().forObject(hostedSnippetReflection.asObject(Object.class, constant));
+        } else {
+            return constant;
+        }
     }
 
     private static ResolvedJavaMethod toOriginal(ResolvedJavaMethod method) {

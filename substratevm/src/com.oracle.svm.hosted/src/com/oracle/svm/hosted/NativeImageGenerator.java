@@ -203,7 +203,6 @@ import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateForeignCallsProvider;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
-import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
 import com.oracle.svm.core.graal.meta.SubstrateStampProvider;
 import com.oracle.svm.core.graal.phases.CollectDeoptimizationSourcePositionsPhase;
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
@@ -287,6 +286,7 @@ import com.oracle.svm.hosted.jdk.localization.LocalizationFeature;
 import com.oracle.svm.hosted.meta.HostedConstantReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedInterface;
+import com.oracle.svm.hosted.meta.HostedLookupSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
@@ -614,8 +614,8 @@ public class NativeImageGenerator {
                 BuildPhaseProvider.markHostedUniverseBuilt();
                 ClassInitializationSupport classInitializationSupport = bb.getHostVM().getClassInitializationSupport();
                 SubstratePlatformConfigurationProvider platformConfig = getPlatformConfig(hMetaAccess);
-                runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, bb.getHostVM(), hUniverse, hMetaAccess, bb.getProviders(MultiMethod.ORIGINAL_METHOD), classInitializationSupport,
-                                GraalAccess.getOriginalProviders().getLoopsDataProvider(), platformConfig).build();
+                runtimeConfiguration = new HostedRuntimeConfigurationBuilder(options, aUniverse.getHeapScanner(), bb.getHostVM(), hUniverse, hMetaAccess, bb.getProviders(MultiMethod.ORIGINAL_METHOD),
+                                classInitializationSupport, GraalAccess.getOriginalProviders().getLoopsDataProvider(), platformConfig).build();
 
                 registerGraphBuilderPlugins(featureHandler, runtimeConfiguration, (HostedProviders) runtimeConfiguration.getProviders(), bb.getMetaAccess(), aUniverse,
                                 hMetaAccess, hUniverse,
@@ -688,6 +688,10 @@ public class NativeImageGenerator {
                 featureHandler.forEachFeature(feature -> feature.afterCompilation(config));
                 BuildPhaseProvider.markCompilationFinished();
             }
+
+            /* Re-run shadow heap verification after compilation. */
+            aUniverse.getHeapVerifier().checkHeapSnapshot(hMetaAccess, compilationExecutor, "after compilation");
+
             CodeCacheProvider codeCacheProvider = runtimeConfiguration.getBackendForNormalMethod().getProviders().getCodeCache();
             reporter.printCreationStart();
             try (Indent indent = debug.logAndIndent("create native image")) {
@@ -703,6 +707,9 @@ public class NativeImageGenerator {
 
                         AfterHeapLayoutAccessImpl config = new AfterHeapLayoutAccessImpl(featureHandler, loader, heap, hMetaAccess, debug);
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
+
+                        /* Re-run shadow heap verification after heap layout. */
+                        aUniverse.getHeapVerifier().checkHeapSnapshot(hMetaAccess, compilationExecutor, "after heap layout");
 
                         createAbstractImage(k, hostedEntryPoints, heap, hMetaAccess, codeCache);
 
@@ -937,6 +944,7 @@ public class NativeImageGenerator {
                 ImageHeapScanner heapScanner = new SVMImageHeapScanner(bb, imageHeap, loader, aMetaAccess, aProviders.getSnippetReflection(),
                                 aProviders.getConstantReflection(), aScanningObserver);
                 aUniverse.setHeapScanner(heapScanner);
+                ((HostedSnippetReflectionProvider) aProviders.getSnippetReflection()).setHeapScanner(heapScanner);
                 HeapSnapshotVerifier heapVerifier = new SVMImageHeapVerifier(bb, imageHeap, heapScanner);
                 aUniverse.setHeapVerifier(heapVerifier);
 
@@ -1024,7 +1032,7 @@ public class NativeImageGenerator {
             analysisFactory = new PointsToAnalysisFactory();
         }
         SubstrateAnnotationExtractor annotationExtractor = (SubstrateAnnotationExtractor) loader.classLoaderSupport.annotationExtractor;
-        SubstrateSnippetReflectionProvider snippetReflection = new SubstrateSnippetReflectionProvider(new SubstrateWordTypes(originalMetaAccess, FrameAccess.getWordKind()));
+        HostedLookupSnippetReflectionProvider snippetReflection = new HostedLookupSnippetReflectionProvider(new SubstrateWordTypes(originalMetaAccess, FrameAccess.getWordKind()));
         return new AnalysisUniverse(hostVM, target.wordJavaKind, analysisPolicy, aSubstitutions, originalMetaAccess, snippetReflection, analysisFactory, annotationExtractor);
     }
 
@@ -1152,7 +1160,7 @@ public class NativeImageGenerator {
 
         WordTypes aWordTypes = new SubstrateWordTypes(aMetaAccess, FrameAccess.getWordKind());
 
-        HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider(aWordTypes);
+        HostedSnippetReflectionProvider aSnippetReflection = new HostedSnippetReflectionProvider(null, aWordTypes);
 
         MetaAccessExtensionProvider aMetaAccessExtensionProvider = HostedConfiguration.instance().createAnalysisMetaAccessExtensionProvider();
 
@@ -1314,7 +1322,9 @@ public class NativeImageGenerator {
                     TargetDescription target, boolean supportsStubBasedPlugins) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new SubstitutionInvocationPlugins(annotationSubstitutionProcessor));
 
-        WordOperationPlugin wordOperationPlugin = new SubstrateWordOperationPlugins(providers.getSnippetReflection(), providers.getConstantReflection(), providers.getWordTypes(),
+        HostedSnippetReflectionProvider hostedSnippetReflection = new HostedSnippetReflectionProvider(aUniverse.getHeapScanner(), new SubstrateWordTypes(aMetaAccess, FrameAccess.getWordKind()));
+
+        WordOperationPlugin wordOperationPlugin = new SubstrateWordOperationPlugins(hostedSnippetReflection, providers.getConstantReflection(), providers.getWordTypes(),
                         providers.getPlatformConfigurationProvider().getBarrierSet());
 
         SubstrateReplacements replacements = (SubstrateReplacements) providers.getReplacements();
@@ -1329,13 +1339,13 @@ public class NativeImageGenerator {
                 plugins.appendNodePlugin(new MethodHandleWithExceptionPlugin(providers.getConstantReflection().getMethodHandleAccess(), false));
             }
         } else {
-            plugins.appendNodePlugin(new IntrinsifyMethodHandlesInvocationPlugin(reason, providers, aUniverse, hUniverse));
+            plugins.appendNodePlugin(new IntrinsifyMethodHandlesInvocationPlugin(reason, hostedSnippetReflection, providers, aUniverse, hUniverse));
         }
         plugins.appendNodePlugin(new DeletedFieldsPlugin());
         plugins.appendNodePlugin(new InjectedAccessorsPlugin());
         plugins.appendNodePlugin(new EarlyConstantFoldLoadFieldPlugin(providers.getMetaAccess()));
         plugins.appendNodePlugin(new ConstantFoldLoadFieldPlugin(reason));
-        plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), providers.getSnippetReflection(), providers.getWordTypes(), nativeLibs));
+        plugins.appendNodePlugin(new CInterfaceInvocationPlugin(providers.getMetaAccess(), hostedSnippetReflection, providers.getWordTypes(), nativeLibs));
         plugins.appendNodePlugin(new LocalizationFeature.CharsetNodePlugin());
 
         plugins.appendInlineInvokePlugin(wordOperationPlugin);
@@ -1346,8 +1356,6 @@ public class NativeImageGenerator {
         plugins.setClassInitializationPlugin(classInitializationPlugin);
 
         featureHandler.forEachGraalFeature(feature -> feature.registerGraphBuilderPlugins(providers, plugins, reason));
-
-        HostedSnippetReflectionProvider hostedSnippetReflection = new HostedSnippetReflectionProvider(new SubstrateWordTypes(aMetaAccess, FrameAccess.getWordKind()));
 
         NodeIntrinsificationProvider nodeIntrinsificationProvider;
         if (SubstrateUtil.isBuildingLibgraal()) {
@@ -1382,7 +1390,7 @@ public class NativeImageGenerator {
         }
 
         final boolean useExactMathPlugins = SubstrateOptions.useLIRBackend();
-        registerInvocationPlugins(providers.getSnippetReflection(), plugins.getInvocationPlugins(), replacements,
+        registerInvocationPlugins(hostedSnippetReflection, plugins.getInvocationPlugins(), replacements,
                         useExactMathPlugins, true, supportsStubBasedPlugins, providers.getLowerer());
 
         Architecture architecture = ConfigurationValues.getTarget().arch;

@@ -44,8 +44,10 @@ import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -68,6 +70,7 @@ import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -119,6 +122,7 @@ import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -675,6 +679,20 @@ public abstract class RuntimeCompilationFeature {
         objectReplacer.updateSubstrateDataAfterHeapLayout(hUniverse);
     }
 
+    /**
+     * Unwrap the hosted constant from an {@link ImageHeapConstant} before encoding the graph for
+     * run time compilation. {@link ImageHeapConstant} is a hosted only constant representation.
+     */
+    public static void unwrapImageHeapConstants(StructuredGraph graph, MetaAccessProvider metaAccess) {
+        for (Node n : graph.getNodes()) {
+            if (n instanceof ConstantNode constantNode) {
+                if (constantNode.getValue() instanceof ImageHeapConstant heapConstant) {
+                    VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
+                    constantNode.replace(graph, ConstantNode.forConstant(heapConstant.getHostedObject(), metaAccess, graph));
+                }
+            }
+        }
+    }
 }
 
 /**

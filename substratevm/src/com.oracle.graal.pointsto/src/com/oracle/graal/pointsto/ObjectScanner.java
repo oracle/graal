@@ -245,10 +245,10 @@ public class ObjectScanner {
                     scanningObserver.forNullArrayElement(array, arrayType, idx, reason);
                 } else {
                     try {
-                        JavaConstant element = bb.getSnippetReflectionProvider().forObject(bb.getUniverse().replaceObject(e));
+                        JavaConstant element = bb.getUniverse().getSnippetReflection().forObject(bb.getUniverse().replaceObject(e));
                         scanArrayElement(array, arrayType, reason, idx, element);
                     } catch (UnsupportedFeatureException ex) { /* Object replacement can throw. */
-                        unsupportedFeatureDuringConstantScan(bb, bb.getSnippetReflectionProvider().forObject(e), ex, reason);
+                        unsupportedFeatureDuringConstantScan(bb, bb.getUniverse().getSnippetReflection().forObject(e), ex, reason);
                     }
                 }
             }
@@ -497,6 +497,7 @@ public class ObjectScanner {
     }
 
     public static class OtherReason extends ScanReason {
+        public static final ScanReason UNKNOWN = new OtherReason("manually created constant");
         public static final ScanReason RESCAN = new OtherReason("manually triggered rescan");
         public static final ScanReason HUB = new OtherReason("scanning a class constant");
 

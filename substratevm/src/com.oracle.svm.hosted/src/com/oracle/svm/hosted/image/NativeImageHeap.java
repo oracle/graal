@@ -161,7 +161,9 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public ObjectInfo getObjectInfo(Object obj) {
-        return objects.get(hUniverse.getSnippetReflection().forObject(obj));
+        JavaConstant constant = hUniverse.getSnippetReflection().forObject(obj);
+        /* Must unwrap since objects use the SubstrateObjectConstant hosted objects as keys. */
+        return objects.get(maybeUnwrap(constant));
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
