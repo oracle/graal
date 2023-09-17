@@ -86,6 +86,7 @@ import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Immedi
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.operations.model.OperationsModel.DuplicateOperationException;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
@@ -124,7 +125,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
     protected OperationModel parse(Element element, List<AnnotationMirror> ignored) {
         TypeElement typeElement = (TypeElement) element;
         OperationModel result = parseImpl(typeElement);
-        if (result.hasErrors() && isProxy()) {
+        if (result != null && result.hasErrors() && isProxy()) {
             AnnotationValue proxiedClassValue = ElementUtils.getAnnotationValue(mirror, "value", false);
             parent.addError(mirror, proxiedClassValue, "Encountered errors using %s as an OperationProxy. These errors must be resolved before the DSL can proceed.", typeElement.getQualifiedName());
 
@@ -142,19 +143,20 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
             name = name.substring(0, name.length() - 4);
         }
 
-        if (isProxy()) {
-            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, "operationName", false);
-            if (nameValue != null) {
-                name = (String) nameValue.getValue();
-            }
-        } else if (isShortCircuit()) {
+        if (isProxy() || isShortCircuit()) {
             AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, "name", false);
             if (nameValue != null) {
                 name = (String) nameValue.getValue();
             }
         }
 
-        OperationModel data = parent.operation(typeElement, kind, name);
+        OperationModel data = null;
+        try {
+            data = parent.operation(typeElement, kind, name);
+        } catch (DuplicateOperationException ex) {
+            parent.addError(mirror, null, "Multiple operations declared with name %s. Operation names must be distinct.", name);
+            return null;
+        }
         data.annotationMirror = mirror;
 
         if (name.contains("_")) {
