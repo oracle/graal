@@ -45,21 +45,21 @@ Here is an example Maven dependency setup that you can put into your project:
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<artifactId>polyglot</artifactId> 
-	<version>23.1</version> 
+	<version>23.1.0</version> 
 </dependency>
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
-	<!-- select included language -->
-	<artifactId>js|ruby|python|java|llvm|wasm|languages</artifactId> 
-	<version>23.1</version> 
+	<!-- Select language: js, ruby, python, java, llvm, wasm, languages-->
+	<artifactId>js</artifactId> 
+	<version>23.1.0</version> 
 	<type>pom</type>
 </dependency>
 <!-- add additional languages if needed -->
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
-	<!-- select included tools -->
-	<artifactId>profiler|inspect|coverage|dap|tools</artifactId> 
-	<version>23.1</version> 
+	<!-- Select tools: profiler, inspect, coverage, dap, tools -->
+	<artifactId>tools</artifactId> 
+	<version>23.1.0</version> 
 	<type>pom</type>
 </dependency>
 <!-- add additional tools if needed -->
@@ -706,13 +706,13 @@ For example, a dependency on isolated JavaScript can be configured by adding a M
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>polyglot</artifactId>
-    <version>23.1</version>
+    <version>23.1.0</version>
     <type>jar</type>
 </dependency>
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>js-isolate</artifactId>
-    <version>23.1</version>
+    <version>23.1.0</version>
     <type>pom</type>
 </dependency>
 ```
