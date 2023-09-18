@@ -2012,12 +2012,12 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
 
             final boolean hasTags = !model.getProvidedTags().isEmpty();
-            for (OperationModel op : model.getOperations()) {
+            for (OperationModel operation : model.getOperations()) {
 
                 // create begin/emit code
-                b.startCase().staticReference(serializationElements.codeBegin[op.id]).end().startBlock();
+                b.startCase().staticReference(serializationElements.codeBegin[operation.id]).end().startBlock();
 
-                if (op.kind == OperationKind.INSTRUMENT_TAG && !hasTags) {
+                if (operation.kind == OperationKind.INSTRUMENT_TAG && !hasTags) {
                     b.startThrow().startNew(context.getType(IllegalStateException.class));
                     b.doubleQuote(String.format("Cannot deserialize instrument tag. The language does not specify any tags with a @%s annotation.",
                                     ElementUtils.getSimpleName(types.ProvidedTags)));
@@ -2026,11 +2026,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                     continue;
                 }
 
-                int i = 0;
-                for (TypeMirror argType : op.operationArguments) {
-                    String argumentName = "arg" + i;
+                for (int i = 0; i < operation.operationArgumentTypes.length; i++) {
+                    TypeMirror argType = operation.operationArgumentTypes[i];
+                    String argumentName = operation.getOperationArgumentName(i);
                     if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
-                        b.declaration(types.TruffleLanguage, argumentName, "language");
+                        continue; // language is already available as a parameter
                     } else if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
                         b.statement("OperationLocal ", argumentName, " = locals.get(buffer.readShort())");
                     } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
@@ -2043,7 +2043,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement("OperationLabel ", argumentName, " = labels.get(buffer.readShort())");
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
                         b.statement("int ", argumentName, " = buffer.readInt()");
-                    } else if (op.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
+                    } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
                         b.startStatement().type(argType).string(" ", argumentName, " = TAG_INDEX_TO_CLASS[buffer.readShort()]").end();
                     } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
                         b.startStatement().type(argType).string(" ", argumentName, " = ");
@@ -2054,18 +2054,17 @@ public class OperationsNodeFactory implements ElementHelpers {
                     } else {
                         throw new UnsupportedOperationException("cannot deserialize: " + argType);
                     }
-                    i++;
                 }
 
                 b.startStatement();
-                if (op.hasChildren()) {
-                    b.startCall("begin" + op.name);
+                if (operation.hasChildren()) {
+                    b.startCall("begin" + operation.name);
                 } else {
-                    b.startCall("emit" + op.name);
+                    b.startCall("emit" + operation.name);
                 }
 
-                for (int j = 0; j < i; j++) {
-                    b.string("arg" + j);
+                for (int i = 0; i < operation.operationArgumentTypes.length; i++) {
+                    b.string(operation.getOperationArgumentName(i));
                 }
 
                 b.end(2); // statement, call
@@ -2074,16 +2073,16 @@ public class OperationsNodeFactory implements ElementHelpers {
 
                 b.end(); // case block
 
-                if (op.hasChildren()) {
-                    b.startCase().staticReference(serializationElements.codeEnd[op.id]).end().startBlock();
+                if (operation.hasChildren()) {
+                    b.startCase().staticReference(serializationElements.codeEnd[operation.id]).end().startBlock();
 
-                    if (op.kind == OperationKind.ROOT) {
+                    if (operation.kind == OperationKind.ROOT) {
                         b.startStatement();
-                        b.type(model.getTemplateType().asType()).string(" node = ").string("end" + op.name + "()");
+                        b.type(model.getTemplateType().asType()).string(" node = ").string("end" + operation.name + "()");
                         b.end();
                         b.startStatement().startCall("builtNodes.add").startGroup().cast(operationNodeGen.asType()).string("node").end().end().end();
                     } else {
-                        b.statement("end", op.name, "()");
+                        b.statement("end", operation.name, "()");
                     }
 
                     b.statement("break");
@@ -2313,10 +2312,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "begin" + operation.name);
 
-            int argIndex = 0;
-            for (TypeMirror argument : operation.operationArguments) {
-                ex.addParameter(new CodeVariableElement(argument, "arg" + argIndex));
-                argIndex++;
+            for (CodeVariableElement param : operation.getOperationArguments()) {
+                ex.addParameter(param);
             }
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -2355,10 +2352,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.statement("sourceIndexStack = Arrays.copyOf(sourceIndexStack, sourceIndexSp * 2)");
                     b.end();
 
-                    b.statement("int index = sources.indexOf(arg0)");
+                    b.statement("int index = sources.indexOf(" + operation.getOperationArgumentName(0) + ")");
                     b.startIf().string("index == -1").end().startBlock();
                     b.statement("index = sources.size()");
-                    b.statement("sources.add(arg0)");
+                    b.statement("sources.add(" + operation.getOperationArgumentName(0) + ")");
                     b.end();
 
                     b.statement("sourceIndexStack[sourceIndexSp++] = index");
@@ -2382,10 +2379,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                     b.statement("sourceLocationStack = Arrays.copyOf(sourceLocationStack, sourceLocationSp * 2)");
                     b.end();
 
-                    b.statement("sourceLocationStack[sourceLocationSp++] = arg0");
-                    b.statement("sourceLocationStack[sourceLocationSp++] = arg1");
+                    b.statement("sourceLocationStack[sourceLocationSp++] = " + operation.getOperationArgumentName(0));
+                    b.statement("sourceLocationStack[sourceLocationSp++] = " + operation.getOperationArgumentName(1));
 
-                    b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp - 1], arg0, arg1)");
+                    b.statement("doEmitSourceInfo(sourceIndexStack[sourceIndexSp - 1], " + operation.getOperationArgumentName(0) + ", " + operation.getOperationArgumentName(1) + ")");
                     break;
                 case WHILE:
                     if (model.enableTracing) {
@@ -2467,32 +2464,31 @@ public class OperationsNodeFactory implements ElementHelpers {
             serializationWrapException(b, () -> {
 
                 CodeTreeBuilder after = CodeTreeBuilder.createBuilder();
-                int i = 0;
-                for (TypeMirror argType : operation.operationArguments) {
+                for (int i = 0; i < operation.operationArgumentTypes.length; i++) {
+                    TypeMirror argType = operation.operationArgumentTypes[i];
+                    String argumentName = operation.getOperationArgumentName(i);
                     if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
                         b.statement("serialization.language = language");
                     } else if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
-                        serializationElements.writeShort(after, "(short) ((OperationLocalImpl) arg" + i + ").index");
+                        serializationElements.writeShort(after, "(short) ((OperationLocalImpl) " + argumentName + ").index");
                     } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
-                        serializationElements.writeShort(after, "(short) arg" + i + ".length");
+                        serializationElements.writeShort(after, "(short) " + argumentName + ".length");
                         after.startFor().string("int i = 0; i < arg" + i + ".length; i++").end().startBlock();
-                        serializationElements.writeShort(after, "(short) ((OperationLocalImpl) arg" + i + "[i]).index");
+                        serializationElements.writeShort(after, "(short) ((OperationLocalImpl) " + argumentName + "[i]).index");
                         after.end();
                     } else if (ElementUtils.typeEquals(argType, types.OperationLabel)) {
-                        serializationElements.writeShort(after, "(short) ((OperationLabelImpl) arg" + i + ").declaringOp");
+                        serializationElements.writeShort(after, "(short) ((OperationLabelImpl) " + argumentName + ").declaringOp");
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
-                        serializationElements.writeInt(after, "arg" + i);
+                        serializationElements.writeInt(after, argumentName);
                     } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
-                        serializationElements.writeShort(after, "CLASS_TO_TAG_INDEX.get(arg0)");
+                        serializationElements.writeShort(after, "CLASS_TO_TAG_INDEX.get(" + operation.getOperationArgumentName(0) + ")");
                     } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
-                        String argumentName = "arg" + i;
                         String index = argumentName + "_index";
                         b.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
                         serializationElements.writeShort(after, index);
                     } else {
                         throw new UnsupportedOperationException("cannot serialize: " + argType);
                     }
-                    i++;
                 }
                 serializationElements.writeShort(b, serializationElements.codeBegin[operation.id]);
 
@@ -2521,15 +2517,15 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case STORE_LOCAL:
                 case STORE_LOCAL_MATERIALIZED:
                 case LOAD_LOCAL_MATERIALIZED:
-                    b.string("arg0");
+                    b.string(operation.getOperationArgumentName(0));
                     break;
                 case CUSTOM_SIMPLE:
                     b.startNewArray(arrayOf(context.getType(Object.class)), null);
                     for (InstructionImmediate immediate : operation.instruction.getImmediates(ImmediateKind.BYTECODE_INDEX)) {
                         b.string(UNINIT + " /* " + immediate.name + " */");
                     }
-                    for (int i = 0; i < operation.operationArguments.length; i++) {
-                        b.string("arg" + i);
+                    for (int i = 0; i < operation.operationArgumentTypes.length; i++) {
+                        b.string(operation.getOperationArgumentName(i));
                     }
                     b.end();
                     break;
@@ -2545,10 +2541,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                                     UNINIT + " /* catch start */, " +
                                     UNINIT + " /* branch past catch fix-up index */, " +
                                     "curStack /* entry stack height */, " +
-                                    "((OperationLocalImpl) arg0).index /* exception local index */}");
+                                    "((OperationLocalImpl) " + operation.getOperationArgumentName(0) + ").index /* exception local index */}");
                     break;
                 case FINALLY_TRY:
-                    b.string("new Object[]{ arg0 /* exception local */, null /* finallyTryContext */}");
+                    b.string("new Object[]{ " + operation.getOperationArgumentName(0) + " /* exception local */, null /* finallyTryContext */}");
                     break;
                 case FINALLY_TRY_NO_EXCEPT:
                     b.string("new Object[]{ null /* exception local */, null /* finallyTryContext */}");
@@ -2834,17 +2830,17 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation) {
             String[] args = switch (operation.kind) {
-                case LOAD_LOCAL -> new String[]{"((OperationLocalImpl) arg0).index"};
+                case LOAD_LOCAL -> new String[]{"((OperationLocalImpl) " + operation.getOperationArgumentName(0) + ").index"};
                 case STORE_LOCAL, LOAD_LOCAL_MATERIALIZED, STORE_LOCAL_MATERIALIZED -> new String[]{"((OperationLocalImpl) operationStack[operationSp].data).index"};
                 case RETURN -> new String[]{};
-                case LOAD_ARGUMENT -> new String[]{"arg0"};
-                case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(arg0)"};
+                case LOAD_ARGUMENT -> new String[]{operation.getOperationArgumentName(0)};
+                case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationArgumentName(0) + ")"};
                 case BRANCH -> {
-                    b.startAssign("OperationLabelImpl label").string("(OperationLabelImpl) arg0").end();
+                    b.startAssign("OperationLabelImpl labelImpl").string("(OperationLabelImpl) " + operation.getOperationArgumentName(0)).end();
 
                     b.statement("boolean isFound = false");
                     b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
-                    b.startIf().string("operationStack[i].sequenceNumber == label.declaringOp").end().startBlock();
+                    b.startIf().string("operationStack[i].sequenceNumber == labelImpl.declaringOp").end().startBlock();
                     b.statement("isFound = true");
                     b.statement("break");
                     b.end();
@@ -2854,15 +2850,15 @@ public class OperationsNodeFactory implements ElementHelpers {
                     buildThrowIllegalStateException(b, "\"Branch must be targeting a label that is declared in an enclosing operation. Jumps into other operations are not permitted.\"");
                     b.end();
 
-                    b.statement("doEmitLeaves(label.declaringOp)");
+                    b.statement("doEmitLeaves(labelImpl.declaringOp)");
 
-                    b.startIf().string("label.isDefined()").end().startBlock();
+                    b.startIf().string("labelImpl.isDefined()").end().startBlock();
                     buildThrowIllegalStateException(b, "\"Backward branches are unsupported. Use a While operation to model backward control flow.\"");
                     b.end();
                     // Mark the branch target as uninitialized. Add this location to a work list to
                     // be processed once the label is defined.
                     b.startStatement().startCall("registerUnresolvedLabel");
-                    b.string("label");
+                    b.string("labelImpl");
                     b.string("bci + 1");
                     b.string("curStack");
                     b.end(2);
@@ -2873,7 +2869,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     // handler and circumvent the return.
                     b.startIf().string("inFinallyTryHandler(finallyTryContext)").end().startBlock();
 
-                    b.startIf().string("label.finallyTryOp != finallyTryContext.finallyTrySequenceNumber").end().startBlock();
+                    b.startIf().string("labelImpl.finallyTryOp != finallyTryContext.finallyTrySequenceNumber").end().startBlock();
                     buildThrowIllegalStateException(b, "\"Branches inside finally handlers can only target labels defined in the same handler.\"");
                     b.end();
 
@@ -2912,12 +2908,8 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeExecutableElement createEmit(OperationModel operation) {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "emit" + operation.name);
 
-            if (operation.operationArguments != null) {
-                int argIndex = 0;
-                for (TypeMirror argument : operation.operationArguments) {
-                    ex.addParameter(new CodeVariableElement(argument, "arg" + argIndex));
-                    argIndex++;
-                }
+            for (CodeVariableElement param : operation.getOperationArguments()) {
+                ex.addParameter(param);
             }
 
             CodeTreeBuilder b = ex.createBuilder();
@@ -2933,19 +2925,19 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startStatement().startCall("emitOperationBegin").end(2);
 
             if (operation.kind == OperationKind.LABEL) {
-                b.startAssign("OperationLabelImpl label").string("(OperationLabelImpl) arg0").end();
+                b.startAssign("OperationLabelImpl labelImpl").string("(OperationLabelImpl) " + operation.getOperationArgumentName(0)).end();
 
-                b.startIf().string("label.isDefined()").end().startBlock();
+                b.startIf().string("labelImpl.isDefined()").end().startBlock();
                 buildThrowIllegalStateException(b, "\"OperationLabel already emitted. Each label must be emitted exactly once.\"");
                 b.end();
 
-                b.startIf().string("label.declaringOp != operationStack[operationSp - 1].sequenceNumber").end().startBlock();
+                b.startIf().string("labelImpl.declaringOp != operationStack[operationSp - 1].sequenceNumber").end().startBlock();
                 buildThrowIllegalStateException(b, "\"OperationLabel must be emitted inside the same operation it was created in.\"");
                 b.end();
 
-                b.statement("label.bci = bci");
+                b.statement("labelImpl.bci = bci");
                 b.startStatement().startCall("resolveUnresolvedLabel");
-                b.string("label");
+                b.string("labelImpl");
                 b.string("curStack");
                 b.end(2);
             } else {
@@ -2990,10 +2982,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                         yield child;
                     }
                     case LOCAL_SETTER -> {
-                        String arg = "localSetter" + localSetterIndex++;
+                        int currentSetterIndex = localSetterIndex++;
+                        String arg = "localSetter" + currentSetterIndex;
                         b.startAssign("int " + arg);
                         if (inEmit) {
-                            b.string("((OperationLocalImpl) arg" + i + ").index");
+                            b.string("((OperationLocalImpl) " + operation.getOperationArgumentName(currentSetterIndex) + ").index");
                         } else {
                             b.string("((OperationLocalImpl)((Object[]) operationStack[operationSp].data)[" + i + "]).index");
                         }
@@ -3013,7 +3006,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         // Get array of locals (from named argument/operation Stack).
                         b.startAssign("OperationLocal[] " + locals);
                         if (inEmit) {
-                            b.string("arg" + (localSetterIndex + localSetterRangeIndex + i));
+                            b.string(operation.getOperationArgumentName(localSetterIndex + localSetterRangeIndex));
                         } else {
                             b.string("(OperationLocal[]) ((Object[]) operationStack[operationSp].data)[" + (localSetterIndex + localSetterRangeIndex + i) + "]");
                         }
@@ -5146,13 +5139,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             private CodeExecutableElement createBegin(OperationModel operation) {
                 CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "begin" + operation.name);
-
-                int argIndex = 0;
-                for (TypeMirror argument : operation.operationArguments) {
-                    ex.addParameter(new CodeVariableElement(argument, "arg" + argIndex));
-                    argIndex++;
+                for (CodeVariableElement param : operation.getOperationArguments()) {
+                    ex.addParameter(param);
                 }
-
                 return createMethodStub(ex);
             }
 
@@ -5164,15 +5153,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             private CodeExecutableElement createEmit(OperationModel operation) {
                 CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "emit" + operation.name);
-
-                if (operation.operationArguments != null) {
-                    int argIndex = 0;
-                    for (TypeMirror argument : operation.operationArguments) {
-                        ex.addParameter(new CodeVariableElement(argument, "arg" + argIndex));
-                        argIndex++;
-                    }
+                for (CodeVariableElement param : operation.getOperationArguments()) {
+                    ex.addParameter(param);
                 }
-
                 return createMethodStub(ex);
             }
         }

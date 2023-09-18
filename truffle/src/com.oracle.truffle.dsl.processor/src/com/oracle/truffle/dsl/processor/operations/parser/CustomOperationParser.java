@@ -293,14 +293,14 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
         data.isVariadic = signature.isVariadic || isShortCircuit();
         data.isVoid = signature.isVoid;
 
-        data.operationArguments = new TypeMirror[signature.localSetterCount + signature.localSetterRangeCount];
+        data.operationArgumentTypes = new TypeMirror[signature.localSetterCount + signature.localSetterRangeCount];
         for (int i = 0; i < signature.localSetterCount; i++) {
-            data.operationArguments[i] = types.OperationLocal;
+            data.operationArgumentTypes[i] = types.OperationLocal;
         }
         for (int i = 0; i < signature.localSetterRangeCount; i++) {
             // todo: we might want to migrate this to a special type that validates order
             // e.g. OperationLocalRange
-            data.operationArguments[signature.localSetterCount + i] = new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal);
+            data.operationArgumentTypes[signature.localSetterCount + i] = new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal);
         }
 
         data.childrenMustBeValues = new boolean[signature.valueCount];
