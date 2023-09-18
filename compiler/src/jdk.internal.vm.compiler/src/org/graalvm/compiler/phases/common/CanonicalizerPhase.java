@@ -156,6 +156,10 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         this.features = features;
     }
 
+    public EnumSet<CanonicalizerFeature> getFeatures() {
+        return features;
+    }
+
     public CanonicalizerPhase copyWithCustomSimplification(CustomSimplification newSimplification) {
         return new CanonicalizerPhase(newSimplification, features);
     }
@@ -502,10 +506,15 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
         }
         // Perform GVN after possibly inferring the stamp since a stale stamp will inhibit GVN.
-        if (features.contains(GVN) && tryGlobalValueNumbering(node, nodeClass)) {
+        if (tryGVN(node) && tryGlobalValueNumbering(node, nodeClass)) {
             return true;
         }
         return false;
+    }
+
+    @SuppressWarnings("unused")
+    public boolean tryGVN(Node n) {
+        return features.contains(GVN);
     }
 
     public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
