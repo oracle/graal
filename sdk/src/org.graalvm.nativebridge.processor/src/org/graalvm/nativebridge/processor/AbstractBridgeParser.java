@@ -593,8 +593,7 @@ abstract class AbstractBridgeParser {
         } else {
             AnnotationMirror annotationMirror;
             DeclaredType endPointClass = null;
-            if ((annotationMirror = findByReference(annotationMirrors)) != null ||
-                            (type.getKind() == TypeKind.DECLARED && (endPointClass = alwaysByReference.get(Utilities.getQualifiedName(type))) != null)) {
+            if ((annotationMirror = findByReference(annotationMirrors)) != null || (endPointClass = resolveAlwaysByReference(type, alwaysByReference)) != null) {
                 DeclaredType referenceType = annotationMirror != null ? (DeclaredType) getAnnotationValue(annotationMirror, "value") : endPointClass;
                 TypeElement referenceElement = (TypeElement) referenceType.asElement();
                 boolean useCustomReceiverAccessor = annotationMirror != null && (boolean) getAnnotationValueWithDefaults(annotationMirror, "useCustomReceiverAccessor");
@@ -671,6 +670,17 @@ abstract class AbstractBridgeParser {
             }
         }
         return res;
+    }
+
+    private static DeclaredType resolveAlwaysByReference(TypeMirror type, Map<String, DeclaredType> alwaysByReference) {
+        TypeMirror useType = type;
+        if (useType.getKind() == TypeKind.ARRAY) {
+            useType = ((ArrayType) useType).getComponentType();
+        }
+        if (useType.getKind() == TypeKind.DECLARED) {
+            return alwaysByReference.get(Utilities.getQualifiedName(useType));
+        }
+        return null;
     }
 
     private List<? extends AnnotationMirror> filterMarshallerAnnotations(List<? extends AnnotationMirror> annotationMirrors,

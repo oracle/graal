@@ -44,5 +44,7 @@ interface Handler {
 
     void publish(LanguageAPI language, Record record);
 
+    Handler combine(Handler h1, Handler... others);
+
     Context getContext();
 }
