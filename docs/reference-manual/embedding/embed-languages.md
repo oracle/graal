@@ -959,15 +959,15 @@ To use it, include a `META-INF/services/javax.script.ScriptEngineFactory` file i
 This will allow the default `javax.script.ScriptEngineManager` to discover the language automatically.
 Alternatively, the factory can be registerd via `javax.script.ScriptEngineManager#registerEngineName` or instantiated and used directly.
 
-It is best practice to close the `ScriptEngine` when no longer used rather than relying on finalizers.
+The best practice is to close the `ScriptEngine` when no longer used rather than relying on finalizers.
 To close it, use `((AutoCloseable) scriptEngine).close();` since `ScriptEngine` does not have a `close()` method.
 
 Note that [Graal.js](../js/) provides [a ScriptEngine implementation](../js/ScriptEngine/) for users migrating from the Nashorn JavaScript engine that was deprecated in JDK 11, so this method here is not needed.
 
 <details>
-<summary>A ScriptEngineFactory for Truffle languages in a single file</summary>
+<summary>Expand to see the <code>ScriptEngineFactory</code> implementation for Truffle languages in a single file.</summary>
 
-```java
+<pre class="language-java"><code>
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -1564,6 +1564,5 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         }
     }
 }
-```
-
+</code></pre>
 </details>
