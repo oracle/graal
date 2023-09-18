@@ -382,7 +382,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
          * int Arrays.NaturalOrder.compare(Object first, Object second)
          *      -> _ZN19Arrays$NaturalOrder7compareEJiPP16java.lang.ObjectPS_2
          * 
-         * In this case the class name symbol 19Arrays$NaturalOrde binds $_ to Arrays$NaturalOrder,
+         * In this case the class name symbol 19Arrays$NaturalOrder binds $_ to Arrays$NaturalOrder,
          * the method name symbol 7compare binds $1_ to Arrays$NaturalOrder::compareTo and the
          * first parameter type name symbol 16java.lang.Object binds $2_ to java.lang.Object.
          *
@@ -507,7 +507,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
 
             @Override
             public boolean equals(Object other) {
-                if (other != null && other instanceof SimpleLookupName) {
+                if (other instanceof SimpleLookupName) {
                     return this.value.equals(((SimpleLookupName) other).value);
                 }
                 return false;
@@ -515,7 +515,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
 
             @Override
             public int hashCode() {
-                return value.hashCode() + 29;
+                return value.hashCode();
             }
 
             @Override
@@ -530,14 +530,11 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             CompositeLookupName(String value, LookupName tail) {
                 super(value);
                 assert tail != null;
-                // it makes sense to concatenate Foo with Bar or Foo::Bar with Baz and
-                // Foo* with * but we not Foo* with Bar or Foo::Bar* with Baz
-                // assert !(tail instanceof PointerLookupName) || this instanceof PointerLookupName;
                 this.tail = tail;
             }
 
             public boolean equals(Object other) {
-                if (other != null && other instanceof NamespaceLookupName) {
+                if (other instanceof NamespaceLookupName) {
                     CompositeLookupName otherCompositeLookupName = (CompositeLookupName) other;
                     assert tail != null && otherCompositeLookupName.tail != null;
                     return value.equals(otherCompositeLookupName.value) && tail.equals(otherCompositeLookupName.tail);
@@ -547,7 +544,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
 
             @Override
             public int hashCode() {
-                return value.hashCode() ^ tail.hashCode() + 37;
+                return value.hashCode() ^ (tail.hashCode() + 37);
             }
         }
 
@@ -659,11 +656,19 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             assert sb.charAt(sb.length() - 1) == 'N';
             // we can substitute both symbols
             mangleWriteSubstitutableNameRecord(prefix);
-            // in theory the trailing simple name may be substitutable but cannot
-            // have an associated binding. in practice gdb will not translate
-            // a substitution in this position even though the demangler will
+            // In theory the trailing name at the end of the namespace ought
+            // to be able to be encoded with a short name i.e. we ought to be
+            // able to call mangleWriteSubstitutableNameNoRecord(name) at this
+            // point. Indeed, the demangler *will* translate a substitution when it
+            // is inserted at the end of a namespace e.g.
+            //
+            // c++filt _ZN3foo3barS_E --> foo::bar::foo
+            //
+            // However, gdb will barf on the $_ and refuse to translate the symbol
+            // So, in order to keep gdb happy we have to avoid translating this
+            // final name ane emit it as a simple name e.g. with the above example
+            // we would generate _ZN3foo3bar3fooE.
 
-            // mangleWriteSubstitutableNameNoRecord(name);
             mangleWriteSimpleName(name);
         }
 
@@ -682,11 +687,8 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
                 mangleWriteSubstitutableNameNoRecord(prefix2);
                 recordName(lookup);
             }
-            // in theory the trailing simple name may be substitutable but cannot
-            // have an associated binding. in practice gdb will not translate
-            // a substitution in this position even though the demangler will
-
-            // mangleWriteSubstitutableNameNoRecord(name);
+            // see comment in previous method as to why we call mangleWriteSimpleName
+            // instead of mangleWriteSubstitutableNameNoRecord(name)
             mangleWriteSimpleName(name);
         }
 
