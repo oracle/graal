@@ -89,7 +89,7 @@ import jdk.vm.ci.meta.TriState;
  * branch starting at an other kind of {@link ControlSplitNode}, it will only bring the
  * {@link DeoptimizeNode} as close to the {@link ControlSplitNode} as possible.
  */
-public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<CoreProviders> {
+public class ConvertDeoptimizeToGuardPhase extends PostRunCanonicalizationPhase<CoreProviders> implements RecursivePhase {
 
     public ConvertDeoptimizeToGuardPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
