@@ -24,12 +24,15 @@
  */
 package com.oracle.truffle.tools.chromeinspector.test;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.tools.chromeinspector.objects.JSONTruffleArray;
+import com.oracle.truffle.tools.chromeinspector.objects.JSONTruffleObject;
 import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 import org.junit.Test;
 
@@ -59,6 +62,45 @@ public class InteropTest {
             Object curr = interop.readArrayElement(array, idx);
             assertTrue(((Comparable<Object>) prev).compareTo(curr) <= 0);
         }
+    }
+
+    private static void testIdentity(Object theObject, Object sameObject, Object differentObject) {
+        InteropLibrary interop = InteropLibrary.getUncached(theObject);
+        assertTrue(interop.hasIdentity(theObject));
+        assertTrue(interop.isIdentical(theObject, sameObject, interop));
+        assertFalse(interop.isIdentical(theObject, differentObject, interop));
+    }
+
+    @Test
+    public void testJSONTruffleArrayIdentity() {
+        String json = "[42, 211]";
+        JSONArray jsonArray = new JSONArray(json);
+        Object array = new JSONTruffleArray(jsonArray);
+        Object sameArray = new JSONTruffleArray(jsonArray);
+        Object anotherArray = new JSONTruffleArray(new JSONArray(json));
+        testIdentity(array, sameArray, anotherArray);
+    }
+
+    @Test
+    public void testJSONTruffleObjectIdentity() {
+        String json = "{ answer: 42, question: '?' }";
+        JSONObject jsonObject = new JSONObject(json);
+        JSONTruffleObject object = new JSONTruffleObject(jsonObject);
+        Object sameObject = new JSONTruffleObject(jsonObject);
+        Object anotherObject = new JSONTruffleObject(new JSONObject(json));
+        testIdentity(object, sameObject, anotherObject);
+    }
+
+    @Test
+    public void testJSONKeysIdentity() throws InteropException {
+        String json = "{ answer: 42, question: '?' }";
+        JSONObject jsonObject = new JSONObject(json);
+        JSONTruffleObject truffleObject = new JSONTruffleObject(jsonObject);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        Object keys = interop.getMembers(truffleObject);
+        Object sameKeys = interop.getMembers(truffleObject);
+        Object otherKeys = interop.getMembers(new JSONTruffleObject(jsonObject));
+        testIdentity(keys, sameKeys, otherKeys);
     }
 
 }
