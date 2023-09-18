@@ -193,22 +193,31 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
     public void killReadCache(LocationIdentity identity, ValueNode index, ValueNode array) {
         if (identity.isAny()) {
-            // ANY aliases with every other location
-            readCache.clear();
-            return;
-        }
-        Iterator<CacheEntry<?>> iterator = readCache.getKeys().iterator();
-        while (iterator.hasNext()) {
-            CacheEntry<?> entry = iterator.next();
-            /*
-             * We cover multiple cases here but in general index and array can only be !=null for
-             * indexed nodes thus the location identity of other accesses (field and object
-             * locations) will never be the same and will never alias with array accesses.
-             *
-             * Unsafe accesses will alias if they are writing to any location.
+            /**
+             * Kill all mutable locations.
              */
-            if (entry.conflicts(identity, index, array)) {
-                iterator.remove();
+            Iterator<CacheEntry<?>> iterator = readCache.getKeys().iterator();
+            while (iterator.hasNext()) {
+                CacheEntry<?> entry = iterator.next();
+                if (entry.getIdentity().isMutable()) {
+                    iterator.remove();
+                }
+            }
+            return;
+        } else {
+            Iterator<CacheEntry<?>> iterator = readCache.getKeys().iterator();
+            while (iterator.hasNext()) {
+                CacheEntry<?> entry = iterator.next();
+                /*
+                 * We cover multiple cases here but in general index and array can only be !=null
+                 * for indexed nodes thus the location identity of other accesses (field and object
+                 * locations) will never be the same and will never alias with array accesses.
+                 *
+                 * Unsafe accesses will alias if they are writing to any location.
+                 */
+                if (entry.conflicts(identity, index, array)) {
+                    iterator.remove();
+                }
             }
         }
     }
