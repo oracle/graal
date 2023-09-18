@@ -26,7 +26,6 @@ package com.oracle.svm.core.jfr;
 
 import java.lang.reflect.Field;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;
@@ -56,32 +55,21 @@ public final class JfrEventWriterAccess {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public static Class<?> getEventWriterClass() {
-        String className;
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            className = "jdk.jfr.internal.event.EventWriter";
-        } else {
-            className = "jdk.jfr.internal.EventWriter";
-        }
-        return ReflectionUtil.lookupClass(false, className);
+        return ReflectionUtil.lookupClass(false, "jdk.jfr.internal.event.EventWriter");
     }
 
-    public static Target_jdk_jfr_internal_EventWriter newEventWriter(JfrBuffer buffer, boolean isCurrentThreadExcluded) {
+    public static Target_jdk_jfr_internal_event_EventWriter newEventWriter(JfrBuffer buffer, boolean isCurrentThreadExcluded) {
         assert JfrBufferAccess.isEmpty(buffer) : "a fresh JFR buffer must be empty";
 
         long committedPos = buffer.getCommittedPos().rawValue();
         long maxPos = JfrBufferAccess.getDataEnd(buffer).rawValue();
         long jfrThreadId = SubstrateJVM.getCurrentThreadId();
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, jfrThreadId, true, isCurrentThreadExcluded);
-        } else {
-            long addressOfCommittedPos = JfrBufferAccess.getAddressOfCommittedPos(buffer).rawValue();
-            return new Target_jdk_jfr_internal_EventWriter(committedPos, maxPos, addressOfCommittedPos, jfrThreadId, true);
-        }
+        return new Target_jdk_jfr_internal_event_EventWriter(committedPos, maxPos, jfrThreadId, true, isCurrentThreadExcluded);
     }
 
     /** Update the EventWriter so that it uses the correct buffer and positions. */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public static void update(Target_jdk_jfr_internal_EventWriter writer, JfrBuffer buffer, int uncommittedSize, boolean valid) {
+    public static void update(Target_jdk_jfr_internal_event_EventWriter writer, JfrBuffer buffer, int uncommittedSize, boolean valid) {
         assert SubstrateJVM.getThreadLocal().getJavaBuffer() == buffer;
         assert JfrBufferAccess.verify(buffer);
 
@@ -98,7 +86,7 @@ public final class JfrEventWriterAccess {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static void markAsInvalid(Target_jdk_jfr_internal_EventWriter writer) {
+    public static void markAsInvalid(Target_jdk_jfr_internal_event_EventWriter writer) {
         /* The VM should never write true (only the JDK code may do that). */
         U.putBooleanVolatile(writer, U.objectFieldOffset(VALID_FIELD), false);
     }

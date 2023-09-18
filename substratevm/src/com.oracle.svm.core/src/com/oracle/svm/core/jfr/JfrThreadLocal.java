@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
@@ -49,6 +48,7 @@ import com.oracle.svm.core.thread.Target_java_lang_Thread;
 import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
@@ -79,7 +79,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalWord;
  */
 public class JfrThreadLocal implements ThreadListener {
     /* Event-related thread-locals. */
-    private static final FastThreadLocalObject<Target_jdk_jfr_internal_EventWriter> javaEventWriter = FastThreadLocalFactory.createObject(Target_jdk_jfr_internal_EventWriter.class,
+    private static final FastThreadLocalObject<Target_jdk_jfr_internal_event_EventWriter> javaEventWriter = FastThreadLocalFactory.createObject(Target_jdk_jfr_internal_event_EventWriter.class,
                     "JfrThreadLocal.javaEventWriter");
     private static final FastThreadLocalWord<JfrBuffer> javaBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.javaBuffer");
     private static final FastThreadLocalWord<JfrBuffer> nativeBuffer = FastThreadLocalFactory.createWord("JfrThreadLocal.nativeBuffer");
@@ -258,8 +258,8 @@ public class JfrThreadLocal implements ThreadListener {
         return tjlt.jfrExcluded;
     }
 
-    public static Target_jdk_jfr_internal_EventWriter getEventWriter() {
-        Target_jdk_jfr_internal_EventWriter eventWriter = javaEventWriter.get();
+    public static Target_jdk_jfr_internal_event_EventWriter getEventWriter() {
+        Target_jdk_jfr_internal_event_EventWriter eventWriter = javaEventWriter.get();
         /*
          * EventWriter objects cache various thread-specific values. Virtual threads use the
          * EventWriter object of their carrier thread, so we need to update all cached values so
@@ -278,7 +278,7 @@ public class JfrThreadLocal implements ThreadListener {
      * sufficiently consistent as the JFR buffer is still empty. So, this method does not need to be
      * uninterruptible.
      */
-    public Target_jdk_jfr_internal_EventWriter newEventWriter() {
+    public Target_jdk_jfr_internal_event_EventWriter newEventWriter() {
         assert javaEventWriter.get() == null;
 
         JfrBuffer buffer = reinstateJavaBuffer(getJavaBuffer());
@@ -286,7 +286,7 @@ public class JfrThreadLocal implements ThreadListener {
             throw new OutOfMemoryError("OOME for thread local buffer");
         }
 
-        Target_jdk_jfr_internal_EventWriter result = JfrEventWriterAccess.newEventWriter(buffer, isCurrentThreadExcluded());
+        Target_jdk_jfr_internal_event_EventWriter result = JfrEventWriterAccess.newEventWriter(buffer, isCurrentThreadExcluded());
         javaEventWriter.set(result);
         return result;
     }

@@ -27,8 +27,6 @@ package com.oracle.svm.core.jfr;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import com.oracle.svm.core.jdk.JDK20OrEarlier;
-import com.oracle.svm.core.jdk.JDK21OrLater;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -41,11 +39,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
-import com.oracle.svm.core.jdk.JDK19OrLater;
-import com.oracle.svm.core.jdk.JDK20OrLater;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.internal.JVM;
@@ -216,16 +210,8 @@ public final class Target_jdk_jfr_internal_JVM {
         SubstrateJVM.get().setMemorySize(size);
     }
 
-    /** See {@code JVM#setMethodSamplingInterval}. */
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    public void setMethodSamplingInterval(long type, long intervalMillis) {
-        SubstrateJVM.get().setMethodSamplingInterval(type, intervalMillis);
-    }
-
     /** See {@code JVM#setMethodSamplingPeriod}. */
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     public void setMethodSamplingPeriod(long type, long intervalMillis) {
         SubstrateJVM.get().setMethodSamplingInterval(type, intervalMillis);
     }
@@ -239,12 +225,6 @@ public final class Target_jdk_jfr_internal_JVM {
     /** See {@link JVM#setForceInstrumentation}. */
     @Substitute
     public void setForceInstrumentation(boolean force) {
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    public void setSampleThreads(boolean sampleThreads) throws IllegalStateException {
-        SubstrateJVM.get().setSampleThreads(sampleThreads);
     }
 
     /** See {@link JVM#setCompressedIntegers}. */
@@ -313,21 +293,6 @@ public final class Target_jdk_jfr_internal_JVM {
         return 1;
     }
 
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    public boolean setHandler(Class<? extends jdk.internal.event.Event> eventClass, Target_jdk_jfr_internal_handlers_EventHandler handler) {
-        // eventHandler fields should all be set at compile time so this method
-        // should never be reached at runtime
-        throw VMError.shouldNotReachHere("eventHandler does not exist for: " + eventClass);
-    }
-
-    /** See {@link SubstrateJVM#getHandler}. */
-    @Substitute
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    public Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
-        return SubstrateJVM.getHandler(eventClass);
-    }
-
     /** See {@link JVM#getTypeId(Class)}. */
     @Substitute
     public long getTypeId(Class<?> clazz) {
@@ -342,23 +307,13 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@link JVM#newEventWriter}. */
     @Substitute
-    public static Target_jdk_jfr_internal_EventWriter newEventWriter() {
+    public static Target_jdk_jfr_internal_event_EventWriter newEventWriter() {
         return SubstrateJVM.get().newEventWriter();
-    }
-
-    /**
-     * See {@link JVM#flush}.
-     */
-    @Substitute
-    @TargetElement(name = "flush", onlyWith = JDK20OrEarlier.class)
-    public static boolean flushJDK20(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
-        return SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
     }
 
     /** See {@link JVM#flush}. */
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
-    public static void flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
+    public static void flush(Target_jdk_jfr_internal_event_EventWriter writer, int uncommittedSize, int requestedSize) {
         SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
     }
 
@@ -368,7 +323,6 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
     public static long commit(long nextPosition) {
         return SubstrateJVM.get().commit(nextPosition);
     }
@@ -381,14 +335,12 @@ public final class Target_jdk_jfr_internal_JVM {
 
     /** See {@code JVM#setDumpPath(String)}. */
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     public void setDumpPath(String dumpPathText) {
         SubstrateJVM.get().setDumpPath(dumpPathText);
     }
 
     /** See {@code JVM#getDumpPath()}. */
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     public String getDumpPath() {
         return SubstrateJVM.get().getDumpPath();
     }
@@ -452,14 +404,12 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class) //
     public boolean isExcluded(Class<? extends jdk.internal.event.Event> eventClass) {
         // Temporarily always include.
         return false;
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class) //
     public boolean isInstrumented(Class<? extends jdk.internal.event.Event> eventClass) {
         // This should check for blessed commit methods in the event class [GR-41200]
         return true;
@@ -472,13 +422,11 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class) //
     public boolean setConfiguration(Class<? extends jdk.internal.event.Event> eventClass, Target_jdk_jfr_internal_event_EventConfiguration configuration) {
         return SubstrateJVM.get().setConfiguration(eventClass, configuration);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class) //
     public Object getConfiguration(Class<? extends jdk.internal.event.Event> eventClass) {
         return SubstrateJVM.get().getConfiguration(eventClass);
     }
@@ -491,13 +439,11 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class) //
     public boolean isContainerized() {
         return Containers.isContainerized();
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK20OrLater.class) //
     public long hostTotalMemory() {
         /* Not implemented at the moment. */
         return 0;

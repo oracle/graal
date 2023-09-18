@@ -310,9 +310,6 @@ suite = {
                     "jdk.jfr.internal",
                     "jdk.jfr.internal.jfc",
                 ],
-                "jdk.jfr@11..18": [
-                    "jdk.jfr.internal.handlers",
-                ],
                 "jdk.internal.vm.ci": [
                     "jdk.vm.ci.meta",
                     "jdk.vm.ci.code",
