@@ -48,11 +48,19 @@ public final class HotSpotGraalJVMCIServiceLocator extends JVMCIServiceLocator {
                 if (graalRuntime != null) {
                     return service.cast(new HotSpotGraalVMEventListener(graalRuntime));
                 }
+                // Need to hold onto the listener to connect it with a Graal runtime
+                // once we have one. This supports a JVMCI runtime that eagerly
+                // creates its VM event listeners (JDK-8315566).
+                if (vmEventListener == null) {
+                    vmEventListener = new HotSpotGraalVMEventListener(null);
+                }
+                return service.cast(vmEventListener);
             }
             return null;
         }
 
         @NativeImageReinitialize private HotSpotGraalRuntime graalRuntime;
+        @NativeImageReinitialize private HotSpotGraalVMEventListener vmEventListener;
 
         /**
          * Notifies this object of the compiler created via {@link HotSpotGraalJVMCIServiceLocator}.
@@ -60,6 +68,9 @@ public final class HotSpotGraalJVMCIServiceLocator extends JVMCIServiceLocator {
         void onCompilerCreation(HotSpotGraalCompiler compiler) {
             assert this.graalRuntime == null : "only expect a single JVMCICompiler to be created";
             this.graalRuntime = (HotSpotGraalRuntime) compiler.getGraalRuntime();
+            if (this.vmEventListener != null) {
+                this.vmEventListener.setRuntime(graalRuntime);
+            }
         }
     }
 
