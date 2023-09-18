@@ -34,4 +34,9 @@ public interface EventCounter {
      * Increment the current counter and determine if it overflows max and reset it if so.
      */
     boolean eventCounterOverflows(int max);
+
+    default String eventCounterToString() {
+        return toString();
+    }
+
 }

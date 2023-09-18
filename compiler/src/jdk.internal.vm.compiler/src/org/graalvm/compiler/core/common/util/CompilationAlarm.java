@@ -159,6 +159,9 @@ public final class CompilationAlarm implements AutoCloseable {
     }
 
     private static void overflowAction(OptionValues opt, EventCounter counter) {
+        if (LOG_PROGRESS_DETECTION) {
+            TTY.printf("CompilationAlarm: Progress detection %s; event counter overflown %n", counter.eventCounterToString());
+        }
         if (CompilationAlarm.current().hasExpired()) {
             compilationAlarmExpired(opt);
         } else {
@@ -194,12 +197,12 @@ public final class CompilationAlarm implements AutoCloseable {
                      * Still not enough no-progress before we start doing something.
                      */
                     if (LOG_PROGRESS_DETECTION) {
-                        TTY.printf("CompilationAlarm: Progress detection %s; time diff %s not long enough to take stack trace yet%n", counter, timeDiff);
+                        TTY.printf("CompilationAlarm: Progress detection %s; time diff %s not long enough to take stack trace yet %n", counter.eventCounterToString(), timeDiff);
                     }
                     return;
                 } else {
                     if (LOG_PROGRESS_DETECTION) {
-                        TTY.printf("CompilationAlarm: Progress detection %s; time diff %s long enough to take stack trace yet%n", counter, timeDiff);
+                        TTY.printf("CompilationAlarm: Progress detection %s; time diff %s long enough to take stack trace %n", counter.eventCounterToString(), timeDiff);
                     }
                 }
             }
@@ -225,7 +228,7 @@ public final class CompilationAlarm implements AutoCloseable {
         noProgressStartPeriod.set(Options.CompilationNoProgressStartTrackingProgressPeriod.getValue(opt));
 
         if (LOG_PROGRESS_DETECTION) {
-            TTY.printf("CompilationAlarm: Progress detection %s; taking first time stamp, no stack yet%n", counter);
+            TTY.printf("CompilationAlarm: Progress detection %s; taking first time stamp, no stack yet%n", counter.eventCounterToString());
         }
     }
 

@@ -191,6 +191,11 @@ public class Graph implements EventCounter {
         return false;
     }
 
+    @Override
+    public String eventCounterToString() {
+        return toString() + " eventCounter=" + eventCounter;
+    }
+
     public int getEventCounter() {
         return eventCounter;
     }
