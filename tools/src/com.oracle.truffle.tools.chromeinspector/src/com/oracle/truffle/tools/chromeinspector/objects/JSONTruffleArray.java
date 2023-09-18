@@ -56,4 +56,18 @@ public final class JSONTruffleArray extends AbstractInspectorArray {
         return getTruffleValueFromJSONValue(value);
     }
 
+    @Override
+    @CompilerDirectives.TruffleBoundary
+    void writeArrayElement(long index, Object value) throws InvalidArrayIndexException {
+        if (!isArrayElementModifiable(index)) {
+            throw InvalidArrayIndexException.create(index);
+        }
+        json.put((int) index, value);
+    }
+
+    @Override
+    boolean isArrayElementModifiable(long index) {
+        return index >= 0 && index < getArraySize();
+    }
+
 }
