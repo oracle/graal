@@ -57,10 +57,12 @@ public class LowTier extends BaseTier<LowTierContext> {
 
     }
 
+    private final CanonicalizerPhase canonicalizerWithoutGVN;
+
     @SuppressWarnings("this-escape")
     public LowTier(OptionValues options) {
         CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-        CanonicalizerPhase canonicalizerWithoutGVN = canonicalizer.copyWithoutGVN();
+        this.canonicalizerWithoutGVN = canonicalizer.copyWithoutGVN();
 
         if (Options.ProfileCompiledMethods.getValue(options)) {
             appendPhase(new ProfileCompiledMethodsPhase());
@@ -91,5 +93,9 @@ public class LowTier extends BaseTier<LowTierContext> {
         appendPhase(new OptimizeExtendsPhase());
 
         appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
+    }
+
+    public CanonicalizerPhase getCanonicalizerWithoutGVN() {
+        return canonicalizerWithoutGVN;
     }
 }
