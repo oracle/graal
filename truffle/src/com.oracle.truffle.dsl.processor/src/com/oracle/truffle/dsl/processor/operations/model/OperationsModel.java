@@ -153,7 +153,8 @@ public class OperationsModel extends Template implements PrettyPrintable {
                         .setVariadic(0) //
                         .setVoid(true) //
                         .setChildrenMustBeValues(false) //
-                        .setOperationArguments(types.TruffleLanguage);
+                        .setOperationArgumentTypes(types.TruffleLanguage) //
+                        .setOperationArgumentNames("language");
         operation(OperationKind.IF_THEN, "IfThen") //
                         .setVoid(true) //
                         .setNumChildren(2) //
@@ -173,12 +174,14 @@ public class OperationsModel extends Template implements PrettyPrintable {
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
-                        .setOperationArguments(types.OperationLocal);
+                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentNames("exceptionLocal");
         operation(OperationKind.FINALLY_TRY, "FinallyTry") //
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
-                        .setOperationArguments(types.OperationLocal);
+                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentNames("exceptionLocal");
         operation(OperationKind.FINALLY_TRY_NO_EXCEPT, "FinallyTryNoExcept") //
                         .setVoid(true) //
                         .setNumChildren(2) //
@@ -186,40 +189,48 @@ public class OperationsModel extends Template implements PrettyPrintable {
         operation(OperationKind.LABEL, "Label") //
                         .setVoid(true) //
                         .setNumChildren(0) //
-                        .setOperationArguments(types.OperationLabel);
+                        .setOperationArgumentTypes(types.OperationLabel) //
+                        .setOperationArgumentNames("label");
         operation(OperationKind.BRANCH, "Branch") //
                         .setVoid(true) //
                         .setNumChildren(0) //
-                        .setOperationArguments(types.OperationLabel) //
+                        .setOperationArgumentTypes(types.OperationLabel) //
+                        .setOperationArgumentNames("label") //
                         .setInstruction(branchInstruction);
         operation(OperationKind.LOAD_CONSTANT, "LoadConstant") //
                         .setNumChildren(0) //
-                        .setOperationArguments(context.getType(Object.class)) //
+                        .setOperationArgumentTypes(context.getType(Object.class)) //
+                        .setOperationArgumentNames("constant") //
                         .setInstruction(instruction(InstructionKind.LOAD_CONSTANT, "load.constant").addImmediate(ImmediateKind.CONSTANT, "constant"));
         operation(OperationKind.LOAD_ARGUMENT, "LoadArgument") //
                         .setNumChildren(0) //
-                        .setOperationArguments(context.getType(int.class)) //
+                        .setOperationArgumentTypes(context.getType(int.class)) //
+                        .setOperationArgumentNames("index") //
                         .setInstruction(instruction(InstructionKind.LOAD_ARGUMENT, "load.argument").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.LOAD_LOCAL, "LoadLocal") //
                         .setNumChildren(0) //
-                        .setOperationArguments(types.OperationLocal) //
+                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentNames("local") //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL, "load.local").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
-                        .setOperationArguments(types.OperationLocal) //
+                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentNames("local") //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.STORE_LOCAL, "StoreLocal") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setVoid(true) //
-                        .setOperationArguments(types.OperationLocal) //
+                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentNames("local") //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL, "store.local").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized") //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(true, true) //
                         .setVoid(true) //
-                        .setOperationArguments(types.OperationLocal) //
+                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentNames("local") //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.RETURN, "Return") //
                         .setNumChildren(1) //
@@ -236,15 +247,18 @@ public class OperationsModel extends Template implements PrettyPrintable {
         operation(OperationKind.SOURCE, "Source") //
                         .setNumChildren(1) //
                         .setTransparent(true) //
-                        .setOperationArguments(types.Source);
+                        .setOperationArgumentTypes(types.Source) //
+                        .setOperationArgumentNames("source");
         operation(OperationKind.SOURCE_SECTION, "SourceSection") //
                         .setNumChildren(1) //
                         .setTransparent(true) //
-                        .setOperationArguments(context.getType(int.class), context.getType(int.class));
+                        .setOperationArgumentTypes(context.getType(int.class), context.getType(int.class)) //
+                        .setOperationArgumentNames("index", "length");
         operation(OperationKind.INSTRUMENT_TAG, "Tag") //
                         .setNumChildren(1) //
                         .setTransparent(true) //
-                        .setOperationArguments(generic(context.getDeclaredType(Class.class), new WildcardTypeMirror(types.Tag, null)));
+                        .setOperationArgumentTypes(generic(context.getDeclaredType(Class.class), new WildcardTypeMirror(types.Tag, null))) //
+                        .setOperationArgumentNames("tag");
 
         popVariadicInstruction = new InstructionModel[9];
         for (int i = 0; i <= 8; i++) {

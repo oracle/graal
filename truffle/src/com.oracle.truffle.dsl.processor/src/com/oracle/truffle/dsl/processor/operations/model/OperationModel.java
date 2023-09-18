@@ -47,6 +47,7 @@ import javax.lang.model.element.Element;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
+import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
 
 public class OperationModel extends MessageContainer implements PrettyPrintable {
@@ -80,7 +81,8 @@ public class OperationModel extends MessageContainer implements PrettyPrintable 
         CUSTOM_SHORT_CIRCUIT
     }
 
-    private static final TypeMirror[] EMPTY_ARGUMENTS = new TypeMirror[0];
+    private static final TypeMirror[] EMPTY_ARGUMENT_TYPES = new TypeMirror[0];
+    private static final String[] EMPTY_ARGUMENT_NAMES = new String[0];
 
     public final OperationsModel parent;
     public final int id;
@@ -98,7 +100,8 @@ public class OperationModel extends MessageContainer implements PrettyPrintable 
     public int numChildren;
 
     public InstructionModel instruction;
-    public TypeMirror[] operationArguments = EMPTY_ARGUMENTS;
+    public TypeMirror[] operationArgumentTypes = EMPTY_ARGUMENT_TYPES;
+    public String[] operationArgumentNames = EMPTY_ARGUMENT_NAMES;
 
     public OperationModel(OperationsModel parent, TypeElement templateType, int id, OperationKind kind, String name) {
         this.parent = parent;
@@ -149,9 +152,32 @@ public class OperationModel extends MessageContainer implements PrettyPrintable 
         return this;
     }
 
-    public OperationModel setOperationArguments(TypeMirror... operationArguments) {
-        this.operationArguments = operationArguments;
+    public OperationModel setOperationArgumentTypes(TypeMirror... operationArgumentTypes) {
+        if (this.operationArgumentNames != null) {
+            assert this.operationArgumentNames.length == operationArgumentTypes.length;
+        }
+        this.operationArgumentTypes = operationArgumentTypes;
         return this;
+    }
+
+    public OperationModel setOperationArgumentNames(String... operationArgumentNames) {
+        if (this.operationArgumentTypes != null) {
+            assert this.operationArgumentTypes.length == operationArgumentNames.length;
+        }
+        this.operationArgumentNames = operationArgumentNames;
+        return this;
+    }
+
+    public String getOperationArgumentName(int i) {
+        return operationArgumentNames == EMPTY_ARGUMENT_NAMES ? "arg" + i : operationArgumentNames[i];
+    }
+
+    public CodeVariableElement[] getOperationArguments() {
+        CodeVariableElement[] result = new CodeVariableElement[operationArgumentTypes.length];
+        for (int i = 0; i < operationArgumentTypes.length; i++) {
+            result[i] = new CodeVariableElement(operationArgumentTypes[i], getOperationArgumentName(i));
+        }
+        return result;
     }
 
     @Override
