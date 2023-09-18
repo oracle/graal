@@ -2,8 +2,8 @@
 
 [![GraalVM downloads][badge-dl]][downloads] [![GraalVM docs][badge-docs]][docs] [![GraalVM on Slack][badge-slack]][slack] [![GraalVM on Twitter][badge-twitter]][twitter] [![GraalVM on YouTube][badge-yt]][youtube]  [![GraalVM Gate][badge-gate]][gate] [![License][badge-license]](#license)
 
-
-GraalVM is a high-performance JDK distribution designed to accelerate the execution of applications written in Java and other JVM languages along with support for JavaScript, Ruby, Python, and a number of other popular languages.
+GraalVM is a high-performance JDK distribution that compiles your Java applications ahead of time into standalone binaries. These binaries start instantly, provide peak performance with no warmup, and use fewer resources.
+You can use GraalVM just like any other Java Development Kit in your IDE.
 
 The project website at [https://www.graalvm.org/][website] describes how to [get started][getting-started], how to [stay connected][community], and how to [contribute][contributors].
 
@@ -98,6 +98,5 @@ Component(s) | License
 [truffle]: https://www.graalvm.org/graalvm-as-a-platform/language-implementation-framework/
 [truffleruby]: https://github.com/oracle/truffleruby
 [twitter]: https://twitter.com/graalvm
-[vscode-extensions]: https://github.com/graalvm/vscode-extensions
 [website]: https://www.graalvm.org/
 [youtube]: https://www.youtube.com/graalvm
