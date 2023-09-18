@@ -24,6 +24,7 @@
  */
 package com.oracle.truffle.tools.chromeinspector.objects;
 
+import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -34,6 +35,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.tools.chromeinspector.server.InspectorServerConnection;
 
 /**
@@ -266,6 +268,21 @@ class Console extends AbstractInspectorObject {
                 throw InvalidArrayIndexException.create(index);
             }
             return METHOD_NAMES[(int) index];
+        }
+
+        @Override
+        TriState isIdenticalOrUndefined(Object other) {
+            if (other instanceof Keys) {
+                return TriState.TRUE;
+            } else {
+                return TriState.UNDEFINED;
+            }
+        }
+
+        @Override
+        @CompilerDirectives.TruffleBoundary
+        int identityHashCode() {
+            return Arrays.hashCode(METHOD_NAMES);
         }
     }
 

@@ -30,6 +30,7 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 
 /**
  * A base class for arrays returned by Inspector module.
@@ -69,5 +70,11 @@ abstract class AbstractInspectorArray implements TruffleObject {
     boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
         return false;
     }
+
+    @ExportMessage
+    abstract TriState isIdenticalOrUndefined(Object other);
+
+    @ExportMessage
+    abstract int identityHashCode();
 
 }
