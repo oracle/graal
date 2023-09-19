@@ -17,7 +17,19 @@ This allows seamless interoperability with the dynamic languages supported by Gr
 As of GraalVM for JDK 21, the GraalVM LLVM runtime is available as a standalone distribution. 
 You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
-1. Navigate to [GitHub releases of GraalVM for JDK 21](https://github.com/graalvm/graalvm-ce-builds/releases) and download the LLVM standalone for your operating system. 
+1. Download the LLVM standalone for your operating system:
+   - Native standalone
+      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB6993C6E0631818000A2314/content)
+      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/04F488A0621A4081E0631818000A781E/content)
+      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/04F488A0621F4081E0631818000A781E/content)
+      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/04F488A062244081E0631818000A781E/content)
+      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062294081E0631818000A781E/content)
+   - JVM standalone
+      * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/04F488A0622E4081E0631818000A781E/content)
+      * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/05013E46CB5D93C6E0631818000A2314/content)
+      * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062384081E0631818000A781E/content)
+      * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/04F488A0623D4081E0631818000A781E/content)
+      * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/04F556B005683A58E0631818000A322D/content)
 
 2. Unzip the archive:
    ```shell
