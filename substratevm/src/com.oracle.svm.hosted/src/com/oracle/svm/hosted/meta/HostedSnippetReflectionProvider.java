@@ -38,6 +38,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
     private ImageHeapScanner heapScanner;
@@ -63,6 +64,14 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
         AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
         /* Redirect constant lookup through the shadow heap. */
         return heapScanner.createImageHeapConstant(super.forObject(object), OtherReason.UNKNOWN);
+    }
+
+    @Override
+    public JavaConstant forBoxed(JavaKind kind, Object value) {
+        if (kind == JavaKind.Object) {
+            return forObject(value);
+        }
+        return JavaConstant.forBoxedPrimitive(value);
     }
 
     @Override
