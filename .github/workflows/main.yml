@@ -60,7 +60,7 @@ jobs:
               GATE_TAGS: "style,fullbuild,test"
               PRIMARY: "compiler"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,bootstraplite"
               PRIMARY: "compiler"
           # /espresso
