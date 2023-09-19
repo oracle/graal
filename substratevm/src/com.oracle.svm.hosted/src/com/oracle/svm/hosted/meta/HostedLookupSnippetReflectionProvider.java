@@ -24,13 +24,20 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import org.graalvm.compiler.word.WordTypes;
+import org.graalvm.nativeimage.c.function.RelocatedPointer;
+import org.graalvm.word.WordBase;
 
+import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
 
+/**
+ * The snippet reflection provider that acts as the interface between the Native Image builder and
+ * the hosting VM.
+ */
 public class HostedLookupSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
 
     public HostedLookupSnippetReflectionProvider(WordTypes wordTypes) {
@@ -39,7 +46,20 @@ public class HostedLookupSnippetReflectionProvider extends SubstrateSnippetRefle
 
     @Override
     public JavaConstant forObject(Object object) {
+        if (object instanceof RelocatedPointer pointer) {
+            return new RelocatableConstant(pointer);
+        } else if (object instanceof WordBase word) {
+            return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
+        }
         AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
         return super.forObject(object);
+    }
+
+    @Override
+    public <T> T asObject(Class<T> type, JavaConstant constant) {
+        if (constant instanceof RelocatableConstant relocatable) {
+            return type.cast(relocatable.getPointer());
+        }
+        return super.asObject(type, constant);
     }
 }

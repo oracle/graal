@@ -76,7 +76,6 @@ import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -134,6 +133,7 @@ import com.oracle.svm.hosted.heap.PodSupport;
 import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
+import com.oracle.svm.hosted.meta.RelocatableConstant;
 import com.oracle.svm.hosted.phases.AnalysisGraphBuilderPhase;
 import com.oracle.svm.hosted.phases.ImplicitAssertionsPhase;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisGraphDecoderImpl;
@@ -272,7 +272,7 @@ public class SVMHost extends HostVM {
 
     @Override
     public boolean isRelocatedPointer(UniverseMetaAccess metaAccess, JavaConstant constant) {
-        return metaAccess.isInstanceOf(constant, RelocatedPointer.class);
+        return constant instanceof RelocatableConstant;
     }
 
     @Override

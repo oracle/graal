@@ -54,13 +54,16 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
+import com.oracle.svm.hosted.meta.HostedLookupSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -265,7 +268,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             result = filterInjectedAccessor(field, result);
             result = replaceObject(result);
             result = interceptAssertionStatus(field, result);
-            result = interceptWordType(suppliedMetaAccess, field, result);
+            result = interceptWordField(suppliedMetaAccess, field, result);
         }
         return result;
     }
@@ -321,23 +324,17 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     /**
-     * Intercept {@link Word} types. They are boxed objects in the hosted world, but primitive
-     * values in the runtime world.
+     * Intercept {@link Word} fields. {@link Word} values are boxed objects in the hosted world, but
+     * primitive values in the runtime world, so the default value of {@link Word} fields is 0.
+     * 
+     * {@link HostedLookupSnippetReflectionProvider} replaces relocatable pointers with
+     * {@link RelocatableConstant} and regular {@link WordBase} values with
+     * {@link PrimitiveConstant}. No other {@link WordBase} values can be reachable at this point.
      */
-    private JavaConstant interceptWordType(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {
+    private JavaConstant interceptWordField(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {
         if (value.getJavaKind() == JavaKind.Object) {
-            if (universe.hostVM().isRelocatedPointer(suppliedMetaAccess, value)) {
-                /*
-                 * Such pointers are subject to relocation therefore we don't know their values yet.
-                 * Therefore there should not be a relocated pointer constant in a function which is
-                 * compiled. RelocatedPointers are only allowed in non-constant fields. The caller
-                 * of readValue is responsible of handling the returned value correctly.
-                 */
-                return value;
-            } else if (suppliedMetaAccess.isInstanceOf(value, WordBase.class)) {
-                Object originalObject = universe.getSnippetReflection().asObject(Object.class, value);
-                return JavaConstant.forIntegerKind(universe.getWordKind(), ((WordBase) originalObject).rawValue());
-            } else if (value.isNull() && field.getType().isWordType()) {
+            VMError.guarantee(value instanceof RelocatableConstant || !suppliedMetaAccess.isInstanceOf(value, WordBase.class));
+            if (value.isNull() && field.getType().isWordType()) {
                 return JavaConstant.forIntegerKind(universe.getWordKind(), 0);
             }
         }
