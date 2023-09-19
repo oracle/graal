@@ -122,8 +122,19 @@ import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
  */
 public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<MidTierContext> implements FloatingGuardPhase {
 
+    private final boolean ignoreFrequency;
+    private final boolean requireSpeculationLog;
+
     public SpeculativeGuardMovementPhase(CanonicalizerPhase canonicalizer) {
         super(canonicalizer);
+        this.ignoreFrequency = false;
+        this.requireSpeculationLog = true;
+    }
+
+    public SpeculativeGuardMovementPhase(CanonicalizerPhase canonicalizer, boolean ignoreFrequency, boolean requireSpeculationLog) {
+        super(canonicalizer);
+        this.ignoreFrequency = ignoreFrequency;
+        this.requireSpeculationLog = requireSpeculationLog;
     }
 
     @Override
@@ -158,7 +169,7 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
                 }
                 LoopsData loops = context.getLoopsDataProvider().getLoopsData(graph);
                 loops.detectCountedLoops();
-                iterate = performSpeculativeGuardMovement(context, graph, loops);
+                iterate = performSpeculativeGuardMovement(context, graph, loops, ignoreFrequency, requireSpeculationLog);
             }
             if (change.getNodes().isEmpty() || !iterate) {
                 break;
@@ -174,20 +185,21 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
     }
 
     public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops) {
-        return performSpeculativeGuardMovement(context, graph, loops, null, false);
+        return performSpeculativeGuardMovement(context, graph, loops, null, false, true);
     }
 
-    public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, boolean ignoreFrequency) {
-        return performSpeculativeGuardMovement(context, graph, loops, null, ignoreFrequency);
+    public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, boolean ignoreFrequency, boolean requireSpeculationLog) {
+        return performSpeculativeGuardMovement(context, graph, loops, null, ignoreFrequency, requireSpeculationLog);
     }
 
     public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, NodeBitMap toProcess) {
-        return performSpeculativeGuardMovement(context, graph, loops, toProcess, false);
+        return performSpeculativeGuardMovement(context, graph, loops, toProcess, false, true);
     }
 
-    public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, NodeBitMap toProcess, boolean ignoreFrequency) {
+    public static boolean performSpeculativeGuardMovement(MidTierContext context, StructuredGraph graph, LoopsData loops, NodeBitMap toProcess, boolean ignoreFrequency,
+                    boolean requireSpeculationLog) {
         SpeculativeGuardMovement spec = new SpeculativeGuardMovement(loops, graph.createNodeMap(), graph, context.getProfilingInfo(), graph.getSpeculationLog(), toProcess,
-                        ignoreFrequency);
+                        ignoreFrequency, requireSpeculationLog);
         spec.run();
         return spec.iterate;
     }
@@ -204,11 +216,12 @@ public class SpeculativeGuardMovementPhase extends PostRunCanonicalizationPhase<
         private final NodeBitMap toProcess;
 
         SpeculativeGuardMovement(LoopsData loops, NodeMap<HIRBlock> earliestCache, StructuredGraph graph, ProfilingInfo profilingInfo, SpeculationLog speculationLog, NodeBitMap toProcess,
-                        boolean ignoreFrequency) {
+                        boolean ignoreFrequency, boolean requireSpeculationLog) {
             this.loops = loops;
             this.earliestCache = earliestCache;
             this.graph = graph;
             this.profilingInfo = profilingInfo;
+            GraalError.guarantee(requireSpeculationLog ? speculationLog != null : true, "Graph has no speculation log attached: %s", graph);
             this.speculationLog = speculationLog;
             this.toProcess = toProcess;
             this.ignoreFrequency = ignoreFrequency;

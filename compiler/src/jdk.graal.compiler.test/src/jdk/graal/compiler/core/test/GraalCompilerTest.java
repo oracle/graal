@@ -136,6 +136,7 @@ import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.GraalTest;
+import jdk.graal.compiler.loop.phases.SpeculativeGuardMovementPhase;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -283,6 +284,8 @@ public abstract class GraalCompilerTest extends GraalTest {
             ret.getHighTier().removeSubTypePhases(Speculative.class);
             ret.getMidTier().removeSubTypePhases(Speculative.class);
             ret.getLowTier().removeSubTypePhases(Speculative.class);
+            // remove after GR-49600 is resolved:
+            ret.getMidTier().replaceAllPhases(SpeculativeGuardMovementPhase.class, () -> new SpeculativeGuardMovementPhase(CanonicalizerPhase.create(), false, false));
         }
 
         ListIterator<BasePhase<? super HighTierContext>> iter = ret.getHighTier().findPhase(ConvertDeoptimizeToGuardPhase.class, true);

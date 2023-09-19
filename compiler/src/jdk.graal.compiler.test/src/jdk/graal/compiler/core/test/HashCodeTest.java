@@ -24,13 +24,13 @@
  */
 package jdk.graal.compiler.core.test;
 
-import jdk.graal.compiler.core.phases.HighTier;
-import jdk.graal.compiler.core.phases.MidTier;
 import jdk.graal.compiler.nodes.InvokeNode;
 import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.graal.compiler.phases.tiers.Suites;
+
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -120,8 +120,9 @@ public class HashCodeTest extends GraalCompilerTest {
     private StructuredGraph buildGraphAfterMidTier(String name) {
         StructuredGraph g = parseForCompile(getResolvedJavaMethod(name));
         OptionValues options = getInitialOptions();
-        new HighTier(options).apply(g, getDefaultHighTierContext());
-        new MidTier(options).apply(g, new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, g.getProfilingInfo()));
+        Suites suites = createSuites(options);
+        suites.getHighTier().apply(g, getDefaultHighTierContext());
+        suites.getMidTier().apply(g, new MidTierContext(getProviders(), getTargetProvider(), OptimisticOptimizations.ALL, g.getProfilingInfo()));
         return g;
     }
 
