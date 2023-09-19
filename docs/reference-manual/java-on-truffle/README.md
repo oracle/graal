@@ -33,9 +33,9 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
 
 1. Download the Java on Truffle (Espresso) standalone for your operating system:
    * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062424081E0631818000A781E/content)
-   * [Linux ARM64](https://gds.oracle.com/api/20220101/artifacts/04F556B0056D3A58E0631818000A322D/content)
+   * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/04F556B0056D3A58E0631818000A322D/content)
    * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/04F556B005743A58E0631818000A322D/content)
-   * [macOS ARM64](https://gds.oracle.com/api/20220101/artifacts/04F556B0057A3A58E0631818000A322D/content)
+   * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/04F556B0057A3A58E0631818000A322D/content)
    * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062484081E0631818000A781E/content)
 
 2. Unzip the archive:
