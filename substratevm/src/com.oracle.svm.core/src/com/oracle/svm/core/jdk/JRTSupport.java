@@ -98,7 +98,7 @@ class JRTDisableFeature implements InternalFeature {
 
 // region Enable jimage/jrtfs
 
-@TargetClass(className = "jdk.internal.jimage.ImageReader", innerClass = "SharedImageReader")
+@TargetClass(className = "jdk.internal.jimage.ImageReader", innerClass = "SharedImageReader", onlyWith = JRTEnabled.class)
 final class Target_jdk_internal_jimage_ImageReader_SharedImageReader_JRTEnabled {
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.NewInstance, declClass = HashMap.class, isFinal = true) //

@@ -1012,6 +1012,7 @@ driver_build_args = [
     '--initialize-at-build-time=com.oracle.svm.driver',
     '--link-at-build-time=com.oracle.svm.driver,com.oracle.svm.driver.metainf',
 ] + svm_experimental_options([
+    '-H:+AllowJRTFileSystem',
     '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
     f'-R:MaxHeapSize={256 * 1024 * 1024}',
