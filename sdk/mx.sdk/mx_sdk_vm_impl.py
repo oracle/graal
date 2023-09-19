@@ -646,6 +646,10 @@ class BaseGraalVmLayoutDistribution(mx.LayoutDistribution, metaclass=ABCMeta):
                 # add `LauncherConfig.destination` to the layout
                 launcher_project = GraalVmLauncher.launcher_project_name(_launcher_config, stage1)
                 _add(layout, _launcher_dest, 'dependency:' + launcher_project, _component)
+                if not GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and mx.is_windows():
+                    assert _launcher_dest.endswith('.cmd')
+                    export_list_dest = _launcher_dest[:-len('cmd')] + 'export-list'
+                    _add(layout, export_list_dest, f'dependency:{launcher_project}:*.export-list', _component)
                 if _debug_images() and GraalVmLauncher.is_launcher_native(_launcher_config, stage1) and _get_svm_support().generate_debug_info(_launcher_config):
                     if _get_svm_support().generate_separate_debug_info(_launcher_config):
                         _add(layout, dirname(_launcher_dest) + '/', 'dependency:' + launcher_project + '/*' + _get_svm_support().separate_debuginfo_ext(), _component)
@@ -1877,6 +1881,14 @@ class GraalVmLauncher(GraalVmNativeImage, metaclass=ABCMeta):
             return GraalVmSVMLauncherBuildTask(self, args, _get_svm_support())
         else:
             return GraalVmBashLauncherBuildTask(self, args)
+
+    def getArchivableResults(self, use_relpath=True, single=False):
+        yield from super().getArchivableResults(use_relpath=use_relpath, single=single)
+        if not single and not self.is_native() and mx.is_windows():
+            assert self.native_image_name.endswith('.cmd')
+            export_list_arc_name = self.native_image_name[:-len('cmd')] + 'export-list'
+            export_list_file = join(self.build_directory(), export_list_arc_name)
+            yield export_list_file, export_list_arc_name
 
     def is_native(self):
         return GraalVmLauncher.is_launcher_native(self.native_image_config, self.stage1)
