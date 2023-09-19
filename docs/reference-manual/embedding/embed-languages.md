@@ -91,42 +91,22 @@ These languages are henceforth referenced as **guest languages**.
 
 Complete the steps in this section to create a sample polyglot application that runs on GraalVM and demonstrates programming language interoperability.
 
-1&#46; Create a `hello-polyglot` project directory.
+1. Create a new Java project using Maven.
 
-2&#46; In your project directory, add a `HelloPolyglot.java` file that includes
-the following code:
-{%
-include snippet-tabs
-tab1type="java" tab1id="Hello_Polyglot_JS" tab1name="JavaScript" tab1path="embed/hello_polyglot_js.java"
-tab2type="java" tab2id="Hello_Polyglot_R" tab2name="R" tab2path="embed/hello_polyglot_R.java"
-tab3type="java" tab3id="Hello_Polyglot_Ruby" tab3name="Ruby" tab3path="embed/hello_polyglot_ruby.java"
-tab4type="java" tab4id="Hello_Polyglot_Python" tab4name="Python" tab4path="embed/hello_polyglot_python.java"
-%}
+2. Clone the [polyglot-embedding-demo](https://github.com/graalvm/polyglot-embedding-demo/) repository:
+    ```bash
+    git clone https://github.com/graalvm/polyglot-embedding-demo.git
+    ```
 
-&nbsp;In this code:
-- `import org.graalvm.polyglot.*` imports the base API for the Polyglot API.
-- `import org.graalvm.polyglot.proxy.*` imports the proxy classes of the Polyglot API, needed in later examples.
-- `Context` provides an execution environment for guest languages.
-R currently requires the `allowAllAccess` flag to be set to `true` to run the example.
-- `eval` evaluates the specified snippet of guest language code.
-- The `try` with resource statement initializes the `Context` and ensures that it
-is closed after use. Closing the context ensures that all resources, including
-potential native resources, are freed eagerly. Closing a context is optional but
-recommended. If a context is not closed and no longer referenced, the garbage collector will automatically free it.
+3. Insert the example code into the [Main class](https://github.com/graalvm/polyglot-embedding-demo/blob/main/src/main/java/org/example/embedding/Main.java).
 
-3&#46; Clone the [polyglot-embedding-demo](https://github.com/graalvm/polyglot-embedding-demo/) repository:
-```bash
-git clone https://github.com/graalvm/polyglot-embedding-demo.git
+4. Update the Maven [pom.xml](https://github.com/graalvm/polyglot-embedding-demo/blob/main/pom.xml) dependency configuration to include the languages to run as described in the [previous section](#dependency-setup).
 
-4&#46; Insert the example code into the [Main](https://github.com/graalvm/polyglot-embedding-demo/blob/main/src/main/java/org/example/embedding/Main.java) class.
+5. [Download and setup GraalVM](../../getting-started/graalvm-community/get-started-graalvm-community.md) by setting the `JAVA_HOME` environment variable to point to a GraalVM JDK.
 
-5&#46; Update the Maven [pom.xml](https://github.com/graalvm/polyglot-embedding-demo/blob/main/pom.xml) dependency configuration to include the languages to run as described in the [previous section](#dependency-setup).
+6. Run `mvn package exec:exec` to build and execute the sample code.
 
-6&#46; [Download and setup GraalVM](../../getting-started/graalvm-community/get-started-graalvm-community.md) by setting the `JAVA_HOME` environment variable to point to a GraalVM JDK.
-
-7&#46; Run `mvn package exec:exec` to build and execute the sample code.
-
-You now have a polyglot application that consists of a Java host application and guest language code that run on GraalVM.
+You now have a polyglot application that consists of a Java host application and guest language code, running on GraalVM.
 You can use this application with other code examples to demonstrate more advanced capabilities of the Polyglot API.
 
 
