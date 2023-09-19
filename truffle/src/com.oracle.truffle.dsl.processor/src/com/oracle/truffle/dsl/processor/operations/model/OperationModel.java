@@ -42,15 +42,11 @@ package com.oracle.truffle.dsl.processor.operations.model;
 
 import java.util.Arrays;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
 
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
-import com.oracle.truffle.dsl.processor.model.MessageContainer;
 
-public class OperationModel extends MessageContainer implements PrettyPrintable {
+public class OperationModel implements PrettyPrintable {
     public enum OperationKind {
         ROOT,
         BLOCK,
@@ -89,9 +85,6 @@ public class OperationModel extends MessageContainer implements PrettyPrintable 
     public final OperationKind kind;
     public final String name;
 
-    public final TypeElement templateType;
-    public AnnotationMirror annotationMirror;
-
     public boolean isTransparent;
     public boolean isVoid;
     public boolean isVariadic;
@@ -103,9 +96,8 @@ public class OperationModel extends MessageContainer implements PrettyPrintable 
     public TypeMirror[] operationArgumentTypes = EMPTY_ARGUMENT_TYPES;
     public String[] operationArgumentNames = EMPTY_ARGUMENT_NAMES;
 
-    public OperationModel(OperationsModel parent, TypeElement templateType, int id, OperationKind kind, String name) {
+    public OperationModel(OperationsModel parent, int id, OperationKind kind, String name) {
         this.parent = parent;
-        this.templateType = templateType;
         this.id = id;
         this.kind = kind;
         this.name = name;
@@ -178,21 +170,6 @@ public class OperationModel extends MessageContainer implements PrettyPrintable 
             result[i] = new CodeVariableElement(operationArgumentTypes[i], getOperationArgumentName(i));
         }
         return result;
-    }
-
-    @Override
-    public Element getMessageElement() {
-        return templateType;
-    }
-
-    @Override
-    public AnnotationMirror getMessageAnnotation() {
-        return annotationMirror;
-    }
-
-    @Override
-    public MessageContainer getBaseContainer() {
-        return parent;
     }
 
     @Override

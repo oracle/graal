@@ -44,7 +44,6 @@ import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.addOverr
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createNeverPartOfCompilation;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.mergeSuppressWarnings;
-import static com.oracle.truffle.dsl.processor.java.ElementUtils.boxType;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.firstLetterUpperCase;
 import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.addField;
 import static com.oracle.truffle.dsl.processor.operations.generator.ElementHelpers.arrayOf;
@@ -331,7 +330,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             mergeSuppressWarnings(el, "static-method");
             el.setSuperClass(types.Node);
             factory.create(el);
-            new CustomInstructionPostProcessor().process(el, instr);
+            new CustomInstructionPostProcessor().process(el);
 
             nodeConsts.prependToClass(el);
             operationNodeGen.add(el);
@@ -1148,83 +1147,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         System.arraycopy(array0, 0, newArray, 0, array0.length);
         System.arraycopy(array1, 0, newArray, array0.length, array0.length);
         return newArray;
-    }
-
-    private CodeExecutableElement createDoPopObject() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), context.getType(Object.class), "doPopObject");
-        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
-        ex.addParameter(new CodeVariableElement(operationNodeGen.asType(), "$this"));
-        ex.addParameter(new CodeVariableElement(context.getType(int.class), "slot"));
-        ex.addParameter(new CodeVariableElement(context.getType(int.class), "boxing"));
-        ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
-
-        CodeTreeBuilder b = ex.createBuilder();
-
-        b.startIf().string("(boxing & 0xffff0000) == 0xffff0000 || frame.isObject(slot)").end().startBlock(); // {
-        b.startReturn().string(getFrameObject("slot")).end();
-        b.end(); // }
-
-        b.tree(createTransferToInterpreterAndInvalidate("$this"));
-        b.statement("((BoxableInterface) objs[boxing & 0xffff]).setBoxing((boxing >> 16) & 0xffff, (byte) -1)");
-        b.startReturn().string("frame.getValue(slot)").end();
-
-        return ex;
-    }
-
-    private CodeExecutableElement createDoPopPrimitive(TypeMirror resultType) {
-        String typeName = firstLetterUpperCase(resultType.toString());
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), resultType, "doPopPrimitive" + typeName);
-        ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
-        ex.addParameter(new CodeVariableElement(operationNodeGen.asType(), "$this"));
-        ex.addParameter(new CodeVariableElement(context.getType(int.class), "slot"));
-        ex.addParameter(new CodeVariableElement(context.getType(int.class), "boxing"));
-        ex.addParameter(new CodeVariableElement(context.getType(Object[].class), "objs"));
-
-        ex.addThrownType(types.UnexpectedResultException);
-
-        CodeTreeBuilder b = ex.createBuilder();
-
-        b.startIf().string("(boxing & 0xffff0000) == 0xffff0000").end().startBlock(); // {
-        b.statement("Object result = " + getFrameObject("slot"));
-
-        b.startIf().string("result").instanceOf(boxType(resultType)).end().startBlock(); // {
-        b.startReturn().cast(resultType).string("result").end();
-        b.end().startElseBlock(); // } {
-        b.tree(createTransferToInterpreterAndInvalidate("$this"));
-// b.statement("System.err.printf(\" [**] expected " + resultType + " but got %s %s [no BE]%n\",
-// result == null ? \"null\" : result.getClass(), result)");
-        b.startThrow().startNew(types.UnexpectedResultException).string("result").end(2);
-        b.end(); // }
-
-        b.end().startElseBlock(); // } {
-
-        b.startIf().string("frame.is" + typeName + "(slot)").end().startBlock();
-        b.startReturn().string("frame.get" + typeName + "(slot)").end();
-        b.end().startElseBlock();
-
-        b.tree(createTransferToInterpreterAndInvalidate("$this"));
-
-        b.statement("Object result = frame.getValue(slot)");
-
-        b.startStatement();
-        b.string("((BoxableInterface) objs[boxing & 0xffff]).setBoxing((boxing >> 16) & 0xffff, (byte) ").tree(boxingTypeToInt(resultType)).string(")");
-        b.end();
-
-// b.statement("System.err.printf(\" [**] expected " + resultType +
-// " but got %s %s (%08x %s) [BE faul]%n\", result == null ? \"null\" : result.getClass(), result,
-// boxing, objs[boxing & 0xffff].getClass())");
-
-        b.startIf().string("result").instanceOf(boxType(resultType)).end().startBlock(); // {
-        b.startReturn().cast(resultType).string("result").end();
-        b.end().startElseBlock(); // } {
-        b.startThrow().startNew(types.UnexpectedResultException).string("result").end(2);
-        b.end();
-
-        b.end();
-
-        b.end();
-
-        return ex;
     }
 
     private void serializationWrapException(CodeTreeBuilder b, Runnable r) {
@@ -4787,7 +4709,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     private class CustomInstructionPostProcessor {
 
         @SuppressWarnings({"unchecked", "rawtypes"})
-        private void process(CodeTypeElement el, InstructionModel instr) {
+        private void process(CodeTypeElement el) {
             // The parser injects @NodeChildren of dummy type "C". We do not directly execute the
             // children (the plugs rewire child executions to stack loads), so we can remove them.
             for (VariableElement fld : ElementFilter.fieldsIn(el.getEnclosedElements())) {
@@ -4835,16 +4757,6 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
         }
 
-        private CodeExecutableElement createSetBoxing(@SuppressWarnings("unused") InstructionModel instr) {
-            CodeExecutableElement setBoxing = GeneratorUtils.overrideImplement((DeclaredType) boxableInterface.asType(), "setBoxing");
-            CodeTreeBuilder b = setBoxing.createBuilder();
-
-            b.tree(createNeverPartOfCompilation());
-
-            b.startAssert().string("index == 0").end();
-            b.statement("this.op_resultType_ = kind");
-            return setBoxing;
-        }
     }
 
     class BoxableInterfaceFactory {
@@ -4864,14 +4776,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private CodeVariableElement compFinal(CodeVariableElement fld) {
         return compFinal(-1, fld);
-    }
-
-    private static CodeTree boxingTypeToInt(TypeMirror mir) {
-        if (!ElementUtils.isPrimitive(mir)) {
-            throw new AssertionError();
-        }
-
-        return CodeTreeBuilder.singleString(mir.getKind().ordinal() + 1 + " /* " + mir + " */ ");
     }
 
     private CodeVariableElement compFinal(int dims, CodeVariableElement fld) {
