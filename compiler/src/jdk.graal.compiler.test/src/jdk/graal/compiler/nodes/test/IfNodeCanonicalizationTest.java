@@ -24,7 +24,6 @@
  */
 package jdk.graal.compiler.nodes.test;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
 import jdk.graal.compiler.core.test.GraalCompilerTest;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -123,10 +122,10 @@ public class IfNodeCanonicalizationTest extends GraalCompilerTest {
     public boolean testSnippet4(int a, int[] limit) {
         int l = limit.length;
         if (a < 0) {
-            GraalDirectives.deoptimize();
+            return false;
         }
         if (a >= l) {
-            GraalDirectives.deoptimize();
+            return false;
         }
         return true;
     }
@@ -140,10 +139,10 @@ public class IfNodeCanonicalizationTest extends GraalCompilerTest {
     public boolean testSnippet5(int a, int[] limit) {
         int l = limit.length;
         if (a >= l) {
-            GraalDirectives.deoptimize();
+            return false;
         }
         if (a < 0) {
-            GraalDirectives.deoptimize();
+            return false;
         }
         return true;
     }

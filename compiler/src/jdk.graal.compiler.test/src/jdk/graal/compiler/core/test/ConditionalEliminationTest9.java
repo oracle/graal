@@ -27,8 +27,6 @@ package jdk.graal.compiler.core.test;
 import jdk.graal.compiler.phases.common.ConditionalEliminationPhase;
 import org.junit.Test;
 
-import jdk.graal.compiler.api.directives.GraalDirectives;
-
 /**
  * Collection of tests for {@link ConditionalEliminationPhase} including those that triggered bugs
  * in this phase.
@@ -40,7 +38,7 @@ public class ConditionalEliminationTest9 extends ConditionalEliminationTestBase 
     @SuppressWarnings("all")
     public static int referenceSnippet(int a) {
         if (a == 0) {
-            GraalDirectives.deoptimize();
+            return 1;
         }
         return 0;
     }
@@ -54,10 +52,10 @@ public class ConditionalEliminationTest9 extends ConditionalEliminationTestBase 
     public static int test1Snippet(int a) {
         if (a == 0) {
             if (a == 0) {
-                GraalDirectives.deoptimize();
+                return 1;
             }
             if (a == 0) {
-                GraalDirectives.deoptimize();
+                return 2;
             }
         }
         return 0;
