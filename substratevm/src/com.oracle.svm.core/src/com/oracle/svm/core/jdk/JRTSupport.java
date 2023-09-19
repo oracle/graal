@@ -115,7 +115,7 @@ final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnable
     static volatile Target_jdk_internal_jimage_ImageReader_JRTEnabled READER;
 
     @Substitute
-    static Object reader() {
+    static Target_jdk_internal_jimage_ImageReader_JRTEnabled reader() {
         Target_jdk_internal_jimage_ImageReader_JRTEnabled localRef = READER;
         if (localRef == null) {
             synchronized (Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnabled.class) {
