@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
@@ -83,7 +82,7 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return SubstrateObjectConstant.forObject(hostVM.dynamicHub(((HostedType) type).wrapped));
+        return aConstantReflection.asJavaClass(((HostedType) type).wrapped);
     }
 
     @Override

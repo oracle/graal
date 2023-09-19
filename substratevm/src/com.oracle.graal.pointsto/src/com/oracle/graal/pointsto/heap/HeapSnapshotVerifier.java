@@ -343,11 +343,7 @@ public class HeapSnapshotVerifier {
         }
 
         private void ensureTypeScanned(JavaConstant typeConstant, AnalysisType type, ScanReason reason) {
-            if (typeConstant instanceof ImageHeapConstant imageHeapConstant) {
-                ensureTypeScanned(null, imageHeapConstant.getHostedObject(), type, reason);
-            } else {
-                ensureTypeScanned(null, typeConstant, type, reason);
-            }
+            ensureTypeScanned(null, typeConstant, type, reason);
         }
 
         @SuppressWarnings({"unchecked", "rawtypes"})
@@ -361,14 +357,13 @@ public class HeapSnapshotVerifier {
                 onNoTaskForClassConstant(type, reason);
                 scanner.toImageHeapObject(typeConstant, reason);
                 heapPatched = true;
-            } else if (task instanceof ImageHeapConstant) {
-                JavaConstant snapshot = ((ImageHeapConstant) task).getHostedObject();
-                verifyTypeConstant(snapshot, typeConstant, reason);
+            } else if (task instanceof ImageHeapConstant snapshot) {
+                verifyTypeConstant(maybeUnwrapSnapshot(snapshot, typeConstant instanceof ImageHeapConstant), typeConstant, reason);
             } else {
                 assert task instanceof AnalysisFuture;
                 AnalysisFuture<ImageHeapConstant> future = ((AnalysisFuture<ImageHeapConstant>) task);
                 if (future.isDone()) {
-                    JavaConstant snapshot = future.guardedGet().getHostedObject();
+                    JavaConstant snapshot = maybeUnwrapSnapshot(future.guardedGet(), typeConstant instanceof ImageHeapConstant);
                     verifyTypeConstant(snapshot, typeConstant, reason);
                 } else {
                     onTaskForClassConstantNotDone(value, type, reason);
@@ -379,7 +374,7 @@ public class HeapSnapshotVerifier {
 
         private void verifyTypeConstant(JavaConstant snapshot, JavaConstant typeConstant, ScanReason reason) {
             if (!Objects.equals(snapshot, typeConstant)) {
-                throw error(reason, "Value mismatch for class constant snapshot: %s %n new value: %s %n", snapshot, typeConstant);
+                throw error(reason, "Value mismatch for class constant%n snapshot:  %s %n new value: %s %n", snapshot, typeConstant);
             }
         }
 

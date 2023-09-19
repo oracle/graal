@@ -361,7 +361,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return SubstrateObjectConstant.forObject(getHostVM().dynamicHub(type));
+        return universe.getHeapScanner().createImageHeapConstant(super.forObject(getHostVM().dynamicHub(type)), ObjectScanner.OtherReason.UNKNOWN);
     }
 
     @Override

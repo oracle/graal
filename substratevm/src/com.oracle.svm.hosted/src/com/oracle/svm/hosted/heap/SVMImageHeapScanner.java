@@ -124,12 +124,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     }
 
     @Override
-    public JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
-        AnalysisConstantReflectionProvider aConstantReflection = (AnalysisConstantReflectionProvider) this.constantReflection;
-        return aConstantReflection.readValue(metaAccess, field, receiver, true);
-    }
-
-    @Override
     protected JavaConstant transformFieldValue(AnalysisField field, JavaConstant receiverConstant, JavaConstant originalValueConstant) {
         return ((AnalysisConstantReflectionProvider) constantReflection).interceptValue(metaAccess, field, originalValueConstant);
     }

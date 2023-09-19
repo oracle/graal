@@ -515,10 +515,6 @@ public abstract class ImageHeapScanner {
         return ValueSupplier.eagerValue(value);
     }
 
-    public JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
-        return constantReflection.readFieldValue(field, receiver);
-    }
-
     public void rescanRoot(Field reflectionField) {
         maybeRunInExecutor(unused -> {
             AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
