@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,38 +24,19 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.security.AccessControlContext;
-import java.security.ProtectionDomain;
+import java.io.FileDescriptor;
+import java.io.IOException;
 
-import com.oracle.svm.core.AlwaysInline;
-import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.VMError;
 
-import sun.security.util.Debug;
+@TargetClass(className = "sun.nio.ch.Net", onlyWith = NonWindowsOS.class)
+final class Target_sun_nio_ch_Net {
 
-@TargetClass(java.security.AccessControlContext.class)
-final class Target_java_security_AccessControlContext {
-
-    @Alias //
-    boolean isPrivileged;
-
-    @Alias //
-    protected boolean isAuthorized;
-
-    @Alias //
-    @SuppressWarnings("unused") //
-    Target_java_security_AccessControlContext(ProtectionDomain[] context, AccessControlContext privilegedContext) {
-    }
-
-    /**
-     * Avoid making the code for debug printing reachable. We do not need it, and it only increases
-     * code size. If we ever want to enable debug printing, several classes related to it need to be
-     * initialized at run time because configuration parsing is in a class initializer.
-     */
+    @SuppressWarnings({"unused", "RedundantThrows"})
     @Substitute
-    @AlwaysInline(value = "Null must propagate")
-    static Debug getDebug() {
-        return null;
+    static boolean discardOOB(FileDescriptor fd) throws IOException {
+        throw VMError.unimplemented("Not implemented on non-Windows systems in the JDK.");
     }
 }
