@@ -24,8 +24,10 @@
  */
 package com.oracle.svm.hosted.jdk;
 
-import com.oracle.svm.core.feature.InternalFeature;
+import org.graalvm.nativeimage.Platform;
+
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.hosted.FeatureImpl;
 
 @AutomaticallyRegisteredFeature
@@ -36,7 +38,9 @@ public class JRTFeature implements InternalFeature {
         access.registerReachabilityHandler(duringAnalysisAccess -> {
             FeatureImpl.BeforeAnalysisAccessImpl beforeAnalysisAccess = (FeatureImpl.BeforeAnalysisAccessImpl) access;
             beforeAnalysisAccess.getNativeLibraries().addStaticJniLibrary("jimage");
-            beforeAnalysisAccess.getNativeLibraries().addDynamicNonJniLibrary("stdc++");
+            if (!Platform.includedIn(Platform.WINDOWS.class)) {
+                beforeAnalysisAccess.getNativeLibraries().addDynamicNonJniLibrary("stdc++");
+            }
         }, access.findClassByName("jdk.internal.jimage.NativeImageBuffer"));
     }
 }
