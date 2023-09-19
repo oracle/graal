@@ -45,21 +45,21 @@ Here is an example Maven dependency setup that you can put into your project:
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
 	<artifactId>polyglot</artifactId> 
-	<version>23.1</version> 
+	<version>23.1.0</version> 
 </dependency>
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
-	<!-- select included language -->
-	<artifactId>js|ruby|python|java|llvm|wasm|languages</artifactId> 
-	<version>23.1</version> 
+	<!-- Select language: js, ruby, python, java, llvm, wasm, languages-->
+	<artifactId>js</artifactId> 
+	<version>23.1.0</version> 
 	<type>pom</type>
 </dependency>
 <!-- add additional languages if needed -->
 <dependency> 
 	<groupId>org.graalvm.polyglot</groupId> 
-	<!-- select included tools -->
-	<artifactId>profiler|inspect|coverage|dap|tools</artifactId> 
-	<version>23.1</version> 
+	<!-- Select tools: profiler, inspect, coverage, dap, tools -->
+	<artifactId>tools</artifactId> 
+	<version>23.1.0</version> 
 	<type>pom</type>
 </dependency>
 <!-- add additional tools if needed -->
@@ -706,13 +706,13 @@ For example, a dependency on isolated JavaScript can be configured by adding a M
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>polyglot</artifactId>
-    <version>23.1</version>
+    <version>23.1.0</version>
     <type>jar</type>
 </dependency>
 <dependency>
     <groupId>org.graalvm.polyglot</groupId>
     <artifactId>js-isolate</artifactId>
-    <version>23.1</version>
+    <version>23.1.0</version>
     <type>pom</type>
 </dependency>
 ```
@@ -959,15 +959,15 @@ To use it, include a `META-INF/services/javax.script.ScriptEngineFactory` file i
 This will allow the default `javax.script.ScriptEngineManager` to discover the language automatically.
 Alternatively, the factory can be registerd via `javax.script.ScriptEngineManager#registerEngineName` or instantiated and used directly.
 
-It is best practice to close the `ScriptEngine` when no longer used rather than relying on finalizers.
+The best practice is to close the `ScriptEngine` when no longer used rather than relying on finalizers.
 To close it, use `((AutoCloseable) scriptEngine).close();` since `ScriptEngine` does not have a `close()` method.
 
 Note that [Graal.js](../js/) provides [a ScriptEngine implementation](../js/ScriptEngine/) for users migrating from the Nashorn JavaScript engine that was deprecated in JDK 11, so this method here is not needed.
 
 <details>
-<summary>A ScriptEngineFactory for Truffle languages in a single file</summary>
+<summary>Expand to see the <code>ScriptEngineFactory</code> implementation for Truffle languages in a single file.</summary>
 
-```java
+<pre class="language-java"><code>
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -1564,6 +1564,5 @@ public final class CHANGE_NAME_EngineFactory implements ScriptEngineFactory {
         }
     }
 }
-```
-
+</code></pre>
 </details>
