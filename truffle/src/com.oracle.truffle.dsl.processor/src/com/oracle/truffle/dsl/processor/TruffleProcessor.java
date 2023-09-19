@@ -192,6 +192,7 @@ public final class TruffleProcessor extends AbstractProcessor {
         generators.add(new AnnotationProcessor<>(NodeParser.createDefaultParser(), new NodeCodeGenerator()));
         generators.add(new AnnotationProcessor<>(new LibraryParser(), new LibraryGenerator()));
         generators.add(new AnnotationProcessor<>(new ExportsParser(), new ExportsGenerator(new StaticConstants())));
+// generators.add(new AnnotationProcessor<>(CustomOperationParser.forProxyValidation(), null));
         generators.add(new AnnotationProcessor<>(new OperationsParser(), new OperationsCodeGenerator()));
         return generators;
     }

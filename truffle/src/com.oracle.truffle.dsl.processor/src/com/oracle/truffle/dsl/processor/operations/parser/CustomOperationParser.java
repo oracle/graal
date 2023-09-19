@@ -71,7 +71,10 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
+import javax.lang.model.util.Types;
 
+import com.oracle.truffle.dsl.processor.ProcessorContext;
+import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeAnnotationValue;
@@ -80,63 +83,79 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
+import com.oracle.truffle.dsl.processor.operations.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Signature;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
-import com.oracle.truffle.dsl.processor.operations.model.OperationsModel.DuplicateOperationException;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
-public final class CustomOperationParser extends AbstractParser<OperationModel> {
+public final class CustomOperationParser extends AbstractParser<CustomOperationModel> {
 
-    private enum ParseMode {
-        OPERATION,
-        OPERATION_PROXY,
-        SHORT_CIRCUIT_OPERATION
-    }
-
+    private final ProcessorContext context;
     private final OperationsModel parent;
-    private final AnnotationMirror mirror;
-    private final ParseMode mode;
+    private final DeclaredType annotationType;
 
-    private CustomOperationParser(OperationsModel parent, AnnotationMirror mirror, ParseMode mode) {
+    private CustomOperationParser(ProcessorContext context, OperationsModel parent, DeclaredType annotationType) {
+        this.context = context;
         this.parent = parent;
-        this.mirror = mirror;
-        this.mode = mode;
+        this.annotationType = annotationType;
     }
 
-    public static CustomOperationParser forOperation(OperationsModel parent, AnnotationMirror mirror) {
-        return new CustomOperationParser(parent, mirror, ParseMode.OPERATION);
+    public static CustomOperationParser forProxyValidation() {
+        ProcessorContext context = ProcessorContext.getInstance();
+        return new CustomOperationParser(
+                        context,
+                        new OperationsModel(context, new CodeTypeElement(Set.of(), ElementKind.CLASS, null, "DummyOperationsClass"), null, ""),
+                        context.getTypes().OperationProxy_Proxyable);
     }
 
-    public static CustomOperationParser forOperationProxy(OperationsModel parent, AnnotationMirror mirror) {
-        return new CustomOperationParser(parent, mirror, ParseMode.OPERATION_PROXY);
+    public static CustomOperationParser forCodeGeneration(OperationsModel parent, DeclaredType annotationType) {
+        ProcessorContext context = parent.getContext();
+        if (isHandled(context, annotationType)) {
+            return new CustomOperationParser(context, parent, annotationType);
+        } else {
+            throw new IllegalArgumentException(String.format("%s does not handle the %s annotation.", CustomOperationParser.class.getName(), annotationType));
+        }
     }
 
-    public static CustomOperationParser forShortCircuitOperation(OperationsModel parent, AnnotationMirror mirror) {
-        return new CustomOperationParser(parent, mirror, ParseMode.SHORT_CIRCUIT_OPERATION);
+    private static boolean isHandled(ProcessorContext context, TypeMirror annotationType) {
+        Types typeUtils = context.getEnvironment().getTypeUtils();
+        TruffleTypes truffleTypes = context.getTypes();
+        for (DeclaredType handled : new DeclaredType[]{truffleTypes.Operation, truffleTypes.OperationProxy_Proxyable, truffleTypes.ShortCircuitOperation}) {
+            if (typeUtils.isSameType(annotationType, handled)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     @Override
-    protected OperationModel parse(Element element, List<AnnotationMirror> ignored) {
-        TypeElement typeElement = (TypeElement) element;
-        OperationModel result = parseImpl(typeElement);
-        if (result != null && result.hasErrors() && isProxy()) {
-            AnnotationValue proxiedClassValue = ElementUtils.getAnnotationValue(mirror, "value", false);
-            parent.addError(mirror, proxiedClassValue, "Encountered errors using %s as an OperationProxy. These errors must be resolved before the DSL can proceed.", typeElement.getQualifiedName());
+    protected CustomOperationModel parse(Element element, List<AnnotationMirror> annotationMirrors) {
+        /**
+         * This entrypoint is only invoked by the TruffleProcessor to validate Proxyable nodes. We
+         * directly invoke {@link parseCustomOperation} for code gen use cases.
+         */
+        assert annotationType == context.getTypes().OperationProxy_Proxyable;
 
+        TypeElement typeElement = (TypeElement) element;
+        if (annotationMirrors.size() != 1) {
+            throw new IllegalArgumentException(String.format("Expected element %s to have one %s annotation, but %d found.", typeElement.getSimpleName(), annotationType, annotationMirrors.size()));
         }
-        return result;
+        AnnotationMirror mirror = annotationMirrors.getFirst();
+
+        parseCustomOperation(typeElement, mirror);
+
+        // In validation mode there's no code to generate, so don't return the model.
+        return null;
     }
 
-    private OperationModel parseImpl(TypeElement typeElement) {
-        OperationKind kind = mode == ParseMode.SHORT_CIRCUIT_OPERATION
-                        ? OperationKind.CUSTOM_SHORT_CIRCUIT
-                        : OperationKind.CUSTOM_SIMPLE;
+    public CustomOperationModel parseCustomOperation(TypeElement typeElement, AnnotationMirror mirror) {
+        OperationKind kind = isShortCircuit() ? OperationKind.CUSTOM_SHORT_CIRCUIT : OperationKind.CUSTOM_SIMPLE;
 
         String name = typeElement.getSimpleName().toString();
         if (name.endsWith("Node")) {
@@ -150,17 +169,13 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
             }
         }
 
-        OperationModel data = null;
-        try {
-            data = parent.operation(typeElement, kind, name);
-        } catch (DuplicateOperationException ex) {
-            parent.addError(mirror, null, "Multiple operations declared with name %s. Operation names must be distinct.", name);
+        CustomOperationModel customOperation = parent.customOperation(kind, name, typeElement, mirror);
+        if (customOperation == null) {
             return null;
         }
-        data.annotationMirror = mirror;
 
         if (name.contains("_")) {
-            data.addError("Operation class name cannot contain underscores.");
+            customOperation.addError("Operation class name cannot contain underscores.");
         }
 
         boolean isNode = isAssignable(typeElement.asType(), types.NodeInterface);
@@ -173,26 +188,26 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
                     parent.addError(mirror, proxyClass,
                                     "Class %s does not generate a cached node, so it cannot be used as an OperationProxy. Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.",
                                     typeElement.getQualifiedName());
-                    return data;
+                    return customOperation;
                 }
             }
         } else {
             // operation specification
 
             if (!typeElement.getModifiers().contains(Modifier.FINAL)) {
-                data.addError("Operation class must be declared final. Inheritance in operation specifications is not supported.");
+                customOperation.addError("Operation class must be declared final. Inheritance in operation specifications is not supported.");
             }
 
             if (typeElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !typeElement.getModifiers().contains(Modifier.STATIC)) {
-                data.addError("Operation class must not be an inner class (non-static nested class). Declare the class as static.");
+                customOperation.addError("Operation class must not be an inner class (non-static nested class). Declare the class as static.");
             }
 
             if (typeElement.getModifiers().contains(Modifier.PRIVATE)) {
-                data.addError("Operation class must not be declared private. Remove the private modifier to make it visible.");
+                customOperation.addError("Operation class must not be declared private. Remove the private modifier to make it visible.");
             }
 
             if (!ElementUtils.isObject(typeElement.getSuperclass()) || !typeElement.getInterfaces().isEmpty()) {
-                data.addError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.");
+                customOperation.addError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.");
             }
 
             // Ensure all non-private methods are static (except the default 0-argument
@@ -209,7 +224,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
                     if (el.getKind() == ElementKind.METHOD && isSpecialization((ExecutableElement) el)) {
                         continue; // non-static specializations get a different message; see below
                     }
-                    data.addError(el, "Operation class must not contain non-static members.");
+                    customOperation.addError(el, "Operation class must not contain non-static members.");
                 }
             }
         }
@@ -232,15 +247,15 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
             if (!specialization.getModifiers().contains(Modifier.STATIC)) {
                 // TODO: add docs explaining how to convert a non-static specialization method and
                 // reference it in this error message.
-                data.addError(specialization, "Operation specializations must be static. This method should be rewritten as a static specialization.");
+                customOperation.addError(specialization, "Operation specializations must be static. This method should be rewritten as a static specialization.");
             }
             if (!ElementUtils.isVisible(parent.getTemplateType(), specialization) || specialization.getModifiers().contains(Modifier.PRIVATE)) {
-                data.addError(specialization, "Operation specialization is not visible to the generated Operation node.");
+                customOperation.addError(specialization, "Operation specialization is not visible to the generated Operation node.");
             }
         }
 
-        if (data.hasErrors()) {
-            return data;
+        if (customOperation.hasErrors()) {
+            return customOperation;
         }
 
         CodeTypeElement nodeType;
@@ -262,9 +277,9 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
 
         nodeType.setEnclosingElement(null);
 
-        Signature signature = determineSignature(data, nodeType);
-        if (data.hasErrors()) {
-            return data;
+        Signature signature = determineSignature(customOperation, nodeType);
+        if (customOperation.hasErrors()) {
+            return customOperation;
         }
 
         if (signature == null) {
@@ -289,40 +304,40 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
             nodeType.addAnnotationMirror(new CodeAnnotationMirror(types.Introspectable));
         }
 
-        data.numChildren = signature.valueCount;
-        data.isVariadic = signature.isVariadic || isShortCircuit();
-        data.isVoid = signature.isVoid;
+        OperationModel underlyingOperation = customOperation.operation;
 
-        data.operationArgumentTypes = new TypeMirror[signature.localSetterCount + signature.localSetterRangeCount];
+        underlyingOperation.numChildren = signature.valueCount;
+        underlyingOperation.isVariadic = signature.isVariadic || isShortCircuit();
+        underlyingOperation.isVoid = signature.isVoid;
+
+        underlyingOperation.operationArgumentTypes = new TypeMirror[signature.localSetterCount + signature.localSetterRangeCount];
         for (int i = 0; i < signature.localSetterCount; i++) {
-            data.operationArgumentTypes[i] = types.OperationLocal;
+            underlyingOperation.operationArgumentTypes[i] = types.OperationLocal;
         }
         for (int i = 0; i < signature.localSetterRangeCount; i++) {
             // todo: we might want to migrate this to a special type that validates order
             // e.g. OperationLocalRange
-            data.operationArgumentTypes[signature.localSetterCount + i] = new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal);
+            underlyingOperation.operationArgumentTypes[signature.localSetterCount + i] = new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal);
         }
 
-        data.childrenMustBeValues = new boolean[signature.valueCount];
-        Arrays.fill(data.childrenMustBeValues, true);
+        underlyingOperation.childrenMustBeValues = new boolean[signature.valueCount];
+        Arrays.fill(underlyingOperation.childrenMustBeValues, true);
 
-        data.instruction = createCustomInstruction(data, nodeType, signature, name);
+        underlyingOperation.instruction = createCustomInstruction(customOperation, nodeType, signature, name);
 
-        return data;
+        return customOperation;
     }
 
     private boolean isShortCircuit() {
-        return mode == ParseMode.SHORT_CIRCUIT_OPERATION;
+        return context.getEnvironment().getTypeUtils().isSameType(annotationType, context.getTypes().ShortCircuitOperation);
     }
 
     private boolean isProxy() {
-        return mode == ParseMode.OPERATION_PROXY;
+        return context.getEnvironment().getTypeUtils().isSameType(annotationType, context.getTypes().OperationProxy_Proxyable);
     }
 
     private List<AnnotationMirror> createNodeChildAnnotations(Signature signature) {
         List<AnnotationMirror> result = new ArrayList<>();
-
-        TypeMirror[] boxingEliminated = parent.boxingEliminatedTypes.toArray(new TypeMirror[0]);
 
         for (int i = 0; i < signature.valueCount; i++) {
             result.add(createNodeChildAnnotation("child" + i, signature.getParameterType(i)));
@@ -414,7 +429,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
         return ex;
     }
 
-    private InstructionModel createCustomInstruction(OperationModel data, CodeTypeElement nodeType, Signature signature, String nameSuffix) {
+    private InstructionModel createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement nodeType, Signature signature, String nameSuffix) {
         InstructionKind kind = isShortCircuit() ? InstructionKind.CUSTOM_SHORT_CIRCUIT : InstructionKind.CUSTOM;
         String namePrefix = isShortCircuit() ? "sc." : "c.";
 
@@ -428,12 +443,12 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
         } catch (Throwable ex) {
             StringWriter wr = new StringWriter();
             ex.printStackTrace(new PrintWriter(wr));
-            data.addError("Error generating instruction for Operation node %s: \n%s", data.parent.getName(), wr.toString());
+            customOperation.addError("Error generating instruction for Operation node %s: \n%s", parent.getName(), wr.toString());
             return instr;
         }
 
         if (instr.nodeData == null) {
-            data.addError("Error generating instruction for Operation node %s. This is likely a bug in the Operation DSL.", data.parent.getName());
+            customOperation.addError("Error generating instruction for Operation node %s. This is likely a bug in the Operation DSL.", parent.getName());
             return instr;
         }
 
@@ -441,11 +456,11 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
             instr.nodeData.setTypeSystem(parent.typeSystem);
         }
 
-        instr.nodeData.redirectMessages(data);
-        instr.nodeData.redirectMessagesOnGeneratedElements(data);
+        instr.nodeData.redirectMessages(customOperation);
+        instr.nodeData.redirectMessagesOnGeneratedElements(customOperation);
 
         if (isShortCircuit()) {
-            instr.continueWhen = (boolean) ElementUtils.getAnnotationValue(mirror, "continueWhen").getValue();
+            instr.continueWhen = (boolean) ElementUtils.getAnnotationValue(customOperation.getTemplateTypeAnnotation(), "continueWhen").getValue();
             instr.addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
             instr.addImmediate(ImmediateKind.NODE, "node");
         } else {
@@ -470,11 +485,11 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
         return instr;
     }
 
-    private Signature determineSignature(OperationModel data, CodeTypeElement nodeType) {
+    private Signature determineSignature(CustomOperationModel customOperation, CodeTypeElement nodeType) {
         List<ExecutableElement> specializations = findSpecializations(nodeType);
 
         if (specializations.size() == 0) {
-            data.addError("Operation class %s contains no specializations.", nodeType.getSimpleName());
+            customOperation.addError("Operation class %s contains no specializations.", nodeType.getSimpleName());
             return null;
         }
 
@@ -482,7 +497,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
         Signature signature = null;
 
         for (ExecutableElement spec : specializations) {
-            Signature other = determineSignature(data, spec);
+            Signature other = determineSignature(customOperation, spec);
             if (signature == null) {
                 // first (valid) signature
                 signature = other;
@@ -490,12 +505,12 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
                 // invalid signature
                 isValid = false;
             } else {
-                isValid = mergeSignatures(data, signature, other, spec) && isValid;
+                isValid = mergeSignatures(customOperation, signature, other, spec) && isValid;
             }
 
             if (other != null && isShortCircuit()) {
                 if (spec.getReturnType().getKind() != TypeKind.BOOLEAN || other.valueCount != 1 || other.isVariadic || other.localSetterCount > 0 || other.localSetterRangeCount > 0) {
-                    data.addError(spec, "Boolean converter operation specializations must only take one value parameter and return boolean.");
+                    customOperation.addError(spec, "Boolean converter operation specializations must only take one value parameter and return boolean.");
                     isValid = false;
                 }
             }
@@ -509,27 +524,27 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
         return signature;
     }
 
-    private boolean mergeSignatures(OperationModel data, Signature a, Signature b, Element el) {
+    private boolean mergeSignatures(CustomOperationModel customOperation, Signature a, Signature b, Element el) {
         boolean isValid = true;
         if (a.isVariadic != b.isVariadic) {
-            data.addError(el, "Error calculating operation signature: either all or none of the specialization must be variadic (have a @%s annotated parameter)",
+            customOperation.addError(el, "Error calculating operation signature: either all or none of the specialization must be variadic (have a @%s annotated parameter)",
                             getSimpleName(types.Variadic));
             isValid = false;
         }
         if (a.isVoid != b.isVoid) {
-            data.addError(el, "Error calculating operation signature: either all or none of the specialization must be declared void.");
+            customOperation.addError(el, "Error calculating operation signature: either all or none of the specialization must be declared void.");
             isValid = false;
         }
         if (a.valueCount != b.valueCount) {
-            data.addError(el, "Error calculating operation signature: all specializations must have the same number of value arguments.");
+            customOperation.addError(el, "Error calculating operation signature: all specializations must have the same number of value arguments.");
             isValid = false;
         }
         if (a.localSetterCount != b.localSetterCount) {
-            data.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.", getSimpleName(types.LocalSetter));
+            customOperation.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.", getSimpleName(types.LocalSetter));
             isValid = false;
         }
         if (a.localSetterRangeCount != b.localSetterRangeCount) {
-            data.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.", getSimpleName(types.LocalSetterRange));
+            customOperation.addError(el, "Error calculating operation signature: all specializations must have the same number of %s arguments.", getSimpleName(types.LocalSetterRange));
             isValid = false;
         }
 
@@ -546,7 +561,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
         return true;
     }
 
-    private Signature determineSignature(OperationModel data, ExecutableElement spec) {
+    private Signature determineSignature(CustomOperationModel customOperation, ExecutableElement spec) {
 
         boolean isValid = true;
 
@@ -565,24 +580,24 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
                 // nothing, we ignore these
                 continue;
             } else if (isAssignable(param.asType(), types.LocalSetter)) {
-                isValid = errorIfDSLParameter(data, types.LocalSetter, param) && isValid;
+                isValid = errorIfDSLParameter(customOperation, types.LocalSetter, param) && isValid;
                 if (localSetterRangeCount > 0) {
-                    data.addError(param, "%s parameters must precede %s parameters.",
+                    customOperation.addError(param, "%s parameters must precede %s parameters.",
                                     getSimpleName(types.LocalSetter), getSimpleName(types.LocalSetterRange));
                     isValid = false;
                 }
                 localSetterCount++;
             } else if (isAssignable(param.asType(), types.LocalSetterRange)) {
-                isValid = errorIfDSLParameter(data, types.LocalSetterRange, param) && isValid;
+                isValid = errorIfDSLParameter(customOperation, types.LocalSetterRange, param) && isValid;
                 localSetterRangeCount++;
             } else if (ElementUtils.findAnnotationMirror(param, types.Variadic) != null) {
-                isValid = errorIfDSLParameter(data, types.Variadic, param) && isValid;
+                isValid = errorIfDSLParameter(customOperation, types.Variadic, param) && isValid;
                 if (hasVariadic) {
-                    data.addError(param, "Multiple variadic parameters not allowed to an operation. Split up the operation if such behaviour is required.");
+                    customOperation.addError(param, "Multiple variadic parameters not allowed to an operation. Split up the operation if such behaviour is required.");
                     isValid = false;
                 }
                 if (localSetterRangeCount > 0 || localSetterCount > 0) {
-                    data.addError(param, "Value parameters must precede %s and %s parameters.",
+                    customOperation.addError(param, "Value parameters must precede %s and %s parameters.",
                                     getSimpleName(types.LocalSetter),
                                     getSimpleName(types.LocalSetterRange));
                     isValid = false;
@@ -593,11 +608,11 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
                 // these do not affect the signature
             } else {
                 if (hasVariadic) {
-                    data.addError(param, "Non-variadic value parameters must precede variadic parameters.");
+                    customOperation.addError(param, "Non-variadic value parameters must precede variadic parameters.");
                     isValid = false;
                 }
                 if (localSetterRangeCount > 0 || localSetterCount > 0) {
-                    data.addError(param, "Value parameters must precede LocalSetter and LocalSetterRange parameters.");
+                    customOperation.addError(param, "Value parameters must precede LocalSetter and LocalSetterRange parameters.");
                     isValid = false;
                 }
                 if (isFallback) {
@@ -608,7 +623,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
                      * specializations with non-Object parameters are unsupported.
                      */
                     if (!isObject(param.asType())) {
-                        data.addError(param, "Value parameters to @%s specializations of Operation nodes must have type %s.",
+                        customOperation.addError(param, "Value parameters to @%s specializations of Operation nodes must have type %s.",
                                         getSimpleName(types.Fallback),
                                         getSimpleName(context.getDeclaredType(Object.class)));
                         isValid = false;
@@ -634,7 +649,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
 
         boolean isVoid = false;
         Set<TypeMirror> boxingEliminatableReturnTypes = new HashSet<>();
-        if (data.kind != OperationKind.CUSTOM_SHORT_CIRCUIT) {
+        if (customOperation.operation.kind != OperationKind.CUSTOM_SHORT_CIRCUIT) {
             // short-circuit ops are always non-void and never boxing-eliminated
             if (ElementUtils.isVoid(spec.getReturnType())) {
                 isVoid = true;
@@ -655,9 +670,9 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
         return false;
     }
 
-    private boolean errorIfDSLParameter(OperationModel data, TypeMirror paramType, VariableElement param) {
+    private boolean errorIfDSLParameter(CustomOperationModel customOperation, TypeMirror paramType, VariableElement param) {
         if (isDSLParameter(param)) {
-            data.addError(param, "%s parameters must not be annotated with @%s, @%s, or @%s.",
+            customOperation.addError(param, "%s parameters must not be annotated with @%s, @%s, or @%s.",
                             getSimpleName(paramType),
                             getSimpleName(types.Cached),
                             getSimpleName(types.CachedLibrary),
@@ -689,7 +704,7 @@ public final class CustomOperationParser extends AbstractParser<OperationModel> 
 
     @Override
     public DeclaredType getAnnotationType() {
-        return types.Operation;
+        return annotationType;
     }
 
     private CodeTypeElement cloneTypeHierarchy(TypeElement element, Consumer<CodeTypeElement> mapper) {

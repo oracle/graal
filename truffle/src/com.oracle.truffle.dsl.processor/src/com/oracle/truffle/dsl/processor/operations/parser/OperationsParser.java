@@ -73,6 +73,7 @@ import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
 import com.oracle.truffle.dsl.processor.java.compiler.CompilerFactory;
 import com.oracle.truffle.dsl.processor.model.TypeSystemData;
+import com.oracle.truffle.dsl.processor.operations.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
@@ -367,12 +368,12 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
 
         // custom operations
         for (TypeElement te : ElementFilter.typesIn(typeElement.getEnclosedElements())) {
-            AnnotationMirror op = ElementUtils.findAnnotationMirror(te, types.Operation);
-            if (op == null) {
+            AnnotationMirror mir = ElementUtils.findAnnotationMirror(te, types.Operation);
+            if (mir == null) {
                 continue;
             }
 
-            CustomOperationParser.forOperation(model, op).parse(te);
+            CustomOperationParser.forCodeGeneration(model, types.Operation).parseCustomOperation(te, mir);
         }
 
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.OperationProxy)) {
@@ -393,7 +394,10 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
                 model.addError(mir, mirrorValue, "Could not use %s as an operation proxy: the class does not allow a baseline implementation.", te.getQualifiedName());
             }
 
-            CustomOperationParser.forOperationProxy(model, mir).parse(te);
+            CustomOperationModel customOperation = CustomOperationParser.forCodeGeneration(model, types.OperationProxy_Proxyable).parseCustomOperation(te, mir);
+            if (customOperation != null && customOperation.hasErrors()) {
+                model.addError(mir, mirrorValue, "Encountered errors using %s as an OperationProxy. These errors must be resolved before the DSL can proceed.", te.getQualifiedName());
+            }
         }
 
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.ShortCircuitOperation)) {
@@ -406,7 +410,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
 
             TypeElement te = (TypeElement) ((DeclaredType) proxiedType).asElement();
 
-            CustomOperationParser.forShortCircuitOperation(model, mir).parse(te);
+            CustomOperationParser.forCodeGeneration(model, types.ShortCircuitOperation).parseCustomOperation(te, mir);
         }
 
         // error sync
@@ -565,9 +569,11 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
 
     @Override
     public DeclaredType getRepeatAnnotationType() {
-        // This annotation is not technically a Repeatable container for @GenerateOperations, but it
-        // is a convenient way to get the processor framework to forward a node with this annotation
-        // to the OperationsParser.
+        /**
+         * This annotation is not technically a Repeatable container for @GenerateOperations, but it
+         * is a convenient way to get the processor framework to forward a node with this annotation
+         * to the OperationsParser.
+         */
         return types.GenerateOperationsTestVariants;
     }
 }

@@ -87,8 +87,9 @@ public class OperationsModel extends Template implements PrettyPrintable {
 
     private final List<OperationModel> operations = new ArrayList<>();
     private final List<InstructionModel> instructions = new ArrayList<>();
-
     private final Map<String, OperationModel> operationNames = new HashMap<>();
+
+    private final List<CustomOperationModel> customOperations = new ArrayList<>();
 
     public DeclaredType languageClass;
     public boolean enableBaselineInterpreter;
@@ -273,26 +274,25 @@ public class OperationsModel extends Template implements PrettyPrintable {
         return new DeclaredCodeTypeMirror((TypeElement) el.asElement(), List.of(args));
     }
 
-    private OperationModel operation(OperationKind kind, String name) {
-        try {
-            return operation(null, kind, name);
-        } catch (DuplicateOperationException ex) {
-            throw new AssertionError("built-in operations should not have clashing names");
-        }
-    }
-
-    public OperationModel operation(TypeElement template, OperationKind kind, String name) throws DuplicateOperationException {
-        OperationModel op = new OperationModel(this, template, operationId++, kind, name);
+    public OperationModel operation(OperationKind kind, String name) {
+        OperationModel op = new OperationModel(this, operationId++, kind, name);
         operations.add(op);
         if (operationNames.containsKey(name)) {
-            throw new DuplicateOperationException();
+            addError("Multiple operations declared with name %s. Operation names must be distinct.", name);
+            return null;
         }
         operationNames.put(name, op);
         return op;
     }
 
-    public class DuplicateOperationException extends Exception {
-        private static final long serialVersionUID = 1L;
+    public CustomOperationModel customOperation(OperationKind kind, String name, TypeElement typeElement, AnnotationMirror mirror) {
+        OperationModel op = operation(kind, name);
+        if (op == null) {
+            return null;
+        }
+        CustomOperationModel customOp = new CustomOperationModel(context, typeElement, mirror, op);
+        customOperations.add(customOp);
+        return customOp;
     }
 
     public InstructionModel instruction(InstructionKind kind, String name) {
@@ -308,7 +308,7 @@ public class OperationsModel extends Template implements PrettyPrintable {
 
     @Override
     protected List<MessageContainer> findChildContainers() {
-        return Collections.unmodifiableList(operations);
+        return Collections.unmodifiableList(customOperations);
     }
 
     public boolean isBoxingEliminated(TypeMirror mirror) {
