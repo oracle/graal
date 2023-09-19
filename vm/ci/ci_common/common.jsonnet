@@ -724,12 +724,6 @@ local devkits = graal_common.devkits;
   record_file_sizes:: ['benchmark', 'file-size:*', '--results-file', 'sizes.json'],
   upload_file_sizes:: ['bench-uploader.py', 'sizes.json'],
 
-  # These dummy artifacts are required by notify_releaser_build in order to trigger the releaser service
-  # after the deploy jobs have completed.
-  create_releaser_notifier_artifact:: [
-    ['python3', '-c', "from os import environ; open('../' + environ['BUILD_NAME'], 'a').close()"],
-  ],
-
   build_base_graalvm_image: [
     $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
     $.mx_vm_common + vm.vm_profiles + ['build'],
@@ -772,7 +766,7 @@ local devkits = graal_common.devkits;
     run: $.patch_env(self.os, self.arch, java_version) + vm.collect_profiles() + $.build_base_graalvm_image + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + $.deploy_sdk_base(self.os) + $.create_releaser_notifier_artifact + $.check_base_graalvm_image(self.os, self.arch, java_version),
+    ] + $.deploy_sdk_base(self.os) + $.check_base_graalvm_image(self.os, self.arch, java_version),
     notify_groups:: ['deploy'],
     timelimit: "1:00:00"
   },
@@ -785,7 +779,7 @@ local devkits = graal_common.devkits;
     ] + $.deploy_sdk_components(self.os, tags) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, self.os, self.arch, java_version),
+    ] + vm.check_graalvm_complete_build($.mx_vm_installables, self.os, self.arch, java_version),
     notify_groups:: ['deploy'],
     timelimit: "1:30:00"
   },
@@ -801,7 +795,7 @@ local devkits = graal_common.devkits;
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
       ['set-export', 'DACAPO_JAR', $.mx_vm_common + ['--quiet', '--no-warning', 'paths', '--download', 'DACAPO_MR1_2baec49']],
       ['${GRAALVM_HOME}/bin/java', '-jar', '${DACAPO_JAR}', 'luindex'],
-    ] + $.create_releaser_notifier_artifact,
+    ],
     notify_groups:: ['deploy'],
     timelimit: '1:45:00',
   },
