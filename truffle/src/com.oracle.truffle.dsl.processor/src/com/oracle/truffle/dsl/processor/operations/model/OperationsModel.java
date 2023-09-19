@@ -44,10 +44,10 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.isPrimitive;
 import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEquals;
 
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import javax.lang.model.element.AnnotationMirror;
@@ -85,11 +85,9 @@ public class OperationsModel extends Template implements PrettyPrintable {
     private int operationId = 1;
     private int instructionId = 1;
 
-    private final List<OperationModel> operations = new ArrayList<>();
-    private final List<InstructionModel> instructions = new ArrayList<>();
-    private final Map<String, OperationModel> operationNames = new HashMap<>();
-
+    private final LinkedHashMap<String, OperationModel> operations = new LinkedHashMap<>();
     private final List<CustomOperationModel> customOperations = new ArrayList<>();
+    private final LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
 
     public DeclaredType languageClass;
     public boolean enableBaselineInterpreter;
@@ -104,7 +102,7 @@ public class OperationsModel extends Template implements PrettyPrintable {
     public ExecutableElement executeEpilog;
 
     public TypeSystemData typeSystem;
-    public Set<TypeMirror> boxingEliminatedTypes;
+    public Set<TypeMirror> boxingEliminatedTypes = Set.of();
     public List<VariableElement> serializedFields;
 
     public boolean enableTracing;
@@ -275,13 +273,12 @@ public class OperationsModel extends Template implements PrettyPrintable {
     }
 
     public OperationModel operation(OperationKind kind, String name) {
-        OperationModel op = new OperationModel(this, operationId++, kind, name);
-        operations.add(op);
-        if (operationNames.containsKey(name)) {
+        if (operations.containsKey(name)) {
             addError("Multiple operations declared with name %s. Operation names must be distinct.", name);
             return null;
         }
-        operationNames.put(name, op);
+        OperationModel op = new OperationModel(this, operationId++, kind, name);
+        operations.put(name, op);
         return op;
     }
 
@@ -296,8 +293,12 @@ public class OperationsModel extends Template implements PrettyPrintable {
     }
 
     public InstructionModel instruction(InstructionKind kind, String name) {
+        if (instructions.containsKey(name)) {
+            addError("Multiple instructions declared with name %s. Instruction names must be distinct.", name);
+            return null;
+        }
         InstructionModel instr = new InstructionModel(instructionId++, kind, name);
-        instructions.add(instr);
+        instructions.put(name, instr);
         return instr;
     }
 
@@ -325,21 +326,16 @@ public class OperationsModel extends Template implements PrettyPrintable {
         return false;
     }
 
-    public List<OperationModel> getOperations() {
-        return Collections.unmodifiableList(operations);
+    public Collection<OperationModel> getOperations() {
+        return operations.values();
     }
 
-    public List<InstructionModel> getInstructions() {
-        return Collections.unmodifiableList(instructions);
+    public Collection<InstructionModel> getInstructions() {
+        return instructions.values();
     }
 
     public InstructionModel getInstructionByName(String name) {
-        for (InstructionModel instr : instructions) {
-            if (instr.name.equals(name)) {
-                return instr;
-            }
-        }
-        return null;
+        return instructions.get(name);
     }
 
     public boolean needsBciSlot() {
