@@ -21,12 +21,12 @@
 # questions.
 #
 suite = {
-    "mxversion": "6.27.1",
+    "mxversion": "6.41.0",
     "name": "tools",
     "defaultLicense" : "GPLv2-CPE",
 
     "groupId" : "org.graalvm.tools",
-    "version" : "23.1.0",
+    "version" : "24.0.0",
     "release" : False,
     "url" : "http://openjdk.java.net/projects/graal",
     "developer" : {
@@ -59,7 +59,7 @@ suite = {
             "dependencies" : [
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
                 "TruffleJWS",
             ],
             "requires" : [
@@ -154,7 +154,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
             ],
             "requires" : ["java.logging"],
             "exports" : [
@@ -184,7 +184,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
                 ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -213,7 +213,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
             ],
             "requires" : ["java.logging"],
             "exports" : [
@@ -244,7 +244,7 @@ suite = {
             "sourceDirs" : ["src"],
             "dependencies" : [
                 "truffle:TRUFFLE_API",
-                "truffle:TruffleJSON",
+                "truffle:TRUFFLE_JSON",
             ],
             "exports" : [
               "<package-info>", # exports all packages containing package-info.java
@@ -287,7 +287,7 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "org.graalvm.tools.api.lsp",
-                "truffle:TruffleJSON"
+                "truffle:TRUFFLE_JSON"
             ],
             "requires" : [
                 "java.logging",
@@ -369,11 +369,26 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
                 "TRUFFLE_PROFILER",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
-              "artifactId" : "chromeinspector",
+              "artifactId" : "chromeinspector-tool",
+              "tag": ["default", "public"],
             },
-            "description" : "The bridge between truffle tools and the chrome inspector.",
+            "description" : "The core module of the polyglot debugging backend for chrome inspector.",
+        },
+        "INSPECT_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
+                "CHROMEINSPECTOR",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "maven": {
+              "groupId" : "org.graalvm.polyglot",
+              "artifactId": "inspect-community",
+              "tag": ["default", "public"],
+            },
+            "description": "The polyglot debugging backend for chrome inspector.",
         },
         "CHROMEINSPECTOR_TEST": {
             "subDir": "src",
@@ -387,8 +402,8 @@ suite = {
             "exclude": [
               "mx:HAMCREST",
               "mx:JUNIT",
-              "truffle:JLINE",
             ],
+            "maven": False,
         },
         "CHROMEINSPECTOR_GRAALVM_SUPPORT" : {
             "native" : True,
@@ -414,9 +429,23 @@ suite = {
                 "truffle:TRUFFLE_API",
             ],
             "maven" : {
-              "artifactId" : "insight",
+              "artifactId" : "insight-tool",
+              "tag": ["default", "public"],
             },
-            "description" : "The Ultimate Insights Gathering Platform",
+            "description" : "The core module of the Insights Gathering Platform",
+        },
+        "INSIGHT_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
+                "INSIGHT",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "maven": {
+              "groupId" : "org.graalvm.polyglot",
+              "artifactId": "insight-community",
+              "tag": ["default", "public"],
+            },
+            "description": "The Ultimate Insights Gathering Platform",
         },
         "INSIGHT_HEAP": {
             "subDir": "src",
@@ -432,9 +461,23 @@ suite = {
                 "INSIGHT",
             ],
             "maven" : {
-              "artifactId" : "insight-heap",
+              "artifactId" : "insight-heap-tool",
+              "tag": ["default", "public"],
             },
-            "description" : "Heap Dump for GraalVM Insight",
+            "description" : "The core module of Heap Dump for Insight",
+        },
+        "HEAP_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
+                "INSIGHT_HEAP",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "maven": {
+              "groupId" : "org.graalvm.polyglot",
+              "artifactId": "heap-community",
+              "tag": ["default", "public"],
+            },
+            "description": "The Heap Dump for the Insights Gathering Platform",
         },
         "INSIGHT_TEST": {
             "subDir": "src",
@@ -445,6 +488,10 @@ suite = {
                 "truffle:TRUFFLE_TEST",
                 "INSIGHT",
                 "INSIGHT_HEAP",
+            ],
+            "exclude": [
+              "mx:HAMCREST",
+              "mx:JUNIT",
             ],
             "description" : "Tests for the Ultimate Insights Gathering Platform",
             "maven" : False,
@@ -478,12 +525,27 @@ suite = {
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
-              "artifactId" : "profiler",
+              "artifactId" : "profiler-tool",
+              "tag": ["default", "public"],
             },
             "javadocType" : "api",
-            "description" : "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
+            "description" : "The core module of the Truffle profiler"
+        },
+        "PROFILER_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
+                "TRUFFLE_PROFILER",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "maven": {
+              "groupId" : "org.graalvm.polyglot",
+              "artifactId": "profiler-community",
+              "tag": ["default", "public"],
+            },
+            "description": "The truffle profiler, supporting CPU sampling and tracing. Memory tracing support is experimental"
         },
         "TRUFFLE_PROFILER_TEST": {
             "subDir": "src",
@@ -493,6 +555,10 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_TEST",
                 "TRUFFLE_PROFILER",
+            ],
+            "exclude": [
+              "mx:HAMCREST",
+              "mx:JUNIT",
             ],
             "description" : "Tests for the truffle profiler.",
             "maven" : False,
@@ -515,12 +581,27 @@ suite = {
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
-              "artifactId" : "coverage",
+              "artifactId" : "coverage-tool",
+              "tag": ["default", "public"],
             },
-            "description" : "Truffle code coverage tool.",
+            "description" : "Core module of the Truffle code coverage tool",
             "javadocType" : "api",
+        },
+        "COVERAGE_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
+                "TRUFFLE_COVERAGE",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "maven": {
+              "groupId" : "org.graalvm.polyglot",
+              "artifactId": "coverage-community",
+              "tag": ["default", "public"],
+            },
+            "description": "The Truffle code coverage tool"
         },
         "TRUFFLE_COVERAGE_TEST": {
             "subDir": "src",
@@ -530,6 +611,10 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_TEST",
                 "TRUFFLE_COVERAGE",
+            ],
+            "exclude": [
+              "mx:HAMCREST",
+              "mx:JUNIT",
             ],
             "description" : "Tests for the truffle coverage tool.",
             "maven" : False,
@@ -552,11 +637,26 @@ suite = {
             ],
             "distDependencies" : [
                 "truffle:TRUFFLE_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
-              "artifactId" : "dap",
+              "artifactId" : "dap-tool",
+              "tag": ["default", "public"],
             },
-            "description" : "Truffle Debug Protocol Server implementation.",
+            "description" : "Core module of the polyglot debugging backend for the Debug Adapter Protocol",
+        },
+        "DAP_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
+                "DAP",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "maven": {
+              "groupId" : "org.graalvm.polyglot",
+              "artifactId": "dap-community",
+              "tag": ["default", "public"],
+            },
+            "description": "The polyglot debugging backend for the Debug Adapter Protocol"
         },
         "DAP_TEST": {
             "subDir": "src",
@@ -566,6 +666,10 @@ suite = {
             "distDependencies" : [
                 "truffle:TRUFFLE_TEST",
                 "DAP",
+            ],
+            "exclude": [
+              "mx:HAMCREST",
+              "mx:JUNIT",
             ],
             "description" : "Tests for the Truffle Debug Protocol Server.",
             "maven" : False,
@@ -599,6 +703,7 @@ suite = {
             ],
             "maven" : {
               "artifactId" : "lsp_api",
+              "tag": ["default", "public"],
             },
             "description" : "Truffle Language Server backend API.",
             "javadocType" : "api",
@@ -615,11 +720,26 @@ suite = {
             ],
             "distDependencies" : [
                 "LSP_API",
+                "truffle:TRUFFLE_JSON",
             ],
             "maven" : {
-              "artifactId" : "lsp",
+              "artifactId" : "lsp-tool",
+              "tag": ["default", "public"],
             },
-            "description" : "Truffle Language Server backend implementation.",
+            "description" : "Core module of the polyglot Language Server backend",
+        },
+        "LSP_COMMUNITY": {
+            "type": "pom",
+            "runtimeDependencies": [
+                "LSP",
+                "truffle:TRUFFLE_RUNTIME",
+            ],
+            "maven": {
+              "groupId" : "org.graalvm.polyglot",
+              "artifactId": "lsp-community",
+              "tag": ["default", "public"],
+            },
+            "description": "The polyglot Language Server backend"
         },
         "LSP_TEST": {
             "dependencies": ["org.graalvm.tools.lsp.test"],
@@ -627,7 +747,12 @@ suite = {
                 "LSP",
                 "truffle:TRUFFLE_SL",
             ],
+            "exclude": [
+              "mx:HAMCREST",
+              "mx:JUNIT",
+            ],
             "description" : "Tests for the Truffle Language Server backend.",
+            "maven": False,
         },
         "LSP_GRAALVM_SUPPORT" : {
             "native" : True,

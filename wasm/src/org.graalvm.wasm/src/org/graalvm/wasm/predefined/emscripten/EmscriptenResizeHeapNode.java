@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,20 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+
+import com.oracle.truffle.api.frame.VirtualFrame;
 
 public class EmscriptenResizeHeapNode extends AbortNode {
-    public EmscriptenResizeHeapNode(WasmLanguage language, WasmInstance module) {
+    public EmscriptenResizeHeapNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         // Heap resizing is not supported by default by emscripten
         // (need to specify `-s ALLOW_MEMORY_GROWTH=1` on compilation).
         return super.execute(frame);

@@ -127,7 +127,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
             }
         }
 
-        /* Remember the types we have already linked. */
+        /* Remember the types we have already seen. */
         seenReceiverTypes = receiverState;
     }
 
@@ -215,7 +215,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
     }
 
     @Override
-    protected Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb) {
-        return DefaultInvokeTypeFlowUtil.getAllCalleesFlows(this);
+    public Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(PointsToAnalysis bb) {
+        return DefaultInvokeTypeFlowUtil.getAllNonStubCalleesFlows(this);
     }
 }

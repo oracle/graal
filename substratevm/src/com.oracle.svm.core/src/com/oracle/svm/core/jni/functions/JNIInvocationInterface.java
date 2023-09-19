@@ -173,17 +173,8 @@ public final class JNIInvocationInterface {
                 if (code == CEntryPointErrors.NO_ERROR) {
                     // The isolate was created successfully, so we can finish the initialization.
                     return Support.finishInitialization(vmBuf, penv, vmArgs, hasSpecialVmOptions);
-                } else if (code == CEntryPointErrors.UNSPECIFIED || code == CEntryPointErrors.ARGUMENT_PARSING_FAILED) {
-                    return JNIErrors.JNI_ERR();
-                } else if (code == CEntryPointErrors.MAP_HEAP_FAILED || code == CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED || code == CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE) {
-                    return JNIErrors.JNI_ENOMEM();
-                } else { // return a (non-JNI) error that is more helpful for diagnosis
-                    code = -1000000000 - code;
-                    if (code == JNIErrors.JNI_OK() || code >= -100) {
-                        code = JNIErrors.JNI_ERR(); // non-negative or potential actual JNI error
-                    }
-                    return code;
                 }
+                return JNIFunctions.Support.convertCEntryPointErrorToJNIError(code, true);
             }
         }
 
@@ -389,7 +380,12 @@ public final class JNIInvocationInterface {
                 long javaVmId = IsolateUtil.getIsolateID();
                 javaVmIdPointer.write(WordFactory.pointer(javaVmId));
             }
-            RuntimeSupport.getRuntimeSupport().addTearDownHook(isFirstIsolate -> JNIJavaVMList.removeJavaVM(javaVm));
+            RuntimeSupport.getRuntimeSupport().addTearDownHook(new RuntimeSupport.Hook() {
+                @Override
+                public void execute(boolean isFirstIsolate) {
+                    JNIJavaVMList.removeJavaVM(javaVm);
+                }
+            });
             vmBuf.write(javaVm);
             penv.write(JNIThreadLocalEnvironment.getAddress());
             return JNIErrors.JNI_OK();

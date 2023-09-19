@@ -63,7 +63,7 @@ public interface ReflectionMetadataDecoder {
 
     boolean isNegative(int modifiers);
 
-    long getMetadataByteLength();
+    int getMetadataByteLength();
 
     class ElementDescriptor {
         private final Class<?> declaringClass;

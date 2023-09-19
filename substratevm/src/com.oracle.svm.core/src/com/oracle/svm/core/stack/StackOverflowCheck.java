@@ -27,7 +27,6 @@ package com.oracle.svm.core.stack;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
@@ -82,13 +81,40 @@ public interface StackOverflowCheck {
     }
 
     /**
-     * Operating system abstraction: The OS needs to provide end of the physical stack memory.
-     *
-     * Note that currently there is no abstraction to influence the stack growth direction: We only
-     * support a stack that grows from higher addresses towards lower addresses. All supported
-     * platforms use this direction.
+     * Note that there is no abstraction to influence the stack growth direction: we only support a
+     * stack that grows from higher addresses towards lower addresses. All supported platforms use
+     * this direction.
      */
-    interface OSSupport {
+    interface PlatformSupport {
+        @Fold
+        static PlatformSupport singleton() {
+            if (ImageSingletons.contains(OSSupport.class)) {
+                assert !ImageSingletons.contains(PlatformSupport.class);
+                return ImageSingletons.lookup(OSSupport.class);
+            }
+            return ImageSingletons.lookup(PlatformSupport.class);
+        }
+
+        /**
+         * Queries the stack boundaries.
+         *
+         * @param stackBasePtr If the method fails or if the platform doesn't support querying the
+         *            stack base, 0 will be written to the given memory location. Otherwise, the
+         *            address of the highest addressable byte of the stack + 1 will be written to
+         *            the given memory location.
+         *
+         * @param stackEndPtr If the method fails, 0 will be written to the given memory location.
+         *            Otherwise, the address of the lowest addressable byte of the stack will be
+         *            written to the given memory location.
+         *
+         * @return true, if the stack end was queried successfully.
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr);
+    }
+
+    /* Only used by legacy code, will be removed as part of GR-48332. */
+    interface OSSupport extends PlatformSupport {
         /** The highest address of the stack or zero if not supported. */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         default UnsignedWord lookupStackBase() {
@@ -99,29 +125,12 @@ public interface StackOverflowCheck {
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         UnsignedWord lookupStackEnd();
 
-        /**
-         * The lowest address of the stack. If the OS reserved stack memory is larger than
-         * requestedStackSize, then the value for end of the stack memory returned may be before the
-         * real stack end.
-         *
-         * @param requestedStackSize requested stack size. If zero, then the value is ignored.
-         */
+        @Override
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        default UnsignedWord lookupStackEnd(@SuppressWarnings("unused") UnsignedWord requestedStackSize) {
-            return lookupStackEnd();
-        }
-
-        /**
-         * Find the highest address of the stack or zero if is not supported, and the lowest address
-         * of the stack. If the OS reserved stack memory is larger than requestedStackSize, then the
-         * value for end of the stack memory returned may be before the real stack end.
-         * 
-         * @param requestedStackSize requested stack size. If zero, then the value is ignored.
-         */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        default void lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr, UnsignedWord requestedStackSize) {
+        default boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr) {
             stackBasePtr.write(lookupStackBase());
-            stackEndPtr.write(lookupStackEnd(requestedStackSize));
+            stackEndPtr.write(lookupStackEnd());
+            return true;
         }
     }
 
@@ -132,11 +141,11 @@ public interface StackOverflowCheck {
 
     /**
      * Called for each thread when the thread is attached to the VM. The method is called very
-     * early, before the thread register and the heap are being set up. Therefore, the
-     * implementation is severly limited to only operate on C memory and calling C fuctions.
+     * early, before the the heap is set up. Therefore, the implementation is severly limited to
+     * only operate on C memory and calling C functions.
      */
     @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
-    void initialize(IsolateThread thread);
+    boolean initialize();
 
     /**
      * Determines whether the given address, e.g. a potential stack pointer, is within the safe

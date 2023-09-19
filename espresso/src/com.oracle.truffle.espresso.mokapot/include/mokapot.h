@@ -29,10 +29,8 @@
 
 #include "libjavavm_dynamic.h"
 
-#include <trufflenfi.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <errno.h>
 
 struct MokapotNativeInterface_;
 struct MokapotEnv_;
@@ -353,6 +351,7 @@ typedef uint64_t julong;
     V(JVM_FindScopedValueBindings) \
     V(JVM_GetNextThreadIdOffset) \
     V(JVM_RegisterContinuationMethods) \
+    V(JVM_IsPreviewEnabled) \
     /* V(JVM_DumpClassListToFile) */ \
     /* V(JVM_DumpDynamicArchive) */ \
     /* V(JVM_VirtualThreadMountBegin) */ \
@@ -365,6 +364,13 @@ typedef uint64_t julong;
     V(JVM_ScopedValueCache) \
     V(JVM_SetScopedValueCache) \
     V(JVM_FindScopedValueBindings) \
+    /* Java 21 VM Methods */ \
+    V(JVM_IsForeignLinkerSupported) \
+    /* V(JVM_VirtualThreadStart) */ \
+    /* V(JVM_VirtualThreadEnd) */ \
+    /* V(JVM_VirtualThreadMount) */ \
+    /* V(JVM_VirtualThreadUnmount) */ \
+    /* V(JVM_PrintWarningAtDynamicAgentLoad) */ \
 
 #ifdef __cplusplus
 extern "C" {
@@ -983,6 +989,8 @@ void (*JVM_ReportFinalizationComplete)(JNIEnv *env, jobject finalizee);
 
 jboolean (*JVM_IsFinalizationEnabled)(JNIEnv *env);
 
+jboolean (*JVM_IsForeignLinkerSupported)(void);
+
 };
 
 struct MokapotEnv_ {
@@ -1029,5 +1037,10 @@ typedef struct LibJavaVMIsolate {
     graal_isolate_t *isolate;
     jboolean is_sun_standard_launcher; // -Dsun.java.launcher=SUN_STANDARD
 } LibJavaVMIsolate;
+
+// see DowncallLinker::capture_state and CapturableState
+#define CAPTURABLE_STATE_GET_LAST_ERROR     (1 << 0)
+#define CAPTURABLE_STATE_WSA_GET_LAST_ERROR (1 << 1)
+#define CAPTURABLE_STATE_ERRNO              (1 << 2)
 
 #endif // _MOKAPOT_H

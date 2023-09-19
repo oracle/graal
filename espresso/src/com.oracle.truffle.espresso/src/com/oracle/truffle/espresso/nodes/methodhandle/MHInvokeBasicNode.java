@@ -29,7 +29,7 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * This method is usually responsible for invoking the type-checking lambda forms. As such, its job
@@ -73,7 +73,7 @@ public abstract class MHInvokeBasicNode extends MethodHandleIntrinsicNode {
 
     public MHInvokeBasicNode(Method method) {
         super(method);
-        Meta meta = getMeta();
+        Meta meta = method.getMeta();
         this.form = meta.java_lang_invoke_MethodHandle_form;
         this.vmentry = meta.java_lang_invoke_LambdaForm_vmentry;
         this.hiddenVmtarget = meta.HIDDEN_VMTARGET;

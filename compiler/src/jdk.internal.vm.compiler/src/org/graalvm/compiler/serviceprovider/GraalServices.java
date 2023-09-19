@@ -30,7 +30,6 @@ import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -41,15 +40,10 @@ import java.util.Map;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
-import jdk.vm.ci.code.DebugInfo;
-import jdk.vm.ci.code.VirtualObject;
-import jdk.vm.ci.code.site.Infopoint;
-import jdk.vm.ci.code.site.InfopointReason;
 import jdk.vm.ci.meta.ConstantPool;
+import jdk.vm.ci.meta.EncodedSpeculationReason;
 import jdk.vm.ci.meta.JavaMethod;
-import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
@@ -64,53 +58,24 @@ public final class GraalServices {
 
     private static final Map<Class<?>, List<?>> servicesCache = IS_BUILDING_NATIVE_IMAGE ? new HashMap<>() : null;
 
-    private static final Constructor<? extends SpeculationReason> encodedSpeculationReasonConstructor;
     private static final Method constantPoolLookupMethodWithCaller;
-    private static final Method constantPoolLookupReferencedType;
-    private static final Method virtualObjectGet;
-    private static final Constructor<? extends Infopoint> implicitExceptionDispatchConstructor;
+    private static final Method constantPoolLookupConstantWithResolve;
 
     static {
-        Method get = null;
-        Method lookupReferencedType = null;
         Method lookupMethodWithCaller = null;
-        Constructor<? extends SpeculationReason> esrConstructor = null;
-        Constructor<? extends Infopoint> iedConstructor = null;
+        Method lookupConstantWithResolve = null;
 
         try {
-            @SuppressWarnings("unchecked")
-            Class<? extends SpeculationReason> theClass = (Class<? extends SpeculationReason>) Class.forName("jdk.vm.ci.meta.EncodedSpeculationReason");
-            esrConstructor = theClass.getDeclaredConstructor(Integer.TYPE, String.class, Object[].class);
-        } catch (ClassNotFoundException e) {
-        } catch (NoSuchMethodException e) {
-            throw new InternalError("EncodedSpeculationReason exists but constructor is missing or inaccessible", e);
-        }
-
-        try {
-            get = VirtualObject.class.getDeclaredMethod("get", ResolvedJavaType.class, Integer.TYPE, Boolean.TYPE);
-            lookupReferencedType = ConstantPool.class.getDeclaredMethod("lookupReferencedType", Integer.TYPE, Integer.TYPE);
-        } catch (NoSuchMethodException e) {
-        }
-
-        try {
-            get = VirtualObject.class.getDeclaredMethod("get", ResolvedJavaType.class, Integer.TYPE, Boolean.TYPE);
             lookupMethodWithCaller = ConstantPool.class.getDeclaredMethod("lookupMethod", Integer.TYPE, Integer.TYPE, ResolvedJavaMethod.class);
         } catch (NoSuchMethodException e) {
         }
 
         try {
-            @SuppressWarnings("unchecked")
-            Class<? extends Infopoint> implicitExceptionDispatch = (Class<? extends Infopoint>) Class.forName("jdk.vm.ci.code.site.ImplicitExceptionDispatch");
-            iedConstructor = implicitExceptionDispatch.getConstructor(int.class, int.class, DebugInfo.class);
-        } catch (ClassNotFoundException | NoSuchMethodException e) {
-            // ImplicitExceptionDispatch isn't available
+            lookupConstantWithResolve = ConstantPool.class.getDeclaredMethod("lookupConstant", Integer.TYPE, Boolean.TYPE);
+        } catch (NoSuchMethodException e) {
         }
-
-        encodedSpeculationReasonConstructor = esrConstructor;
-        virtualObjectGet = get;
-        constantPoolLookupReferencedType = lookupReferencedType;
         constantPoolLookupMethodWithCaller = lookupMethodWithCaller;
-        implicitExceptionDispatchConstructor = iedConstructor;
+        constantPoolLookupConstantWithResolve = lookupConstantWithResolve;
     }
 
     private GraalServices() {
@@ -303,16 +268,9 @@ public final class GraalServices {
      * @param context the objects forming a key for the speculation
      */
     static SpeculationReason createSpeculationReason(int groupId, String groupName, Object... context) {
-        if (encodedSpeculationReasonConstructor != null) {
-            SpeculationEncodingAdapter adapter = new SpeculationEncodingAdapter();
-            try {
-                Object[] flattened = adapter.flatten(context);
-                return encodedSpeculationReasonConstructor.newInstance(groupId, groupName, flattened);
-            } catch (Throwable throwable) {
-                throw new InternalError(throwable);
-            }
-        }
-        return new UnencodedSpeculationReason(groupId, groupName, context);
+        SpeculationEncodingAdapter adapter = new SpeculationEncodingAdapter();
+        Object[] flattened = adapter.flatten(context);
+        return new EncodedSpeculationReason(groupId, groupName, flattened);
     }
 
     /**
@@ -481,67 +439,12 @@ public final class GraalServices {
     }
 
     /**
-     * Creates a new {@link VirtualObject} based on a given existing object, with the given
-     * contents. If {@code type} is an instance class then {@link VirtualObject#getValues} provides
-     * the values for the fields returned by {@link ResolvedJavaType#getInstanceFields(boolean)
-     * getInstanceFields(true)}. If {@code type} is an array then the length of
-     * {@link VirtualObject#getValues} determines the array length.
-     *
-     * @param type the type of the object whose allocation was removed during compilation. This can
-     *            be either an instance or an array type.
-     * @param id a unique id that identifies the object within the debug information for one
-     *            position in the compiled code.
-     * @param isAutoBox a flag that tells the runtime that the object may be a boxed primitive that
-     *            needs to be obtained from the box cache instead of creating a new instance.
-     * @return a new {@link VirtualObject} instance.
-     */
-    public static VirtualObject createVirtualObject(ResolvedJavaType type, int id, boolean isAutoBox) {
-        if (virtualObjectGet != null) {
-            try {
-                return (VirtualObject) virtualObjectGet.invoke(null, type, id, isAutoBox);
-            } catch (Throwable throwable) {
-                throw new InternalError(throwable);
-            }
-        }
-        return VirtualObject.get(type, id);
-    }
-
-    /**
      * Gets the update-release counter for the current Java runtime.
      *
      * @see java.lang.Runtime.Version
      */
     public static int getJavaUpdateVersion() {
         return Runtime.version().update();
-    }
-
-    /**
-     * Looks up the type referenced by the constant pool entry at {@code cpi} as referenced by the
-     * {@code opcode} bytecode instruction.
-     *
-     * @param cpi the index of a constant pool entry that references a type
-     * @param opcode the opcode of the instruction with {@code cpi} as an operand
-     * @return a reference to the compiler interface type
-     * @throws InternalError if {@link #hasLookupReferencedType()} returns {@code false}
-     */
-    public static JavaType lookupReferencedType(ConstantPool constantPool, int cpi, int opcode) {
-        if (constantPoolLookupReferencedType != null) {
-            try {
-                return (JavaType) constantPoolLookupReferencedType.invoke(constantPool, cpi, opcode);
-            } catch (Error e) {
-                throw e;
-            } catch (Throwable throwable) {
-                throw new InternalError(throwable);
-            }
-        }
-        throw new InternalError("This JVMCI version doesn't support ConstantPool.lookupReferencedType()");
-    }
-
-    /**
-     * Returns true if JVMCI supports the {@code ConstantPool.lookupReferencedType} API.
-     */
-    public static boolean hasLookupReferencedType() {
-        return constantPoolLookupReferencedType != null;
     }
 
     /**
@@ -564,42 +467,36 @@ public final class GraalServices {
         throw new InternalError("This JVMCI version doesn't support ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)");
     }
 
+    public static Object lookupConstant(ConstantPool constantPool, int cpi, boolean resolve) {
+        if (constantPoolLookupConstantWithResolve != null) {
+            try {
+                try {
+                    return constantPoolLookupConstantWithResolve.invoke(constantPool, cpi, resolve);
+                } catch (InvocationTargetException e) {
+                    throw e.getCause();
+                }
+            } catch (Error e) {
+                throw e;
+            } catch (Throwable throwable) {
+                throw new InternalError(throwable);
+            }
+        }
+        return constantPool.lookupConstant(cpi);
+    }
+
     /**
-     * Returns true if JVMCI supports the
-     * {@code ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)} API.
+     * Returns true if the JDK includes {@code ConstantPool.lookupConstant(int, boolean)}.
+     */
+    public static boolean supportsNonresolvingLookupConstant() {
+        return constantPoolLookupConstantWithResolve != null;
+    }
+
+    /**
+     * Returns true if the JDK includes
+     * {@code ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)}.
      */
     public static boolean hasLookupMethodWithCaller() {
         return constantPoolLookupMethodWithCaller != null;
-    }
-
-    /**
-     * Returns whether JVMCI supports arbitrary implicit exception dispatch.
-     */
-    public static boolean supportsArbitraryImplicitException() {
-        return implicitExceptionDispatchConstructor != null;
-    }
-
-    /**
-     * Constructs an info point for an implicit exception dispatch.
-     *
-     * @param pcOffset the exceptional PC offset
-     * @param dispatchOffset the continuation PC offset
-     * @param debugInfo debugging information at the exceptional PC
-     * @throws InternalError if {@link #supportsArbitraryImplicitException()} returns {@code false}
-     *             and {@code pcOffset != dispatchOffset}
-     */
-    public static Infopoint genImplicitException(int pcOffset, int dispatchOffset, DebugInfo debugInfo) {
-        if (implicitExceptionDispatchConstructor == null) {
-            if (pcOffset != dispatchOffset) {
-                throw new InternalError("This JVMCI version doesn't support dispatching implicit exception to an arbitrary address.");
-            }
-            return new Infopoint(pcOffset, debugInfo, InfopointReason.IMPLICIT_EXCEPTION);
-        }
-        try {
-            return implicitExceptionDispatchConstructor.newInstance(pcOffset, dispatchOffset, debugInfo);
-        } catch (Throwable e) {
-            throw new InternalError("Exception when instantiating implicit exception dispatch", e);
-        }
     }
 
     /**

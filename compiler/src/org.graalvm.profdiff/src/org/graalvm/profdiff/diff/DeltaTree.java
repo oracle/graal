@@ -194,6 +194,10 @@ public class DeltaTree<T extends TreeNode<T>> {
      * @param visitor the visitor that will visit this delta tree
      */
     public void accept(DeltaTreeVisitor<T> visitor) {
+        if (root == null) {
+            visitor.visitEmptyTree();
+            return;
+        }
         visitor.beforeVisit();
         forEach(node -> {
             if (node.isIdentity()) {

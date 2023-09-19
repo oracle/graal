@@ -116,6 +116,11 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
      * for equality.
      */
     private boolean appendGraphEncoderTest(PhaseSuite<HighTierContext> suite) {
+        if (config.xcompMode) {
+            // Do not do this in -Xcomp mode. It adds too much compilation time.
+            // Testing coverage is provided by Graal unit testing instead.
+            return true;
+        }
         suite.appendPhase(new BasePhase<HighTierContext>() {
             @Override
             public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
@@ -160,7 +165,10 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
         if (Assertions.detailedAssertionsEnabled(options)) {
             suites.getPostAllocationOptimizationStage().appendPhase(new HotSpotZapRegistersPhase());
         }
-        if (Assertions.assertionsEnabled()) {
+        // MaxVectorSize < 16 is used by HotSpot to disable vectorization but that
+        // doesn't work reliably with Graal because it assumes XMM registers are always
+        // available. For now just skip the verification for this case.
+        if (Assertions.assertionsEnabled() && config.maxVectorSize >= 16) {
             suites.getFinalCodeAnalysisStage().appendPhase(new VerifyMaxRegisterSizePhase(config.maxVectorSize));
         }
         return suites;

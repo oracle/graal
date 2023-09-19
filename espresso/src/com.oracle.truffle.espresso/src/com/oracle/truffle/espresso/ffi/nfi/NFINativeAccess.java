@@ -22,6 +22,12 @@
  */
 package com.oracle.truffle.espresso.ffi.nfi;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -50,20 +56,16 @@ import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
 import com.oracle.truffle.espresso.ffi.RawPointer;
+import com.oracle.truffle.espresso.ffi.SignatureCallNode;
 import com.oracle.truffle.espresso.ffi.TruffleByteBuffer;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.perf.DebugCounter;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Collect;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 import com.oracle.truffle.nfi.api.SignatureLibrary;
-import sun.misc.Unsafe;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Level;
+import sun.misc.Unsafe;
 
 /**
  * Espresso native interface implementation based on TruffleNFI, this class is fully functional on
@@ -111,9 +113,12 @@ public class NFINativeAccess implements NativeAccess {
         StringBuilder sb = new StringBuilder(64);
         sb.append('(');
         boolean isFirst = true;
-        for (int i = 0; i < nativeSignature.getParameterCount(); ++i) {
+        for (int i = 0; i < nativeSignature.getParameterCount() + nativeSignature.getVarArgsParameterCount(); ++i) {
             if (!isFirst) {
                 sb.append(',');
+            }
+            if (i == nativeSignature.getParameterCount()) {
+                sb.append("...");
             }
             sb.append(nfiType(nativeSignature.parameterTypeAt(i)));
             isFirst = false;
@@ -156,9 +161,13 @@ public class NFINativeAccess implements NativeAccess {
     @Override
     public @Pointer TruffleObject loadLibrary(Path libraryPath) {
         CompilerAsserts.neverPartOfCompilation();
-        if (!Files.exists(libraryPath)) {
+        if ((libraryPath.isAbsolute() || libraryPath.getNameCount() > 1) && !Files.exists(libraryPath)) {
             return null;
         }
+        return loadLibrary0(libraryPath);
+    }
+
+    protected @Pointer TruffleObject loadLibrary0(Path libraryPath) {
         String nfiSource = String.format("load(RTLD_LAZY|RTLD_LOCAL) '%s'", libraryPath);
         return loadLibraryHelper(nfiSource);
     }
@@ -195,7 +204,7 @@ public class NFINativeAccess implements NativeAccess {
     @Override
     public void unloadLibrary(@Pointer TruffleObject library) {
         // TODO(peterssen): NFI does not support unloading libraries eagerly.
-        getLogger().severe(String.format("JVM_UnloadLibrary: %x was not unloaded!", NativeUtils.interopAsPointer(library)));
+        getLogger().fine(String.format("JVM_UnloadLibrary: %x was not unloaded!", NativeUtils.interopAsPointer(library)));
     }
 
     @Override
@@ -239,7 +248,7 @@ public class NFINativeAccess implements NativeAccess {
 
         @ExplodeLoop
         Object doExecute(Object[] arguments, InteropLibrary delegateInterop) throws ArityException {
-            final int paramCount = nativeSignature.getParameterCount();
+            final int paramCount = nativeSignature.getParameterCount() + nativeSignature.getVarArgsParameterCount();
             CompilerAsserts.partialEvaluationConstant(paramCount);
             if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();
@@ -275,7 +284,10 @@ public class NFINativeAccess implements NativeAccess {
                         break;
                 }
                 return ret;
-            } catch (UnsupportedTypeException | UnsupportedMessageException e) {
+            } catch (UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere("This can be caused by mixing native/ffi symbols with llvm signatures and vice-versa", e);
+            } catch (UnsupportedTypeException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
@@ -313,16 +325,32 @@ public class NFINativeAccess implements NativeAccess {
         if (uncachedInterop.isNull(symbol)) {
             return null; // LD_DEBUG=unused makes non-existing symbols to be NULL.
         }
-        TruffleObject executable = (TruffleObject) uncachedSignature.bind(getOrCreateNFISignature(nativeSignature, true), symbol);
+        TruffleObject executable = (TruffleObject) uncachedSignature.bind(getCallableSignature(nativeSignature, true), symbol);
         assert uncachedInterop.isExecutable(executable);
         return new NativeToJavaWrapper(executable, nativeSignature);
+    }
+
+    @Override
+    @TruffleBoundary
+    public Object getCallableSignature(NativeSignature nativeSignature, boolean fromJava) {
+        return getOrCreateNFISignature(nativeSignature, fromJava);
+    }
+
+    @Override
+    public Object callSignature(Object signature, @Pointer TruffleObject symbol, Object... args) throws UnsupportedMessageException, UnsupportedTypeException, ArityException {
+        return SignatureLibrary.getUncached().call(signature, symbol, args);
+    }
+
+    @Override
+    public SignatureCallNode createSignatureCall(NativeSignature nativeSignature, boolean fromJava) {
+        return NFISignatureCallNode.create(getCallableSignature(nativeSignature, fromJava));
     }
 
     @Override
     public @Pointer TruffleObject createNativeClosure(TruffleObject executable, NativeSignature nativeSignature) {
         assert uncachedInterop.isExecutable(executable);
         TruffleObject wrappedExecutable = new JavaToNativeWrapper(executable, nativeSignature);
-        TruffleObject nativeFn = (TruffleObject) uncachedSignature.createClosure(getOrCreateNFISignature(nativeSignature, false), wrappedExecutable);
+        TruffleObject nativeFn = (TruffleObject) uncachedSignature.createClosure(getCallableSignature(nativeSignature, false), wrappedExecutable);
         assert uncachedInterop.isPointer(nativeFn);
         return nativeFn;
     }
@@ -352,7 +380,7 @@ public class NFINativeAccess implements NativeAccess {
 
         @ExplodeLoop
         Object doExecute(Object[] arguments, InteropLibrary delegateInterop) throws ArityException {
-            final int paramCount = nativeSignature.getParameterCount();
+            final int paramCount = nativeSignature.getParameterCount() + nativeSignature.getVarArgsParameterCount();
             CompilerAsserts.partialEvaluationConstant(paramCount);
             if (arguments.length != paramCount) {
                 CompilerDirectives.transferToInterpreter();

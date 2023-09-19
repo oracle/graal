@@ -27,9 +27,6 @@ package org.graalvm.compiler.truffle.test.builtins;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.graalvm.compiler.truffle.runtime.GraalTruffleRuntime;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
-
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
@@ -37,12 +34,14 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeVisitor;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedTruffleRuntime;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 import com.oracle.truffle.sl.builtins.SLBuiltinNode;
 
 public abstract class SLGraalRuntimeBuiltin extends SLBuiltinNode {
 
     protected SLGraalRuntimeBuiltin() {
-        if (!(Truffle.getRuntime() instanceof GraalTruffleRuntime)) {
+        if (!(Truffle.getRuntime() instanceof OptimizedTruffleRuntime)) {
             throw new AssertionError("Graal runtime builtins can only be used inside of a Graal runtime.");
         }
     }

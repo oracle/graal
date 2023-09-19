@@ -55,6 +55,7 @@ public final class Constants {
     public static final int ACC_LAMBDA_FORM_COMPILED = 0x00040000;
     public static final int ACC_CALLER_SENSITIVE     = 0x00080000;
     public static final int ACC_HIDDEN               = 0x00100000;
+    public static final int ACC_SCOPED               = 0x00200000;
     public static final int ACC_IS_HIDDEN_CLASS      = 0x04000000;
 
     public static final int FIELD_ID_TYPE            = 0x01000000;

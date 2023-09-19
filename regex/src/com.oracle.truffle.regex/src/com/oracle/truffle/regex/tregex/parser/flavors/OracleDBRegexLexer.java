@@ -356,7 +356,7 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected RegexSyntaxException handleGroupRedefinition(String name, int newId, int oldId) {
+    protected void handleGroupRedefinition(String name, int newId, int oldId) {
         throw CompilerDirectives.shouldNotReachHere();
     }
 

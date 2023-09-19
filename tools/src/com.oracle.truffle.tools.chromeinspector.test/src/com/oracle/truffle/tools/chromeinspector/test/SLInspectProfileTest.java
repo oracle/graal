@@ -28,10 +28,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
+
+import org.graalvm.shadowed.org.json.JSONObject;
 import org.junit.After;
 import org.junit.Test;
-
-import com.oracle.truffle.tools.utils.json.JSONObject;
 
 import org.graalvm.polyglot.Source;
 

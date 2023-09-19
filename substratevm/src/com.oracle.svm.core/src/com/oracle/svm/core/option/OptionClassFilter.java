@@ -24,12 +24,11 @@
  */
 package com.oracle.svm.core.option;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
 
 public class OptionClassFilter {
-    private final Set<OptionOrigin> reasonCommandLine = Collections.singleton(OptionOrigin.commandLineOptionOriginSingleton);
+    private final Set<OptionOrigin> reasonCommandLine = Set.of(OptionOrigin.commandLineAPIOptionOriginSingleton, OptionOrigin.commandLineNonAPIOptionOriginSingleton);
 
     private final Map<String, Set<OptionOrigin>> requireCompletePackageOrClass;
     private final Set<Module> requireCompleteModules;
@@ -52,18 +51,30 @@ public class OptionClassFilter {
         }
 
         if (moduleName != null) {
-            for (Module module : requireCompleteModules) {
-                if (module.getName().equals(moduleName)) {
-                    return module.toString();
-                }
+            String module = isModuleIncluded(moduleName);
+            if (module != null) {
+                return module;
             }
         }
 
-        Set<OptionOrigin> origins = requireCompletePackageOrClass.get(className);
+        Set<OptionOrigin> origins = isPackageOrClassIncluded(className);
         if (origins != null) {
             return origins;
         }
+        return isPackageOrClassIncluded(packageName);
+    }
+
+    public Set<OptionOrigin> isPackageOrClassIncluded(String packageName) {
         return requireCompletePackageOrClass.get(packageName);
+    }
+
+    public String isModuleIncluded(String moduleName) {
+        for (Module module : requireCompleteModules) {
+            if (module.getName().equals(moduleName)) {
+                return module.toString();
+            }
+        }
+        return null;
     }
 
     public void addPackageOrClass(String packageOrClass, Set<OptionOrigin> reason) {

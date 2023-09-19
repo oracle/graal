@@ -119,6 +119,7 @@
         local batch_str = if suite_obj.forks_batches > 1 then "batch"+i else null,
         "job_prefix":: "bench-forks-" + subdir,
         "job_suffix":: batch_str,
+        tags: if std.objectHasAll(suite_obj, "tags") then [tag +"-many-forks" for tag in suite_obj.tags] else [],
         "timelimit": suite_obj.forks_timelimit,
         local base_name = if forks_file_base_name != null then forks_file_base_name else suite_obj.suite,
         "environment" +: {

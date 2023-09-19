@@ -45,7 +45,7 @@ final class ExceptionUnwindFeature implements InternalFeature {
 
         for (SubstrateForeignCallDescriptor descriptor : ExceptionUnwind.FOREIGN_CALLS) {
             access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()),
-                            true);
+                            true, "Exception foreign calls, registered in " + ExceptionUnwindFeature.class);
         }
     }
 

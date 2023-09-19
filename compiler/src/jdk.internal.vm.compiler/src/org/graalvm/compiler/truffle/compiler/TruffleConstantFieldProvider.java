@@ -25,7 +25,8 @@
 package org.graalvm.compiler.truffle.compiler;
 
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.truffle.common.ConstantFieldInfo;
+
+import com.oracle.truffle.compiler.ConstantFieldInfo;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

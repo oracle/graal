@@ -30,7 +30,6 @@ import static com.oracle.truffle.api.strings.TruffleString.Encoding.UTF_8;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.nodes.ReturnNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.PartialEvaluationTest;
 import org.junit.Assert;
 import org.junit.Assume;
@@ -39,6 +38,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class TStringConstantFoldingTest extends PartialEvaluationTest {
 

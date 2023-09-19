@@ -51,25 +51,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class LambdaUtils {
 
-    private static final Pattern LAMBDA_PATTERN;
+    private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda[/.][^/]+;");
     private static final char[] HEX = "0123456789abcdef".toCharArray();
-    public static final String LAMBDA_SPLIT_PATTERN;
-    public static final String LAMBDA_CLASS_NAME_SUBSTRING;
+    public static final String LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda";
+    public static final String LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda";
     public static final String SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING = "$$Lambda";
     public static final String SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN = "\\$\\$Lambda";
-
-    static {
-        if (Runtime.version().feature() < 21) {
-            LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+[/.][^/]+;");
-            LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda\\$";
-            LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda$";
-        } else {
-            // JDK-8292914
-            LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda[/.][^/]+;");
-            LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda";
-            LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda";
-        }
-    }
 
     private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
@@ -175,5 +162,9 @@ public final class LambdaUtils {
         } catch (NoSuchAlgorithmException ex) {
             throw new JVMCIError(ex);
         }
+    }
+
+    public static String capturingClass(String className) {
+        return className.split(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN)[0];
     }
 }

@@ -64,6 +64,7 @@ import org.graalvm.polyglot.proxy.ProxyObject;
 import org.junit.After;
 import org.junit.Assume;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -109,6 +110,11 @@ public class ContextPolicyTest {
     static List<TruffleLanguage<?>> contextCreate = new ArrayList<>();
     static List<TruffleLanguage<?>> contextDispose = new ArrayList<>();
     static List<TruffleLanguage<?>> parseRequest = new ArrayList<>();
+
+    @BeforeClass
+    public static void beforeClass() {
+        TruffleTestAssumptions.assumeNoClassLoaderEncapsulation();
+    }
 
     @After
     @Before
@@ -777,6 +783,8 @@ public class ContextPolicyTest {
     public void testReferencesWithCodeMixing() {
         // compile immediately is too much for this test.
         Assume.assumeFalse(CompileImmediatelyCheck.isCompileImmediately());
+        // TODO GR-47643 too slow with isolates
+        TruffleTestAssumptions.assumeWeakEncapsulation();
 
         testReferenceMixing(EXCLUSIVE0, EXCLUSIVE1);
         testReferenceMixing(EXCLUSIVE0, SHARED1);

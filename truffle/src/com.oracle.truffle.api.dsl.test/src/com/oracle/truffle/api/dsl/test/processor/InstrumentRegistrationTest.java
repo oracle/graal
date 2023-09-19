@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.api.dsl.test.processor;
 
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.dsl.test.ExpectError;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.test.polyglot.ProxyInstrument;
+import com.oracle.truffle.api.dsl.test.processor.LanguageRegistrationTest.ProxyInternalResource;
 
 public class InstrumentRegistrationTest {
 
@@ -63,6 +65,147 @@ public class InstrumentRegistrationTest {
     @Registration(id = "MyInstrumentGoodWithServices", name = "MyInstrumentGoodWithServices", services = Service1.class)
     public static final class MyInstrumentGoodWithServices extends ProxyInstrument {
 
+    }
+
+    @Registration(id = "instrumentresource1", name = "instrumentresource11", internalResources = {
+                    InternalResourceRegistration1.Resource1.class,
+                    InternalResourceRegistration1.Resource2.class
+    })
+    public static class InternalResourceRegistration1 extends ProxyInstrument {
+        @InternalResource.Id("test-resource-1")
+        public static class Resource1 extends ProxyInternalResource {
+        }
+
+        @InternalResource.Id("test-resource-2")
+        public static class Resource2 extends ProxyInternalResource {
+        }
+    }
+
+    @ExpectError("The class InstrumentRegistrationTest.InternalResourceRegistration2.Resource must be a static inner-class or a top-level class. " +
+                    "To resolve this, make the Resource static or top-level class.")
+    @Registration(id = "instrumentresource1", name = "instrumentresource1", internalResources = {InternalResourceRegistration2.Resource.class})
+    public static class InternalResourceRegistration2 extends ProxyInstrument {
+        @InternalResource.Id("test-resource")
+        public abstract class Resource extends ProxyInternalResource {
+        }
+    }
+
+    @ExpectError("The class InstrumentRegistrationTest.InternalResourceRegistration3.Resource must have a no argument public constructor. " +
+                    "To resolve this, add public Resource() constructor.")
+    @Registration(id = "instrumentresource3", name = "instrumentresource3", internalResources = {InternalResourceRegistration3.Resource.class})
+    public static class InternalResourceRegistration3 extends ProxyInstrument {
+        @InternalResource.Id("test-resource")
+        public static class Resource extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            Resource(long unused) {
+            }
+
+            @SuppressWarnings("unused")
+            private Resource() {
+            }
+        }
+    }
+
+    @ExpectError("The class InstrumentRegistrationTest.InternalResourceRegistration4.Resource must be public or package protected " +
+                    "in the com.oracle.truffle.api.dsl.test.processor package. To resolve this, make the " +
+                    "InstrumentRegistrationTest.InternalResourceRegistration4.Resource public or move it to the " +
+                    "com.oracle.truffle.api.dsl.test.processor package.")
+    @Registration(id = "instrumentresource4", name = "instrumentresource4", internalResources = {InternalResourceRegistration4.Resource.class})
+    public static class InternalResourceRegistration4 extends ProxyInstrument {
+        @InternalResource.Id("test-resource")
+        private static class Resource extends ProxyInternalResource {
+            @SuppressWarnings("unused")
+            Resource() {
+            }
+        }
+    }
+
+    @Registration(id = "instrumentresource5", name = "instrumentresource5", internalResources = {InternalResourceRegistration5.Resource.class})
+    public static class InternalResourceRegistration5 extends ProxyInstrument {
+        @InternalResource.Id("test-resource")
+        public static class Resource extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            Resource(long unused) {
+            }
+
+            Resource() {
+            }
+        }
+    }
+
+    @ExpectError("The class InstrumentRegistrationTest.InternalResourceRegistration6.Resource must be annotated by the @Id annotation. " +
+                    "To resolve this, add '@Id(\"resource-id\")' annotation.")
+    @Registration(id = "instrumentresource6", name = "instrumentresource6", internalResources = {InternalResourceRegistration6.Resource.class})
+    public static class InternalResourceRegistration6 extends ProxyInstrument {
+
+        public static class Resource extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource() {
+            }
+        }
+    }
+
+    @ExpectError("Internal resources must have unique ids within the component. " +
+                    "But InstrumentRegistrationTest.InternalResourceRegistration7.Resource1 and InstrumentRegistrationTest.InternalResourceRegistration7.Resource2 use the same id duplicated-id. " +
+                    "To resolve this, change the @Id value on InstrumentRegistrationTest.InternalResourceRegistration7.Resource1 or InstrumentRegistrationTest.InternalResourceRegistration7.Resource2.")
+    @Registration(id = "instrumentresource7", name = "instrumentresource7", internalResources = {InternalResourceRegistration7.Resource1.class, InternalResourceRegistration7.Resource2.class})
+    public static class InternalResourceRegistration7 extends ProxyInstrument {
+
+        @InternalResource.Id("duplicated-id")
+        public static class Resource1 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource1() {
+            }
+        }
+
+        @InternalResource.Id("duplicated-id")
+        public static class Resource2 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource2() {
+            }
+        }
+    }
+
+    @ExpectError("The '@Id.componentId' for an required internal resources must be unset or equal to '@Registration.id'. " +
+                    "To resolve this, remove the '@Id.componentId = \"other-instrument\"'.")
+    @Registration(id = "instrumentresource8", name = "instrumentresource8", internalResources = {InternalResourceRegistration8.Resource1.class})
+    public static class InternalResourceRegistration8 extends ProxyInstrument {
+
+        @InternalResource.Id(value = "resource-id", componentId = "other-instrument")
+        public static class Resource1 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource1() {
+            }
+        }
+    }
+
+    @ExpectError("Optional internal resources must not be registered using '@Registration' annotation. To resolve this, " +
+                    "remove the 'InstrumentRegistrationTest.InternalResourceRegistration9.Resource1' from 'internalResources' the or " +
+                    "make the 'InstrumentRegistrationTest.InternalResourceRegistration9.Resource1' non-optional by removing 'optional = true'.")
+    @Registration(id = "instrumentresource9", name = "instrumentresource9", internalResources = {InternalResourceRegistration9.Resource1.class})
+    public static class InternalResourceRegistration9 extends ProxyInstrument {
+
+        @InternalResource.Id(value = "resource-id", componentId = "instrumentresource9", optional = true)
+        public static class Resource1 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource1() {
+            }
+        }
     }
 
     interface Service1 {

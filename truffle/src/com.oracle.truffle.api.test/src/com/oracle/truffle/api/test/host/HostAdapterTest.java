@@ -69,12 +69,15 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.test.polyglot.AbstractPolyglotTest;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
 import com.oracle.truffle.tck.tests.TruffleTestAssumptions;
 
 @RunWith(Parameterized.class)
 public class HostAdapterTest extends AbstractPolyglotTest {
+
+    private static final InteropLibrary INTEROP = InteropLibrary.getFactory().getUncached();
 
     public enum Using {
         HostSymbol,

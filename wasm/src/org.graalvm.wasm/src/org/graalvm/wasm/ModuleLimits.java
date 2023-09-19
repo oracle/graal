@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,8 @@ public final class ModuleLimits {
     private final int typeCountLimit;
     private final int functionCountLimit;
     private final int tableCountLimit;
+    private final int memoryCountLimit;
+    private final int multiMemoryCountLimit;
     private final int importCountLimit;
     private final int exportCountLimit;
     private final int globalCountLimit;
@@ -70,13 +72,16 @@ public final class ModuleLimits {
     private final int memoryInstanceSizeLimit;
     private final long memory64InstanceSizeLimit;
 
-    public ModuleLimits(int moduleSizeLimit, int typeCountLimit, int functionCountLimit, int tableCountLimit, int importCountLimit, int exportCountLimit, int globalCountLimit,
+    public ModuleLimits(int moduleSizeLimit, int typeCountLimit, int functionCountLimit, int tableCountLimit, int memoryCountLimit, int multiMemoryCountLimit, int importCountLimit,
+                    int exportCountLimit, int globalCountLimit,
                     int dataSegmentCountLimit, int elementSegmentCountLimit, int functionSizeLimit, int paramCountLimit, int resultCountLimit, int multiValueResultCountLimit, int localCountLimit,
                     int tableInstanceSizeLimit, int memoryInstanceSizeLimit, long memory64InstanceSizeLimit) {
         this.moduleSizeLimit = minUnsigned(moduleSizeLimit, Integer.MAX_VALUE);
         this.typeCountLimit = minUnsigned(typeCountLimit, Integer.MAX_VALUE);
         this.functionCountLimit = minUnsigned(functionCountLimit, Integer.MAX_VALUE);
         this.tableCountLimit = minUnsigned(tableCountLimit, Integer.MAX_VALUE);
+        this.memoryCountLimit = minUnsigned(memoryCountLimit, Integer.MAX_VALUE);
+        this.multiMemoryCountLimit = minUnsigned(multiMemoryCountLimit, Integer.MAX_VALUE);
         this.importCountLimit = minUnsigned(importCountLimit, Integer.MAX_VALUE);
         this.exportCountLimit = minUnsigned(exportCountLimit, Integer.MAX_VALUE);
         this.globalCountLimit = minUnsigned(globalCountLimit, Integer.MAX_VALUE);
@@ -115,6 +120,8 @@ public final class ModuleLimits {
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
                     Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
+                    Integer.MAX_VALUE,
                     MAX_TABLE_INSTANCE_SIZE,
                     MAX_MEMORY_INSTANCE_SIZE,
                     MAX_MEMORY_64_INSTANCE_SIZE);
@@ -133,6 +140,14 @@ public final class ModuleLimits {
 
     public void checkTableCount(int count) {
         assertUnsignedIntLessOrEqual(count, tableCountLimit, Failure.TABLE_COUNT_LIMIT_EXCEEDED);
+    }
+
+    public void checkMemoryCount(int count, boolean multiMemory) {
+        if (multiMemory) {
+            assertUnsignedIntLessOrEqual(count, multiMemoryCountLimit, Failure.MEMORY_COUNT_LIMIT_EXCEEDED);
+        } else {
+            assertUnsignedIntLessOrEqual(count, memoryCountLimit, Failure.MEMORY_COUNT_LIMIT_EXCEEDED);
+        }
     }
 
     public void checkImportCount(int count) {

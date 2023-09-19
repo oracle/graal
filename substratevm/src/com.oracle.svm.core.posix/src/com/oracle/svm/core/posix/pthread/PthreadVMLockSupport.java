@@ -26,27 +26,23 @@ package com.oracle.svm.core.posix.pthread;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.c.struct.SizeOf;
-import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.config.ObjectLayout;
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
+import com.oracle.svm.core.c.CIsolateData;
+import com.oracle.svm.core.c.CIsolateDataFactory;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.stackvalue.UnsafeStackValue;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
+
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.locks.ClassInstanceReplacer;
@@ -62,7 +58,8 @@ import com.oracle.svm.core.posix.headers.Time;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 
-import jdk.vm.ci.meta.JavaKind;
+import java.util.Arrays;
+import java.util.Comparator;
 
 /**
  * Support of {@link VMMutex} and {@link VMCondition} in multi-threaded environments. Locking is
@@ -81,7 +78,7 @@ final class PthreadVMLockFeature implements InternalFeature {
     private final ClassInstanceReplacer<VMCondition, VMCondition> conditionReplacer = new ClassInstanceReplacer<>(VMCondition.class) {
         @Override
         protected VMCondition createReplacement(VMCondition source) {
-            return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()));
+            return new PthreadVMCondition((PthreadVMMutex) mutexReplacer.apply(source.getMutex()), source.getConditionName());
         }
     };
 
@@ -100,67 +97,25 @@ final class PthreadVMLockFeature implements InternalFeature {
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        final int wordSize = ConfigurationValues.getTarget().wordSize;
-
-        // `alignment` should actually be: `max(alignof(pthread_mutex_t), alignof(pthread_cond_t))`.
-        //
-        // Until `alignof()` can be queried from the C compiler, we hard-code this alignment to:
-        // - One word on 64-bit architectures.
-        // - Two words on 32-bit architectures.
-        //
-        // This split is arbitrary. Actual alignment requirements depend on the architecture,
-        // the Pthread library implementation, and the C compiler.
-        // These hard-coded values will need to be adjusted to higher values if we find out
-        // that `pthread_mutex_t` or `pthread_cond_t` have higher alignment requirements on some
-        // particular architecture.
-        assert wordSize == 8 || wordSize == 4 : "Unsupported architecture bit width";
-        final int alignment = (wordSize == 8) ? wordSize : (2 * wordSize);
-
-        ObjectLayout layout = ConfigurationValues.getObjectLayout();
-        final int baseOffset = layout.getArrayBaseOffset(JavaKind.Byte);
-
-        // Align the first element to word boundary.
-        int nextIndex = NumUtil.roundUp(baseOffset, alignment) - baseOffset;
-
         PthreadVMMutex[] mutexes = mutexReplacer.getReplacements().toArray(new PthreadVMMutex[0]);
-        int mutexSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_mutex_t.class), alignment);
-        for (PthreadVMMutex mutex : mutexes) {
-            long offset = layout.getArrayElementOffset(JavaKind.Byte, nextIndex);
-            assert offset % alignment == 0;
-            mutex.structOffset = WordFactory.unsigned(offset);
-            nextIndex += mutexSize;
-        }
-
         PthreadVMCondition[] conditions = conditionReplacer.getReplacements().toArray(new PthreadVMCondition[0]);
-        int conditionSize = NumUtil.roundUp(SizeOf.get(Pthread.pthread_cond_t.class), alignment);
-        for (PthreadVMCondition condition : conditions) {
-            long offset = layout.getArrayElementOffset(JavaKind.Byte, nextIndex);
-            assert offset % alignment == 0;
-            condition.structOffset = WordFactory.unsigned(offset);
-            nextIndex += conditionSize;
-        }
+        Arrays.sort(mutexes, Comparator.comparing(PthreadVMMutex::getName));
+        Arrays.sort(conditions, Comparator.comparing(c -> c.getMutex().getName()));
 
         PthreadVMLockSupport lockSupport = PthreadVMLockSupport.singleton();
         lockSupport.mutexes = mutexes;
         lockSupport.conditions = conditions;
-        lockSupport.pthreadStructs = new byte[nextIndex];
     }
 }
 
 public final class PthreadVMLockSupport extends VMLockSupport {
     /** All mutexes, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(availability = ReadyForCompilation.class) PthreadVMMutex[] mutexes;
+    @UnknownObjectField(availability = ReadyForCompilation.class) //
+    PthreadVMMutex[] mutexes;
 
     /** All conditions, so that we can initialize them at run time when the VM starts. */
-    @UnknownObjectField(availability = ReadyForCompilation.class) PthreadVMCondition[] conditions;
-
-    /**
-     * Raw memory for the pthread lock structures. Since we know that native image objects are never
-     * moved, we can safely hand out pointers into the middle of this array to C code. The offset
-     * into this array is stored in {@link PthreadVMMutex#structOffset} and
-     * {@link PthreadVMCondition#structOffset}.
-     */
-    @UnknownObjectField(availability = ReadyForCompilation.class) byte[] pthreadStructs;
+    @UnknownObjectField(availability = ReadyForCompilation.class) //
+    PthreadVMCondition[] conditions;
 
     @Fold
     public static PthreadVMLockSupport singleton() {
@@ -227,17 +182,17 @@ public final class PthreadVMLockSupport extends VMLockSupport {
 
 final class PthreadVMMutex extends VMMutex {
 
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    UnsignedWord structOffset;
+    private final CIsolateData<Pthread.pthread_mutex_t> structPointer;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     PthreadVMMutex(String name) {
         super(name);
+        structPointer = CIsolateDataFactory.createStruct("pthreadMutex_" + name, Pthread.pthread_mutex_t.class);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Pthread.pthread_mutex_t getStructPointer() {
-        return (Pthread.pthread_mutex_t) Word.objectToUntrackedPointer(PthreadVMLockSupport.singleton().pthreadStructs).add(structOffset);
+        return structPointer.get();
     }
 
     @Override
@@ -280,17 +235,16 @@ final class PthreadVMMutex extends VMMutex {
 
 final class PthreadVMCondition extends VMCondition {
 
-    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
-    UnsignedWord structOffset;
+    private final CIsolateData<Pthread.pthread_cond_t> structPointer;
 
-    @Platforms(Platform.HOSTED_ONLY.class)
-    PthreadVMCondition(PthreadVMMutex mutex) {
-        super(mutex);
+    PthreadVMCondition(PthreadVMMutex mutex, String name) {
+        super(mutex, name);
+        structPointer = CIsolateDataFactory.createStruct("pthreadCondition_" + getName(), Pthread.pthread_cond_t.class);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     Pthread.pthread_cond_t getStructPointer() {
-        return (Pthread.pthread_cond_t) Word.objectToUntrackedPointer(PthreadVMLockSupport.singleton().pthreadStructs).add(structOffset);
+        return structPointer.get();
     }
 
     @Override

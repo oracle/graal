@@ -2499,6 +2499,25 @@ public final class JDWP {
                 return new CommandResult(reply);
             }
         }
+
+        static class IS_VIRTUAL {
+            public static final int ID = 15;
+
+            static CommandResult createReply(Packet packet, DebuggerController controller) {
+                PacketStream input = new PacketStream(packet);
+                PacketStream reply = new PacketStream().replyPacket().id(packet.id);
+
+                long threadId = input.readLong();
+                Object thread = verifyThread(threadId, reply, controller.getContext(), false);
+
+                if (thread == null) {
+                    return new CommandResult(reply);
+                }
+
+                reply.writeBoolean(controller.getContext().isVirtualThread(thread));
+                return new CommandResult(reply);
+            }
+        }
     }
 
     static class ThreadGroupReference {

@@ -31,6 +31,7 @@ import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 
 import org.graalvm.polyglot.Source;
+import org.graalvm.shadowed.org.json.JSONObject;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CallTarget;
@@ -46,7 +47,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.test.polyglot.ProxyLanguage;
-import com.oracle.truffle.tools.utils.json.JSONObject;
 
 public class ProfilerTest {
 

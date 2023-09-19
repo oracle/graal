@@ -58,7 +58,8 @@ import com.oracle.svm.core.fieldvaluetransformer.NewEmptyArrayFieldValueTransfor
  */
 @TargetClass(className = "java.lang.invoke.BoundMethodHandle")
 final class Target_java_lang_invoke_BoundMethodHandle {
-    @Alias static Target_java_lang_invoke_BoundMethodHandle_Specializer SPECIALIZER;
+    @Alias @RecomputeFieldValue(isFinal = true, kind = RecomputeFieldValue.Kind.None) //
+    static Target_java_lang_invoke_BoundMethodHandle_Specializer SPECIALIZER;
 
     @Alias
     @TargetElement(name = CONSTRUCTOR_NAME)
@@ -139,7 +140,7 @@ final class Target_java_lang_invoke_BoundMethodHandle_Species_L {
 
 @TargetClass(className = "java.lang.invoke.BoundMethodHandle", innerClass = "SpeciesData")
 final class Target_java_lang_invoke_BoundMethodHandle_SpeciesData {
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class) //
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = NewEmptyArrayFieldValueTransformer.class, isFinal = true) //
     private Target_java_lang_invoke_BoundMethodHandle_SpeciesData[] extensions;
 }
 
@@ -151,7 +152,8 @@ final class BoundMethodHandleUtils {
     /* Bound method handle constructor */
     static Target_java_lang_invoke_BoundMethodHandle make(MethodType type, Target_java_lang_invoke_LambdaForm form, String species, Object... args) {
         Target_java_lang_invoke_SimpleMethodHandle bmh = new Target_java_lang_invoke_SimpleMethodHandle(type, form);
-        bmh.speciesData = SubstrateUtil.cast(Target_java_lang_invoke_BoundMethodHandle.SPECIALIZER, Target_java_lang_invoke_ClassSpecializer.class).findSpecies(species);
+        var specializer = SubstrateUtil.cast(Target_java_lang_invoke_BoundMethodHandle.SPECIALIZER, Target_java_lang_invoke_ClassSpecializer.class);
+        bmh.speciesData = SubstrateUtil.cast(specializer.findSpecies(species), Target_java_lang_invoke_BoundMethodHandle_SpeciesData.class);
         bmh.args = (args != null) ? Arrays.copyOf(args, args.length) : new Object[0];
         return SubstrateUtil.cast(bmh, Target_java_lang_invoke_BoundMethodHandle.class);
     }
@@ -167,6 +169,6 @@ final class BoundMethodHandleUtils {
     }
 
     static String speciesKey(Target_java_lang_invoke_SimpleMethodHandle bmh) {
-        return SubstrateUtil.cast(bmh.speciesData(), Target_java_lang_invoke_ClassSpecializer_SpeciesData.class).key();
+        return (String) SubstrateUtil.cast(bmh.speciesData(), Target_java_lang_invoke_ClassSpecializer_SpeciesData.class).key();
     }
 }

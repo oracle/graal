@@ -3,7 +3,9 @@ layout: docs
 toc_group: security-guide
 link_title: Polyglot Sandboxing
 permalink: /security-guide/polyglot-sandbox/
+redirect_from: /reference-manual/embed-languages/sandbox-resource-limits/
 ---
+
 # Polyglot Sandboxing
 
 GraalVM allows a host application written in a JVM-based language to execute guest code written in Javascript via the [Polyglot Embedding API](../reference-manual/embedding/embed-languages.md).
@@ -97,6 +99,21 @@ try (Context context = Context.newBuilder("js")
     context.eval("js", "print('Hello JavaScript!');");
 }
 ```
+
+Since Polyglot version 23.1, the isolated and untrusted policy also requires isolated images of the languages to be specified on the class or module path.
+Isolated versions of the languages can be downloaded from Maven using the following dependency:
+
+```xml
+<dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>js-isolate</artifactId>
+    <version>${graalvm.version}</version>
+    <type>pom</type>
+</dependency>
+```
+
+The [embedding guide](../reference-manual/embed-languages/#polyglot-isolates) contains more details on using polyglot isolate dependencies.
+
 
 ### Untrusted Policy
 

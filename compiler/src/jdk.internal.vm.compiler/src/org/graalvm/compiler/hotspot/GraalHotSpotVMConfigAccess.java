@@ -131,6 +131,8 @@ public class GraalHotSpotVMConfigAccess {
     protected static final Version JVMCI_23_1_b04 = new Version(23, 1, 4);
     protected static final Version JVMCI_23_1_b07 = new Version(23, 1, 7);
 
+    protected static final Version JVMCI_23_1_b13 = new Version(23, 1, 13);
+
     public static boolean jvmciGE(Version v) {
         return JVMCI && !JVMCI_VERSION.isLessThan(v);
     }

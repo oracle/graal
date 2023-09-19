@@ -33,7 +33,6 @@ import java.io.InputStream;
 import java.lang.module.ModuleReader;
 import java.lang.module.ModuleReference;
 import java.lang.module.ResolvedModule;
-import java.net.URLClassLoader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
@@ -67,21 +66,13 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
     private final NativeImageClassLoaderSupport classLoaderSupport;
 
-    private final ClassLoader imageClassLoader;
-    private final URLClassLoader classPathClassLoader;
+    private final NativeImageClassLoader imageClassLoader;
 
     private final Map<String, Set<Module>> packageToModules;
 
     public ClassLoaderSupportImpl(NativeImageClassLoaderSupport classLoaderSupport) {
         this.classLoaderSupport = classLoaderSupport;
         imageClassLoader = classLoaderSupport.getClassLoader();
-        /*
-         * Only if imageClassLoader is not the URLClassLoader we need to also remember its parent as
-         * classPathClassLoader (for use in isNativeImageClassLoaderImpl). Otherwise, there is only
-         * the URLClassLoader (already stored in imageClassLoader, extra classPathClassLoader field
-         * can be set to null).
-         */
-        classPathClassLoader = imageClassLoader instanceof URLClassLoader ? null : (URLClassLoader) imageClassLoader.getParent();
         packageToModules = new HashMap<>();
         buildPackageToModulesMap(classLoaderSupport);
     }
@@ -89,9 +80,6 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     @Override
     protected boolean isNativeImageClassLoaderImpl(ClassLoader loader) {
         if (loader == imageClassLoader) {
-            return true;
-        }
-        if (classPathClassLoader != null && loader == classPathClassLoader) {
             return true;
         }
         if (loader instanceof NativeImageSystemClassLoader) {
@@ -142,12 +130,20 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                             .collect(Collectors.toList());
 
             for (String resName : foundResources) {
+                if (resName.endsWith("/")) {
+                    resourceCollector.addDirectoryResource(info.module, resName, "", false);
+                    continue;
+                }
                 Optional<InputStream> content = moduleReader.open(resName);
                 if (content.isEmpty()) {
+                    /* This is to be resilient, but the resources returned by list() should exist */
+                    resourceCollector.registerNegativeQuery(info.module, resName);
                     continue;
                 }
                 try (InputStream is = content.get()) {
                     resourceCollector.addResource(info.module, resName, is, false);
+                } catch (IOException resourceException) {
+                    resourceCollector.registerIOException(info.module, resName, resourceException, LinkAtBuildTimeSupport.singleton().moduleLinkAtBuildTime(info.module.getName()));
                 }
             }
         } catch (IOException e) {
@@ -155,7 +151,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector) throws IOException {
+    private static void scanDirectory(Path root, ResourceCollector collector) {
         Map<String, List<String>> matchedDirectoryResources = new HashMap<>();
         Set<String> allEntries = new HashSet<>();
 
@@ -183,11 +179,15 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                         filtered = filtered.filter(Predicate.not(ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES::contains));
                     }
                     filtered.forEach(queue::push);
+                } catch (IOException resourceException) {
+                    collector.registerIOException(null, relativeFilePath, resourceException, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(relativeFilePath));
                 }
             } else {
                 if (collector.isIncluded(null, relativeFilePath, Path.of(relativeFilePath).toUri())) {
                     try (InputStream is = Files.newInputStream(entry)) {
                         collector.addResource(null, relativeFilePath, is, false);
+                    } catch (IOException resourceException) {
+                        collector.registerIOException(null, relativeFilePath, resourceException, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(relativeFilePath));
                     }
                 }
             }
@@ -199,6 +199,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             List<String> dirContent = matchedDirectoryResources.get(key);
             if (dirContent != null && !dirContent.contains(entry)) {
                 dirContent.add(entry.substring(last + 1));
+            } else if (dirContent == null) {
+                collector.registerNegativeQuery(null, key);
             }
         }
 
@@ -223,6 +225,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     if (collector.isIncluded(null, entry.getName(), jarPath.toUri())) {
                         try (InputStream is = jf.getInputStream(entry)) {
                             collector.addResource(null, entry.getName(), is, true);
+                        } catch (IOException resourceException) {
+                            collector.registerIOException(null, entry.getName(), resourceException, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(entry.getName()));
                         }
                     }
                 }

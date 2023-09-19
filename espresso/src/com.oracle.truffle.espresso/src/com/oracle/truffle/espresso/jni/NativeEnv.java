@@ -46,6 +46,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.espresso.EspressoLanguage;
+import com.oracle.truffle.espresso.ffi.Callback;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.ffi.Pointer;
@@ -113,7 +114,7 @@ public abstract class NativeEnv extends ContextAccessImpl {
         return uncached;
     }
 
-    protected final TruffleLogger getLogger() {
+    public final TruffleLogger getLogger() {
         return logger;
     }
 

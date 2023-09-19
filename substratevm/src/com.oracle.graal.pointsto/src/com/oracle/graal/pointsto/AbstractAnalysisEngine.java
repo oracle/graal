@@ -74,7 +74,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected final AnalysisUniverse universe;
     protected final AnalysisMetaAccess metaAccess;
     protected final AnalysisPolicy analysisPolicy;
-    private final HeapScanningPolicy heapScanningPolicy;
 
     protected final Boolean extendedAsserts;
     protected final int maxConstantObjectsPerType;
@@ -124,11 +123,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         maxConstantObjectsPerType = PointstoOptions.MaxConstantObjectsPerType.getValue(options);
         profileConstantObjects = PointstoOptions.ProfileConstantObjects.getValue(options);
         optimizeReturnedParameter = PointstoOptions.OptimizeReturnedParameter.getValue(options);
-
-        this.heapScanningPolicy = PointstoOptions.ExhaustiveHeapScan.getValue(options)
-                        ? HeapScanningPolicy.scanAll()
-                        : HeapScanningPolicy.skipTypes(skippedHeapTypes());
-
         this.snippetReflectionProvider = snippetReflectionProvider;
         this.constantReflectionProvider = constantReflectionProvider;
         this.wordTypes = wordTypes;
@@ -204,10 +198,23 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     protected abstract CompletionExecutor.Timing getTiming();
 
     @SuppressWarnings("try")
-    private boolean analysisModified() throws InterruptedException {
+    private boolean analysisModified() {
         boolean analysisModified;
         try (Timer.StopTimer ignored = verifyHeapTimer.start()) {
-            analysisModified = universe.getHeapVerifier().requireAnalysisIteration(executor);
+            /*
+             * After the analysis reaches a stable state check if the shadow heap contains all
+             * objects reachable from roots. If this leads to analysis state changes, an additional
+             * analysis iteration will be run.
+             * 
+             * We reuse the analysis executor, which at this point should be in before-start state:
+             * the analysis finished and it re-initialized the executor for the next iteration. The
+             * verifier controls the life cycle of the executor: it starts it and then waits until
+             * all operations are completed. The same executor is implicitly used by the shadow heap
+             * scanner and the verifier also passes it to the root scanner, so when
+             * checkHeapSnapshot returns all heap scanning and verification tasks are completed.
+             */
+            assert executor.isBeforeStart();
+            analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "during analysis", true);
         }
         /* Initialize for the next iteration. */
         executor.init(getTiming());
@@ -231,11 +238,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         StatisticsPrinter.print(out, "total_analysis_time_ms", analysisTimer.getTotalTime());
 
         StatisticsPrinter.printLast(out, "total_memory_bytes", analysisTimer.getTotalMemory());
-    }
-
-    @Override
-    public AnalysisType[] skippedHeapTypes() {
-        return new AnalysisType[]{metaAccess.lookupJavaType(String.class)};
     }
 
     @Override
@@ -319,11 +321,6 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     }
 
     @Override
-    public HeapScanningPolicy scanningPolicy() {
-        return heapScanningPolicy;
-    }
-
-    @Override
     public HostVM getHostVM() {
         return hostVM;
     }
@@ -335,6 +332,21 @@ public abstract class AbstractAnalysisEngine implements BigBang {
     @Override
     public final void postTask(CompletionExecutor.DebugContextRunnable task) {
         executor.execute(task);
+    }
+
+    public void postTask(final Runnable task) {
+        executor.execute(new CompletionExecutor.DebugContextRunnable() {
+            @Override
+            public void run(DebugContext ignore) {
+                task.run();
+            }
+
+            @Override
+            public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
+                assert opts == getOptions();
+                return DebugContext.disabled(opts);
+            }
+        });
     }
 
     @Override

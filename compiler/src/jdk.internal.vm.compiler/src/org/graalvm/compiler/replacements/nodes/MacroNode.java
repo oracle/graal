@@ -28,6 +28,7 @@ import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
@@ -73,6 +74,24 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     protected final StampPair returnStamp;
 
     /**
+     * The original target method for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
+    protected ResolvedJavaMethod originalTargetMethod;
+
+    /**
+     * The original return stamp for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
+    protected StampPair originalReturnStamp;
+
+    /**
+     * The original arguments for a MethodHandle invoke call site. See
+     * {@link ResolvedMethodHandleCallTargetNode}.
+     */
+    @Input NodeInputList<ValueNode> originalArguments;
+
+    /**
      * Encapsulates the parameters for constructing a {@link MacroNode} that are the same for all
      * leaf constructor call sites. Collecting the parameters in an object simplifies passing the
      * parameters through the many chained constructor calls.
@@ -103,6 +122,10 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
             return new MacroParams(b.getInvokeKind(), b.getMethod(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), arguments);
         }
 
+        public static MacroParams of(GraphBuilderContext b, ResolvedJavaMethod targetMethod, StampPair returnStamp, ValueNode... arguments) {
+            return new MacroParams(b.getInvokeKind(), b.getMethod(), targetMethod, b.bci(), returnStamp, arguments);
+        }
+
         public static MacroParams of(GraphBuilderContext b, InvokeKind invokeKind, ResolvedJavaMethod targetMethod, ValueNode... arguments) {
             return new MacroParams(invokeKind, b.getMethod(), targetMethod, b.bci(), b.getInvokeReturnStamp(b.getAssumptions()), arguments);
         }
@@ -117,8 +140,12 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         }
     }
 
-    @SuppressWarnings("this-escape")
     protected MacroNode(NodeClass<? extends MacroNode> c, MacroParams p) {
+        this(c, p, null);
+    }
+
+    @SuppressWarnings("this-escape")
+    protected MacroNode(NodeClass<? extends MacroNode> c, MacroParams p, FrameState stateAfter) {
         super(c, p.returnStamp != null ? p.returnStamp.getTrustedStamp() : null);
         this.arguments = new NodeInputList<>(this, p.arguments);
         this.bci = p.bci;
@@ -128,10 +155,19 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         this.invokeKind = p.invokeKind;
         assert !isPlaceholderBci(p.bci);
         assert MacroInvokable.assertArgumentCount(this);
+        this.originalArguments = new NodeInputList<>(this);
+        this.stateAfter = stateAfter;
     }
 
+    /**
+     * This override is final on purpose. Macro nodes are not supposed to change their stamps in
+     * place because the node's stamp must stay in sync with the fallback invoke's return stamp. If
+     * a macro is able to derive a new stamp for itself that is also valid for the fallback invoke,
+     * or if it can prove that it will never need to fall back to an invoke, it should canonicalize
+     * itself to a new copy with a more precise stamp.
+     */
     @Override
-    public boolean inferStamp() {
+    public final boolean inferStamp() {
         verifyStamp();
         return false;
     }
@@ -168,6 +204,26 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
     @Override
     public InvokeKind getInvokeKind() {
         return invokeKind;
+    }
+
+    @Override
+    public StampPair getReturnStamp() {
+        return returnStamp;
+    }
+
+    @Override
+    public NodeInputList<ValueNode> getOriginalArguments() {
+        return originalArguments;
+    }
+
+    @Override
+    public ResolvedJavaMethod getOriginalTargetMethod() {
+        return originalTargetMethod;
+    }
+
+    @Override
+    public StampPair getOriginalReturnStamp() {
+        return originalReturnStamp;
     }
 
     @Override
@@ -224,7 +280,7 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
      * because this would leave the graph in an inconsistent state.
      */
     protected InvokeNode createInvoke(boolean verifyStamp) {
-        MethodCallTargetNode callTarget = graph().add(new MethodCallTargetNode(invokeKind, targetMethod, getArguments().toArray(ValueNode.EMPTY_ARRAY), returnStamp, null));
+        MethodCallTargetNode callTarget = createCallTarget();
         InvokeNode invoke = graph().add(new InvokeNode(callTarget, bci, getLocationIdentity()));
         if (stateAfter() != null) {
             invoke.setStateAfter(stateAfter().duplicate());
@@ -236,5 +292,30 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
             verifyStamp();
         }
         return invoke;
+    }
+
+    @Override
+    public void addMethodHandleInfo(ResolvedMethodHandleCallTargetNode methodHandle) {
+        assert originalArguments.size() == 0 && originalReturnStamp == null & originalTargetMethod == null : this;
+        originalReturnStamp = methodHandle.originalReturnStamp;
+        originalTargetMethod = methodHandle.originalTargetMethod;
+        originalArguments.addAll(methodHandle.originalArguments);
+    }
+
+    /**
+     * Build a new copy of the {@link MacroParams} stored in this node.
+     */
+    public MacroParams copyParams() {
+        return new MacroParams(invokeKind, callerMethod, targetMethod, bci, returnStamp, toArgumentArray());
+    }
+
+    /**
+     * Builds a new copy of this node's macro parameters, but with the return stamp replaced by the
+     * trusted {@code newStamp}.
+     */
+    protected MacroParams copyParamsWithImprovedStamp(ObjectStamp newStamp) {
+        GraalError.guarantee(newStamp.join(returnStamp.getTrustedStamp()).equals(newStamp), "stamp should improve from %s to %s", returnStamp, newStamp);
+        StampPair improvedReturnStamp = StampPair.createSingle(newStamp);
+        return new MacroParams(invokeKind, callerMethod, targetMethod, bci, improvedReturnStamp, toArgumentArray());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,5 +81,14 @@ public class MemoryRegistry {
     public WasmMemory memory(int index) {
         assert index < numMemories;
         return memories[index];
+    }
+
+    public MemoryRegistry duplicate() {
+        final MemoryRegistry other = new MemoryRegistry();
+        for (int i = 0; i < numMemories; i++) {
+            final WasmMemory memory = memory(i).duplicate();
+            other.register(memory);
+        }
+        return other;
     }
 }

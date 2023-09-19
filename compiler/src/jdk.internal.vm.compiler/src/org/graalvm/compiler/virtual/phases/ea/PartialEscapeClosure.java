@@ -132,7 +132,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
         return false;
     }
 
-    private final class CollectVirtualObjectsClosure2 extends VirtualState.NodePositionClosure<Node> {
+    private final class CollectVirtualObjectsClosure2 implements VirtualState.NodePositionClosure<Node> {
         private final EconomicSet<VirtualObjectNode> virtual;
         private final GraphEffectList effects;
         private final BlockT state;
@@ -321,10 +321,10 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
     /**
      * This tries to canonicalize the node based on improved (replaced) inputs.
      */
-    @SuppressWarnings("unchecked")
     private boolean processNodeWithScalarReplacedInputs(ValueNode node, FixedNode insertBefore, BlockT state, GraphEffectList effects) {
         ValueNode canonicalizedValue = node;
         if (node instanceof Canonicalizable.Unary<?>) {
+            @SuppressWarnings("unchecked")
             Canonicalizable.Unary<ValueNode> canonicalizable = (Canonicalizable.Unary<ValueNode>) node;
             ObjectState valueObj = getObjectState(state, canonicalizable.getValue());
             ValueNode valueAlias = valueObj != null ? valueObj.getMaterializedValue() : getScalarAlias(canonicalizable.getValue());
@@ -332,6 +332,7 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 canonicalizedValue = (ValueNode) canonicalizable.canonical(tool, valueAlias);
             }
         } else if (node instanceof Canonicalizable.Binary<?>) {
+            @SuppressWarnings("unchecked")
             Canonicalizable.Binary<ValueNode> canonicalizable = (Canonicalizable.Binary<ValueNode>) node;
             ObjectState xObj = getObjectState(state, canonicalizable.getX());
             ValueNode xAlias = xObj != null ? xObj.getMaterializedValue() : getScalarAlias(canonicalizable.getX());
@@ -655,7 +656,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 ObjectState exitObjState = exitState.getObjectStateOptional(i);
                 if (exitObjState != null) {
                     ObjectState initialObjState = initialState.getObjectStateOptional(i);
-
                     if (exitObjState.isVirtual()) {
                         processVirtualAtLoopExit(exitNode, effects, i, exitObjState, initialObjState, exitState);
                     } else {
@@ -668,7 +668,11 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
 
     private static void processMaterializedAtLoopExit(LoopExitNode exitNode, GraphEffectList effects, EconomicMap<Integer, ProxyNode> proxies, int object, ObjectState exitObjState,
                     ObjectState initialObjState, PartialEscapeBlockState<?> exitState) {
-        if (initialObjState == null || initialObjState.isVirtual()) {
+        // Create a value proxy at the loop exit if either:
+        // a) the object was virtual at the loop beginning or
+        // b) the materialized value of the object is different at the loop exit than it was at the
+        // loop beginning.
+        if (initialObjState == null || initialObjState.isVirtual() || initialObjState.getMaterializedValue() != exitObjState.getMaterializedValue()) {
             ProxyNode proxy = proxies.get(object);
             if (proxy == null) {
                 proxy = new ValueProxyNode(exitObjState.getMaterializedValue(), exitNode);
@@ -678,10 +682,6 @@ public abstract class PartialEscapeClosure<BlockT extends PartialEscapeBlockStat
                 // nothing to do - will be handled in processNode
             }
             exitState.updateMaterializedValue(object, proxy);
-        } else {
-            if (initialObjState.getMaterializedValue() != exitObjState.getMaterializedValue()) {
-                exitNode.getDebug().log("materialized value changes within loop: %s vs. %s at %s", initialObjState.getMaterializedValue(), exitObjState.getMaterializedValue(), exitNode);
-            }
         }
     }
 

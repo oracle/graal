@@ -104,41 +104,73 @@ public final class Truffle {
         return selectedAccess;
     }
 
+    private static TruffleRuntime createRuntime() throws InternalError {
+        String runtimeClassName = System.getProperty("truffle.TruffleRuntime");
+        if (runtimeClassName != null && !runtimeClassName.isEmpty()) {
+            if (runtimeClassName.equals(DefaultTruffleRuntime.class.getName())) {
+                return new DefaultTruffleRuntime("The fallback runtime was explicitly selected using the -Dtruffle.TruffleRuntime option.");
+            }
+            try {
+                ClassLoader cl = Thread.currentThread().getContextClassLoader();
+                Class<?> runtimeClass = Class.forName(runtimeClassName, false, cl);
+                /*
+                 * This path is taken if a truffle runtime class is directly specified. In such case
+                 * we try to export JVMCI to the module of that class.
+                 */
+                maybeExportJVMCITo(runtimeClass);
+                return (TruffleRuntime) runtimeClass.getDeclaredConstructor().newInstance();
+            } catch (Throwable e) {
+                // Fail fast for other errors
+                throw new InternalError(e);
+            }
+        }
+
+        Class<?> lookupClass = Truffle.class;
+        ModuleLayer moduleLayer = lookupClass.getModule().getLayer();
+        TruffleRuntimeAccess access;
+        if (moduleLayer != null) {
+            access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(moduleLayer, TruffleRuntimeAccess.class)));
+        } else {
+            access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class, lookupClass.getClassLoader())));
+        }
+        if (access == null) {
+            access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class)));
+        }
+
+        if (access != null) {
+            exportTo(access.getClass());
+            TruffleRuntime runtime = access.getRuntime();
+            if (runtime != null) {
+                return runtime;
+            }
+        }
+
+        String reason;
+        if (ModuleLayer.boot().findModule("jdk.internal.vm.ci").isPresent()) {
+            reason = "No optimizing Truffle runtime found on the module or class-path.";
+        } else {
+            reason = "JVMCI is required to enable optimizations. Pass -XX:+EnableJVMCI as a virtual machine argument to the java executable to resolve this.";
+        }
+        return new DefaultTruffleRuntime(reason);
+    }
+
+    private static void maybeExportJVMCITo(Class<?> runtimeClass) throws ReflectiveOperationException {
+        Class<?> modulesSupport;
+        try {
+            modulesSupport = Class.forName("com.oracle.truffle.runtime.ModulesSupport");
+        } catch (ClassNotFoundException e) {
+            // we ignore if modules support is not available.
+            // this typically means that the runtime not on the module-path
+            return;
+        }
+        modulesSupport.getMethod("exportJVMCI", Class.class).invoke(null, runtimeClass);
+    }
+
+    @SuppressWarnings("deprecation")
     private static TruffleRuntime initRuntime() {
         return AccessController.doPrivileged(new PrivilegedAction<TruffleRuntime>() {
             public TruffleRuntime run() {
-                String runtimeClassName = System.getProperty("truffle.TruffleRuntime");
-                if (runtimeClassName != null && !runtimeClassName.isEmpty()) {
-                    if (runtimeClassName.equals(DefaultTruffleRuntime.class.getName())) {
-                        return new DefaultTruffleRuntime();
-                    }
-                    try {
-                        ClassLoader cl = Thread.currentThread().getContextClassLoader();
-                        Class<?> runtimeClass = Class.forName(runtimeClassName, false, cl);
-                        return (TruffleRuntime) runtimeClass.getDeclaredConstructor().newInstance();
-                    } catch (Throwable e) {
-                        // Fail fast for other errors
-                        throw new InternalError(e);
-                    }
-                }
-
-                Class<?> lookupClass = Truffle.class;
-                ModuleLayer moduleLayer = lookupClass.getModule().getLayer();
-                TruffleRuntimeAccess access;
-                if (moduleLayer != null) {
-                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(moduleLayer, TruffleRuntimeAccess.class)));
-                } else {
-                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class, lookupClass.getClassLoader())));
-                }
-                if (access == null) {
-                    access = selectTruffleRuntimeAccess(List.of(ServiceLoader.load(TruffleRuntimeAccess.class)));
-                }
-
-                if (access != null) {
-                    exportTo(access.getClass());
-                    return access.getRuntime();
-                }
-                return new DefaultTruffleRuntime();
+                return createRuntime();
             }
         });
     }

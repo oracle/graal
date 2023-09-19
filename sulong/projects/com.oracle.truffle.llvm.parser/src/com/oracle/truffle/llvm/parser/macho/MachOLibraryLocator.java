@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -57,14 +57,14 @@ public final class MachOLibraryLocator extends LibraryLocator {
     private static final String RPATH_PATTERN = "@rpath/";
 
     @Override
-    public TruffleFile locateLibrary(LLVMContext context, String lib, Object reason) {
+    public Object locateLibrary(LLVMContext context, String lib, Object reason) {
         Path libPath = Paths.get(lib);
         if (libPath.isAbsolute()) {
             return DefaultLibraryLocator.locateAbsolute(context, libPath);
         }
-        TruffleFile path = DefaultLibraryLocator.locateGlobal(context, lib);
-        if (path != null) {
-            return path;
+        Object global = DefaultLibraryLocator.locateGlobal(context, lib);
+        if (global != null) {
+            return global;
         }
 
         if (lib.startsWith(RPATH_PATTERN)) {

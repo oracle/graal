@@ -62,6 +62,7 @@ import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.
 import static org.graalvm.compiler.hotspot.replacements.HotSpotReplacementsUtil.registerAsWord;
 import static org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions.ProfileAllocations;
 import static org.graalvm.compiler.hotspot.replacements.HotspotSnippetsOptions.ProfileAllocationsContext;
+import static org.graalvm.compiler.hotspot.stubs.StubUtil.VM_MESSAGE_C;
 import static org.graalvm.compiler.nodes.PiArrayNode.piArrayCastToSnippetReplaceeStamp;
 import static org.graalvm.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.DEOPT_PROBABILITY;
@@ -280,7 +281,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
 
     @Snippet
     protected Object newmultiarray(KlassPointer hub, @ConstantParameter int rank, @VarargsParameter int[] dimensions) {
-        return newMultiArrayImpl(hub.asWord(), rank, dimensions);
+        return piCastToSnippetReplaceeStamp(newMultiArrayImpl(hub.asWord(), rank, dimensions));
     }
 
     @Snippet
@@ -290,7 +291,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         if (!topValue.equal(WordFactory.zero())) {
             Word topValueContents = topValue.readWord(0, MARK_WORD_LOCATION);
             if (topValueContents.equal(WordFactory.zero())) {
-                AssertionSnippets.vmMessageC(AssertionSnippets.ASSERTION_VM_MESSAGE_C, true, cstring("overzeroing of TLAB detected"), 0L, 0L, 0L);
+                AssertionSnippets.vmMessageC(VM_MESSAGE_C, true, cstring("overzeroing of TLAB detected"), 0L, 0L, 0L);
             }
         }
     }

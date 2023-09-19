@@ -110,7 +110,7 @@ public abstract class TVMCI {
 
     private boolean checkCaller() {
         final String packageName = getClass().getPackage().getName();
-        assert packageName.equals("org.graalvm.compiler.truffle.runtime") ||
+        assert packageName.equals("com.oracle.truffle.runtime") ||
                         packageName.equals("org.graalvm.graal.truffle") ||
                         packageName.equals("com.oracle.graal.truffle") ||
                         packageName.equals("com.oracle.truffle.api.impl") : //

@@ -34,6 +34,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.TruffleLogger;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.descriptors.StaticSymbols;
@@ -48,8 +49,7 @@ import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoRootNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.dispatch.EspressoInterop;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * Substitutions/intrinsics for Espresso.
@@ -283,7 +283,7 @@ public final class Substitutions extends ContextAccessImpl {
                 StaticObject givenLoader = method.getDeclaringKlass().getDefiningClassLoader();
                 return "Static substitution for " + method + " does not apply.\n" +
                                 "\tExpected class loader: Boot (null) or platform class loader\n" +
-                                "\tGiven class loader: " + EspressoInterop.toDisplayString(givenLoader, false) + "\n";
+                                "\tGiven class loader: " + InteropLibrary.getUncached().toDisplayString(givenLoader, false) + "\n";
             }
         });
         return null;

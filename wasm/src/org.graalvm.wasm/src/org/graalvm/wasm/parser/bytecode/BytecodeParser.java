@@ -48,7 +48,6 @@ import org.graalvm.wasm.GlobalRegistry;
 import org.graalvm.wasm.Linker;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
-import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.collection.ByteArrayList;
@@ -62,20 +61,19 @@ import org.graalvm.wasm.parser.ir.CallNode;
 import org.graalvm.wasm.parser.ir.CodeEntry;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekI64;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU16;
-import static org.graalvm.wasm.BinaryStreamParser.rawPeekU32;
 import static org.graalvm.wasm.BinaryStreamParser.rawPeekU8;
-import static org.graalvm.wasm.WasmType.I32_TYPE;
 
 /**
  * Allows to parse the runtime bytecode and reset modules.
  */
-public class BytecodeParser {
+public abstract class BytecodeParser {
     /**
      * Reset the state of the globals in a module that had already been parsed and linked.
      */
@@ -88,20 +86,13 @@ public class BytecodeParser {
             final int address = instance.globalAddress(i);
             final long value = module.globalInitialValue(i);
             if (module.globalInitialized(i)) {
-                if (module.globalFunctionOrNull(i)) {
+                if (module.globalIsReference(i)) {
                     globals.storeReference(address, WasmConstant.NULL);
                 } else {
                     globals.storeLong(address, value);
                 }
             } else {
-                if (module.globalFunctionOrNull(i)) {
-                    final int functionIndex = (int) value;
-                    final WasmFunctionInstance function = instance.functionInstance(functionIndex);
-                    globals.storeReference(address, function);
-                } else {
-                    final int existingAddress = instance.globalAddress(module.globalExistingIndex(i));
-                    globals.storeLong(address, globals.loadAsLong(existingAddress));
-                }
+                Linker.initializeGlobal(context, instance, i, module.globalInitializerBytecode(i));
             }
         }
     }
@@ -141,72 +132,91 @@ public class BytecodeParser {
                     throw CompilerDirectives.shouldNotReachHere();
             }
             if (dataMode == SegmentMode.ACTIVE) {
-                final int offsetGlobalIndex;
-                switch (flags & BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_MASK) {
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_UNDEFINED:
-                        offsetGlobalIndex = -1;
+                final long value;
+                switch (flags & BytecodeBitEncoding.DATA_SEG_VALUE_MASK) {
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_UNDEFINED:
+                        value = -1;
                         break;
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_U8:
-                        offsetGlobalIndex = rawPeekU8(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U8:
+                        value = rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
                         break;
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_U16:
-                        offsetGlobalIndex = rawPeekU16(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U16:
+                        value = rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
                         break;
-                    case BytecodeBitEncoding.DATA_SEG_GLOBAL_INDEX_I32:
-                        offsetGlobalIndex = rawPeekI32(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_U32:
+                        value = rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
                         break;
-                    default:
-                        throw CompilerDirectives.shouldNotReachHere();
-                }
-                long offsetAddress;
-                switch (flags & BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_MASK) {
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_UNDEFINED:
-                        offsetAddress = -1;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U8:
-                        offsetAddress = rawPeekU8(bytecode, effectiveOffset);
-                        effectiveOffset++;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U16:
-                        offsetAddress = rawPeekU16(bytecode, effectiveOffset);
-                        effectiveOffset += 2;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U32:
-                        offsetAddress = rawPeekU32(bytecode, effectiveOffset);
-                        effectiveOffset += 4;
-                        break;
-                    case BytecodeBitEncoding.DATA_SEG_OFFSET_ADDRESS_U64:
-                        offsetAddress = rawPeekI64(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.DATA_SEG_VALUE_I64:
+                        value = rawPeekI64(bytecode, effectiveOffset);
                         effectiveOffset += 8;
                         break;
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                if (offsetGlobalIndex != -1) {
-                    int offsetGlobalAddress = instance.globalAddress(offsetGlobalIndex);
-                    byte globalType = instance.symbolTable().globalValueType(offsetGlobalIndex);
-                    if (globalType == I32_TYPE) {
-                        offsetAddress = context.globals().loadAsInt(offsetGlobalAddress);
-                    } else {
-                        offsetAddress = context.globals().loadAsLong(offsetGlobalAddress);
+                final byte[] offsetBytecode;
+                long offsetAddress;
+                if ((flags & BytecodeBitEncoding.DATA_SEG_BYTECODE_OR_OFFSET_MASK) == BytecodeBitEncoding.DATA_SEG_BYTECODE) {
+                    int offsetBytecodeLength = (int) value;
+                    offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                    effectiveOffset += offsetBytecodeLength;
+                    offsetAddress = -1;
+                } else {
+                    offsetBytecode = null;
+                    offsetAddress = value;
+                }
+                if (offsetBytecode != null) {
+                    offsetAddress = ((Number) Linker.evalConstantExpression(context, instance, offsetBytecode)).longValue();
+                }
+
+                final int memoryIndex;
+                if ((flags & BytecodeBitEncoding.DATA_SEG_HAS_MEMORY_INDEX_ZERO) != 0) {
+                    memoryIndex = 0;
+                } else {
+                    final int memoryIndexEncoding = bytecode[effectiveOffset];
+                    effectiveOffset++;
+                    switch (memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_MASK) {
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U6:
+                            memoryIndex = memoryIndexEncoding & BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_VALUE;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U8:
+                            memoryIndex = BinaryStreamParser.rawPeekU8(bytecode, effectiveOffset);
+                            effectiveOffset++;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_U16:
+                            memoryIndex = BinaryStreamParser.rawPeekU16(bytecode, effectiveOffset);
+                            effectiveOffset += 2;
+                            break;
+                        case BytecodeBitEncoding.DATA_SEG_MEMORY_INDEX_I32:
+                            memoryIndex = BinaryStreamParser.rawPeekI32(bytecode, effectiveOffset);
+                            effectiveOffset += 4;
+                            break;
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
                     }
                 }
 
                 // Reading of the data segment is called after linking, so initialize the memory
                 // directly.
-                final WasmMemory memory = instance.memory();
+                final WasmMemory memory = instance.memory(memoryIndex);
 
                 Assert.assertUnsignedLongLessOrEqual(offsetAddress, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
                 Assert.assertUnsignedLongLessOrEqual(offsetAddress + dataLength, memory.byteSize(), Failure.OUT_OF_BOUNDS_MEMORY_ACCESS);
                 memory.initialize(module.bytecode(), effectiveOffset, offsetAddress, dataLength);
             } else {
                 if (unsafeMemory) {
-                    final int lengthBytes = bytecode[effectiveOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK;
-                    final long instanceAddress = NativeDataInstanceUtil.allocateNativeInstance(bytecode, effectiveOffset + lengthBytes + 9, dataLength);
-                    BinaryStreamParser.writeI64(bytecode, effectiveOffset + lengthBytes + 1, instanceAddress);
+                    final int length = switch (bytecode[effectiveOffset] & BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_MASK) {
+                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_INLINE -> 0;
+                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U8 -> 1;
+                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_U16 -> 2;
+                        case BytecodeBitEncoding.DATA_SEG_RUNTIME_LENGTH_I32 -> 4;
+                        default -> throw CompilerDirectives.shouldNotReachHere();
+                    };
+                    final long instanceAddress = NativeDataInstanceUtil.allocateNativeInstance(bytecode,
+                                    effectiveOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length + BytecodeBitEncoding.DATA_SEG_RUNTIME_UNSAFE_ADDRESS_LENGTH, dataLength);
+                    BinaryStreamParser.writeI64(bytecode, effectiveOffset + BytecodeBitEncoding.DATA_SEG_RUNTIME_HEADER_LENGTH + length, instanceAddress);
                 }
                 instance.setDataInstance(i, effectiveOffset);
             }
@@ -265,23 +275,32 @@ public class BytecodeParser {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                final int offsetGlobalIndex;
-                switch (flags & BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_MASK) {
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_UNDEFINED:
-                        offsetGlobalIndex = -1;
+                final byte[] offsetBytecode;
+                switch (flags & BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_MASK) {
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_UNDEFINED:
+                        offsetBytecode = null;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U8:
-                        offsetGlobalIndex = rawPeekU8(bytecode, effectiveOffset);
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U8: {
+                        int offsetBytecodeLength = rawPeekU8(bytecode, effectiveOffset);
                         effectiveOffset++;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_U16:
-                        offsetGlobalIndex = rawPeekU16(bytecode, effectiveOffset);
+                    }
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_U16: {
+                        int offsetBytecodeLength = rawPeekU16(bytecode, effectiveOffset);
                         effectiveOffset += 2;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
-                    case BytecodeBitEncoding.ELEM_SEG_GLOBAL_INDEX_I32:
-                        offsetGlobalIndex = rawPeekI32(bytecode, effectiveOffset);
+                    }
+                    case BytecodeBitEncoding.ELEM_SEG_OFFSET_BYTECODE_LENGTH_I32: {
+                        int offsetBytecodeLength = rawPeekI32(bytecode, effectiveOffset);
                         effectiveOffset += 4;
+                        offsetBytecode = Arrays.copyOfRange(bytecode, effectiveOffset, effectiveOffset + offsetBytecodeLength);
+                        effectiveOffset += offsetBytecodeLength;
                         break;
+                    }
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
@@ -305,7 +324,7 @@ public class BytecodeParser {
                     default:
                         throw CompilerDirectives.shouldNotReachHere();
                 }
-                linker.immediatelyResolveElemSegment(context, instance, tableIndex, i, offsetAddress, offsetGlobalIndex, effectiveOffset, elemCount);
+                linker.immediatelyResolveElemSegment(context, instance, tableIndex, offsetAddress, offsetBytecode, effectiveOffset, elemCount);
             } else if (elemMode == SegmentMode.PASSIVE) {
                 linker.immediatelyResolvePassiveElementSegment(context, instance, i, effectiveOffset, elemCount);
             }
@@ -455,8 +474,6 @@ public class BytecodeParser {
                 case Bytecode.DROP_REF:
                 case Bytecode.SELECT:
                 case Bytecode.SELECT_REF:
-                case Bytecode.MEMORY_SIZE:
-                case Bytecode.MEMORY_GROW:
                 case Bytecode.I32_EQZ:
                 case Bytecode.I32_EQ:
                 case Bytecode.I32_NE:
@@ -639,6 +656,8 @@ public class BytecodeParser {
                     offset += 3;
                     break;
                 }
+                case Bytecode.MEMORY_SIZE:
+                case Bytecode.MEMORY_GROW:
                 case Bytecode.BR_I32:
                 case Bytecode.LOCAL_GET_I32:
                 case Bytecode.LOCAL_GET_REF_I32:
@@ -728,6 +747,7 @@ public class BytecodeParser {
                     final int flags = rawPeekU8(bytecode, offset);
                     offset++;
                     final int offsetLength = flags & BytecodeBitEncoding.MEMORY_OFFSET_MASK;
+                    offset += 4;
                     switch (offsetLength) {
                         case BytecodeBitEncoding.MEMORY_OFFSET_U8:
                             offset++;
@@ -754,31 +774,121 @@ public class BytecodeParser {
                         case Bytecode.I64_TRUNC_SAT_F32_S:
                         case Bytecode.I64_TRUNC_SAT_F32_U:
                         case Bytecode.I64_TRUNC_SAT_F64_S:
-                        case Bytecode.I64_TRUNC_SAT_F64_U:
-                        case Bytecode.MEMORY_COPY:
-                        case Bytecode.MEMORY64_COPY:
+                        case Bytecode.I64_TRUNC_SAT_F64_U: {
+                            break;
+                        }
                         case Bytecode.MEMORY_FILL:
                         case Bytecode.MEMORY64_FILL:
                         case Bytecode.MEMORY64_SIZE:
-                        case Bytecode.MEMORY64_GROW: {
-                            break;
-                        }
+                        case Bytecode.MEMORY64_GROW:
                         case Bytecode.DATA_DROP:
                         case Bytecode.DATA_DROP_UNSAFE:
                         case Bytecode.ELEM_DROP:
-                        case Bytecode.MEMORY_INIT:
-                        case Bytecode.MEMORY_INIT_UNSAFE:
-                        case Bytecode.MEMORY64_INIT:
-                        case Bytecode.MEMORY64_INIT_UNSAFE:
                         case Bytecode.TABLE_GROW:
                         case Bytecode.TABLE_SIZE:
                         case Bytecode.TABLE_FILL: {
                             offset += 4;
                             break;
                         }
+                        case Bytecode.MEMORY_INIT:
+                        case Bytecode.MEMORY_INIT_UNSAFE:
+                        case Bytecode.MEMORY64_INIT:
+                        case Bytecode.MEMORY64_INIT_UNSAFE:
+                        case Bytecode.MEMORY_COPY:
+                        case Bytecode.MEMORY64_COPY_D32_S64:
+                        case Bytecode.MEMORY64_COPY_D64_S32:
+                        case Bytecode.MEMORY64_COPY_D64_S64:
                         case Bytecode.TABLE_INIT:
                         case Bytecode.TABLE_COPY: {
                             offset += 8;
+                            break;
+                        }
+                        default:
+                            throw CompilerDirectives.shouldNotReachHere();
+                    }
+                    break;
+                case Bytecode.ATOMIC:
+                    final int atomicOpcode = rawPeekU8(bytecode, offset);
+                    offset++;
+                    if (atomicOpcode == Bytecode.ATOMIC_FENCE) {
+                        break;
+                    }
+                    switch (atomicOpcode) {
+                        case Bytecode.ATOMIC_NOTIFY:
+                        case Bytecode.ATOMIC_WAIT32:
+                        case Bytecode.ATOMIC_WAIT64:
+                        case Bytecode.ATOMIC_I32_LOAD:
+                        case Bytecode.ATOMIC_I64_LOAD:
+                        case Bytecode.ATOMIC_I32_LOAD8_U:
+                        case Bytecode.ATOMIC_I32_LOAD16_U:
+                        case Bytecode.ATOMIC_I64_LOAD8_U:
+                        case Bytecode.ATOMIC_I64_LOAD16_U:
+                        case Bytecode.ATOMIC_I64_LOAD32_U:
+                        case Bytecode.ATOMIC_I32_STORE:
+                        case Bytecode.ATOMIC_I64_STORE:
+                        case Bytecode.ATOMIC_I32_STORE8:
+                        case Bytecode.ATOMIC_I32_STORE16:
+                        case Bytecode.ATOMIC_I64_STORE8:
+                        case Bytecode.ATOMIC_I64_STORE16:
+                        case Bytecode.ATOMIC_I64_STORE32:
+                        case Bytecode.ATOMIC_I32_RMW_ADD:
+                        case Bytecode.ATOMIC_I64_RMW_ADD:
+                        case Bytecode.ATOMIC_I32_RMW8_U_ADD:
+                        case Bytecode.ATOMIC_I32_RMW16_U_ADD:
+                        case Bytecode.ATOMIC_I64_RMW8_U_ADD:
+                        case Bytecode.ATOMIC_I64_RMW16_U_ADD:
+                        case Bytecode.ATOMIC_I64_RMW32_U_ADD:
+                        case Bytecode.ATOMIC_I32_RMW_SUB:
+                        case Bytecode.ATOMIC_I64_RMW_SUB:
+                        case Bytecode.ATOMIC_I32_RMW8_U_SUB:
+                        case Bytecode.ATOMIC_I32_RMW16_U_SUB:
+                        case Bytecode.ATOMIC_I64_RMW8_U_SUB:
+                        case Bytecode.ATOMIC_I64_RMW16_U_SUB:
+                        case Bytecode.ATOMIC_I64_RMW32_U_SUB:
+                        case Bytecode.ATOMIC_I32_RMW_AND:
+                        case Bytecode.ATOMIC_I64_RMW_AND:
+                        case Bytecode.ATOMIC_I32_RMW8_U_AND:
+                        case Bytecode.ATOMIC_I32_RMW16_U_AND:
+                        case Bytecode.ATOMIC_I64_RMW8_U_AND:
+                        case Bytecode.ATOMIC_I64_RMW16_U_AND:
+                        case Bytecode.ATOMIC_I64_RMW32_U_AND:
+                        case Bytecode.ATOMIC_I32_RMW_OR:
+                        case Bytecode.ATOMIC_I64_RMW_OR:
+                        case Bytecode.ATOMIC_I32_RMW8_U_OR:
+                        case Bytecode.ATOMIC_I32_RMW16_U_OR:
+                        case Bytecode.ATOMIC_I64_RMW8_U_OR:
+                        case Bytecode.ATOMIC_I64_RMW16_U_OR:
+                        case Bytecode.ATOMIC_I64_RMW32_U_OR:
+                        case Bytecode.ATOMIC_I32_RMW_XOR:
+                        case Bytecode.ATOMIC_I64_RMW_XOR:
+                        case Bytecode.ATOMIC_I32_RMW8_U_XOR:
+                        case Bytecode.ATOMIC_I32_RMW16_U_XOR:
+                        case Bytecode.ATOMIC_I64_RMW8_U_XOR:
+                        case Bytecode.ATOMIC_I64_RMW16_U_XOR:
+                        case Bytecode.ATOMIC_I64_RMW32_U_XOR:
+                        case Bytecode.ATOMIC_I32_RMW_XCHG:
+                        case Bytecode.ATOMIC_I64_RMW_XCHG:
+                        case Bytecode.ATOMIC_I32_RMW8_U_XCHG:
+                        case Bytecode.ATOMIC_I32_RMW16_U_XCHG:
+                        case Bytecode.ATOMIC_I64_RMW8_U_XCHG:
+                        case Bytecode.ATOMIC_I64_RMW16_U_XCHG:
+                        case Bytecode.ATOMIC_I64_RMW32_U_XCHG:
+                        case Bytecode.ATOMIC_I32_RMW_CMPXCHG:
+                        case Bytecode.ATOMIC_I64_RMW_CMPXCHG:
+                        case Bytecode.ATOMIC_I32_RMW8_U_CMPXCHG:
+                        case Bytecode.ATOMIC_I32_RMW16_U_CMPXCHG:
+                        case Bytecode.ATOMIC_I64_RMW8_U_CMPXCHG:
+                        case Bytecode.ATOMIC_I64_RMW16_U_CMPXCHG:
+                        case Bytecode.ATOMIC_I64_RMW32_U_CMPXCHG: {
+                            final int encoding = rawPeekU8(bytecode, offset);
+                            offset++;
+                            final int indexType64 = encoding & BytecodeBitEncoding.MEMORY_64_FLAG;
+                            offset += 4;
+                            if (indexType64 == 0) {
+                                offset += 4;
+                            } else {
+                                offset += 8;
+                            }
                             break;
                         }
                         default:

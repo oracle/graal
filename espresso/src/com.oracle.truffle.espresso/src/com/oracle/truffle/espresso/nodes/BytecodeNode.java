@@ -371,7 +371,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoExitException;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -1389,7 +1389,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                             continue loop;
                         }
                         BaseQuickNode quickNode = nodes[bs.readCPI2(curBCI)];
-                        if (quickNode.removedByRedefintion()) {
+                        if (quickNode.removedByRedefinition()) {
                             CompilerDirectives.transferToInterpreterAndInvalidate();
                             quickNode = getBaseQuickNode(curBCI, top, statementIndex, quickNode);
                         }

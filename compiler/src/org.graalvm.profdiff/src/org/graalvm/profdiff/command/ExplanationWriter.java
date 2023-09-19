@@ -217,7 +217,7 @@ public class ExplanationWriter {
         writer.writeln("and the optimizations performed in an inlined method");
         writer.decreaseIndent();
         writer.writeln("the children of an indirect call may be devirtualized method calls");
-        writer.writeln("an optimization is a always a leaf node in the tree");
+        writer.writeln("an optimization is always a leaf node in the tree");
         explainCallsiteKinds();
         explainIndirectCalls();
         if (!singleExperiment && writer.getOptionValues().shouldDiffCompilations()) {

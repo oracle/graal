@@ -39,6 +39,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ForkJoinPool;
 
+import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -122,7 +123,6 @@ import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 import com.oracle.svm.core.graal.phases.OptimizeExceptionPathsPhase;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.heap.RestrictHeapAccessCallees;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.VMError;
@@ -151,6 +151,7 @@ import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.VMConstant;
+import org.graalvm.nativeimage.Platform;
 
 public class CompileQueue {
 
@@ -196,6 +197,11 @@ public class CompileQueue {
 
     private final boolean printMethodHistogram = NativeImageOptions.PrintMethodHistogram.getValue();
     private final boolean optionAOTTrivialInline = SubstrateOptions.AOTTrivialInline.getValue();
+
+    public record UnpublishedTrivialMethods(CompilationGraph unpublishedGraph, boolean isTrivial) {
+    }
+
+    private final ConcurrentMap<HostedMethod, UnpublishedTrivialMethods> unpublishedTrivialMethods = new ConcurrentHashMap<>();
 
     public abstract static class CompileReason {
         /**
@@ -616,20 +622,31 @@ public class CompileQueue {
     private void parseAheadOfTimeCompiledMethods() {
 
         for (HostedMethod method : universe.getMethods()) {
-            /*
-             * Deoptimization target code for deoptimization testing: all methods that are not
-             * blacklisted are possible deoptimization targets. The methods are also flagged so that
-             * all possible deoptimization entry points are emitted.
-             */
-            if (method.getWrapped().isImplementationInvoked() && DeoptimizationUtils.canDeoptForTesting(universe, method, deoptimizeAll)) {
-                method.compilationInfo.canDeoptForTesting = true;
+            if (parseOnce) {
+                if (SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method)) {
+                    method.compilationInfo.canDeoptForTesting = true;
+                    assert SubstrateCompilationDirectives.singleton().isRegisteredDeoptTarget(method.getMultiMethod(DEOPT_TARGET_METHOD));
+                }
+            } else {
+                /*
+                 * Deoptimization target code for deoptimization testing: all methods that are not
+                 * blacklisted are possible deoptimization targets. The methods are also flagged so
+                 * that all possible deoptimization entry points are emitted.
+                 */
+                if (method.getWrapped().isImplementationInvoked() && DeoptimizationUtils.canDeoptForTesting(universe, method, deoptimizeAll)) {
+                    method.compilationInfo.canDeoptForTesting = true;
+                }
             }
             for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                if (multiMethod.isDeoptTarget()) {
-                    // deoptimization targets are parsed in a later phase
+                HostedMethod hMethod = (HostedMethod) multiMethod;
+                if (hMethod.isDeoptTarget() || SubstrateCompilationDirectives.isRuntimeCompiledMethod(hMethod)) {
+                    /*
+                     * Deoptimization targets are parsed in a later phase.
+                     * 
+                     * Runtime compiled methods are compiled and encoded in a separate process.
+                     */
                     continue;
                 }
-                HostedMethod hMethod = (HostedMethod) multiMethod;
                 if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
                                 hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isImplementationInvoked()) {
                     ensureParsed(hMethod, null, new EntryPointReason());
@@ -668,12 +685,14 @@ public class CompileQueue {
              * Deoptimization target code for all methods that were manually marked as
              * deoptimization targets.
              */
-            universe.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(method -> {
-                if (method != null) {
-                    return isRegisteredDeoptTarget(method);
+            universe.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(deoptMethod -> {
+                if (deoptMethod != null) {
+                    return isRegisteredDeoptTarget(deoptMethod);
                 }
                 return false;
-            }).forEach(method -> ensureParsed(method.getMultiMethod(DEOPT_TARGET_METHOD), null, new EntryPointReason()));
+            }).forEach(deoptMethod -> {
+                ensureParsed(deoptMethod, null, new EntryPointReason());
+            });
         } else {
             /*
              * Deoptimization target code for all methods that were manually marked as
@@ -686,7 +705,6 @@ public class CompileQueue {
 
     private static boolean checkTrivial(HostedMethod method, StructuredGraph graph) {
         if (!method.compilationInfo.isTrivialMethod() && method.canBeInlined() && InliningUtilities.isTrivialMethod(graph)) {
-            method.compilationInfo.setTrivialMethod(true);
             return true;
         } else {
             return false;
@@ -713,6 +731,13 @@ public class CompileQueue {
                     });
                 });
             }
+            for (Map.Entry<HostedMethod, UnpublishedTrivialMethods> entry : unpublishedTrivialMethods.entrySet()) {
+                entry.getKey().compilationInfo.setCompilationGraph(entry.getValue().unpublishedGraph);
+                if (entry.getValue().isTrivial) {
+                    entry.getKey().compilationInfo.setTrivialMethod(true);
+                }
+            }
+            unpublishedTrivialMethods.clear();
         } while (inliningProgress);
     }
 
@@ -788,7 +813,7 @@ public class CompileQueue {
             return;
         }
         var providers = runtimeConfig.lookupBackend(method).getProviders();
-        var graph = method.compilationInfo.createGraph(debug, CompilationIdentifier.INVALID_COMPILATION_ID, false);
+        var graph = method.compilationInfo.createGraph(debug, getCustomizedOptions(method, debug), CompilationIdentifier.INVALID_COMPILATION_ID, false);
         try (var s = debug.scope("InlineTrivial", graph, method, this)) {
             var inliningPlugin = new TrivialInliningPlugin();
             var decoder = new InliningGraphDecoder(graph, providers, inliningPlugin);
@@ -812,13 +837,16 @@ public class CompileQueue {
 
                 } else {
                     /*
-                     * Publish the new graph, it can be picked up immediately by other threads
-                     * trying to inline this method. This can be a minor source of non-determinism
-                     * in inlining decisions.
+                     * If we publish the new graph immediately, it can be picked up by other threads
+                     * trying to inline this method, and that would make the inlining
+                     * non-deterministic. This is why we are saving graphs to be published at the
+                     * end of each round.
                      */
-                    method.compilationInfo.encodeGraph(graph);
                     if (checkTrivial(method, graph)) {
+                        unpublishedTrivialMethods.put(method, new UnpublishedTrivialMethods(CompilationGraph.encode(graph), true));
                         inliningProgress = true;
+                    } else {
+                        unpublishedTrivialMethods.put(method, new UnpublishedTrivialMethods(CompilationGraph.encode(graph), false));
                     }
                 }
             }
@@ -890,12 +918,16 @@ public class CompileQueue {
     public void scheduleEntryPoints() {
         for (HostedMethod method : universe.getMethods()) {
             for (MultiMethod multiMethod : method.getAllMultiMethods()) {
-                if (multiMethod.isDeoptTarget()) {
-                    // deoptimization targets are compiled in a later phase
+                HostedMethod hMethod = (HostedMethod) multiMethod;
+                if (hMethod.isDeoptTarget() || SubstrateCompilationDirectives.isRuntimeCompiledMethod(hMethod)) {
+                    /*
+                     * Deoptimization targets are parsed in a later phase.
+                     *
+                     * Runtime compiled methods are compiled and encoded in a separate process.
+                     */
                     continue;
                 }
 
-                HostedMethod hMethod = (HostedMethod) multiMethod;
                 if (hMethod.isEntryPoint() || SubstrateCompilationDirectives.singleton().isForcedCompilation(hMethod) ||
                                 hMethod.wrapped.isDirectRootMethod() && hMethod.wrapped.isImplementationInvoked()) {
                     ensureCompiled(hMethod, new EntryPointReason());
@@ -1040,9 +1072,9 @@ public class CompileQueue {
                 beforeEncode(method, graph);
                 assert GraphOrder.assertSchedulableGraph(graph);
                 method.compilationInfo.encodeGraph(graph);
-                method.compilationInfo.setCompileOptions(getCustomizedOptions(method, debug));
-                checkTrivial(method, graph);
-
+                if (checkTrivial(method, graph)) {
+                    method.compilationInfo.setTrivialMethod(true);
+                }
             } catch (Throwable ex) {
                 GraalError error = ex instanceof GraalError ? (GraalError) ex : new GraalError(ex);
                 error.addContext("method: " + method.format("%r %H.%n(%p)"));
@@ -1235,7 +1267,7 @@ public class CompileQueue {
             SubstrateBackend backend = config.lookupBackend(method);
 
             VMError.guarantee(method.compilationInfo.getCompilationGraph() != null, "The following method is reachable during compilation, but was not seen during Bytecode parsing: %s", method);
-            StructuredGraph graph = method.compilationInfo.createGraph(debug, compilationIdentifier, true);
+            StructuredGraph graph = method.compilationInfo.createGraph(debug, getCustomizedOptions(method, debug), compilationIdentifier, true);
             customizeGraph(graph, reason);
 
             GraalError.guarantee(graph.getGraphState().getGuardsStage() == GuardsStage.FIXED_DEOPTS,
@@ -1337,15 +1369,29 @@ public class CompileQueue {
         DeoptimizationUtils.removeDeoptTargetOptimizations(lirSuites);
     }
 
+    private void ensureCompiledForMethodPointerConstant(HostedMethod method, CompileReason reason, SubstrateMethodPointerConstant methodPointerConstant) {
+        HostedMethod referencedMethod = (HostedMethod) methodPointerConstant.pointer().getMethod();
+        ensureCompiled(referencedMethod, new MethodPointerConstantReason(method, referencedMethod, reason));
+    }
+
     protected final void ensureCompiledForMethodPointerConstants(HostedMethod method, CompileReason reason, CompilationResult result) {
         for (DataPatch dataPatch : result.getDataPatches()) {
             Reference reference = dataPatch.reference;
-            if (reference instanceof ConstantReference) {
-                VMConstant constant = ((ConstantReference) reference).getConstant();
-                if (constant instanceof SubstrateMethodPointerConstant) {
-                    MethodPointer pointer = ((SubstrateMethodPointerConstant) constant).pointer();
-                    HostedMethod referencedMethod = (HostedMethod) pointer.getMethod();
-                    ensureCompiled(referencedMethod, new MethodPointerConstantReason(method, referencedMethod, reason));
+            if (reference instanceof ConstantReference constantReference) {
+                VMConstant vmConstant = constantReference.getConstant();
+                if (vmConstant instanceof SubstrateMethodPointerConstant methodPointerConstant) {
+                    ensureCompiledForMethodPointerConstant(method, reason, methodPointerConstant);
+                }
+            }
+        }
+
+        for (DataSection.Data data : result.getDataSection()) {
+            if (data instanceof SubstrateDataBuilder.ObjectData objectData) {
+                VMConstant vmConstant = objectData.getConstant();
+                if (vmConstant instanceof SubstrateMethodPointerConstant methodPointerConstant) {
+                    /* [GR-43389] Only reachable with ld64 workaround on */
+                    VMError.guarantee(Platform.includedIn(Platform.DARWIN_AMD64.class));
+                    ensureCompiledForMethodPointerConstant(method, reason, methodPointerConstant);
                 }
             }
         }

@@ -24,7 +24,7 @@ Choose your operating system and proceed to the installation steps for your spec
 
 ## Start Running Applications
 
-The core distribution of GraalVM includes the Java Development Kit (JDK), the just-in-time compiler (the Graal compiler), Native Image, and others.
+GraalVM includes the Java Development Kit (JDK), the just-in-time compiler (the Graal compiler), Native Image, and standard JDK tools.
 You can use the GraalVM JDK just like any other JDK in your IDE, so having installed GraalVM, you can run any Java application unmodified.
 
 The `java` launcher runs the JVM with Graal as the last-tier compiler.
@@ -72,7 +72,7 @@ Larger Java examples can be found in the [GraalVM Demos repository on GitHub](ht
 
 ### Advanced Users
 
-Developers who are more experienced with GraalVM or want to do more with GraalVM can proceed directly to [Reference Manuals](../../reference-manual/reference-manuals.md) for in-depth documentation. 
+Developers who are more experienced with GraalVM or want to do more with GraalVM can proceed directly to [Reference Manuals](../../reference-manual/reference-manuals.md) for in-depth documentation.
 
 You can find information on GraalVM's security model in the [Security Guide](../../security/security-guide.md), and rich API documentation in the [GraalVM SDK Javadoc](https://www.graalvm.org/sdk/javadoc/) and [Truffle Javadoc](https://www.graalvm.org/truffle/javadoc/).
 

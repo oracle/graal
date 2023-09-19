@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -36,9 +36,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.java.LambdaUtils;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
@@ -113,7 +115,6 @@ public class ClassInitializationFeature implements InternalFeature {
     public void duringSetup(DuringSetupAccess a) {
         FeatureImpl.DuringSetupAccessImpl access = (FeatureImpl.DuringSetupAccessImpl) a;
         classInitializationSupport = access.getHostVM().getClassInitializationSupport();
-        classInitializationSupport.setUnsupportedFeatures(access.getBigBang().getUnsupportedFeatures());
         access.registerObjectReplacer(this::checkImageHeapInstance);
         universe = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getUniverse();
         metaAccess = ((FeatureImpl.DuringSetupAccessImpl) a).getBigBang().getMetaAccess();
@@ -125,13 +126,63 @@ public class ClassInitializationFeature implements InternalFeature {
          * means that the user cannot later manually register it as RERUN or RUN_TIME.
          */
         if (obj != null && !classInitializationSupport.maybeInitializeAtBuildTime(obj.getClass())) {
-            String msg = "No instances of " + obj.getClass().getTypeName() + " are allowed in the image heap as this class should be initialized at image runtime.";
-            msg += classInitializationSupport.objectInstantiationTraceMessage(obj,
-                            " To fix the issue mark " + obj.getClass().getTypeName() + " for build-time initialization with " +
-                                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, obj.getClass().getTypeName(), "initialize-at-build-time") +
-                                            " or use the the information from the trace to find the culprit and " +
-                                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<culprit>", "initialize-at-run-time") +
-                                            " to prevent its instantiation.\n");
+            String typeName = obj.getClass().getTypeName();
+            String proxyLambdaInterfaceCSV = null;
+            String proxyLambdaInterfaceList = null;
+            boolean proxyOrLambda = ClassInitializationSupport.isProxyOrLambda(obj);
+            if (proxyOrLambda) {
+                proxyLambdaInterfaceCSV = StreamSupport.stream(ClassInitializationSupport.allInterfaces(obj.getClass()).spliterator(), false)
+                                .map(Class::getTypeName)
+                                .collect(Collectors.joining(","));
+                proxyLambdaInterfaceList = "[" + proxyLambdaInterfaceCSV.replaceAll(",", ", ") + "]";
+            }
+
+            String msg = """
+                            An object of type '%s' was found in the image heap. This type, however, is marked for initialization at image run time for the following reason: %s.
+                            This is not allowed for correctness reasons: All objects that are stored in the image heap must be initialized at build time.
+
+                            You now have two options to resolve this:
+
+                            1) If it is intended that objects of type '%s' are persisted in the image heap, add %sto the native-image arguments.\
+                             Note that initializing new types can store additional objects to the heap. It is advised to check the static fields of %s to see if they are safe for build-time initialization,\
+                              and that they do not contain any sensitive data that should not become part of the image.
+
+                            """
+                            .replaceAll("\n", System.lineSeparator()).formatted(
+                                            typeName,
+                                            classInitializationSupport.reasonForClass(obj.getClass()),
+                                            typeName,
+                                            SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
+                                                            "initialize-at-build-time", true, true),
+                                            proxyOrLambda ? proxyLambdaInterfaceList : "'" + typeName + "'");
+
+            msg += classInitializationSupport.objectInstantiationTraceMessage(obj, "2) ", culprit -> {
+                if (culprit == null) {
+                    return "If if it is not intended that objects of type '" + typeName + "' are persisted in the image heap, examine the stack trace and use " +
+                                    SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, "<culprit>", "initialize-at-run-time", true, true) +
+                                    "to prevent instantiation of this object." + System.lineSeparator();
+                } else {
+                    return "If if it is not intended that objects of type '" + typeName + "' are persisted in the image heap, examine the stack trace and use " +
+                                    SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, culprit, "initialize-at-run-time", true, true) +
+                                    "to prevent instantiation of the culprit object.";
+                }
+            });
+
+            if (ClassInitializationOptions.StrictImageHeap.getValue()) {
+                msg += System.lineSeparator();
+                msg += """
+                                If you are seeing this message after enabling %s, this means that some objects ended up in the image heap without their type being marked with --initialize-at-build-time.
+                                To fix this, include %s in your configuration. If the classes do not originate from your code, it is advised to update all library or framework dependencies to the latest version before addressing this error.
+                                Please address this problem to be prepared for future releases of GraalVM.
+                                """
+                                .replaceAll("\n", System.lineSeparator())
+                                .formatted(
+                                                SubstrateOptionsParser.commandArgument(ClassInitializationOptions.StrictImageHeap, "+", "strict-image-heap", true, false),
+                                                SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
+                                                                "initialize-at-build-time", true, false));
+            }
+
+            msg += System.lineSeparator() + "The following detailed trace displays from which field in the code the object was reached.";
             throw new UnsupportedFeatureException(msg);
         }
         return obj;
@@ -141,7 +192,8 @@ public class ClassInitializationFeature implements InternalFeature {
     public void beforeAnalysis(BeforeAnalysisAccess a) {
         BeforeAnalysisAccessImpl access = (BeforeAnalysisAccessImpl) a;
         for (SnippetRuntime.SubstrateForeignCallDescriptor descriptor : EnsureClassInitializedSnippets.FOREIGN_CALLS) {
-            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true);
+            access.getBigBang().addRootMethod((AnalysisMethod) descriptor.findMethod(access.getMetaAccess()), true,
+                            "Class initialization foreign call, registered in " + ClassInitializationFeature.class);
         }
     }
 
@@ -175,8 +227,6 @@ public class ClassInitializationFeature implements InternalFeature {
     public void afterAnalysis(AfterAnalysisAccess a) {
         AfterAnalysisAccessImpl access = (AfterAnalysisAccessImpl) a;
         try (Timer.StopTimer ignored = TimerCollection.createTimerAndStart(TimerCollection.Registry.CLINIT)) {
-            classInitializationSupport.setUnsupportedFeatures(null);
-
             assert classInitializationSupport.checkDelayedInitialization();
 
             if (SimulateClassInitializerSupport.singleton().isEnabled()) {
@@ -193,9 +243,21 @@ public class ClassInitializationFeature implements InternalFeature {
             }
 
             if (ClassInitializationOptions.AssertInitializationSpecifiedForAllClasses.getValue()) {
+                /*
+                 * This option enables a check that all application classes have an explicitly
+                 * specified initialization status. This is useful to ensure that most classes (all
+                 * classes for which it is feasible) are marked as "initialize at image build time"
+                 * to avoid the overhead of class initialization checks at run time.
+                 *
+                 * We exclude JDK classes from the check: the application should not interfere with
+                 * the class initialization status of the JDK because the application cannot know
+                 * which JDK classes are safe for initialization at image build time.
+                 */
                 List<String> unspecifiedClasses = classInitializationSupport.classesWithKind(RUN_TIME).stream()
+                                .filter(c -> c.getClassLoader() != null && c.getClassLoader() != ClassLoader.getPlatformClassLoader())
                                 .filter(c -> classInitializationSupport.specifiedInitKindFor(c) == null)
                                 .map(Class::getTypeName)
+                                .filter(name -> !name.contains(LambdaUtils.LAMBDA_CLASS_NAME_SUBSTRING))
                                 .collect(Collectors.toList());
                 if (!unspecifiedClasses.isEmpty()) {
                     System.err.println("The following classes have unspecified initialization policy:" + System.lineSeparator() + String.join(System.lineSeparator(), unspecifiedClasses));

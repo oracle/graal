@@ -3,13 +3,12 @@ layout: docs
 toc_group: reference-manual
 link_title: Polyglot Programming
 permalink: /reference-manual/polyglot-programming/
-redirect_from: /$version/docs/polyglot-programming/
+redirect_from: /docs/polyglot-programming/
 ---
 
 # Polyglot Programming
 
 * [Running Polyglot Applications](#running-polyglot-applications)
-* [Polyglot Launcher](#polyglot-launcher)
 * [Polyglot Options](#polyglot-options)
 * [Passing Options for Language Launchers](#passing-options-for-language-launchers)
 * [Passing Options Programmatically](#passing-options-programmatically)
@@ -34,14 +33,7 @@ Throughout this section you learn how to combine multiple languages using GraalV
 The following examples are designed to get you started with a basic polyglot application.
 Select a section for your *Start Language* and then select a tab for the *Target Language*.
 
-Ensure you set up GraalVM before you begin.
-
-The below examples work:
-* on a JVM, by passing `--polyglot --jvm`.
-* on native launchers with `--polyglot` (e.g., `js --polyglot`).
-  It might be required to [rebuild images](graalvm-updater.md#rebuild-images) to access languages installed with `gu`.
-* with native executables (e.g., `native-image --language:js`).
-
+The below examples are expected to work equally from a JVM or native standalone distribution.
 For native launchers and native executables using Java as a Target Language and accessing classes other than Java arrays, it is required to recompile the image and provide a [reflection configuration file](native-image/Reflection.md).
 
 Note: To start an application with LLVM as a Target Language, make sure to precompile the _polyglot.c_ file provided below.
@@ -63,9 +55,9 @@ tab5type="javascript" tab5id="js_to_llvm" tab5name="LLVM" tab5path="polyglot_ref
 Run:
 
 ```shell
-js --polyglot --jvm polyglot.js
+js polyglot.js
 42
-node --polyglot --jvm polyglot.js
+node polyglot.js
 42
 ```
 
@@ -85,7 +77,7 @@ tab5type="r" tab5id="R_to_llvm" tab5name="LLVM" tab5path="polyglot_ref/R_to_llvm
 Run:
 
 ```shell
-Rscript --polyglot --jvm polyglot.R
+Rscript polyglot.R
 [1] 42
 ```
 
@@ -105,7 +97,7 @@ tab5type="ruby" tab5id="ruby_to_llvm" tab5name="LLVM" tab5path="polyglot_ref/rub
 Run:
 
 ```shell
-ruby --polyglot --jvm polyglot.rb
+ruby polyglot.rb
 42
 ```
 
@@ -125,7 +117,7 @@ tab5type="python" tab5id="python_to_llvm" tab5name="LLVM" tab5path="polyglot_ref
 Run:
 
 ```shell
-graalpy --polyglot --jvm polyglot.py
+graalpy polyglot.py
 42
 ```
 
@@ -164,57 +156,18 @@ tab5type="c" tab5id="c_to_java" tab5name="Java" tab5path="polyglot_ref/c_to_java
 %}
 
 The example C code has to be compiled to LLVM bitcode using the LLVM frontend such as `clang`.
-A user can use `clang` shipped with GraalVM by installing a pre-built LLVM toolchain support:
+A user can use `clang` from the pre-built [LLVM toolchain shipped with the GraalVM LLVM runtime](../reference-manual/llvm/README.md#llvm-toolchain):
 
 ```shell
-gu install llvm-toolchain
 export LLVM_TOOLCHAIN=$(lli --print-toolchain-path)
 ```
 Run:
 
 ```shell
 $LLVM_TOOLCHAIN/clang polyglot.c -lgraalvm-llvm -o polyglot
-lli --polyglot polyglot
+lli polyglot
 42
 ```
-
-## Polyglot Launcher
-
-With polyglot applications it is often impossible to decide what the primary language of an application is.
-Therefore, an experimental new launcher, called `polyglot`, has been added to GraalVM.
-For the moment, this launcher runs code for JavaScript, Ruby, and R without requiring the selection of a primary language.
-The polyglot launcher does not require the `--polyglot` option; it is enabled by default.
-
-This is how you can run a polyglot application by using the examples from above:
-
-```shell
-polyglot --jvm polyglot.js polyglot.R polyglot.rb
-```
-
-We have also included a basic experimental shell for multiple languages called the _Polyglot Shell_.
-It is useful to quickly test the interactivity of languages implemented with the [Truffle framework](../../truffle/docs/README.md).
-This is how you can start it:
-
-```shell
-polyglot --jvm --shell
-```
-
-If you have installed all optional languages packs to the core GraalVM installation, then the Polyglot Shell will look like:
-```shell
-GraalVM MultiLanguage Shell 22.2.0
-Copyright (c) 2013-2021, Oracle and/or its affiliates
-  Java version 22.2.0
-  JavaScript version 22.2.0
-  Python version 3.8.5
-  R version 4.0.3
-  Ruby version 3.0.3
-Usage:
-  Use Ctrl+n to switch language and Ctrl+d to exit.
-  Enter -usage to get a list of available commands.
-js>
-```
-
-> Note: The `polyglot` launcher and the _Polyglot Shell_ are experimental features in GraalVM.
 
 ## Polyglot Options
 
@@ -231,7 +184,7 @@ You can configure a language engine for better throughput or startup.
     startup but less optimal throughput. This mode uses the compiler configuration
     `economy` if not specified otherwise.
 
-## Passing Options for Language Launchers
+## Passing Options to Language Launchers
 
 Every language launcher has been extended with a set of so called _polyglot options_.
 Polyglot options allow users of any language launcher to access the options of other languages supported by GraalVM (implemented with the Truffle language implementation framework).
@@ -317,3 +270,7 @@ java -Dpolyglot.js.strict=true SystemPropertiesTest
 ```
 
 > Note: System properties are read once when the polyglot context is created. Subsequent changes have no effect.
+
+### Related Documentation
+
+- Learn more about a guest and Java host language interoperability from the [Embedding Languages documentation](embedding/embed-languages.md)

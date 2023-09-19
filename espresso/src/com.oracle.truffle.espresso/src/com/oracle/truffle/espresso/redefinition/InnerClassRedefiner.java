@@ -45,7 +45,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.jdwp.api.ErrorCodes;
 import com.oracle.truffle.espresso.jdwp.api.RedefineInfo;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class InnerClassRedefiner {
 
@@ -73,7 +73,7 @@ public final class InnerClassRedefiner {
         this.context = context;
     }
 
-    public HotSwapClassInfo[] matchAnonymousInnerClasses(List<RedefineInfo> redefineInfos, List<ObjectKlass> removedInnerClasses) throws RedefintionNotSupportedException {
+    public HotSwapClassInfo[] matchAnonymousInnerClasses(List<RedefineInfo> redefineInfos, List<ObjectKlass> removedInnerClasses) throws RedefinitionNotSupportedException {
         hotswapState.clear();
         ArrayList<RedefineInfo> unhandled = new ArrayList<>(redefineInfos);
 
@@ -135,7 +135,7 @@ public final class InnerClassRedefiner {
                     try {
                         classInfo.patchBytes(ConstantPoolPatcher.patchConstantPool(classInfo.getBytes(), rules, context));
                     } catch (ClassFormatError ex) {
-                        throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+                        throw new RedefinitionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
                     }
                 }
             }
@@ -152,14 +152,14 @@ public final class InnerClassRedefiner {
         }
     }
 
-    private void fetchMissingInnerClasses(HotSwapClassInfo hotswapInfo) throws RedefintionNotSupportedException {
+    private void fetchMissingInnerClasses(HotSwapClassInfo hotswapInfo) throws RedefinitionNotSupportedException {
         StaticObject definingLoader = hotswapInfo.getClassLoader();
 
         ArrayList<Symbol<Symbol.Name>> innerNames = new ArrayList<>(1);
         try {
             searchConstantPoolForInnerClassNames(hotswapInfo, innerNames);
         } catch (ClassFormatError ex) {
-            throw new RedefintionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
+            throw new RedefinitionNotSupportedException(ErrorCodes.INVALID_CLASS_FORMAT);
         }
 
         // poke the defining guest classloader for the resources
@@ -167,7 +167,7 @@ public final class InnerClassRedefiner {
             if (!hotswapInfo.knowsInnerClass(innerName)) {
                 byte[] classBytes = null;
                 StaticObject resourceGuestString = context.getMeta().toGuestString(innerName + ".class");
-                assert context.getCurrentThread() != null;
+                assert context.getCurrentPlatformThread() != null;
                 StaticObject inputStream = (StaticObject) context.getMeta().java_lang_ClassLoader_getResourceAsStream.invokeDirect(definingLoader, resourceGuestString);
                 if (StaticObject.notNull(inputStream)) {
                     classBytes = readAllBytes(inputStream);
@@ -178,7 +178,7 @@ public final class InnerClassRedefiner {
                     // classloaders in many cases have caches for the class name that prevents
                     // forcefully attempting to load previously not loadable classes.
                     // without the class bytes, the matching is less precise and cached un-matched
-                    // inner class instances that are executed after redefintion will lead to
+                    // inner class instances that are executed after redefinition will lead to
                     // NoSuchMethod errors because they're marked as removed
                 }
                 if (classBytes != null) {
@@ -220,7 +220,7 @@ public final class InnerClassRedefiner {
     }
 
     private void matchClassInfo(HotSwapClassInfo hotSwapInfo, List<ObjectKlass> removedInnerClasses, Map<StaticObject, Map<Symbol<Symbol.Name>, Symbol<Symbol.Name>>> renamingRules)
-                    throws RedefintionNotSupportedException {
+                    throws RedefinitionNotSupportedException {
         Klass klass = hotSwapInfo.getKlass();
         // try to fetch all direct inner classes
         // based on the constant pool in the class bytes

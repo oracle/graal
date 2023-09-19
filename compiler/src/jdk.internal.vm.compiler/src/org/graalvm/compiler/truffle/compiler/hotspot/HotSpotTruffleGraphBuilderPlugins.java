@@ -72,7 +72,7 @@ final class HotSpotTruffleGraphBuilderPlugins {
     static void registerHotspotThreadLocalStubPlugins(InvocationPlugins plugins, WordTypes wordTypes, int jvmciReservedReference0Offset) {
         GraalError.guarantee(jvmciReservedReference0Offset != -1, "jvmciReservedReference0Offset is not available but used.");
 
-        InvocationPlugins.Registration tl = new InvocationPlugins.Registration(plugins, "org.graalvm.compiler.truffle.runtime.hotspot.HotSpotFastThreadLocal");
+        InvocationPlugins.Registration tl = new InvocationPlugins.Registration(plugins, "com.oracle.truffle.runtime.hotspot.HotSpotFastThreadLocal");
         tl.register(new RequiredInvocationPlugin("getJVMCIReservedReference") {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {

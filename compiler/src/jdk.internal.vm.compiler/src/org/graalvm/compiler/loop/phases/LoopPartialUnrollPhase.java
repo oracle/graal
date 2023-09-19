@@ -28,6 +28,7 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.StageFlag;
@@ -59,25 +60,28 @@ public class LoopPartialUnrollPhase extends LoopPhase<LoopPolicies> {
             try (Graph.NodeEventScope nes = graph.trackNodeEvents(listener)) {
                 LoopsData dataCounted = context.getLoopsDataProvider().getLoopsData(graph);
                 dataCounted.detectCountedLoops();
+                graph.getDebug().log(DebugContext.INFO_LEVEL, "Detected %d counted loops", dataCounted.countedLoops().size());
                 Graph.Mark mark = graph.getMark();
                 for (LoopEx loop : dataCounted.countedLoops()) {
-                    if (!LoopTransformations.isUnrollableLoop(loop)) {
-                        continue;
-                    }
-                    if (getPolicies().shouldPartiallyUnroll(loop, context)) {
-                        if (loop.loopBegin().isSimpleLoop()) {
-                            // First perform the pre/post transformation and do the partial
-                            // unroll when we come around again.
-                            LoopTransformations.insertPrePostLoops(loop);
-                            prePostInserted = true;
-                            changed = true;
-                        } else if (prePostInserted) {
-                            if (opaqueUnrolledStrides == null) {
-                                opaqueUnrolledStrides = EconomicMap.create(Equivalence.IDENTITY);
+                    if (LoopTransformations.isUnrollableLoop(loop)) {
+                        graph.getDebug().log(DebugContext.INFO_LEVEL, "Loop %s can be unrolled, now checking if we should", loop);
+                        if (getPolicies().shouldPartiallyUnroll(loop, context)) {
+                            if (loop.loopBegin().isSimpleLoop()) {
+                                // First perform the pre/post transformation and do the partial
+                                // unroll when we come around again.
+                                LoopTransformations.insertPrePostLoops(loop);
+                                prePostInserted = true;
+                                changed = true;
+                            } else if (prePostInserted) {
+                                if (opaqueUnrolledStrides == null) {
+                                    opaqueUnrolledStrides = EconomicMap.create(Equivalence.IDENTITY);
+                                }
+                                LoopTransformations.partialUnroll(loop, opaqueUnrolledStrides);
+                                changed = true;
                             }
-                            LoopTransformations.partialUnroll(loop, opaqueUnrolledStrides);
-                            changed = true;
                         }
+                    } else {
+                        graph.getDebug().log(DebugContext.INFO_LEVEL, "Loop %s cannot be unrolled", loop);
                     }
                 }
                 dataCounted.deleteUnusedNodes();

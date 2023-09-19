@@ -59,17 +59,10 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
     }
 
     @Override
-    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState, ValueNode[] classInit) {
+    public boolean apply(GraphBuilderContext builder, ResolvedJavaType type, Supplier<FrameState> frameState) {
         if (EnsureClassInitializedNode.needsRuntimeInitialization(builder.getMethod().getDeclaringClass(), type)) {
             SnippetReflectionProvider snippetReflection = builder.getSnippetReflection();
             emitEnsureClassInitialized(builder, snippetReflection.forObject(host.dynamicHub(type)), frameState.get());
-            /*
-             * The classInit value is only registered with Invoke nodes. Since we do not need that,
-             * we ensure it is null.
-             */
-            if (classInit != null) {
-                classInit[0] = null;
-            }
             return true;
         }
         return false;
@@ -78,6 +71,6 @@ public class SubstrateClassInitializationPlugin implements ClassInitializationPl
     private static void emitEnsureClassInitialized(GraphBuilderContext builder, JavaConstant hubConstant, FrameState frameState) {
         ValueNode hub = ConstantNode.forConstant(hubConstant, builder.getMetaAccess(), builder.getGraph());
         EnsureClassInitializedNode node = new EnsureClassInitializedNode(hub, frameState);
-        builder.add(node);
+        builder.canonicalizeAndAdd(node);
     }
 }

@@ -48,12 +48,12 @@ public final class IncrementalGarbageCollectorMXBean implements com.sun.manageme
 
     @Override
     public long getCollectionCount() {
-        return HeapImpl.getGCImpl().getAccounting().getIncrementalCollectionCount();
+        return GCImpl.getAccounting().getIncrementalCollectionCount();
     }
 
     @Override
     public long getCollectionTime() {
-        long nanos = HeapImpl.getGCImpl().getAccounting().getIncrementalCollectionTotalNanos();
+        long nanos = GCImpl.getAccounting().getIncrementalCollectionTotalNanos();
         return TimeUtils.roundNanosToMillis(nanos);
     }
 

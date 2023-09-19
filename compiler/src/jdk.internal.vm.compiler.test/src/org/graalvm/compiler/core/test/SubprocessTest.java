@@ -29,20 +29,15 @@ import static org.graalvm.compiler.test.SubprocessUtil.java;
 import static org.graalvm.compiler.test.SubprocessUtil.withoutDebuggerArguments;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Predicate;
 
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
-import org.junit.Assume;
-import org.junit.Before;
 
 public abstract class SubprocessTest extends GraalCompilerTest {
-
-    @Before
-    public void checkJavaAgent() {
-        Assume.assumeFalse("Java Agent found -> skipping", SubprocessUtil.isJavaAgentAttached());
-    }
 
     /**
      * Launches the {@code runnable} in a subprocess, with any extra {@code args} passed as
@@ -53,11 +48,31 @@ public abstract class SubprocessTest extends GraalCompilerTest {
      *         {@link Subprocess} instance describing the process after its successful termination.
      */
     public SubprocessUtil.Subprocess launchSubprocess(Runnable runnable, String... args) throws InterruptedException, IOException {
-        return launchSubprocess(getClass(), runnable, args);
+        return launchSubprocess(null, null, true, getClass(), runnable, args);
+    }
+
+    public SubprocessUtil.Subprocess launchSubprocess(Predicate<String> vmArgsFilter, Runnable runnable, String... args) throws InterruptedException, IOException {
+        return launchSubprocess(null, vmArgsFilter, true, getClass(), runnable, args);
     }
 
     public static SubprocessUtil.Subprocess launchSubprocess(Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args) throws InterruptedException, IOException {
-        String recursionPropName = testClass.getSimpleName() + ".Subprocess";
+        return launchSubprocess(null, null, true, testClass, runnable, args);
+    }
+
+    private static List<String> filter(List<String> args, Predicate<String> vmArgsFilter) {
+        List<String> result = new ArrayList<>(args.size());
+        for (String arg : args) {
+            if (vmArgsFilter.test(arg)) {
+                result.add(arg);
+            }
+        }
+        return result;
+    }
+
+    public static SubprocessUtil.Subprocess launchSubprocess(Predicate<List<String>> testPredicate, Predicate<String> vmArgsFilter, boolean expectNormalExit,
+                    Class<? extends GraalCompilerTest> testClass, Runnable runnable, String... args)
+                    throws InterruptedException, IOException {
+        String recursionPropName = testClass.getName() + ".subprocess";
         if (Boolean.getBoolean(recursionPropName)) {
             runnable.run();
             return null;
@@ -66,17 +81,37 @@ public abstract class SubprocessTest extends GraalCompilerTest {
             vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
             vmArgs.add("-D" + recursionPropName + "=true");
             vmArgs.addAll(Arrays.asList(args));
-            boolean verbose = Boolean.getBoolean(testClass.getSimpleName() + ".verbose");
+            if (vmArgsFilter != null) {
+                vmArgs = filter(vmArgs, vmArgsFilter);
+            }
+
+            String verboseProperty = testClass.getName() + ".verbose";
+            boolean verbose = Boolean.getBoolean(verboseProperty);
             if (verbose) {
                 System.err.println(String.join(" ", vmArgs));
             }
             SubprocessUtil.Subprocess proc = java(vmArgs, "com.oracle.mxtool.junit.MxJUnitWrapper", testClass.getName());
+            if (testPredicate != null) {
+                assertTrue(testPredicate.test(proc.output), proc.toString() + " produced unexpected output:\n\n" + String.join("\n", proc.output));
+            }
             if (verbose) {
                 for (String line : proc.output) {
                     System.err.println(line);
                 }
             }
-            assertTrue(proc.exitCode == 0, proc.toString() + " failed with exit code " + proc.exitCode);
+            String suffix = "";
+            if (!Boolean.getBoolean(SubprocessUtil.KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME)) {
+                suffix = String.format("%s%n%nSet -D%s=true to preserve subprocess temp files.", suffix, SubprocessUtil.KEEP_TEMPORARY_ARGUMENT_FILES_PROPERTY_NAME);
+            }
+            if (!verbose) {
+                suffix = String.format("%s%n%nSet -D%s=true for verbose output.", suffix, verboseProperty);
+            }
+            int exitCode = proc.exitCode;
+            if (expectNormalExit) {
+                assertTrue(exitCode == 0, String.format("%s produced exit code %d, but expected 0.%s", proc, exitCode, suffix));
+            } else {
+                assertTrue(exitCode != 0, String.format("%s produced normal exit code %d, but expected abnormal exit%s", proc, exitCode, suffix));
+            }
             return proc;
         }
     }

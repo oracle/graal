@@ -3,7 +3,7 @@ layout: docs
 toc_group: build-overview
 link_title: Build Configuration
 permalink: /reference-manual/native-image/overview/BuildConfiguration/
-redirect_from: /$version/reference-manual/native-image/BuildConfiguration/
+redirect_from: /reference-manual/native-image/BuildConfiguration/
 ---
 
 # Native Image Build Configuration

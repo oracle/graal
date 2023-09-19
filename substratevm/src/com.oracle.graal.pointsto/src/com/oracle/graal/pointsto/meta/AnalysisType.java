@@ -186,9 +186,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final AnalysisFuture<Void> initializeMetaDataTask;
 
     /**
-     * Additional information that is only available for types that are marked as reachable.
+     * Additional information that is only available for types that are marked as reachable. It is
+     * preserved after analysis.
      */
-    private AnalysisFuture<TypeData> typeData;
+    private final AnalysisFuture<TypeData> typeData;
 
     /**
      * Contains reachability handlers that are notified when any of the subtypes are marked as
@@ -211,6 +212,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     List<AnalysisFuture<Void>> scheduledTypeReachableNotifications;
 
+    /**
+     * Contains callbacks that are notified when this type is marked as instantiated. Each callback
+     * is called at least once, but there are no guarantees that it will be called exactly once.
+     */
     @SuppressWarnings("unused") private volatile Object typeInstantiatedNotifications;
 
     @SuppressWarnings("this-escape")
@@ -343,7 +348,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         constantObjectsCache = null;
         uniqueConstant = null;
         unsafeAccessedFields = null;
-        typeData = null;
         scheduledTypeReachableNotifications = null;
     }
 
@@ -826,6 +830,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return AtomicUtils.isSet(this, isReachableUpdater);
     }
 
+    public Object getReachableReason() {
+        return isReachable;
+    }
+
     /**
      * The kind of the field in memory (in contrast to {@link #getJavaKind()}, which is the kind of
      * the field on the Java type system level). For example {@link WordBase word types} have a
@@ -1267,8 +1275,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return AtomicUtils.isSet(this, isInHeapUpdater);
     }
 
+    public Object getInHeapReason() {
+        return isInHeap;
+    }
+
     public boolean isAllocated() {
         return AtomicUtils.isSet(this, isAllocatedUpdater);
+    }
+
+    public Object getAllocatedReason() {
+        return isAllocated;
     }
 
     @Override

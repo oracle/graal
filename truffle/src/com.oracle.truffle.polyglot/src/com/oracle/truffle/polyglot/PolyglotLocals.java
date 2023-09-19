@@ -204,7 +204,7 @@ final class PolyglotLocals {
         @CompilationFinal LocalLocation location;
 
         protected AbstractContextLocal() {
-            super(PolyglotImpl.getInstance());
+            super(PolyglotImpl.SECRET);
         }
 
         final void initializeLocation(LocalLocation l) {
@@ -333,7 +333,7 @@ final class PolyglotLocals {
         @CompilationFinal LocalLocation location;
 
         protected AbstractContextThreadLocal() {
-            super(PolyglotImpl.getInstance());
+            super(PolyglotImpl.SECRET);
         }
 
         final void initializeLocation(LocalLocation l) {

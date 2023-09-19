@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,8 +109,8 @@ public final class ResourceLimits {
     public final class Builder {
 
         long statementLimit;
-        Predicate<Source> statementLimitSourceFilter;
-        Consumer<ResourceLimitEvent> onLimit;
+        Predicate<?> statementLimitSourceFilter;
+        Consumer<?> onLimit;
 
         Builder() {
         }
@@ -179,8 +179,9 @@ public final class ResourceLimits {
          * @see ResourceLimits Example Usage
          * @since 19.3
          */
+        @SuppressWarnings("unchecked")
         public ResourceLimits build() {
-            return new ResourceLimits(Engine.getImpl().buildLimits(statementLimit, statementLimitSourceFilter, onLimit));
+            return new ResourceLimits(Engine.getImpl().buildLimits(statementLimit, (Predicate<Object>) statementLimitSourceFilter, (Consumer<Object>) onLimit));
         }
     }
 }

@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.factories;
 
+import com.oracle.truffle.api.InternalResource.OS;
 import com.oracle.truffle.llvm.runtime.memory.LLVMSyscallOperationNode;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMAMD64SyscallMmapNodeGen;
 import com.oracle.truffle.llvm.runtime.nodes.asm.syscall.LLVMNativeSyscallNode;
@@ -95,7 +96,7 @@ final class DarwinAMD64PlatformCapability extends BasicAMD64PlatformCapability<D
 
     @Override
     public OS getOS() {
-        return OS.Darwin;
+        return OS.DARWIN;
     }
 
     @Override

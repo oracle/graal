@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+
 import org.graalvm.polyglot.Context.Builder;
 
 /**
@@ -175,6 +176,17 @@ public interface ProcessHandler {
         public Redirect getErrorRedirect() {
             return errorRedirect;
         }
+
+        /**
+         * Creates a ProcessCommand. Not for direct use.
+         *
+         * @since 23.1.0
+         */
+        public static ProcessCommand create(List<String> cmd, String cwd, Map<String, String> environment, boolean redirectErrorStream,
+                        ProcessHandler.Redirect inputRedirect, ProcessHandler.Redirect outputRedirect, ProcessHandler.Redirect errorRedirect) {
+            return new ProcessCommand(cmd, cwd, environment, redirectErrorStream, inputRedirect, outputRedirect, errorRedirect);
+        }
+
     }
 
     /**
@@ -208,7 +220,12 @@ public interface ProcessHandler {
             this.stream = stream;
         }
 
-        OutputStream getOutputStream() {
+        /**
+         * Returns the output stream to redirect to.
+         *
+         * @since 23.1.0
+         */
+        public OutputStream getOutputStream() {
             return stream;
         }
 
@@ -246,6 +263,16 @@ public interface ProcessHandler {
                 return false;
             }
             return type.equals(((Redirect) obj).type);
+        }
+
+        /**
+         * Creates a ProcessCommand. Not for direct use.
+         *
+         * @since 23.1.0
+         */
+        public static Redirect createRedirectToStream(OutputStream stream) {
+            Objects.requireNonNull(stream);
+            return new Redirect(Type.STREAM, stream);
         }
 
         enum Type {

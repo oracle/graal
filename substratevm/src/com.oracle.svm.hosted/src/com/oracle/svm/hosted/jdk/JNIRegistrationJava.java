@@ -30,7 +30,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.hosted.RuntimeJNIAccess;
 import org.graalvm.nativeimage.impl.InternalPlatform;
@@ -109,17 +108,9 @@ class JNIRegistrationJava extends JNIRegistrationUtil implements InternalFeature
         RuntimeJNIAccess.register(java.nio.charset.Charset.class);
         RuntimeJNIAccess.register(constructor(a, "java.lang.String", byte[].class));
         RuntimeJNIAccess.register(method(a, "java.lang.String", "getBytes"));
-        if (JavaVersionUtil.JAVA_SPEC >= 21) {
-            // Needed for JDK 21+20 and later which include JDK-8305746.
-            RuntimeJNIAccess.register(method(a, "java.nio.charset.Charset", "forName", String.class));
-            RuntimeJNIAccess.register(constructor(a, "java.lang.String", byte[].class, java.nio.charset.Charset.class));
-            RuntimeJNIAccess.register(method(a, "java.lang.String", "getBytes", java.nio.charset.Charset.class));
-        }
-        if (JavaVersionUtil.JAVA_SPEC < 21) {
-            RuntimeJNIAccess.register(method(a, "java.nio.charset.Charset", "isSupported", String.class));
-            RuntimeJNIAccess.register(constructor(a, "java.lang.String", byte[].class, String.class));
-            RuntimeJNIAccess.register(method(a, "java.lang.String", "getBytes", String.class));
-        }
+        RuntimeJNIAccess.register(method(a, "java.nio.charset.Charset", "forName", String.class));
+        RuntimeJNIAccess.register(constructor(a, "java.lang.String", byte[].class, java.nio.charset.Charset.class));
+        RuntimeJNIAccess.register(method(a, "java.lang.String", "getBytes", java.nio.charset.Charset.class));
         RuntimeJNIAccess.register(method(a, "java.lang.String", "concat", String.class));
         RuntimeJNIAccess.register(fields(a, "java.lang.String", "coder", "value"));
 

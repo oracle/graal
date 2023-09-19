@@ -27,8 +27,9 @@ package org.graalvm.compiler.truffle.compiler.hotspot;
 import java.lang.ref.SoftReference;
 import java.lang.ref.WeakReference;
 
-import org.graalvm.compiler.truffle.common.TruffleCompilerRuntime;
 import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
+
+import com.oracle.truffle.compiler.TruffleCompilerRuntime;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -49,10 +50,10 @@ public final class HotSpotKnownTruffleTypes extends KnownTruffleTypes {
     public final ResolvedJavaField InstalledCode_entryPoint = findField(InstalledCode, "entryPoint");
 
     // truffle.runtime.hotspot
-    public final ResolvedJavaType HotSpotThreadLocalHandshake = lookupTypeCached("org.graalvm.compiler.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
+    public final ResolvedJavaType HotSpotThreadLocalHandshake = lookupTypeCached("com.oracle.truffle.runtime.hotspot.HotSpotThreadLocalHandshake");
     public final ResolvedJavaMethod HotSpotThreadLocalHandshake_doHandshake = findMethod(HotSpotThreadLocalHandshake, "doHandshake", java_lang_Object);
 
-    public final ResolvedJavaType HotSpotOptimizedCallTarget = lookupTypeCached("org.graalvm.compiler.truffle.runtime.hotspot.HotSpotOptimizedCallTarget");
+    public final ResolvedJavaType HotSpotOptimizedCallTarget = lookupTypeCached("com.oracle.truffle.runtime.hotspot.HotSpotOptimizedCallTarget");
     public final ResolvedJavaField HotSpotOptimizedCallTarget_installedCode = findField(HotSpotOptimizedCallTarget, "installedCode");
 
     public HotSpotKnownTruffleTypes(TruffleCompilerRuntime runtime, MetaAccessProvider metaAccess, ConstantReflectionProvider constantReflection) {

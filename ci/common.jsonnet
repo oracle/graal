@@ -9,6 +9,17 @@ local common_json = import "../common.json";
   # JDK definitions
   # ***************
   local variants(name) = [name, name + "Debug", name + "-llvm"],
+  # gets the JDK major version from a labsjdk version string (e.g., "ce-21+35-jvmci-23.1-b15" -> 21)
+  local parse_labsjdk_version(version) =
+    assert std.startsWith(version, "ce-") || std.startsWith(version, "ee-") : "Unsupported labsjdk version: " + version;
+    local number_prefix(str) =
+      if std.length(str) == 0 || std.length(std.findSubstr(str[0], "0123456789")) == 0 then
+        ""
+      else
+        str[0] + number_prefix(str[1:])
+      ;
+    std.parseInt(number_prefix(version[3:]))
+    ,
   local jdks_data = {
     oraclejdk11: common_json.jdks["oraclejdk11"] + { jdk_version:: 11 },
   } + {
@@ -24,8 +35,8 @@ local common_json = import "../common.json";
     [name]: common_json.jdks[name] + { jdk_version:: 21 }
     for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
   } + {
-    [name]: common_json.jdks[name] + { jdk_version:: 22 }
-    for name in ["oraclejdk22"]
+    [name]: common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self.version)}
+    for name in variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   },
   assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
 
@@ -59,7 +70,7 @@ local common_json = import "../common.json";
     "windows-jdk19": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk20": { packages+: { "devkit:VS2022-17.1.0+1": "==0" }},
     "windows-jdk21": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
-    "windows-jdk22": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
+    "windows-jdkLatest": { packages+: { "devkit:VS2022-17.1.0+1": "==1" }},
     "linux-jdk17": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk19": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
     "linux-jdk20": { packages+: { "devkit:gcc11.2.0-OL6.4+1": "==0" }},
@@ -121,9 +132,13 @@ local common_json = import "../common.json";
 
     graalnodejs:: {
       packages+: if self.os == "linux" then {
-        "00:devtoolset": "==7",
         cmake: "==3.22.2",
-      } else {},
+      } + (if self.arch == "aarch64" then {
+        "00:devtoolset": "==10",
+      } else {
+        "00:devtoolset": "==11",
+      })
+      else {},
     },
 
     svm:: {
@@ -141,12 +156,13 @@ local common_json = import "../common.json";
         "*.log",
       ],
 
-      packages+: if self.os == "linux" && self.arch == "amd64" then {
-        "00:devtoolset": "==7",
-        "01:binutils": ">=2.34",
-      } else if self.os == "linux" && self.arch == "aarch64" then {
-        "00:devtoolset": "==7",
-      } else {},
+      packages+: if self.os == "linux" && std.objectHas(self, "os_distro") && self.os_distro == "ol" then
+        (if self.arch == "aarch64" then {
+          "00:devtoolset": "==10",
+        } else {
+          "00:devtoolset": "==11",
+        })
+      else {},
     },
   },
 
@@ -165,6 +181,10 @@ local common_json = import "../common.json";
     post_merge: {
       targets+: ["post-merge"],
     },
+    opt_post_merge: {
+      targets+: ["opt-post-merge"],
+      tags+: []
+    },
     daily: {
       targets+: ["daily"],
     },
@@ -173,7 +193,7 @@ local common_json = import "../common.json";
     },
     monthly: {
       targets+: ["monthly"],
-    },
+    }
   },
 
   # Hardware definitions and common fields
@@ -235,6 +255,18 @@ local common_json = import "../common.json";
       mount_modules: true,
     },
   },
+  local ol9 = {
+    docker+: {
+      image: "buildslave_ol9",
+      mount_modules: true,
+    },
+  },
+  local ubuntu22 = {
+    docker+: {
+      image: "buildslave_ubuntu22",
+      mount_modules: true,
+    },
+  },
   local deps_linux = {
   },
   local deps_darwin = {
@@ -249,15 +281,20 @@ local common_json = import "../common.json";
 
   local amd64   = { arch:: "amd64",   capabilities+: [self.arch] },
   local aarch64 = { arch:: "aarch64", capabilities+: [self.arch] },
+  local ol_distro = {os_distro:: "ol"},
 
-  linux_amd64: linux + amd64 + ol7,
-  linux_aarch64: linux + aarch64,
+  linux_amd64: linux + amd64 + ol7 + ol_distro,
+  linux_amd64_ubuntu: linux + amd64 + ubuntu22 + {os_distro:: "ubuntu"},
+  linux_amd64_ol9: linux + amd64 + ol9 + ol_distro,
+  linux_aarch64: linux + aarch64 + ol_distro,
+  linux_aarch64_ol9: linux + aarch64 + ol9 + ol_distro,
 
   darwin_amd64: darwin + amd64,
   darwin_aarch64: darwin + aarch64,
 
   windows_amd64: windows + amd64,
   windows_server_2016_amd64: windows_server_2016 + amd64,
+
 
   # Utils
   disable_proxies: {

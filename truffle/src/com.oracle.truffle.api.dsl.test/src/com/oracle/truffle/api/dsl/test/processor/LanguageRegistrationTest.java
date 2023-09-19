@@ -42,8 +42,10 @@ package com.oracle.truffle.api.dsl.test.processor;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
+import java.nio.file.Path;
 
 import com.oracle.truffle.api.CallTarget;
+import com.oracle.truffle.api.InternalResource;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleFile.FileTypeDetector;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -200,6 +202,147 @@ public class LanguageRegistrationTest {
         }
     }
 
+    @Registration(id = "languageresource1", name = "languageresource1", internalResources = {
+                    InternalResourceRegistration1.Resource1.class,
+                    InternalResourceRegistration1.Resource2.class
+    })
+    public static class InternalResourceRegistration1 extends ProxyLanguage {
+        @InternalResource.Id("test-resource-1")
+        public static class Resource1 extends ProxyInternalResource {
+        }
+
+        @InternalResource.Id("test-resource-2")
+        public static class Resource2 extends ProxyInternalResource {
+        }
+    }
+
+    @ExpectError("The class LanguageRegistrationTest.InternalResourceRegistration2.Resource must be a static inner-class or a top-level class. " +
+                    "To resolve this, make the Resource static or top-level class.")
+    @Registration(id = "languageresource2", name = "languageresource2", internalResources = {InternalResourceRegistration2.Resource.class})
+    public static class InternalResourceRegistration2 extends ProxyLanguage {
+        @InternalResource.Id("test-resource")
+        public abstract class Resource extends ProxyInternalResource {
+        }
+    }
+
+    @ExpectError("The class LanguageRegistrationTest.InternalResourceRegistration3.Resource must have a no argument public constructor. " +
+                    "To resolve this, add public Resource() constructor.")
+    @Registration(id = "languageresource3", name = "languageresource3", internalResources = {InternalResourceRegistration3.Resource.class})
+    public static class InternalResourceRegistration3 extends ProxyLanguage {
+        @InternalResource.Id("test-resource")
+        public static class Resource extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            Resource(long unused) {
+            }
+
+            @SuppressWarnings("unused")
+            private Resource() {
+            }
+        }
+    }
+
+    @ExpectError("The class LanguageRegistrationTest.InternalResourceRegistration4.Resource must be public or package protected " +
+                    "in the com.oracle.truffle.api.dsl.test.processor package. To resolve this, make the " +
+                    "LanguageRegistrationTest.InternalResourceRegistration4.Resource public or move it to the " +
+                    "com.oracle.truffle.api.dsl.test.processor package.")
+    @Registration(id = "languageresource4", name = "languageresource4", internalResources = {InternalResourceRegistration4.Resource.class})
+    public static class InternalResourceRegistration4 extends ProxyLanguage {
+        @InternalResource.Id("test-resource")
+        private static class Resource extends ProxyInternalResource {
+            @SuppressWarnings("unused")
+            Resource() {
+            }
+        }
+    }
+
+    @Registration(id = "languageresource5", name = "languageresource5", internalResources = {InternalResourceRegistration5.Resource.class})
+    public static class InternalResourceRegistration5 extends ProxyLanguage {
+        @InternalResource.Id("test-resource")
+        public static class Resource extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource(String unused) {
+            }
+
+            @SuppressWarnings("unused")
+            Resource(long unused) {
+            }
+
+            Resource() {
+            }
+        }
+    }
+
+    @ExpectError("The class LanguageRegistrationTest.InternalResourceRegistration6.Resource must be annotated by the @Id annotation. " +
+                    "To resolve this, add '@Id(\"resource-id\")' annotation.")
+    @Registration(id = "languageresource6", name = "languageresource6", internalResources = {InternalResourceRegistration6.Resource.class})
+    public static class InternalResourceRegistration6 extends ProxyLanguage {
+
+        public static class Resource extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource() {
+            }
+        }
+    }
+
+    @ExpectError("Internal resources must have unique ids within the component. " +
+                    "But LanguageRegistrationTest.InternalResourceRegistration7.Resource1 and LanguageRegistrationTest.InternalResourceRegistration7.Resource2 use the same id duplicated-id. " +
+                    "To resolve this, change the @Id value on LanguageRegistrationTest.InternalResourceRegistration7.Resource1 or LanguageRegistrationTest.InternalResourceRegistration7.Resource2.")
+    @Registration(id = "languageresource7", name = "languageresource7", internalResources = {InternalResourceRegistration7.Resource1.class, InternalResourceRegistration7.Resource2.class})
+    public static class InternalResourceRegistration7 extends ProxyLanguage {
+
+        @InternalResource.Id("duplicated-id")
+        public static class Resource1 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource1() {
+            }
+        }
+
+        @InternalResource.Id("duplicated-id")
+        public static class Resource2 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource2() {
+            }
+        }
+    }
+
+    @ExpectError("The '@Id.componentId' for an required internal resources must be unset or equal to '@Registration.id'. " +
+                    "To resolve this, remove the '@Id.componentId = \"other-language\"'.")
+    @Registration(id = "languageresource8", name = "languageresource8", internalResources = {InternalResourceRegistration8.Resource1.class})
+    public static class InternalResourceRegistration8 extends ProxyLanguage {
+
+        @InternalResource.Id(value = "resource-id", componentId = "other-language")
+        public static class Resource1 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource1() {
+            }
+        }
+    }
+
+    @ExpectError("Optional internal resources must not be registered using '@Registration' annotation. To resolve this, " +
+                    "remove the 'LanguageRegistrationTest.InternalResourceRegistration9.Resource1' from 'internalResources' the or " +
+                    "make the 'LanguageRegistrationTest.InternalResourceRegistration9.Resource1' non-optional by removing 'optional = true'.")
+    @Registration(id = "languageresource9", name = "languageresource9", internalResources = {InternalResourceRegistration9.Resource1.class})
+    public static class InternalResourceRegistration9 extends ProxyLanguage {
+
+        @InternalResource.Id(value = "resource-id", componentId = "languageresource9", optional = true)
+        public static class Resource1 extends ProxyInternalResource {
+
+            @SuppressWarnings("unused")
+            Resource1() {
+            }
+        }
+    }
+
     static class ProxyFileTypeDetector implements FileTypeDetector {
 
         @Override
@@ -212,6 +355,18 @@ public class LanguageRegistrationTest {
         @SuppressWarnings("unused")
         public Charset findEncoding(TruffleFile file) throws IOException {
             return null;
+        }
+    }
+
+    static class ProxyInternalResource implements InternalResource {
+
+        @Override
+        public void unpackFiles(Env env, Path targetDirectory) {
+        }
+
+        @Override
+        public String versionHash(Env env) {
+            return "1";
         }
     }
 }

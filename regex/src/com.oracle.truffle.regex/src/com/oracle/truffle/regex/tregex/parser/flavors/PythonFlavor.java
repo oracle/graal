@@ -69,7 +69,7 @@ public final class PythonFlavor extends RegexFlavor {
     }
 
     @Override
-    public RegexValidator createValidator(RegexSource source) {
+    public RegexValidator createValidator(RegexLanguage language, RegexSource source, CompilationBuffer compilationBuffer) {
         throw new UnsupportedOperationException();
     }
 

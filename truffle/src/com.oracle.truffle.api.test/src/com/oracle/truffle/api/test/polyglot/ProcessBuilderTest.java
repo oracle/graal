@@ -57,6 +57,15 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
+import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.EnvironmentAccess;
+import org.graalvm.polyglot.HostAccess;
+import org.graalvm.polyglot.io.IOAccess;
+import org.graalvm.polyglot.io.ProcessHandler;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
@@ -68,18 +77,9 @@ import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
+import com.oracle.truffle.api.io.TruffleProcessBuilder;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.test.common.AbstractExecutableTestLanguage;
-import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.EnvironmentAccess;
-import org.graalvm.polyglot.HostAccess;
-import org.graalvm.polyglot.io.IOAccess;
-import org.graalvm.polyglot.io.ProcessHandler;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
-import com.oracle.truffle.api.io.TruffleProcessBuilder;
 
 public class ProcessBuilderTest {
 
@@ -214,8 +214,8 @@ public class ProcessBuilderTest {
             try {
                 interop.execute(closeContextCallBack);
                 Assert.fail("Expected host exception.");
-            } catch (IllegalStateException illegalState) {
-                Assert.assertTrue(illegalState.getMessage().startsWith("The context has an alive sub-process"));
+            } catch (RuntimeException illegalState) {
+                Assert.assertTrue(illegalState.getMessage().contains("The context has an alive sub-process"));
             } finally {
                 p.destroyForcibly();
             }

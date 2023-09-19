@@ -64,7 +64,13 @@ public abstract class Writer {
     protected abstract void writeImpl(String output);
 
     /**
-     * Creates and returns a writer that writes to the standard output.
+     * Writes a line separator to the output.
+     */
+    protected abstract void writelnImpl();
+
+    /**
+     * Creates and returns a writer that writes to the standard output. Uses the system-dependent
+     * line separator.
      *
      * @param optionValues the current option values
      * @return a writer to the standard output
@@ -75,11 +81,17 @@ public abstract class Writer {
             protected void writeImpl(String output) {
                 System.out.print(output);
             }
+
+            @Override
+            protected void writelnImpl() {
+                System.out.println();
+            }
         };
     }
 
     /**
-     * A writer that appends all written output to a string builder.
+     * A writer that appends all written output to a string builder. Uses {@code '\n'} as the line
+     * separator to match the behavior of Java text blocks.
      */
     public static final class StringBuilderWriter extends Writer {
 
@@ -93,6 +105,11 @@ public abstract class Writer {
         @Override
         protected void writeImpl(String output) {
             stringBuilder.append(output);
+        }
+
+        @Override
+        protected void writelnImpl() {
+            stringBuilder.append('\n');
         }
 
         /**
@@ -140,7 +157,7 @@ public abstract class Writer {
      * Writes a line separator to the output.
      */
     public void writeln() {
-        writeImpl(System.lineSeparator());
+        writelnImpl();
         indentWritten = false;
     }
 

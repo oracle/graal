@@ -143,12 +143,17 @@ public class Log4ShellFeature implements InternalFeature {
         return false;
     }
 
+    private AfterAnalysisAccess afterAnalysisAccess;
+
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        Class<?> log4jClass = access.findClassByName(log4jClassName);
+        this.afterAnalysisAccess = access;
+    }
 
+    public String getUserWarning() {
+        Class<?> log4jClass = afterAnalysisAccess.findClassByName(log4jClassName);
         if (log4jClass == null) {
-            return;
+            return null;
         }
 
         Package log4jPackage = log4jClass.getPackage();
@@ -163,16 +168,14 @@ public class Log4ShellFeature implements InternalFeature {
 
         /* We were unable to get the version, do not risk raising a false positive. */
         if (version == null) {
-            LogUtils.warning(log4jUnknownVersion);
-            return;
+            return log4jUnknownVersion;
         }
 
         String[] components = version.split("\\.");
 
         /* Something is wrong with the version string, stop here. */
         if (components.length < 2) {
-            LogUtils.warning(log4jUnknownVersion);
-            return;
+            return log4jUnknownVersion;
         }
 
         Set<String> vulnerableMethods = new HashSet<>();
@@ -180,20 +183,20 @@ public class Log4ShellFeature implements InternalFeature {
         if (("1".equals(components[0]) && vulnerableLog4jOne(components)) || ("2".equals(components[0]) && vulnerableLog4jTwo(components))) {
             for (Method method : log4jClass.getMethods()) {
                 String methodName = method.getName();
-                if (targetMethods.contains(methodName) && (access.isReachable(method) || (access.reachableMethodOverrides(method).size() > 0))) {
+                if (targetMethods.contains(methodName) && (afterAnalysisAccess.isReachable(method) || (afterAnalysisAccess.reachableMethodOverrides(method).size() > 0))) {
                     vulnerableMethods.add(method.getDeclaringClass().getName() + "." + method.getName());
                 }
             }
         }
 
         if (vulnerableMethods.size() == 0) {
-            return;
+            return null;
         }
 
         StringBuilder renderedErrorMessage = new StringBuilder(String.format(log4jVulnerableErrorMessage));
         for (String method : vulnerableMethods) {
-            renderedErrorMessage.append(System.lineSeparator() + method);
+            renderedErrorMessage.append(System.lineSeparator() + "    - " + method);
         }
-        LogUtils.warning(renderedErrorMessage.toString());
+        return renderedErrorMessage.toString();
     }
 }

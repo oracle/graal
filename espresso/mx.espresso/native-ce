@@ -1,6 +1,6 @@
 # mx --dynamicimports=/vm,/substratevm --components="Java on Truffle,SubstrateVM,suite:tools" --native-images=lib:javavm --disable-installables=true graalvm-show
 
 DYNAMIC_IMPORTS=/vm,/substratevm
-COMPONENTS=Java on Truffle,SubstrateVM,suite:tools
+COMPONENTS=Java on Truffle,Espresso Standalone jvm.cfg,SubstrateVM,suite:tools,tflm
 NATIVE_IMAGES=lib:javavm
 DISABLE_INSTALLABLES=true

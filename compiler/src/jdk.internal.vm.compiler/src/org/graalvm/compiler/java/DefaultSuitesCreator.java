@@ -35,7 +35,7 @@ import org.graalvm.compiler.phases.tiers.Suites;
 
 import jdk.vm.ci.code.Architecture;
 
-public class DefaultSuitesCreator extends SuitesProviderBase {
+public abstract class DefaultSuitesCreator extends SuitesProviderBase {
 
     private final CompilerConfiguration compilerConfiguration;
 
@@ -57,9 +57,11 @@ public class DefaultSuitesCreator extends SuitesProviderBase {
 
     protected PhaseSuite<HighTierContext> createGraphBuilderSuite(Plugins plugins) {
         PhaseSuite<HighTierContext> suite = new PhaseSuite<>();
-        suite.appendPhase(new GraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins)));
+        suite.appendPhase(createGraphBuilderPhase(GraphBuilderConfiguration.getDefault(plugins)));
         return suite;
     }
+
+    protected abstract GraphBuilderPhase createGraphBuilderPhase(GraphBuilderConfiguration graphBuilderConfiguration);
 
     @Override
     public LIRSuites createLIRSuites(OptionValues options) {

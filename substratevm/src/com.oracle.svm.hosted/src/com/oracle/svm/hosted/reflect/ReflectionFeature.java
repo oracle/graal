@@ -38,7 +38,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -95,16 +94,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class ReflectionFeature implements InternalFeature, ReflectionSubstitutionSupport {
 
     /**
-     * The CallerSensitiveAdapter mechanism of the JDK (introduced after JDK 17) is a formalization
-     * of {@link CallerSensitive} methods: the "caller sensitive adapter for a
-     * {@link CallerSensitive} method is a method with the same name and same signature (except for
-     * a trailing Class parameter). When a {@link CallerSensitive} method is invoked via reflection
-     * or a method handle, then the adapter is invoked instead and the caller class is passed in
-     * explicitly. This avoids corner cases where {@link Reflection#getCallerClass} returns an
-     * internal method of the reflection / method handle implementation.
+     * The CallerSensitiveAdapter mechanism of the JDK is a formalization of {@link CallerSensitive}
+     * methods: the "caller sensitive adapter for a {@link CallerSensitive} method is a method with
+     * the same name and same signature (except for a trailing Class parameter). When a
+     * {@link CallerSensitive} method is invoked via reflection or a method handle, then the adapter
+     * is invoked instead and the caller class is passed in explicitly. This avoids corner cases
+     * where {@link Reflection#getCallerClass} returns an internal method of the reflection / method
+     * handle implementation.
      */
-    private static final Method findCallerSensitiveAdapterMethod = JavaVersionUtil.JAVA_SPEC <= 17 ? null
-                    : ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "jdk.internal.reflect.DirectMethodHandleAccessor"), "findCSMethodAdapter", Method.class);
+    private static final Method findCallerSensitiveAdapterMethod = ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "jdk.internal.reflect.DirectMethodHandleAccessor"),
+                    "findCSMethodAdapter", Method.class);
 
     private AnnotationSubstitutionProcessor annotationSubstitutions;
 
@@ -169,19 +168,17 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
 
             if (member.getDeclaringClass() == MethodHandle.class && (member.getName().equals("invoke") || member.getName().equals("invokeExact"))) {
                 /* Method handles must not be invoked via reflection. */
-                expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod));
+                expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod), "Registered in " + ReflectionFeature.class);
             } else {
                 Method target = (Method) member;
-                if (JavaVersionUtil.JAVA_SPEC > 17) {
-                    try {
-                        Method adapter = (Method) findCallerSensitiveAdapterMethod.invoke(null, member);
-                        if (adapter != null) {
-                            target = adapter;
-                            callerSensitiveAdapter = true;
-                        }
-                    } catch (ReflectiveOperationException ex) {
-                        throw VMError.shouldNotReachHere(ex);
+                try {
+                    Method adapter = (Method) findCallerSensitiveAdapterMethod.invoke(null, member);
+                    if (adapter != null) {
+                        target = adapter;
+                        callerSensitiveAdapter = true;
                     }
+                } catch (ReflectiveOperationException ex) {
+                    throw VMError.shouldNotReachHere(ex);
                 }
                 expandSignature = createExpandSignatureMethod(target, callerSensitiveAdapter);
                 AnalysisMethod targetMethod = analysisAccess.getMetaAccess().lookupJavaMethod(target);
@@ -191,11 +188,11 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                  * both a directTarget and a vtableOffset.
                  */
                 if (!targetMethod.isAbstract()) {
-                    directTarget = register(targetMethod);
+                    directTarget = register(targetMethod, "Reflection target, registered in " + ReflectionFeature.class);
                 }
                 if (!targetMethod.canBeStaticallyBound()) {
                     vtableOffset = SubstrateMethodAccessor.OFFSET_NOT_YET_COMPUTED;
-                    analysisAccess.registerAsRoot(targetMethod, false);
+                    analysisAccess.registerAsRoot(targetMethod, false, "Accessor method for reflection, registered in " + ReflectionFeature.class);
                 }
                 VMError.guarantee(directTarget != null || vtableOffset != SubstrateMethodAccessor.STATICALLY_BOUND, "Must have either a directTarget or a vtableOffset");
                 if (!targetMethod.isStatic()) {
@@ -216,12 +213,12 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                  * an interface, array, or primitive type, but we are defensive and throw the
                  * exception in that case too.
                  */
-                expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(newInstanceErrorMethod));
+                expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(newInstanceErrorMethod), "Registered in " + ReflectionFeature.class);
             } else {
                 expandSignature = createExpandSignatureMethod(member, false);
                 AnalysisMethod constructor = analysisAccess.getMetaAccess().lookupJavaMethod(member);
                 AnalysisMethod factoryMethod = (AnalysisMethod) FactoryMethodSupport.singleton().lookup(analysisAccess.getMetaAccess(), constructor, false);
-                directTarget = register(factoryMethod);
+                directTarget = register(factoryMethod, "Factory method, registered in " + ReflectionFeature.class);
                 if (!constructor.getDeclaringClass().isInitialized()) {
                     initializeBeforeInvoke = analysisAccess.getHostVM().dynamicHub(constructor.getDeclaringClass());
                 }
@@ -234,13 +231,13 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
         return expandSignatureMethods.computeIfAbsent(new SignatureKey(member, callerSensitiveAdapter), signatureKey -> {
             ResolvedJavaMethod prototype = analysisAccess.getMetaAccess().lookupJavaMethod(callerSensitiveAdapter ? invokePrototypeForCallerSensitiveAdapter : invokePrototype).getWrapped();
             return register(new ReflectionExpandSignatureMethod("invoke_" + signatureKey.uniqueShortName(), prototype, signatureKey.isStatic, signatureKey.argTypes, signatureKey.returnKind,
-                            signatureKey.callerSensitiveAdapter));
+                            signatureKey.callerSensitiveAdapter), "Registered in " + ReflectionFeature.class);
         });
     }
 
-    private MethodPointer register(ResolvedJavaMethod method) {
+    private MethodPointer register(ResolvedJavaMethod method, String reason) {
         AnalysisMethod aMethod = method instanceof AnalysisMethod ? (AnalysisMethod) method : analysisAccess.getUniverse().lookup(method);
-        analysisAccess.registerAsRoot(aMethod, true);
+        analysisAccess.registerAsRoot(aMethod, true, reason);
         return new MethodPointer(aMethod);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * Copyright (c) 2019, 2019, Arm Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
@@ -27,7 +27,6 @@ package com.oracle.svm.core.graal.code;
 
 import org.graalvm.compiler.core.phases.CommunityCompilerConfiguration;
 import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
-import org.graalvm.compiler.java.DefaultSuitesCreator;
 import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
 import org.graalvm.compiler.phases.tiers.SuitesCreator;
 
@@ -52,7 +51,7 @@ public class SubstrateSuitesCreatorProvider {
     }
 
     public SubstrateSuitesCreatorProvider() {
-        this(new DefaultSuitesCreator(getHostedCompilerConfiguration()), new DefaultSuitesCreator(new EconomyCompilerConfiguration()));
+        this(new SubstrateSuitesCreator(getHostedCompilerConfiguration()), new SubstrateSuitesCreator(new EconomyCompilerConfiguration()));
     }
 
     public final SuitesCreator getSuitesCreator() {

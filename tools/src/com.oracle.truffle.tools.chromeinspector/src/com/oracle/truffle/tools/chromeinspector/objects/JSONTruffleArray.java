@@ -28,7 +28,7 @@ import static com.oracle.truffle.tools.chromeinspector.objects.JSONTruffleObject
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.tools.utils.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONArray;
 
 /**
  * TruffleObject of a JSON array.

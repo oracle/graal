@@ -174,7 +174,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         if (deoptInfo != null) {
             FrameState initialState = kit.getGraph().start().stateAfter();
             if (shouldInsertDeoptEntry(deoptInfo, initialState.bci, false, false)) {
-                return appendDeoptWithExceptionUnwind(kit, initialState, initialState.bci, nextDeoptIndex);
+                return appendDeoptWithExceptionUnwind(kit, initialState, initialState.bci, nextDeoptIndex, DeoptEntryNode.create());
             }
         }
         return nextDeoptIndex;
@@ -223,7 +223,7 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
         if (shouldInsertDeoptEntry(deoptInfo, bci, false, true)) {
             // Exception during invoke
 
-            var exceptionDeopt = kit.add(new DeoptEntryNode());
+            var exceptionDeopt = kit.add(DeoptEntryNode.create(invoke.bci()));
             exceptionDeopt.setStateAfter(exception.stateAfter().duplicate());
             var exceptionDeoptBegin = kit.add(new DeoptEntryBeginNode());
             int exceptionDeoptIndex = nextDeoptIndex++;
@@ -246,10 +246,10 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
             kit.noExceptionPart();
             if (needDeoptEntry) {
                 // Deopt entry after invoke without exception
-                nextDeoptIndex = appendDeoptWithExceptionUnwind(kit, invoke.stateAfter(), invoke.stateAfter().bci, nextDeoptIndex);
+                nextDeoptIndex = appendDeoptWithExceptionUnwind(kit, invoke.stateAfter(), invoke.stateAfter().bci, nextDeoptIndex, DeoptEntryNode.create(invoke.bci()));
             } else {
                 // Only a proxy is needed
-                nextDeoptIndex = appendDeoptProxyAnchorNode(kit, invoke.stateAfter(), nextDeoptIndex);
+                nextDeoptIndex = appendDeoptProxyAnchorNode(kit, invoke.stateAfter(), nextDeoptIndex, invoke.bci());
             }
         }
         kit.endInvokeWithException();
@@ -258,8 +258,8 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
     }
 
     /** @see com.oracle.svm.hosted.phases.SharedGraphBuilderPhase */
-    private static int appendDeoptWithExceptionUnwind(HostedGraphKit kit, FrameState state, int exceptionBci, int nextDeoptIndex) {
-        var entry = kit.add(new DeoptEntryNode());
+    private static int appendDeoptWithExceptionUnwind(HostedGraphKit kit, FrameState state, int exceptionBci, int nextDeoptIndex, DeoptEntryNode deoptEntryNode) {
+        var entry = kit.add(deoptEntryNode);
         entry.setStateAfter(state.duplicate());
         var begin = kit.append(new DeoptEntryBeginNode());
         ((FixedWithNextNode) begin.predecessor()).setNext(entry);
@@ -280,8 +280,8 @@ final class PodFactorySubstitutionMethod extends CustomSubstitutionMethod {
     }
 
     /** @see com.oracle.svm.hosted.phases.SharedGraphBuilderPhase */
-    private static int appendDeoptProxyAnchorNode(HostedGraphKit kit, FrameState state, int nextDeoptIndex) {
-        var anchor = kit.append(new DeoptProxyAnchorNode());
+    private static int appendDeoptProxyAnchorNode(HostedGraphKit kit, FrameState state, int nextDeoptIndex, int invokeBci) {
+        var anchor = kit.append(new DeoptProxyAnchorNode(invokeBci));
         anchor.setStateAfter(state.duplicate());
 
         // Ensure later nodes see values from potential deoptimization

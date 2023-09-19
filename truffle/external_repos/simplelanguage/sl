@@ -41,7 +41,7 @@
 #
 
 # If you update this number make sure the graalvm.version value in ./pom.xml matches
-VERSION="23.1.0-dev"
+VERSION="24.0.0-dev"
 # If you update this number make sure the antlr.version value in language/pom.xml matches
 ANTLR_VERSION="4.12.0"
 
@@ -155,7 +155,7 @@ else
         echo "Could not find mvn cache at $HOME/.m2"
         exit 1
     fi
-    GRAAL_SDK_PATH="$HOME/.m2/repository/org/graalvm/sdk/graal-sdk/$VERSION/graal-sdk-$VERSION.jar"
+    GRAAL_SDK_PATH="$HOME/.m2/repository/org/graalvm/polyglot/polyglot/$VERSION/polylgot-$VERSION.jar"
     TRUFFLE_API_PATH="$HOME/.m2/repository/org/graalvm/truffle/truffle-api/$VERSION/truffle-api-$VERSION.jar"
     "$JAVACMD" "${JAVA_ARGS[@]}" -p "$GRAAL_SDK_PATH":"$TRUFFLE_API_PATH":"$ANTLR_RUNTIME_PATH":"$LANGUAGE_PATH" --add-modules "org.graalvm.truffle" -cp "$LAUNCHER_PATH" "$MAIN_CLASS" "${PROGRAM_ARGS[@]}"
 fi

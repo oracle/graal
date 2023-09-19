@@ -43,7 +43,7 @@ import com.oracle.truffle.espresso.redefinition.DefineKlassListener;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.JavaType;
 
 /**
@@ -443,7 +443,7 @@ public abstract class ClassRegistry {
             // FIXME(peterssen): Do NOT create a LinkedKlass every time, use a global cache.
             ContextDescription description = new ContextDescription(env.getLanguage(), env.getJavaVersion());
             LinkedKlass linkedSuperKlass = superKlass == null ? null : superKlass.getLinkedKlass();
-            LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(description, parserKlass, linkedSuperKlass, linkedInterfaces, info);
+            LinkedKlass linkedKlass = env.getLanguage().getLanguageCache().getOrCreateLinkedKlass(env, description, getClassLoader(), parserKlass, linkedSuperKlass, linkedInterfaces, info);
             klass = new ObjectKlass(context, linkedKlass, superKlass, superInterfaces, getClassLoader(), info);
         }
 

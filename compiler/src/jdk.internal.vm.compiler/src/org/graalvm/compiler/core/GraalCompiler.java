@@ -171,10 +171,10 @@ public class GraalCompiler {
                 if (r.verifySourcePositions) {
                     assert r.graph.verifySourcePositions(true);
                 }
+                checkForRequestedCrash(r.graph);
             } catch (Throwable e) {
                 throw debug.handle(e);
             }
-            checkForRequestedCrash(r.graph);
             checkForRequestedDelay(r.graph);
             return r.compilationResult;
         }
@@ -204,14 +204,15 @@ public class GraalCompiler {
             String matchedLabel = match(graph, methodPattern);
             if (matchedLabel != null) {
                 String crashMessage = "Forced crash after compiling " + matchedLabel;
-                notifyCrash(crashMessage);
-                if (permanentBailout) {
-                    throw new PermanentBailoutException(crashMessage);
+                if (notifyCrash(crashMessage)) {
+                    if (permanentBailout) {
+                        throw new PermanentBailoutException(crashMessage);
+                    }
+                    if (bailout) {
+                        throw new RetryableBailoutException(crashMessage);
+                    }
+                    throw new RuntimeException(crashMessage);
                 }
-                if (bailout) {
-                    throw new RetryableBailoutException(crashMessage);
-                }
-                throw new RuntimeException(crashMessage);
             }
         }
     }
@@ -263,9 +264,12 @@ public class GraalCompiler {
      * Substituted by {@code com.oracle.svm.graal.hotspot.libgraal.
      * Target_org_graalvm_compiler_core_GraalCompiler} to optionally test routing fatal error
      * handling from libgraal to HotSpot.
+     *
+     * @return true if the caller should proceed to throw an exception
      */
     @SuppressWarnings("unused")
-    private static void notifyCrash(String crashMessage) {
+    private static boolean notifyCrash(String crashMessage) {
+        return true;
     }
 
     /**

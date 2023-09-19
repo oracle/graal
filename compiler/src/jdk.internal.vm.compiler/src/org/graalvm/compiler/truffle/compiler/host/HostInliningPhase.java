@@ -78,11 +78,10 @@ import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.common.inlining.InliningUtil;
 import org.graalvm.compiler.phases.contract.NodeCostUtil;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.truffle.common.HostMethodInfo;
+import org.graalvm.compiler.truffle.compiler.KnownTruffleTypes;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.compiler.HostMethodInfo;
 
 import jdk.vm.ci.meta.JavaTypeProfile;
 import jdk.vm.ci.meta.ProfilingInfo;
@@ -397,9 +396,10 @@ public class HostInliningPhase extends AbstractInliningPhase {
      * <p>
      * This method follows the same rules as the {@link PartialEvaluator} for recursive exploration.
      * For example, methods dominated by a call to
-     * {@link CompilerDirectives#transferToInterpreterAndInvalidate()} are not inlined or explored.
-     * The same applies to calls protected by {@link CompilerDirectives#inInterpreter()} or methods
-     * annotated by {@link TruffleBoundary}.
+     * {@link KnownTruffleTypes#CompilerDirectives}#transferToInterpreterAndInvalidate() not inlined
+     * or explored. The same applies to calls protected by
+     * {@link KnownTruffleTypes#CompilerDirectives}#inInterpreter() or methods annotated by
+     * TruffleBoundary.
      */
     private List<CallTree> exploreGraph(InliningPhaseContext context, CallTree caller, StructuredGraph graph, int exploreRound) {
         caller.exploredIndex = exploreRound;

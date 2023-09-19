@@ -88,12 +88,12 @@ public class VirtualThreadsJFRTest {
                 RecordedThread t = e.getThread();
                 assertTrue(t != null);
                 assertTrue(t.isVirtual());
-                assertTrue("".equals(t.getJavaName())); // vthreads default name is the empty
-                                                        // string.
-                assertTrue("".equals(t.getOSName()));
-                assertTrue("VirtualThreads".equals(t.getThreadGroup().getName()));
+                assertTrue(t.getOSName() == null);
+                assertTrue(t.getOSThreadId() == -1L);
+                // vthreads default name is the empty string
+                assertTrue("".equals(t.getJavaName()));
                 assertTrue(t.getJavaThreadId() > 0L);
-                assertTrue(t.getOSThreadId() == 0L);
+                assertTrue("VirtualThreads".equals(t.getThreadGroup().getName()));
             }
         } catch (Exception e) {
             fail(e.getMessage());

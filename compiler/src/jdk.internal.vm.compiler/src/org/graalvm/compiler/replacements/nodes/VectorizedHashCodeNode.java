@@ -24,7 +24,13 @@
  */
 package org.graalvm.compiler.replacements.nodes;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_1;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE4_2;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
 
 import java.util.EnumSet;
 
@@ -103,7 +109,7 @@ public final class VectorizedHashCodeNode extends PureFunctionStubIntrinsicNode 
     }
 
     public static EnumSet<AMD64.CPUFeature> minFeaturesAMD64() {
-        return EnumSet.of(AVX2);
+        return EnumSet.of(SSE2, SSE3, SSSE3, SSE4_1, SSE4_2, AVX, AVX2);
     }
 
     @SuppressWarnings("unlikely-arg-type")
@@ -112,6 +118,11 @@ public final class VectorizedHashCodeNode extends PureFunctionStubIntrinsicNode 
             return ((AMD64) arch).getFeatures().containsAll(minFeaturesAMD64());
         }
         return false;
+    }
+
+    @Override
+    public boolean canBeEmitted(Architecture arch) {
+        return isSupported(arch);
     }
 
     @Override

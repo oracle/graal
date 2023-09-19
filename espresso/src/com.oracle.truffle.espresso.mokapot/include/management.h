@@ -23,7 +23,6 @@
 #ifndef _MANAGEMENT_H
 #define _MANAGEMENT_H
 
-#include <trufflenfi.h>
 #include <jni.h>
 
 JNIEXPORT void* JNICALL initializeManagementContext(void* (*fetch_by_name)(const char *), const int version);
@@ -54,5 +53,9 @@ void disposeManagementContext2(void *management_ptr, void (*release_closure)(voi
 void* initializeManagementContext3(void* (*fetch_by_name)(const char *));
 
 void disposeManagementContext3(void *management_ptr, void (*release_closure)(void *));
+
+void* initializeManagementContext4(void* (*fetch_by_name)(const char *));
+
+void disposeManagementContext4(void *management_ptr, void (*release_closure)(void *));
 
 #endif // _MANAGEMENT_H

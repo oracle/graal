@@ -37,6 +37,7 @@ import org.graalvm.compiler.hotspot.meta.HotSpotPlatformConfigurationProvider;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.replacements.HotSpotAllocationSnippets;
+import org.graalvm.compiler.hotspot.replacements.arraycopy.HotSpotArraycopySnippets;
 import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.compiler.options.OptionValues;
 
@@ -54,9 +55,10 @@ public class RISCV64HotSpotLoweringProvider extends DefaultHotSpotLoweringProvid
 
     @Override
     public void initialize(OptionValues options, Iterable<DebugHandlersFactory> factories, HotSpotProviders providers, GraalHotSpotVMConfig config,
+                    HotSpotArraycopySnippets.Templates arraycopySnippetTemplates,
                     HotSpotAllocationSnippets.Templates allocationSnippetTemplates) {
 
-        super.initialize(options, factories, providers, config, allocationSnippetTemplates);
+        super.initialize(options, factories, providers, config, arraycopySnippetTemplates, allocationSnippetTemplates);
     }
 
     @Override

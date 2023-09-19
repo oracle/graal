@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1431,6 +1431,19 @@ public class AArch64MacroAssembler extends AArch64Assembler {
     }
 
     /**
+     * C6.2.338 Unsigned bitfield extract.
+     *
+     * @param size register size. Has to be 32 or 64.
+     * @param dst general purpose register. May not be null, stackpointer or zero-register.
+     * @param src general purpose register. May not be null, stackpointer or zero-register.
+     * @param r must be in the range 0 to size - 1
+     * @param s must be in the range 0 to size - 1
+     */
+    public void ubfx(int size, Register dst, Register src, int r, int s) {
+        ubfm(size, dst, src, r, r + s - 1);
+    }
+
+    /**
      * dst = src1 & src2.
      *
      * @param size register size. Has to be 32 or 64.
@@ -2002,6 +2015,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         final int extraInformation = PatchLabelKind.decodeExtraInformation(instruction);
         switch (type) {
             case BRANCH_CONDITIONALLY:
+                if (!NumUtil.isSignedNbit(21, pcRelativeOffset)) {
+                    throw new BranchTargetOutOfBoundsException(true, "Branch target %d out of bounds", pcRelativeOffset);
+                }
                 ConditionFlag condition = ConditionFlag.fromEncoding(extraInformation);
                 super.b(condition, pcRelativeOffset, patchPos);
                 break;

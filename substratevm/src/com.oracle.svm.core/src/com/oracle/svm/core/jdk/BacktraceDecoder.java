@@ -52,18 +52,17 @@ public abstract class BacktraceDecoder {
      * @param maxFramesDecode the maximum number of frames that should be decoded (0 means all)
      * @return the number of decoded frames
      */
-    protected final int visitBacktrace(Object backtrace, int maxFramesProcessed, int maxFramesDecode) {
+    protected final int visitBacktrace(long[] backtrace, int maxFramesProcessed, int maxFramesDecode) {
         int maxFramesDecodeLimit = maxFramesDecode > 0 ? maxFramesDecode : Integer.MAX_VALUE;
         int framesDecoded = 0;
         if (backtrace != null) {
-            final long[] trace = (long[]) backtrace;
             int backtraceIndex = 0;
-            while (backtraceIndex < trace.length && trace[backtraceIndex] != 0) {
-                long entry = trace[backtraceIndex];
+            while (backtraceIndex < backtrace.length && backtrace[backtraceIndex] != 0) {
+                long entry = backtrace[backtraceIndex];
                 if (BacktraceVisitor.isSourceReference(entry)) {
                     /* Entry is an encoded source reference. */
-                    VMError.guarantee(backtraceIndex + BacktraceVisitor.entriesPerSourceReference() <= trace.length, "Truncated backtrace array");
-                    visitSourceReference(maxFramesProcessed, framesDecoded, trace, backtraceIndex);
+                    VMError.guarantee(backtraceIndex + BacktraceVisitor.entriesPerSourceReference() <= backtrace.length, "Truncated backtrace array");
+                    visitSourceReference(maxFramesProcessed, framesDecoded, backtrace, backtraceIndex);
                     /* Always a single frame. */
                     framesDecoded++;
                     backtraceIndex += BacktraceVisitor.entriesPerSourceReference();
@@ -116,7 +115,7 @@ public abstract class BacktraceDecoder {
     @Uninterruptible(reason = "Wraps the now safe call to the possibly interruptible visitor.", callerMustBe = true, calleeMustBe = false)
     private int visitFrame(CodePointer ip, CodeInfo tetheredCodeInfo, int oldFramesDecoded, int maxFramesProcessed, int maxFramesDecode) {
         int framesDecoded = oldFramesDecoded;
-        frameInfoCursor.initialize(tetheredCodeInfo, ip);
+        frameInfoCursor.initialize(tetheredCodeInfo, ip, true);
         while (frameInfoCursor.advance()) {
             FrameInfoQueryResult frameInfo = frameInfoCursor.get();
             if (!StackTraceUtils.shouldShowFrame(frameInfo, false, true, false)) {

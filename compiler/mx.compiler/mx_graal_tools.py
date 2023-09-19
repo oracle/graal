@@ -69,6 +69,11 @@ def run_netbeans_app(app_name, jdkhome, args=None, dist=None):
     launch = [executable, '--jdkhome', jdkhome]
     if not mx.get_opts().verbose:
         launch.append('-J-Dnetbeans.logger.console=false')
+    if mx.get_os() == 'linux':
+        # Mitigates X server crashes on Linux
+        launch.append('-J-Dsun.java2d.xrender=false')
+    print('Consider flag -J-Dsun.java2d.uiScale=2 if on a high resolution display')
+    print('Consider flag -J-Xms4g -J-Xmx8g if dealing with large graphs')
     mx.run(launch+args)
 
 def igv(args):

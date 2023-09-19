@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,9 +32,6 @@ import com.oracle.truffle.espresso.nodes.EspressoNode;
 public abstract class LookupTypeConverterNode extends EspressoNode {
     static final int LIMIT = 3;
 
-    LookupTypeConverterNode() {
-    }
-
     public abstract PolyglotTypeMappings.TypeConverter execute(String metaName) throws ClassCastException;
 
     @SuppressWarnings("unused")
@@ -49,6 +46,6 @@ public abstract class LookupTypeConverterNode extends EspressoNode {
     @TruffleBoundary
     @Specialization(replaces = "doCached")
     PolyglotTypeMappings.TypeConverter doUncached(String metaName) throws ClassCastException {
-        return getContext().getPolyglotInterfaceMappings().mapTypeConversion(metaName);
+        return getContext().getPolyglotTypeMappings().mapTypeConversion(metaName);
     }
 }

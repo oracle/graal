@@ -62,7 +62,6 @@ import java.util.NoSuchElementException;
 import java.util.Objects;
 
 import org.graalvm.polyglot.impl.AbstractPolyglotImpl.AbstractHostAccess;
-import org.graalvm.polyglot.proxy.Proxy;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -485,14 +484,14 @@ final class HostObject implements TruffleObject {
             return false;
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"})
         static boolean doArray(HostObject receiver, long index,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             long size = Array.getLength(receiver.obj);
             return index >= 0 && index < size;
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         static boolean doList(HostObject receiver, long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -506,14 +505,14 @@ final class HostObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"})
         static boolean doMapEntry(HostObject receiver, long index,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             return index >= 0 && index < 2;
         }
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isList(hostClassCache)", "!receiver.isArray(hostClassCache)",
-                        "!receiver.isMapEntry(hostClassCache)"}, limit = "1")
+                        "!receiver.isMapEntry(hostClassCache)"})
         static boolean doNotArrayOrList(HostObject receiver, long index,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             return false;
@@ -528,14 +527,14 @@ final class HostObject implements TruffleObject {
             return false;
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"})
         static boolean doArray(HostObject receiver, long index,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             long size = Array.getLength(receiver.obj);
             return index >= 0 && index < size;
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         static boolean doList(HostObject receiver, long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -549,14 +548,14 @@ final class HostObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"})
         static boolean doMapEntry(HostObject receiver, long index,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             return index == 1;
         }
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isList(hostClassCache)", "!receiver.isArray(hostClassCache)",
-                        "!receiver.isMapEntry(hostClassCache)"}, limit = "1")
+                        "!receiver.isMapEntry(hostClassCache)"})
         static boolean doNotArrayOrList(HostObject receiver, long index,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             return false;
@@ -594,7 +593,7 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"})
         static void doArray(HostObject receiver, long index, Object value,
                         @Bind("$node") Node node,
                         @Shared("toHost") @Cached(inline = true) HostToTypeNode toHostNode,
@@ -625,7 +624,7 @@ final class HostObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         static void doList(HostObject receiver, long index, Object value,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -657,7 +656,7 @@ final class HostObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"})
         static void doMapEntry(HostObject receiver, long index, Object value,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -688,7 +687,7 @@ final class HostObject implements TruffleObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isList(hostClassCache)", "!receiver.isArray(hostClassCache)",
-                        "!receiver.isMapEntry(hostClassCache)"}, limit = "1")
+                        "!receiver.isMapEntry(hostClassCache)"})
         static void doNotArrayOrList(HostObject receiver, long index, Object value,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -704,7 +703,7 @@ final class HostObject implements TruffleObject {
             return false;
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         static boolean doList(HostObject receiver, long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -717,7 +716,7 @@ final class HostObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "!receiver.isList(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isList(hostClassCache)"})
         static boolean doOther(HostObject receiver, long index,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             return false;
@@ -733,7 +732,7 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         static void doList(HostObject receiver, long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -753,7 +752,7 @@ final class HostObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "!receiver.isList(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isList(hostClassCache)"})
         static void doOther(HostObject receiver, long index,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -783,7 +782,7 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"})
         protected static Object doArray(HostObject receiver, long index,
                         @Bind("$node") Node node,
                         @Cached ArrayGet arrayGet,
@@ -806,7 +805,7 @@ final class HostObject implements TruffleObject {
         }
 
         @TruffleBoundary
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         protected static Object doList(HostObject receiver, long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -829,7 +828,7 @@ final class HostObject implements TruffleObject {
             return toGuest.execute(node, receiver.context, hostValue);
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"})
         protected static Object doMapEntry(HostObject receiver, long index,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -859,7 +858,7 @@ final class HostObject implements TruffleObject {
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isArray(hostClassCache)", "!receiver.isList(hostClassCache)",
-                        "!receiver.isMapEntry(hostClassCache)"}, limit = "1")
+                        "!receiver.isMapEntry(hostClassCache)"})
         protected static Object doNotArrayOrList(HostObject receiver, long index,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -875,13 +874,13 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"})
         protected static long doArray(HostObject receiver,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             return Array.getLength(receiver.obj);
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isList(hostClassCache)"})
         protected static long doList(HostObject receiver,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -894,14 +893,14 @@ final class HostObject implements TruffleObject {
             }
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isMapEntry(hostClassCache)"})
         protected static long doMapEntry(HostObject receiver,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) {
             return 2;
         }
 
         @Specialization(guards = {"!receiver.isNull()", "!receiver.isArray(hostClassCache)", "!receiver.isList(hostClassCache)",
-                        "!receiver.isMapEntry(hostClassCache)"}, limit = "1")
+                        "!receiver.isMapEntry(hostClassCache)"})
         protected static long doNotArrayOrList(HostObject receiver,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -1838,6 +1837,10 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     boolean bigIntegerFitsInFloat() {
         BigInteger b = (BigInteger) obj;
+        return bigIntegerFitsInFloat(b);
+    }
+
+    static boolean bigIntegerFitsInFloat(BigInteger b) {
         if (b.bitLength() <= 24) { // 24 = size of float mantissa + 1
             return true;
         } else {
@@ -1892,6 +1895,10 @@ final class HostObject implements TruffleObject {
     @TruffleBoundary
     boolean bigIntegerFitsInDouble() {
         BigInteger b = (BigInteger) obj;
+        return bigIntegerFitsInDouble(b);
+    }
+
+    static boolean bigIntegerFitsInDouble(BigInteger b) {
         if (b.bitLength() <= 53) { // 53 = size of double mantissa + 1
             return true;
         } else {
@@ -2600,7 +2607,7 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isArray(hostClassCache)"})
         protected static Object doArray(HostObject receiver,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -2613,7 +2620,7 @@ final class HostObject implements TruffleObject {
             return HostAccessor.INTEROP.createDefaultIterator(receiver);
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isIterable(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isIterable(hostClassCache)"})
         protected static Object doIterable(HostObject receiver,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -2630,7 +2637,7 @@ final class HostObject implements TruffleObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!receiver.isNull()", "!receiver.isArray(hostClassCache)", "!receiver.isIterable(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isArray(hostClassCache)", "!receiver.isIterable(hostClassCache)"})
         protected static Object doNotArrayOrIterable(HostObject receiver,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -2661,7 +2668,7 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isIteratorLocal(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isIteratorLocal(hostClassCache)"})
         protected static boolean doIterator(HostObject receiver,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -2675,7 +2682,7 @@ final class HostObject implements TruffleObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!receiver.isNull()", "!receiver.isIteratorLocal(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isIteratorLocal(hostClassCache)"})
         protected static boolean doNotIterator(HostObject receiver,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -2690,7 +2697,7 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isIteratorLocal(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isIteratorLocal(hostClassCache)"})
         protected static Object doIterator(HostObject receiver,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -2711,7 +2718,7 @@ final class HostObject implements TruffleObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!receiver.isNull()", "!receiver.isIteratorLocal(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isIteratorLocal(hostClassCache)"})
         protected static Object doNotIterator(HostObject receiver,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -2742,7 +2749,7 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"})
         protected static long doMap(HostObject receiver,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -2756,7 +2763,7 @@ final class HostObject implements TruffleObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!receiver.isNull()", "!receiver.isMap(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isMap(hostClassCache)"})
         protected static long doNotMap(HostObject receiver,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -2793,7 +2800,7 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"})
         protected static Object doMap(HostObject receiver, Object key,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -2826,7 +2833,7 @@ final class HostObject implements TruffleObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!receiver.isNull()", "!receiver.isMap(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isMap(hostClassCache)"})
         protected static Object doNotMap(HostObject receiver, Object key,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -2860,7 +2867,7 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"})
         protected static void doMap(HostObject receiver, Object key, Object value,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -2899,7 +2906,7 @@ final class HostObject implements TruffleObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!receiver.isNull()", "!receiver.isMap(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isMap(hostClassCache)"})
         protected static void doNotMap(HostObject receiver, Object key, Object value,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -2914,7 +2921,7 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"})
         protected static void doMap(HostObject receiver, Object key,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -2945,7 +2952,7 @@ final class HostObject implements TruffleObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!receiver.isNull()", "!receiver.isMap(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isMap(hostClassCache)"})
         protected static void doNotMap(HostObject receiver, Object key,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -2960,7 +2967,7 @@ final class HostObject implements TruffleObject {
             throw UnsupportedMessageException.create();
         }
 
-        @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "receiver.isMap(hostClassCache)"})
         protected static Object doMap(HostObject receiver,
                         @Bind("$node") Node node,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache,
@@ -2977,7 +2984,7 @@ final class HostObject implements TruffleObject {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!receiver.isNull()", "!receiver.isMap(hostClassCache)"}, limit = "1")
+        @Specialization(guards = {"!receiver.isNull()", "!receiver.isMap(hostClassCache)"})
         protected static Object doNotMap(HostObject receiver,
                         @Shared @Cached(value = "receiver.getHostClassCache()", allowUncached = true) HostClassCache hostClassCache) throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
@@ -3044,7 +3051,7 @@ final class HostObject implements TruffleObject {
                     return c.isInstance(otherHostObj);
                 }
             } else if (HostProxy.isProxyGuestObject(language, other)) {
-                Proxy otherHost = HostProxy.toProxyHostObject(language, other);
+                Object otherHost = HostProxy.toProxyHostObject(language, other);
                 return c.isInstance(otherHost);
             } else {
                 boolean canConvert = HostToTypeNode.canConvert(null, other, c, c,

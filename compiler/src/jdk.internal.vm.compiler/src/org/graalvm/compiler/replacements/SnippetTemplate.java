@@ -957,7 +957,8 @@ public class SnippetTemplate {
                                         args,
                                         graph.trackNodeSourcePosition() || shouldTrackNodeSourcePosition,
                                         replacee,
-                                        createMidTierPhases());
+                                        createMidTierPreLoweringPhases(),
+                                        createMidTierPostLoweringPhases());
                         if (Options.UseSnippetTemplateCache.getValue(snippetOptions) && args.cacheable) {
                             templates.put(args.cacheKey, template);
                         }
@@ -969,15 +970,25 @@ public class SnippetTemplate {
                     }
                 }
             }
+            assert checkTemplate(context.getMetaAccess(), args, template.snippet.method());
             return template;
         }
 
         /**
          * Additional mid-tier optimization phases to run on the snippet graph during
-         * {@link #template} creation. These phases are only run for snippets lowered in the
-         * low-tier lowering.
+         * {@link #template} creation. These phases are run before mid-tier lowering, only for
+         * snippets lowered in the mid-tier or low-tier lowering.
          */
-        protected PhaseSuite<CoreProviders> createMidTierPhases() {
+        protected PhaseSuite<CoreProviders> createMidTierPreLoweringPhases() {
+            return null;
+        }
+
+        /**
+         * Additional mid-tier optimization phases to run on the snippet graph during
+         * {@link #template} creation. These phases are run after mid-tier lowering, only for
+         * snippets lowered in the low-tier lowering.
+         */
+        protected PhaseSuite<CoreProviders> createMidTierPostLoweringPhases() {
             return null;
         }
     }
@@ -1014,7 +1025,8 @@ public class SnippetTemplate {
                     Arguments args,
                     boolean trackNodeSourcePosition,
                     Node replacee,
-                    PhaseSuite<CoreProviders> midTierPhases) {
+                    PhaseSuite<CoreProviders> midTierPreLoweringPhases,
+                    PhaseSuite<CoreProviders> midTierPostLoweringPhases) {
         this.snippetReflection = snippetReflection;
         this.info = args.info;
 
@@ -1049,7 +1061,7 @@ public class SnippetTemplate {
             nodeReplacements.put(snippetGraph.start(), snippetCopy.start());
 
             MetaAccessProvider metaAccess = providers.getMetaAccess();
-            assert checkTemplate(metaAccess, args, method, signature);
+            assert checkTemplate(metaAccess, args, method);
 
             int parameterCount = args.info.getParameterCount();
             VarargsPlaceholderNode[] placeholders = new VarargsPlaceholderNode[parameterCount];
@@ -1226,6 +1238,9 @@ public class SnippetTemplate {
                 assert snippetCopy.getGraphState().isAfterStage(StageFlag.GUARD_LOWERING);
                 new RemoveValueProxyPhase(canonicalizer).apply(snippetCopy, providers);
                 // (4)
+                if (midTierPreLoweringPhases != null) {
+                    midTierPreLoweringPhases.apply(snippetCopy, providers);
+                }
                 try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_MID_TIER", snippetCopy)) {
                     new MidTierLoweringPhase(canonicalizer).apply(snippetCopy, providers);
                     snippetCopy.getGraphState().setAfterFSA();
@@ -1235,8 +1250,8 @@ public class SnippetTemplate {
                 }
                 if (loweringStage != LoweringTool.StandardLoweringStage.MID_TIER) {
                     // (5)
-                    if (midTierPhases != null) {
-                        midTierPhases.apply(snippetCopy, providers);
+                    if (midTierPostLoweringPhases != null) {
+                        midTierPostLoweringPhases.apply(snippetCopy, providers);
                     }
                     new WriteBarrierAdditionPhase().apply(snippetCopy, providers);
                     try (DebugContext.Scope s = debug.scope("LoweringSnippetTemplate_LOW_TIER", snippetCopy)) {
@@ -2746,7 +2761,8 @@ public class SnippetTemplate {
         return buf.append(')').toString();
     }
 
-    private static boolean checkTemplate(MetaAccessProvider metaAccess, Arguments args, ResolvedJavaMethod method, Signature signature) {
+    private static boolean checkTemplate(MetaAccessProvider metaAccess, Arguments args, ResolvedJavaMethod method) {
+        Signature signature = method.getSignature();
         int offset = args.info.hasReceiver() ? 1 : 0;
         for (int i = offset; i < args.info.getParameterCount(); i++) {
             if (args.info.isConstantParameter(i)) {

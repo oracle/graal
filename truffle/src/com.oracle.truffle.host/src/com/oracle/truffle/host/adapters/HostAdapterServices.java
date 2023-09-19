@@ -61,9 +61,7 @@ import org.graalvm.polyglot.Value;
  * and accessible so that its methods can be called from the generated class.
  */
 final class HostAdapterServices {
-    private static final MethodType VALUE_EXECUTE_METHOD_TYPE = MethodType.methodType(Value.class, Object[].class);
     private static final MethodType VALUE_EXECUTE_VOID_METHOD_TYPE = MethodType.methodType(void.class, Object[].class);
-    private static final MethodType VALUE_INVOKE_MEMBER_METHOD_TYPE = MethodType.methodType(Value.class, String.class, Object[].class);
     private static final MethodType VALUE_AS_METHOD_TYPE = MethodType.methodType(Object.class, Class.class);
     private static final MethodType CONCAT_ARRAYS_METHOD_TYPE = MethodType.methodType(Object[].class, Object[].class, Object.class);
 
@@ -97,7 +95,7 @@ final class HostAdapterServices {
      */
     @SuppressWarnings("unchecked")
     public static Value getClassOverrides(ClassLoader classLoader) {
-        return Objects.requireNonNull(((Supplier<Value>) classLoader).get());
+        return (Value) Objects.requireNonNull(((Supplier<Object>) classLoader).get());
     }
 
     /**
@@ -159,8 +157,8 @@ final class HostAdapterServices {
         return new RuntimeException(t);
     }
 
-    private static MethodHandle createReturnValueConverter(MethodHandles.Lookup lookup, Class<?> returnType) throws NoSuchMethodException, IllegalAccessException {
-        return MethodHandles.insertArguments(lookup.findVirtual(Value.class, "as", VALUE_AS_METHOD_TYPE), 1, returnType);
+    private static MethodHandle createReturnValueConverter(Class<?> valueClass, MethodHandles.Lookup lookup, Class<?> returnType) throws NoSuchMethodException, IllegalAccessException {
+        return MethodHandles.insertArguments(lookup.findVirtual(valueClass, "as", VALUE_AS_METHOD_TYPE), 1, returnType);
     }
 
     /**
@@ -174,17 +172,28 @@ final class HostAdapterServices {
      * @return a CallSite for invoking the member of, or executing a {@link Value}.
      */
     public static CallSite bootstrap(MethodHandles.Lookup lookup, String methodName, MethodType type, int flags) throws NoSuchMethodException, IllegalAccessException {
+        Class<?> valueClass;
+        try {
+            /*
+             * We need to use lookup any polyglot class using the lookup as in order to not load in
+             * the isolated truffle class loader. We lazily initialize the lookup therefore.
+             */
+            valueClass = lookup.findClass("org.graalvm.polyglot.Value");
+        } catch (ClassNotFoundException | IllegalAccessException e) {
+            throw new InternalError(e);
+        }
+
         MethodHandle target;
         if ((flags & BOOTSTRAP_VALUE_INVOKE_MEMBER) != 0) {
-            target = lookup.findVirtual(Value.class, "invokeMember", VALUE_INVOKE_MEMBER_METHOD_TYPE);
+            target = lookup.findVirtual(valueClass, "invokeMember", MethodType.methodType(valueClass, String.class, Object[].class));
             // insert method name parameter
             target = MethodHandles.insertArguments(target, 1, methodName);
         } else {
             assert (flags & BOOTSTRAP_VALUE_EXECUTE) != 0;
             if (type.returnType() == void.class) {
-                target = lookup.findVirtual(Value.class, "executeVoid", VALUE_EXECUTE_VOID_METHOD_TYPE);
+                target = lookup.findVirtual(valueClass, "executeVoid", VALUE_EXECUTE_VOID_METHOD_TYPE);
             } else {
-                target = lookup.findVirtual(Value.class, "execute", VALUE_EXECUTE_METHOD_TYPE);
+                target = lookup.findVirtual(valueClass, "execute", MethodType.methodType(valueClass, Object[].class));
             }
         }
 
@@ -215,7 +224,7 @@ final class HostAdapterServices {
         }
 
         if (type.returnType() != void.class) {
-            target = MethodHandles.filterReturnValue(target, createReturnValueConverter(lookup, type.returnType()));
+            target = MethodHandles.filterReturnValue(target, createReturnValueConverter(valueClass, lookup, type.returnType()));
         }
 
         target = target.asType(type);

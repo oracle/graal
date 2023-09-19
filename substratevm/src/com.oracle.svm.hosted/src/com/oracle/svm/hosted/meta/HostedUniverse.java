@@ -45,6 +45,7 @@ import org.graalvm.nativeimage.hosted.Feature;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.OriginalMethodProvider;
@@ -436,9 +437,9 @@ public class HostedUniverse implements Universe {
     }
 
     @Override
-    public JavaConstant lookup(JavaConstant constant) {
-        // There should not be any conversion necessary for constants.
-        return constant;
+    public JavaConstant lookup(JavaConstant c) {
+        VMError.guarantee(c == null || c.isNull() || c.getJavaKind().isPrimitive() || c instanceof ImageHeapConstant);
+        return c;
     }
 
     public Collection<HostedType> getTypes() {

@@ -58,6 +58,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongFieldUpdater;
 import java.util.function.IntFunction;
+import java.util.logging.Level;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.options.OptionValues;
@@ -140,7 +141,7 @@ import com.oracle.truffle.espresso.runtime.EspressoProperties;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
 import com.oracle.truffle.espresso.runtime.MethodHandleIntrinsics;
 import com.oracle.truffle.espresso.runtime.OS;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -150,6 +151,7 @@ import com.oracle.truffle.espresso.substitutions.Target_java_lang_System;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_Thread;
 import com.oracle.truffle.espresso.substitutions.Target_java_lang_ref_Reference;
 import com.oracle.truffle.espresso.threads.State;
+import com.oracle.truffle.espresso.threads.ThreadsAccess;
 import com.oracle.truffle.espresso.threads.Transition;
 import com.oracle.truffle.espresso.vm.structs.JavaVMAttachArgs;
 import com.oracle.truffle.espresso.vm.structs.JdkVersionInfo;
@@ -177,6 +179,7 @@ public final class VM extends NativeEnv {
 
     private final @Pointer TruffleObject getJavaVM;
     private final @Pointer TruffleObject mokapotAttachThread;
+    private final @Pointer TruffleObject mokapotCaptureState;
     private final @Pointer TruffleObject getPackageAt;
 
     private final long rtldDefaultValue;
@@ -248,34 +251,26 @@ public final class VM extends NativeEnv {
     private JavaVersion findJavaVersion(TruffleObject libJava) {
         // void JDK_GetVersionInfo0(jdk_version_info* info, size_t info_size);
         TruffleObject jdkGetVersionInfo = getNativeAccess().lookupAndBindSymbol(libJava, "JDK_GetVersionInfo0", NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.LONG));
-        if (jdkGetVersionInfo != null) {
-            JdkVersionInfo.JdkVersionInfoWrapper wrapper = getStructs().jdkVersionInfo.allocate(getNativeAccess(), jni());
-            try {
-                getUncached().execute(jdkGetVersionInfo, wrapper.pointer(), getStructs().jdkVersionInfo.structSize());
-            } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
-                throw EspressoError.shouldNotReachHere(e);
-            }
-            int versionInfo = wrapper.jdkVersion();
-            wrapper.free(getNativeAccess());
+        if (jdkGetVersionInfo == null) {
+            return null;
+        }
+        JdkVersionInfo.JdkVersionInfoWrapper wrapper = getStructs().jdkVersionInfo.allocate(getNativeAccess(), jni());
+        try {
+            getUncached().execute(jdkGetVersionInfo, wrapper.pointer(), getStructs().jdkVersionInfo.structSize());
+        } catch (UnsupportedTypeException | UnsupportedMessageException | ArityException e) {
+            throw EspressoError.shouldNotReachHere(e);
+        }
+        int versionInfo = wrapper.jdkVersion();
+        wrapper.free(getNativeAccess());
 
-            int major = (versionInfo & 0xFF000000) >> 24;
-            if (major == 1) {
-                // Version 1.X
-                int minor = (versionInfo & 0x00FF0000) >> 16;
-                return JavaVersion.forVersion(minor);
-            } else {
-                // Version X.Y
-                return JavaVersion.forVersion(major);
-            }
+        int major = (versionInfo & 0xFF000000) >> 24;
+        if (major == 1) {
+            // Version 1.X
+            int minor = (versionInfo & 0x00FF0000) >> 16;
+            return JavaVersion.forVersion(minor);
         } else {
-            TruffleObject probeJDK19 = getNativeAccess().lookupSymbol(libJava, "Java_java_lang_ref_Finalizer_isFinalizationEnabled");
-            if (probeJDK19 != null) {
-                // JDK 19+
-                return JavaVersion.latestSupported();
-            } else {
-                // JDK 14-17
-                return JavaVersion.forVersion(17);
-            }
+            // Version X.Y
+            return JavaVersion.forVersion(major);
         }
     }
 
@@ -347,6 +342,10 @@ public final class VM extends NativeEnv {
             mokapotAttachThread = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
                             "mokapotAttachThread",
                             NativeSignature.create(NativeType.VOID, NativeType.POINTER));
+
+            mokapotCaptureState = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
+                            "mokapotCaptureState",
+                            NativeSignature.create(NativeType.VOID, NativeType.POINTER, NativeType.INT));
 
             @Pointer
             TruffleObject mokapotGetRTLDDefault = getNativeAccess().lookupAndBindSymbol(mokapotLibrary,
@@ -487,6 +486,10 @@ public final class VM extends NativeEnv {
 
     // Checkstyle: stop method name check
 
+    public TruffleObject getMokapotCaptureState() {
+        return mokapotCaptureState;
+    }
+
     // region system
 
     @VmImpl(isJni = true)
@@ -618,6 +621,17 @@ public final class VM extends NativeEnv {
     }
 
     // endregion system
+
+    @VmImpl
+    public static boolean JVM_IsPreviewEnabled(@Inject EspressoLanguage language) {
+        return language.isPreviewEnabled();
+    }
+
+    @VmImpl
+    public static boolean JVM_IsForeignLinkerSupported() {
+        // Currently no wiring for the "default" linker
+        return true;
+    }
 
     // region objects
 
@@ -836,19 +850,20 @@ public final class VM extends NativeEnv {
                     @Inject SubstitutionProfiler profiler) {
 
         EspressoContext context = getContext();
-        StaticObject currentThread = context.getCurrentThread();
+        StaticObject currentThread = context.getCurrentPlatformThread();
         State state = timeout > 0 ? State.TIMED_WAITING : State.WAITING;
         try (Transition transition = Transition.transition(context, state)) {
-            if (context.getEspressoEnv().EnableManagement) {
-                // Locks bookkeeping.
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, self);
-                Target_java_lang_Thread.incrementThreadCounter(currentThread, meta.HIDDEN_THREAD_WAITED_COUNT);
-            }
             final boolean report = context.shouldReportVMEvents();
             if (report) {
                 context.reportMonitorWait(self, timeout);
             }
-            boolean timedOut = !InterpreterToVM.monitorWait(self.getLock(getContext()), timeout);
+            boolean timedOut;
+            if (context.getEspressoEnv().EnableManagement) {
+                Target_java_lang_Thread.incrementThreadCounter(currentThread, meta.HIDDEN_THREAD_WAITED_COUNT);
+                timedOut = !InterpreterToVM.monitorWait(self.getLock(context), timeout, currentThread, self);
+            } else {
+                timedOut = !InterpreterToVM.monitorWait(self.getLock(context), timeout);
+            }
             if (report) {
                 context.reportMonitorWaited(self, timedOut);
             }
@@ -864,10 +879,6 @@ public final class VM extends NativeEnv {
         } catch (IllegalArgumentException e) {
             profiler.profile(2);
             throw meta.throwExceptionWithMessage(meta.java_lang_IllegalArgumentException, e.getMessage());
-        } finally {
-            if (context.getEspressoEnv().EnableManagement) {
-                meta.HIDDEN_THREAD_BLOCKED_OBJECT.setHiddenObject(currentThread, null);
-            }
         }
     }
 
@@ -1505,7 +1516,7 @@ public final class VM extends NativeEnv {
     // region JNI Invocation Interface
     @VmImpl
     public static int DestroyJavaVM(@Inject EspressoContext context) {
-        assert context.getCurrentThread() != null;
+        assert context.getCurrentPlatformThread() != null;
         try {
             context.destroyVM();
         } catch (AbstractTruffleException exit) {
@@ -1558,7 +1569,7 @@ public final class VM extends NativeEnv {
     @VmImpl
     @TruffleBoundary
     public int DetachCurrentThread(@Inject EspressoContext context) {
-        StaticObject currentThread = context.getCurrentThread();
+        StaticObject currentThread = context.getCurrentPlatformThread();
         if (currentThread == null) {
             return JNI_OK;
         }
@@ -1655,7 +1666,7 @@ public final class VM extends NativeEnv {
             }
         }
         if (JVM_IsSupportedJNIVersion(version)) {
-            StaticObject currentThread = getContext().getCurrentThread();
+            StaticObject currentThread = getContext().getCurrentPlatformThread();
             if (currentThread == null) {
                 return JNI_EDETACHED;
             }
@@ -2210,12 +2221,16 @@ public final class VM extends NativeEnv {
     @TruffleBoundary
     public @Pointer TruffleObject JVM_LoadLibrary(@Pointer TruffleObject namePtr) {
         String name = NativeUtils.interopPointerToString(namePtr);
-        getLogger().fine(String.format("JVM_LoadLibrary: '%s'", name));
-
         // We don't pass `throwException` down due to GR-37925, but even if Sulong would
         // be fixed, it might be garbage if the used base lib has a mismatching signature,
         // so we recompute its value instead on our side.
         boolean throwException = !hasDynamicLoaderCache();
+        return JVM_LoadLibrary(name, throwException);
+    }
+
+    @TruffleBoundary
+    public @Pointer TruffleObject JVM_LoadLibrary(String name, boolean throwException) {
+        getLogger().fine(() -> String.format("JVM_LoadLibrary(%s, %s)", name, throwException));
 
         TruffleObject lib = getNativeAccess().loadLibrary(Paths.get(name));
         if (lib == null) {
@@ -2227,7 +2242,7 @@ public final class VM extends NativeEnv {
         }
         long handle = getLibraryHandle(lib);
         handle2Lib.put(handle, lib);
-        getLogger().fine(String.format("JVM_LoadLibrary: Successfully loaded '%s' with handle %x", name, handle));
+        getLogger().fine(() -> String.format("JVM_LoadLibrary: Successfully loaded '%s' with handle %x", name, handle));
         return RawPointer.create(handle);
     }
 
@@ -2278,6 +2293,22 @@ public final class VM extends NativeEnv {
         }
         try {
             TruffleObject function = getNativeAccess().lookupSymbol(library, name);
+            if (getLogger().isLoggable(Level.FINEST)) {
+                InteropLibrary interop = InteropLibrary.getUncached();
+                String libraryName;
+                if (nativePtr == rtldDefaultValue || nativePtr == processHandleValue) {
+                    libraryName = "RTLD_DEFAULT";
+                } else {
+                    libraryName = interop.asString(interop.toDisplayString(library, false));
+                }
+                String functionName;
+                if (function == null) {
+                    functionName = "null";
+                } else {
+                    functionName = interop.asString(interop.toDisplayString(function, false));
+                }
+                getLogger().finest("JVM_FindLibraryEntry(%s, %s) -> %s".formatted(libraryName, name, functionName));
+            }
             if (function == null) {
                 return RawPointer.nullInstance(); // not found
             }
@@ -2320,6 +2351,9 @@ public final class VM extends NativeEnv {
 
     @VmImpl
     public int JVM_GetInterfaceVersion() {
+        if (getJavaVersion().java21OrLater()) {
+            getLogger().warning("JVM_GetInterfaceVersion invoked for a 21+ context but it was removed in Java 21");
+        }
         if (getJavaVersion().java8OrEarlier()) {
             return JniEnv.JVM_INTERFACE_VERSION_8;
         } else {
@@ -2410,6 +2444,7 @@ public final class VM extends NativeEnv {
             setNumberedProperty(map, "jdk.module.addexports", options.get(EspressoOptions.AddExports));
             setNumberedProperty(map, "jdk.module.addopens", options.get(EspressoOptions.AddOpens));
             setNumberedProperty(map, "jdk.module.addmods", options.get(EspressoOptions.AddModules));
+            setNumberedProperty(map, "jdk.module.enable.native.access", options.get(EspressoOptions.EnableNativeAccess));
         }
 
         // Applications expect different formats e.g. 1.8 vs. 11
@@ -2425,6 +2460,7 @@ public final class VM extends NativeEnv {
         map.put("java.vm.name", EspressoLanguage.VM_NAME);
         map.put("java.vm.vendor", EspressoLanguage.VM_VENDOR);
         map.put("java.vm.info", EspressoLanguage.VM_INFO);
+        map.put("jdk.debug", "release");
 
         map.put("sun.nio.MaxDirectMemorySize", Long.toString(options.get(EspressoOptions.MaxDirectMemorySize)));
 
@@ -3020,7 +3056,7 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     @SuppressWarnings("unused")
     public @JavaType(Object.class) StaticObject JVM_GetInheritedAccessControlContext(@JavaType(Class.class) StaticObject cls) {
-        return getMeta().java_lang_Thread_inheritedAccessControlContext.getObject(getContext().getCurrentThread());
+        return getMeta().java_lang_Thread_inheritedAccessControlContext.getObject(getContext().getCurrentPlatformThread());
     }
 
     // endregion privileged
@@ -3316,13 +3352,22 @@ public final class VM extends NativeEnv {
 
     @VmImpl(isJni = true)
     public @JavaType(Thread[].class) StaticObject JVM_GetAllThreads(@SuppressWarnings("unused") @JavaType(Class.class) StaticObject unused) {
-        final StaticObject[] threads = getContext().getActiveThreads();
-        return getMeta().java_lang_Thread.allocateReferenceArray(threads.length, new IntFunction<StaticObject>() {
-            @Override
-            public StaticObject apply(int index) {
-                return threads[index];
+        ThreadsAccess threadAccess = getThreadAccess();
+        StaticObject[] threads = getContext().getActiveThreads();
+        int numThreads = threads.length;
+        int i = 0;
+        while (i < numThreads) {
+            if (threadAccess.isVirtualThread(threads[i])) {
+                threads[i] = threads[numThreads - 1];
+                numThreads--;
+                continue;
             }
-        });
+            i++;
+        }
+        if (numThreads < threads.length) {
+            threads = Arrays.copyOf(threads, numThreads);
+        }
+        return getMeta().getAllocator().wrapArrayAs(getMeta().java_lang_Thread.getArrayClass(), threads);
     }
 
     // endregion threads

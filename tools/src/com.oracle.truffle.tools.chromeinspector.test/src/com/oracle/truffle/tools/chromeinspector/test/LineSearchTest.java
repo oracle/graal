@@ -29,6 +29,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.regex.PatternSyntaxException;
 
+import org.graalvm.shadowed.org.json.JSONArray;
 import org.junit.Assert;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -36,8 +37,6 @@ import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.tools.chromeinspector.util.LineSearch;
-
-import com.oracle.truffle.tools.utils.json.JSONArray;
 
 @RunWith(Parameterized.class)
 public class LineSearchTest {

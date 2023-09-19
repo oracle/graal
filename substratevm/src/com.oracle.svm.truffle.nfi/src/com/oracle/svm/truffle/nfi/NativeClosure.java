@@ -44,8 +44,12 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.c.CGlobalData;
+import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.c.function.CEntryPointActions;
+import com.oracle.svm.core.c.function.CEntryPointErrors;
 import com.oracle.svm.core.c.function.CEntryPointOptions;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoEpilogue;
 import com.oracle.svm.core.c.function.CEntryPointOptions.NoPrologue;
@@ -215,23 +219,58 @@ final class NativeClosure {
         }
     }
 
+    private static final CGlobalData<CCharPointer> errorMessageThread = CGlobalDataFactory.createCString("Failed to enter by thread for closure.");
+    private static final CGlobalData<CCharPointer> errorMessageIsolate = CGlobalDataFactory.createCString("Failed to enter by isolate for closure.");
+
     static final FastThreadLocalObject<Throwable> pendingException = FastThreadLocalFactory.createObject(Throwable.class, "NativeClosure.pendingException");
+
+    @NeverInline("Prevent (bad) LibC object from being present in any reference map")
+    @Uninterruptible(reason = "Called while in Native state.")
+    private static int getErrno() {
+        return LibC.errno();
+    }
+
+    @NeverInline("Prevent (bad) LibC object from being present in any reference map")
+    @Uninterruptible(reason = "Called while in Native state.")
+    private static void setErrno(int errno) {
+        LibC.setErrno(errno);
+    }
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
-    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
+    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition")
     static void invokeClosureBufferRet(@SuppressWarnings("unused") ffi_cif cif, Pointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
-        int errno = LibC.errno();
+        int errno = getErrno();
 
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
             NativeTruffleEnv env = envArgPtr.read();
-            CEntryPointActions.enter(env.isolateThread());
+            int code = CEntryPointActions.enter(env.isolateThread());
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageThread.get());
+            }
         } else {
-            CEntryPointActions.enterByIsolate(user.isolate());
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageIsolate.get());
+            }
         }
 
+        errno = invokeClosureBufferRet0(ret, args, user, errno);
+
+        CEntryPointActions.leave();
+        /* Restore the C error number after being back in the Native state. */
+        setErrno(errno);
+    }
+
+    /**
+     * This code must be in a separate method to guarantee memory accesses do not get reordered with
+     * thread isolate setup & exit.
+     */
+    @NeverInline("Boundary must exist after isolate setup.")
+    @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
+    private static int invokeClosureBufferRet0(Pointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
         try {
@@ -240,10 +279,7 @@ final class NativeClosure {
             pendingException.set(t);
         }
 
-        errno = ErrnoMirror.errnoMirror.getAddress().read();
-        CEntryPointActions.leave();
-        /* Restore the C error number after being back in the Native state. */
-        LibC.setErrno(errno);
+        return ErrnoMirror.errnoMirror.getAddress().read();
     }
 
     private static void doInvokeClosureBufferRet(Pointer ret, WordPointer args, ClosureData user) {
@@ -271,19 +307,39 @@ final class NativeClosure {
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
-    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
+    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition")
     static void invokeClosureVoidRet(@SuppressWarnings("unused") ffi_cif cif, @SuppressWarnings("unused") WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
-        int errno = LibC.errno();
+        int errno = getErrno();
 
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
             NativeTruffleEnv env = envArgPtr.read();
-            CEntryPointActions.enter(env.isolateThread());
+            int code = CEntryPointActions.enter(env.isolateThread());
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageThread.get());
+            }
         } else {
-            CEntryPointActions.enterByIsolate(user.isolate());
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageIsolate.get());
+            }
         }
 
+        errno = invokeClosureVoidRet0(args, user, errno);
+
+        CEntryPointActions.leave();
+        /* Restore the C error number after being back in the Native state. */
+        setErrno(errno);
+    }
+
+    /**
+     * This code must be in a separate method to guarantee memory accesses do not get reordered with
+     * thread isolate setup & exit.
+     */
+    @NeverInline("Boundary must exist after isolate setup.")
+    @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
+    private static int invokeClosureVoidRet0(WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
         try {
@@ -292,10 +348,7 @@ final class NativeClosure {
             pendingException.set(t);
         }
 
-        errno = ErrnoMirror.errnoMirror.getAddress().read();
-        CEntryPointActions.leave();
-        /* Restore the C error number after being back in the Native state. */
-        LibC.setErrno(errno);
+        return ErrnoMirror.errnoMirror.getAddress().read();
     }
 
     private static void doInvokeClosureVoidRet(WordPointer args, ClosureData user) {
@@ -304,19 +357,39 @@ final class NativeClosure {
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
-    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
+    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition")
     static void invokeClosureStringRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
-        int errno = LibC.errno();
+        int errno = getErrno();
 
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
             NativeTruffleEnv env = envArgPtr.read();
-            CEntryPointActions.enter(env.isolateThread());
+            int code = CEntryPointActions.enter(env.isolateThread());
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageThread.get());
+            }
         } else {
-            CEntryPointActions.enterByIsolate(user.isolate());
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageIsolate.get());
+            }
         }
 
+        errno = invokeClosureStringRet0(ret, args, user, errno);
+
+        CEntryPointActions.leave();
+        /* Restore the C error number after being back in the Native state. */
+        setErrno(errno);
+    }
+
+    /**
+     * This code must be in a separate method to guarantee memory accesses do not get reordered with
+     * thread isolate setup & exit.
+     */
+    @NeverInline("Boundary must exist after isolate setup.")
+    @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
+    private static int invokeClosureStringRet0(WordPointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
         try {
@@ -325,10 +398,7 @@ final class NativeClosure {
             pendingException.set(t);
         }
 
-        errno = ErrnoMirror.errnoMirror.getAddress().read();
-        CEntryPointActions.leave();
-        /* Restore the C error number after being back in the Native state. */
-        LibC.setErrno(errno);
+        return ErrnoMirror.errnoMirror.getAddress().read();
     }
 
     private static void doInvokeClosureStringRet(WordPointer ret, WordPointer args, ClosureData user) {
@@ -338,19 +408,39 @@ final class NativeClosure {
 
     @CEntryPoint(include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = NoPrologue.class, epilogue = NoEpilogue.class)
-    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition", calleeMustBe = false)
+    @Uninterruptible(reason = "contains prologue and epilogue for thread state transition")
     static void invokeClosureObjectRet(@SuppressWarnings("unused") ffi_cif cif, WordPointer ret, WordPointer args, ClosureData user) {
         /* Read the C error number before transitioning into the Java state. */
-        int errno = LibC.errno();
+        int errno = getErrno();
 
         if (user.envArgIdx() >= 0) {
             WordPointer envArgPtr = args.read(user.envArgIdx());
             NativeTruffleEnv env = envArgPtr.read();
-            CEntryPointActions.enter(env.isolateThread());
+            int code = CEntryPointActions.enter(env.isolateThread());
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageThread.get());
+            }
         } else {
-            CEntryPointActions.enterByIsolate(user.isolate());
+            int code = CEntryPointActions.enterAttachThread(user.isolate(), false, true);
+            if (code != CEntryPointErrors.NO_ERROR) {
+                CEntryPointActions.failFatally(code, errorMessageIsolate.get());
+            }
         }
 
+        errno = invokeClosureObjectRet0(ret, args, user, errno);
+
+        CEntryPointActions.leave();
+        /* Restore the C error number after being back in the Native state. */
+        setErrno(errno);
+    }
+
+    /**
+     * This code must be in a separate method to guarantee memory accesses do not get reordered with
+     * thread isolate setup & exit.
+     */
+    @NeverInline("Boundary must exist after isolate setup.")
+    @Uninterruptible(reason = "Transitioning from prologue to Java code.", calleeMustBe = false)
+    private static int invokeClosureObjectRet0(WordPointer ret, WordPointer args, ClosureData user, int errno) {
         ErrnoMirror.errnoMirror.getAddress().write(errno);
 
         try {
@@ -359,10 +449,7 @@ final class NativeClosure {
             pendingException.set(t);
         }
 
-        errno = ErrnoMirror.errnoMirror.getAddress().read();
-        CEntryPointActions.leave();
-        /* Restore the C error number after being back in the Native state. */
-        LibC.setErrno(errno);
+        return ErrnoMirror.errnoMirror.getAddress().read();
     }
 
     private static void doInvokeClosureObjectRet(WordPointer ret, WordPointer args, ClosureData user) {

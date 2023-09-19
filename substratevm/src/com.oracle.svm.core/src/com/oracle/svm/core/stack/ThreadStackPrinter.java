@@ -59,7 +59,7 @@ public class ThreadStackPrinter {
             }
 
             boolean isFirst = true;
-            frameInfoCursor.initialize(codeInfo, ip);
+            frameInfoCursor.initialize(codeInfo, ip, false);
             while (frameInfoCursor.advance()) {
                 if (printedFrames >= MAX_STACK_FRAMES_PER_THREAD_TO_PRINT) {
                     log.string("... (truncated)").newline();

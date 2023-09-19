@@ -816,8 +816,10 @@ public final class FrameState extends VirtualState implements IterableNodeType {
         }
     }
 
+    @SuppressWarnings("deprecation")
     private static String toString(FrameState frameState) {
         StringBuilder sb = new StringBuilder();
+        sb.append("FrameState|").append(frameState.getId()).append(" ");
         String nl = CodeUtil.NEW_LINE;
         FrameState fs = frameState;
         while (fs != null) {
@@ -868,6 +870,9 @@ public final class FrameState extends VirtualState implements IterableNodeType {
             if (ste.getFileName() != null && ste.getLineNumber() >= 0) {
                 properties.put("sourceFile", ste.getFileName());
                 properties.put("sourceLine", ste.getLineNumber());
+            }
+            if (bci >= 0 && code.getCodeSize() > bci) {
+                properties.put("bytecode", Bytecodes.nameOf(code.getCode()[bci]));
             }
         }
         if (isPlaceholderBci(bci)) {

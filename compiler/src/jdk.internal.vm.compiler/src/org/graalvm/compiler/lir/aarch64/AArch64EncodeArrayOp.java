@@ -24,42 +24,38 @@
  */
 package org.graalvm.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.SIMD;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize.FullReg;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createBaseRegisterOnlyAddress;
+import static org.graalvm.compiler.asm.aarch64.AArch64Address.createImmediateAddress;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 
 import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDInstruction;
-import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ASIMDSize;
 import org.graalvm.compiler.asm.aarch64.AArch64ASIMDAssembler.ElementSize;
 import org.graalvm.compiler.asm.aarch64.AArch64Address;
 import org.graalvm.compiler.asm.aarch64.AArch64Address.AddressingMode;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.aarch64.AArch64Assembler.PrefetchMode;
 import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool.CharsetName;
 
-import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp",
-          lineStart = 5543,
-          lineEnd   = 5655,
-          commit    = "83d92672d4c2637fc37ddd873533c85a9b083904",
-          sha1      = "95adbb3a56ad94eca2698b6fd6d8359a15069de7")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/cpu/aarch64/macroAssembler_aarch64.cpp#L5541-L5653",
+          sha1 = "95adbb3a56ad94eca2698b6fd6d8359a15069de7")
 // @formatter:on
 @Opcode("AArch64_ENCODE_ARRAY")
-public final class AArch64EncodeArrayOp extends AArch64LIRInstruction {
+public final class AArch64EncodeArrayOp extends AArch64ComplexVectorOp {
     public static final LIRInstructionClass<AArch64EncodeArrayOp> TYPE = LIRInstructionClass.create(AArch64EncodeArrayOp.class);
 
     @Def({REG}) private Value resultValue;
@@ -70,12 +66,7 @@ public final class AArch64EncodeArrayOp extends AArch64LIRInstruction {
     @Temp({REG}) private AllocatableValue srcValue;
     @Temp({REG}) private AllocatableValue dstValue;
 
-    @Temp({REG}) private Value vectorTempValue0;
-    @Temp({REG}) private Value vectorTempValue1;
-    @Temp({REG}) private Value vectorTempValue2;
-    @Temp({REG}) private Value vectorTempValue3;
-    @Temp({REG}) private Value vectorTempValue4;
-    @Temp({REG}) private Value vectorTempValue5;
+    @Temp({REG}) private Value[] vectorTempValue;
 
     private final CharsetName charset;
 
@@ -90,13 +81,7 @@ public final class AArch64EncodeArrayOp extends AArch64LIRInstruction {
         this.srcValue = tool.newVariable(src.getValueKind());
         this.dstValue = tool.newVariable(dst.getValueKind());
 
-        LIRKind vectorKind = LIRKind.value(tool.target().arch.getLargestStorableKind(SIMD));
-        this.vectorTempValue0 = AArch64.v0.asValue(vectorKind);
-        this.vectorTempValue1 = AArch64.v1.asValue(vectorKind);
-        this.vectorTempValue2 = AArch64.v2.asValue(vectorKind);
-        this.vectorTempValue3 = AArch64.v3.asValue(vectorKind);
-        this.vectorTempValue4 = AArch64.v4.asValue(vectorKind);
-        this.vectorTempValue5 = AArch64.v5.asValue(vectorKind);
+        this.vectorTempValue = allocateConsecutiveVectorRegisters(tool, charset == CharsetName.ASCII ? 7 : 6);
 
         this.charset = charset;
         assert charset == CharsetName.ASCII || charset == CharsetName.ISO_8859_1;
@@ -114,99 +99,89 @@ public final class AArch64EncodeArrayOp extends AArch64LIRInstruction {
         Register len = asRegister(lenValue);
         Register res = asRegister(resultValue);
 
-        Register vtmp0 = asRegister(vectorTempValue0);
-        Register vtmp1 = asRegister(vectorTempValue1);
-        Register vtmp2 = asRegister(vectorTempValue2);
-        Register vtmp3 = asRegister(vectorTempValue3);
+        Register vtmp0 = asRegister(vectorTempValue[0]);
+        Register vtmp1 = asRegister(vectorTempValue[1]);
+        Register vtmp2 = asRegister(vectorTempValue[2]);
+        Register vtmp3 = asRegister(vectorTempValue[3]);
+        Register vlo0 = asRegister(vectorTempValue[4]);
+        Register vlo1 = asRegister(vectorTempValue[5]);
+        Register vmask = ascii ? asRegister(vectorTempValue[6]) : null;
 
-        try (AArch64MacroAssembler.ScratchRegister sc1 = masm.getScratchRegister();
-                        AArch64MacroAssembler.ScratchRegister sc2 = masm.getScratchRegister()) {
-            Register cnt = res;
-            Register max = sc1.getRegister();
-            Register chk = sc2.getRegister();
+        Register cnt = res;
 
-            masm.prfm(AArch64Address.createBaseRegisterOnlyAddress(64, src), PrefetchMode.PLDL1STRM);
-            masm.mov(32, cnt, len);
+        masm.prfm(createBaseRegisterOnlyAddress(64, src), PrefetchMode.PLDL1STRM);
+        masm.mov(32, cnt, len);
 
-            Label labelLoop32 = new Label();
-            Label labelDone32 = new Label();
-            Label labelFail32 = new Label();
+        if (ascii) {
+            masm.neon.moveVI(FullReg, ElementSize.HalfWord, vmask, (short) 0xff80);
+        }
 
-            masm.bind(labelLoop32);
-            masm.compare(32, cnt, 32);
-            masm.branchConditionally(ConditionFlag.LT, labelDone32);
-            masm.neon.ld1MultipleVVVV(ASIMDSize.FullReg, ElementSize.HalfWord, vtmp0, vtmp1, vtmp2, vtmp3,
-                            AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_4R, ASIMDSize.FullReg, ElementSize.HalfWord, src, 64));
-            // Extract lower bytes.
-            Register vlo0 = asRegister(vectorTempValue4);
-            Register vlo1 = asRegister(vectorTempValue5);
-            masm.neon.uzp1VVV(ASIMDSize.FullReg, ElementSize.Byte, vlo0, vtmp0, vtmp1);
-            masm.neon.uzp1VVV(ASIMDSize.FullReg, ElementSize.Byte, vlo1, vtmp2, vtmp3);
-            // Merge bits...
-            masm.neon.orrVVV(ASIMDSize.FullReg, vtmp0, vtmp0, vtmp1);
-            masm.neon.orrVVV(ASIMDSize.FullReg, vtmp2, vtmp2, vtmp3);
-            // Extract merged upper bytes.
-            Register vhix = vtmp0;
-            masm.neon.uzp2VVV(ASIMDSize.FullReg, ElementSize.Byte, vhix, vtmp0, vtmp2);
-            // ISO-check on hi-parts (all zero).
-            if (ascii) {
-                // + ASCII-check on lo-parts (no sign).
-                Register vlox = vtmp1; // Merge lower bytes.
-                masm.neon.orrVVV(ASIMDSize.FullReg, vlox, vlo0, vlo1);
-                masm.neon.umovGX(ElementSize.DoubleWord, chk, vhix, 1);
-                masm.neon.cmltZeroVV(ASIMDSize.FullReg, ElementSize.Byte, vlox, vlox);
-                masm.fmov(64, max, vhix);
-                masm.neon.umaxvSV(ASIMDSize.FullReg, ElementSize.Byte, vlox, vlox);
-                masm.orr(64, chk, chk, max);
-                masm.neon.umovGX(ElementSize.Byte, max, vlo0, 0);
-                masm.orr(64, chk, chk, max);
-            } else {
-                masm.neon.umovGX(ElementSize.DoubleWord, chk, vhix, 1);
-                masm.fmov(64, max, vhix);
-                masm.orr(64, chk, chk, max);
-            }
+        Label labelLoop32 = new Label();
+        Label labelDone32 = new Label();
+        Label labelFail32 = new Label();
 
-            masm.cbnz(64, chk, labelFail32);
-            masm.sub(32, cnt, cnt, 32);
-            masm.neon.st1MultipleVV(ASIMDSize.FullReg, ElementSize.Byte, vlo0, vlo1,
-                            AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.ST1_MULTIPLE_2R, ASIMDSize.FullReg, ElementSize.Byte, dst, 32));
-            masm.jmp(labelLoop32);
+        masm.bind(labelLoop32);
+        masm.compare(32, cnt, 32);
+        masm.branchConditionally(ConditionFlag.LT, labelDone32);
+        masm.neon.ld1MultipleVVVV(FullReg, ElementSize.HalfWord, vtmp0, vtmp1, vtmp2, vtmp3,
+                        AArch64Address.createStructureImmediatePostIndexAddress(ASIMDInstruction.LD1_MULTIPLE_4R, FullReg, ElementSize.HalfWord, src, 64));
+        // Extract lower bytes.
+        masm.neon.uzp1VVV(FullReg, ElementSize.Byte, vlo0, vtmp0, vtmp1);
+        masm.neon.uzp1VVV(FullReg, ElementSize.Byte, vlo1, vtmp2, vtmp3);
+        // Merge bits...
+        masm.neon.orrVVV(FullReg, vtmp0, vtmp0, vtmp1);
+        masm.neon.orrVVV(FullReg, vtmp2, vtmp2, vtmp3);
+        masm.neon.orrVVV(FullReg, vtmp0, vtmp0, vtmp2);
+        if (ascii) {
+            // Check if all merged chars are <= 0x7f
+            masm.neon.cmtstVVV(FullReg, ElementSize.HalfWord, vtmp0, vtmp0, vmask);
+            // Narrow result to bytes for fcmpZero
+            masm.neon.xtnVV(ElementSize.HalfWord.narrow(), vtmp0, vtmp0);
+        } else {
+            // Extract merged upper bytes for ISO check (all zero).
+            masm.neon.uzp2VVV(FullReg, ElementSize.Byte, vtmp0, vtmp0, vtmp0);
+        }
 
-            masm.bind(labelFail32);
-            masm.sub(64, src, src, 64);
-            masm.bind(labelDone32);
+        masm.fcmpZero(64, vtmp0);
+        masm.branchConditionally(ConditionFlag.NE, labelFail32);
+        masm.sub(32, cnt, cnt, 32);
+        masm.fstp(128, vlo0, vlo1, createImmediateAddress(FullReg.bits(), AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, dst, 32));
+        masm.jmp(labelLoop32);
 
-            Label labelLoop8 = new Label();
-            Label labelSkip8 = new Label();
+        masm.bind(labelFail32);
+        masm.sub(64, src, src, 64);
+        masm.bind(labelDone32);
 
-            masm.bind(labelLoop8);
-            masm.compare(32, cnt, 8);
-            masm.branchConditionally(ConditionFlag.LT, labelSkip8);
+        Label labelLoop8 = new Label();
+        Label labelSkip8 = new Label();
 
-            Register vhi = vtmp0;
-            Register vlo = vtmp1;
-            masm.neon.ld1MultipleV(ASIMDSize.FullReg, ElementSize.HalfWord, vtmp3, AArch64Address.createBaseRegisterOnlyAddress(64, src));
-            masm.neon.uzp1VVV(ASIMDSize.FullReg, ElementSize.Byte, vlo, vtmp3, vtmp3);
-            masm.neon.uzp2VVV(ASIMDSize.FullReg, ElementSize.Byte, vhi, vtmp3, vtmp3);
-            // ISO-check on hi-parts (all zero).
-            if (ascii) {
-                // + ASCII-check on lo-parts (no sign).
-                masm.neon.cmltZeroVV(ASIMDSize.FullReg, ElementSize.Byte, vtmp2, vlo);
-                masm.fmov(64, chk, vhi);
-                masm.neon.umaxvSV(ASIMDSize.FullReg, ElementSize.Byte, vtmp2, vtmp2);
-                masm.neon.umovGX(ElementSize.Byte, max, vtmp2, 0);
-                masm.orr(64, chk, chk, max);
-            } else {
-                masm.fmov(64, chk, vhi);
-            }
+        masm.bind(labelLoop8);
+        masm.compare(32, cnt, 8);
+        masm.branchConditionally(ConditionFlag.LT, labelSkip8);
 
-            masm.cbnz(64, chk, labelSkip8);
-            masm.fstr(64, vlo, AArch64Address.createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, dst, 8));
-            masm.sub(32, cnt, cnt, 8);
-            masm.add(64, src, src, 16);
-            masm.jmp(labelLoop8);
+        masm.fldr(128, vtmp0, createBaseRegisterOnlyAddress(128, src));
+        // Extract lower bytes.
+        masm.neon.uzp1VVV(FullReg, ElementSize.Byte, vlo0, vtmp0, vtmp0);
+        if (ascii) {
+            // Check if all merged chars are <= 0x7f
+            masm.neon.cmtstVVV(FullReg, ElementSize.HalfWord, vtmp0, vtmp0, vmask);
+            // Narrow result to bytes for fcmpZero
+            masm.neon.xtnVV(ElementSize.HalfWord.narrow(), vtmp0, vtmp0);
+        } else {
+            // Extract upper bytes for ISO check (all zero).
+            masm.neon.uzp2VVV(FullReg, ElementSize.Byte, vtmp0, vtmp0, vtmp0);
+        }
 
-            masm.bind(labelSkip8);
+        masm.fcmpZero(64, vtmp0);
+        masm.branchConditionally(ConditionFlag.NE, labelSkip8);
+        masm.fstr(64, vlo0, createImmediateAddress(64, AddressingMode.IMMEDIATE_POST_INDEXED, dst, 8));
+        masm.sub(32, cnt, cnt, 8);
+        masm.add(64, src, src, 16);
+        masm.jmp(labelLoop8);
+
+        masm.bind(labelSkip8);
+
+        try (AArch64MacroAssembler.ScratchRegister sc1 = masm.getScratchRegister()) {
 
             Label labelLoop = new Label();
             Label labelDone = new Label();
@@ -214,10 +189,10 @@ public final class AArch64EncodeArrayOp extends AArch64LIRInstruction {
             masm.cbz(32, cnt, labelDone);
             masm.bind(labelLoop);
             Register chr = sc1.getRegister();
-            masm.ldr(16, chr, AArch64Address.createImmediateAddress(16, AddressingMode.IMMEDIATE_POST_INDEXED, src, 2));
+            masm.ldr(16, chr, createImmediateAddress(16, AddressingMode.IMMEDIATE_POST_INDEXED, src, 2));
             masm.tst(32, chr, ascii ? 0xFF80 : 0xFF00);
             masm.branchConditionally(ConditionFlag.NE, labelDone);
-            masm.str(8, chr, AArch64Address.createImmediateAddress(8, AddressingMode.IMMEDIATE_POST_INDEXED, dst, 1));
+            masm.str(8, chr, createImmediateAddress(8, AddressingMode.IMMEDIATE_POST_INDEXED, dst, 1));
             masm.subs(32, cnt, cnt, 1);
             masm.branchConditionally(ConditionFlag.GT, labelLoop);
 

@@ -343,6 +343,17 @@ public final class DFACaptureGroupPartialTransition implements JsonConvertible {
         return lastGroupUpdates;
     }
 
+    public int getCost() {
+        int cost = reorderSwaps.length + arrayCopies.length + lastGroupUpdates.length;
+        for (IndexOperation op : indexUpdates) {
+            cost += op.indices.length;
+        }
+        for (IndexOperation op : indexClears) {
+            cost += op.indices.length;
+        }
+        return cost;
+    }
+
     public void apply(TRegexDFAExecutorNode executor, DFACaptureGroupTrackingData d, final int currentIndex) {
         apply(executor, d, currentIndex, false, false);
     }

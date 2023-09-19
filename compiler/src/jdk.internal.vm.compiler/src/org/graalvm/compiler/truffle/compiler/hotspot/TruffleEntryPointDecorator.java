@@ -39,7 +39,7 @@ import jdk.vm.ci.meta.MetaAccessProvider;
 
 /**
  * Mechanism for injecting special code into
- * {@linkplain HotSpotTruffleCompilerImpl#installTruffleCallBoundaryMethod(jdk.vm.ci.meta.ResolvedJavaMethod, org.graalvm.compiler.truffle.common.TruffleCompilable)
+ * {@linkplain HotSpotTruffleCompilerImpl#installTruffleCallBoundaryMethod(jdk.vm.ci.meta.ResolvedJavaMethod, com.oracle.truffle.compiler.TruffleCompilable)
  * call boundary methods}.
  */
 public abstract class TruffleEntryPointDecorator implements EntryPointDecorator {

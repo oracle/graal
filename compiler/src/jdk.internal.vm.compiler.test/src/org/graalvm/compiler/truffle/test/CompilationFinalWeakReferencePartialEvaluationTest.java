@@ -28,7 +28,6 @@ import java.lang.ref.WeakReference;
 import java.util.function.IntSupplier;
 import java.util.stream.IntStream;
 
-import org.graalvm.compiler.truffle.runtime.OptimizedCallTarget;
 import org.graalvm.compiler.truffle.test.nodes.AbstractTestNode;
 import org.graalvm.compiler.truffle.test.nodes.RootTestNode;
 import org.junit.Assert;
@@ -39,6 +38,7 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.runtime.OptimizedCallTarget;
 
 public class CompilationFinalWeakReferencePartialEvaluationTest extends PartialEvaluationTest {
     public static Object constant42() {

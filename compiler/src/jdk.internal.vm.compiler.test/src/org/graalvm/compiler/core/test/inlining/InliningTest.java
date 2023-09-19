@@ -43,7 +43,6 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.PhaseSuite;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.junit.Assert;
 import org.junit.Ignore;
 import org.junit.Test;
@@ -183,10 +182,7 @@ public class InliningTest extends GraalCompilerTest {
     public void testClassHierarchyAnalysis() {
         assertInlined(getGraph("invokeLeafClassMethodSnippet", false));
         assertInlined(getGraph("invokeConcreteMethodSnippet", false));
-        if (GraalServices.hasLookupReferencedType()) {
-            assertInlined(getGraph("invokeSingleImplementorInterfaceSnippet", false));
-        }
-        // assertInlined(getGraph("invokeConcreteInterfaceMethodSnippet", false));
+        assertInlined(getGraph("invokeSingleImplementorInterfaceSnippet", false));
 
         assertNotInlined(getGraph("invokeOverriddenPublicMethodSnippet", false));
         assertNotInlined(getGraph("invokeOverriddenProtectedMethodSnippet", false));
@@ -197,12 +193,7 @@ public class InliningTest extends GraalCompilerTest {
     public void testClassHierarchyAnalysisIP() {
         assertManyMethodInfopoints(assertInlined(getGraph("invokeLeafClassMethodSnippet", true)));
         assertManyMethodInfopoints(assertInlined(getGraph("invokeConcreteMethodSnippet", true)));
-        if (GraalServices.hasLookupReferencedType()) {
-            assertManyMethodInfopoints(assertInlined(getGraph("invokeSingleImplementorInterfaceSnippet", true)));
-        }
-        //@formatter:off
-        // assertInlineInfopoints(assertInlined(getGraph("invokeConcreteInterfaceMethodSnippet", true)));
-        //@formatter:on
+        assertManyMethodInfopoints(assertInlined(getGraph("invokeSingleImplementorInterfaceSnippet", true)));
 
         assertFewMethodInfopoints(assertNotInlined(getGraph("invokeOverriddenPublicMethodSnippet", true)));
         assertFewMethodInfopoints(assertNotInlined(getGraph("invokeOverriddenProtectedMethodSnippet", true)));

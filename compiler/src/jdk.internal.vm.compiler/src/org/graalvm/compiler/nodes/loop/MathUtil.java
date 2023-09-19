@@ -34,8 +34,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.calc.AddNode;
 import org.graalvm.compiler.nodes.calc.BinaryArithmeticNode;
 import org.graalvm.compiler.nodes.calc.FixedBinaryNode;
+import org.graalvm.compiler.nodes.calc.IntegerDivRemNode;
 import org.graalvm.compiler.nodes.calc.MulNode;
-import org.graalvm.compiler.nodes.calc.SignedDivNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
 import org.graalvm.compiler.nodes.calc.UnsignedDivNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
@@ -103,15 +103,12 @@ public class MathUtil {
         }
     }
 
-    public static ValueNode divBefore(StructuredGraph graph, FixedNode before, ValueNode dividend, ValueNode divisor, GuardingNode zeroCheck) {
-        return fixedDivBefore(graph, before, dividend, divisor, (dend, sor) -> SignedDivNode.create(dend, sor, zeroCheck, NodeView.DEFAULT));
+    public static ValueNode unsignedDivBefore(StructuredGraph graph, boolean neverDivByZero, FixedNode before, ValueNode dividend, ValueNode divisor, GuardingNode zeroCheck) {
+        return fixedDivBefore(graph, neverDivByZero, before, dividend, divisor, (dend, sor) -> UnsignedDivNode.create(dend, sor, zeroCheck, NodeView.DEFAULT));
     }
 
-    public static ValueNode unsignedDivBefore(StructuredGraph graph, FixedNode before, ValueNode dividend, ValueNode divisor, GuardingNode zeroCheck) {
-        return fixedDivBefore(graph, before, dividend, divisor, (dend, sor) -> UnsignedDivNode.create(dend, sor, zeroCheck, NodeView.DEFAULT));
-    }
-
-    private static ValueNode fixedDivBefore(StructuredGraph graph, FixedNode before, ValueNode dividend, ValueNode divisor, BiFunction<ValueNode, ValueNode, ValueNode> createDiv) {
+    private static ValueNode fixedDivBefore(StructuredGraph graph, boolean neverDivByZero, FixedNode before, ValueNode dividend, ValueNode divisor,
+                    BiFunction<ValueNode, ValueNode, ValueNode> createDiv) {
         if (isConstantOne(divisor)) {
             return dividend;
         }
@@ -128,6 +125,9 @@ public class MathUtil {
                 }
             }
             graph.addBeforeFixed(before, graph.addOrUniqueWithInputs(fixedDiv));
+            if (neverDivByZero) {
+                ((IntegerDivRemNode) div).setCanDeopt(false);
+            }
         }
         return div;
     }

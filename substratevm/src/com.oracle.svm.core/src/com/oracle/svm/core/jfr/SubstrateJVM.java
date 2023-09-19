@@ -33,6 +33,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
+import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -489,7 +490,7 @@ public class SubstrateJVM {
      * See {@link JVM#flush}.
      */
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    public boolean flush(Target_jdk_jfr_internal_EventWriter writer, int uncommittedSize, int requestedSize) {
+    public boolean flush(Target_jdk_jfr_internal_event_EventWriter writer, int uncommittedSize, int requestedSize) {
         assert writer != null;
         assert uncommittedSize >= 0;
 
@@ -522,6 +523,22 @@ public class SubstrateJVM {
         } finally {
             chunkWriter.unlock();
         }
+    }
+
+    @Uninterruptible(reason = "Accesses a native JFR buffer.")
+    public long commit(long nextPosition) {
+        assert nextPosition != 0 : "invariant";
+        JfrBuffer current = threadLocal.getJavaBuffer();
+        assert current.isNonNull() : "invariant";
+        Pointer next = WordFactory.pointer(nextPosition);
+        assert next.aboveOrEqual(current.getCommittedPos()) : "invariant";
+        assert next.belowOrEqual(JfrBufferAccess.getDataEnd(current)) : "invariant";
+        if (JfrThreadLocal.isNotified()) {
+            JfrThreadLocal.clearNotification();
+            return current.getCommittedPos().rawValue();
+        }
+        current.setCommittedPos(next);
+        return nextPosition;
     }
 
     public void markChunkFinal() {
@@ -614,14 +631,14 @@ public class SubstrateJVM {
     /**
      * See {@link JVM#getEventWriter}.
      */
-    public Target_jdk_jfr_internal_EventWriter getEventWriter() {
-        return threadLocal.getEventWriter();
+    public Target_jdk_jfr_internal_event_EventWriter getEventWriter() {
+        return JfrThreadLocal.getEventWriter();
     }
 
     /**
      * See {@link JVM#newEventWriter}.
      */
-    public Target_jdk_jfr_internal_EventWriter newEventWriter() {
+    public Target_jdk_jfr_internal_event_EventWriter newEventWriter() {
         return threadLocal.newEventWriter();
     }
 
@@ -670,6 +687,11 @@ public class SubstrateJVM {
         return true;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    long getThresholdTicks(JfrEvent event) {
+        return eventSettings[(int) event.getId()].getThresholdTicks();
+    }
+
     /**
      * See {@link JVM#setCutoff}.
      */
@@ -688,23 +710,12 @@ public class SubstrateJVM {
     }
 
     public void setExcluded(Thread thread, boolean excluded) {
-        getThreadLocal().setExcluded(thread, excluded);
-    }
-
-    public boolean isExcluded(Thread thread) {
-        /*
-         * Only the current thread is passed to this method in JDK 17, 19, and 20. Eventually, we
-         * will need to implement that in a more general way though, see GR-44616.
-         */
-        if (!thread.equals(Thread.currentThread())) {
-            return false;
-        }
-        return isCurrentThreadExcluded();
+        JfrThreadLocal.setExcluded(thread, excluded);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isCurrentThreadExcluded() {
-        return getThreadLocal().isCurrentThreadExcluded();
+    public boolean isExcluded(Thread thread) {
+        return JfrThreadLocal.isThreadExcluded(thread);
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {

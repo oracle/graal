@@ -28,7 +28,9 @@ import java.io.FileDescriptor;
 import java.io.FileOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Member;
+import java.math.BigInteger;
 import java.util.List;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -322,11 +324,22 @@ public class SubstrateUtil {
      * @return a unique stub name for the method
      */
     public static String uniqueStubName(ResolvedJavaMethod m) {
-        String shortName = UniqueShortNameProvider.singleton().uniqueShortName(null, m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
-        return stripPackage(m.getDeclaringClass().toJavaName()) + "_" +
-                        (m.isConstructor() ? "constructor" : m.getName()) + "_" +
-                        SubstrateUtil.digest(shortName);
+        return uniqueShortName("", m.getDeclaringClass(), m.getName(), m.getSignature(), m.isConstructor());
+    }
 
+    public static String uniqueShortName(String loaderNameAndId, ResolvedJavaType declaringClass, String methodName, Signature methodSignature, boolean isConstructor) {
+        StringBuilder sb = new StringBuilder(loaderNameAndId);
+        sb.append(declaringClass.toClassName()).append(".").append(methodName).append("(");
+        for (int i = 0; i < methodSignature.getParameterCount(false); i++) {
+            sb.append(methodSignature.getParameterType(i, null).toClassName()).append(",");
+        }
+        sb.append(')');
+        if (!isConstructor) {
+            sb.append(methodSignature.getReturnType(null).toClassName());
+        }
+
+        return stripPackage(declaringClass.toJavaName()) + "_" +
+                        (isConstructor ? "constructor" : methodName) + "_" + digest(sb.toString());
     }
 
     /**
@@ -414,5 +427,11 @@ public class SubstrateUtil {
     public static String stripPackage(String qualifiedClassName) {
         /* Anonymous classes can contain a '/' which can lead to an invalid binary name. */
         return qualifiedClassName.substring(qualifiedClassName.lastIndexOf(".") + 1).replace("/", "");
+    }
+
+    public static UUID getUUIDFromString(String digest) {
+        long mostSigBits = new BigInteger(digest.substring(0, 16), 16).longValue();
+        long leastSigBits = new BigInteger(digest.substring(16), 16).longValue();
+        return new UUID(mostSigBits, leastSigBits);
     }
 }

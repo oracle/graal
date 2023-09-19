@@ -39,11 +39,11 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 
 import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.type.CompressibleConstant;
 import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -52,6 +52,7 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.StaticFieldsSupport;
@@ -160,7 +161,9 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     public ObjectInfo getObjectInfo(Object obj) {
-        return objects.get(hUniverse.getSnippetReflection().forObject(obj));
+        JavaConstant constant = hUniverse.getSnippetReflection().forObject(obj);
+        /* Must unwrap since objects use the SubstrateObjectConstant hosted objects as keys. */
+        return objects.get(maybeUnwrap(constant));
     }
 
     public ObjectInfo getConstantInfo(JavaConstant constant) {
@@ -271,6 +274,47 @@ public final class NativeImageHeap implements ImageHeap {
         knownImmutableObjects.add(object);
     }
 
+    public void registerAsImmutable(Object root, Predicate<Object> includeObject) {
+        Deque<Object> worklist = new ArrayDeque<>();
+        IdentityHashMap<Object, Boolean> registeredObjects = new IdentityHashMap<>();
+
+        worklist.push(root);
+
+        while (!worklist.isEmpty()) {
+            Object cur = worklist.pop();
+            registerAsImmutable(cur);
+
+            if (hMetaAccess.optionalLookupJavaType(cur.getClass()).isEmpty()) {
+                throw VMError.shouldNotReachHere("Type missing from static analysis: " + cur.getClass().getTypeName());
+            } else if (cur instanceof Object[]) {
+                for (Object element : ((Object[]) cur)) {
+                    addToWorklist(aUniverse.replaceObject(element), includeObject, worklist, registeredObjects);
+                }
+            } else {
+                JavaConstant constant = aUniverse.getSnippetReflection().forObject(cur);
+                for (HostedField field : hMetaAccess.lookupJavaType(constant).getInstanceFields(true)) {
+                    if (field.isAccessed() && field.getStorageKind() == JavaKind.Object) {
+                        Object fieldValue = aUniverse.getSnippetReflection().asObject(Object.class, hConstantReflection.readFieldValue(field, constant));
+                        addToWorklist(fieldValue, includeObject, worklist, registeredObjects);
+                    }
+                }
+            }
+        }
+    }
+
+    private static void addToWorklist(Object object, Predicate<Object> includeObject, Deque<Object> worklist, IdentityHashMap<Object, Boolean> registeredObjects) {
+        if (object == null || registeredObjects.containsKey(object)) {
+            return;
+        } else if (object instanceof DynamicHub || object instanceof Class) {
+            /* Classes are handled specially, some fields of it are immutable and some not. */
+            return;
+        } else if (!includeObject.test(object)) {
+            return;
+        }
+        registeredObjects.put(object, Boolean.TRUE);
+        worklist.push(object);
+    }
+
     /**
      * If necessary, add an object to the model of the native image heap.
      *
@@ -310,16 +354,9 @@ public final class NativeImageHeap implements ImageHeap {
         VMError.guarantee(identityHashCode != 0, "0 is used as a marker value for 'hash code not yet computed'");
 
         Object objectConstant = hUniverse.getSnippetReflection().asObject(Object.class, uncompressed);
+        ImageHeapScanner.maybeForceHashCodeComputation(objectConstant);
         if (objectConstant instanceof String stringConstant) {
             handleImageString(stringConstant);
-        } else if (objectConstant instanceof Enum<?> enumConstant) {
-            /*
-             * Starting with JDK 21, Enum caches the identity hash code in a separate hash field. We
-             * want to allow Enum values to be manually marked as immutable objects, so we eagerly
-             * initialize the hash field. This is safe because Enum.hashCode() is a final method,
-             * i.e., cannot be overwritten by the user.
-             */
-            forceHashCodeComputation(enumConstant);
         }
 
         final ObjectInfo existing = objects.get(uncompressed);
@@ -415,21 +452,11 @@ public final class NativeImageHeap implements ImageHeap {
     }
 
     private void handleImageString(final String str) {
-        forceHashCodeComputation(str);
         if (HostedStringDeduplication.isInternedString(str)) {
             /* The string is interned by the host VM, so it must also be interned in our image. */
             assert internedStrings.containsKey(str) || internStringsPhase.isAllowed() : "Should not intern string during phase " + internStringsPhase.toString();
             internedStrings.put(str, str);
         }
-    }
-
-    /**
-     * For immutable Strings and other objects in the native image heap, force eager computation of
-     * the hash field.
-     */
-    @SuppressFBWarnings(value = "RV_RETURN_VALUE_IGNORED", justification = "eager hash field computation")
-    private static void forceHashCodeComputation(Object object) {
-        object.hashCode();
     }
 
     /**
@@ -504,7 +531,12 @@ public final class NativeImageHeap implements ImageHeap {
                 final boolean fieldsAreImmutable = hMetaAccess.isInstanceOf(constant, String.class);
                 for (HostedField field : clazz.getInstanceFields(true)) {
                     boolean fieldRelocatable = false;
-                    if (field.isRead() &&
+                    /*
+                     * Fields that are only available after heap layout, such as
+                     * StringInternSupport.imageInternedStrings and all ImageHeapInfo fields will
+                     * not be processed.
+                     */
+                    if (field.isRead() && field.isValueAvailable() &&
                                     !field.equals(hybridArrayField) &&
                                     !field.equals(hybridTypeIDSlotsField)) {
                         if (field.getJavaKind() == JavaKind.Object) {
@@ -969,7 +1001,7 @@ public final class NativeImageHeap implements ImageHeap {
             if (object.getObjectClass().equals(ImageCodeInfo.class)) {
                 result |= ImageCodeInfo.flag;
             }
-            if (object.getObject().getClass().equals(DynamicHub.class) || object.getObject().getClass().equals(DynamicHubCompanion.class)) {
+            if (object.getObject() != null && (object.getObject().getClass().equals(DynamicHub.class) || object.getObject().getClass().equals(DynamicHubCompanion.class))) {
                 result |= DynamicHubs.flag;
             }
             result |= getByReason(firstReason, additionalReasonInfoHashMap);

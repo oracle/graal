@@ -46,14 +46,15 @@ public class SafepointEndEvent {
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
-    private static void emit0(UnsignedWord safepointId, long startTick) {
-        if (JfrEvent.SafepointEnd.shouldEmit()) {
+    private static void emit0(UnsignedWord safepointId, long startTicks) {
+        long duration = JfrTicks.duration(startTicks);
+        if (JfrEvent.SafepointEnd.shouldEmit(duration)) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
 
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.SafepointEnd);
-            JfrNativeEventWriter.putLong(data, startTick);
-            JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks() - startTick);
+            JfrNativeEventWriter.putLong(data, startTicks);
+            JfrNativeEventWriter.putLong(data, duration);
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, safepointId.rawValue());
             JfrNativeEventWriter.endSmallEvent(data);

@@ -72,12 +72,14 @@ import com.oracle.truffle.tools.utils.java_websocket.WebSocketAdapter;
 import com.oracle.truffle.tools.utils.java_websocket.WebSocketImpl;
 import com.oracle.truffle.tools.utils.java_websocket.WebSocketServerFactory;
 import com.oracle.truffle.tools.utils.java_websocket.drafts.Draft;
+import com.oracle.truffle.tools.utils.java_websocket.framing.Framedata;
+import com.oracle.truffle.tools.utils.java_websocket.framing.PingFrame;
 import com.oracle.truffle.tools.utils.java_websocket.handshake.ClientHandshake;
 import com.oracle.truffle.tools.utils.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import com.oracle.truffle.tools.utils.java_websocket.server.DefaultWebSocketServerFactory;
 import com.oracle.truffle.tools.utils.java_websocket.server.WebSocketServer;
-import com.oracle.truffle.tools.utils.json.JSONArray;
-import com.oracle.truffle.tools.utils.json.JSONObject;
+import org.graalvm.shadowed.org.json.JSONArray;
+import org.graalvm.shadowed.org.json.JSONObject;
 
 /**
  * Server of the
@@ -104,6 +106,9 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
         // secret URLs. Also, protecting WebSockets from DNS rebind attacks is not much useful,
         // since they are not protected by same-origin policy.
         // See DNSRebindProtectionHandler in WrappingSocketServerFactory
+
+        // Disable Lost connection detection, Chrome Inspector does not send PONG response reliably.
+        setConnectionLostTimeout(0);
         WebSocketServerFactory wssf;
         if (keyStoreOptions != null) {
             wssf = new WrappingSocketServerFactory(new DefaultSSLWebSocketServerFactory(sslContext(keyStoreOptions)));
@@ -411,6 +416,33 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
     }
 
     @Override
+    public void onWebsocketPing(WebSocket conn, Framedata f) {
+        InspectWebSocketHandler iws = socketConnectionHandlers.get(conn);
+        if (iws != null) {
+            iws.onPing();
+        }
+        super.onWebsocketPing(conn, f);
+    }
+
+    @Override
+    public void onWebsocketPong(WebSocket conn, Framedata f) {
+        InspectWebSocketHandler iws = socketConnectionHandlers.get(conn);
+        if (iws != null) {
+            iws.onPong();
+        }
+        super.onWebsocketPong(conn, f);
+    }
+
+    @Override
+    public PingFrame onPreparePing(WebSocket conn) {
+        InspectWebSocketHandler iws = socketConnectionHandlers.get(conn);
+        if (iws != null) {
+            iws.onPreparePing();
+        }
+        return super.onPreparePing(conn);
+    }
+
+    @Override
     public void consoleAPICall(Token token, String type, Object text) {
         ServerPathSession sps = sessions.get(token);
         if (sps != null) {
@@ -559,6 +591,18 @@ public final class InspectorServer extends WebSocketServer implements InspectorW
             iss.context.logException("CLIENT: ", exception);
         }
 
+        void onPreparePing() {
+            iss.context.logMessage("SERVER: ", "SENDING PING");
+        }
+
+        void onPing() {
+            iss.context.logMessage("CLIENT: ", "PING");
+            // The default implementation of WebSocketAdapter sends pong.
+        }
+
+        void onPong() {
+            iss.context.logMessage("CLIENT: ", "PONG");
+        }
     }
 
     private static class HTTPChannelWrapper implements ByteChannel {

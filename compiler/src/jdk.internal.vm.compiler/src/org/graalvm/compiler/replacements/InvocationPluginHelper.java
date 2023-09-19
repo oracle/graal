@@ -46,6 +46,7 @@ import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.FrameState;
 import org.graalvm.compiler.nodes.IfNode;
 import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.LogicNegationNode;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.MergeNode;
 import org.graalvm.compiler.nodes.NodeView;
@@ -60,6 +61,7 @@ import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.calc.IntegerLessThanNode;
 import org.graalvm.compiler.nodes.calc.LeftShiftNode;
 import org.graalvm.compiler.nodes.calc.ObjectEqualsNode;
+import org.graalvm.compiler.nodes.calc.OrNode;
 import org.graalvm.compiler.nodes.calc.RightShiftNode;
 import org.graalvm.compiler.nodes.calc.SignExtendNode;
 import org.graalvm.compiler.nodes.calc.SubNode;
@@ -176,6 +178,10 @@ public class InvocationPluginHelper implements DebugCloseable {
         return b.add(new XorNode(x, y));
     }
 
+    public ValueNode or(ValueNode x, ValueNode y) {
+        return b.add(new OrNode(x, y));
+    }
+
     public ValueNode add(ValueNode x, ValueNode y) {
         return b.add(new AddNode(x, y));
     }
@@ -263,7 +269,8 @@ public class InvocationPluginHelper implements DebugCloseable {
         return ConstantNode.forIntegerKind(wordKind, index);
     }
 
-    private LogicNode createCompare(ValueNode origX, ValueNode origY, Condition.CanonicalizedCondition canonicalizedCondition) {
+    private LogicNode createCompare(ValueNode origX, Condition condition, ValueNode origY) {
+        Condition.CanonicalizedCondition canonicalizedCondition = condition.canonicalize();
         // Check whether the condition needs to mirror the operands.
         ValueNode x = origX;
         ValueNode y = origY;
@@ -271,8 +278,11 @@ public class InvocationPluginHelper implements DebugCloseable {
             x = origY;
             y = origX;
         }
-        GraalError.guarantee(!canonicalizedCondition.mustNegate(), "negate is unhandled: %s", canonicalizedCondition);
-        return createCompare(x, canonicalizedCondition.getCanonicalCondition(), y);
+        LogicNode compare = createCompare(x, canonicalizedCondition.getCanonicalCondition(), y);
+        if (canonicalizedCondition.mustNegate()) {
+            compare = LogicNegationNode.create(compare);
+        }
+        return compare;
     }
 
     public LogicNode createCompare(ValueNode x, CanonicalCondition cond, ValueNode y) {
@@ -329,9 +339,7 @@ public class InvocationPluginHelper implements DebugCloseable {
      * in the intrinsic so it's permissible to throw an exception directly for this case.
      */
     public GuardingNode intrinsicRangeCheck(ValueNode x, Condition condition, ValueNode y) {
-        Condition.CanonicalizedCondition canonicalizedCondition = condition.canonicalize();
-        LogicNode compare = createCompare(x, y, canonicalizedCondition);
-        return b.intrinsicRangeCheck(compare, canonicalizedCondition.mustNegate());
+        return b.intrinsicRangeCheck(createCompare(x, condition, y), false);
     }
 
     /**
@@ -361,9 +369,7 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     public AbstractBeginNode emitReturnIf(ValueNode x, Condition condition, ValueNode y, ValueNode returnValue, double returnProbability) {
-        Condition.CanonicalizedCondition canonicalizedCondition = condition.canonicalize();
-        LogicNode compare = createCompare(x, y, canonicalizedCondition);
-        return emitReturnIf(compare, canonicalizedCondition.mustNegate(), returnValue, returnProbability);
+        return emitReturnIf(createCompare(x, condition, y), false, returnValue, returnProbability);
     }
 
     public AbstractBeginNode emitReturnIfNot(LogicNode condition, ValueNode returnValue, double returnProbability) {
@@ -399,16 +405,20 @@ public class InvocationPluginHelper implements DebugCloseable {
      *
      * This will add the return value to the graph if necessary. If the return value is a
      * {@link StateSplit}, it should <em>not</em> be added to the graph using
-     * {@link GraphBuilderContext#add(ValueNode)} before calling this method.
+     * {@link GraphBuilderContext#add} before calling this method.
      */
     public void emitFinalReturn(JavaKind kind, ValueNode returnValue) {
-        assert !emittedReturn : "must only have one final return";
-        assert kind == returnKind : "mismatch in return kind";
-        b.addPush(kind, returnValue);
+        GraalError.guarantee(!emittedReturn, "must only have one final return");
+        GraalError.guarantee(kind == returnKind, "mismatch in return kind");
+        if (kind != JavaKind.Void) {
+            b.addPush(kind, returnValue);
+        }
 
         if (returns.size() > 0) {
             // Restore the previous frame state
-            b.pop(returnKind);
+            if (kind != JavaKind.Void) {
+                b.pop(returnKind);
+            }
 
             EndNode end = b.append(new EndNode());
             addReturnValue(end, kind, returnValue);
@@ -426,7 +436,9 @@ public class InvocationPluginHelper implements DebugCloseable {
                     assert r.returnValue == null;
                 }
             }
-            b.addPush(returnKind, returnPhi.singleValueOrThis());
+            if (kind != JavaKind.Void) {
+                b.addPush(returnKind, returnPhi.singleValueOrThis());
+            }
         }
         emittedReturn = true;
     }
@@ -436,13 +448,14 @@ public class InvocationPluginHelper implements DebugCloseable {
      */
     protected void addReturnValue(EndNode end, JavaKind kind, ValueNode returnValueInput) {
         assert b.canMergeIntrinsicReturns();
+        GraalError.guarantee(kind == returnKind, "mismatch in return kind");
         ValueNode returnValue = returnValueInput;
-        if (returnValue.isUnregistered()) {
-            assert !(returnValue instanceof FixedNode);
-            returnValue = b.add(returnValue);
+        if (kind != JavaKind.Void) {
+            if (returnValue.isUnregistered()) {
+                GraalError.guarantee(!(returnValue instanceof FixedNode), "unexpected FixedNode");
+                returnValue = b.add(returnValue);
+            }
         }
-        assert !returnValue.isUnregistered() : returnValue;
-        assert kind == returnKind : "mismatch in return kind";
         returns.add(new ReturnData(end, returnValue));
     }
 
@@ -485,9 +498,7 @@ public class InvocationPluginHelper implements DebugCloseable {
     }
 
     public GuardingNode doFallbackIf(ValueNode x, Condition condition, ValueNode y, double returnProbability) {
-        Condition.CanonicalizedCondition canonicalizedCondition = condition.canonicalize();
-        LogicNode compare = createCompare(x, y, canonicalizedCondition);
-        return doFallbackIf(compare, canonicalizedCondition.mustNegate(), returnProbability);
+        return doFallbackIf(createCompare(x, condition, y), false, returnProbability);
     }
 
     public GuardingNode doFallbackIfNot(LogicNode condition, double probability) {
@@ -503,7 +514,17 @@ public class InvocationPluginHelper implements DebugCloseable {
      * environment the fallback may be done through a {@link DeoptimizeNode} or through a real
      * {@link Invoke}.
      */
-    private GuardingNode doFallbackIf(LogicNode condition, boolean negated, double probability) {
+    private GuardingNode doFallbackIf(LogicNode origCondition, boolean origNegated, double origProbability) {
+        // We may insert NegationNode for API simplicity but go ahead and remove it now instead of
+        // waiting for the canonicalization.
+        boolean negated = origNegated;
+        LogicNode condition = origCondition;
+        double probability = origProbability;
+        while (condition instanceof LogicNegationNode negation) {
+            negated = !negated;
+            condition = negation.getValue();
+            probability = 1.0 - probability;
+        }
         BeginNode fallbackSuccessor = branchToFallback();
         ProfileData.BranchProbabilityData probabilityData = ProfileData.BranchProbabilityData.injected(probability, negated);
         IfNode node = new IfNode(condition, negated ? null : fallbackSuccessor, negated ? fallbackSuccessor : null, probabilityData);

@@ -303,7 +303,8 @@ public class FallbackFeature implements InternalFeature {
         AfterAnalysisAccessImpl access = (AfterAnalysisAccessImpl) a;
         if (access.getBigBang().getUnsupportedFeatures().exist()) {
             /* If we detect use of unsupported features we trigger fallback image build. */
-            reportFallback(ABORT_MSG_PREFIX + " due to unsupported features");
+            reportFallback(ABORT_MSG_PREFIX + " due to unsupported features. " +
+                            "Use '--" + SubstrateOptions.OptionNameNoFallback + "' to show the underlying problem instead of building a fallback image.");
         }
 
         for (ReflectionInvocationCheck check : reflectionInvocationChecks) {

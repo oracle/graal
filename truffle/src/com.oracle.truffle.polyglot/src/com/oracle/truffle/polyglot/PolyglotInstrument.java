@@ -43,25 +43,29 @@ package com.oracle.truffle.polyglot;
 import static com.oracle.truffle.polyglot.EngineAccessor.INSTRUMENT;
 import static com.oracle.truffle.polyglot.EngineAccessor.LANGUAGE;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 
 import org.graalvm.options.OptionDescriptor;
 import org.graalvm.options.OptionDescriptors;
-import org.graalvm.polyglot.Instrument;
+import org.graalvm.polyglot.SandboxPolicy;
+import org.graalvm.polyglot.impl.AbstractPolyglotImpl.APIAccess;
 
 import com.oracle.truffle.api.InstrumentInfo;
+import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
 import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
-import org.graalvm.polyglot.SandboxPolicy;
 
 class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMObject {
 
-    Instrument api;
+    Object api;
     InstrumentInfo info;
     final InstrumentCache cache;
     final PolyglotEngineImpl engine;
 
     private final Object instrumentLock = new Object();
+    final Map<String, TruffleFile> internalResources = new ConcurrentHashMap<>();
     private volatile OptionDescriptors engineOptions;
     private volatile OptionDescriptors contextOptions;
     private volatile OptionDescriptors allOptions;
@@ -121,6 +125,16 @@ class PolyglotInstrument implements com.oracle.truffle.polyglot.PolyglotImpl.VMO
     @Override
     public PolyglotEngineImpl getEngine() {
         return engine;
+    }
+
+    @Override
+    public APIAccess getAPIAccess() {
+        return engine.apiAccess;
+    }
+
+    @Override
+    public PolyglotImpl getImpl() {
+        return engine.impl;
     }
 
     private void ensureInitialized() {

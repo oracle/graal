@@ -38,14 +38,19 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.HeapDumpSupport;
 
+import com.oracle.svm.core.VMInspectionOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.dump.HProfType;
 import com.oracle.svm.core.heap.dump.HeapDumpMetadata;
-import com.oracle.svm.core.heap.dump.HeapDumpSupportImpl;
+import com.oracle.svm.core.heap.dump.HeapDumpShutdownHook;
+import com.oracle.svm.core.heap.dump.HeapDumpStartupHook;
 import com.oracle.svm.core.heap.dump.HeapDumpWriter;
+import com.oracle.svm.core.heap.dump.HeapDumping;
+import com.oracle.svm.core.heapdump.HeapDumpSupportImpl;
 import com.oracle.svm.core.heapdump.HeapDumpUtils;
 import com.oracle.svm.core.heapdump.HeapDumpWriterImpl;
+import com.oracle.svm.core.jdk.RuntimeSupport;
 import com.oracle.svm.core.meta.SharedField;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.os.RawFileOperationSupport;
@@ -67,29 +72,45 @@ public class HeapDumpFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         /*
-         * Include the feature unconditionally on Linux and macOS. The code and all its data are
-         * only present in the final image if the heap dumping infrastructure is actually called by
-         * any code (e.g., VMRuntime.dumpHeap(...) or --enable-monitoring=heapdump).
+         * Include the feature unconditionally (all platforms except Windows - even unknown
+         * platforms). The code and all its data are only present in the final image if the heap
+         * dumping infrastructure is actually called by any code (e.g., VMRuntime.dumpHeap(...) or
+         * --enable-monitoring=heapdump).
          */
-        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+        return !Platform.includedIn(Platform.WINDOWS.class);
     }
 
     @Override
-    public void beforeAnalysis(BeforeAnalysisAccess access) {
+    public void duringSetup(DuringSetupAccess access) {
         if (useLegacyImplementation()) {
-            ImageSingletons.add(HeapDumpSupport.class, new com.oracle.svm.core.heapdump.HeapDumpSupportImpl());
+            HeapDumping heapDumpSupport = new HeapDumpSupportImpl();
+
+            ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
+            ImageSingletons.add(HeapDumping.class, heapDumpSupport);
             ImageSingletons.add(HeapDumpUtils.class, new HeapDumpUtils());
             ImageSingletons.add(com.oracle.svm.core.heapdump.HeapDumpWriter.class, new HeapDumpWriterImpl());
         } else {
             HeapDumpMetadata metadata = new HeapDumpMetadata();
+            HeapDumping heapDumpSupport = new com.oracle.svm.core.heap.dump.HeapDumpSupportImpl(metadata);
+
+            ImageSingletons.add(HeapDumpSupport.class, heapDumpSupport);
+            ImageSingletons.add(HeapDumping.class, heapDumpSupport);
             ImageSingletons.add(HeapDumpMetadata.class, metadata);
-            ImageSingletons.add(HeapDumpSupport.class, new HeapDumpSupportImpl(metadata));
         }
     }
 
     public static boolean useLegacyImplementation() {
         /* See GR-44538. */
         return !RawFileOperationSupport.isPresent();
+    }
+
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
+        /* Heap dumping on signal and on OutOfMemoryError are opt-in features. */
+        if (VMInspectionOptions.hasHeapDumpSupport()) {
+            RuntimeSupport.getRuntimeSupport().addStartupHook(new HeapDumpStartupHook());
+            RuntimeSupport.getRuntimeSupport().addShutdownHook(new HeapDumpShutdownHook());
+        }
     }
 
     @Override

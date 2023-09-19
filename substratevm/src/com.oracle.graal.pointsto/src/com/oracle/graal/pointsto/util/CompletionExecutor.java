@@ -277,6 +277,10 @@ public class CompletionExecutor {
         setState(State.UNUSED);
     }
 
+    public boolean isBeforeStart() {
+        return state.get() == State.BEFORE_START;
+    }
+
     public boolean isStarted() {
         return state.get() == State.STARTED;
     }

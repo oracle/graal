@@ -39,11 +39,10 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.espresso.impl.KeysArray;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.nodes.interop.AddPathToBindingsNode;
+import com.oracle.truffle.espresso.nodes.commands.AddPathToBindingsNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.substitutions.JavaType;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.InterpreterToVM;
 
 /**
@@ -58,31 +57,24 @@ import com.oracle.truffle.espresso.vm.InterpreterToVM;
  * guest class loader. <br>
  * {@link ClassNotFoundException} is translated into interop's {@link UnknownIdentifierException
  * member not found}, all other guest exceptions thrown during class loading will be propagated.
- * 
+ *
  * <p>
  * If properly set up, these bindings will expose the {@code addPath} invocable member, which allows
  * to add a new path for the underlying class loader to load from. This invocation takes a single
- * {@link String} as argument, the path to add.
+ * {@link InteropLibrary#isString(Object) interop string} as argument, the path to add.
  */
 @ExportLibrary(InteropLibrary.class)
 public final class EspressoBindings implements TruffleObject {
     public static final String JAVA_VM = "<JavaVM>";
     public static final String ADD_PATH = "addPath";
 
-    final StaticObject loader;
     final boolean useBindingsLoader;
 
     boolean withNativeJavaVM;
 
-    public EspressoBindings(@JavaType(ClassLoader.class) StaticObject loader, boolean withNativeJavaVM, boolean useBindingsLoader) {
+    public EspressoBindings(boolean withNativeJavaVM, boolean useBindingsLoader) {
         this.withNativeJavaVM = withNativeJavaVM;
-        assert StaticObject.notNull(loader) : "boot classloader (null) not supported";
-        this.loader = loader;
         this.useBindingsLoader = useBindingsLoader;
-    }
-
-    public StaticObject getBindingsLoader() {
-        return loader;
     }
 
     @ExportMessage
@@ -139,12 +131,12 @@ public final class EspressoBindings implements TruffleObject {
             return context.getVM().getJavaVM();
         }
         if (useBindingsLoader && ADD_PATH.equals(member)) {
-            return new AddPathToBindingsNode.InvocableAddToBindings(loader);
+            return new AddPathToBindingsNode.InvocableAddToBindings();
         }
         Meta meta = context.getMeta();
         try {
             StaticObject clazz = (StaticObject) meta.java_lang_Class_forName_String_boolean_ClassLoader.invokeDirect(null,
-                            meta.toGuestString(member), false, loader);
+                            meta.toGuestString(member), false, context.getBindingsLoader());
             return clazz.getMirrorKlass(meta);
         } catch (EspressoException e) {
             error.enter();
@@ -164,7 +156,7 @@ public final class EspressoBindings implements TruffleObject {
             throw UnknownIdentifierException.create(member);
         }
         if (useBindingsLoader && ADD_PATH.equals(member)) {
-            addPathToBindingsNode.execute(loader, arguments);
+            addPathToBindingsNode.execute(arguments);
             return StaticObject.NULL;
         }
         error.enter();

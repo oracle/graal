@@ -58,6 +58,7 @@ import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMIOp.VSHUFPS;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPERMT2B;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSHUFB;
+import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPXOR;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.XMM;
 import static org.graalvm.compiler.asm.amd64.AVXKind.AVXSize.ZMM;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -115,7 +116,7 @@ public class AMD64VectorShuffle {
 
         public LongToVectorOp(AllocatableValue result, AllocatableValue value) {
             super(TYPE);
-            assert result.getPlatformKind() == AMD64Kind.V128_QWORD || result.getPlatformKind() == AMD64Kind.V256_QWORD;
+            assert result.getPlatformKind() == AMD64Kind.V128_QWORD || result.getPlatformKind() == AMD64Kind.V256_QWORD || result.getPlatformKind() == AMD64Kind.V512_QWORD;
             this.result = result;
             this.value = value;
         }
@@ -159,7 +160,7 @@ public class AMD64VectorShuffle {
     public static final class ConstPermuteBytesUsingTableOp extends AMD64LIRInstruction implements AVX512Support {
         public static final LIRInstructionClass<ConstPermuteBytesUsingTableOp> TYPE = LIRInstructionClass.create(ConstPermuteBytesUsingTableOp.class);
         @Def({REG}) protected AllocatableValue result;
-        @Use({REG, STACK}) protected AllocatableValue source;
+        @Alive({REG, STACK}) protected AllocatableValue source;
         @Use({REG}) protected AllocatableValue mask;
         @Temp({REG}) protected AllocatableValue selector;
 
@@ -180,6 +181,7 @@ public class AMD64VectorShuffle {
             int alignment = crb.dataBuilder.ensureValidDataAlignment(selectorData.length);
             AMD64Address address = (AMD64Address) crb.recordDataReferenceInCode(selectorData, alignment);
             VMOVDQU64.emit(masm, AVXKind.getRegisterSize(kind), asRegister(selector), address);
+            VPXOR.emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(result), asRegister(result));
             if (isRegister(source)) {
                 VPERMT2B.emit(masm, AVXKind.getRegisterSize(kind), asRegister(result), asRegister(selector), asRegister(source), mask != null ? asRegister(mask) : Register.None,
                                 AMD64BaseAssembler.EVEXPrefixConfig.Z1,

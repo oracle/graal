@@ -57,6 +57,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -105,14 +106,14 @@ import com.oracle.svm.core.jni.headers.JNIObjectHandle;
 import com.oracle.svm.core.jni.headers.JNIObjectRefType;
 import com.oracle.svm.core.jni.headers.JNIValue;
 import com.oracle.svm.core.jni.headers.JNIVersion;
-import com.oracle.svm.core.jni.headers.JNIVersionJDK19OrLater;
-import com.oracle.svm.core.jni.headers.JNIVersionJDK20OrLater;
+import com.oracle.svm.core.jni.headers.JNIVersionJDK22OrLater;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.thread.Target_java_lang_BaseVirtualThread;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.Utf8;
@@ -157,9 +158,14 @@ public final class JNIFunctions {
     @CEntryPointOptions(prologue = CEntryPointOptions.NoPrologue.class, epilogue = CEntryPointOptions.NoEpilogue.class)
     @Uninterruptible(reason = "No need to enter the isolate and also no way to report errors if unable to.")
     static int GetVersion(JNIEnvironment env) {
-        return (JavaVersionUtil.JAVA_SPEC >= 20) ? JNIVersionJDK20OrLater.JNI_VERSION_20()
-                        : ((JavaVersionUtil.JAVA_SPEC >= 19) ? JNIVersionJDK19OrLater.JNI_VERSION_19()
-                                        : JNIVersion.JNI_VERSION_10());
+        switch (JavaVersionUtil.JAVA_SPEC) {
+            case 21:
+                return JNIVersion.JNI_VERSION_21();
+            case 22:
+                return JNIVersionJDK22OrLater.JNI_VERSION_22();
+            default:
+                throw VMError.shouldNotReachHere("Unsupported Java version " + JavaVersionUtil.JAVA_SPEC);
+        }
     }
 
     /*
@@ -554,7 +560,7 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleaseStringUTFChars(JNIEnvironment env, JNIObjectHandle hstr, CCharPointer chars) {
-        JNIThreadLocalPrimitiveArrayViews.destroyArrayViewByAddress(chars, JNIMode.JNI_ABORT());
+        JNIThreadLocalPrimitiveArrayViews.destroyNewestArrayViewByAddress(chars, JNIMode.JNI_ABORT());
     }
 
     /*
@@ -801,7 +807,7 @@ public final class JNIFunctions {
     @CEntryPoint(exceptionHandler = JNIExceptionHandlerVoid.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
     @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
     static void ReleasePrimitiveArrayCritical(JNIEnvironment env, JNIObjectHandle harray, WordPointer carray, int mode) {
-        JNIThreadLocalPrimitiveArrayViews.destroyArrayViewByAddress(carray, mode);
+        JNIThreadLocalPrimitiveArrayViews.destroyNewestArrayViewByAddress(carray, mode);
     }
 
     /*
@@ -1119,6 +1125,16 @@ public final class JNIFunctions {
         return JNIObjectHandles.createLocal(clazz);
     }
 
+    /*
+     * jboolean (JNICALL *IsVirtualThread) (JNIEnv *env, jobject obj);
+     */
+    @CEntryPoint(exceptionHandler = JNIExceptionHandlerReturnFalse.class, include = CEntryPoint.NotIncludedAutomatically.class, publishAs = Publish.NotPublished)
+    @CEntryPointOptions(prologue = JNIEnvEnterFatalOnFailurePrologue.class)
+    static boolean IsVirtualThread(JNIEnvironment env, JNIObjectHandle handle) {
+        Object obj = JNIObjectHandles.getObject(handle);
+        return obj instanceof Target_java_lang_BaseVirtualThread;
+    }
+
     // Checkstyle: resume
 
     /**
@@ -1177,20 +1193,24 @@ public final class JNIFunctions {
         static class JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVM vm) {
-                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true) != CEntryPointErrors.NO_ERROR) {
-                    return JNIErrors.JNI_ERR();
-                }
-                return CEntryPointErrors.NO_ERROR;
+                /*
+                 * DetachCurrentThread and DestroyJavaVM never return a more specific error than
+                 * JNI_ERR on HotSpot. So, we need to do the same.
+                 */
+                int code = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true);
+                return convertCEntryPointErrorToJNIError(code, false);
             }
         }
 
         static class JNIJavaVMEnterAttachThreadManualJavaThreadPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVM vm) {
-                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, false) != CEntryPointErrors.NO_ERROR) {
-                    return JNIErrors.JNI_ERR();
-                }
-                return CEntryPointErrors.NO_ERROR;
+                /*
+                 * AttachCurrentThread and AttachCurrentThreadAsDaemon never return a more specific
+                 * error than JNI_ERR on HotSpot. So, we need to do the same.
+                 */
+                int code = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, false);
+                return convertCEntryPointErrorToJNIError(code, false);
             }
         }
 
@@ -1256,6 +1276,50 @@ public final class JNIFunctions {
                 CEntryPointActions.leaveDetachThread();
                 return error;
             }
+        }
+
+        /**
+         * We use one of the approaches below when mapping our internal {@link CEntryPointErrors} to
+         * {@link JNIErrors}. Which approach is used depends on the method arguments and the value
+         * of {@link SubstrateOptions#JNIEnhancedErrorCodes}.
+         * <ul>
+         * <li>Map all internal errors to {@link JNIErrors#JNI_ERR()}. This is needed for some
+         * methods to maximize compatibility with HotSpot.</li>
+         * <li>Map internal errors to roughly matching standard JNI errors. Internal errors that
+         * don't have a counterpart will be mapped to {@link JNIErrors#JNI_ERR()}.</li>
+         * <li>Map all internal errors to non-standard JNI errors.</li>
+         * </ul>
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        static int convertCEntryPointErrorToJNIError(int code, boolean mapToMatchingStandardJNIError) {
+            if (code == CEntryPointErrors.NO_ERROR) {
+                return JNIErrors.JNI_OK();
+            }
+
+            if (SubstrateOptions.JNIEnhancedErrorCodes.getValue()) {
+                /*
+                 * Return a non-standard JNI error so that callers such as libgraal can figure out
+                 * what went wrong.
+                 */
+                int result = -1000000000 - code;
+                if (result == JNIErrors.JNI_OK() || result >= -100) {
+                    return JNIErrors.JNI_ERR(); // non-negative or potential actual JNI error
+                }
+                return result;
+            }
+
+            if (mapToMatchingStandardJNIError) {
+                /* Map some internal errors to standard JNI errors. */
+                switch (code) {
+                    case CEntryPointErrors.ALLOCATION_FAILED:
+                    case CEntryPointErrors.MAP_HEAP_FAILED:
+                    case CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED:
+                    case CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE:
+                        return JNIErrors.JNI_ENOMEM();
+                }
+            }
+
+            return JNIErrors.JNI_ERR();
         }
 
         static JNIMethodId getMethodID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig, boolean isStatic) {
@@ -1329,7 +1393,7 @@ public final class JNIFunctions {
         }
 
         static void releaseString(CShortPointer cstr) {
-            JNIThreadLocalPrimitiveArrayViews.destroyArrayViewByAddress(cstr, JNIMode.JNI_ABORT());
+            JNIThreadLocalPrimitiveArrayViews.destroyNewestArrayViewByAddress(cstr, JNIMode.JNI_ABORT());
         }
 
         @Uninterruptible(reason = "exception handler")

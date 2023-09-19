@@ -624,6 +624,12 @@ public class BciBlockMapping implements JavaMethodContext {
         }
     }
 
+    /**
+     * Represents an entry into an exception handler routine. This block is needed to ensure there
+     * is a place to put checks that determine whether the handler should be entered (i.e., the
+     * exception kind is compatible) or execution should continue to check the next handler (or
+     * unwind).
+     */
     public static class ExceptionDispatchBlock extends BciBlock {
         public final ExceptionHandler handler;
         public final int deoptBci;
@@ -1351,7 +1357,7 @@ public class BciBlockMapping implements JavaMethodContext {
     }
 
     /**
-     * Logic for adding an the "normal" invoke successor link.
+     * Logic for adding the "normal" invoke successor link.
      */
     protected void addInvokeNormalSuccessor(int invokeBci, BciBlock sux) {
         addSuccessor(invokeBci, sux);

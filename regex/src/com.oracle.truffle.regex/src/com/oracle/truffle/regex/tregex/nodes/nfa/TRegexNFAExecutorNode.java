@@ -71,7 +71,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     private TRegexNFAExecutorNode(NFA nfa, int numberOfTransitions) {
         super(nfa.getAst(), numberOfTransitions);
         this.nfa = nfa;
-        this.searching = !nfa.getAst().getFlags().isSticky() && !nfa.getAst().getRoot().startsWithCaret();
+        this.searching = !nfa.getAst().getFlags().isSticky() && !nfa.getAst().getRoot().startsWithCaret() && nfa.getInitialLoopBackTransition() != null;
         this.trackLastGroup = nfa.getAst().getOptions().getFlavor().usesLastGroupResultField();
     }
 
@@ -129,6 +129,11 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
     }
 
     @Override
+    public int getNumberOfStates() {
+        return nfa.getNumberOfStates();
+    }
+
+    @Override
     public TRegexExecutorLocals createLocals(TruffleString input, int fromIndex, int index, int maxIndex) {
         return new TRegexNFAExecutorLocals(input, fromIndex, index, maxIndex, getNumberOfCaptureGroups(), nfa.getNumberOfStates(), trackLastGroup);
     }
@@ -151,7 +156,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
             return null;
         }
         while (true) {
-            if (dfaGeneratorBailedOut) {
+            if (dfaGeneratorBailedOut && CompilerDirectives.hasNextTier()) {
                 locals.incLoopCount(this);
             }
             if (CompilerDirectives.inInterpreter()) {
@@ -236,7 +241,7 @@ public final class TRegexNFAExecutorNode extends TRegexExecutorNode {
         // We only expand the loopBack state if index > fromIndex. Expanding the loopBack state
         // when index == fromIndex is: a) redundant and b) breaks MustAdvance where the actual
         // loopBack state is only accessible after consuming at least one character.
-        if (injectBranchProbability(CONTINUE_PROBABILITY, searching && !locals.hasResult() && locals.getIndex() > locals.getFromIndex())) {
+        if (searching && injectBranchProbability(CONTINUE_PROBABILITY, !locals.hasResult() && locals.getIndex() > locals.getFromIndex())) {
             expandStateAtEnd(locals, nfa.getInitialLoopBackTransition().getTarget(), true);
         }
     }

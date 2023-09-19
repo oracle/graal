@@ -25,13 +25,10 @@
 package com.oracle.svm.hosted.analysis;
 
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -104,7 +101,6 @@ public class DynamicHubInitializer {
         heapScanner.rescanObject(hub, OtherReason.HUB);
 
         buildClassInitializationInfo(heapScanner, type, hub);
-        fillSignature(type, hub);
 
         if (type.getJavaKind() == JavaKind.Object) {
             if (type.isArray()) {
@@ -216,7 +212,7 @@ public class DynamicHubInitializer {
         } catch (VerifyError e) {
             /* Synthesize a VerifyError to be thrown at run time. */
             AnalysisMethod throwVerifyError = metaAccess.lookupJavaMethod(ExceptionSynthesizer.throwExceptionMethod(VerifyError.class));
-            bb.addRootMethod(throwVerifyError, true);
+            bb.addRootMethod(throwVerifyError, true, "Class initialization error, registered in " + DynamicHubInitializer.class);
             return new ClassInitializationInfo(new MethodPointer(throwVerifyError));
         } catch (Throwable t) {
             /*
@@ -235,24 +231,10 @@ public class DynamicHubInitializer {
         AnalysisMethod classInitializer = type.getClassInitializer();
         if (classInitializer != null) {
             assert classInitializer.getCode() != null;
-            bb.addRootMethod(classInitializer, true);
+            bb.addRootMethod(classInitializer, true, "Class initialization, registered in " + DynamicHubInitializer.class);
             classInitializerFunction = new MethodPointer(classInitializer);
         }
         return new ClassInitializationInfo(classInitializerFunction);
-    }
-
-    private static final Method getSignature = ReflectionUtil.lookupMethod(Class.class, "getGenericSignature0");
-
-    private static void fillSignature(AnalysisType type, DynamicHub hub) {
-        AnalysisError.guarantee(hub.getSignature() == null, "Signature already computed for %s.", type.toJavaName(true));
-        Class<?> javaClass = type.getJavaClass();
-        String signature;
-        try {
-            signature = (String) getSignature.invoke(javaClass);
-        } catch (IllegalAccessException | InvocationTargetException e) {
-            throw GraalError.shouldNotReachHere(e); // ExcludeFromJacocoGeneratedReport
-        }
-        hub.setSignature(signature);
     }
 
     class InterfacesEncodingKey {

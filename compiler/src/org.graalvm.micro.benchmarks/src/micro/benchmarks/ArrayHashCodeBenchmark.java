@@ -39,7 +39,7 @@ import org.openjdk.jmh.infra.Blackhole;
 @State(Scope.Thread)
 public class ArrayHashCodeBenchmark extends BenchmarkBase {
 
-    @Param({"1", "10", "100", "10000"}) private int size;
+    @Param({"10000"}) private int size;
 
     private byte[] bytes;
     private char[] chars;

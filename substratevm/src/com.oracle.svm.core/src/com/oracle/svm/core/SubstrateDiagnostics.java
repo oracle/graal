@@ -72,7 +72,6 @@ import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
-import com.oracle.svm.core.jdk.management.SubstrateRuntimeMXBean;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
 import com.oracle.svm.core.option.RuntimeOptionKey;
@@ -92,6 +91,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalBytes;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfos;
 import com.oracle.svm.core.util.CounterSupport;
+import com.oracle.svm.core.util.TimeUtils;
 
 public class SubstrateDiagnostics {
     private static final int MAX_THREADS_TO_PRINT = 100_000;
@@ -813,7 +813,7 @@ public class SubstrateDiagnostics {
             log.string(", ").string(platform.getOS()).string("/").string(platform.getArchitecture()).newline();
 
             log.string("Current timestamp: ").unsigned(System.currentTimeMillis()).newline();
-            log.string("VM uptime: ").signed(ImageSingletons.lookup(SubstrateRuntimeMXBean.class).getUptime()).string(" ms").newline();
+            log.string("VM uptime: ").rational(Isolates.getCurrentUptimeMillis(), TimeUtils.millisPerSecond, 3).string("s").newline();
 
             CodeInfo info = CodeInfoTable.getImageCodeInfo();
             Pointer codeStart = (Pointer) CodeInfoAccess.getCodeStart(info);
@@ -1035,7 +1035,7 @@ public class SubstrateDiagnostics {
 
         private FrameInfoQueryResult getCompilationRoot(CodeInfo imageCodeInfo, CodePointer ip) {
             FrameInfoQueryResult rootInfo = null;
-            frameInfoCursor.initialize(imageCodeInfo, ip);
+            frameInfoCursor.initialize(imageCodeInfo, ip, false);
             while (frameInfoCursor.advance()) {
                 rootInfo = frameInfoCursor.get();
             }

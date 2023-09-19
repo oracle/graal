@@ -105,6 +105,13 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         return selected;
     }
 
+    /**
+     * Determines if {@code -Xcomp} (or the equivalent thereof) was specified as a JVM argument.
+     */
+    public final boolean xcompMode = !access.getFlag("UseInterpreter", Boolean.class);
+
+    public final boolean ropProtection = access.getFieldValue("VM_Version::_rop_protection", Boolean.class, "bool", false);
+
     public final boolean cAssertions = getConstant("ASSERT", Boolean.class);
 
     public final int codeEntryAlignment = getFlag("CodeEntryAlignment", Integer.class);
@@ -135,9 +142,14 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class);
     private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class);
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class);
+    public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class);
+    public final boolean useCharacterCompareIntrinsics = getFlag("UseCharacterCompareIntrinsics", Boolean.class);
     public final int useAVX3Threshold = getFlag("AVX3Threshold", Integer.class, 4096, osArch.equals("amd64"));
 
-    public final boolean preserveFramePointer = getFlag("PreserveFramePointer", Boolean.class);
+    public final String onSpinWaitInst = getFlag("OnSpinWaitInst", String.class, "none", osArch.equals("aarch64"));
+    public final int onSpinWaitInstCount = getFlag("OnSpinWaitInstCount", Integer.class, 0, osArch.equals("aarch64"));
+
+    public final boolean preserveFramePointer = getFlag("PreserveFramePointer", Boolean.class) || ropProtection;
 
     public final int diagnoseSyncOnValueBasedClasses = getFlag("DiagnoseSyncOnValueBasedClasses", Integer.class);
 
@@ -220,6 +232,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int stackShadowPages = getFlag("StackShadowPages", Integer.class);
     public final int vmPageSize = getFieldValue("CompilerToVM::Data::vm_page_size", Integer.class, JDK >= 21 ? "size_t" : "int");
+
+    public final int softwarePrefetchHintDistance = getFlag("SoftwarePrefetchHintDistance", Integer.class, -1, "aarch64".equals(osArch));
 
     public final int markOffset = getFieldOffset("oopDesc::_mark", Integer.class, markWord);
     public final int hubOffset = getFieldOffset("oopDesc::_metadata._klass", Integer.class, "Klass*");
@@ -487,7 +501,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long verifyOopMask = getFieldValue("CompilerToVM::Data::Universe_verify_oop_mask", Long.class, "uintptr_t");
     public final long verifyOopBits = getFieldValue("CompilerToVM::Data::Universe_verify_oop_bits", Long.class, "uintptr_t");
 
-    public final int logOfHRGrainBytes = getFieldValue("HeapRegion::LogOfHRGrainBytes", Integer.class, "int");
+    public final int logOfHRGrainBytes = getFieldValue("HeapRegion::LogOfHRGrainBytes", Integer.class, JDK >= 22 ? "uint" : "int");
 
     public final int cardtableShift = getFieldValue("CompilerToVM::Data::cardtable_shift", Integer.class, "int");
     public final long cardtableStartAddress;
@@ -763,7 +777,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
         int offset = -1;
         boolean isWord = false;
         if (JDK >= 20) {
-            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, "int64_t");
+            String cppType = JDK >= 22 ? "intx" : "int64_t";
+            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, cppType);
             isWord = true;
         }
         threadHeldMonitorCountOffset = offset;
@@ -869,5 +884,12 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public boolean supportsMethodHandleDeoptimizationEntry() {
         return HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY.isAvailable() && VMINTRINSIC_FIRST_MH_SIG_POLY != -1 && VMINTRINSIC_LAST_MH_SIG_POLY != -1 && VMINTRINSIC_INVOKE_GENERIC != -1 &&
                         VMINTRINSIC_COMPILED_LAMBDA_FORM != -1;
+    }
+
+    /**
+     * Returns true if results of vmIntrinsics::is_intrinsic_available are exported to Graal.
+     */
+    public boolean isIntrinsicAvailableExported() {
+        return JDK >= 22 || (JDK == 21 && jvmciGE(JVMCI_23_1_b13));
     }
 }

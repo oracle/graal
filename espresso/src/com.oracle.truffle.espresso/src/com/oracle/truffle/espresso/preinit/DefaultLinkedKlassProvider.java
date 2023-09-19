@@ -22,14 +22,17 @@
  */
 package com.oracle.truffle.espresso.preinit;
 
+import com.oracle.truffle.espresso.impl.ClassLoadingEnv;
 import com.oracle.truffle.espresso.impl.ClassRegistry;
 import com.oracle.truffle.espresso.impl.ContextDescription;
 import com.oracle.truffle.espresso.impl.LinkedKlass;
 import com.oracle.truffle.espresso.impl.ParserKlass;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class DefaultLinkedKlassProvider implements LinkedKlassProvider {
     @Override
-    public LinkedKlass getLinkedKlass(ContextDescription description, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces, ClassRegistry.ClassDefinitionInfo info) {
+    public LinkedKlass getLinkedKlass(ClassLoadingEnv env, ContextDescription description, StaticObject loader, ParserKlass parserKlass, LinkedKlass superKlass, LinkedKlass[] interfaces,
+                    ClassRegistry.ClassDefinitionInfo info) {
         return LinkedKlass.create(description, parserKlass, superKlass, interfaces);
     }
 }

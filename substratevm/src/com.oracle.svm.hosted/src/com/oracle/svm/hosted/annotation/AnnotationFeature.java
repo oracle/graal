@@ -30,9 +30,7 @@ import java.lang.reflect.Proxy;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
+import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -41,12 +39,10 @@ import com.oracle.svm.hosted.reflect.ReflectionDataBuilder;
 @AutomaticallyRegisteredFeature
 public class AnnotationFeature implements InternalFeature {
 
-    private RuntimeReflectionSupport runtimeReflectionSupport;
     private final Set<Class<? extends Annotation>> processedTypes = ConcurrentHashMap.newKeySet();
 
     @Override
     public void duringSetup(DuringSetupAccess access) {
-        runtimeReflectionSupport = ImageSingletons.lookup(RuntimeReflectionSupport.class);
         access.registerObjectReplacer(this::registerDeclaredMethods);
     }
 
@@ -62,7 +58,8 @@ public class AnnotationFeature implements InternalFeature {
         if (obj instanceof Annotation annotation && Proxy.isProxyClass(annotation.getClass())) {
             Class<? extends Annotation> annotationType = annotation.annotationType();
             if (processedTypes.add(annotationType)) {
-                runtimeReflectionSupport.registerAllDeclaredMethodsQuery(ConfigurationCondition.alwaysTrue(), false, annotationType);
+                RuntimeReflection.registerAllDeclaredMethods(annotationType);
+                RuntimeReflection.register(annotationType.getDeclaredMethods());
             }
         }
         return obj;

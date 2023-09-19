@@ -59,7 +59,6 @@ import org.graalvm.compiler.core.common.spi.ForeignCallSignature;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.hotspot.EncodedSnippets;
@@ -86,8 +85,8 @@ import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.serviceprovider.GlobalAtomicLong;
 import org.graalvm.compiler.serviceprovider.GraalServices;
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import org.graalvm.compiler.truffle.compiler.PartialEvaluatorConfiguration;
 import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
@@ -99,10 +98,6 @@ import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNIExceptionWrapper;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.JNIUtil;
-import org.graalvm.jniutils.NativeBridgeSupport;
-import org.graalvm.libgraal.LibGraal;
-import org.graalvm.libgraal.jni.LibGraalNativeBridgeSupport;
-import org.graalvm.libgraal.jni.LibGraalUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.StackValue;
@@ -170,6 +165,11 @@ class LibGraalOptions {
                     "in HotSpot from libgraal when the libgraal isolate is being shutdown." +
                     "This option exists for the purpose of testing callbacks in this context.") //
     static final RuntimeOptionKey<String> OnShutdownCallback = new RuntimeOptionKey<>(null);
+    @Option(help = "Replaces first exception thrown by the CrashAt option with an OutOfMemoryError. " +
+                    "Subsequently CrashAt exceptions are suppressed. " +
+                    "This option exists to test HeapDumpOnOutOfMemoryError. " +
+                    "See the MethodFilter option for the pattern syntax.") //
+    static final RuntimeOptionKey<Boolean> CrashAtThrowsOOME = new RuntimeOptionKey<>(false);
 }
 
 public class LibGraalFeature implements InternalFeature {
@@ -182,7 +182,9 @@ public class LibGraalFeature implements InternalFeature {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "jdk.internal.vm.ci");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "jdk.internal.vm.compiler");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "jdk.internal.vm.compiler.management");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.sdk", "org.graalvm.nativeimage.impl");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.collections");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.word");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.nativeimage", "org.graalvm.nativeimage.impl");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.nativeimage.base");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, false, "org.graalvm.nativeimage.builder");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, LibGraalFeature.class, true, "org.graalvm.nativeimage.llvm");
@@ -194,9 +196,6 @@ public class LibGraalFeature implements InternalFeature {
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        if (!LibGraal.isSupported()) {
-            throw new InternalError("LibGraalFeature is not supported by the current JDK");
-        }
         return true;
     }
 
@@ -210,11 +209,6 @@ public class LibGraalFeature implements InternalFeature {
         public boolean getAsBoolean() {
             return ImageSingletons.contains(LibGraalFeature.class);
         }
-    }
-
-    @Override
-    public void afterRegistration(AfterRegistrationAccess access) {
-        ImageSingletons.add(NativeBridgeSupport.class, new LibGraalNativeBridgeSupport());
     }
 
     @Override
@@ -605,7 +599,7 @@ public class LibGraalFeature implements InternalFeature {
 
     private static boolean isAllowedType(String className) {
         if (className.startsWith("com.oracle.truffle.")) {
-            return className.startsWith("com.oracle.truffle.api.nodes.") || className.startsWith("com.oracle.truffle.compiler.enterprise.");
+            return className.startsWith("com.oracle.truffle.compiler.");
         }
         return true;
     }
@@ -714,39 +708,27 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalRuntime {
         VMRuntime.initialize();
     }
 
+    @SuppressWarnings("unused")
     @Substitute
     private static void shutdownLibGraal(HotSpotGraalRuntime runtime) {
         try {
-            // Unregister this isolate if it was created as a peer
-            if (LibGraalEntryPoints.hasLibGraalIsolatePeer()) {
+            String callback = LibGraalOptions.OnShutdownCallback.getValue();
+            if (callback != null) {
                 long offset = runtime.getVMConfig().jniEnvironmentOffset;
                 long javaThreadAddr = HotSpotJVMCIRuntime.runtime().getCurrentJavaThread();
                 JNI.JNIEnv env = (JNI.JNIEnv) WordFactory.unsigned(javaThreadAddr).add(WordFactory.unsigned(offset));
-                JNI.JClass libGraalIsolateClass = JNIUtil.findClass(env, JNIUtil.getJVMCIClassLoader(env),
-                                JNIUtil.getBinaryName("org.graalvm.libgraal.LibGraalIsolate"), true);
-                JNI.JMethodID unregisterMethod = JNIUtil.findMethod(env, libGraalIsolateClass, true, "unregister", "(J)V");
-                JNI.JValue args = StackValue.get(JNI.JValue.class);
-                args.setLong(IsolateUtil.getIsolateID());
-                env.getFunctions().getCallStaticVoidMethodA().call(env, libGraalIsolateClass, unregisterMethod, args);
-                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
-
-                String callback = LibGraalOptions.OnShutdownCallback.getValue();
-                if (callback != null) {
-                    int lastDot = callback.lastIndexOf('.');
-                    if (lastDot < 1 || lastDot == callback.length() - 1) {
-                        throw new IllegalArgumentException(LibGraalOptions.OnShutdownCallback.getName() + " value does not have <classname>.<method name> format: " + callback);
-                    }
-                    String cbClassName = callback.substring(0, lastDot);
-                    String cbMethodName = callback.substring(lastDot + 1);
-                    JNI.JClass cbClass = JNIUtil.findClass(env, JNIUtil.getSystemClassLoader(env),
-                                    JNIUtil.getBinaryName(cbClassName), true);
-                    JNI.JMethodID cbMethod = JNIUtil.findMethod(env, cbClass, true, cbMethodName, "()V");
-                    env.getFunctions().getCallStaticVoidMethodA().call(env, cbClass, cbMethod, StackValue.get(0));
-                    JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
+                int lastDot = callback.lastIndexOf('.');
+                if (lastDot < 1 || lastDot == callback.length() - 1) {
+                    throw new IllegalArgumentException(LibGraalOptions.OnShutdownCallback.getName() + " value does not have <classname>.<method name> format: " + callback);
                 }
+                String cbClassName = callback.substring(0, lastDot);
+                String cbMethodName = callback.substring(lastDot + 1);
+                JNI.JClass cbClass = JNIUtil.findClass(env, JNIUtil.getSystemClassLoader(env),
+                                JNIUtil.getBinaryName(cbClassName), true);
+                JNI.JMethodID cbMethod = JNIUtil.findMethod(env, cbClass, true, cbMethodName, "()V");
+                env.getFunctions().getCallStaticVoidMethodA().call(env, cbClass, cbMethod, StackValue.get(0));
+                JNIExceptionWrapper.wrapAndThrowPendingJNIException(env);
             }
-        } catch (Throwable t) {
-            t.printStackTrace(TTY.out);
         } finally {
             VMRuntime.shutdown();
         }
@@ -771,6 +753,9 @@ final class Target_org_graalvm_compiler_hotspot_HotSpotGraalOptionValues {
 }
 
 final class HotSpotGraalOptionValuesUtil {
+    // Support for CrashAtThrowsOOME
+    static final GlobalAtomicLong OOME_CRASH_DONE = new GlobalAtomicLong(0);
+
     private static final String LIBGRAAL_PREFIX = "libgraal.";
     private static final String LIBGRAAL_XOPTION_PREFIX = "libgraal.X";
 
@@ -779,12 +764,12 @@ final class HotSpotGraalOptionValuesUtil {
         RuntimeOptionValues options = RuntimeOptionValues.singleton();
         options.update(HotSpotGraalOptionValues.parseOptions());
 
-        // Parse "libgraal." options. This include the XOptions as well
+        // Parse "libgraal." options. This includes the XOptions as well
         // as normal Graal options that are specified with the "libgraal."
-        // prefix so as to be parsed only in libgraal and not by JavaGraal.
+        // prefix so that they're parsed only in libgraal and not jargraal.
         // A motivating use case for this is CompileTheWorld + libgraal
         // where one may want to see GC stats with the VerboseGC option.
-        // Since CompileTheWorld also initializes JavaGraal, specifying this
+        // Since CompileTheWorld also initializes jargraal, specifying this
         // option with -Dgraal.VerboseGC would cause the VM to exit with an
         // unknown option error. Specifying it as -Dlibgraal.VerboseGC=true
         // avoids the error and provides the desired behavior.
@@ -810,6 +795,11 @@ final class HotSpotGraalOptionValuesUtil {
             OptionsParser.parseOptions(optionSettings, values, loader);
             options.update(values);
         }
+
+        if (LibGraalOptions.CrashAtThrowsOOME.getValue() && LibGraalOptions.CrashAtIsFatal.getValue()) {
+            throw new IllegalArgumentException("CrashAtThrowsOOME and CrashAtIsFatal cannot both be true");
+        }
+
         return options;
     }
 
@@ -840,8 +830,18 @@ final class Target_org_graalvm_compiler_core_GraalServiceThread {
 final class Target_org_graalvm_compiler_core_GraalCompiler {
     @SuppressWarnings("unused")
     @Substitute()
-    private static void notifyCrash(String crashMessage) {
-        if (LibGraalOptions.CrashAtIsFatal.getValue()) {
+    private static boolean notifyCrash(String crashMessage) {
+        if (LibGraalOptions.CrashAtThrowsOOME.getValue()) {
+            if (HotSpotGraalOptionValuesUtil.OOME_CRASH_DONE.compareAndSet(0L, 1L)) {
+                // The -Dlibgraal.Xmx option should also be employed to make this
+                // this allocation fail quicky
+                String largeString = Arrays.toString(new int[Integer.MAX_VALUE - 1]);
+                throw new InternalError("Failed to trigger OOME: largeString.length=" + largeString.length());
+            } else {
+                // Remaining compilations should proceed so that test finishes quickly.
+                return false;
+            }
+        } else if (LibGraalOptions.CrashAtIsFatal.getValue()) {
             LogHandler handler = ImageSingletons.lookup(LogHandler.class);
             if (handler instanceof FunctionPointerLogHandler) {
                 VMError.shouldNotReachHere(crashMessage);
@@ -849,21 +849,13 @@ final class Target_org_graalvm_compiler_core_GraalCompiler {
             // If changing this message, update the test for it in mx_vm_gate.py
             System.out.println("CrashAtIsFatal: no fatalError function pointer installed");
         }
+        return true;
     }
 }
 
 @TargetClass(className = "org.graalvm.compiler.hotspot.SymbolicSnippetEncoder", onlyWith = LibGraalFeature.IsEnabled.class)
 @Delete("shouldn't appear in libgraal")
 final class Target_org_graalvm_compiler_hotspot_SymbolicSnippetEncoder {
-}
-
-@TargetClass(className = "org.graalvm.compiler.truffle.compiler.hotspot.libgraal.TruffleToLibGraalEntryPoints", onlyWith = LibGraalFeature.IsEnabled.class)
-final class Target_org_graalvm_compiler_truffle_compiler_hotspot_libgraal_TruffleToLibGraalEntryPoints {
-    @SuppressWarnings("unused")
-    @Substitute
-    private static void doReferenceHandling() {
-        Heap.getHeap().doReferenceHandling();
-    }
 }
 
 @TargetClass(value = HotSpotForeignCallLinkageImpl.class, onlyWith = LibGraalFeature.IsEnabled.class)

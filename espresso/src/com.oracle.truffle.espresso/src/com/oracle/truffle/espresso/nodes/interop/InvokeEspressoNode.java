@@ -26,6 +26,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
@@ -39,9 +40,10 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.nodes.bytecodes.InitCheck;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @GenerateUncached
+@ReportPolymorphism
 public abstract class InvokeEspressoNode extends EspressoNode {
     static final int LIMIT = 4;
 
@@ -116,6 +118,7 @@ public abstract class InvokeEspressoNode extends EspressoNode {
     }
 
     @Specialization(replaces = "doCached")
+    @ReportPolymorphism.Megamorphic
     Object doGeneric(Method.MethodVersion method, Object receiver, Object[] arguments, boolean argsConverted,
                     @Cached ToEspressoNode.DynamicToEspresso toEspressoNode,
                     @Cached IndirectCallNode indirectCallNode)

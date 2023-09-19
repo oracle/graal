@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,7 +25,6 @@
 package org.graalvm.compiler.lir.amd64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.asm.amd64.AMD64Assembler.VexRVMOp.VPSHUFB;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
 import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.pointerConstant;
 import static org.graalvm.compiler.lir.amd64.AMD64LIRHelper.recordExternalAddress;
@@ -34,11 +33,11 @@ import org.graalvm.compiler.asm.Label;
 import org.graalvm.compiler.asm.amd64.AMD64Address;
 import org.graalvm.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.asm.amd64.AVXKind;
+import org.graalvm.compiler.asm.amd64.AVXKind.AVXSize;
 import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.StubPort;
+import org.graalvm.compiler.lir.SyncPort;
 import org.graalvm.compiler.lir.asm.ArrayDataPointerConstant;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
@@ -50,11 +49,8 @@ import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@StubPort(path      = "src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp",
-          lineStart = 907,
-          lineEnd   = 999,
-          commit    = "12358e6c94bc96e618efc3ec5299a2cfe1b4669d",
-          sha1      = "beab5f4817b620d98201e17dc1e07f680177b147")
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/d7b941640638b35f9ac1ef11cd6bf6ccb795c29a/src/hotspot/cpu/x86/stubGenerator_x86_64_aes.cpp#L917-L1009",
+          sha1 = "beab5f4817b620d98201e17dc1e07f680177b147")
 // @formatter:on
 public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 
@@ -104,12 +100,12 @@ public final class AMD64AESEncryptOp extends AMD64LIRInstruction {
 
     static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, Register xmmShufMask) {
         masm.movdqu(xmmDst, new AMD64Address(key, offset));
-        VPSHUFB.emit(masm, AVXKind.AVXSize.XMM, xmmDst, xmmDst, xmmShufMask);
+        masm.pshufb(AVXSize.XMM, xmmDst, xmmShufMask);
     }
 
     static void loadKey(AMD64MacroAssembler masm, Register xmmDst, Register key, int offset, CompilationResultBuilder crb) {
         masm.movdqu(xmmDst, new AMD64Address(key, offset));
-        VPSHUFB.emit(masm, AVXKind.AVXSize.XMM, xmmDst, xmmDst, recordExternalAddress(crb, keyShuffleMask));
+        masm.pshufb(AVXSize.XMM, xmmDst, recordExternalAddress(crb, keyShuffleMask));
     }
 
     static Register asXMMRegister(int index) {

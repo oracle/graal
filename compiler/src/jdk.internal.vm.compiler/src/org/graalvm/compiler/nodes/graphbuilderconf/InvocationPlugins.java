@@ -55,6 +55,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.spi.Replacements;
+import org.graalvm.compiler.nodes.type.StampTool;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
@@ -93,6 +94,10 @@ public class InvocationPlugins {
     public static class InvocationPluginReceiver implements InvocationPlugin.Receiver {
         private final GraphBuilderContext parser;
         private ValueNode[] args;
+        /**
+         * Caches the null checked receiver value. If still {@code null} after application of a
+         * plugin, then the plugin never called {@link #get(boolean)} with {@code true}.
+         */
         private ValueNode value;
 
         public InvocationPluginReceiver(GraphBuilderContext parser) {
@@ -120,12 +125,32 @@ public class InvocationPlugins {
         }
 
         public InvocationPluginReceiver init(ResolvedJavaMethod targetMethod, ValueNode[] newArgs) {
+            this.value = null;
             if (!targetMethod.isStatic()) {
                 this.args = newArgs;
-                this.value = null;
                 return this;
             }
+            this.args = null;
             return null;
+        }
+
+        @Override
+        public ValueNode requireNonNull() {
+            if (value == null) {
+                GraalError.guarantee(args != null, "target method is static");
+                if (!StampTool.isPointerNonNull(args[0])) {
+                    throw new GraalError("receiver might be null: %s", value);
+                }
+                value = args[0];
+            }
+            return value;
+        }
+
+        /**
+         * Determines if {@link #get(boolean)} was called with {@code true}.
+         */
+        public boolean nullCheckPerformed() {
+            return value != null;
         }
     }
 
@@ -813,15 +838,7 @@ public class InvocationPlugins {
         register(declaringClass, plugin, false);
     }
 
-    /**
-     * Gets the plugin for a given method.
-     *
-     * @param method the method to lookup
-     * @param allowDecorators return {@link InvocationPlugin#isDecorator()} plugins only if true
-     * @param allowDisable whether to respect the DisableIntrinsics flag
-     * @return the plugin associated with {@code method} or {@code null} if none exists
-     */
-    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, boolean allowDisable, OptionValues options) {
+    private void initializeDisabledIntrinsicsFilter(OptionValues options) {
         if (!isDisabledIntrinsicsFilterInitialized) {
             synchronized (this) {
                 if (!isDisabledIntrinsicsFilterInitialized) {
@@ -837,6 +854,23 @@ public class InvocationPlugins {
                 isDisabledIntrinsicsFilterInitialized = true;
             }
         }
+    }
+
+    protected final boolean shouldLogDisabledIntrinsics(OptionValues options) {
+        initializeDisabledIntrinsicsFilter(options);
+        return logDisabledIntrinsics;
+    }
+
+    /**
+     * Gets the plugin for a given method.
+     *
+     * @param method the method to lookup
+     * @param allowDecorators return {@link InvocationPlugin#isDecorator()} plugins only if true
+     * @param allowDisable whether to respect the DisableIntrinsics flag
+     * @return the plugin associated with {@code method} or {@code null} if none exists
+     */
+    public InvocationPlugin lookupInvocation(ResolvedJavaMethod method, boolean allowDecorators, boolean allowDisable, OptionValues options) {
+        initializeDisabledIntrinsicsFilter(options);
 
         if (parent != null) {
             InvocationPlugin plugin = parent.lookupInvocation(method, allowDecorators, allowDisable, options);
@@ -1227,5 +1261,8 @@ public class InvocationPlugins {
      */
     @SuppressWarnings("unused")
     public void notifyNoPlugin(ResolvedJavaMethod targetMethod, OptionValues options) {
+        if (parent != null) {
+            parent.notifyNoPlugin(targetMethod, options);
+        }
     }
 }

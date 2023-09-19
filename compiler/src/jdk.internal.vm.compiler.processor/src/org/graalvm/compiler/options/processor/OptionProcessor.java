@@ -70,6 +70,7 @@ public class OptionProcessor extends AbstractProcessor {
     private static final String OPTION_CLASS_NAME = "org.graalvm.compiler.options.Option";
     private static final String OPTION_KEY_CLASS_NAME = "org.graalvm.compiler.options.OptionKey";
     private static final String OPTION_TYPE_CLASS_NAME = "org.graalvm.compiler.options.OptionType";
+    private static final String OPTION_STABILITY_CLASS_NAME = "org.graalvm.compiler.options.OptionStability";
     private static final String OPTION_TYPE_GROUP_NAME = "org.graalvm.compiler.options.OptionGroup";
     private static final String OPTION_DESCRIPTOR_CLASS_NAME = "org.graalvm.compiler.options.OptionDescriptor";
     private static final String OPTION_DESCRIPTORS_CLASS_NAME = "org.graalvm.compiler.options.OptionDescriptors";
@@ -228,8 +229,8 @@ public class OptionProcessor extends AbstractProcessor {
             }
         }
 
-        String optionStabilityName = getAnnotationValue(annotation, "stability", VariableElement.class).getSimpleName().toString();
-        if (optionStabilityName.equals("STABLE")) {
+        String stability = getAnnotationValue(annotation, "stability", VariableElement.class).getSimpleName().toString();
+        if (stability.equals("STABLE")) {
             if (help.length() == 0) {
                 processingEnv.getMessager().printMessage(Kind.ERROR, "A stable option must have non-empty help text", element);
                 return;
@@ -239,7 +240,7 @@ public class OptionProcessor extends AbstractProcessor {
         String optionTypeName = getAnnotationValue(annotation, "type", VariableElement.class).getSimpleName().toString();
         boolean deprecated = getAnnotationValue(annotation, "deprecated", Boolean.class);
         String deprecationMessage = getAnnotationValue(annotation, "deprecationMessage", String.class);
-        info.options.add(new OptionInfo(optionName, optionTypeName, help, extraHelp, optionType, declaringClass, field.getSimpleName().toString(), deprecated, deprecationMessage));
+        info.options.add(new OptionInfo(optionName, optionTypeName, help, extraHelp, optionType, declaringClass, field.getSimpleName().toString(), stability, deprecated, deprecationMessage));
     }
 
     private String resolveOptionPrefix(Element optionType) {
@@ -279,6 +280,7 @@ public class OptionProcessor extends AbstractProcessor {
             out.println("import java.util.*;");
             out.println("import " + getPackageName(OPTION_DESCRIPTORS_CLASS_NAME) + ".*;");
             out.println("import " + OPTION_TYPE_CLASS_NAME + ";");
+            out.println("import " + OPTION_STABILITY_CLASS_NAME + ";");
             out.println("");
             String implementsClause = info.registerAsService ? " implements " + getSimpleName(OPTION_DESCRIPTORS_CLASS_NAME) : "";
             if (info.registerAsService) {
@@ -319,6 +321,7 @@ public class OptionProcessor extends AbstractProcessor {
                 List<String> extraHelp = option.extraHelp;
                 String declaringClass = option.declaringClass;
                 String fieldName = option.field;
+                String stability = option.stability;
                 boolean deprecated = option.deprecated;
                 String deprecationMessage = option.deprecationMessage;
                 out.printf("            return " + desc + ".create(\n");
@@ -336,6 +339,7 @@ public class OptionProcessor extends AbstractProcessor {
                 out.printf("                /*declaringClass*/ %s.class,\n", declaringClass);
                 out.printf("                /*fieldName*/ \"%s\",\n", fieldName);
                 out.printf("                /*option*/ %s,\n", optionField);
+                out.printf("                /*stability*/ %s.%s,\n", getSimpleName(OPTION_STABILITY_CLASS_NAME), stability);
                 out.printf("                /*deprecated*/ %b,\n", deprecated);
                 out.printf("                /*deprecationMessage*/ \"%s\");\n", deprecationMessage);
                 out.println("        }");
@@ -379,10 +383,12 @@ public class OptionProcessor extends AbstractProcessor {
         public final String type;
         public final String declaringClass;
         public final String field;
+        public final String stability;
         public final boolean deprecated;
         public final String deprecationMessage;
 
-        public OptionInfo(String name, String optionType, String help, List<String> extraHelp, String type, String declaringClass, String field, boolean deprecated, String deprecationMessage) {
+        public OptionInfo(String name, String optionType, String help, List<String> extraHelp, String type, String declaringClass, String field, String stability, boolean deprecated,
+                        String deprecationMessage) {
             this.name = name;
             this.optionType = optionType;
             this.help = help;
@@ -390,6 +396,7 @@ public class OptionProcessor extends AbstractProcessor {
             this.type = type;
             this.declaringClass = declaringClass;
             this.field = field;
+            this.stability = stability;
             this.deprecated = deprecated;
             this.deprecationMessage = deprecationMessage;
         }

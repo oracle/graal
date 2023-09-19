@@ -117,6 +117,10 @@ class PolyglotArgs {
         if (index >= 0) {
             group = group.substring(0, index);
         }
+        parsePolyglotOption(group, key, value, arg, experimentalOptions);
+    }
+
+    void parsePolyglotOption(String group, String key, String value, String arg, boolean experimentalOptions) {
         if ("log".equals(group)) {
             if (key.endsWith(".level")) {
                 try {
@@ -138,11 +142,12 @@ class PolyglotArgs {
                 throw abort(String.format("Unrecognized option: %s%n", arg));
             }
         }
-        if (isBooleanOption(descriptor) && eqIdx < 0) {
-            value = "true";
+        String actualValue = value;
+        if (isBooleanOption(descriptor) && actualValue.isEmpty()) {
+            actualValue = "true";
         }
         try {
-            descriptor.getKey().getType().convert(value);
+            descriptor.getKey().getType().convert(actualValue);
         } catch (IllegalArgumentException e) {
             throw abort(String.format("Invalid argument %s specified. %s'", arg, e.getMessage()));
         }
@@ -151,7 +156,7 @@ class PolyglotArgs {
                             "Do not use experimental options in production environments.", arg));
         }
         // use the full name of the found descriptor
-        builder.option(descriptor.getName(), value);
+        builder.option(descriptor.getName(), actualValue);
     }
 
     private OptionDescriptor findOptionDescriptor(String group, String key) {

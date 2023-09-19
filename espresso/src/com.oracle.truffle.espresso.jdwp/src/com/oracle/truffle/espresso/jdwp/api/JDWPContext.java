@@ -499,4 +499,8 @@ public interface JDWPContext {
      */
     ModuleRef[] getAllModulesRefs();
 
+    /**
+     * Tests if the thread is a virtual thread.
+     */
+    boolean isVirtualThread(Object thread);
 }
