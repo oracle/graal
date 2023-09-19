@@ -76,6 +76,7 @@ import org.graalvm.nativeimage.c.function.CEntryPoint.IsolateContext;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.graal.hotspot.libgraal.LibGraal;
 import com.oracle.svm.graal.hotspot.libgraal.LibGraalUtil;
@@ -242,6 +243,7 @@ final class TruffleToLibGraalEntryPoints {
                 compiler.doCompile(task, compilable, listener);
             } finally {
                 Heap.getHeap().doReferenceHandling();
+                Heap.getHeap().getGC().maybeCauseUserRequestedCollection(GCCause.HintedGC, true);
             }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);
