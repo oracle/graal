@@ -45,7 +45,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   notify_releaser_build: vm_common.common_vm_linux + graal_common.linux_amd64 + {
-    name: 'daily-vm-notify-releaser-build-linux-amd64',
+    name: 'daily-deploy-vm-notify-releaser-build-linux-amd64',
     packages+: {
       curl: '>=7.50.1',
       git: '>=1.8.3',
@@ -71,7 +71,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
       'daily-deploy-vm-espresso-java21-darwin-aarch64',
       'daily-deploy-vm-espresso-java21-windows-amd64',
     ],
-    targets+: ['daily'],
+    targets+: ['daily', 'deploy'],
     notify_groups:: ['deploy'],
   },
 
