@@ -215,8 +215,7 @@ public class ErrorTests {
     }
 
     @GenerateOperations(languageClass = ErrorLanguage.class)
-    @ExpectError("Class com.oracle.truffle.api.operation.test.ErrorTests.NoCachedProxyType.NodeWithNoCache does not generate a cached node, so it cannot be used as an OperationProxy." +
-                    " Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.")
+    @ExpectError("Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.NoCachedProxyType.NodeWithNoCache as an OperationProxy. These errors must be resolved before the DSL can proceed.")
     @OperationProxy(NoCachedProxyType.NodeWithNoCache.class)
     public abstract class NoCachedProxyType extends RootNode implements OperationRootNode {
         protected NoCachedProxyType(TruffleLanguage<?> language, FrameDescriptor builder) {
@@ -225,6 +224,7 @@ public class ErrorTests {
 
         @GenerateCached(false)
         @OperationProxy.Proxyable
+        @ExpectError("Class com.oracle.truffle.api.operation.test.ErrorTests.NoCachedProxyType.NodeWithNoCache does not generate a cached node, so it cannot be used as an OperationProxy. Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.")
         public static final class NodeWithNoCache extends Node {
             @Specialization
             public static int doInt() {

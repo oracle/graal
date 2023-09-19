@@ -99,11 +99,13 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     private final ProcessorContext context;
     private final OperationsModel parent;
     private final DeclaredType annotationType;
+    private final boolean validationOnly;
 
-    private CustomOperationParser(ProcessorContext context, OperationsModel parent, DeclaredType annotationType) {
+    private CustomOperationParser(ProcessorContext context, OperationsModel parent, DeclaredType annotationType, boolean validationOnly) {
         this.context = context;
         this.parent = parent;
         this.annotationType = annotationType;
+        this.validationOnly = validationOnly;
     }
 
     public static CustomOperationParser forProxyValidation() {
@@ -111,13 +113,14 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return new CustomOperationParser(
                         context,
                         new OperationsModel(context, new CodeTypeElement(Set.of(), ElementKind.CLASS, null, "DummyOperationsClass"), null, ""),
-                        context.getTypes().OperationProxy_Proxyable);
+                        context.getTypes().OperationProxy_Proxyable,
+                        true);
     }
 
     public static CustomOperationParser forCodeGeneration(OperationsModel parent, DeclaredType annotationType) {
         ProcessorContext context = parent.getContext();
         if (isHandled(context, annotationType)) {
-            return new CustomOperationParser(context, parent, annotationType);
+            return new CustomOperationParser(context, parent, annotationType, false);
         } else {
             throw new IllegalArgumentException(String.format("%s does not handle the %s annotation.", CustomOperationParser.class.getName(), annotationType));
         }
@@ -184,8 +187,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             if (isProxy()) {
                 AnnotationMirror generateCached = NodeParser.findGenerateAnnotation(typeElement.asType(), types.GenerateCached);
                 if (generateCached != null && !ElementUtils.getAnnotationValue(Boolean.class, generateCached, "value")) {
-                    AnnotationValue proxyClass = ElementUtils.getAnnotationValue(mirror, "value");
-                    parent.addError(mirror, proxyClass,
+                    customOperation.addError(
                                     "Class %s does not generate a cached node, so it cannot be used as an OperationProxy. Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.",
                                     typeElement.getQualifiedName());
                     return customOperation;
@@ -249,7 +251,11 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 // reference it in this error message.
                 customOperation.addError(specialization, "Operation specializations must be static. This method should be rewritten as a static specialization.");
             }
-            if (!ElementUtils.isVisible(parent.getTemplateType(), specialization) || specialization.getModifiers().contains(Modifier.PRIVATE)) {
+
+            if (specialization.getModifiers().contains(Modifier.PRIVATE)) {
+                customOperation.addError(specialization, "Operation specialization cannot be private.");
+            } else if (!validationOnly && !ElementUtils.isVisible(parent.getTemplateType(), specialization)) {
+                // We can only perform visibility checks during generation
                 customOperation.addError(specialization, "Operation specialization is not visible to the generated Operation node.");
             }
         }
@@ -288,11 +294,11 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         // Use @GenerateUncached so that FlatNodeGenFactory generates an uncached execute method.
         // The baseline interpreter will call this method.
-        if (parent.enableBaselineInterpreter) {
+        if (shouldGenerateBaseline(mirror)) {
             nodeType.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
         }
 
-        nodeType.addAll(createExecuteMethods(signature));
+        nodeType.addAll(createExecuteMethods(signature, mirror));
 
         // Add @NodeChildren to this node for each argument to the operation. These get used by
         // FlatNodeGenFactory to synthesize specialization logic. We remove the fields afterwards.
@@ -382,7 +388,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return ex;
     }
 
-    private List<CodeExecutableElement> createExecuteMethods(Signature signature) {
+    private List<CodeExecutableElement> createExecuteMethods(Signature signature, AnnotationMirror mirror) {
         List<CodeExecutableElement> result = new ArrayList<>();
 
         if (signature.isVoid) {
@@ -395,7 +401,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             }
         }
 
-        if (parent.enableBaselineInterpreter) {
+        if (shouldGenerateBaseline(mirror)) {
             if (signature.isVoid) {
                 result.add(createExecuteMethod(signature, "executeUncached", context.getType(void.class), false, true));
             } else {
@@ -434,6 +440,9 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         String namePrefix = isShortCircuit() ? "sc." : "c.";
 
         InstructionModel instr = parent.instruction(kind, namePrefix + nameSuffix);
+        if (instr == null) {
+            return null;
+        }
         instr.nodeType = nodeType;
         instr.signature = signature;
 
@@ -640,7 +649,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         boolean[] canBoxingEliminateValue = new boolean[valueParams.size()];
         for (int i = 0; i < valueParams.size(); i++) {
             VariableElement param = valueParams.get(i);
-            if (ElementUtils.findAnnotationMirror(param, parent.getContext().getTypes().Variadic) != null) {
+            if (ElementUtils.findAnnotationMirror(param, context.getTypes().Variadic) != null) {
                 canBoxingEliminateValue[i] = false;
             } else {
                 canBoxingEliminateValue[i] = parent.isBoxingEliminated(param.asType());
@@ -700,6 +709,14 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     private boolean isSpecialization(ExecutableElement ex) {
         return ElementUtils.findAnnotationMirror(ex, types.Specialization) != null || ElementUtils.findAnnotationMirror(ex, types.Fallback) != null;
+    }
+
+    private boolean shouldGenerateBaseline(AnnotationMirror mirror) {
+        if (validationOnly) {
+            return ElementUtils.getAnnotationValue(Boolean.class, mirror, "allowBaseline");
+        } else {
+            return parent.enableBaselineInterpreter;
+        }
     }
 
     @Override

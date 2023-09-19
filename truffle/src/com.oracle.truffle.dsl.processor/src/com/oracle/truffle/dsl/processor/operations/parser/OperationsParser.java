@@ -425,6 +425,9 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
             for (SuperInstructionDecision decision : model.optimizationDecisions.superInstructionDecisions) {
                 String resultingInstructionName = "si." + String.join(".", decision.instructions);
                 InstructionModel instr = model.instruction(InstructionKind.SUPERINSTRUCTION, resultingInstructionName);
+                if (instr == null) {
+                    continue;
+                }
                 instr.subInstructions = new ArrayList<>();
 
                 for (String instrName : decision.instructions) {
