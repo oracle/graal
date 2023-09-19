@@ -40,13 +40,11 @@ import org.graalvm.compiler.code.CompilationResult.CodeAnnotation;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedDirectCallTrampolineSupport;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
@@ -63,8 +61,6 @@ import jdk.vm.ci.code.site.Reference;
 public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     private static final byte CODE_FILLER_BYTE = (byte) 0xCC;
-
-    private int codeCacheSize;
 
     private final Map<HostedMethod, Map<HostedMethod, Integer>> trampolineMap;
     private final Map<HostedMethod, List<Pair<HostedMethod, Integer>>> orderedTrampolineMap;
@@ -89,18 +85,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     @Override
     public int getCodeCacheSize() {
-        assert codeCacheSize > 0;
-        return codeCacheSize;
-    }
-
-    @Override
-    public int getCodeAreaSize() {
-        return getCodeCacheSize();
-    }
-
-    private void setCodeCacheSize(int size) {
-        assert codeCacheSize == 0 && size > 0;
-        codeCacheSize = size;
+        return getCodeAreaSize();
     }
 
     @Override
@@ -215,11 +200,10 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 totalSize = computeNextMethodStart(lastCompilation.getLeft().getCodeAddressOffset(), lastCompilation.getRight().getTargetCodeSize());
             }
 
-            setCodeCacheSize(totalSize);
+            setCodeAreaSize(totalSize);
 
             assert verifyMethodLayout();
 
-            buildRuntimeMetadata(bb.getSnippetReflectionProvider(), threadPool, new MethodPointer(getFirstCompilation().getLeft(), true), WordFactory.unsigned(totalSize));
         }
     }
 

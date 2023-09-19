@@ -49,6 +49,7 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.core.meta.MethodPointer;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
@@ -123,6 +124,8 @@ public abstract class NativeImageCodeCache {
         public static final HostedOptionKey<Boolean> VerifyDeoptimizationEntryPoints = new HostedOptionKey<>(false);
     }
 
+    private int codeAreaSize;
+
     protected final NativeImageHeap imageHeap;
 
     private final Map<HostedMethod, CompilationResult> compilations;
@@ -155,7 +158,14 @@ public abstract class NativeImageCodeCache {
 
     public abstract int getCodeCacheSize();
 
-    public abstract int getCodeAreaSize();
+    public int getCodeAreaSize() {
+        assert codeAreaSize >= 0;
+        return codeAreaSize;
+    }
+
+    protected void setCodeAreaSize(int codeAreaSize) {
+        this.codeAreaSize = codeAreaSize;
+    }
 
     public Pair<HostedMethod, CompilationResult> getFirstCompilation() {
         return orderedCompilations.get(0);
@@ -252,7 +262,11 @@ public abstract class NativeImageCodeCache {
         return ConfigurationValues.getObjectLayout().alignUp(getConstantsSize());
     }
 
-    public void buildRuntimeMetadata(SnippetReflectionProvider snippetReflection, ForkJoinPool threadPool, CFunctionPointer firstMethod, UnsignedWord codeSize) {
+    public void buildRuntimeMetadata(SnippetReflectionProvider snippetReflectionProvider, ForkJoinPool threadPool) {
+        buildRuntimeMetadata(snippetReflectionProvider, threadPool, new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(getCodeAreaSize()));
+    }
+
+    protected void buildRuntimeMetadata(SnippetReflectionProvider snippetReflection, ForkJoinPool threadPool, CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
