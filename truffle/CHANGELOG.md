@@ -2,6 +2,16 @@
 
 This changelog summarizes major changes between Truffle versions relevant to languages implementors building upon the Truffle framework. The main focus is on APIs exported by Truffle.
 
+## Version 24.0.0
+
+* GR-45863 Yield and resume events added to the instrumentation:
+	* `ExecutionEventListener.onYield()` and `ExecutionEventNode.onYield()` is invoked on a yield of the current thread
+	* `ExecutionEventListener.onResume()` and `ExecutionEventNode.onResume()` is invoked on a resume of the execution on the current thread after a yield
+	* `ProbeNode.onYield()` and `ProbeNode.onResume()`
+	* `GenerateWrapper` has new `yieldExceptions()` and `resumeMethodPrefix()` parameters to automatically call the new `onYield()`/`onResume()` methods from wrapper nodes.
+	* `RootNode.isSameFrame()` and `TruffleInstrument.Env.isSameFrame()` added to test if two frames are the same, to match the yielded and resumed execution.
+* GR-45863 Adopted onYield() and onResume() instrumentation events in the debugger stepping logic.
+
 ## Version 23.1.0
 
 * GR-45123 Added `GenerateInline#inlineByDefault` to force usage of inlined node variant even when the node has also a cached variant (`@GenerateCached(true)`).

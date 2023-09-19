@@ -209,6 +209,8 @@ public abstract class Accessor {
         public abstract CallTarget getCallTargetWithoutInitialization(RootNode root);
 
         public abstract EncapsulatingNodeReference createEncapsulatingNodeReference(Thread thread);
+
+        public abstract boolean isSameFrame(RootNode root, Frame frame1, Frame frame2);
     }
 
     public abstract static class SourceSupport extends Support {
