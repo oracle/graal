@@ -199,7 +199,7 @@ suite = {
       ],
       "checkPackagePrefix": "false",
       "checkstyleVersion" : "10.7.0",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "workingSets" : "API,Graal",
       "jacoco" : "include",
       "jacocoExcludePackages" : [
@@ -227,7 +227,7 @@ suite = {
       ],
       "checkPackagePrefix": "false",
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
     },
 
     "jdk.internal.vm.compiler.test" : {
@@ -280,7 +280,7 @@ suite = {
         "truffle:TRUFFLE_DSL_PROCESSOR"
       ],
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "jacoco" : "exclude",
     },
 
@@ -298,7 +298,7 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "workingSets" : "Graal,HotSpot",
     },
 
@@ -325,7 +325,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["mx:JMH_1_21", "org.graalvm.compiler.microbenchmarks"],
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
@@ -346,7 +346,7 @@ suite = {
         ],
       },
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -383,7 +383,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -399,7 +399,7 @@ suite = {
         "sdk:COLLECTIONS",
       ],
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
     },
 
     "org.graalvm.profdiff.test" : {
@@ -410,7 +410,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "workingSets" : "Graal,Test",
     },
   },
