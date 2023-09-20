@@ -131,14 +131,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean useTLAB = getFlag("UseTLAB", Boolean.class);
     public final boolean usePopCountInstruction = getFlag("UsePopCountInstruction", Boolean.class);
     public final boolean useUnalignedAccesses = getFlag("UseUnalignedAccesses", Boolean.class);
-    public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
-    public final boolean useCRC32CIntrinsics = getFlag("UseCRC32CIntrinsics", Boolean.class); // JDK-8073583
-    private final boolean useSHA1Intrinsics = getFlag("UseSHA1Intrinsics", Boolean.class);
-    private final boolean useSHA3Intrinsics = getFlag("UseSHA3Intrinsics", Boolean.class);
-    private final boolean useSHA256Intrinsics = getFlag("UseSHA256Intrinsics", Boolean.class);
-    private final boolean useSHA512Intrinsics = getFlag("UseSHA512Intrinsics", Boolean.class);
-    private final boolean useMontgomeryMultiplyIntrinsic = getFlag("UseMontgomeryMultiplyIntrinsic", Boolean.class);
-    private final boolean useMontgomerySquareIntrinsic = getFlag("UseMontgomerySquareIntrinsic", Boolean.class);
     public final boolean useFMAIntrinsics = getFlag("UseFMA", Boolean.class);
     public final boolean useVectorizedMismatchIntrinsic = getFlag("UseVectorizedMismatchIntrinsic", Boolean.class);
     public final boolean useCharacterCompareIntrinsics = getFlag("UseCharacterCompareIntrinsics", Boolean.class);
@@ -151,48 +143,12 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     public final int diagnoseSyncOnValueBasedClasses = getFlag("DiagnoseSyncOnValueBasedClasses", Integer.class);
 
-    /*
-     * These are methods because in some JDKs the flags are visible but the stubs themselves haven't
-     * been exported, so we have to check both if the flag is on and if we have the stub.
-     */
-    public boolean useSHA1Intrinsics() {
-        return useSHA1Intrinsics && sha1ImplCompress != 0 && sha1ImplCompressMultiBlock != 0;
-    }
-
-    public boolean useSHA256Intrinsics() {
-        return useSHA256Intrinsics && sha256ImplCompress != 0 && sha256ImplCompressMultiBlock != 0;
-    }
-
-    public boolean useSHA512Intrinsics() {
-        return useSHA512Intrinsics && sha512ImplCompress != 0 && sha512ImplCompressMultiBlock != 0;
-    }
-
-    public boolean useSHA3Intrinsics() {
-        return useSHA3Intrinsics && sha3ImplCompress != 0 && sha3ImplCompressMultiBlock != 0;
-    }
-
-    public boolean useMontgomeryMultiplyIntrinsic() {
-        return useMontgomeryMultiplyIntrinsic && montgomeryMultiply != 0;
-    }
-
-    public boolean useMontgomerySquareIntrinsic() {
-        return useMontgomerySquareIntrinsic && montgomerySquare != 0;
-    }
-
     public boolean inlineNotify() {
         return notifyAddress != 0;
     }
 
     public boolean inlineNotifyAll() {
         return notifyAllAddress != 0;
-    }
-
-    public boolean useCRC32Intrinsics() {
-        return useCRC32Intrinsics && updateBytesCRC32Stub != 0;
-    }
-
-    public boolean useCRC32CIntrinsics() {
-        return useCRC32CIntrinsics && updateBytesCRC32C != 0;
     }
 
     public final int allocatePrefetchStyle = getFlag("AllocatePrefetchStyle", Integer.class);
@@ -477,28 +433,14 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final long updateBytesCRC32Stub = getFieldValue("StubRoutines::_updateBytesCRC32", Long.class, "address");
     public final long crcTableAddress = getFieldValue("StubRoutines::_crc_table_adr", Long.class, "address");
 
-    public final long md5ImplCompress = getFieldValue("StubRoutines::_md5_implCompress", Long.class, "address");
     public final long md5ImplCompressMultiBlock = getFieldValue("StubRoutines::_md5_implCompressMB", Long.class, "address");
-    public final long sha1ImplCompress = getFieldValue("StubRoutines::_sha1_implCompress", Long.class, "address");
     public final long sha1ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha1_implCompressMB", Long.class, "address");
-    public final long sha256ImplCompress = getFieldValue("StubRoutines::_sha256_implCompress", Long.class, "address");
     public final long sha256ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha256_implCompressMB", Long.class, "address");
-    public final long sha512ImplCompress = getFieldValue("StubRoutines::_sha512_implCompress", Long.class, "address");
     public final long sha512ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha512_implCompressMB", Long.class, "address");
-    public final long sha3ImplCompress = getFieldValue("StubRoutines::_sha3_implCompress", Long.class, "address");
     public final long sha3ImplCompressMultiBlock = getFieldValue("StubRoutines::_sha3_implCompressMB", Long.class, "address");
 
     public final long base64EncodeBlock = getFieldValue("StubRoutines::_base64_encodeBlock", Long.class, "address");
     public final long base64DecodeBlock = getFieldValue("StubRoutines::_base64_decodeBlock", Long.class, "address");
-
-    public static final boolean base64DecodeBlockHasIsMIMEParameter() {
-        try {
-            java.util.Base64.Decoder.class.getDeclaredMethod("decodeBlock", byte[].class, int.class, int.class, byte[].class, int.class, boolean.class, boolean.class);
-            return true;
-        } catch (NoSuchMethodException e) {
-            return false;
-        }
-    }
 
     public final long updateBytesCRC32C = getFieldValue("StubRoutines::_updateBytesCRC32C", Long.class, "address");
     public final long updateBytesAdler32 = getFieldValue("StubRoutines::_updateBytesAdler32", Long.class, "address");

@@ -142,21 +142,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     public static final HotSpotForeignCallDescriptor MONTGOMERY_SQUARE = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NOT_REEXECUTABLE, NamedLocationIdentity.getArrayLocation(JavaKind.Int),
                     "implMontgomerySquare", void.class, Word.class, Word.class, int.class, long.class, Word.class);
 
-    public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "md5ImplCompress", void.class, Word.class,
-                    Object.class);
-
-    public static final HotSpotForeignCallDescriptor SHA_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "shaImplCompress", void.class, Word.class,
-                    Object.class);
-
-    public static final HotSpotForeignCallDescriptor SHA2_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha2ImplCompress", void.class, Word.class,
-                    Object.class);
-
-    public static final HotSpotForeignCallDescriptor SHA5_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha5ImplCompress", void.class, Word.class,
-                    Object.class);
-
-    public static final HotSpotForeignCallDescriptor SHA3_IMPL_COMPRESS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "sha3ImplCompress", void.class, Word.class,
-                    Object.class, int.class);
-
     public static final HotSpotForeignCallDescriptor MD5_IMPL_COMPRESS_MB = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "md5ImplCompress", int.class, Word.class,
                     Object.class, int.class, int.class);
 
@@ -215,12 +200,6 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
     private static native void unsafeArraycopyStub(@ConstantNodeParameter ForeignCallSignature descriptor, Word srcAddr, Word dstAddr, Word size);
 
     /**
-     * Descriptor for {@code StubRoutines::_ghash_processBlocks}.
-     */
-    public static final HotSpotForeignCallDescriptor GHASH_PROCESS_BLOCKS = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "ghashProcessBlocks", void.class, Word.class,
-                    Word.class, Word.class, int.class);
-
-    /**
      * Descriptor for {@code StubRoutines::_base64_encodeBlock}.
      */
     public static final HotSpotForeignCallDescriptor BASE64_ENCODE_BLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "base64EncodeBlock", void.class, Word.class,
@@ -228,20 +207,9 @@ public abstract class HotSpotBackend extends Backend implements FrameMap.Referen
 
     /**
      * Descriptor for {@code StubRoutines::_base64_decodeBlock}.
-     *
-     * JDK-8268276 - added isMIME parameter
      */
-    public static final HotSpotForeignCallDescriptor BASE64_DECODE_BLOCK = GraalHotSpotVMConfig.base64DecodeBlockHasIsMIMEParameter()
-                    ? new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "base64DecodeBlock", int.class, Word.class,
-                                    int.class, int.class, Word.class, int.class, boolean.class, boolean.class)
-                    : new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "base64DecodeBlock", int.class, Word.class,
-                                    int.class, int.class, Word.class, int.class, boolean.class);
-
-    /**
-     * Descriptor for {@code StubRoutines::_counterMode_AESCrypt}.
-     */
-    public static final HotSpotForeignCallDescriptor COUNTERMODE_IMPL_CRYPT = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "counterModeAESCrypt", int.class,
-                    Word.class, Word.class, Word.class, Word.class, int.class, Word.class, Word.class);
+    public static final HotSpotForeignCallDescriptor BASE64_DECODE_BLOCK = new HotSpotForeignCallDescriptor(LEAF, NOT_REEXECUTABLE, any(), "base64DecodeBlock", int.class, Word.class,
+                    int.class, int.class, Word.class, int.class, boolean.class, boolean.class);
 
     public static final LocationIdentity CRC_TABLE_LOCATION = NamedLocationIdentity.immutable("crc32_table");
 
