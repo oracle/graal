@@ -771,33 +771,29 @@ local devkits = graal_common.devkits;
     timelimit: "1:00:00"
   },
 
-  deploy_graalvm_components(java_version, installables, standalones): vm.check_structure + {
-    build_deps::
-        if (installables && standalones) then
-          'GRAALVM_INSTALLABLES,GRAALVM_STANDALONES'
-        else if (installables) then
-         'GRAALVM_INSTALLABLES'
-        else if (standalones) then
-          'GRAALVM_STANDALONES'
-        else
-          error "either 'installables' or 'standalones' must be 'true'",
-    tags::
-        if (installables && standalones) then
-          'installable,standalone'
-        else if (installables) then
-         'installable'
-        else if (standalones) then
-          'standalone'
-        else
-          error "either 'installables' or 'standalones' must be 'true'",
+  deploy_graalvm_components(java_version, installables, standalones, record_file_sizes=false): vm.check_structure + {
+    build_deps:: std.join(',', []
+      + (if (record_file_sizes) then ['GRAALVM'] else [])
+      + (if (installables) then ['GRAALVM_INSTALLABLES'] else [])
+      + (if (standalones) then ['GRAALVM_STANDALONES'] else [])
+    ),
+
+    tags:: std.join(',', []
+      + (if (installables) then ['installable'] else [])
+      + (if (standalones) then ['standalone'] else [])
+    ),
 
     run: $.patch_env(self.os, self.arch, java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build', '--dependencies', self.build_deps],
-    ] + $.deploy_sdk_components(self.os, self.tags) + [
-      $.mx_vm_installables + $.record_file_sizes,
-      $.upload_file_sizes,
-    ],
+    ]
+    + $.deploy_sdk_components(self.os, self.tags)
+    + (
+      if (record_file_sizes) then [
+        $.mx_vm_installables + $.record_file_sizes,
+        $.upload_file_sizes,
+      ] else []
+    ),
     notify_groups:: ['deploy'],
     timelimit: "1:30:00"
   },
@@ -825,7 +821,7 @@ local devkits = graal_common.devkits;
 
   # Linux/AMD64
   deploy_vm_base_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_base("java21") + {name: 'post-merge-deploy-vm-base-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
-  deploy_vm_installables_standalones_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_components("java21", installables=true, standalones=true) + {name: 'daily-deploy-vm-installables-standalones-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
+  deploy_vm_installables_standalones_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_components("java21", installables=true, standalones=true, record_file_sizes=true) + {name: 'daily-deploy-vm-installables-standalones-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
   # Linux/AARCH64
   deploy_vm_base_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_base("java21") + {name: 'daily-deploy-vm-base-java21-linux-aarch64', notify_groups:: ["deploy"], timelimit: '1:30:00', capabilities+: ["!xgene3"]},
   deploy_vm_installables_standalones_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_components("java21", installables=true, standalones=true) + {name: 'daily-deploy-vm-installables-standalones-java21-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
