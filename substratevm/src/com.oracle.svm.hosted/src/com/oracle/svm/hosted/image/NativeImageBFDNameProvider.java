@@ -279,7 +279,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
          *
          * Primitive Parameter Types
          *
-         * Primitive parameter types (or return types) may be encoded using a single letter cases
+         * Primitive parameter types (or return types) may be encoded using a single letter
          * where the symbol encodes a C++ primitive type with the same name and bit layout and
          * interpretation as the Java type:
          *
@@ -507,8 +507,8 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
 
             @Override
             public boolean equals(Object other) {
-                if (other instanceof SimpleLookupName) {
-                    return this.value.equals(((SimpleLookupName) other).value);
+                if (other instanceof SimpleLookupName otherSimpleLookupName) {
+                    return this.value.equals(otherSimpleLookupName.value);
                 }
                 return false;
             }
@@ -534,8 +534,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             }
 
             public boolean equals(Object other) {
-                if (other instanceof NamespaceLookupName) {
-                    CompositeLookupName otherCompositeLookupName = (CompositeLookupName) other;
+                if (other instanceof CompositeLookupName otherCompositeLookupName) {
                     assert tail != null && otherCompositeLookupName.tail != null;
                     return value.equals(otherCompositeLookupName.value) && tail.equals(otherCompositeLookupName.tail);
                 }
