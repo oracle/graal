@@ -8,6 +8,17 @@ local common_json = import "../common.json";
 {
   # JDK definitions
   # ***************
+  local jdk_base = {
+    "name":         error "name not set",         # string; the JDK provider, e.g. "jpg-jdk", "labsjdk"
+    "version":      error "version not set",      # string; full version string, e.g., "ce-21+35-jvmci-23.1-b15"
+    "jdk_version":: error "jdk_version not set",  #    int; the major JDK version, e.g., 21
+    # Optional:
+    # "build_id": "33",
+    # "release": true,
+    # "platformspecific": true,
+    # "extrabundles": ["static-libs"],
+  },
+  # ***************
   local variants(name) = [name, name + "Debug", name + "-llvm"],
   # gets the JDK major version from a labsjdk version string (e.g., "ce-21+35-jvmci-23.1-b15" -> 21)
   local parse_labsjdk_version(version) =
@@ -21,21 +32,21 @@ local common_json = import "../common.json";
     std.parseInt(number_prefix(version[3:]))
     ,
   local jdks_data = {
-    oraclejdk11: common_json.jdks["oraclejdk11"] + { jdk_version:: 11 },
+    oraclejdk11: jdk_base + common_json.jdks["oraclejdk11"] + { jdk_version:: 11 },
   } + {
-    [name]: common_json.jdks[name] + { jdk_version:: 17 }
+    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 17 }
     for name in ["oraclejdk17"] + variants("labsjdk-ce-17") + variants("labsjdk-ee-17")
   } + {
-    [name]: common_json.jdks[name] + { jdk_version:: 19 }
+    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 19 }
     for name in ["oraclejdk19"] + variants("labsjdk-ce-19") + variants("labsjdk-ee-19")
   } + {
-    [name]: common_json.jdks[name] + { jdk_version:: 20 }
+    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 20 }
     for name in ["oraclejdk20"] + variants("labsjdk-ce-20") + variants("labsjdk-ee-20")
   } + {
-    [name]: common_json.jdks[name] + { jdk_version:: 21 }
+    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 21 }
     for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
   } + {
-    [name]: common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self.version)}
+    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self.version)}
     for name in variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   },
   assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
