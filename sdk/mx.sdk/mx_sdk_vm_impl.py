@@ -3602,20 +3602,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         native_image_resources_filelist_project = NativeImageResourcesFileList(None, ni_resources_components, dir_name, deps)
         register_project(native_image_resources_filelist_project)
 
-    # Trivial distribution to trigger the build of the final GraalVM distribution and its dependencies
-    register_distribution(mx.LayoutDirDistribution(
-        suite=_suite,
-        name="GRAALVM",
-        deps=[_final_graalvm_distribution.name],
-        layout={
-            "./deps": "string:" + _final_graalvm_distribution.name,
-        },
-        path=None,
-        platformDependent=False,
-        theLicense=None,
-        defaultBuild=False,
-    ))
-
     # Create installables
     installable_names = []
     for components in installables.values():
@@ -3684,34 +3670,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         )
         register_project(java_standalone_jimage)
 
-    # Trivial distribution to trigger the build of all installabels and their dependencies
-    register_distribution(mx.LayoutDirDistribution(
-        suite=_suite,
-        name="GRAALVM_INSTALLABLES",
-        deps=installable_names,
-        layout={
-            "./installable_deps_names": "string:" + ",".join(installable_names),
-        },
-        path=None,
-        platformDependent=False,
-        theLicense=None,
-        defaultBuild=False,
-    ))
-
-    # Trivial distribution to trigger the build of all standalones and their dependencies (they have `defaultBuild=False`)
-    register_distribution(mx.LayoutDirDistribution(
-        suite=_suite,
-        name="GRAALVM_STANDALONES",
-        deps=standalone_names,
-        layout={
-            "./standalone_deps_names": "string:" + ",".join(standalone_names),
-        },
-        path=None,
-        platformDependent=False,
-        theLicense=None,
-        defaultBuild=False,
-    ))
-
     if needs_stage1:
         if register_project:
             for component in registered_graalvm_components(stage1=True):
@@ -3764,6 +3722,48 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 debuginfo_dist = DebuginfoDistribution(d)
                 register_distribution(debuginfo_dist)
                 other_graalvm_artifact_names.append(debuginfo_dist.name)
+
+    # Trivial distribution to trigger the build of the final GraalVM distribution and its dependencies
+    register_distribution(mx.LayoutDirDistribution(
+        suite=_suite,
+        name="GRAALVM",
+        deps=[_final_graalvm_distribution.name],
+        layout={
+            "./deps": "string:" + _final_graalvm_distribution.name,
+        },
+        path=None,
+        platformDependent=False,
+        theLicense=None,
+        defaultBuild=False,
+    ))
+
+    # Trivial distribution to trigger the build of all installabels and their dependencies
+    register_distribution(mx.LayoutDirDistribution(
+        suite=_suite,
+        name="GRAALVM_INSTALLABLES",
+        deps=installable_names,
+        layout={
+            "./installable_deps_names": "string:" + ",".join(installable_names),
+        },
+        path=None,
+        platformDependent=False,
+        theLicense=None,
+        defaultBuild=False,
+    ))
+
+    # Trivial distribution to trigger the build of all standalones and their dependencies (they have `defaultBuild=False`)
+    register_distribution(mx.LayoutDirDistribution(
+        suite=_suite,
+        name="GRAALVM_STANDALONES",
+        deps=standalone_names,
+        layout={
+            "./standalone_deps_names": "string:" + ",".join(standalone_names),
+        },
+        path=None,
+        platformDependent=False,
+        theLicense=None,
+        defaultBuild=False,
+    ))
 
     # Trivial distribution to trigger the build of the final GraalVM distribution, installables, and standalones
     all_artifacts_deps = ["GRAALVM", "GRAALVM_STANDALONES", "GRAALVM_INSTALLABLES"] + other_graalvm_artifact_names
