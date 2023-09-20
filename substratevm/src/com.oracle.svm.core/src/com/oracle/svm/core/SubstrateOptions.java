@@ -1019,4 +1019,10 @@ public class SubstrateOptions {
 
     @Option(help = "Force using legacy method handle intrinsics.", type = Expert) //
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
+
+    @Option(help = "Include all classes, methods, and fields from given modules", type = OptionType.Debug) //
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromModule = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+    @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 }
