@@ -27,7 +27,6 @@ package org.graalvm.compiler.hotspot;
 import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -205,7 +204,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         Serial(true, true, "UseSerialGC", true),
         Parallel(true, true, "UseParallelGC", true),
         G1(true, true, "UseG1GC", true),
-        Z(JDK == 17 || JDK >= 20, true, "UseZGC", true),
+        Z(true, true, "UseZGC", true),
 
         // Unsupported GCs
         Epsilon(false, true, "UseEpsilonGC", true),

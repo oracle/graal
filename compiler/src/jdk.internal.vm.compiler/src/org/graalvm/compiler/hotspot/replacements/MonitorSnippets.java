@@ -79,7 +79,6 @@ import static org.graalvm.word.LocationIdentity.any;
 import static org.graalvm.word.WordFactory.unsigned;
 import static org.graalvm.word.WordFactory.zero;
 
-import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -445,10 +444,8 @@ public class MonitorSnippets implements Snippets {
     }
 
     private static void updateHeldMonitorCount(Word thread, int increment) {
-        if (HotSpotReplacementsUtil.updateHeldMonitorCount(INJECTED_VMCONFIG)) {
-            Word heldMonitorCount = thread.readWord(heldMonitorCountOffset(INJECTED_VMCONFIG), JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
-            thread.writeWord(heldMonitorCountOffset(INJECTED_VMCONFIG), heldMonitorCount.add(increment), JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
-        }
+        Word heldMonitorCount = thread.readWord(heldMonitorCountOffset(INJECTED_VMCONFIG), JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
+        thread.writeWord(heldMonitorCountOffset(INJECTED_VMCONFIG), heldMonitorCount.add(increment), JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION);
     }
 
     private static boolean inlineFastUnlockSupported(OptionValues options) {
@@ -688,19 +685,15 @@ public class MonitorSnippets implements Snippets {
         public Templates(OptionValues options, SnippetCounter.Group.Factory factory, HotSpotProviders providers, boolean useFastLocking) {
             super(options, providers);
 
-            LocationIdentity[] enterLocations = {};
+            LocationIdentity[] enterLocations = new LocationIdentity[]{JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION};
             LocationIdentity[] exitLocations = {DISPLACED_MARK_WORD_LOCATION,
                             OBJECT_MONITOR_OWNER_LOCATION,
                             OBJECT_MONITOR_CXQ_LOCATION,
                             OBJECT_MONITOR_ENTRY_LIST_LOCATION,
                             OBJECT_MONITOR_RECURSION_LOCATION,
                             OBJECT_MONITOR_SUCC_LOCATION,
-                            MARK_WORD_LOCATION};
-            if (providers.getConfig().updateHeldMonitorCount) {
-                enterLocations = new LocationIdentity[]{JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION};
-                exitLocations = Arrays.copyOf(exitLocations, exitLocations.length + 1);
-                exitLocations[exitLocations.length - 1] = JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION;
-            }
+                            MARK_WORD_LOCATION,
+                            JAVA_THREAD_HOLD_MONITOR_COUNT_LOCATION};
 
             this.monitorenter = snippet(providers, MonitorSnippets.class, "monitorenter", enterLocations);
             this.monitorexit = snippet(providers, MonitorSnippets.class, "monitorexit", exitLocations);
