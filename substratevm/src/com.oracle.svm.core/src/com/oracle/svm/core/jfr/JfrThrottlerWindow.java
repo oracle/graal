@@ -65,11 +65,8 @@ public class JfrThrottlerWindow {
 
         // Stop sampling if we're already over maxSampleablePopulation and we're over the expected
         // samples per window.
-        if (prevMeasuredPopSize % samplingInterval == 0 &&
-                        (prevMeasuredPopSize < maxSampleablePopulation)) {
-            return true;
-        }
-        return false;
+        return prevMeasuredPopSize % samplingInterval == 0 &&
+                        (prevMeasuredPopSize < maxSampleablePopulation);
     }
 
     public long samplesTaken() {

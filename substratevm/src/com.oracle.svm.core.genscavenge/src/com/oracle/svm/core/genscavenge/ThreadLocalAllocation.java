@@ -230,14 +230,15 @@ public final class ThreadLocalAllocation {
     private static Object slowPathNewInstanceWithoutAllocating(DynamicHub hub) {
         DeoptTester.disableDeoptTesting();
         long startTicks = JfrTicks.elapsedTicks();
+        UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewInstanceWithoutAllocating", DynamicHub.toClass(hub).getName());
             GCImpl.getGCImpl().maybeCollectOnAllocation();
 
             AlignedHeader newTlab = HeapImpl.getChunkProvider().produceAlignedChunk();
-            return allocateInstanceInNewTlab(hub, newTlab);
+            return allocateInstanceInNewTlab(hub, newTlab, size);
         } finally {
-            JfrAllocationEvents.emit(startTicks, DynamicHub.toClass(hub), LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()), HeapParameters.getAlignedHeapChunkSize());
+            JfrAllocationEvents.emit(startTicks, hub, size, HeapParameters.getAlignedHeapChunkSize());
             DeoptTester.enableDeoptTesting();
         }
     }
@@ -316,14 +317,13 @@ public final class ThreadLocalAllocation {
             }
             return array;
         } finally {
-            JfrAllocationEvents.emit(startTicks, DynamicHub.toClass(hub), size, tlabSize);
+            JfrAllocationEvents.emit(startTicks, hub, size, tlabSize);
             DeoptTester.enableDeoptTesting();
         }
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Object allocateInstanceInNewTlab(DynamicHub hub, AlignedHeader newTlabChunk) {
-        UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
+    private static Object allocateInstanceInNewTlab(DynamicHub hub, AlignedHeader newTlabChunk, UnsignedWord size) {
         Pointer memory = allocateRawMemoryInNewTlab(size, newTlabChunk);
         return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), false, FillContent.WITH_ZEROES, true);
     }

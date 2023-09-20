@@ -30,6 +30,7 @@ import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrNativeEventWriter;
@@ -44,23 +45,12 @@ import com.oracle.svm.core.thread.JavaThreads;
 public class JfrAllocationEvents {
     private static final FastThreadLocalLong lastAllocationSize = FastThreadLocalFactory.createLong("ObjectAllocationSampleEvent.lastAllocationSize");
 
-    public static void emit(long startTicks, Class<?> clazz, UnsignedWord allocationSize, UnsignedWord tlabSize) {
+    public static void emit(long startTicks, DynamicHub hub, UnsignedWord allocationSize, UnsignedWord tlabSize) {
         if (HasJfrSupport.get()) {
+            Class<?> clazz = DynamicHub.toClass(hub);
             emitObjectAllocationInNewTLAB(startTicks, clazz, allocationSize, tlabSize);
-
-            if (shouldEmitObjectAllocationSample() && SubstrateJVM.get().shouldCommit(JfrEvent.ObjectAllocationSample)) {
-                emitObjectAllocationSample(startTicks, clazz);
-            }
+            emitObjectAllocationSample(startTicks, clazz);
         }
-    }
-
-    /**
-     * This method exists as a slight optimization to avoid entering the sampler code if
-     * unnecessary. This is required because the sampler code is interruptible.
-     */
-    @Uninterruptible(reason = "Needed for JfrEvent.shouldEmit().")
-    private static boolean shouldEmitObjectAllocationSample() {
-        return JfrEvent.ObjectAllocationSample.shouldEmit();
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
@@ -83,7 +73,7 @@ public class JfrAllocationEvents {
     private static void emitObjectAllocationSample(long startTicks, Class<?> clazz) {
         if (JfrEvent.ObjectAllocationSample.shouldEmit()) {
             long currentAllocationSize = PlatformThreads.getThreadAllocatedBytes(JavaThreads.getCurrentThreadId());
-
+            long weight = currentAllocationSize - lastAllocationSize.get();
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ObjectAllocationSample);
@@ -91,7 +81,7 @@ public class JfrAllocationEvents {
             JfrNativeEventWriter.putEventThread(data);
             JfrNativeEventWriter.putLong(data, SubstrateJVM.get().getStackTraceId(JfrEvent.ObjectAllocationSample, 0));
             JfrNativeEventWriter.putClass(data, clazz);
-            JfrNativeEventWriter.putLong(data, currentAllocationSize - lastAllocationSize.get());
+            JfrNativeEventWriter.putLong(data, weight);
             JfrNativeEventWriter.endSmallEvent(data);
             lastAllocationSize.set(currentAllocationSize);
         }

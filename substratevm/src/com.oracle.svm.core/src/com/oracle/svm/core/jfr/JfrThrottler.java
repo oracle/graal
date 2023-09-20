@@ -27,25 +27,20 @@
 package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.locks.VMMutex;
+import com.oracle.svm.core.util.TimeUtils;
 
 /**
  * Each event that allows throttling should have its own throttler instance.
  */
 public class JfrThrottler {
-    private static final long SECOND_IN_MS = 1000;
-    private static final long SECOND_IN_NS = 1000000 * SECOND_IN_MS;
-    private static final long MINUTE_IN_NS = SECOND_IN_NS * 60;
-
     // The following are set to match the values in OpenJDK
     private static final int WINDOW_DIVISOR = 5;
     private static final int LOW_RATE_UPPER_BOUND = 9;
-    private static final int EVENT_THROTTLER_OFF = -2;
-
+    private final JfrThrottlerWindow window0;
+    private final JfrThrottlerWindow window1;
     private final VMMutex mutex;
 
     public volatile boolean disabled;
-    private JfrThrottlerWindow window0;
-    private JfrThrottlerWindow window1;
     private volatile JfrThrottlerWindow activeWindow;
     public long eventSampleSize;
     public long periodNs;
@@ -75,18 +70,18 @@ public class JfrThrottler {
         // Do we want more than 10samples/s ? If so convert to samples/s
         double periodsPerSecond = 1000.0 / periodMs;
         double samplesPerSecond = samplesPerPeriod * periodsPerSecond;
-        if (samplesPerSecond > LOW_RATE_UPPER_BOUND && periodMs > SECOND_IN_MS) {
-            this.periodNs = SECOND_IN_NS;
+        if (samplesPerSecond > LOW_RATE_UPPER_BOUND && periodMs > TimeUtils.millisPerSecond) {
+            this.periodNs = TimeUtils.nanosPerSecond;
             this.eventSampleSize = (long) samplesPerSecond;
             return;
         }
 
         this.eventSampleSize = samplesPerPeriod;
-        this.periodNs = (long) periodMs * 1000000;
+        this.periodNs = TimeUtils.millisToNanos((long) periodMs);
     }
 
     public boolean setThrottle(long eventSampleSize, long periodMs) {
-        if (eventSampleSize == EVENT_THROTTLER_OFF) {
+        if (eventSampleSize == Target_jdk_jfr_internal_settings_ThrottleSetting.OFF) {
             disabled = true;
             return true;
         }
@@ -163,10 +158,10 @@ public class JfrThrottler {
 
     private long computeAccumulatedDebtCarryLimit(long windowDurationNs) {
         assert mutex.isOwner();
-        if (periodNs == 0 || windowDurationNs >= SECOND_IN_NS) {
+        if (periodNs == 0 || windowDurationNs >= TimeUtils.nanosPerSecond) {
             return 1;
         }
-        return SECOND_IN_NS / windowDurationNs;
+        return TimeUtils.nanosPerSecond / windowDurationNs;
     }
 
     private long amortizeDebt(JfrThrottlerWindow lastWindow) {
@@ -193,7 +188,7 @@ public class JfrThrottler {
          * If period isn't 1s, then we're effectively taking under 10 samples/s because the values
          * have already undergone normalization.
          */
-        if (eventSampleSize <= LOW_RATE_UPPER_BOUND || periodNs > SECOND_IN_NS) {
+        if (eventSampleSize <= LOW_RATE_UPPER_BOUND || periodNs > TimeUtils.nanosPerSecond) {
             samplesPerWindow = eventSampleSize;
             windowDurationNs = periodNs;
         }
@@ -225,9 +220,9 @@ public class JfrThrottler {
      * The lookback values are set to match the values in OpenJDK.
      */
     private static double windowLookback(JfrThrottlerWindow window) {
-        if (window.windowDurationNs <= SECOND_IN_NS) {
+        if (window.windowDurationNs <= TimeUtils.nanosPerSecond) {
             return 25.0;
-        } else if (window.windowDurationNs <= MINUTE_IN_NS) {
+        } else if (window.windowDurationNs <= TimeUtils.nanosPerSecond * 60L) {
             return 5.0;
         } else {
             return 1.0;
@@ -279,7 +274,7 @@ public class JfrThrottler {
         }
 
         public static void expireActiveWindow(JfrThrottler throttler) {
-            if (throttler.eventSampleSize <= LOW_RATE_UPPER_BOUND || throttler.periodNs > SECOND_IN_NS) {
+            if (throttler.eventSampleSize <= LOW_RATE_UPPER_BOUND || throttler.periodNs > TimeUtils.nanosPerSecond) {
                 throttler.window0.currentTestNanos += throttler.periodNs;
                 throttler.window1.currentTestNanos += throttler.periodNs;
             }

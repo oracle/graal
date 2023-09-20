@@ -26,6 +26,7 @@
 
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.Uninterruptible;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -36,15 +37,14 @@ import com.oracle.svm.core.locks.VMMutex;
  * class.
  */
 public class JfrThrottlerSupport {
-    JfrThrottler objectAllocationSampleThrottler;
+    private JfrThrottler objectAllocationSampleThrottler;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     JfrThrottlerSupport() {
-        if (HasJfrSupport.get()) {
-            objectAllocationSampleThrottler = new JfrThrottler(new VMMutex("jfrThrottler"));
-        }
+        objectAllocationSampleThrottler = new JfrThrottler(new VMMutex("jfrThrottler"));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private JfrThrottler getThrottler(long eventId) {
         if (eventId == JfrEvent.ObjectAllocationSample.getId()) {
             return objectAllocationSampleThrottler;
