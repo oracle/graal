@@ -316,8 +316,8 @@ _DACAPO_SKIP_AGENT_ASSERTIONS = {
 }
 
 _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
-    'h2' :      ['--allow-incomplete-classpath'],
-    'pmd':      ['--allow-incomplete-classpath'],
+    'h2' :      [],
+    'pmd':      [],
     # org.apache.crimson.parser.Parser2 is force initialized at build-time due to non-determinism in class initialization
     # order that can lead to runtime issues. See GR-26324.
     'xalan':    ['--report-unsupported-elements-at-runtime',
@@ -330,11 +330,10 @@ _DACAPO_EXTRA_IMAGE_BUILD_ARGS = {
     #    not exist and would fail the benchmark when assertions are enabled.
     # 2. Native-image picks a different service provider than the JVM for javax.xml.transform.TransformerFactory.
     #    We can simply remove the jar containing that provider as it is not required for the benchmark to run.
-    'fop':      ['--allow-incomplete-classpath',
-                 '--report-unsupported-elements-at-runtime',
+    'fop':      ['--report-unsupported-elements-at-runtime',
                  f"-Djava.util.logging.config.file={_empty_file()}",
                  '--initialize-at-run-time=org.apache.fop.render.rtf.rtflib.rtfdoc.RtfList'],
-    'batik':    ['--allow-incomplete-classpath']
+    'batik':    []
 }
 
 '''
