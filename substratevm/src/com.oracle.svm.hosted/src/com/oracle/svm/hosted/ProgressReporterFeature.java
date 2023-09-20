@@ -37,11 +37,9 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.jni.access.JNIAccessibleClass;
 import com.oracle.svm.core.jni.access.JNIReflectionDictionary;
-import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.hosted.FeatureImpl.AfterCompilationAccessImpl;
 import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 import com.oracle.svm.hosted.ProgressReporter.DirectPrinter;
-import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.jdk.JNIRegistrationSupport;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
@@ -92,10 +90,6 @@ public class ProgressReporterFeature implements InternalFeature {
 
     protected List<UserRecommendation> getRecommendations() {
         return List.of(// in order of appearance:
-                        new UserRecommendation("INIT",
-                                        "Adopt " + SubstrateOptionsParser.commandArgument(ClassInitializationOptions.StrictImageHeap, "+", "strict-image-heap", true, false) +
-                                                        " to prepare for the next GraalVM release.",
-                                        () -> !ClassInitializationOptions.StrictImageHeap.getValue()),
                         new UserRecommendation("AWT", "Use the tracing agent to collect metadata for AWT.", ProgressReporterFeature::recommendTraceAgentForAWT),
                         new UserRecommendation("HEAP", "Set max heap for improved and more predictable memory usage.", () -> SubstrateGCOptions.MaxHeapSize.getValue() == 0),
                         new UserRecommendation("CPU", "Enable more CPU features with '-march=native' for improved performance.", ProgressReporterFeature::recommendMArchNative));
