@@ -3821,7 +3821,7 @@ public final class TruffleString extends AbstractTruffleString {
         @Specialization(guards = "codePointSet == cachedCodePointSet", limit = "1")
         static int indexOfSpecialized(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet,
                         @Bind("this") Node node,
-                        @Cached @Shared ToIndexableNode toIndexableNode,
+                        @Cached @Exclusive ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached(value = "codePointSet") CodePointSet cachedCodePointSet,
                         @Cached("cachedCodePointSet.createNode()") TStringInternalNodes.IndexOfCodePointSetNode internalNode) {
@@ -3844,7 +3844,7 @@ public final class TruffleString extends AbstractTruffleString {
 
         @Specialization(replaces = "indexOfSpecialized")
         int indexOfUncached(AbstractTruffleString a, int fromByteIndex, int toByteIndex, CodePointSet codePointSet,
-                        @Cached @Shared ToIndexableNode toIndexableNode,
+                        @Cached @Exclusive ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodeRangeForIndexCalculationNode getCodeRangeNode,
                         @Cached TruffleStringIterator.InternalNextNode nextNode) {
             Encoding encoding = codePointSet.encoding;

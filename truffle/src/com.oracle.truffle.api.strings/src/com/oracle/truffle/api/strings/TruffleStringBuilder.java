@@ -1022,6 +1022,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         }
 
         @Specialization
+        @SuppressWarnings("slow-resolve")
         static void append(Node node, TruffleStringBuilderGeneric sb, AbstractTruffleString a,
                         @Cached @Shared TruffleString.ToIndexableNode toIndexableNode,
                         @Cached @Exclusive TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
@@ -1195,6 +1196,7 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         }
 
         @Specialization
+        @SuppressWarnings("slow-resolve")
         static void append(TruffleStringBuilderGeneric sb, AbstractTruffleString a, int fromIndex, int length,
                         @Bind("this") Node node,
                         @Cached @Shared TruffleString.ToIndexableNode toIndexableNode,

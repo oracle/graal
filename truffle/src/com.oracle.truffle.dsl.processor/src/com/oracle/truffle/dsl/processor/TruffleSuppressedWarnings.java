@@ -69,8 +69,9 @@ public final class TruffleSuppressedWarnings {
     public static final String ASSUMPTION = "truffle-assumption";
     public static final String GUARD = "truffle-guard";
     public static final String DEPRECATION = "deprecation";
+    public static final String SLOW_RESOLVE = "slow-resolve";
     public static final List<String> ALL_KEYS = List.of(ALL, TRUFFLE, STATIC_METHOD, LIMIT, UNUSED, NEVERDEFAULT, INLINING_RECOMMENDATION, SHARING_RECOMMENDATION, ABSTRACT_LIBRARY_EXPORT,
-                    DEPRECATION);
+                    DEPRECATION, SLOW_RESOLVE);
 
     public static Set<String> getWarnings(Element element) {
         AnnotationMirror currentWarnings = ElementUtils.findAnnotationMirror(element, SuppressWarnings.class);
