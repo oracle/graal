@@ -3684,6 +3684,20 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         )
         register_project(java_standalone_jimage)
 
+    # Trivial distribution to trigger the build of all installabels and their dependencies
+    register_distribution(mx.LayoutDirDistribution(
+        suite=_suite,
+        name="GRAALVM_INSTALLABLES",
+        deps=installable_names,
+        layout={
+            "./installable_deps_names": "string:" + ",".join(installable_names),
+        },
+        path=None,
+        platformDependent=False,
+        theLicense=None,
+        defaultBuild=False,
+    ))
+
     # Trivial distribution to trigger the build of all standalones and their dependencies (they have `defaultBuild=False`)
     register_distribution(mx.LayoutDirDistribution(
         suite=_suite,
@@ -3751,8 +3765,8 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 register_distribution(debuginfo_dist)
                 other_graalvm_artifact_names.append(debuginfo_dist.name)
 
-    # Trivial distribution to trigger the build of the final GraalVM distribution and of all standalones
-    all_artifacts_deps = ["GRAALVM", "GRAALVM_STANDALONES"] + installable_names + other_graalvm_artifact_names
+    # Trivial distribution to trigger the build of the final GraalVM distribution, installables, and standalones
+    all_artifacts_deps = ["GRAALVM", "GRAALVM_STANDALONES", "GRAALVM_INSTALLABLES"] + other_graalvm_artifact_names
     register_distribution(mx.LayoutDirDistribution(
         suite=_suite,
         name="ALL_GRAALVM_ARTIFACTS",
