@@ -9,9 +9,13 @@ local common_json = import "../common.json";
   # JDK definitions
   # ***************
   local jdk_base = {
-    "name":         error "name not set",         # string; the JDK provider, e.g. "jpg-jdk", "labsjdk"
-    "version":      error "version not set",      # string; full version string, e.g., "ce-21+35-jvmci-23.1-b15"
-    "jdk_version":: error "jdk_version not set",  #    int; the major JDK version, e.g., 21
+    name:         error "name not set",         # string; The JDK provider, e.g. "jpg-jdk", "labsjdk"
+    version:      error "version not set",      # string; Full version string, e.g., "ce-21+35-jvmci-23.1-b15"
+    jdk_version:: error "jdk_version not set",  #    int; The major JDK version, e.g., 21
+    jdk_name::    "jdk%d" % self.jdk_version,   # string; The major JDK version with the JDK prefix.
+                                                #         For the latest (unreleased) this give "jdk-latest",
+                                                #         otherwise the jdk_version with the "jdk" prefix, e.g., "jdk21".
+                                                #         This should be use for constructing CI job names.
     # Optional:
     # "build_id": "33",
     # "release": true,
@@ -46,7 +50,7 @@ local common_json = import "../common.json";
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: 21 }
     for name in ["oraclejdk21"] + variants("labsjdk-ce-21") + variants("labsjdk-ee-21")
   } + {
-    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self.version)}
+    [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self.version), jdk_name:: "jdk-latest"}
     for name in variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   },
   assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
@@ -61,6 +65,7 @@ local common_json = import "../common.json";
         [if std.endsWith(name, "llvm") then "LLVM_JAVA_HOME" else "JAVA_HOME"]: jdks_data[name]
       },
       jdk_version:: jdks_data[name].jdk_version,
+      jdk_name:: jdks_data[name].jdk_name,
     },
     for name in std.objectFields(jdks_data)
   } + {
