@@ -22,22 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.jdk20.test;
+package org.graalvm.compiler.hotspot.test;
 
-import static org.graalvm.compiler.test.GraalTest.fail;
 import static org.junit.Assume.assumeTrue;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-/**
- * This class is compiled with a higher class file version due to the preview feature
- * {@code Thread#ofVirtual}. It cannot be loaded without --enable-preview.
- */
-public class CarrierThreadTest {
+import org.graalvm.compiler.api.test.ModuleSupport;
+import org.junit.Test;
 
-    @SuppressWarnings("preview")
-    public static void test() {
+public class VirtualThreadCarrierThreadTest extends HotSpotGraalCompilerTest {
+
+    public static void testSnippet() {
         try {
             Thread.ofVirtual().start(() -> {
                 try {
@@ -53,4 +50,12 @@ public class CarrierThreadTest {
             fail(e.getMessage());
         }
     }
+
+    @Test
+    public void testGetCarrierThread() {
+        ModuleSupport.exportAndOpenAllPackagesToUnnamed("java.base");
+        compileAndInstallSubstitution(Thread.class, "currentCarrierThread");
+        testSnippet();
+    }
+
 }

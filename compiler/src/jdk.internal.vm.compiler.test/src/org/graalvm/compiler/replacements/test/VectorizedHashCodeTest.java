@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.jdk21.test;
+package org.graalvm.compiler.replacements.test;
 
 import java.io.UnsupportedEncodingException;
 import java.util.HashSet;

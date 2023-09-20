@@ -255,6 +255,7 @@ suite = {
         "java.base" : [
           "jdk.internal.module",
           "jdk.internal.misc",
+          "jdk.internal.util",
         ],
         "java.instrument" : [
           "sun.instrument",
@@ -299,31 +300,6 @@ suite = {
       ],
       "javaCompliance" : "17+",
       "workingSets" : "Graal,HotSpot",
-    },
-
-    "org.graalvm.compiler.hotspot.jdk20.test" : {
-      "testProject" : True,
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "jdk.internal.vm.compiler.test",
-      ],
-      "requires" : [
-        "jdk.jfr",
-      ],
-      "requiresConcealed" : {
-        "java.base" : [
-          "jdk.internal.misc",
-        ],
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.meta",
-        ],
-      },
-      "checkstyle": "jdk.internal.vm.compiler",
-      "javaCompliance" : "20+",
-      "javaPreviewNeeded": "20+",
-      "javac.lint.overrides": "none",
-      "workingSets" : "Graal,HotSpot,Test",
     },
 
     "org.graalvm.compiler.hotspot.jdk21.test" : {
@@ -468,7 +444,6 @@ suite = {
     "GRAAL_TEST_PREVIEW_FEATURE" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.compiler.hotspot.jdk20.test",
         "org.graalvm.compiler.hotspot.jdk21.test",
       ],
       "distDependencies" : [
