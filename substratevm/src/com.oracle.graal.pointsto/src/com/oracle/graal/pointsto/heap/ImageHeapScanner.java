@@ -35,8 +35,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -397,6 +397,8 @@ public abstract class ImageHeapScanner {
     private boolean doNotifyAnalysis(AnalysisField field, JavaConstant receiver, JavaConstant fieldValue, ScanReason reason) {
         boolean analysisModified = false;
         if (fieldValue.getJavaKind() == JavaKind.Object && hostVM.isRelocatedPointer(metaAccess, fieldValue)) {
+            /* Ensure the relocatable pointer type is analysed. */
+            ((AnalysisType) ((TypedConstant) fieldValue).getType(metaAccess)).registerAsReachable(reason);
             analysisModified = scanningObserver.forRelocatedPointerFieldValue(receiver, field, fieldValue, reason);
         } else if (fieldValue.isNull()) {
             analysisModified = scanningObserver.forNullFieldValue(receiver, field, reason);
@@ -430,18 +432,7 @@ public abstract class ImageHeapScanner {
     }
 
     private boolean isNonNullObjectConstant(JavaConstant constant) {
-        return constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && !isWordType(constant);
-    }
-
-    public boolean isWordType(JavaConstant rawElementValue) {
-        /*
-         * UniverseMetaAccess.isInstanceOf cannot be used here because the object replacers may have
-         * not yet been applied to the object. This can lead to
-         * "Type is not available in this platform" issues when accessing the object type. A proper
-         * fix will add a JavaConstant implementation class for relocatable word values.(GR-48681).
-         */
-        Object obj = snippetReflection.asObject(Object.class, rawElementValue);
-        return obj instanceof WordBase;
+        return constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && !universe.hostVM().isRelocatedPointer(metaAccess, constant);
     }
 
     private boolean notifyAnalysis(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, int elementIndex, ScanReason reason) {
@@ -449,7 +440,7 @@ public abstract class ImageHeapScanner {
         if (elementValue.isNull()) {
             analysisModified = scanningObserver.forNullArrayElement(array, arrayType, elementIndex, reason);
         } else {
-            if (isWordType(elementValue)) {
+            if (universe.hostVM().isRelocatedPointer(metaAccess, elementValue)) {
                 return false;
             }
             AnalysisType elementType = metaAccess.lookupJavaType(elementValue);
@@ -522,10 +513,6 @@ public abstract class ImageHeapScanner {
         // Wrap the hosted constant into a substrate constant
         JavaConstant value = universe.fromHosted(hostedConstantReflection.readFieldValue(field.wrapped, receiver));
         return ValueSupplier.eagerValue(value);
-    }
-
-    public JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
-        return constantReflection.readFieldValue(field, receiver);
     }
 
     public void rescanRoot(Field reflectionField) {

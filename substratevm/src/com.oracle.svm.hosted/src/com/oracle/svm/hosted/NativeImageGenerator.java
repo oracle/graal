@@ -603,7 +603,7 @@ public class NativeImageGenerator {
 
                 hUniverse = new HostedUniverse(bb);
                 hMetaAccess = new HostedMetaAccess(hUniverse, bb.getMetaAccess());
-                ((SVMImageHeapScanner) aUniverse.getHeapScanner()).setHostedMetaAccess(hMetaAccess);
+                ((AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider()).setHostedMetaAccess(hMetaAccess);
 
                 BeforeUniverseBuildingAccessImpl beforeUniverseBuildingConfig = new BeforeUniverseBuildingAccessImpl(featureHandler, loader, debug, hMetaAccess);
                 featureHandler.forEachFeature(feature -> feature.beforeUniverseBuilding(beforeUniverseBuildingConfig));
@@ -1126,6 +1126,21 @@ public class NativeImageGenerator {
             bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
             bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable("root class");
             bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable("root class");
+            /*
+             * SubstrateAllocationProfilingData is not actually present in the image since it is
+             * only allocated at build time, is passed to snippets as a @ConstantParameter, and it
+             * only contains final fields that are constant-folded. However, since the profiling
+             * object is only allocated during lowering it is processed by the shadow heap after
+             * analysis, so its type needs to be already marked reachable at this point.
+             */
+            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.SubstrateAllocationProfilingData.class).registerAsReachable("root class");
+            /*
+             * Similarly to above, StackSlotIdentity only gets reachable during lowering, through
+             * build time allocated constants. It doesn't actually end up in the image heap since
+             * all its fields are final and are constant-folded, but the type becomes reachable,
+             * through the shadow heap processing, after analysis.
+             */
+            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity.class).registerAsReachable("root class");
 
             NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget(), supportsStubBasedPlugins);
