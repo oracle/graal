@@ -794,11 +794,10 @@ local devkits = graal_common.devkits;
     run: $.patch_env(self.os, self.arch, java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
       $.mx_vm_installables + ['build', '--dependencies', self.build_deps],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
     ] + $.deploy_sdk_components(self.os, self.tags) + [
       $.mx_vm_installables + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + vm.check_graalvm_complete_build($.mx_vm_installables, self.os, self.arch, java_version),
+    ],
     notify_groups:: ['deploy'],
     timelimit: "1:30:00"
   },
