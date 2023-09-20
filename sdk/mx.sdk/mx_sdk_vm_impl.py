@@ -4268,6 +4268,11 @@ def graalvm_show(args, forced_graalvm_dist=None):
                 for _, cfg in sorted(jvm_configs.items()):
                     for config in cfg['configs']:
                         print(f" {config} (from {cfg['source']})")
+            if args.verbose:
+                for dist_name in 'GRAALVM', 'GRAALVM_INSTALLABLES', 'GRAALVM_STANDALONES', 'ALL_GRAALVM_ARTIFACTS':
+                    dist = mx.distribution(dist_name, fatalIfMissing=False)
+                    if dist is not None:
+                        print(f"Dependencies of the '{dist_name}' distribution:\n -", '\n - '.join(sorted(dep.name for dep in dist.deps)))
 
         if args.print_env:
             def _print_env(name, val):
