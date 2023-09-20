@@ -31,13 +31,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import com.oracle.svm.core.BuildDirectoryProvider;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
@@ -46,6 +44,7 @@ import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.macho.MachOSymtab;
+import com.oracle.svm.core.BuildDirectoryProvider;
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
@@ -251,8 +250,8 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
     private static class BinutilsCCLinkerInvocation extends CCLinkerInvocation {
 
-        private final boolean staticExecWithDynamicallyLinkLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
-        private final Set<String> libCLibaries = new HashSet<>(Arrays.asList("pthread", "dl", "rt", "m"));
+        private final boolean dynamicLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
+        private final boolean staticLibCpp = SubstrateOptions.StaticLibStdCpp.getValue();
 
         BinutilsCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols) {
             super(imageKind, nativeLibs, symbols);
@@ -307,7 +306,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     cmd.add("-Wl,--export-dynamic");
                     break;
                 case STATIC_EXECUTABLE:
-                    if (!staticExecWithDynamicallyLinkLibC) {
+                    if (!dynamicLibC && !staticLibCpp) {
                         cmd.add("-static");
                     }
                     break;
@@ -319,21 +318,32 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             }
         }
 
+        private static final Set<String> LIB_C_NAMES = Set.of("pthread", "dl", "rt", "m");
+
         @Override
         protected List<String> getLibrariesCommand() {
             List<String> cmd = new ArrayList<>();
+            if (dynamicLibC || staticLibCpp) {
+                cmd.add("-Wl,--push-state");
+            }
             for (String lib : libs) {
-                if (staticExecWithDynamicallyLinkLibC) {
-                    String linkingMode = libCLibaries.contains(lib)
-                                    ? "dynamic"
-                                    : "static";
+                String linkingMode = null;
+                if (dynamicLibC) {
+                    linkingMode = LIB_C_NAMES.contains(lib) ? "dynamic" : "static";
+                } else if (staticLibCpp) {
+                    linkingMode = lib.equals("stdc++") ? "static" : "dynamic";
+                }
+                if (linkingMode != null) {
                     cmd.add("-Wl,-B" + linkingMode);
                 }
                 cmd.add("-l" + lib);
             }
+            if (dynamicLibC || staticLibCpp) {
+                cmd.add("-Wl,--pop-state");
+            }
 
             // Make sure libgcc gets statically linked
-            if (staticExecWithDynamicallyLinkLibC) {
+            if (dynamicLibC || staticLibCpp) {
                 cmd.add("-static-libgcc");
             }
             return cmd;
