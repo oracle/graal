@@ -1072,7 +1072,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             build_args=driver_build_args + [
                 '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature',
                 '--enable-url-protocols=jar',
-            ],
+            ] + svm_experimental_options([
+                '-H:+StaticExecutableWithDynamicLibC',
+            ]),
             headers=False,
             home_finder=False,
         ),
@@ -1086,7 +1088,9 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             ],
             build_args=driver_build_args + [
                 '--features=com.oracle.svm.diagnosticsagent.NativeImageDiagnosticsAgent$RegistrationFeature',
-            ],
+            ] + svm_experimental_options([
+                '-H:+StaticExecutableWithDynamicLibC',
+            ]),
             headers=False,
             home_finder=False,
         ),
