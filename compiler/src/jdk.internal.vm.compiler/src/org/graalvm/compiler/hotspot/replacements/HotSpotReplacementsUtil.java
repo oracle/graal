@@ -667,18 +667,8 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static boolean useBiasedLocking(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.useBiasedLocking;
-    }
-
-    @Fold
     static int heldMonitorCountOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.threadHeldMonitorCountOffset;
-    }
-
-    @Fold
-    static boolean heldMonitorCountIsWord(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.threadHeldMonitorCountIsWord;
     }
 
     @Fold

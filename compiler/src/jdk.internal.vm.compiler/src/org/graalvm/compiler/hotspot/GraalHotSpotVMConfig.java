@@ -35,7 +35,6 @@ import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.options.OptionValues;
 
-import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotResolvedJavaMethod;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -130,7 +129,6 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean verifyAfterGC = getFlag("VerifyAfterGC", Boolean.class);
 
     public final boolean useTLAB = getFlag("UseTLAB", Boolean.class);
-    public final boolean useBiasedLocking = getFlag("UseBiasedLocking", Boolean.class, false, JDK < 18);
     public final boolean usePopCountInstruction = getFlag("UsePopCountInstruction", Boolean.class);
     public final boolean useUnalignedAccesses = getFlag("UseUnalignedAccesses", Boolean.class);
     public final boolean useCRC32Intrinsics = getFlag("UseCRC32Intrinsics", Boolean.class);
@@ -231,7 +229,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int logKlassAlignment = getConstant("LogKlassAlignmentInBytes", Integer.class);
 
     public final int stackShadowPages = getFlag("StackShadowPages", Integer.class);
-    public final int vmPageSize = getFieldValue("CompilerToVM::Data::vm_page_size", Integer.class, JDK >= 21 ? "size_t" : "int");
+    public final int vmPageSize = getFieldValue("CompilerToVM::Data::vm_page_size", Integer.class, "size_t");
 
     public final int softwarePrefetchHintDistance = getFlag("SoftwarePrefetchHintDistance", Integer.class, -1, "aarch64".equals(osArch));
 
@@ -362,11 +360,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int jvmciReservedReference0Offset = getFieldOffset("JavaThread::_jvmci_reserved_oop0", Integer.class, "oop");
 
     public final int doingUnsafeAccessOffset = getFieldOffset("JavaThread::_doing_unsafe_access", Integer.class, "bool");
-    // @formatter:off
-    public final int javaThreadReservedStackActivationOffset =
-                    JDK <= 15 ? getFieldOffset("JavaThread::_reserved_stack_activation",                       Integer.class, "address"): // JDK-8046936
-                                getFieldOffset("JavaThread::_stack_overflow_state._reserved_stack_activation", Integer.class, "address"); // JDK-8253717
-    // @formatter:on
+    public final int javaThreadReservedStackActivationOffset = getFieldOffset("JavaThread::_stack_overflow_state._reserved_stack_activation", Integer.class, "address"); // JDK-8253717
     public final int jniEnvironmentOffset = getFieldOffset("JavaThread::_jni_environment", Integer.class, "JNIEnv");
 
     public boolean requiresReservedStackCheck(List<ResolvedJavaMethod> methods) {
@@ -394,23 +388,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     private final int javaFrameAnchorLastJavaSpOffset = getFieldOffset("JavaFrameAnchor::_last_Java_sp", Integer.class, "intptr_t*");
     private final int javaFrameAnchorLastJavaPcOffset = getFieldOffset("JavaFrameAnchor::_last_Java_pc", Integer.class, "address");
 
-    public final int pendingFailedSpeculationOffset;
-    {
-        String name = "JavaThread::_pending_failed_speculation";
-        int offset = -1;
-        try {
-            offset = getFieldOffset(name, Integer.class, "jlong");
-        } catch (JVMCIError e) {
-            try {
-                offset = getFieldOffset(name, Integer.class, "long");
-            } catch (JVMCIError e2) {
-            }
-        }
-        if (offset == -1) {
-            throw new JVMCIError("cannot get offset of field " + name + " with type long or jlong");
-        }
-        pendingFailedSpeculationOffset = offset;
-    }
+    public final int pendingFailedSpeculationOffset = getFieldOffset("JavaThread::_pending_failed_speculation", Integer.class, "jlong");
 
     public int threadLastJavaSpOffset() {
         return javaThreadAnchorOffset + javaFrameAnchorLastJavaSpOffset;
@@ -770,20 +748,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     // Tracking of the number of monitors held by the current thread. This is used by loom but in
     // JDK 20 was enabled by default to ensure it was correctly implemented.
-    public final int threadHeldMonitorCountOffset;
-    public final boolean threadHeldMonitorCountIsWord;
-
-    {
-        int offset = -1;
-        boolean isWord = false;
-        if (JDK >= 20) {
-            String cppType = JDK >= 22 ? "intx" : "int64_t";
-            offset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, cppType);
-            isWord = true;
-        }
-        threadHeldMonitorCountOffset = offset;
-        threadHeldMonitorCountIsWord = isWord;
-    }
+    public final int threadHeldMonitorCountOffset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, JDK >= 22 ? "intx" : "int64_t");
 
     // This should be true when loom is enabled on 19 but that still needs to be exposed by JVMCI
     public final boolean updateHeldMonitorCount = JDK >= 20 || continuationsEnabled;
