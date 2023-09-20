@@ -26,6 +26,8 @@
 
 package com.oracle.svm.test.jfr;
 
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.util.List;
@@ -49,6 +51,12 @@ public class TestSystemGCEvent extends JfrRecordingTest {
     }
 
     private static void validateEvents(List<RecordedEvent> events) {
-        assertTrue(events.size() >= 1);
+        for (RecordedEvent event : events) {
+            assertNotNull(event.getStackTrace());
+            assertNotNull(event.getThread());
+            assertNotNull(event.getStartTime());
+            assertTrue(event.getStartTime().toEpochMilli() <= System.currentTimeMillis());
+            assertFalse(event.getBoolean("invokedConcurrent"));
+        }
     }
 }
