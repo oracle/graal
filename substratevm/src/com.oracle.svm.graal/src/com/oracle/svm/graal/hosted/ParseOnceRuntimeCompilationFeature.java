@@ -1256,7 +1256,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         @Override
         public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod target) {
-            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD) {
+            if (callerMultiMethodKey != ORIGINAL_METHOD) {
                 /*
                  * If the method may be intrinsified later, the implementation can change.
                  */
