@@ -190,7 +190,7 @@ public final class CompilationStatistics {
                         timeLeft = RESOLUTION;
                     }
                 }
-                String timelineName = Services.getSavedProperties().get("stats.timeline.name");
+                String timelineName = Services.getSavedProperty("stats.timeline.name");
                 if (timelineName != null && !timelineName.isEmpty()) {
                     out.printf("%s%c", CSVUtil.Escape.escape(timelineName), CSVUtil.SEPARATOR);
                 }

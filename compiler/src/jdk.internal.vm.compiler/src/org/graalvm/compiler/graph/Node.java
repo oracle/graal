@@ -95,7 +95,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     public static final NodeClass<?> TYPE = null;
 
-    public static final boolean TRACK_CREATION_POSITION = Boolean.parseBoolean(Services.getSavedProperties().get("debug.graal.TrackNodeCreationPosition"));
+    public static final boolean TRACK_CREATION_POSITION = Boolean.parseBoolean(Services.getSavedProperty("debug.graal.TrackNodeCreationPosition"));
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;
