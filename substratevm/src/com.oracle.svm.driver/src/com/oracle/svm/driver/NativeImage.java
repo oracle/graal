@@ -1549,10 +1549,12 @@ public class NativeImage {
         List<Path> imageModulePath = imagemp.stream().map(substituteModulePath).collect(Collectors.toList());
         Map<String, Path> applicationModules = getModulesFromPath(imageModulePath);
 
-        // Remove modules that we already have built-in
-        applicationModules.keySet().removeAll(getBuiltInModules());
-        // Remove modules that we get from the builder
-        applicationModules.keySet().removeAll(getModulesFromPath(mp).keySet());
+        if (!applicationModules.isEmpty()) {
+            // Remove modules that we already have built-in
+            applicationModules.keySet().removeAll(getBuiltInModules());
+            // Remove modules that we get from the builder
+            applicationModules.keySet().removeAll(getModulesFromPath(mp).keySet());
+        }
         List<Path> finalImageModulePath = applicationModules.values().stream().toList();
 
         if (!addModules.isEmpty()) {
