@@ -131,6 +131,16 @@ suite = {
       },
     },
 
+    "XZ-1.9" : {
+      "digest" : "sha512:a4362db234d4e83683e90f5baf90c82107450cc4404acab96e3fab14b8a3d4588a19722171d32f27d18463682a6994cad9af0b1065c954e3a77ea7bdcf586bac",
+      "sourceDigest" : "sha512:5625f7392d1958466507f0530585c2c40c5b301981ab64115f489dc4599e3364acd7f00bfdc69aa3124d4641a562923dc3ee038faee5a52dd3cbe29a1a35e5ab",
+      "maven" : {
+        "groupId" : "org.tukaani",
+        "artifactId" : "xz",
+        "version" : "1.9",
+      },
+    },
+
     # Deprecated: Do not use, replaced by TRUFFLE_JSON.
     "TruffleJSON" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20230227.jar"],
@@ -1132,6 +1142,30 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "org.graalvm.shadowed.org.tukaani.xz" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "shadedDependencies" : [
+        "truffle:XZ-1.9",
+      ],
+      "class" : "ShadedLibraryProject",
+      "shade" : {
+        "packages" : {
+          "org.tukaani.xz" : "org.graalvm.shadowed.org.tukaani.xz",
+        },
+        "exclude" : [
+          "META-INF/MANIFEST.MF",
+          "META-INF/versions/9/module-info.java"
+        ],
+      },
+      "description" : "shaded XZ Java library.",
+      "allowsJavadocWarnings": True,
+      "javac.lint.overrides" : 'none',
+      "jacoco" : "exclude",
+    },
+
     "com.oracle.truffle.runtime.attach" : {
       "subDir" : "src",
       "native" : "shared_lib",
@@ -1950,6 +1984,15 @@ suite = {
       "maven" : False,
     },
 
+    "TRUFFLE_XZ_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Truffle support distribution for XZ Java library",
+      "layout" : {
+        "native-image.properties" : "file:mx.truffle/language-xz.properties",
+      },
+      "maven" : False,
+    },
+
     "LOCATOR": {
       "subDir": "src",
       "moduleInfo" : {
@@ -2000,6 +2043,34 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.shadowed",
         "artifactId" : "icu4j",
+        "tag": ["default", "public"],
+      },
+    },
+
+    "TRUFFLE_XZ" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "org.graalvm.shadowed.xz",
+        "requires" : [
+        ],
+        "exports" : [
+          # Qualified exports.
+          "org.graalvm.shadowed.org.tukaani.xz to org.graalvm.py, org.graalvm.r",
+          "org.graalvm.shadowed.org.tukaani.xz.* to org.graalvm.py, org.graalvm.r",
+        ],
+      },
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "dependencies" : [
+        "org.graalvm.shadowed.org.tukaani.xz",
+      ],
+      "description" : "shaded XZ Java module.",
+      "allowsJavadocWarnings" : True,
+      "maven" : {
+        "groupId" : "org.graalvm.shadowed",
+        "artifactId" : "xz",
         "tag": ["default", "public"],
       },
     },
