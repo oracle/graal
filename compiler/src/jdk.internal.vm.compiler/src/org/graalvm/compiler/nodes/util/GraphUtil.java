@@ -777,7 +777,7 @@ public class GraphUtil {
             } else {
                 return null;
             }
-        } while (true);  // TERMINATION ARGUMENT: processing specific inputs until a exit criteria
+        } while (true);  // TERMINATION ARGUMENT: processing specific inputs until an exit criteria
                          // is met
     }
 

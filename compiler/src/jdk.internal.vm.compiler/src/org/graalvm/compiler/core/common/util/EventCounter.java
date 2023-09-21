@@ -25,13 +25,15 @@
 package org.graalvm.compiler.core.common.util;
 
 /**
- * Interface representing a counter that can overflow to trigger certain events in recurring
- * fashion.
+ * Interface representing a counter that can overflow to trigger certain events.
  */
 public interface EventCounter {
 
     /**
-     * Increment the current counter and determine if it overflows max and reset it if so.
+     * Increment the current counter and determine if it overflows max and reset it if so. Users of
+     * this class typically take some action if an overflow happens.
+     *
+     * @return {@code true} if the overflow is hit, {@code false} otherwise.
      */
     boolean eventCounterOverflows(int max);
 

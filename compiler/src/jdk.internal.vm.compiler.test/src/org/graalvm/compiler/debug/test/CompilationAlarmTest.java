@@ -103,7 +103,7 @@ public class CompilationAlarmTest extends GraalCompilerTest {
 
     }
 
-    private TestThread getCompilationThreadWithWait(int waitSeconds, String snippet, OptionValues opt, String expectedExceptionTest) {
+    private TestThread getCompilationThreadWithWait(int waitSeconds, String snippet, OptionValues opt, String expectedExceptionText) {
         TestThread t = new TestThread(new Runnable() {
 
             @Override
@@ -117,15 +117,15 @@ public class CompilationAlarmTest extends GraalCompilerTest {
                                     true);
                     try {
                         GraalCompiler.compile(request);
-                        if (expectedExceptionTest != null) {
+                        if (expectedExceptionText != null) {
                             Assert.fail("Must throw exception");
                         }
                     } catch (Throwable t1) {
-                        if (expectedExceptionTest == null) {
+                        if (expectedExceptionText == null) {
                             Assert.fail("Must except exception but found no excepted exception but " + t1.getMessage());
                         }
-                        if (!t1.getMessage().contains(expectedExceptionTest)) {
-                            Assert.fail("Excepted exception to contain text:" + expectedExceptionTest + " but exception did not contain text " + t1.getMessage());
+                        if (!t1.getMessage().contains(expectedExceptionText)) {
+                            Assert.fail("Excepted exception to contain text:" + expectedExceptionText + " but exception did not contain text " + t1.getMessage());
                             throw t1;
                         }
                     }

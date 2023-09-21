@@ -237,7 +237,7 @@ public final class CompilationAlarm implements AutoCloseable {
          * We perform this check inside here since its cheaper to take the last stack trace (last
          * will be null for the first in the current compile) than actually checking the option
          * below. In normal compiles we dont often get into this branch in the first place, most is
-         * capture above, and the thread local is very fast.
+         * captured above, and the thread local is very fast.
          */
         final double maxNoProgressPeriod = (Options.CompilationNoProgressPeriod.getValue(opt) * 1000);
         if (maxNoProgressPeriod == 0D) {
