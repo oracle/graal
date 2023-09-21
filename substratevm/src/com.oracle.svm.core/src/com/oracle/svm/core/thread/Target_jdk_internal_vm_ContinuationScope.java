@@ -26,6 +26,6 @@ package com.oracle.svm.core.thread;
 
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(className = "ContinuationScope", classNameProvider = Package_jdk_internal_vm_helper.class)
+@TargetClass(className = "jdk.internal.vm.ContinuationScope")
 public final class Target_jdk_internal_vm_ContinuationScope {
 }

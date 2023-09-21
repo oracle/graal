@@ -430,6 +430,10 @@ public final class Target_java_lang_Thread {
         return JavaThreads.getStackTrace(false, JavaThreads.fromTarget(this));
     }
 
+    @Delete
+    @SuppressWarnings({"static-method"})
+    private native Object getStackTrace0();
+
     /** @see com.oracle.svm.core.jdk.StackTraceUtils#asyncGetStackTrace */
     @Delete
     native StackTraceElement[] asyncGetStackTrace();
@@ -580,6 +584,9 @@ public final class Target_java_lang_Thread {
 
     @Alias
     native long threadId();
+
+    @Delete
+    static native long getNextThreadIdOffset();
 }
 
 @TargetClass(value = Thread.class, innerClass = "Builder")

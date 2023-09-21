@@ -75,7 +75,6 @@ import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
@@ -166,7 +165,6 @@ public class PermissionsFeature implements Feature {
     /**
      * Classes for reflective accesses which are opaque for permission analysis.
      */
-    private AnalysisType reflectionFieldAccessorFactory;
 
     private InlinedUnsafeMethodNode inlinedUnsafeCall;
 
@@ -218,8 +216,6 @@ public class PermissionsFeature implements Feature {
                             Options.TruffleTCKPermissionsExcludeFiles,
                             new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
                             CONFIG);
-            reflectionFieldAccessorFactory = bb.getMetaAccess().lookupJavaType(loadClassOrFail("jdk.internal.reflect.UnsafeFieldAccessorFactory"));
-            VMError.guarantee(reflectionFieldAccessorFactory != null, "Cannot load one or several reflection types");
             whiteList = parser.getLoadedWhiteList();
             Set<BaseMethodNode> deniedMethods = new HashSet<>();
             deniedMethods.addAll(findMethods(bb, SecurityManager.class, (m) -> m.getName().startsWith("check")));
@@ -459,7 +455,7 @@ public class PermissionsFeature implements Feature {
                 } else {
                     nextCaller: for (BaseMethodNode caller : callers) {
                         for (CallGraphFilter filter : contextFilters) {
-                            if (isReflectionFieldAccessorFactory(caller) || filter.test(mNode, caller, visited)) {
+                            if (filter.test(mNode, caller, visited)) {
                                 continue nextCaller;
                             }
                         }
@@ -471,14 +467,6 @@ public class PermissionsFeature implements Feature {
             }
         }
         return useNoReports;
-    }
-
-    /**
-     * Tests if the given {@link BaseMethodNode} is part of the factory of field accessors.
-     */
-    private boolean isReflectionFieldAccessorFactory(BaseMethodNode methodNode) {
-        AnalysisMethod method = methodNode.getMethod();
-        return method != null && reflectionFieldAccessorFactory.isAssignableFrom(method.getDeclaringClass());
     }
 
     /**
@@ -648,7 +636,7 @@ public class PermissionsFeature implements Feature {
     /**
      * Filters out {@code AccessController#doPrivileged} done by JRE.
      */
-    private final class SafePrivilegedRecognizer implements CallGraphFilter {
+    private static final class SafePrivilegedRecognizer implements CallGraphFilter {
 
         private final SVMHost hostVM;
         private final Set<? extends BaseMethodNode> doPrivileged;

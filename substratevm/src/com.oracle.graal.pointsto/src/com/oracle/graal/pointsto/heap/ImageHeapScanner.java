@@ -35,8 +35,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.core.common.type.TypedConstant;
 import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
@@ -49,7 +49,6 @@ import com.oracle.graal.pointsto.ObjectScanningObserver;
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
-import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -90,9 +89,6 @@ public abstract class ImageHeapScanner {
     protected final SnippetReflectionProvider hostedSnippetReflection;
 
     protected ObjectScanningObserver scanningObserver;
-
-    /** Marker object installed when encountering scanning issues like illegal objects. */
-    private static final ImageHeapConstant NULL_IMAGE_HEAP_OBJECT = new ImageHeapInstance(null, JavaConstant.NULL_POINTER, 0);
 
     public ImageHeapScanner(BigBang bb, ImageHeap heap, AnalysisMetaAccess aMetaAccess, SnippetReflectionProvider aSnippetReflection,
                     ConstantReflectionProvider aConstantReflection, ObjectScanningObserver aScanningObserver) {
@@ -199,9 +195,6 @@ public abstract class ImageHeapScanner {
         ScanReason nonNullReason = Objects.requireNonNull(reason);
         Object existingTask = imageHeap.getSnapshot(javaConstant);
         if (existingTask == null) {
-            if (universe.sealed()) {
-                throw AnalysisError.shouldNotReachHere("Universe is sealed. New constant reachable: " + javaConstant.toValueString());
-            }
             AnalysisFuture<ImageHeapConstant> newTask = new AnalysisFuture<>(() -> {
                 ImageHeapConstant imageHeapConstant = createImageHeapObject(javaConstant, nonNullReason);
                 /* When the image heap object is created replace the future in the map. */
@@ -225,10 +218,6 @@ public abstract class ImageHeapScanner {
 
         Optional<JavaConstant> replaced = maybeReplace(constant, reason);
         if (replaced.isPresent()) {
-            if (replaced.get().isNull()) {
-                /* There was some problem during replacement, install a marker object. */
-                return NULL_IMAGE_HEAP_OBJECT;
-            }
             /*
              * This ensures that we have a unique ImageHeapObject for the original and replaced
              * object. As a side effect, this runs all object transformer again on the replaced
@@ -318,8 +307,10 @@ public abstract class ImageHeapScanner {
                     return Optional.of(replacedConstant);
                 }
             } catch (UnsupportedFeatureException e) {
-                ObjectScanner.unsupportedFeatureDuringConstantScan(universe.getBigbang(), constant, e, reason);
-                return Optional.of(JavaConstant.NULL_POINTER);
+                /* Enhance the unsupported feature message with the object trace and rethrow. */
+                StringBuilder backtrace = new StringBuilder();
+                ObjectScanner.buildObjectBacktrace(bb, reason, backtrace);
+                throw new UnsupportedFeatureException(e.getMessage() + System.lineSeparator() + backtrace);
             }
 
         }
@@ -406,6 +397,8 @@ public abstract class ImageHeapScanner {
     private boolean doNotifyAnalysis(AnalysisField field, JavaConstant receiver, JavaConstant fieldValue, ScanReason reason) {
         boolean analysisModified = false;
         if (fieldValue.getJavaKind() == JavaKind.Object && hostVM.isRelocatedPointer(metaAccess, fieldValue)) {
+            /* Ensure the relocatable pointer type is analysed. */
+            ((AnalysisType) ((TypedConstant) fieldValue).getType(metaAccess)).registerAsReachable(reason);
             analysisModified = scanningObserver.forRelocatedPointerFieldValue(receiver, field, fieldValue, reason);
         } else if (fieldValue.isNull()) {
             analysisModified = scanningObserver.forNullFieldValue(receiver, field, reason);
@@ -439,11 +432,7 @@ public abstract class ImageHeapScanner {
     }
 
     private boolean isNonNullObjectConstant(JavaConstant constant) {
-        return constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && !isWordType(constant, metaAccess);
-    }
-
-    public static boolean isWordType(JavaConstant rawElementValue, UniverseMetaAccess metaAccess) {
-        return metaAccess.isInstanceOf(rawElementValue, WordBase.class);
+        return constant.getJavaKind() == JavaKind.Object && constant.isNonNull() && !universe.hostVM().isRelocatedPointer(metaAccess, constant);
     }
 
     private boolean notifyAnalysis(JavaConstant array, AnalysisType arrayType, JavaConstant elementValue, int elementIndex, ScanReason reason) {
@@ -451,7 +440,7 @@ public abstract class ImageHeapScanner {
         if (elementValue.isNull()) {
             analysisModified = scanningObserver.forNullArrayElement(array, arrayType, elementIndex, reason);
         } else {
-            if (isWordType(elementValue, metaAccess)) {
+            if (universe.hostVM().isRelocatedPointer(metaAccess, elementValue)) {
                 return false;
             }
             AnalysisType elementType = metaAccess.lookupJavaType(elementValue);
@@ -522,23 +511,11 @@ public abstract class ImageHeapScanner {
 
     protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
         // Wrap the hosted constant into a substrate constant
-        JavaConstant value = universe.lookup(hostedConstantReflection.readFieldValue(field.wrapped, receiver));
+        JavaConstant value = universe.fromHosted(hostedConstantReflection.readFieldValue(field.wrapped, receiver));
         return ValueSupplier.eagerValue(value);
     }
 
-    public JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
-        return constantReflection.readFieldValue(field, receiver);
-    }
-
-    protected boolean skipScanning() {
-        return false;
-    }
-
     public void rescanRoot(Field reflectionField) {
-        if (skipScanning()) {
-            return;
-        }
-
         maybeRunInExecutor(unused -> {
             AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
             if (type.isReachable()) {
@@ -554,9 +531,6 @@ public abstract class ImageHeapScanner {
     }
 
     public void rescanField(Object receiver, Field reflectionField) {
-        if (skipScanning()) {
-            return;
-        }
         maybeRunInExecutor(unused -> {
             AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
             if (type.isReachable()) {
@@ -626,9 +600,6 @@ public abstract class ImageHeapScanner {
      * Add the object to the image heap.
      */
     public void rescanObject(Object object, ScanReason reason) {
-        if (skipScanning()) {
-            return;
-        }
         if (object == null) {
             return;
         }
@@ -686,8 +657,8 @@ public abstract class ImageHeapScanner {
         return snippetReflection.asObject(Object.class, constant);
     }
 
-    public JavaConstant asConstant(Object object) {
-        return snippetReflection.forObject(object);
+    private JavaConstant asConstant(Object object) {
+        return universe.getSnippetReflection().forObject(object);
     }
 
     public void cleanupAfterAnalysis() {

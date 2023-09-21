@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,14 +22,17 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jni.headers;
+package org.graalvm.compiler.hotspot;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+public final class JVMCIVersionCompare {
 
-public class JNIHeaderDirectivesJDK19OrLater extends JNIHeaderDirectives {
-
-    @Override
-    public boolean isInConfiguration() {
-        return JavaVersionUtil.JAVA_SPEC >= 19;
+    public static void main(String[] args) {
+        if (args.length != 2) {
+            System.err.println("Expected two arguments");
+            System.exit(1);
+        }
+        Runtime.Version a = Runtime.Version.parse(args[0]);
+        Runtime.Version b = Runtime.Version.parse(args[1]);
+        System.out.print(a.compareTo(b));
     }
 }

@@ -46,14 +46,12 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
-import com.oracle.svm.core.BuildPhaseProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jdk.VarHandleFeature;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.ameta.ReadableJavaField;
-import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.methodhandles.MethodHandleFeature;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -64,7 +62,6 @@ import jdk.vm.ci.meta.JavaConstant;
 public class SVMImageHeapScanner extends ImageHeapScanner {
 
     private final ImageClassLoader loader;
-    protected HostedMetaAccess hostedMetaAccess;
     private final Class<?> economicMapImpl;
     private final Field economicMapImplEntriesField;
     private final Field economicMapImplHashArrayField;
@@ -98,10 +95,6 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
         return ImageSingletons.lookup(ImageHeapScanner.class);
     }
 
-    public void setHostedMetaAccess(HostedMetaAccess hostedMetaAccess) {
-        this.hostedMetaAccess = hostedMetaAccess;
-    }
-
     @Override
     protected Class<?> getClass(String className) {
         return loader.findClassOrFail(className);
@@ -121,23 +114,12 @@ public class SVMImageHeapScanner extends ImageHeapScanner {
     @Override
     protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
         AnalysisConstantReflectionProvider aConstantReflection = (AnalysisConstantReflectionProvider) this.constantReflection;
-        return aConstantReflection.readHostedFieldValue(field, hostedMetaAccess, receiver, true);
-    }
-
-    @Override
-    public JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
-        AnalysisConstantReflectionProvider aConstantReflection = (AnalysisConstantReflectionProvider) this.constantReflection;
-        return aConstantReflection.readValue(metaAccess, field, receiver, true);
+        return aConstantReflection.readHostedFieldValue(field, receiver, true);
     }
 
     @Override
     protected JavaConstant transformFieldValue(AnalysisField field, JavaConstant receiverConstant, JavaConstant originalValueConstant) {
         return ((AnalysisConstantReflectionProvider) constantReflection).interceptValue(metaAccess, field, originalValueConstant);
-    }
-
-    @Override
-    protected boolean skipScanning() {
-        return BuildPhaseProvider.isAnalysisFinished();
     }
 
     @Override

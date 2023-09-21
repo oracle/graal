@@ -392,4 +392,24 @@ public class LoopPartialUnrollTest extends GraalCompilerTest {
         check = true;
     }
 
+    @Test
+    public void testIDiv() {
+        check = false;
+        for (int i = -1; i < 64; i++) {
+            test("idivSnippet", i);
+        }
+        check = true;
+    }
+
+    static int S = 100;
+
+    public static int idivSnippet(int iterations) {
+        int res = 0;
+        for (int i = 1; injectBranchProbability(0.99, i < iterations); i++) {
+            res += 100 / i;
+        }
+
+        return res;
+    }
+
 }

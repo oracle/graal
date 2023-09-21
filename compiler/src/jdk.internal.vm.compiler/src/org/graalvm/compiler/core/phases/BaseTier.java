@@ -24,6 +24,9 @@
  */
 package org.graalvm.compiler.core.phases;
 
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.loop.DefaultLoopPolicies;
 import org.graalvm.compiler.nodes.loop.LoopPolicies;
@@ -34,16 +37,24 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 
 public class BaseTier<C> extends PhaseSuite<C> {
 
+    /**
+     * Time spent in hinted GC in frontend.
+     */
+    public static final TimerKey HIRHintedGC = DebugContext.timer("HIRHintedGC").doc("Time spent in hinted GC performed before each HIR phase.");
+
     public LoopPolicies createLoopPolicies(@SuppressWarnings("unused") OptionValues options) {
         return new DefaultLoopPolicies();
     }
 
+    @SuppressWarnings({"try"})
     @Override
     protected void run(StructuredGraph graph, C context) {
         for (BasePhase<? super C> phase : getPhases()) {
             // Notify the runtime that most objects allocated in previous HIR phase are dead and can
             // be reclaimed. This will lower the chance of allocation failure in the next HIR phase.
-            GraalServices.notifyLowMemoryPoint(false);
+            try (DebugCloseable timer = HIRHintedGC.start(graph.getDebug())) {
+                GraalServices.notifyLowMemoryPoint(false);
+            }
             phase.apply(graph, context);
         }
     }

@@ -26,6 +26,7 @@ package org.graalvm.compiler.hotspot.phases;
 
 import static org.graalvm.compiler.phases.common.DeadCodeEliminationPhase.Optionality.Required;
 
+import java.util.BitSet;
 import java.util.Optional;
 
 import org.graalvm.compiler.core.common.PermanentBailoutException;
@@ -38,9 +39,11 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.compiler.loop.phases.LoopTransformations;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodeinfo.Verbosity;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.EntryMarkerNode;
 import org.graalvm.compiler.nodes.EntryProxyNode;
 import org.graalvm.compiler.nodes.FixedGuardNode;
@@ -80,6 +83,7 @@ import org.graalvm.compiler.serviceprovider.SpeculationReasonGroup;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.SpeculationLog;
 import jdk.vm.ci.meta.SpeculationLog.SpeculationReason;
 import jdk.vm.ci.runtime.JVMCICompiler;
@@ -187,6 +191,10 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
             final int localsSize = osrState.localsSize();
             final int locksSize = osrState.locksSize();
 
+            ResolvedJavaMethod osrStateMethod = osrState.getMethod();
+            GraalError.guarantee(localsSize == osrStateMethod.getMaxLocals(), "%s@%d: locals size %d != %d", osrStateMethod, osrState.bci, localsSize, osrStateMethod.getMaxLocals());
+            BitSet oopMap = getOopMapAt(osrStateMethod, osrState.bci);
+
             for (int i = 0; i < localsSize + locksSize; i++) {
                 ValueNode value;
                 if (i >= localsSize) {
@@ -210,25 +218,17 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
                     if (i >= localsSize) {
                         osrLocal = graph.addOrUnique(new OSRLockNode(i - localsSize, unrestrictedStamp));
                     } else {
-                        osrLocal = graph.addOrUnique(new OSRLocalNode(i, unrestrictedStamp));
+                        osrLocal = initLocal(graph, unrestrictedStamp, oopMap, i);
                     }
+
                     // Speculate on the OSRLocal stamps that could be more precise.
                     SpeculationReason reason = OSR_LOCAL_SPECULATIONS.createSpeculationReason(osrState.bci, narrowedStamp, i);
                     if (graph.getSpeculationLog().maySpeculate(reason) && osrLocal instanceof OSRLocalNode && value.getStackKind().equals(JavaKind.Object) &&
                                     !narrowedStamp.isUnrestricted()) {
-                        // Add guard.
-                        LogicNode check = graph.addOrUniqueWithInputs(InstanceOfNode.createHelper((ObjectStamp) narrowedStamp, osrLocal, null, null));
-                        SpeculationLog.Speculation constant = graph.getSpeculationLog().speculate(reason);
-                        FixedGuardNode guard = graph.add(new FixedGuardNode(check, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, constant, false));
-                        graph.addAfterFixed(osrStart, guard);
-
-                        // Replace with a more specific type at usages.
-                        // We know that we are at the root,
-                        // so we need to replace the proxy in the state.
-                        proxy.replaceAtMatchingUsages(osrLocal, n -> n == osrState);
-                        osrLocal = graph.addOrUnique(new PiNode(osrLocal, narrowedStamp, guard));
+                        osrLocal = narrowOsrLocal(graph, narrowedStamp, osrLocal, reason, osrStart, proxy, osrState);
                     }
                     proxy.replaceAndDelete(osrLocal);
+
                 } else {
                     assert value == null || value instanceof OSRLocalNode;
                 }
@@ -285,6 +285,80 @@ public class OnStackReplacementPhase extends BasePhase<CoreProviders> {
          * There must not be any parameter nodes left after OSR compilation.
          */
         assert graph.getNodes(ParameterNode.TYPE).count() == 0 : "OSR Compilation contains references to parameters.";
+    }
+
+    /**
+     * Generates a speculative type check on {@code osrLocal} for {@code narrowedStamp}.
+     *
+     * @return a {@link PiNode} that narrows the type of {@code osrLocal} to {@code narrowedStamp}
+     */
+    private static ValueNode narrowOsrLocal(StructuredGraph graph, Stamp narrowedStamp, ValueNode osrLocal, SpeculationReason reason,
+                    OSRStartNode osrStart, EntryProxyNode proxy, FrameState osrState) {
+        // Add guard.
+        LogicNode check = graph.addOrUniqueWithInputs(InstanceOfNode.createHelper((ObjectStamp) narrowedStamp, osrLocal, null, null));
+        SpeculationLog.Speculation constant = graph.getSpeculationLog().speculate(reason);
+        FixedGuardNode guard = graph.add(new FixedGuardNode(check, DeoptimizationReason.OptimizedTypeCheckViolated, DeoptimizationAction.InvalidateRecompile, constant, false));
+        graph.addAfterFixed(osrStart, guard);
+
+        // Replace with a more specific type at usages.
+        // We know that we are at the root,
+        // so we need to replace the proxy in the state.
+        proxy.replaceAtMatchingUsages(osrLocal, n -> n == osrState);
+        return graph.addOrUnique(new PiNode(osrLocal, narrowedStamp, guard));
+    }
+
+    /**
+     * Initializes local variable {@code i} at an OSR entry point.
+     *
+     * @param oopMap oop map for the method at the OSR entry point (see
+     *            {@link #getOopMapAt(ResolvedJavaMethod, int)}
+     * @param i index of a local variable
+     * @return value representing initial value of the local variable
+     */
+    private static ValueNode initLocal(StructuredGraph graph, Stamp unrestrictedStamp, BitSet oopMap, int i) {
+        if (unrestrictedStamp.isObjectStamp() && (oopMap != null && !oopMap.get(i))) {
+            // @formatter:off
+            // The OSR entry FrameState says that this value is "available" here.
+            // That is, all *parsed* control flow paths to the frame state had a
+            // definition of the value. However, the interpreter oop map shows
+            // the value is not available here based on *all* control flow paths.
+            // See GraalOSRTest.testOopMap() for an example where Graal
+            // does not parse a non-taken exception handler path.
+            // We need to use the interpreter's view in this case since it's
+            // guaranteed to be complete, and so we treat the value as null.
+            //
+            // The interpreter view also helps preserve object values for the
+            // lifetime expected by a debugger. For example:
+            //
+            // 1: int foo(int i1, Object o2) {
+            // 2:     int h = o2.hashCode();
+            // 3:     h *= i1;
+            // 4:     bar(h);
+            // 5:     return h;
+            // 6: }
+            //
+            // The availability of o2 according to the interpreter is from line 1
+            // to line 5 (i.e. o2's source file scope). Without the oop map, we would use
+            // compiler liveness for o2's availability which would only be
+            // from line 1 to line 2 since it's not read after line 2.
+            // @formatter:on
+            return ConstantNode.defaultForKind(JavaKind.Object, graph);
+        }
+        return graph.addOrUnique(new OSRLocalNode(i, unrestrictedStamp));
+    }
+
+    /**
+     * Gets the oop map covering the local variables of {@code method} at {@code bci}.
+     *
+     * @return a bit set with a bit set for each local variable that contains a live oop at
+     *         {@code bci}
+     */
+    private static BitSet getOopMapAt(ResolvedJavaMethod method, int bci) {
+        if (!HotSpotGraalServices.hasGetOopMapAt()) {
+            return null;
+        } else {
+            return HotSpotGraalServices.getOopMapAt(method, bci);
+        }
     }
 
     private static EntryMarkerNode getEntryMarker(StructuredGraph graph) {

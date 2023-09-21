@@ -407,7 +407,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
      *
      * @return a list containing all the callers for the given context sensitive method
      */
-    public List<MethodFlowsGraph> callers(PointsToAnalysis bb) {
+    public List<MethodFlowsGraph> allNonStubCallers(PointsToAnalysis bb) {
         /*
          * This list is seldom needed thus it is created lazily instead of storing a mapping from a
          * caller context to a caller graph for each method graph.
@@ -423,7 +423,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
                         /* The invoke has been replaced by the context insensitive one. */
                         invoke = callerInvoke.getTargetMethod().getContextInsensitiveVirtualInvoke(method.getMultiMethodKey());
                     }
-                    for (MethodFlowsGraph calleeFlowGraph : invoke.getOriginalCalleesFlows(bb)) {
+                    for (MethodFlowsGraph calleeFlowGraph : invoke.getAllNonStubCalleesFlows(bb)) {
                         // 'this' method graph was found among the callees of an invoke flow in one
                         // of the clones of the caller methods, hence we regiter that clone as a
                         // caller for 'this' method clone
@@ -439,14 +439,16 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
 
     /**
      * Given a context sensitive caller, i.e., another MethodFlowsGraph, identify the InvokeTypeFlow
-     * belonging to the caller that linked to this callee.
+     * belonging to the caller that linked to this callee. Note if multiple invokes within the
+     * caller target this method, then only the first found matching invoke typeflow will be
+     * returned.
      *
      * @param callerFlowGraph the context sensitive caller.
      * @return the InvokeTypeFlow object belonging to the caller that linked to this callee.
      */
     public InvokeTypeFlow invokeFlow(MethodFlowsGraph callerFlowGraph, PointsToAnalysis bb) {
         for (InvokeTypeFlow callerInvoke : callerFlowGraph.getInvokes().getValues()) {
-            for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getOriginalCalleesFlows(bb)) {
+            for (MethodFlowsGraph calleeFlowGraph : callerInvoke.getAllNonStubCalleesFlows(bb)) {
                 // 'this' method graph was found among the callees of an invoke flow in the caller
                 // method clone, hence we register return it
                 if (calleeFlowGraph.equals(this)) {

@@ -101,6 +101,10 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
         }
     }
 
+    public boolean linksOnlyOriginalCallees() {
+        return allOriginalCallees;
+    }
+
     public void markAsContextInsensitive() {
         isContextInsensitive = true;
     }
@@ -386,33 +390,12 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     }
 
     /**
-     * Returns the context sensitive method flows for the callees resolved for the invoke type flow.
-     * That means that for each callee only those method flows corresponding to contexts reached
-     * from this invoke are returned. Note that callee flows in this list can have a MultiMethodKey
-     * different from {@link MultiMethod#ORIGINAL_METHOD} and also may not be
-     * {@link AnalysisMethod#isImplementationInvoked()}.
+     * Returns the context sensitive method flows for the callees resolved for the invoke type flow
+     * which are not still in stub form. That means that for each callee only those method flows
+     * corresponding to contexts reached from this invoke are returned. Note that callee flows in
+     * this list can have a MultiMethodKey different from {@link MultiMethod#ORIGINAL_METHOD}.
      */
-    protected abstract Collection<MethodFlowsGraph> getAllCalleesFlows(PointsToAnalysis bb);
-
-    /**
-     * Same as {@link #getAllCalleesFlows}, except that this method only returns calleesFlows whose
-     * multimethodkey is {@link MultiMethod#ORIGINAL_METHOD} and also are guaranteed to be
-     * {@link AnalysisMethod#isImplementationInvoked()}.
-     */
-    public final Collection<MethodFlowsGraph> getOriginalCalleesFlows(PointsToAnalysis bb) {
-        Collection<MethodFlowsGraph> allCalleesFlows = getAllCalleesFlows(bb);
-        assert allCalleesFlows != null;
-
-        if (allOriginalCallees) {
-            return allCalleesFlows;
-        }
-
-        return allCalleesFlows.stream().filter(flow -> {
-            boolean originalMethod = flow.getMethod().isOriginalMethod();
-            assert !(originalMethod && flow.isStub());
-            return originalMethod;
-        }).collect(Collectors.toUnmodifiableList());
-    }
+    public abstract Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(PointsToAnalysis bb);
 
     public MultiMethodKey getCallerMultiMethodKey() {
         return callerMultiMethodKey;

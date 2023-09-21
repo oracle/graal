@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,17 +45,27 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.RootNode;
 
 /**
  * Generates a default wrapper subclass of an annotated {@link InstrumentableNode} subclass. The
  * generated subclass has the same class name as the original class name plus the 'Wrapper' suffix.
  * The generated class has default package visibility. All non-final and non-private methods
- * starting with execute are overridden by the generated wrapper. The generated overrides notifies
- * execution events as required by {@link ProbeNode probes}. Other abstract methods are directly
- * delegated to the wrapped node. No other methods are overridden by the generated wrapper. At least
- * one method starting with execute must be non-private and non-final. Every execute method must
- * have {@link VirtualFrame} as the first declared parameter.
+ * starting with execute or {@link #resumeMethodPrefix() resume prefix (when specified)} are
+ * overridden by the generated wrapper. The generated overrides notifies execution events as
+ * required by {@link ProbeNode probes}. Other abstract methods are directly delegated to the
+ * wrapped node. No other methods are overridden by the generated wrapper. At least one method
+ * starting with execute must be non-private and non-final. Every execute method must have
+ * {@link VirtualFrame} as the first declared parameter.
+ * <p>
+ * Use methods with <code>execute</code> prefix for ordinary guest code execution. If the guest
+ * language supports yield, add {@link #yieldExceptions()} argument and specify
+ * {@link #resumeMethodPrefix() resume prefix} to mark method(s) that resume the yielded execution.
+ * To successfully match the yielded/resumed execution, override
+ * {@link RootNode#isSameFrame(Frame, Frame)} in case the resumed frame is not an identical instance
+ * to the yielded frame.
  * <p>
  * <b>Example Usage:</b>
  *
@@ -145,6 +155,26 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 public @interface GenerateWrapper {
 
     /**
+     * Exceptions that are thrown to yield the execution of a thread. They must implement
+     * {@link YieldException} interface. When one of them is thrown,
+     * {@link ProbeNode#onYield(VirtualFrame, Object) onYield()} is called automatically. To
+     * indicate resume of the execution, provide {@link #resumeMethodPrefix()}.
+     *
+     * @since 24.0
+     */
+    Class<?>[] yieldExceptions() default {};
+
+    /**
+     * Prefix of methods that resume execution after {@link ProbeNode#onYield(VirtualFrame, Object)
+     * yield}. The prefix is empty by default, which means no resume methods. When non-empty, the
+     * generated wrapper calls {@link ProbeNode#onResume(VirtualFrame)} instead of
+     * {@link ProbeNode#onEnter(VirtualFrame)}.
+     *
+     * @since 24.0
+     */
+    String resumeMethodPrefix() default "";
+
+    /**
      * Annotates a method to be used as incoming value converter. The annotated method can be used
      * to convert incoming values that were introduced by instruments. Instruments may introduce new
      * values to the interpreter using the {@link EventContext#createUnwind(Object) unwind} feature.
@@ -199,4 +229,20 @@ public @interface GenerateWrapper {
     public @interface Ignore {
     }
 
+    /**
+     * An interface to be implemented by {@link #yieldExceptions() yield exceptions}. When a yield
+     * exception is thrown from an {@link InstrumentableNode} wrapped by {@link GenerateWrapper},
+     * {@link ProbeNode#onYield(VirtualFrame, Object) onYield()} is called automatically.
+     *
+     * @since 24.0
+     */
+    public static interface YieldException {
+
+        /**
+         * Get the value provided by the yield.
+         *
+         * @since 24.0
+         */
+        Object getYieldValue();
+    }
 }

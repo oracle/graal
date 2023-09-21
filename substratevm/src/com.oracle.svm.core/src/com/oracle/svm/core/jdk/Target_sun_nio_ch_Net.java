@@ -22,29 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jni.headers;
+package com.oracle.svm.core.jdk;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
+import java.io.FileDescriptor;
+import java.io.IOException;
 
-final class JNIHeaderDirectivesJDK21OrLater extends JNIHeaderDirectives {
-    @Override
-    public boolean isInConfiguration() {
-        return JavaVersionUtil.JAVA_SPEC >= 21;
-    }
-}
+import com.oracle.svm.core.annotate.Substitute;
+import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.VMError;
 
-@CContext(JNIHeaderDirectivesJDK21OrLater.class)
-public final class JNIVersionJDK21OrLater {
+@TargetClass(className = "sun.nio.ch.Net", onlyWith = NonWindowsOS.class)
+final class Target_sun_nio_ch_Net {
 
-    // Checkstyle: stop
-
-    @CConstant
-    public static native int JNI_VERSION_21();
-
-    // Checkstyle: resume
-
-    private JNIVersionJDK21OrLater() {
+    @SuppressWarnings({"unused", "RedundantThrows"})
+    @Substitute
+    static boolean discardOOB(FileDescriptor fd) throws IOException {
+        throw VMError.unimplemented("Not implemented on non-Windows systems in the JDK.");
     }
 }

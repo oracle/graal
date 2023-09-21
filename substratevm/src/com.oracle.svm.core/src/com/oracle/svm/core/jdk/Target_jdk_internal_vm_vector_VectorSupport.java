@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,25 +22,21 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
+package com.oracle.svm.core.jdk;
 
-import java.util.function.Function;
-
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
-
+import com.oracle.svm.core.annotate.Delete;
+import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.util.VMError;
 
-@Platforms(Platform.HOSTED_ONLY.class)
-public class Package_jdk_internal_vm_helper implements Function<TargetClass, String> {
+@TargetClass(className = "jdk.internal.vm.vector.VectorSupport")
+public final class Target_jdk_internal_vm_vector_VectorSupport {
+    @Delete
+    private static native int registerNatives();
 
-    @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            return "jdk.internal.vm." + annotation.className();
-        } else {
-            return "java.lang." + annotation.className();
-        }
+    @SuppressWarnings("unused")
+    @Substitute
+    public static int getMaxLaneCount(Class<?> etype) {
+        throw VMError.unsupportedFeature("VectorSupport.getMaxLaneCount not supported.");
     }
 }

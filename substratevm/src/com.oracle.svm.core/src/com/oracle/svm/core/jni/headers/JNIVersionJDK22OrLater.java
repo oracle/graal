@@ -22,25 +22,33 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.thread;
-
-import java.util.function.Function;
+package com.oracle.svm.core.jni.headers;
 
 import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.c.CContext;
+import org.graalvm.nativeimage.c.constant.CConstant;
 
-import com.oracle.svm.core.annotate.TargetClass;
-
-@Platforms(Platform.HOSTED_ONLY.class)
-public class Package_jdk_incubator_concurrent_helper implements Function<TargetClass, String> {
-
+final class JNIHeaderDirectivesJDK22OrLater extends JNIHeaderDirectives {
     @Override
-    public String apply(TargetClass annotation) {
-        if (JavaVersionUtil.JAVA_SPEC >= 21) {
-            return "java.lang." + annotation.className();
-        } else {
-            return "jdk.incubator.concurrent." + annotation.className();
-        }
+    public boolean isInConfiguration() {
+        return JavaVersionUtil.JAVA_SPEC >= 22;
+    }
+}
+
+@CContext(JNIHeaderDirectivesJDK22OrLater.class)
+public final class JNIVersionJDK22OrLater {
+
+    // Checkstyle: stop
+
+    /*
+     * GR-48572: there is not yet a JNI_VERSION_22 constant defined. As soon as it gets available,
+     * the "value" property of the CConstant annotation below must be removed.
+     */
+    @CConstant(value = "JNI_VERSION_21")
+    public static native int JNI_VERSION_22();
+
+    // Checkstyle: resume
+
+    private JNIVersionJDK22OrLater() {
     }
 }

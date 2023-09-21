@@ -45,7 +45,7 @@ final class ScopedValuesEnabled implements BooleanSupplier {
     }
 }
 
-@TargetClass(className = "ScopedValue", classNameProvider = Package_jdk_incubator_concurrent_helper.class, onlyWith = ScopedValuesEnabled.class)
+@TargetClass(className = "java.lang.ScopedValue", onlyWith = ScopedValuesEnabled.class)
 final class Target_java_lang_ScopedValue {
     @Substitute
     static Target_java_lang_ScopedValue_Snapshot scopedValueBindings() {
@@ -62,7 +62,7 @@ final class Target_java_lang_ScopedValue {
  * Substituted to directly call {@link Target_java_lang_Thread#setScopedValueBindings} for forced
  * inlining.
  */
-@TargetClass(className = "ScopedValue", classNameProvider = Package_jdk_incubator_concurrent_helper.class, innerClass = "Carrier", onlyWith = ScopedValuesEnabled.class)
+@TargetClass(className = "java.lang.ScopedValue", innerClass = "Carrier", onlyWith = ScopedValuesEnabled.class)
 final class Target_java_lang_ScopedValue_Carrier {
     @Alias int bitmask;
 
@@ -100,7 +100,7 @@ final class Target_jdk_internal_vm_ScopedValueContainer {
     static native void run(Runnable op);
 }
 
-@TargetClass(className = "ScopedValue", classNameProvider = Package_jdk_incubator_concurrent_helper.class, innerClass = "Snapshot", onlyWith = ScopedValuesEnabled.class)
+@TargetClass(className = "java.lang.ScopedValue", innerClass = "Snapshot", onlyWith = ScopedValuesEnabled.class)
 final class Target_java_lang_ScopedValue_Snapshot {
     // Checkstyle: stop
     @Alias //
@@ -111,7 +111,7 @@ final class Target_java_lang_ScopedValue_Snapshot {
     Target_java_lang_ScopedValue_Snapshot prev;
 }
 
-@TargetClass(className = "ScopedValue", classNameProvider = Package_jdk_incubator_concurrent_helper.class, innerClass = "Cache", onlyWith = ScopedValuesEnabled.class)
+@TargetClass(className = "java.lang.ScopedValue", innerClass = "Cache", onlyWith = ScopedValuesEnabled.class)
 final class Target_java_lang_ScopedValue_Cache {
     @Alias
     static native void invalidate(int toClearBits);

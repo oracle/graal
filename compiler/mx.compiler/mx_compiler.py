@@ -78,26 +78,92 @@ def get_vm_prefix(asList=True):
 #: The JDK used to build and run Graal.
 jdk = mx.get_jdk(tag='default')
 
-#: 3-tuple (major, minor, build) of JVMCI version, if any, denoted by `jdk`
-_jdk_jvmci_version = None
 
-if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '17':
-    mx.abort('Graal requires JDK17 or later, got ' + str(jdk) +
+class JavaLangRuntimeVersion(mx.Comparable):
+    """Wrapper for by java.lang.Runtime.Version"""
+
+    _cmp_cache = {}
+    _feature_re = re.compile('[1-9][0-9]*')
+
+    def __init__(self, version, jdk=None):
+        self.version = version
+        self.jdk = jdk or mx.get_jdk()
+
+    def __str__(self):
+        return self.version
+
+    def __cmp__(self, other):
+        if not isinstance(other, JavaLangRuntimeVersion):
+            raise TypeError(f'Cannot compare {JavaLangRuntimeVersion.__name__} to {type(other).__name__}')
+        this_version = self.version
+        other_version = other.version
+        if this_version == other_version:
+            return 0
+        if self.feature() == 21 and other.feature() == 21:
+            # JDK 21 uses the legacy version scheme where the jdkVersion is irrelevant (and imprecise).
+            # Thus, we do not perform a full version check.
+            return 0
+        return JavaLangRuntimeVersion.compare(this_version, other_version, jdk)
+
+    @staticmethod
+    def compare(this_version, other_version, jdk):
+        key = (this_version, other_version)
+        cached = JavaLangRuntimeVersion._cmp_cache.get(key, None)
+        if cached is not None:
+            return cached
+        source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'org', 'graalvm', 'compiler',
+                           'hotspot',
+                           'JVMCIVersionCompare.java')
+        out = mx.OutputCapture()
+        mx.run([jdk.java, '-Xlog:disable', source_path, this_version, other_version], out=out)
+        ret = int(out.data)
+        JavaLangRuntimeVersion._cmp_cache[key] = ret
+        return ret
+
+    def feature(self):
+        if not hasattr(self, '_feature'):
+            self._feature = int(JavaLangRuntimeVersion._feature_re.match(self.version).group(0))
+        return self._feature
+
+
+#: 4-tuple (jdk_version, jvmci_major, jvmci_minor, jvmci_build) of JVMCI version, if any, denoted by `jdk`
+# jdk_version is a JavaLangRuntimeVersion
+# jvmci_major and jvmci_minor might be 0 if not needed (JDK 22+)
+_jdk_jvmci_version = None
+_jdk_min_jvmci_version = None
+
+if os.environ.get('JDK_VERSION_CHECK', None) != 'ignore' and jdk.javaCompliance < '21':
+    mx.abort('Graal requires JDK21 or later, got ' + str(jdk) +
              '. This check can be bypassed by setting env var JDK_VERSION_CHECK=ignore')
 
 def _check_jvmci_version(jdk):
     """
     Runs a Java utility to check that `jdk` supports the minimum JVMCI API required by Graal.
     """
-    source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'org', 'graalvm', 'compiler', 'hotspot', 'JVMCIVersionCheck.java')
-    out = mx.OutputCapture()
-    mx.run([jdk.java, '-Xlog:disable', source_path], out=out)
+    def _capture_jvmci_version(args=None):
+        out = mx.OutputCapture()
+        _run_jvmci_version_check(args, jdk=jdk, out=out)
+        if out.data:
+            try:
+                (jdk_version, jvmci_major, jvmci_minor, jvmci_build) = out.data.split(',')
+                return (JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
+            except ValueError:
+                mx.warn(f'Could not parse jvmci version from JVMCIVersionCheck output:\n{out.data}')
+            return None
+
     global _jdk_jvmci_version
-    if out.data:
-        try:
-            _jdk_jvmci_version = tuple((int(n) for n in out.data.split(',')))
-        except ValueError:
-            mx.warn(f'Could not parse jvmci version from JVMCIVersionCheck output:\n{out.data}')
+    _jdk_jvmci_version = _capture_jvmci_version()
+    global _jdk_min_jvmci_version
+    _jdk_min_jvmci_version = _capture_jvmci_version(['--min-version'])
+
+
+
+@mx.command(_suite.name, 'jvmci-version-check')
+def _run_jvmci_version_check(args=None, jdk=jdk, **kwargs):
+    source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'org', 'graalvm', 'compiler', 'hotspot',
+                       'JVMCIVersionCheck.java')
+    return mx.run([jdk.java, '-Xlog:disable', source_path] + (args or []), **kwargs)
+
 
 if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
@@ -1085,7 +1151,7 @@ def _check_latest_jvmci_version():
     the JVMCI version of the JVMCI JDKs in the "jdks" section of the
     ``common.json`` file and issues a warning if not.
     """
-    jvmci_re = re.compile(r'.*-jvmci-(\d+)\.(\d+)-b(\d+)')
+    jvmci_re = re.compile(r'(?:ce|ee)-(?P<jdk_version>.+)-jvmci(?:-(?P<jvmci_major>\d+)\.(?P<jvmci_minor>\d+))?-b(?P<jvmci_build>\d+)')
     common_path = join(_suite.dir, '..', 'common.json')
 
     if _jdk_jvmci_version is None:
@@ -1096,35 +1162,64 @@ def _check_latest_jvmci_version():
         with open(common_path) as common_file:
             common_cfg = json.load(common_file)
 
-        latest = None
+        latest = 'not found'
         for distribution in common_cfg['jdks']:
             version = common_cfg['jdks'][distribution].get('version', None)
             if version and '-jvmci-' in version:
-                current = tuple(int(n) for n in jvmci_re.match(version).group(1, 2, 3))
-                if latest is None:
-                    latest = current
-                elif latest != current:
-                    # All JVMCI JDKs in common.json are expected to have the same JVMCI version.
-                    # If they don't then the repo is in some transitionary state
-                    # (e.g. making a JVMCI release) so skip the check.
-                    return None
-        return latest
+                match = jvmci_re.match(version)
+                if not match:
+                    mx.abort(f'Cannot parse version {version}')
+                (jdk_version, jvmci_major, jvmci_minor, jvmci_build) = match.groups(default=0)
+                current = (JavaLangRuntimeVersion(jdk_version), int(jvmci_major), int(jvmci_minor), int(jvmci_build))
+                if current[0].feature() == _jdk_jvmci_version[0].feature():
+                    # only compare the same major versions
+                    if latest == 'not found':
+                        latest = current
+                    elif latest != current:
+                        # All JVMCI JDKs in common.json with the same major version
+                        # are expected to have the same JVMCI version.
+                        # If they don't then the repo is in some transitionary state
+                        # (e.g. making a JVMCI release) so skip the check.
+                        return False, distribution
+        return not isinstance(latest, str), latest
 
     def jvmci_version_str(version):
-        major, minor, build = version
-        return 'jvmci-{}.{}-b{:02d}'.format(major, minor, build)
+        jdk_version, jvmci_major, jvmci_minor, jvmci_build = version
+        if jvmci_major == 0:
+            return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-b{jvmci_build:02d}'
+        else:
+            return f'labsjdk-(ce|ee)-{jdk_version}-jvmci-{jvmci_major}.{jvmci_minor}-b{jvmci_build:02d}'
 
-    latest = get_latest_jvmci_version()
-    if latest is not None and _jdk_jvmci_version < latest:
+    version_check_setting = os.environ.get('JVMCI_VERSION_CHECK', None)
+
+    success, latest = get_latest_jvmci_version()
+
+    if version_check_setting == 'strict' and _jdk_jvmci_version != _jdk_min_jvmci_version:
+        msg = f'JVMCI_MIN_VERSION specified in JVMCIVersionCheck.java is older than in {common_path}:'
+        msg += os.linesep + f'{jvmci_version_str(_jdk_min_jvmci_version)} < {jvmci_version_str(_jdk_jvmci_version)} '
+        msg += os.linesep + f'Did you forget to update JVMCI_MIN_VERSION after updating {common_path}?'
+        msg += os.linesep + 'Set the JVMCI_VERSION_CHECK environment variable to something else then "strict" to'
+        msg += ' suppress this error.'
+        mx.abort(msg)
+
+    if version_check_setting == 'strict' and not success:
+        if latest == 'not found':
+            msg = f'No JVMCI JDK found in {common_path} that matches {jvmci_version_str(_jdk_jvmci_version)}.'
+            msg += os.linesep + f'Check that {latest} matches the versions of the other JVMCI JDKs.'
+        else:
+            msg = f'Version mismatch in {common_path}:'
+            msg += os.linesep + f'Check that {latest} matches the versions of the other JVMCI JDKs.'
+        msg += os.linesep + 'Set the JVMCI_VERSION_CHECK environment variable to something else then "strict" to'
+        msg += ' suppress this error.'
+        mx.abort(msg)
+
+    if success and _jdk_jvmci_version < latest:
         common_path = os.path.normpath(common_path)
-        msg = 'JVMCI version of JAVA_HOME is older than in {}: {} < {} '.format(
-            common_path,
-            jvmci_version_str(_jdk_jvmci_version),
-            jvmci_version_str(latest))
+        msg = f'JVMCI version of JAVA_HOME is older than in {common_path}: {jvmci_version_str(_jdk_jvmci_version)} < {jvmci_version_str(latest)} '
         msg += os.linesep + 'This poses the risk of hitting JVMCI bugs that have already been fixed.'
-        msg += os.linesep + 'Consider using {}, which you can get via:'.format(jvmci_version_str(latest))
-        msg += os.linesep + 'mx fetch-jdk --configuration {}'.format(common_path)
-        mx.warn(msg)
+        msg += os.linesep + f'Consider using {jvmci_version_str(latest)}, which you can get via:'
+        msg += os.linesep + f'mx fetch-jdk --configuration {common_path}'
+        mx.abort_or_warn(msg, version_check_setting == 'strict')
 
 class GraalArchiveParticipant:
     providersRE = re.compile(r'(?:META-INF/versions/([1-9][0-9]*)/)?META-INF/providers/(.+)')

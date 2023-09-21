@@ -27,15 +27,15 @@ package org.graalvm.compiler.core;
 import static org.graalvm.compiler.core.CompilationWrapper.ExceptionAction.ExitVM;
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationBailoutAsFailure;
 import static org.graalvm.compiler.core.GraalCompilerOptions.CompilationFailureAction;
-import static org.graalvm.compiler.core.GraalCompilerOptions.SystemicCompilationFailureRate;
 import static org.graalvm.compiler.core.GraalCompilerOptions.MaxCompilationProblemsPerAction;
+import static org.graalvm.compiler.core.GraalCompilerOptions.SystemicCompilationFailureRate;
 import static org.graalvm.compiler.core.common.GraalOptions.TrackNodeSourcePosition;
-import static org.graalvm.compiler.debug.DebugOptions.Dump;
-import static org.graalvm.compiler.debug.DebugOptions.Time;
 import static org.graalvm.compiler.debug.DebugOptions.Count;
+import static org.graalvm.compiler.debug.DebugOptions.Dump;
 import static org.graalvm.compiler.debug.DebugOptions.DumpPath;
 import static org.graalvm.compiler.debug.DebugOptions.MethodFilter;
 import static org.graalvm.compiler.debug.DebugOptions.PrintBackendCFG;
+import static org.graalvm.compiler.debug.DebugOptions.Time;
 import static org.graalvm.compiler.debug.PathUtilities.getPath;
 
 import java.io.ByteArrayOutputStream;
@@ -52,7 +52,6 @@ import org.graalvm.compiler.debug.PathUtilities;
 import org.graalvm.compiler.debug.TTY;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GlobalAtomicLong;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.BailoutException;
 
@@ -158,6 +157,15 @@ public abstract class CompilationWrapper<T> {
     protected abstract T performCompilation(DebugContext debug);
 
     /**
+     * Dump any objects for the original failure.
+     *
+     * @param errorContext the context for dump
+     * @param cause the exception that caused the failure
+     */
+    protected void dumpOnError(DebugContext errorContext, Throwable cause) {
+    }
+
+    /**
      * Gets a value that represents the input to the compilation.
      */
     @Override
@@ -222,11 +230,6 @@ public abstract class CompilationWrapper<T> {
             return performCompilation(initialDebug);
         } catch (Throwable cause) {
             return onCompilationFailure(new Failure(cause, initialDebug));
-        } finally {
-            // Notify the runtime that most objects allocated in the current compilation are dead
-            // and can be reclaimed. If performCompilation includes code installation, the GC pause
-            // should not prolong the time until the compiled code can be executed.
-            GraalServices.notifyLowMemoryPoint(true);
         }
     }
 
@@ -348,6 +351,8 @@ public abstract class CompilationWrapper<T> {
             ByteArrayOutputStream logBaos = new ByteArrayOutputStream();
             PrintStream ps = new PrintStream(logBaos);
             try (DebugContext retryDebug = createRetryDebugContext(initialDebug, retryOptions, ps)) {
+                dumpOnError(retryDebug, cause);
+
                 T res;
                 try {
                     res = performCompilation(retryDebug);

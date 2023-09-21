@@ -44,6 +44,7 @@ import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
 import org.graalvm.compiler.hotspot.EconomyCompilerConfigurationFactory;
+import org.graalvm.compiler.hotspot.HotSpotGraalVMEventListener;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
@@ -259,7 +260,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
             return true;
         }
 
-        if (JVMCIServiceLocator.class.isAssignableFrom(cls) || cls == hotSpotGraalJVMCIServiceLocatorShared) {
+        if (JVMCIServiceLocator.class.isAssignableFrom(cls) || cls == hotSpotGraalJVMCIServiceLocatorShared || HotSpotGraalVMEventListener.class.isAssignableFrom(cls)) {
             return true;
         }
 

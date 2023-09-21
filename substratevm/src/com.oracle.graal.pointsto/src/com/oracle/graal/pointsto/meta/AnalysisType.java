@@ -186,9 +186,10 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     private final AnalysisFuture<Void> initializeMetaDataTask;
 
     /**
-     * Additional information that is only available for types that are marked as reachable.
+     * Additional information that is only available for types that are marked as reachable. It is
+     * preserved after analysis.
      */
-    private AnalysisFuture<TypeData> typeData;
+    private final AnalysisFuture<TypeData> typeData;
 
     /**
      * Contains reachability handlers that are notified when any of the subtypes are marked as
@@ -347,7 +348,6 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         constantObjectsCache = null;
         uniqueConstant = null;
         unsafeAccessedFields = null;
-        typeData = null;
         scheduledTypeReachableNotifications = null;
     }
 

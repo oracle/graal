@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,21 +22,15 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jni.headers;
+package com.oracle.svm.core.jdk;
 
-import org.graalvm.nativeimage.c.CContext;
-import org.graalvm.nativeimage.c.constant.CConstant;
+import java.util.function.BooleanSupplier;
 
-@CContext(JNIHeaderDirectivesJDK19OrLater.class)
-public final class JNIVersionJDK19OrLater {
+import com.oracle.svm.core.OS;
 
-    // Checkstyle: stop
-
-    @CConstant
-    public static native int JNI_VERSION_19();
-
-    // Checkstyle: resume
-
-    private JNIVersionJDK19OrLater() {
+public class NonWindowsOS implements BooleanSupplier {
+    @Override
+    public boolean getAsBoolean() {
+        return !OS.WINDOWS.isCurrent();
     }
 }

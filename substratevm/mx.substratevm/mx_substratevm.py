@@ -1284,7 +1284,13 @@ libgraal_build_args = [
     '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
 
     '-H:+ReportExceptionStackTraces',
-] + svm_experimental_options([
+
+    # Set minimum based on libgraal-ee-pgo
+    '-J-Xms7g'
+] + ([
+    # If building on the console, use as many cores as available
+    f'--parallelism={mx.cpu_count()}',
+] if mx.is_interactive() else []) + svm_experimental_options([
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-Djdk.vm.ci.services.aot=true',
@@ -1884,30 +1890,14 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     # com.oracle.svm.driver.NativeImage.BuildConfiguration.getBuilderJavaArgs().
     def compute_graal_compiler_flags_map(self):
         graal_compiler_flags_map = dict()
-        graal_compiler_flags_map['8'] = [
-            '-d64',
-            '-XX:-UseJVMCIClassLoader'
-        ]
-
-        graal_compiler_flags_map['11'] = [
-            # Disable the check for JDK-8 graal version.
-            '-Dsubstratevm.IgnoreGraalVersionCheck=true',
-        ]
 
         # Packages to add-export
         distributions_transitive = mx.classpath_entries(self.buildDependencies)
         required_exports = mx_javamodules.requiredExports(distributions_transitive, get_jdk())
         exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
-        graal_compiler_flags_map['11'].extend(exports_flags)
-        # Currently JDK 17 and JDK 11 have the same flags
-        graal_compiler_flags_map['17'] = graal_compiler_flags_map['11']
-        # Currently JDK 19 and JDK 17 have the same flags
-        graal_compiler_flags_map['19'] = graal_compiler_flags_map['17']
-        graal_compiler_flags_map['19-ea'] = graal_compiler_flags_map['19']
-        # Currently JDK 20 and JDK 19 have the same flags
-        graal_compiler_flags_map['20'] = graal_compiler_flags_map['19']
-        # Currently JDK 22, JDK 21 and JDK 20 have the same flags
-        graal_compiler_flags_map['21'] = graal_compiler_flags_map['20']
+
+        graal_compiler_flags_map['21'] = exports_flags
+        # Currently JDK 22 has the same flags
         graal_compiler_flags_map['22'] = graal_compiler_flags_map['21']
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #

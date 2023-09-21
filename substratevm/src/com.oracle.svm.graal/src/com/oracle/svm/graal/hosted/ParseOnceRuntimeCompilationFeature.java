@@ -603,6 +603,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                             VMError.guarantee(deoptMethod != null, "New deopt target method seen: %s", deoptEntryMethod);
                             return deoptMethod;
                         }));
+        unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
 
         assert RuntimeCompilationFeature.verifyNodes(graph);
         var previous = runtimeGraphs.put(method, graph);
@@ -915,6 +916,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                     assert MultiMethod.isDeoptTarget(method);
                     ((PointsToAnalysisMethod) method).getTypeFlow().updateFlowsGraph(bb, MethodFlowsGraph.GraphKind.FULL, null, true);
                 }
+                unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
 
                 // Note that this will be made thread-safe in the future
                 synchronized (this) {

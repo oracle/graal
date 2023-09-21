@@ -40,63 +40,111 @@
  */
 package org.graalvm.wasm.nodes;
 
-import static org.graalvm.wasm.nodes.WasmFrame.popLong;
 import static org.graalvm.wasm.nodes.WasmFrame.popDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.popFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.popInt;
+import static org.graalvm.wasm.nodes.WasmFrame.popLong;
 import static org.graalvm.wasm.nodes.WasmFrame.popReference;
-import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushDouble;
 import static org.graalvm.wasm.nodes.WasmFrame.pushFloat;
 import static org.graalvm.wasm.nodes.WasmFrame.pushInt;
+import static org.graalvm.wasm.nodes.WasmFrame.pushLong;
 import static org.graalvm.wasm.nodes.WasmFrame.pushReference;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmConstant;
 import org.graalvm.wasm.WasmContext;
+import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmType;
 import org.graalvm.wasm.exception.Failure;
 import org.graalvm.wasm.exception.WasmException;
+import org.graalvm.wasm.memory.WasmMemory;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 
 @NodeInfo(language = WasmLanguage.ID, description = "The root node of all WebAssembly functions")
 public class WasmRootNode extends RootNode {
     private SourceSection sourceSection;
-    @Child private WasmInstrumentableFunctionNode function;
+    @Child private WasmInstrumentableFunctionNode functionNode;
+    private final BranchProfile nonLinkedProfile = BranchProfile.create();
+    /** Bound module instance (single-context mode only). */
+    @CompilationFinal private WasmInstance boundInstance;
 
-    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstrumentableFunctionNode function) {
+    public WasmRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor, WasmInstrumentableFunctionNode functionNode) {
         super(language, frameDescriptor);
-        this.function = function;
+        this.functionNode = functionNode;
     }
 
     protected final WasmContext getContext() {
         return WasmContext.get(this);
     }
 
-    public void tryInitialize(WasmContext context) {
+    /**
+     * Overridden by {@link org.graalvm.wasm.predefined.WasmBuiltinRootNode}.
+     */
+    protected WasmModule module() {
+        return functionNode.module();
+    }
+
+    @SuppressWarnings("static-method")
+    public final void tryInitialize(WasmContext context, WasmInstance instance) {
         // We want to ensure that linking always precedes the running of the WebAssembly code.
         // This linking should be as late as possible, because a WebAssembly context should
         // be able to parse multiple modules before the code gets run.
-        context.linker().tryLink(function.instance());
+        if (!instance.isLinkCompleted()) {
+            nonLinkedProfile.enter();
+            context.linker().tryLink(instance);
+        }
+    }
+
+    protected final WasmInstance instance(VirtualFrame frame) {
+        WasmInstance instance = boundInstance;
+        if (instance == null) {
+            instance = WasmArguments.getModuleInstance(frame.getArguments());
+        } else {
+            CompilerAsserts.partialEvaluationConstant(instance);
+            assert instance == WasmArguments.getModuleInstance(frame.getArguments());
+        }
+        assert instance == WasmContext.get(this).lookupModuleInstance(module());
+        return instance;
+    }
+
+    public final void setBoundModuleInstance(WasmInstance boundInstance) {
+        CompilerAsserts.neverPartOfCompilation();
+        assert this.boundInstance == null;
+        this.boundInstance = boundInstance;
+    }
+
+    protected final WasmMemory memory(VirtualFrame frame) {
+        return memory(frame, 0);
+    }
+
+    protected final WasmMemory memory(VirtualFrame frame, int index) {
+        return module().memory(instance(frame), index);
     }
 
     @Override
     public final Object execute(VirtualFrame frame) {
+        assert WasmArguments.isValid(frame.getArguments());
         final WasmContext context = getContext();
-        tryInitialize(context);
-        return executeWithContext(frame, context);
+        final WasmInstance instance = instance(frame);
+        tryInitialize(context, instance);
+        return executeWithContext(frame, context, instance);
     }
 
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         // WebAssembly structure dictates that a function's arguments are provided to the function
         // as local variables, followed by any additional local variables that the function
         // declares. A VirtualFrame contains a special array for the arguments, so we need to move
@@ -108,7 +156,7 @@ public class WasmRootNode extends RootNode {
         // The reason for this is that the operand stack cannot be passed
         // as an argument to the loop-node's execute method,
         // and must be restored at the beginning of the loop body.
-        final int localCount = function.localCount();
+        final int localCount = functionNode.localCount();
         moveArgumentsToLocals(frame);
 
         // WebAssembly rules dictate that a function's locals must be initialized to zero before
@@ -116,22 +164,22 @@ public class WasmRootNode extends RootNode {
         // https://webassembly.github.io/spec/core/exec/instructions.html#function-calls
         initializeLocals(frame);
 
-        final int resultCount = function.resultCount();
+        final int resultCount = functionNode.resultCount();
         CompilerAsserts.partialEvaluationConstant(resultCount);
         if (resultCount > 1) {
             context.resizeMultiValueStack(resultCount);
         }
 
         try {
-            function.execute(frame, context);
+            functionNode.execute(frame, context, instance);
         } catch (StackOverflowError e) {
-            function.enterErrorBranch();
+            functionNode.enterErrorBranch();
             throw WasmException.create(Failure.CALL_STACK_EXHAUSTED);
         }
         if (resultCount == 0) {
             return WasmConstant.VOID;
         } else if (resultCount == 1) {
-            final byte resultType = function.resultType(0);
+            final byte resultType = functionNode.resultType(0);
             CompilerAsserts.partialEvaluationConstant(resultType);
             switch (resultType) {
                 case WasmType.VOID_TYPE:
@@ -162,7 +210,7 @@ public class WasmRootNode extends RootNode {
         final long[] multiValueStack = context.primitiveMultiValueStack();
         final Object[] referenceMultiValueStack = context.referenceMultiValueStack();
         for (int i = 0; i < resultCount; i++) {
-            final int resultType = function.resultType(i);
+            final int resultType = functionNode.resultType(i);
             CompilerAsserts.partialEvaluationConstant(resultType);
             switch (resultType) {
                 case WasmType.I32_TYPE:
@@ -190,11 +238,11 @@ public class WasmRootNode extends RootNode {
     @ExplodeLoop
     private void moveArgumentsToLocals(VirtualFrame frame) {
         Object[] args = frame.getArguments();
-        int paramCount = function.paramCount();
-        assert args.length == paramCount : "Expected number of params " + paramCount + ", actual " + args.length;
+        int paramCount = functionNode.paramCount();
+        assert WasmArguments.getArgumentCount(args) == paramCount : "Expected number of params " + paramCount + ", actual " + args.length;
         for (int i = 0; i != paramCount; ++i) {
-            final Object arg = args[i];
-            byte type = function.localType(i);
+            final Object arg = WasmArguments.getArgument(args, i);
+            byte type = functionNode.localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, (int) arg);
@@ -218,9 +266,9 @@ public class WasmRootNode extends RootNode {
 
     @ExplodeLoop
     private void initializeLocals(VirtualFrame frame) {
-        int paramCount = function.paramCount();
-        for (int i = paramCount; i != function.localCount(); ++i) {
-            byte type = function.localType(i);
+        int paramCount = functionNode.paramCount();
+        for (int i = paramCount; i != functionNode.localCount(); ++i) {
+            byte type = functionNode.localType(i);
             switch (type) {
                 case WasmType.I32_TYPE:
                     pushInt(frame, i, 0);
@@ -249,36 +297,36 @@ public class WasmRootNode extends RootNode {
 
     @Override
     public String getName() {
-        if (function == null) {
+        if (functionNode == null) {
             return "function";
         }
-        return function.name();
+        return functionNode.name();
     }
 
     @Override
     public final String getQualifiedName() {
-        if (function == null) {
+        if (functionNode == null) {
             return getName();
         }
-        return function.qualifiedName();
+        return functionNode.qualifiedName();
     }
 
     @Override
     @TruffleBoundary
     protected boolean isInstrumentable() {
-        return function != null && function.isInstrumentable();
+        return functionNode != null && functionNode.isInstrumentable();
     }
 
     @Override
     @TruffleBoundary
     public final SourceSection getSourceSection() {
-        if (function == null) {
+        if (functionNode == null) {
             return null;
         }
         if (sourceSection == null) {
-            sourceSection = function.getSourceSection();
+            sourceSection = functionNode.getSourceSection();
             if (sourceSection == null) {
-                sourceSection = function.instance().module().source().createUnavailableSection();
+                sourceSection = module().source().createUnavailableSection();
             }
         }
         return sourceSection;

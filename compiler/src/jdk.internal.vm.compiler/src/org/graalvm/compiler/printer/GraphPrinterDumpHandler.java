@@ -103,16 +103,15 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
         return "unknown";
     }
 
-    private void ensureInitialized(DebugContext ctx, Graph graph) {
+    private void ensureInitialized(DebugContext debug, Graph graph) {
         if (printer == null) {
             if (failuresCount >= FAILURE_LIMIT) {
                 return;
             }
             previousInlineContext = new ArrayList<>();
             inlineContextMap = new WeakHashMap<>();
-            DebugContext debug = graph.getDebug();
             try {
-                printer = printerSupplier.get(ctx, graph);
+                printer = printerSupplier.get(debug, graph);
             } catch (IOException e) {
                 handleException(debug, e);
             }
@@ -139,7 +138,7 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
             }
 
             // Get all current JavaMethod instances in the context.
-            List<String> inlineContext = getInlineContext(graph);
+            List<String> inlineContext = getInlineContext(debug, graph);
 
             if (graph instanceof StructuredGraph) {
                 CompilationIdentifier compilationID = ((StructuredGraph) graph).compilationId();
@@ -240,13 +239,12 @@ public final class GraphPrinterDumpHandler implements DebugDumpHandler {
         }
     }
 
-    private List<String> getInlineContext(Graph graph) {
+    private List<String> getInlineContext(DebugContext debug, Graph graph) {
         List<String> result = inlineContextMap.get(graph);
         if (result == null) {
             result = new ArrayList<>();
             Object lastMethodOrGraph = null;
             boolean graphSeen = false;
-            DebugContext debug = graph.getDebug();
             for (Object o : debug.context()) {
                 if (o == graph) {
                     graphSeen = true;

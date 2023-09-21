@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,11 @@
  */
 package com.oracle.truffle.api.debug;
 
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.instrumentation.EventContext;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
 /**
  * Implementation of a strategy for a debugger <em>action</em> that allows execution to continue
@@ -83,6 +86,14 @@ abstract class SteppingStrategy {
 
     boolean isStopAfterCall() {
         return true;
+    }
+
+    @SuppressWarnings("unused")
+    void setYieldBreak(Frame frame, SourceSection section) {
+    }
+
+    @SuppressWarnings("unused")
+    void setYieldResume(EventContext context, Frame frame) {
     }
 
     boolean isCollectingInputValues() {
@@ -265,6 +276,7 @@ abstract class SteppingStrategy {
         private final StepConfig stepConfig;
         private int stackCounter;
         private int unfinishedStepCount;
+        private Frame yieldFrame;
 
         StepInto(DebuggerSession session, StepConfig stepConfig) {
             this.session = session;
@@ -293,6 +305,23 @@ abstract class SteppingStrategy {
         }
 
         @Override
+        void setYieldBreak(Frame frame, SourceSection section) {
+            if (stackCounter == 0 && this.yieldFrame == null) {
+                this.yieldFrame = frame;
+            }
+        }
+
+        @Override
+        void setYieldResume(EventContext context, Frame frame) {
+            if (this.yieldFrame != null) {
+                RootNode root = context.getInstrumentedNode().getRootNode();
+                if (session.getDebugger().getEnv().isSameFrame(root, frame, this.yieldFrame)) {
+                    this.yieldFrame = null;
+                }
+            }
+        }
+
+        @Override
         boolean isCollectingInputValues() {
             return stepConfig.containsSourceElement(session, SourceElement.EXPRESSION);
         }
@@ -304,8 +333,8 @@ abstract class SteppingStrategy {
 
         @Override
         boolean step(DebuggerSession steppingSession, EventContext context, SuspendAnchor suspendAnchor) {
-            if (stepConfig.matches(session, context, suspendAnchor) ||
-                            SuspendAnchor.AFTER == suspendAnchor && stackCounter < 0) {
+            if (yieldFrame == null && (stepConfig.matches(session, context, suspendAnchor) ||
+                            SuspendAnchor.AFTER == suspendAnchor && stackCounter < 0)) {
                 stackCounter = 0;
                 if (--unfinishedStepCount <= 0) {
                     return true;
@@ -448,6 +477,8 @@ abstract class SteppingStrategy {
         private int unfinishedStepCount;
         private boolean activeFrame = true;
         private boolean activeExpression = true;
+        private Frame yieldFrame;
+        private SourceSection yieldSection;
 
         StepOver(DebuggerSession session, StepConfig stepConfig) {
             this.session = session;
@@ -500,6 +531,24 @@ abstract class SteppingStrategy {
         }
 
         @Override
+        void setYieldBreak(Frame frame, SourceSection section) {
+            if (stackCounter == 0 && this.yieldFrame == null) {
+                this.yieldFrame = frame;
+                this.yieldSection = section;
+            }
+        }
+
+        @Override
+        void setYieldResume(EventContext context, Frame frame) {
+            if (this.yieldFrame != null) {
+                RootNode root = context.getInstrumentedNode().getRootNode();
+                if (session.getDebugger().getEnv().isSameFrame(root, frame, this.yieldFrame)) {
+                    this.yieldFrame = null;
+                }
+            }
+        }
+
+        @Override
         boolean isCollectingInputValues() {
             return stepConfig.containsSourceElement(session, SourceElement.EXPRESSION);
         }
@@ -511,8 +560,16 @@ abstract class SteppingStrategy {
 
         @Override
         boolean step(DebuggerSession steppingSession, EventContext context, SuspendAnchor suspendAnchor) {
-            if (stepConfig.matches(session, context, suspendAnchor) ||
-                            SuspendAnchor.AFTER == suspendAnchor && (stackCounter < 0 || exprCounter < 0)) {
+            if (yieldFrame == null && (stepConfig.matches(session, context, suspendAnchor) ||
+                            SuspendAnchor.AFTER == suspendAnchor && (stackCounter < 0 || exprCounter < 0))) {
+                if (yieldSection != null) {
+                    if (yieldSection.equals(context.getInstrumentedSourceSection()) && suspendAnchor == SuspendAnchor.BEFORE) {
+                        // Do not stop on the same location where yield was performed.
+                        return false;
+                    } else {
+                        yieldSection = null;
+                    }
+                }
                 stackCounter = 0;
                 exprCounter = context.hasTag(SourceElement.EXPRESSION.getTag()) && SuspendAnchor.BEFORE == suspendAnchor ? 0 : -1;
                 return --unfinishedStepCount <= 0;
@@ -634,6 +691,16 @@ abstract class SteppingStrategy {
         @Override
         boolean isStopAfterCall() {
             return current.isStopAfterCall();
+        }
+
+        @Override
+        void setYieldBreak(Frame frame, SourceSection section) {
+            current.setYieldBreak(frame, section);
+        }
+
+        @Override
+        void setYieldResume(EventContext context, Frame frame) {
+            current.setYieldResume(context, frame);
         }
 
         @Override

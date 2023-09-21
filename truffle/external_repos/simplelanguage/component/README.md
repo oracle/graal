@@ -1,14 +1,4 @@
-# The simple language component for GraalVM
+# Build SimpleLanguage for GraalVM
 
-Truffle languages can be packaged as components which can be installed into
-GraalVM using the [Graal
-updater](http://www.graalvm.org/docs/reference-manual/graal-updater/). 
-Running `mvn package` in the simplelanguage folder also builds a
-`sl-component.jar`. 
-This file is the simple languages component for GraalVM and can be installed by
-running:
-
-```
-/path/to/graalvm/bin/gu install /path/to/sl-component.jar
-```
-
+Truffle languages can be packaged into JARs.
+Run `mvn package` in the _simplelanguage_ directory to build `sl-component.jar`. 

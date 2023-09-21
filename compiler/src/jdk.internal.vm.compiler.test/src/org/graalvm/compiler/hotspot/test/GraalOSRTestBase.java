@@ -78,7 +78,7 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
         long jvmciEnv = 0L;
         HotSpotCompilationRequest request = new HotSpotCompilationRequest((HotSpotResolvedJavaMethod) method, bci, jvmciEnv);
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) runtime.getCompiler();
-        CompilationTask task = new CompilationTask(runtime, compiler, request, true, true);
+        CompilationTask task = new CompilationTask(runtime, compiler, request, true, true, true);
         if (method instanceof HotSpotResolvedJavaMethod) {
             HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
             GraalHotSpotVMConfig config = graalRuntime.getVMConfig();
@@ -120,7 +120,9 @@ public abstract class GraalOSRTestBase extends GraalCompilerTest {
     }
 
     protected static void checkResult(Result result) {
-        Assert.assertNull("Unexpected exception", result.exception);
+        if (result.exception != null) {
+            throw new AssertionError(result.exception);
+        }
         Assert.assertNotNull(result.returnValue);
         Assert.assertTrue(result.returnValue instanceof ReturnValue);
         Assert.assertEquals(ReturnValue.SUCCESS, result.returnValue);

@@ -59,6 +59,10 @@ abstract class HSHandler extends HSObject implements Handler {
                     @ByReference(NativeRecord.class) Record record);
 
     @Override
+    @ByReference(HSHandler.class)
+    public abstract Handler combine(@ByReference(HSHandler.class) Handler h1, @ByReference(HSHandler.class) Handler... others);
+
+    @Override
     @ByReference(NativeContext.class)
     public abstract Context getContext();
 }

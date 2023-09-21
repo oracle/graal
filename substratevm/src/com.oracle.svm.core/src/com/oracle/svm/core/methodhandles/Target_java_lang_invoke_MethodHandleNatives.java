@@ -213,6 +213,9 @@ final class Target_java_lang_invoke_MethodHandleNatives {
         }
         return resolved;
     }
+
+    @Delete
+    static native MethodHandle linkMethodHandleConstant(Class<?> callerClass, int refKind, Class<?> defc, String name, Object type);
 }
 
 /**

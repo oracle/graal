@@ -58,6 +58,7 @@ import org.graalvm.compiler.nodes.spi.StableProfileProvider.TypeFilter;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
@@ -150,6 +151,18 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
              * exception type is included in the output in case there's no detail mesage.
              */
             return HotSpotCompilationRequestResult.failure(t.toString(), false);
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        protected void dumpOnError(DebugContext errorContext, Throwable cause) {
+            if (graph != null) {
+                try (DebugContext.Scope s = errorContext.scope("DumpOnError", graph, new DebugDumpScope(getIdString(), true), new DebugDumpScope("Original failure"))) {
+                    errorContext.forceDump(graph, "Exception: %s", cause);
+                } catch (Throwable t) {
+                    throw errorContext.handle(t);
+                }
+            }
         }
 
         @Override
@@ -345,6 +358,11 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
      */
     public static final TimerKey CodeInstallationTime = DebugContext.timer("CodeInstallation");
 
+    /**
+     * Time spent in hinted full GC.
+     */
+    public static final TimerKey HintedFullGC = DebugContext.timer("HintedFullGC").doc("Time spent in hinted GC performed at the end of compilations.");
+
     public HotSpotCompilationRequestResult runCompilation(OptionValues initialOptions) {
         OptionValues options = filterOptions(initialOptions);
         HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
@@ -353,8 +371,18 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         }
     }
 
+    @SuppressWarnings({"try", "unchecked"})
     public HotSpotCompilationRequestResult runCompilation(DebugContext debug) {
-        return runCompilation(debug, new HotSpotCompilationWrapper());
+        try (DebugCloseable a = CompilationTime.start(debug)) {
+            HotSpotCompilationRequestResult result = runCompilation(debug, new HotSpotCompilationWrapper());
+
+            // Notify the runtime that most objects allocated in the current compilation
+            // are dead and can be reclaimed.
+            try (DebugCloseable timer = HintedFullGC.start(debug)) {
+                GraalServices.notifyLowMemoryPoint(true);
+            }
+            return result;
+        }
     }
 
     @SuppressWarnings({"try", "unchecked"})
@@ -378,7 +406,7 @@ public class CompilationTask implements CompilationWatchDog.EventHandler {
         }
 
         ProfileReplaySupport result = ProfileReplaySupport.profileReplayPrologue(debug, graalRuntime, entryBCI, method, profileProvider, profileSaveFilter);
-        try (DebugCloseable a = CompilationTime.start(debug)) {
+        try {
             return compilation.run(debug);
         } finally {
             try {

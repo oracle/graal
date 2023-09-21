@@ -77,7 +77,7 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     "gate-vm-libgraal_compiler_zgc-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_compiler_quickbuild-labsjdk-21-linux-amd64": {},
     "gate-vm-libgraal_truffle_quickbuild-labsjdk-21-linux-amd64": t("1:10:00"),
-    "gate-vm-libgraal_compiler-oraclejdk-22-linux-amd64": {},
+    "gate-vm-libgraal_compiler-labsjdk-latest-linux-amd64": {},
   },
 
   # See definition of `dailies` local variable in ../../compiler/ci_common/gate.jsonnet
@@ -112,14 +112,15 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
     vm["custom_vm_" + os(os_arch)] +
     g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
                  include_common_os_arch=false,
-                 jdk_name = if jdk == "22" then "oraclejdk" else "labsjdk",
+                 jdk_name = "labsjdk",
                  gates_manifest=gates,
                  dailies_manifest=dailies,
                  weeklies_manifest=weeklies,
                  monthlies_manifest=monthlies).build +
     vm["vm_java_" + jdk]
     for jdk in [
-      "21"
+      "21",
+      "Latest"
     ]
     for os_arch in all_os_arches
     for task in [
@@ -127,28 +128,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
       "libgraal_truffle",
       "libgraal_compiler_quickbuild",
       "libgraal_truffle_quickbuild"
-    ]
-  ],
-
-  # Builds run on OracleJDK22
-  local oraclejdk22_builds = [
-    c["gate_vm_" + underscore(os_arch)] +
-    svm_common(os_arch, jdk) +
-    vm["custom_vm_" + os(os_arch)] +
-    g.make_build(jdk, os_arch, task, extra_tasks=self, suite="vm",
-                 include_common_os_arch=false,
-                 jdk_name="oraclejdk",
-                 gates_manifest=gates,
-                 dailies_manifest=dailies,
-                 weeklies_manifest=weeklies,
-                 monthlies_manifest=monthlies).build +
-    vm["vm_java_" + jdk]
-    for jdk in [
-      "22"
-    ]
-    for os_arch in all_os_arches
-    for task in [
-      "libgraal_compiler",
     ]
   ],
 
@@ -207,7 +186,6 @@ local utils = import '../../../ci/ci_common/common-utils.libsonnet';
   # Complete set of builds defined in this file
   local all_builds =
     all_platforms_builds +
-    oraclejdk22_builds +
     all_platforms_zgc_builds +
     coverage_jdk21_builds,
 
