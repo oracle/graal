@@ -256,6 +256,7 @@ suite = {
           "jdk.internal.module",
           "jdk.internal.misc",
           "jdk.internal.util",
+          "jdk.internal.vm.annotation",
         ],
         "java.instrument" : [
           "sun.instrument",
