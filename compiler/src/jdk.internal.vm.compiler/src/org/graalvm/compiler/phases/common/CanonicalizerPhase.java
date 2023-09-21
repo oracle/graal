@@ -506,18 +506,13 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
         }
         // Perform GVN after possibly inferring the stamp since a stale stamp will inhibit GVN.
-        if (tryGVN(node) && tryGlobalValueNumbering(node, nodeClass)) {
+        if (features.contains(GVN) && tryGlobalValueNumbering(node, nodeClass)) {
             return true;
         }
         return false;
     }
 
-    @SuppressWarnings("unused")
-    public boolean tryGVN(Node n) {
-        return features.contains(GVN);
-    }
-
-    public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
+    public static boolean gvn(Node node, NodeClass<?> nodeClass) {
         if (nodeClass.valueNumberable()) {
             Node newNode = node.graph().findDuplicate(node);
             if (newNode != null) {
@@ -529,6 +524,10 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
         }
         return false;
+    }
+
+    public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
+        return gvn(node, nodeClass);
     }
 
     private static AutoCloseable getCanonicalizeableContractAssertion(Node node) {
