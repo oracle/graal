@@ -442,7 +442,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         if (offset >= 0) {
             return createOffsetAddress(graph, object, offset);
         } else {
-            return null;
+            throw GraalError.shouldNotReachHere("Field is missing: " + field.getDeclaringClass().toJavaName(true) + "." + field.getName());
         }
     }
 
@@ -463,7 +463,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         Stamp loadStamp = loadStamp(loadField.stamp(NodeView.DEFAULT), getStorageKind(field));
 
         AddressNode address = createFieldAddress(graph, object, field);
-        assert address != null : "Field that is loaded must not be eliminated: " + field.getDeclaringClass().toJavaName(true) + "." + field.getName();
 
         BarrierType barrierType = barrierSet.fieldReadBarrierType(field, getStorageKind(field));
         ReadNode memoryRead = graph.add(new ReadNode(address, overrideFieldLocationIdentity(loadField.getLocationIdentity()), loadStamp, barrierType, loadField.getMemoryOrder()));
@@ -479,7 +478,6 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         object = createNullCheckedValue(object, storeField, tool);
         ValueNode value = implicitStoreConvert(graph, getStorageKind(storeField.field()), storeField.value());
         AddressNode address = createFieldAddress(graph, object, field);
-        assert address != null;
 
         BarrierType barrierType = barrierSet.fieldWriteBarrierType(field, getStorageKind(field));
         WriteNode memoryWrite = graph.add(new WriteNode(address, overrideFieldLocationIdentity(storeField.getLocationIdentity()), value, barrierType, storeField.getMemoryOrder()));
@@ -976,13 +974,15 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                             ValueNode allocValue = allocations[commit.getVirtualObjects().indexOf(value)];
                             if (!(allocValue.isConstant() && allocValue.asConstant().isDefaultForKind())) {
                                 assert virtual.entryKind(metaAccessExtensionProvider, i) == JavaKind.Object && allocValue.getStackKind() == JavaKind.Object;
-                                AddressNode address;
-                                BarrierType barrierType;
+                                AddressNode address = null;
+                                BarrierType barrierType = null;
                                 if (virtual instanceof VirtualInstanceNode) {
                                     VirtualInstanceNode virtualInstance = (VirtualInstanceNode) virtual;
                                     ResolvedJavaField field = virtualInstance.field(i);
-                                    address = createFieldAddress(graph, newObject, field);
-                                    barrierType = barrierSet.fieldWriteBarrierType(field, getStorageKind(field));
+                                    if (fieldOffset(field) >= 0) {
+                                        address = createFieldAddress(graph, newObject, field);
+                                        barrierType = barrierSet.fieldWriteBarrierType(field, getStorageKind(field));
+                                    }
                                 } else {
                                     assert virtual instanceof VirtualArrayNode;
                                     address = createArrayAddress(graph, newObject, virtual.entryKind(metaAccessExtensionProvider, i), ConstantNode.forInt(i, graph));
