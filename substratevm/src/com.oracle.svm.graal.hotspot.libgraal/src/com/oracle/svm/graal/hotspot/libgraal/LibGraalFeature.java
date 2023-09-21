@@ -124,7 +124,6 @@ import com.oracle.svm.core.c.CGlobalDataFactory;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;
-import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.log.FunctionPointerLogHandler;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -743,7 +742,7 @@ final class Target_org_graalvm_compiler_serviceprovider_GraalServices {
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
         // With Xcomp, do not force GCs as we don't care about RSS in this mode.
         if (!compiler.getGraalRuntime().getVMConfig().xcompMode) {
-            Heap.getHeap().getGC().maybeCauseUserRequestedCollection(GCCause.HintedGC, fullGC);
+            Heap.getHeap().getGC().collectionHint(fullGC);
         }
     }
 }

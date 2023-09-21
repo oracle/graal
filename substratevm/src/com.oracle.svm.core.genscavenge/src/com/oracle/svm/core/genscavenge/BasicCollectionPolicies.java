@@ -63,8 +63,9 @@ final class BasicCollectionPolicies {
         }
 
         @Override
-        public boolean shouldCollectOnRequest(GCCause cause, boolean fullGC) {
-            return cause == GCCause.JavaLangSystemGC && !SubstrateGCOptions.DisableExplicitGC.getValue();
+        public boolean shouldCollectOnHint(boolean fullGC) {
+            /* Collection hints are not supported. */
+            return false;
         }
 
         @Override
