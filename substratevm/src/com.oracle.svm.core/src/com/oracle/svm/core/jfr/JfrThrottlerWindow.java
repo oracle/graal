@@ -58,6 +58,8 @@ public class JfrThrottlerWindow {
      * will be updated as usual, although it is now the "next" window. This results in some wasted
      * effort, but doesn't affect correctness because this window will be reset before it becomes
      * active again.
+     *
+     * Threads calling this method may not have acquired the JfrThrottler lock.
      */
     public boolean sample() {
         // Guarantees only one thread can record the last event of the window
@@ -69,6 +71,7 @@ public class JfrThrottlerWindow {
                         (prevMeasuredPopSize < maxSampleablePopulation);
     }
 
+    /** Thread's calling this method should have acquired the JftThrottler lock. */
     public long samplesTaken() {
         if (measuredPopSize.get() > maxSampleablePopulation) {
             return samplesExpected();
@@ -76,10 +79,12 @@ public class JfrThrottlerWindow {
         return measuredPopSize.get() / samplingInterval;
     }
 
+    /** Thread's calling this method should have acquired the JftThrottler lock. */
     public long samplesExpected() {
         return samplesPerWindow + debt;
     }
 
+    /** Thread's calling this method should have acquired the JftThrottler lock. */
     public void configure(long newDebt, double projectedPopSize) {
         this.debt = newDebt;
         if (projectedPopSize <= samplesExpected()) {

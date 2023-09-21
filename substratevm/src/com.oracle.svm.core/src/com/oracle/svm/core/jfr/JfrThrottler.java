@@ -40,15 +40,18 @@ public class JfrThrottler {
     private final JfrThrottlerWindow window1;
     private final VMMutex mutex;
 
-    public volatile boolean disabled;
-    private volatile JfrThrottlerWindow activeWindow;
-    public long eventSampleSize;
-    public long periodNs;
+    // The following fields are only be accessed by threads holding the lock
+    private long periodNs;
+    private long eventSampleSize;
     private double ewmaPopulationSizeAlpha = 0;
     private double avgPopulationSize = 0;
     private boolean reconfigure;
     private long accumulatedDebtCarryLimit;
     private long accumulatedDebtCarryCount;
+
+    // The following fields may be accessed by multiple threads without acquiring the lock
+    private volatile JfrThrottlerWindow activeWindow;
+    private volatile boolean disabled;
 
     public JfrThrottler(VMMutex mutex) {
         reconfigure = false;
@@ -60,8 +63,8 @@ public class JfrThrottler {
     }
 
     /**
-     * Convert rate to samples/second if possible. Want to avoid long period with large windows with
-     * a large number of samples per window in favor of many smaller windows. This is in the
+     * Convert rate to samples/second if possible. Want to avoid a long period with large windows
+     * with a large number of samples per window in favor of many smaller windows. This is in the
      * critical section because setting the sample size and period must be done together atomically.
      * Otherwise, we risk a window's params being set with only one of the two updated.
      */
@@ -101,7 +104,7 @@ public class JfrThrottler {
 
     /**
      * The real active window may change while we're doing the sampling. That's fine as long as we
-     * perform operations with respect a consistent window during this method. It's fine if the
+     * perform operations with respect to a consistent window during this method. It's fine if the
      * active window changes after we've read it from memory, because now we'll be writing to the
      * next window (which gets reset before becoming active again).
      */
@@ -148,7 +151,7 @@ public class JfrThrottler {
         activeWindow = getNextWindow();
     }
 
-    JfrThrottlerWindow getNextWindow() {
+    private JfrThrottlerWindow getNextWindow() {
         assert mutex.isOwner();
         if (window0 == activeWindow) {
             return window1;
@@ -198,7 +201,7 @@ public class JfrThrottler {
         next.windowDurationNs = windowDurationNs;
     }
 
-    public void configure() {
+    private void configure() {
         assert mutex.isOwner();
         JfrThrottlerWindow next = getNextWindow();
 
@@ -230,6 +233,7 @@ public class JfrThrottler {
     }
 
     private double projectPopulationSize(long lastWindowMeasuredPop) {
+        assert mutex.isOwner();
         avgPopulationSize = exponentiallyWeightedMovingAverage(lastWindowMeasuredPop, ewmaPopulationSizeAlpha, avgPopulationSize);
         return avgPopulationSize;
     }

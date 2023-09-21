@@ -80,7 +80,7 @@ public class SubstrateJVM {
     private final JfrUnlockedChunkWriter unlockedChunkWriter;
     private final JfrRecorderThread recorderThread;
 
-    private final JfrThrottlerSupport jfrThrottlerSupport;
+// private final JfrThrottlerSupport jfrThrottlerSupport;
 
     private final JfrLogging jfrLogging;
 
@@ -122,7 +122,7 @@ public class SubstrateJVM {
         initialized = false;
         recording = false;
 
-        jfrThrottlerSupport = new JfrThrottlerSupport();
+// jfrThrottlerSupport = new JfrThrottlerSupport();
     }
 
     @Fold
@@ -661,12 +661,33 @@ public class SubstrateJVM {
         return eventSettings[(int) event.getId()].isEnabled();
     }
 
+// public boolean shouldCommit(JfrEvent event) {
+// return jfrThrottlerSupport.shouldCommit(event.getId());
+// }
+
     public boolean shouldCommit(JfrEvent event) {
-        return jfrThrottlerSupport.shouldCommit(event.getId());
+        JfrThrottler throttler = event.getThrottler();
+        if (throttler != null) {
+            return throttler.sample();
+        }
+        return true;
     }
 
+// public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
+// return jfrThrottlerSupport.setThrottle(eventTypeId, eventSampleSize, periodMs);
+// }
+
     public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
-        return jfrThrottlerSupport.setThrottle(eventTypeId, eventSampleSize, periodMs);
+        for (JfrEvent event : JfrEvent.getEvents()) {
+            if (eventTypeId == event.getId()) {
+                JfrThrottler throttler = event.getThrottler();
+                if (throttler != null) {
+                    return throttler.setThrottle(eventSampleSize, periodMs);
+                }
+                return false;
+            }
+        }
+        return false;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
