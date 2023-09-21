@@ -102,7 +102,6 @@ import org.graalvm.compiler.hotspot.nodes.CurrentLockNode;
 import org.graalvm.compiler.hotspot.nodes.MonitorCounterNode;
 import org.graalvm.compiler.hotspot.word.KlassPointer;
 import org.graalvm.compiler.lir.SyncPort;
-import org.graalvm.compiler.nodes.BreakpointNode;
 import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeoptimizeNode;
@@ -558,16 +557,7 @@ public class MonitorSnippets implements Snippets {
         }
     }
 
-    /**
-     * Leaving the breakpoint code in to provide an example of how to use the {@link BreakpointNode}
-     * intrinsic.
-     */
-    private static final boolean ENABLE_BREAKPOINT = false;
-
     private static final LocationIdentity MONITOR_COUNTER_LOCATION = NamedLocationIdentity.mutable("MonitorCounter");
-
-    @NodeIntrinsic(BreakpointNode.class)
-    static native void bkpt(Object object, Word mark, Word tmp, Word value);
 
     @Fold
     static boolean verifyBalancedMonitors(@Fold.InjectedParameter OptionValues options) {
@@ -611,27 +601,19 @@ public class MonitorSnippets implements Snippets {
          * {@code "lock"} are mutually exclusive. The other counters are for paths that may be
          * shared.
          */
-        public final SnippetCounter lockBiasExisting;
-        public final SnippetCounter lockBiasAcquired;
-        public final SnippetCounter lockBiasTransfer;
         public final SnippetCounter lockCas;
         public final SnippetCounter lockCasRecursive;
-        public final SnippetCounter lockStubEpochExpired;
-        public final SnippetCounter lockStubRevoke;
         public final SnippetCounter lockStubFailedCas;
         public final SnippetCounter inflatedCas;
         public final SnippetCounter inflatedFailedCas;
         public final SnippetCounter inflatedRecursive;
         public final SnippetCounter inflatedOwned;
-        public final SnippetCounter unbiasable;
-        public final SnippetCounter revokeBias;
 
         /**
          * Counters for the various paths for releasing a lock. The counters whose names start with
          * {@code "unlock"} are mutually exclusive. The other counters are for paths that may be
          * shared.
          */
-        public final SnippetCounter unlockBias;
         public final SnippetCounter unlockCas;
         public final SnippetCounter unlockCasRecursive;
         public final SnippetCounter unlockStub;
@@ -643,22 +625,14 @@ public class MonitorSnippets implements Snippets {
         public Counters(SnippetCounter.Group.Factory factory) {
             SnippetCounter.Group enter = factory.createSnippetCounterGroup("MonitorEnters");
             SnippetCounter.Group exit = factory.createSnippetCounterGroup("MonitorExits");
-            lockBiasExisting = new SnippetCounter(enter, "lock{bias:existing}", "bias-locked previously biased object");
-            lockBiasAcquired = new SnippetCounter(enter, "lock{bias:acquired}", "bias-locked newly biased object");
-            lockBiasTransfer = new SnippetCounter(enter, "lock{bias:transfer}", "bias-locked, biased transferred");
             lockCas = new SnippetCounter(enter, "lock{cas}", "cas-locked an object");
             lockCasRecursive = new SnippetCounter(enter, "lock{cas:recursive}", "cas-locked, recursive");
-            lockStubEpochExpired = new SnippetCounter(enter, "lock{stub:epoch-expired}", "stub-locked, epoch expired");
-            lockStubRevoke = new SnippetCounter(enter, "lock{stub:revoke}", "stub-locked, biased revoked");
             lockStubFailedCas = new SnippetCounter(enter, "lock{stub:failed-cas/stack}", "stub-locked, failed cas and stack locking");
             inflatedCas = new SnippetCounter(enter, "lock{inflated:cas}", "heavyweight-locked, cas-locked");
             inflatedFailedCas = new SnippetCounter(enter, "lock{inflated:failed-cas}", "heavyweight-locked, failed cas");
             inflatedRecursive = new SnippetCounter(enter, "lock{inflated:recursive}", "heavyweight-locked, recursive");
             inflatedOwned = new SnippetCounter(enter, "lock{inflated:owned}", "heavyweight-locked, already owned");
-            unbiasable = new SnippetCounter(enter, "unbiasable", "object with unbiasable type");
-            revokeBias = new SnippetCounter(enter, "revokeBias", "object had bias revoked");
 
-            unlockBias = new SnippetCounter(exit, "unlock{bias}", "bias-unlocked an object");
             unlockCas = new SnippetCounter(exit, "unlock{cas}", "cas-unlocked an object");
             unlockCasRecursive = new SnippetCounter(exit, "unlock{cas:recursive}", "cas-unlocked an object, recursive");
             unlockStub = new SnippetCounter(exit, "unlock{stub}", "stub-unlocked an object");
