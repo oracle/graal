@@ -409,13 +409,12 @@ public class TruffleFeature implements InternalFeature {
          * information available, otherwise SubstrateStackIntrospection cannot visit them.
          */
         for (ResolvedJavaMethod method : truffleRuntime.getAnyFrameMethod()) {
-            runtimeCompilationFeature.requireFrameInformationForMethod(method);
             /*
-             * To avoid corner case errors, we also force compilation of these methods. This only
+             * To avoid corner case errors, we also force these methods to be reachable. This only
              * affects builds where no Truffle language is included, because any real language makes
              * these methods reachable (and therefore compiled).
              */
-            config.registerAsRoot((AnalysisMethod) method, true, "Truffle stack frame support, registered in " + TruffleFeature.class);
+            runtimeCompilationFeature.requireFrameInformationForMethod(method, config, true);
         }
 
         /*
