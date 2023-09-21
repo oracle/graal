@@ -435,7 +435,7 @@ def svm_gate_body(args, tasks):
                 mx.abort('Unable to import jsonschema')
 
             json_and_schema_file_pairs = [
-                ('build-artifacts.json', 'build-artifacts-schema-v0.9.0.json'),
+                ('build-artifacts.json', 'build-artifacts-schema-v0.9.1.json'),
                 ('build-output.json', 'build-output-schema-v0.9.2.json'),
             ]
 

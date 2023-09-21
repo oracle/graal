@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,18 @@ import com.oracle.svm.hosted.FeatureImpl.BeforeImageWriteAccessImpl;
 @Platforms({Platform.WINDOWS.class, Platform.LINUX.class})
 @AutomaticallyRegisteredFeature
 public class JNIRegistrationAWTSupport extends JNIRegistrationUtil implements InternalFeature {
+    @Override
+    public void beforeAnalysis(BeforeAnalysisAccess a) {
+        a.registerReachabilityHandler(JNIRegistrationAWTSupport::registerFontConfiguration,
+                        constructor(a, "sun.awt.FontConfiguration", clazz(a, "sun.font.SunFontManager")));
+    }
+
+    private static void registerFontConfiguration(DuringAnalysisAccess a) {
+        if (isWindows()) {
+            JDKConfigFiles.singleton().register("lib", "fontconfig.bfc");
+        }
+    }
+
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         JNIRegistrationSupport jniRegistrationSupport = JNIRegistrationSupport.singleton();

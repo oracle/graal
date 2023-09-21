@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -47,6 +47,8 @@ public interface BuildArtifacts {
         JDK_LIBRARY("jdk_libraries"),
         /* For all library shims for the JDK needed at run-time. */
         JDK_LIBRARY_SHIM(JDK_LIBRARY.getJsonKey()), // distinction should not be important to users.
+        /* For all configuration files from java.home needed at run-time */
+        JDK_CONFIG_FILE("jdk_config"),
 
         /* Language home artifacts for Truffle languages needed at run-time. */
         LANGUAGE_HOME("language_home"),
