@@ -82,97 +82,38 @@ public final class UnimplementedGraalIntrinsics {
     }
 
     public UnimplementedGraalIntrinsics() {
-        // These are dead
         add(ignore,
+                        // These are dead
                         "java/lang/Math.atan2(DD)D",
-                        "jdk/internal/misc/Unsafe.park(ZJ)V",
-                        "jdk/internal/misc/Unsafe.unpark(Ljava/lang/Object;)V",
-                        "sun/misc/Unsafe.park(ZJ)V",
-                        "sun/misc/Unsafe.prefetchRead(Ljava/lang/Object;J)V",
-                        "sun/misc/Unsafe.prefetchReadStatic(Ljava/lang/Object;J)V",
-                        "sun/misc/Unsafe.prefetchWrite(Ljava/lang/Object;J)V",
-                        "sun/misc/Unsafe.prefetchWriteStatic(Ljava/lang/Object;J)V",
-                        "sun/misc/Unsafe.unpark(Ljava/lang/Object;)V");
-
-        // These only exist to assist escape analysis in C2
-        add(ignore,
-                        "java/lang/Throwable.fillInStackTrace()Ljava/lang/Throwable;");
-
-        // These are only used for the security handling during stack walking
-        add(ignore,
-                        "java/lang/reflect/Method.invoke(Ljava/lang/Object;[Ljava/lang/Object;)Ljava/lang/Object;");
-
-        // These are marker intrinsic ids only
-        add(ignore,
-                        "java/lang/invoke/MethodHandle.<compiledLambdaForm>*",
-                        "java/lang/invoke/MethodHandle.invoke*");
-
-        // These are implemented through lowering
-        add(ignore,
-                        "java/lang/ref/Reference.get()Ljava/lang/Object;");
-
-        // These are only used by C1
-        add(ignore,
-                        "java/nio/Buffer.checkIndex(I)I");
-
-        // These do general compiler optimizations and convert min/max to cmov instructions. We are
-        // ignoring them as cmovs are not necessarily beneficial.
-        add(ignore,
+                        // These do general compiler optimizations and convert min/max to cmov
+                        // instructions. We are ignoring them as cmovs are not necessarily
+                        // beneficial.
                         "java/lang/Math.max(II)I",
                         "java/lang/Math.min(II)I",
                         "java/lang/StrictMath.max(II)I",
-                        "java/lang/StrictMath.min(II)I");
-
-        // Relevant for Java flight recorder
-        // [GR-10106] These JFR intrinsics are used for firing socket/file events via Java
-        // instrumentation and are of low priority.
-        add(ignore,
-                        "jdk/jfr/internal/JVM.commit(J)J",
-                        "jdk/jfr/internal/JVM.counterTime()J",
-                        "jdk/jfr/internal/JVM.getBufferWriter()Ljava/lang/Object;",
-                        "jdk/jfr/internal/JVM.getClassId(Ljava/lang/Class;)J",
-                        "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;",
-                        "oracle/jrockit/jfr/Timing.counterTime()J",
-                        "oracle/jrockit/jfr/VMJFR.classID0(Ljava/lang/Class;)J",
-                        "oracle/jrockit/jfr/VMJFR.threadID()I");
-
-        add(ignore,
+                        "java/lang/StrictMath.min(II)I",
                         // handled through an intrinsic for String.equals itself
                         "java/lang/StringLatin1.equals([B[B)Z",
-
                         // handled by an intrinsic for StringLatin1.indexOf([BI[BII)I
                         "java/lang/StringLatin1.indexOf([B[B)I",
-
                         // handled through an intrinsic for String.equals itself
                         "java/lang/StringUTF16.equals([B[B)Z",
-
                         // handled by an intrinsic for StringUTF16.indexOfUnsafe
                         "java/lang/StringUTF16.indexOf([BI[BII)I",
                         "java/lang/StringUTF16.indexOf([B[B)I",
-
                         // handled by an intrinsic for StringUTF16.indexOfCharUnsafe
                         "java/lang/StringUTF16.indexOfChar([BIII)I",
-
                         // handled by an intrinsic for StringUTF16.indexOfLatin1Unsafe
                         "java/lang/StringUTF16.indexOfLatin1([BI[BII)I",
-                        "java/lang/StringUTF16.indexOfLatin1([B[B)I");
-
-        // Only used as a marker for vectorization
-        add(ignore, "java/util/stream/Streams$RangeIntSpliterator.forEachRemaining(Ljava/util/function/IntConsumer;)V");
-
-        // JDK-8258558
-        add(ignore, "java/lang/Object.<blackhole>*");
-
-        // without JIT implementation
-        add(ignore,
-                        "java/lang/Thread.findScopedValueBindings()Ljava/lang/Object;",
-                        "jdk/internal/vm/Continuation.doYield()I",
-                        "jdk/internal/vm/Continuation.enter(Ljdk/internal/vm/Continuation;Z)V",
-                        "jdk/internal/vm/Continuation.enterSpecial(Ljdk/internal/vm/Continuation;ZZ)V");
-
-        // JDK-8254231: Implementation of Foreign Linker API (Incubator)
-        add(toBeInvestigated,
-                        "java/lang/invoke/MethodHandle.linkToNative*");
+                        "java/lang/StringUTF16.indexOfLatin1([B[B)I",
+                        // implemented through lowering
+                        "java/lang/ref/Reference.get()Ljava/lang/Object;",
+                        // Relevant for Java flight recorder
+                        // [GR-10106] These JFR intrinsics are used for firing socket/file events
+                        // via Java instrumentation and are of low priority.
+                        "jdk/jfr/internal/JVM.commit(J)J",
+                        "jdk/jfr/internal/JVM.counterTime()J",
+                        "jdk/jfr/internal/JVM.getEventWriter()Ljdk/jfr/internal/event/EventWriter;");
 
         // JDK-8223347: Integration of Vector API (Incubator)
         add(toBeInvestigated, // @formatter:off
