@@ -482,27 +482,11 @@ local devkits = graal_common.devkits;
   full_vm_build_darwin_aarch64: self.ruby_python_vm_build_darwin_aarch64,
 
   graalvm_complete_build_deps(edition, os, arch):
-      local java_deps(edition) =
-        if (edition == 'ce') then
-          {
-            downloads+: {
-              # We still need to run on JDK 17 until doclet work on JDK 21 (GR-48400)
-              JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17'],
-              EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-' + edition + '-21'],
-            },
-            environment+: {
-              JDK_VERSION_CHECK: 'ignore',
-              JVMCI_VERSION_CHECK: 'ignore',
-            },
-          }
-        else if (edition == 'ee') then
-          {
-            downloads+: {
-              JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
-            }
-          }
-        else
-          error 'Unknown edition: ' + edition;
+      local java_deps(edition) = {
+        downloads+: {
+          JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+        }
+      };
 
       if (os == 'linux') then
         if (arch == 'amd64') then
