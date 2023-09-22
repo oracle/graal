@@ -124,8 +124,7 @@
         "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
       },
       "java-compiler:ecj": {
-        // does not yet work on JDK 22 (GR-48632)
-        "linux:amd64:jdk21": gate + gdb("10.2") + t("55:00"),
+        "linux:amd64:jdk-latest": gate + gdb("10.2") + t("55:00"),
       },
     }),
   },
