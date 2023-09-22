@@ -2015,6 +2015,9 @@ public class AArch64MacroAssembler extends AArch64Assembler {
         final int extraInformation = PatchLabelKind.decodeExtraInformation(instruction);
         switch (type) {
             case BRANCH_CONDITIONALLY:
+                if (!NumUtil.isSignedNbit(21, pcRelativeOffset)) {
+                    throw new BranchTargetOutOfBoundsException(true, "Branch target %d out of bounds", pcRelativeOffset);
+                }
                 ConditionFlag condition = ConditionFlag.fromEncoding(extraInformation);
                 super.b(condition, pcRelativeOffset, patchPos);
                 break;
