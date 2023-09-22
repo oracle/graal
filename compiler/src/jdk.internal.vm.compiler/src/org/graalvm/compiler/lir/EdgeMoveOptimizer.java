@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.compiler.core.common.cfg.BasicBlock;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.lir.StandardOp.LoadConstantOp;
 import org.graalvm.compiler.lir.StandardOp.MoveOp;
 import org.graalvm.compiler.lir.StandardOp.ValueMoveOp;
@@ -67,10 +68,10 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             BasicBlock<?> block = ir.getBlockById(blockIds[blockId]);
 
             if (block.getPredecessorCount() > 1) {
-                optimizer.optimizeMovesAtBlockEnd(block);
+                optimizer.optimizeMovesAtBlockEnd(block, ir);
             }
             if (block.getSuccessorCount() == 2) {
-                optimizer.optimizeMovesAtBlockBegin(block);
+                optimizer.optimizeMovesAtBlockBegin(block, ir);
             }
         }
     }
@@ -118,7 +119,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
          * Moves the longest {@linkplain #same common} subsequence at the end all predecessors of
          * {@code block} to the start of {@code block}.
          */
-        private void optimizeMovesAtBlockEnd(BasicBlock<?> block) {
+        private void optimizeMovesAtBlockEnd(BasicBlock<?> block, LIR lir) {
             for (int i = 0; i < block.getPredecessorCount(); i++) {
                 BasicBlock<?> pred = block.getPredecessorAt(i);
                 if (pred == block) {
@@ -160,7 +161,9 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             }
 
             // process lir-instructions while all predecessors end with the same instruction
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: processing edge instructions of a fixed set of
+                           // predecessor blocks
+                CompilationAlarm.checkProgress(lir.getOptions(), lir);
                 List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
                 if (seq.isEmpty()) {
                     return;
@@ -190,7 +193,7 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
          * {@code block} to the end of {@code block} just prior to the branch instruction ending
          * {@code block}.
          */
-        private void optimizeMovesAtBlockBegin(BasicBlock<?> block) {
+        private void optimizeMovesAtBlockBegin(BasicBlock<?> block, LIR lir) {
 
             edgeInstructionSeqences.clear();
             int numSux = block.getSuccessorCount();
@@ -239,7 +242,9 @@ public final class EdgeMoveOptimizer extends PostAllocationOptimizationPhase {
             }
 
             // process LIR instructions while all successors begin with the same instruction
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: processing edge instructions for a fixed set of
+                           // predecessor blocks
+                CompilationAlarm.checkProgress(lir.getOptions(), lir);
                 List<LIRInstruction> seq = edgeInstructionSeqences.get(0);
                 if (seq.isEmpty()) {
                     return;

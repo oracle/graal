@@ -143,7 +143,7 @@ final class BootstrapWatchDog extends Thread {
         Map<Thread, StackTraceElement[]> stacksAtTimeout = null;
         try {
             Thread.sleep(INITIAL_DELAY * 1000);
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: busy wait loop
                 int currentCompilations = compilations.get();
                 long elapsed = System.currentTimeMillis() - start;
                 double rate = currentCompilations / seconds(elapsed);

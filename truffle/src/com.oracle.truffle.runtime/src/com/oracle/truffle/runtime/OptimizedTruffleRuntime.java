@@ -961,7 +961,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         // so that compilation errors or effects are still properly waited for.
         boolean interrupted = false;
         try {
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: busy loop
                 try {
                     task.awaitCompletion();
                     break;

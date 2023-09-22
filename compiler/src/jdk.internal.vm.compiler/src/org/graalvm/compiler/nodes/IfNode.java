@@ -40,6 +40,7 @@ import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.core.common.type.PrimitiveStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -1145,6 +1146,7 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
         assert trueSuccessor().hasNoUsages() && falseSuccessor().hasNoUsages();
         // push similar nodes upwards through the if, thereby deduplicating them
         do {
+            CompilationAlarm.checkProgress(graph());
             AbstractBeginNode trueSucc = trueSuccessor();
             AbstractBeginNode falseSucc = falseSuccessor();
             if (trueSucc instanceof BeginNode && falseSucc instanceof BeginNode && trueSucc.next() instanceof FixedWithNextNode && falseSucc.next() instanceof FixedWithNextNode) {
@@ -1185,7 +1187,8 @@ public final class IfNode extends ControlSplitNode implements Simplifiable, LIRL
                 }
             }
             break;
-        } while (true);
+        } while (true); // TERMINATION ARGUMENT: processing fixed nodes until duplication is no
+                        // longer possible.
     }
 
     /**

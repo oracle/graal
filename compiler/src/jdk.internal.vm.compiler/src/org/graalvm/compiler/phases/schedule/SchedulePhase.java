@@ -44,6 +44,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
@@ -79,8 +80,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.calc.ConvertNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
@@ -667,7 +668,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
         private static Node getUnproxifiedUncompressed(Node node) {
             Node result = node;
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: unproxifying inputs
+                CompilationAlarm.checkProgress(node.graph());
                 if (result instanceof ValueProxy) {
                     ValueProxy valueProxy = (ValueProxy) result;
                     result = valueProxy.getOriginalNode();
@@ -998,7 +1000,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             assert !visited.isMarked(first);
             stack.push(first);
             Node current = first;
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: processing stack until empty
+                CompilationAlarm.checkProgress(first.graph());
                 if (current instanceof PhiNode) {
                     processStackPhi(stack, (PhiNode) current, nodeToMicroBlock, visited);
                 } else if (current instanceof ProxyNode) {

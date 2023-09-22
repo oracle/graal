@@ -26,8 +26,6 @@ package org.graalvm.compiler.core.test;
 
 import java.util.List;
 
-import org.junit.Test;
-
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeMap;
 import org.graalvm.compiler.nodes.FrameState;
@@ -41,6 +39,7 @@ import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.util.GraphUtil;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
+import org.junit.Test;
 
 public class SchedulingTest extends GraphScheduleTest {
 

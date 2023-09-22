@@ -30,6 +30,7 @@ import java.util.function.ToDoubleFunction;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeWorkList;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
@@ -122,7 +123,9 @@ public class ComputeInliningRelevance {
             final Scope parent;
             // look for the parent scope
             FixedNode current = loopBegin.forwardEnd();
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: process predecessor nodes until another is found
+                           // or start is found
+                CompilationAlarm.checkProgress(graph);
                 if (current.predecessor() == null) {
                     if (current instanceof LoopBeginNode) {
                         // if we reach a LoopBeginNode then we're within this loop

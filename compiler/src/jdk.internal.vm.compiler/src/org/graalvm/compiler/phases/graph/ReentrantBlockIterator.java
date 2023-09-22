@@ -40,8 +40,8 @@ import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.LoopBeginNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 
 public final class ReentrantBlockIterator {
 
@@ -138,7 +138,10 @@ public final class ReentrantBlockIterator {
 
         StructuredGraph graph = start.getBeginNode().graph();
         CompilationAlarm compilationAlarm = CompilationAlarm.current();
-        while (true) {
+
+        while (true) { // TERMINATION ARGUMENT: processing all blocks reverse post order until end
+                       // of cfg or until a bailout is triggered because of a long compile
+            CompilationAlarm.checkProgress(start.getCfg().graph);
             if (compilationAlarm.hasExpired()) {
                 double period = CompilationAlarm.Options.CompilationExpirationPeriod.getValue(graph.getOptions());
                 throw new PermanentBailoutException("Compilation exceeded %f seconds during CFG traversal", period);

@@ -350,6 +350,12 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
             }
         }
 
+        /**
+         * Maximum depth of dominators walked during the creation of better stamps at end nodes. Any
+         * larger number can lead to combinatorial explosion and long compilation times.
+         */
+        private static final int BETTER_END_STAMPS_MAX_DOM_DEPTH = 128;
+
         protected void processEnd(EndNode node) {
             AbstractMergeNode abstractMerge = node.merge();
             if (abstractMerge instanceof MergeNode) {
@@ -382,8 +388,12 @@ public class FixReadsPhase extends BasePhase<CoreProviders> {
                         }
                     }
 
+                    int distance = 0;
                     int lastMark = undoOperations.size();
                     while (currentBlock != mergeBlockDominator) {
+                        if (distance++ > BETTER_END_STAMPS_MAX_DOM_DEPTH) {
+                            break;
+                        }
                         int mark = blockActionStart.get(currentBlock);
                         for (int i = lastMark - 1; i >= mark; --i) {
                             ValueNode nodeWithNewStamp = (ValueNode) undoOperations.get(i);

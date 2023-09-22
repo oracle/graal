@@ -978,6 +978,8 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                     t1 = types1[++idx1];
                 } else if (t1 > t2) {
                     t2 = types2[++idx2];
+                } else {
+                    throw AnalysisError.shouldNotReachHere("Unreachable path");
                 }
             }
 
@@ -1162,6 +1164,8 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
                 } else if (t1 == t2) {
                     assert so1[idx1].type().equals(so2[idx2].type());
                     t1 = types1[++idx1];
+                } else {
+                    throw AnalysisError.shouldNotReachHere("Unreachable path");
                 }
             }
 
@@ -1205,7 +1209,7 @@ public final class BytecodeSensitiveAnalysisPolicy extends AnalysisPolicy {
          * after processing all objects in a pair of source-destination compatible types you can
          * reset the source type partition back to the beginning and look for the next compatible
          * destination type.
-         * 
+         *
          * Although the resulting code is still quadratic from an algorithmic complexity standpoint,
          * in practice you can never reach the asymptotic complexity given that in a usual type
          * hierarchy most types are not compatible with most other types for System.arraycopy().

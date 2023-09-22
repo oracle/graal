@@ -40,6 +40,7 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
@@ -370,6 +371,7 @@ public class GraphUtil {
         LinkedStack<Node> stack = null;
         Node cur = node;
         do {
+            CompilationAlarm.checkProgress(node.graph());
             assert checkKill(cur, mayKillGuard);
             cur.markDeleted();
             outer: for (Node in : cur.inputs()) {
@@ -404,7 +406,8 @@ public class GraphUtil {
             } else {
                 cur = stack.pop();
             }
-        } while (true);
+        } while (true); // TERMINATION ARGUMENT: processing floating nodes without inputs until
+                        // input is found
     }
 
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {
@@ -744,7 +747,9 @@ public class GraphUtil {
 
         EconomicMap<ValueNode, ValueNode> visitedPhiInputMap = visitedPhiInputs;
         ValueNode current = value;
+        StructuredGraph graph = value.graph();
         do {
+            CompilationAlarm.checkProgress(graph);
             /*
              * PiArrayNode implements ArrayLengthProvider and ValueProxy. We want to treat it as an
              * ArrayLengthProvider, therefore we check this case first.
@@ -769,11 +774,11 @@ public class GraphUtil {
             } else if (current instanceof ValueProxy) {
                 /* Written as a loop instead of a recursive call to reduce recursion depth. */
                 current = ((ValueProxy) current).getOriginalNode();
-
             } else {
                 return null;
             }
-        } while (true);
+        } while (true);  // TERMINATION ARGUMENT: processing specific inputs until an exit criteria
+                         // is met
     }
 
     private static ValueNode phiArrayLength(ValuePhiNode phi, ArrayLengthProvider.FindLengthMode mode, ConstantReflectionProvider constantReflection,
@@ -1184,7 +1189,8 @@ public class GraphUtil {
             return false;
         }
         FixedNode node = start;
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: following next nodes or returning
+            CompilationAlarm.checkProgress(start.graph());
             if (node instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) node;
                 if (mergeNode.stateAfter() == null) {
@@ -1316,7 +1322,8 @@ public class GraphUtil {
         assert start != null;
         FixedNode lastFixedNode = null;
         FixedNode currentStart = start;
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: following prev nodes
+            CompilationAlarm.checkProgress(start.graph());
             for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
                 if (fixed instanceof StateSplit) {
                     StateSplit stateSplit = (StateSplit) fixed;

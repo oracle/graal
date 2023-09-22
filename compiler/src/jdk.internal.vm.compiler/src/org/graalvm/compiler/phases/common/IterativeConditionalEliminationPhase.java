@@ -61,7 +61,8 @@ public class IterativeConditionalEliminationPhase extends BasePhase<CoreProvider
         EconomicSetNodeEventListener listener = new EconomicSetNodeEventListener();
         int count = 0;
 
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: explicit max number of iterations, or no progress is
+                       // made (decided by a node event scope)
             count++;
             try (NodeEventScope nes = graph.trackNodeEvents(listener)) {
                 conditionalEliminationPhase.apply(graph, context);
