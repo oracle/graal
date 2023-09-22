@@ -259,6 +259,7 @@ public class NativeImageResourceFileSystemProviderTest {
     /**
      * Writing into file using {@link java.nio.channels.ByteChannel}.
      */
+    @SuppressWarnings("CallToPrintStackTrace")
     @Test
     public void writingFileByteChannel() {
         Path resourceDirectory = fileSystem.getPath(RESOURCE_DIR);
@@ -280,7 +281,8 @@ public class NativeImageResourceFileSystemProviderTest {
         try (SeekableByteChannel channel = Files.newByteChannel(resourceFile1, StandardOpenOption.READ, StandardOpenOption.WRITE)) {
             writeInChannelAndCheck(channel);
         } catch (IOException ioException) {
-            Assert.fail("Exception occurs during writing into file!");
+            ioException.printStackTrace();
+            Assert.fail("Exception occurred while writing into the file: " + resourceFile1);
         }
     }
 
