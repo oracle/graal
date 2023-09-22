@@ -697,7 +697,7 @@ public class InliningUtil extends ValueMergeUtil {
                 StructuredGraph graph = origReturn.graph();
                 if (!(anchorCandidate instanceof AbstractBeginNode)) {
                     // Add anchor for pi after the original candidate
-                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode(null));
+                    ValueAnchorNode anchor = graph.add(new ValueAnchorNode());
                     if (anchorCandidate.predecessor() == null) {
                         anchor.setNext(anchorCandidate);
                     } else {
