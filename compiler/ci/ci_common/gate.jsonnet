@@ -380,8 +380,6 @@
       "truffle_xcomp",
       "ctw",
       "ctw_economy",
-      "coverage",
-      "coverage_ctw",
       "benchmarktest",
       "bootstrap_lite",
       "bootstrap_full"
@@ -393,6 +391,22 @@
       "21"
     ]
     for os_arch in all_os_arches
+  ],
+
+  # Coverage builds run on all platforms (platform = JDK + OS + ARCH)
+  # that support JaCoCo (GR-46676)
+  local all_coverage_builds = [self.make_build(jdk, os_arch, task).build
+    for task in [
+      "coverage",
+      "coverage_ctw",
+    ]
+    for jdk in [
+      "21"
+    ]
+    for os_arch in all_os_arches
+  ] + [
+     # Run AVX3 tests only on linux-amd64
+     self.make_build("21", "linux-amd64", "coverage_avx3").build
   ],
 
     # Test ZGC on support platforms.  Windows requires version 1083 or later which will
@@ -434,7 +448,6 @@
   local linux_amd64_jdk_latest_builds = [self.make_build(self.jdk_latest, "linux-amd64", task).build
     for task in [
       "ctw_phaseplan_fuzzing",
-      "coverage_avx3",
       "test_vec16",
       "test_avx0",
       "test_avx1",
@@ -466,6 +479,7 @@
   # Complete set of builds defined in this file
   local all_builds =
     all_platforms_builds +
+    all_coverage_builds +
     all_zgc_builds +
     all_serialgc_builds +
     style_builds +
