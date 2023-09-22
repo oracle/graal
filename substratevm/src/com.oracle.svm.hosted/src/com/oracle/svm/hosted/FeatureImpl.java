@@ -285,7 +285,7 @@ public class FeatureImpl {
                 throw VMError.shouldNotReachHere(e);
             }
 
-            CausalityExport.registerEvent(new CausalityExport.BuildTimeClassInitialization(clazz));
+            CausalityExport.registerEvent(CausalityExport.BuildTimeClassInitialization.create(clazz));
         }
     }
 

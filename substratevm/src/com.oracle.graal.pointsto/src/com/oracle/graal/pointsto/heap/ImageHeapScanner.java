@@ -274,9 +274,9 @@ public abstract class ImageHeapScanner {
                     CausalityExport.Event typeObjectInHeap;
                     Object unwrapped = asObject(constant);
                     if(unwrapped instanceof Class<?>) {
-                        typeObjectInHeap = new CausalityExport.HeapObjectClass(typeFromClassConstant.getJavaClass());
+                        typeObjectInHeap = CausalityExport.HeapObjectClass.create(typeFromClassConstant.getJavaClass());
                     } else {
-                        typeObjectInHeap = new CausalityExport.HeapObjectDynamicHub(typeFromClassConstant.getJavaClass());
+                        typeObjectInHeap = CausalityExport.HeapObjectDynamicHub.create(typeFromClassConstant.getJavaClass());
                     }
                     CausalityExport.registerEdge(cause, typeObjectInHeap);
                     cause = typeObjectInHeap;
@@ -306,7 +306,7 @@ public abstract class ImageHeapScanner {
 
     private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
         /* We are about to query the type's fields, the type must be marked as reachable. */
-        var inHeap = new CausalityExport.TypeInHeap(type);
+        var inHeap = CausalityExport.TypeInHeap.create(type);
         CausalityExport.registerEdgeFromHeapObject(bb, constant, reason, inHeap);
         try (var ignored = CausalityExport.setCause(inHeap)) {
             type.registerAsReachable(reason);
@@ -491,7 +491,7 @@ public abstract class ImageHeapScanner {
         AnalysisType objectType = metaAccess.lookupJavaType(imageHeapConstant);
         imageHeap.addReachableObject(objectType, imageHeapConstant);
 
-        var inHeap = new CausalityExport.TypeInHeap(objectType);
+        var inHeap = CausalityExport.TypeInHeap.create(objectType);
         CausalityExport.registerEdgeFromHeapObject(bb, imageHeapConstant, reason, inHeap);
         try (var ignored = CausalityExport.setCause(inHeap)) {
             markTypeInstantiated(objectType, reason);

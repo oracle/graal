@@ -110,7 +110,7 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
         flowingFromHeap.keySet().stream().map(Pair::getLeft).forEach(callback);
 
         // TODO: Unsure about this - whether it is necessary and whether it is correct/complete
-        originalInvokeReceivers.keySet().stream().map(InvokeTypeFlow::getTargetMethod).flatMap(targetMethod -> Arrays.stream(targetMethod.getImplementations())).map(MethodImplementationInvoked::new).forEach(callback);
+        originalInvokeReceivers.keySet().stream().map(InvokeTypeFlow::getTargetMethod).flatMap(targetMethod -> Arrays.stream(targetMethod.getImplementations())).map(MethodImplementationInvoked::create).forEach(callback);
 
         forEachTypeflow(tf -> {
             if(tf != null) {
@@ -171,11 +171,11 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
             } else if (f instanceof ConstantTypeFlow) {
                 pos = takePlausibleFramesFromTop(chopUnwindFrames(pos));
             }
-            return new InlinedMethodCode(pos);
+            return InlinedMethodCode.create(pos);
         } else {
             AnalysisMethod m = f.method();
             if (m != null) {
-                return new InlinedMethodCode(m);
+                return InlinedMethodCode.create(m);
             } else {
                 return null;
             }
@@ -273,7 +273,7 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
         }
 
         for (var e : virtual_invokes.entrySet()) {
-            Event reason = new MethodImplementationInvoked(e.getKey());
+            Event reason = MethodImplementationInvoked.create(e.getKey());
 
             if(reason.unused())
                 continue;
@@ -287,7 +287,7 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
                     // Root invocation
                     Graph.FlowNode rootCallFlow = new Graph.FlowNode(
                             "Root call to " + invokeFlow.getTargetMethod(),
-                            new RootMethodRegistration(invokeFlow.getTargetMethod()),
+                            RootMethodRegistration.create(invokeFlow.getTargetMethod()),
                             bb.getAllInstantiatedTypeFlow().getState());
 
                     g.add(new Graph.FlowEdge(
@@ -329,7 +329,7 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
 
         for (AnalysisType t : bb.getAllInstantiatedTypes()) {
             TypeState state = TypeState.forExactType(bb, t, false);
-            Graph.FlowNode vfn = new Graph.FlowNode("Virtual Flow Node for reaching " + t.toJavaName(), new TypeInstantiated(t), state);
+            Graph.FlowNode vfn = new Graph.FlowNode("Virtual Flow Node for reaching " + t.toJavaName(), TypeInstantiated.create(t), state);
             g.add(new Graph.FlowEdge(null, vfn));
 
             t.forAllSuperTypes(t1 -> {

@@ -129,7 +129,7 @@ public class SimulatedHeapTracing {
         }
     }
 
-    public static final SimulatedHeapTracing instance = CausalityExport.getActivationStatus() != CausalityExport.Level.DISABLED ? new Impl() : new SimulatedHeapTracing();
+    public static final SimulatedHeapTracing instance = CausalityExportActivation.getActivationStatus() != CausalityExportActivation.DISABLED ? new Impl() : new SimulatedHeapTracing();
 
     public void traceAllocation(CausalityExport.Event cause, ImageHeapInstance instance, AnalysisType type) {}
 

@@ -522,7 +522,7 @@ public class SimulateClassInitializerSupport {
             if (field.isStatic() && field.getDeclaringClass().equals(clusterMember.type)) {
                 var constantValue = storeFieldNode.value().asJavaConstant();
                 if (constantValue != null) {
-                    SimulatedHeapTracing.instance.traceWrite(new CausalityExport.BuildTimeClassInitialization(clusterMember.type.getJavaClass()), field);
+                    SimulatedHeapTracing.instance.traceWrite(CausalityExport.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), field);
                     clusterMember.staticFieldValues.put(field, constantValue);
                     return;
                 }

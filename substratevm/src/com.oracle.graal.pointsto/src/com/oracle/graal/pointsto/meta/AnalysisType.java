@@ -487,8 +487,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     public boolean registerAsInHeap(Object reason) {
         assert isValidReason(reason) : "Registering a type as in-heap needs to provide a valid reason.";
-        var inHeap = new CausalityExport.TypeInHeap(this);
-        var instantiated = new CausalityExport.TypeInstantiated(this);
+        var inHeap = CausalityExport.TypeInHeap.create(this);
+        var instantiated = CausalityExport.TypeInstantiated.create(this);
         CausalityExport.registerEvent(inHeap);
         CausalityExport.registerEdge(inHeap, instantiated);
         try (var ignored = CausalityExport.overwriteCause(instantiated)) {
@@ -508,8 +508,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     public boolean registerAsAllocated(Object reason) {
         assert isValidReason(reason) : "Registering a type as allocated needs to provide a valid reason.";
-        CausalityExport.registerEvent(new CausalityExport.TypeInstantiated(this));
-        try (var ignored = CausalityExport.overwriteCause(new CausalityExport.TypeInstantiated(this))) {
+        CausalityExport.registerEvent(CausalityExport.TypeInstantiated.create(this));
+        try (var ignored = CausalityExport.overwriteCause(CausalityExport.TypeInstantiated.create(this))) {
             registerAsReachable(reason);
         }
         if (AtomicUtils.atomicSet(this, reason, isAllocatedUpdater)) {
@@ -567,12 +567,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public boolean registerAsReachable(Object reason) {
         assert isValidReason(reason) : "Registering a type as reachable needs to provide a valid reason.";
-        CausalityExport.registerEvent(new CausalityExport.TypeReachable(this));
+        CausalityExport.registerEvent(CausalityExport.TypeReachable.create(this));
         if (!AtomicUtils.isSet(this, isReachableUpdater)) {
             /* Mark this type and all its super types as reachable. */
             forAllSuperTypes(type -> {
                 if(type != this) {
-                    CausalityExport.registerEdge(new CausalityExport.TypeReachable(this), new CausalityExport.TypeReachable(type));
+                    CausalityExport.registerEdge(CausalityExport.TypeReachable.create(this), CausalityExport.TypeReachable.create(type));
                 }
                 AtomicUtils.atomicSetAndRun(type, reason, isReachableUpdater, type::onReachable);
             });
@@ -623,8 +623,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
         CausalityExport.Event eventForRegistration = CausalityExport.getCause();
-        CausalityExport.Event callbackEvent = new CausalityExport.ReachabilityNotificationCallback(callback);
-        CausalityExport.registerConjunctiveEdge(eventForRegistration, new CausalityExport.TypeInstantiated(this), callbackEvent);
+        CausalityExport.Event callbackEvent = CausalityExport.ReachabilityNotificationCallback.create(callback);
+        CausalityExport.registerConjunctiveEdge(eventForRegistration, CausalityExport.TypeInstantiated.create(this), callbackEvent);
 
         if (this.isInstantiated()) {
             try (var ignored = CausalityExport.overwriteCause(callbackEvent)) {

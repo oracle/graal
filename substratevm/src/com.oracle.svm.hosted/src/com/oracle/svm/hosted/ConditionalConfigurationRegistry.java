@@ -44,7 +44,7 @@ public abstract class ConditionalConfigurationRegistry {
             runnable.run();
         } else {
             Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getTypeName(), key -> new ConcurrentLinkedQueue<>());
-            CausalityExport.registerEvent(new CausalityExport.ConfigurationCondition(condition.getTypeName()));
+            CausalityExport.registerEvent(CausalityExport.ConfigurationCondition.create(condition.getTypeName()));
             handlers.add(runnable);
         }
     }
@@ -52,7 +52,7 @@ public abstract class ConditionalConfigurationRegistry {
     public void flushConditionalConfiguration(Feature.BeforeAnalysisAccess b) {
         for (Map.Entry<String, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
             TypeResult<Class<?>> typeResult = ((FeatureImpl.BeforeAnalysisAccessImpl) b).getImageClassLoader().findClass(reachabilityEntry.getKey());
-            try (var ignored = CausalityExport.setCause(new CausalityExport.ConfigurationCondition(reachabilityEntry.getKey()))) {
+            try (var ignored = CausalityExport.setCause(CausalityExport.ConfigurationCondition.create(reachabilityEntry.getKey()))) {
                 b.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), typeResult.get());
             }
         }

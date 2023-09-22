@@ -67,7 +67,7 @@ public class ConcurrentReachabilityHandler extends ReachabilityHandler implement
         AnalysisMethod baseAnalysisMethod = metaAccess.lookupJavaMethod(baseMethod);
 
         MethodOverrideReachableNotification notification = new MethodOverrideReachableNotification(callback);
-        CausalityExport.registerEvent(new CausalityExport.OverrideReachableNotificationCallback(callback));
+        CausalityExport.registerEvent(CausalityExport.OverrideReachableNotificationCallback.create(callback));
         baseAnalysisMethod.registerOverrideReachabilityNotification(notification);
 
         /*
@@ -85,7 +85,7 @@ public class ConcurrentReachabilityHandler extends ReachabilityHandler implement
         AnalysisType baseType = metaAccess.lookupJavaType(baseClass);
 
         SubtypeReachableNotification notification = new SubtypeReachableNotification(callback);
-        CausalityExport.registerEvent(new CausalityExport.SubtypeReachableNotificationCallback(callback));
+        CausalityExport.registerEvent(CausalityExport.SubtypeReachableNotificationCallback.create(callback));
         baseType.registerSubtypeReachabilityNotification(notification);
 
         /*

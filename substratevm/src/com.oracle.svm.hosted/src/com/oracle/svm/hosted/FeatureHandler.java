@@ -210,7 +210,7 @@ public class FeatureHandler {
 
         if (registeredFeatures.contains(baseFeatureClass)) {
             if (ImageSingletons.contains(baseFeatureClass)) {
-                CausalityExport.registerEvent(new CausalityExport.Feature(ImageSingletons.lookup((Class<Feature>) baseFeatureClass)));
+                CausalityExport.registerEvent(CausalityExport.Feature.create(ImageSingletons.lookup((Class<Feature>) baseFeatureClass)));
             }
             return;
         }
@@ -254,12 +254,12 @@ public class FeatureHandler {
             throw handleFeatureError(feature, t);
         }
         for (Class<? extends Feature> requiredFeatureClass : requiredFeatures) {
-            try (var ignored = CausalityExport.overwriteCause(new CausalityExport.Feature(feature))) {
+            try (var ignored = CausalityExport.overwriteCause(CausalityExport.Feature.create(feature))) {
                 registerFeature(requiredFeatureClass, specificClassProvider, access);
             }
         }
 
-        CausalityExport.registerEvent(new CausalityExport.Feature(feature));
+        CausalityExport.registerEvent(CausalityExport.Feature.create(feature));
         featureInstances.add(feature);
     }
 

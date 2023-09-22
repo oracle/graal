@@ -120,26 +120,26 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.A
             throw new RuntimeException("CausalityExport has made an invalid assumption!");
 
         Event callerEvent = callingMethod != null
-                ? new InlinedMethodCode(callingMethod) /* TODO: Take inlining into account */
-                : new RootMethodRegistration(invocation.getTargetMethod());
+                ? InlinedMethodCode.create(callingMethod) /* TODO: Take inlining into account */
+                : RootMethodRegistration.create(invocation.getTargetMethod());
 
         registerEdge(
                 callerEvent,
-                new VirtualMethodInvoked(invocation.getTargetMethod()));
+                VirtualMethodInvoked.create(invocation.getTargetMethod()));
         registerConjunctiveEdge(
-                new VirtualMethodInvoked(invocation.getTargetMethod()),
-                new TypeInstantiated(concreteTargetType),
-                new MethodImplementationInvoked(concreteTargetMethod)
+                VirtualMethodInvoked.create(invocation.getTargetMethod()),
+                TypeInstantiated.create(concreteTargetType),
+                MethodImplementationInvoked.create(concreteTargetMethod)
         );
     }
 
     private static Event getEventForHeapReason(Object customReason, Object o) {
         if (customReason == null) {
-            return new UnknownHeapObject(o.getClass());
+            return UnknownHeapObject.create(o.getClass());
         } else if (customReason instanceof Event) {
             return (Event) customReason;
         } else if (customReason instanceof Class<?>) {
-            return new BuildTimeClassInitialization((Class<?>) customReason);
+            return BuildTimeClassInitialization.create((Class<?>) customReason);
         } else {
             throw AnalysisError.shouldNotReachHere("Heap Assignment Tracing Reason should not be of type " + customReason.getClass().getTypeName());
         }
@@ -159,10 +159,10 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.A
 
     private static Event forScanReason(ObjectScanner.ScanReason reason) {
         if (reason instanceof ObjectScanner.EmbeddedRootScan ers) {
-            return new InlinedMethodCode(ers.getPosition());
+            return InlinedMethodCode.create(ers.getPosition());
         }
         if (reason instanceof ObjectScanner.FieldScan fs) {
-            return new FieldRead(fs.getField());
+            return FieldRead.create(fs.getField());
         }
         return null;
     }
@@ -274,7 +274,7 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.A
 
             AnalysisMethod classInitializer = t.getClassInitializer();
             if(classInitializer != null && classInitializer.isImplementationInvoked()) {
-                g.add(new Graph.DirectEdge(new TypeReachable(t), new MethodReachable(classInitializer)));
+                g.add(new Graph.DirectEdge(TypeReachable.create(t), MethodReachable.create(classInitializer)));
             }
         }
 
@@ -291,7 +291,7 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.A
                             break;
                         buildTimeClinitsWithReason.add(init);
                         if (outerInitReason instanceof Class<?> outerInitClass) {
-                            BuildTimeClassInitialization outerInit = new BuildTimeClassInitialization(outerInitClass);
+                            BuildTimeClassInitialization outerInit = (BuildTimeClassInitialization) BuildTimeClassInitialization.create(outerInitClass);
                             g.add(new Graph.DirectEdge(outerInit, init));
                             init = outerInit;
                         } else {
@@ -317,7 +317,7 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.A
                 }
 
                 if (t != null && t.isReachable()) {
-                    TypeReachable tReachable = new TypeReachable(t);
+                    Event tReachable = TypeReachable.create(t);
                     g.add(new Graph.DirectEdge(tReachable, init));
                 } else if(!buildTimeClinitsWithReason.contains(init)) {
                     g.add(new Graph.DirectEdge(null, init));

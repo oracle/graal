@@ -127,7 +127,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
         Object valueObj = analysis.getSnippetReflectionProvider().asObject(Object.class, value);
         AnalysisType type = bb.getMetaAccess().lookupJavaType(valueObj.getClass());
 
-        var inHeap = new CausalityExport.TypeInHeap(type);
+        var inHeap = CausalityExport.TypeInHeap.create(type);
         CausalityExport.registerEdgeFromHeapObject(analysis, value, reason, inHeap);
         try (var ignored = CausalityExport.setCause(inHeap)) {
             type.registerAsInHeap(reason);

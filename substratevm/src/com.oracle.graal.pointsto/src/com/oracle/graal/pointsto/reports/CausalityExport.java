@@ -10,15 +10,14 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.reports.causality.Impl;
 import com.oracle.graal.pointsto.reports.causality.Graph;
-import com.oracle.graal.pointsto.reports.causality.TypeflowImpl;
-import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.Signature;
+import org.graalvm.collections.Pair;
 
+import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
@@ -26,44 +25,16 @@ import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.zip.ZipOutputStream;
 
 public class CausalityExport {
     protected CausalityExport() {
-    }
-
-    public enum Level {
-        DISABLED,
-        ENABLED_WITHOUT_TYPEFLOW,
-        ENABLED
-    }
-
-    private static Level requestedLevel = Level.DISABLED;
-
-    public static final class InitializationOnDemandHolder {
-        private static final Level frozenLevel = CausalityExport.requestedLevel;
-        private static final AbstractImpl instance = switch(CausalityExport.requestedLevel) {
-            case ENABLED -> TypeflowImpl.createWithTypeflowTracking();
-            case ENABLED_WITHOUT_TYPEFLOW -> Impl.create();
-            case DISABLED -> new AbstractImpl();
-        };
-    }
-
-    /**
-     * Must be called before any usage of {@link #get()}
-     */
-    public static void activate(Level level) {
-        requestedLevel = level;
-        if (level != InitializationOnDemandHolder.frozenLevel) {
-            throw AnalysisError.shouldNotReachHere("Causality Export must have been activated before the first usage of CausalityExport");
-        }
-    }
-
-    public static Level getActivationStatus() {
-        return InitializationOnDemandHolder.frozenLevel;
     }
 
     public static synchronized void dump(PointsToAnalysis bb, ZipOutputStream zip, boolean exportTypeflowNames) throws java.io.IOException {
@@ -72,7 +43,7 @@ public class CausalityExport {
     }
 
     protected static AbstractImpl get() {
-        return InitializationOnDemandHolder.instance;
+        return CausalityExportActivation.get();
     }
 
     public static class AbstractImpl {
@@ -230,34 +201,13 @@ public class CausalityExport {
     public static abstract class ReachableEvent<T extends AnalysisElement> extends Event {
         public final T element;
 
-        public ReachableEvent(T element) {
+        private ReachableEvent(T element) {
             this.element = element;
-        }
-
-        public static ReachableEvent<?> create(AnalysisElement e) {
-            if(e instanceof AnalysisMethod)
-                return new MethodReachable((AnalysisMethod) e);
-            if(e instanceof AnalysisType)
-                return new TypeReachable((AnalysisType) e);
-            throw new IllegalArgumentException();
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ReachableEvent<?> that = (ReachableEvent<?>) o;
-            return element.equals(that.element);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ element.hashCode();
         }
     }
 
     public static final class MethodReachable extends ReachableEvent<AnalysisMethod> {
-        public MethodReachable(AnalysisMethod method) {
+        private MethodReachable(AnalysisMethod method) {
             super(method);
         }
 
@@ -275,22 +225,8 @@ public class CausalityExport {
     public static final class MethodImplementationInvoked extends Event {
         public final AnalysisMethod method;
 
-        public MethodImplementationInvoked(AnalysisMethod method) {
+        private MethodImplementationInvoked(AnalysisMethod method) {
             this.method = method;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            MethodImplementationInvoked that = (MethodImplementationInvoked) o;
-            return method.equals(that.method);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ method.hashCode();
         }
 
         @Override
@@ -302,22 +238,8 @@ public class CausalityExport {
     public static final class MethodInlined extends Event {
         public final AnalysisMethod method;
 
-        public MethodInlined(AnalysisMethod method) {
+        private MethodInlined(AnalysisMethod method) {
             this.method = method;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            var that = (MethodInlined) o;
-            return method.equals(that.method);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ method.hashCode();
         }
 
         @Override
@@ -329,26 +251,8 @@ public class CausalityExport {
     public static final class InlinedMethodCode extends Event {
         public final AnalysisMethod[] context;
 
-        public InlinedMethodCode(AnalysisMethod method) {
-            this.context = new AnalysisMethod[] { method };
-        }
-
-        public InlinedMethodCode(BytecodePosition invokePos) {
-            ArrayList<AnalysisMethod> context = new ArrayList<>();
-            while (invokePos != null) {
-                if (invokePos.getBCI() != BytecodeFrame.UNWIND_BCI || invokePos.getCaller() == null) {
-                    context.add((AnalysisMethod) invokePos.getMethod());
-                }
-                invokePos = invokePos.getCaller();
-
-                if (context.size() >= 2 && context.get(context.size() - 1) == context.get(context.size() - 2))
-                    throw new RuntimeException("Didn't expect the same method to appear twice!");
-            }
-
-            if (context.isEmpty())
-                throw new RuntimeException();
-
-            this.context = context.toArray(AnalysisMethod[]::new);
+        private InlinedMethodCode(AnalysisMethod[] context) {
+            this.context = context;
         }
 
         @Override
@@ -364,25 +268,12 @@ public class CausalityExport {
 
             return sb.toString();
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            InlinedMethodCode that = (InlinedMethodCode) o;
-            return Arrays.equals(context, that.context);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ Arrays.hashCode(context);
-        }
     }
 
     public static final class VirtualMethodInvoked extends Event {
         public final AnalysisMethod method;
 
-        public VirtualMethodInvoked(AnalysisMethod method) {
+        private VirtualMethodInvoked(AnalysisMethod method) {
             this.method = method;
         }
 
@@ -390,25 +281,12 @@ public class CausalityExport {
         public String toString() {
             return method.format("%H.%n(%P):%R") + " [Virtual Invoke]";
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            VirtualMethodInvoked that = (VirtualMethodInvoked) o;
-            return method.equals(that.method);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ method.hashCode();
-        }
     }
 
     public static final class MethodSnippet extends Event {
         public final AnalysisMethod method;
 
-        public MethodSnippet(AnalysisMethod method) {
+        private MethodSnippet(AnalysisMethod method) {
             this.method = method;
         }
 
@@ -416,23 +294,10 @@ public class CausalityExport {
         public String toString() {
             return method.format("%H.%n(%P):%R") + " [Snippet]";
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            MethodSnippet that = (MethodSnippet) o;
-            return method.equals(that.method);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ method.hashCode();
-        }
     }
 
     public static final class TypeReachable extends ReachableEvent<AnalysisType> {
-        public TypeReachable(AnalysisType type) {
+        private TypeReachable(AnalysisType type) {
             super(type);
         }
 
@@ -450,7 +315,7 @@ public class CausalityExport {
     public static final class TypeInstantiated extends Event {
         public final AnalysisType type;
 
-        public TypeInstantiated(AnalysisType type) {
+        private TypeInstantiated(AnalysisType type) {
             this.type = type;
         }
 
@@ -463,47 +328,13 @@ public class CausalityExport {
         public String toString() {
             return type.toJavaName() + " [Instantiated]";
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            TypeInstantiated that = (TypeInstantiated) o;
-            return type.equals(that.type);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ type.hashCode();
-        }
     }
 
     public static abstract class ReflectionObjectRegistration extends Event {
-        public final Object element;
+        public final AnnotatedElement element;
 
-        public ReflectionObjectRegistration(Executable method) {
-            this.element = method;
-        }
-
-        public ReflectionObjectRegistration(Field field) {
-            this.element = field;
-        }
-
-        public ReflectionObjectRegistration(Class<?> clazz) {
-            this.element = clazz;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ReflectionObjectRegistration that = (ReflectionObjectRegistration) o;
-            return element.equals(that.element);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ element.hashCode();
+        private ReflectionObjectRegistration(AnnotatedElement element) {
+            this.element = element;
         }
 
         protected abstract String getSuffix();
@@ -519,17 +350,9 @@ public class CausalityExport {
         }
     }
 
-    public static class JNIRegistration extends ReflectionObjectRegistration {
-        public JNIRegistration(Executable method) {
-            super(method);
-        }
-
-        public JNIRegistration(Field field) {
-            super(field);
-        }
-
-        public JNIRegistration(Class<?> clazz) {
-            super(clazz);
+    public static final class JNIRegistration extends ReflectionObjectRegistration {
+        private JNIRegistration(AnnotatedElement element) {
+            super(element);
         }
 
         @Override
@@ -538,17 +361,9 @@ public class CausalityExport {
         }
     }
 
-    public static class ReflectionRegistration extends ReflectionObjectRegistration {
-        public ReflectionRegistration(Executable method) {
-            super(method);
-        }
-
-        public ReflectionRegistration(Field field) {
-            super(field);
-        }
-
-        public ReflectionRegistration(Class<?> clazz) {
-            super(clazz);
+    public static final class ReflectionRegistration extends ReflectionObjectRegistration {
+        private ReflectionRegistration(AnnotatedElement element) {
+            super(element);
         }
 
         @Override
@@ -557,10 +372,10 @@ public class CausalityExport {
         }
     }
 
-    public static class ReachabilityNotificationCallback extends Event {
+    public static final class ReachabilityNotificationCallback extends Event {
         public final Consumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess> callback;
 
-        public ReachabilityNotificationCallback(Consumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess> callback) {
+        private ReachabilityNotificationCallback(Consumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess> callback) {
             this.callback = callback;
         }
 
@@ -573,25 +388,12 @@ public class CausalityExport {
         public String toString() {
             return callback + " [Reachability Callback]";
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ReachabilityNotificationCallback that = (ReachabilityNotificationCallback) o;
-            return callback.equals(that.callback);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ callback.hashCode();
-        }
     }
 
-    public static class BuildTimeClassInitialization extends Event {
+    public static final class BuildTimeClassInitialization extends Event {
         public final Class<?> clazz;
 
-        public BuildTimeClassInitialization(Class<?> clazz) {
+        private BuildTimeClassInitialization(Class<?> clazz) {
             this.clazz = clazz;
         }
 
@@ -605,19 +407,6 @@ public class CausalityExport {
             return clazz.getTypeName() + ".<clinit>() [Build-Time]";
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            BuildTimeClassInitialization that = (BuildTimeClassInitialization) o;
-            return clazz.equals(that.clazz);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ clazz.hashCode();
-        }
-
         private String getTypeName(AnalysisMetaAccess metaAccess) {
             return metaAccess.getWrapped().lookupJavaType(clazz).toJavaName();
         }
@@ -628,10 +417,10 @@ public class CausalityExport {
         }
     }
 
-    public static class HeapObjectClass extends Event {
+    public static final class HeapObjectClass extends Event {
         public final Class<?> clazz;
 
-        public HeapObjectClass(Class<?> clazz) {
+        private HeapObjectClass(Class<?> clazz) {
             this.clazz = clazz;
         }
 
@@ -644,26 +433,13 @@ public class CausalityExport {
         public String toString() {
             return clazz.getTypeName() + " [Class-Object in Heap]";
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            HeapObjectClass that = (HeapObjectClass) o;
-            return clazz.equals(that.clazz);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^  clazz.hashCode();
-        }
     }
 
-    public static class HeapObjectDynamicHub extends Event {
+    public static final class HeapObjectDynamicHub extends Event {
         public final Class<?> forClass;
 
 
-        public HeapObjectDynamicHub(Class<?> forClass) {
+        private HeapObjectDynamicHub(Class<?> forClass) {
             this.forClass = forClass;
         }
 
@@ -676,25 +452,12 @@ public class CausalityExport {
         public String toString() {
             return forClass.getTypeName() + " [DynamicHub-Object in Heap]";
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            HeapObjectDynamicHub that = (HeapObjectDynamicHub) o;
-            return forClass.equals(that.forClass);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ forClass.hashCode();
-        }
     }
 
-    public static class UnknownHeapObject extends Event {
+    public static final class UnknownHeapObject extends Event {
         public final Class<?> heapObjectType;
 
-        public UnknownHeapObject(Class<?> heapObjectType) {
+        private UnknownHeapObject(Class<?> heapObjectType) {
             this.heapObjectType = heapObjectType;
         }
 
@@ -714,28 +477,15 @@ public class CausalityExport {
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            UnknownHeapObject that = (UnknownHeapObject) o;
-            return heapObjectType.equals(that.heapObjectType);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ heapObjectType.hashCode();
-        }
-
-        @Override
         public String toString(AnalysisMetaAccess metaAccess) {
             return metaAccess.lookupJavaType(heapObjectType).toJavaName() + " [Unknown Heap Object]";
         }
     }
 
-    public static class TypeInHeap extends Event {
+    public static final class TypeInHeap extends Event {
         public final AnalysisType type;
 
-        public TypeInHeap(AnalysisType type) {
+        private TypeInHeap(AnalysisType type) {
             this.type = type;
         }
 
@@ -743,32 +493,11 @@ public class CausalityExport {
         public String toString() {
             return type.toJavaName() + " [Type In Heap]";
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            TypeInHeap that = (TypeInHeap) o;
-            return type.equals(that.type);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ type.hashCode();
-        }
     }
 
     public static final class ReflectionObjectInHeap extends ReflectionObjectRegistration {
-        public ReflectionObjectInHeap(Executable method) {
-            super(method);
-        }
-
-        public ReflectionObjectInHeap(Field field) {
-            super(field);
-        }
-
-        public ReflectionObjectInHeap(Class<?> clazz) {
-            super(clazz);
+        private ReflectionObjectInHeap(AnnotatedElement element) {
+            super(element);
         }
 
         @Override
@@ -783,7 +512,7 @@ public class CausalityExport {
     }
 
     // Can be used in Rerooting to indicate that registrations simply should be ignored
-    public static class Ignored extends Event {
+    public static final class Ignored extends Event {
         public static final Ignored Instance = new Ignored();
 
         private Ignored() {}
@@ -799,10 +528,10 @@ public class CausalityExport {
         }
     }
 
-    public static class Feature extends Event {
+    public static final class Feature extends Event {
         public final org.graalvm.nativeimage.hosted.Feature f;
 
-        public Feature(org.graalvm.nativeimage.hosted.Feature f) {
+        private Feature(org.graalvm.nativeimage.hosted.Feature f) {
             this.f = f;
         }
 
@@ -816,24 +545,9 @@ public class CausalityExport {
                 str += " [Feature]";
             return str;
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            Feature feature = (Feature) o;
-
-            return f.equals(feature.f);
-        }
-
-        @Override
-        public int hashCode() {
-            return f.hashCode();
-        }
     }
 
-    public static class AutomaticFeatureRegistration extends Event {
+    public static final class AutomaticFeatureRegistration extends Event {
         public static final AutomaticFeatureRegistration Instance = new AutomaticFeatureRegistration();
 
         private AutomaticFeatureRegistration() {}
@@ -849,7 +563,7 @@ public class CausalityExport {
         }
     }
 
-    public static class UserEnabledFeatureRegistration extends Event {
+    public static final class UserEnabledFeatureRegistration extends Event {
         public static final UserEnabledFeatureRegistration Instance = new UserEnabledFeatureRegistration();
 
         private UserEnabledFeatureRegistration() {}
@@ -865,7 +579,7 @@ public class CausalityExport {
         }
     }
 
-    public static class InitialRegistration extends Event {
+    public static final class InitialRegistration extends Event {
         public static InitialRegistration Instance = new InitialRegistration();
 
         private InitialRegistration() { }
@@ -881,24 +595,11 @@ public class CausalityExport {
         }
     }
 
-    public static class ConfigurationFile extends Event {
+    public static final class ConfigurationFile extends Event {
         public final URI uri;
 
-        public ConfigurationFile(URI uri) {
+        private ConfigurationFile(URI uri) {
             this.uri = uri;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ConfigurationFile that = (ConfigurationFile) o;
-            return uri.equals(that.uri);
-        }
-
-        @Override
-        public int hashCode() {
-            return uri.hashCode();
         }
 
         @Override
@@ -923,10 +624,10 @@ public class CausalityExport {
         }
     }
 
-    public static class RootMethodRegistration extends Event {
+    public static final class RootMethodRegistration extends Event {
         public final AnalysisMethod method;
 
-        public RootMethodRegistration(AnalysisMethod method) {
+        private RootMethodRegistration(AnalysisMethod method) {
             this.method = method;
         }
 
@@ -936,28 +637,15 @@ public class CausalityExport {
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            RootMethodRegistration that = (RootMethodRegistration) o;
-            return method.equals(that.method);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ method.hashCode();
-        }
-
-        @Override
         public String toString() {
             return method.format("%H.%n(%P):%R") + " [Root Registration]";
         }
     }
 
-    public static class ConfigurationCondition extends Event {
+    public static final class ConfigurationCondition extends Event {
         public final String typeName;
 
-        public ConfigurationCondition(String typeName) {
+        private ConfigurationCondition(String typeName) {
             this.typeName = typeName;
         }
 
@@ -967,29 +655,16 @@ public class CausalityExport {
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            ConfigurationCondition that = (ConfigurationCondition) o;
-            return typeName.equals(that.typeName);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ typeName.hashCode();
-        }
-
-        @Override
         public String toString() {
             return typeName + " [Configuration Condition]";
         }
     }
 
-    public static class JniCallVariantWrapper extends Event {
+    public static final class JniCallVariantWrapper extends Event {
         public final Signature signature;
         public final boolean virtual;
 
-        public JniCallVariantWrapper(Signature signature, boolean virtual) {
+        private JniCallVariantWrapper(Signature signature, boolean virtual) {
             this.signature = signature;
             this.virtual = virtual;
         }
@@ -1000,33 +675,15 @@ public class CausalityExport {
         }
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            JniCallVariantWrapper that = (JniCallVariantWrapper) o;
-
-            if (virtual != that.virtual) return false;
-            return signature.equals(that.signature);
-        }
-
-        @Override
-        public int hashCode() {
-            int result = signature.hashCode();
-            result = 31 * result + (virtual ? 1 : 0);
-            return result;
-        }
-
-        @Override
         public String toString() {
             return signature + (virtual ? " [Virtual JNI Call Variant Wrapper]" : " [JNI Call Variant Wrapper]");
         }
     }
 
-    public static class OverrideReachableNotificationCallback extends Event {
+    public static final class OverrideReachableNotificationCallback extends Event {
         public final BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Executable> callback;
 
-        public OverrideReachableNotificationCallback(BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Executable> callback) {
+        private OverrideReachableNotificationCallback(BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Executable> callback) {
             this.callback = callback;
         }
 
@@ -1039,26 +696,13 @@ public class CausalityExport {
         public String toString() {
             return callback + " [Method Override Reachable Callback]";
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            OverrideReachableNotificationCallback that = (OverrideReachableNotificationCallback) o;
-            return callback.equals(that.callback);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ callback.hashCode();
-        }
     }
 
-    public static class OverrideReachableNotificationCallbackInvocation extends Event {
+    public static final class OverrideReachableNotificationCallbackInvocation extends Event {
         public final BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Executable> callback;
         public final AnalysisMethod override;
 
-        public OverrideReachableNotificationCallbackInvocation(BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Executable> callback, AnalysisMethod override) {
+        private OverrideReachableNotificationCallbackInvocation(BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Executable> callback, AnalysisMethod override) {
             this.callback = callback;
             this.override = override;
         }
@@ -1072,25 +716,12 @@ public class CausalityExport {
         public String toString() {
             return callback + " + " + override.format("%H.%n(%P):%R") + " [Method Override Reachable Callback Invocation]";
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            OverrideReachableNotificationCallbackInvocation that = (OverrideReachableNotificationCallbackInvocation) o;
-            return callback.equals(that.callback) && override.equals(that.override);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ callback.hashCode() ^ override.hashCode();
-        }
     }
 
-    public static class SubtypeReachableNotificationCallback extends Event {
+    public static final class SubtypeReachableNotificationCallback extends Event {
         public final BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Class<?>> callback;
 
-        public SubtypeReachableNotificationCallback(BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Class<?>> callback) {
+        private SubtypeReachableNotificationCallback(BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Class<?>> callback) {
             this.callback = callback;
         }
 
@@ -1103,26 +734,13 @@ public class CausalityExport {
         public String toString() {
             return callback + " [Subtype Reachable Callback]";
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            var that = (SubtypeReachableNotificationCallback) o;
-            return callback.equals(that.callback);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ callback.hashCode();
-        }
     }
 
-    public static class SubtypeReachableNotificationCallbackInvocation extends Event {
+    public static final class SubtypeReachableNotificationCallbackInvocation extends Event {
         public final BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Class<?>> callback;
         public final AnalysisType subtype;
 
-        public SubtypeReachableNotificationCallbackInvocation(BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Class<?>> callback, AnalysisType subtype) {
+        private SubtypeReachableNotificationCallbackInvocation(BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Class<?>> callback, AnalysisType subtype) {
             this.callback = callback;
             this.subtype = subtype;
         }
@@ -1136,25 +754,12 @@ public class CausalityExport {
         public String toString() {
             return callback + " + " + subtype.toJavaName() + " [Subtype Reachable Callback Invocation]";
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            var that = (SubtypeReachableNotificationCallbackInvocation) o;
-            return callback.equals(that.callback) && subtype.equals(that.subtype);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ callback.hashCode() ^ subtype.hashCode();
-        }
     }
 
-    public static class FieldRead extends Event {
+    public static final class FieldRead extends Event {
         public final AnalysisField field;
 
-        public FieldRead(AnalysisField field) {
+        private FieldRead(AnalysisField field) {
             this.field = field;
         }
 
@@ -1162,22 +767,9 @@ public class CausalityExport {
         public String toString() {
             return field.format("%H.%n [Read]");
         }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            FieldRead fieldRead = (FieldRead) o;
-            return field.equals(fieldRead.field);
-        }
-
-        @Override
-        public int hashCode() {
-            return getClass().hashCode() ^ field.hashCode();
-        }
     }
 
-    private static String reflectionObjectToString(Object reflectionObject)
+    private static String reflectionObjectToString(AnnotatedElement reflectionObject)
     {
         if(reflectionObject instanceof Class<?> clazz) {
             return clazz.getTypeName();
@@ -1191,7 +783,7 @@ public class CausalityExport {
         }
     }
 
-    private static String reflectionObjectToGraalLikeString(AnalysisMetaAccess metaAccess, Object reflectionObject) {
+    private static String reflectionObjectToGraalLikeString(AnalysisMetaAccess metaAccess, AnnotatedElement reflectionObject) {
         if(reflectionObject instanceof Class<?> c) {
             return metaAccess.lookupJavaType(c).toJavaName();
         } else if(reflectionObject instanceof Executable e) {
@@ -1200,5 +792,188 @@ public class CausalityExport {
             return metaAccess.lookupJavaField((Field) reflectionObject).format("%H.%n");
         }
     }
-}
 
+
+
+    public interface EventFactory<T> {
+        Event create(T data);
+    }
+
+    public interface EventFactory2<T1, T2> {
+        Event create(T1 arg1, T2 arg2);
+    }
+
+    public interface JniCallVariantWrapperEventFactory {
+        Event create(Signature signature, boolean isVirtual);
+    }
+
+    public interface CodeEventFactory {
+        Event create(BytecodePosition pos);
+
+        Event create(AnalysisMethod m);
+    }
+
+
+
+    private static class InterningEventFactory<TData> implements EventFactory<TData> {
+        private final ConcurrentHashMap<TData, Event> internedEvents = new ConcurrentHashMap<>();
+        private final Function<TData, Event> eventConstructor;
+
+        private InterningEventFactory(Function<TData, Event> eventConstructor) {
+            this.eventConstructor = eventConstructor;
+        }
+
+        public Event create(TData data) {
+            return internedEvents.computeIfAbsent(data, eventConstructor);
+        }
+    }
+
+    private static class InterningEventFactory2<T1, T2> extends InterningEventFactory<Pair<T1, T2>> implements EventFactory2<T1, T2> {
+        private InterningEventFactory2(BiFunction<T1, T2, Event> constructor) {
+            super(pair -> constructor.apply(pair.getLeft(), pair.getRight()));
+        }
+
+        public Event create(T1 arg1, T2 arg2) {
+            return create(Pair.create(arg1, arg2));
+        }
+    }
+
+    private static class InterningJniCallVariantWrapperEventFactory extends InterningEventFactory<InterningJniCallVariantWrapperEventFactory.Key> implements JniCallVariantWrapperEventFactory {
+        private InterningJniCallVariantWrapperEventFactory() {
+            super(k -> new JniCallVariantWrapper(k.signature, k.isVirtual));
+        }
+
+        @Override
+        public Event create(Signature signature, boolean isVirtual) {
+            return create(new Key(signature, isVirtual));
+        }
+
+        public record Key(Signature signature, boolean isVirtual) {}
+    }
+
+    private static class InterningCodeEventFactory extends InterningEventFactory<InterningCodeEventFactory.InlinedMethods> implements CodeEventFactory {
+        private record InlinedMethods(AnalysisMethod[] context) {
+            @Override
+            public boolean equals(Object o) {
+                if (this == o) return true;
+                if (o == null || getClass() != o.getClass()) return false;
+                InlinedMethods that = (InlinedMethods) o;
+                return Arrays.equals(context, that.context);
+            }
+
+            @Override
+            public int hashCode() {
+                return InterningCodeEventFactory.class.hashCode() ^ Arrays.hashCode(context);
+            }
+        }
+
+        private InterningCodeEventFactory() {
+            super(k -> new InlinedMethodCode(k.context));
+        }
+
+        @Override
+        public Event create(BytecodePosition invokePos) {
+            ArrayList<AnalysisMethod> context = new ArrayList<>();
+            while (invokePos != null) {
+                if (invokePos.getBCI() != BytecodeFrame.UNWIND_BCI || invokePos.getCaller() == null) {
+                    context.add((AnalysisMethod) invokePos.getMethod());
+                }
+                invokePos = invokePos.getCaller();
+
+                if (context.size() >= 2 && context.get(context.size() - 1) == context.get(context.size() - 2))
+                    throw new RuntimeException("Didn't expect the same method to appear twice!");
+            }
+
+            if (context.isEmpty())
+                throw new RuntimeException();
+
+            return create(new InlinedMethods(context.toArray(AnalysisMethod[]::new)));
+        }
+
+        @Override
+        public Event create(AnalysisMethod m) {
+            return create(new InlinedMethods(new AnalysisMethod[] { m }));
+        }
+    }
+
+
+
+    private static class DummyEventFactory<T> implements EventFactory<T> {
+        public Event create(T data) {
+            return null;
+        }
+    }
+
+    private static class DummyEventFactory2<T1, T2> implements EventFactory2<T1, T2> {
+        public Event create(T1 arg1, T2 arg2) {
+            return null;
+        }
+    }
+
+    private static class DummyJniCallVariantWrapperEventFactory implements JniCallVariantWrapperEventFactory {
+        @Override
+        public Event create(Signature signature, boolean isVirtual) {
+            return null;
+        }
+    }
+
+    private static class DummyCodeEventFactory implements CodeEventFactory {
+        @Override
+        public Event create(BytecodePosition pos) {
+            return null;
+        }
+
+        @Override
+        public Event create(AnalysisMethod m) {
+            return null;
+        }
+    }
+
+
+
+    private static <T> EventFactory<T> factory(Function<T, Event> constructor) {
+        if (CausalityExportActivation.getActivationStatus() == CausalityExportActivation.DISABLED) {
+            return new DummyEventFactory<>();
+        } else {
+            return new InterningEventFactory<>(constructor);
+        }
+    }
+
+    private static <T1, T2> EventFactory2<T1, T2> factory(BiFunction<T1, T2, Event> constructor) {
+        if (CausalityExportActivation.getActivationStatus() == CausalityExportActivation.DISABLED) {
+            return new DummyEventFactory2<>();
+        } else {
+            return new InterningEventFactory2<>(constructor);
+        }
+    }
+
+
+
+    public static final EventFactory<AnalysisMethod> MethodReachable = factory(MethodReachable::new);
+    public static final EventFactory<AnalysisMethod> MethodImplementationInvoked = factory(MethodImplementationInvoked::new);
+    public static final EventFactory<AnalysisMethod> MethodInlined = factory(MethodInlined::new);
+    public static final EventFactory<AnalysisMethod> MethodSnippet = factory(MethodSnippet::new);
+    public static final EventFactory<AnalysisMethod> RootMethodRegistration = factory(RootMethodRegistration::new);
+    public static final EventFactory<AnalysisMethod> VirtualMethodInvoked = factory(VirtualMethodInvoked::new);
+    public static final EventFactory<AnalysisType> TypeReachable = factory(TypeReachable::new);
+    public static final EventFactory<AnalysisType> TypeInstantiated = factory(TypeInstantiated::new);
+    public static final EventFactory<AnalysisType> TypeInHeap = factory(TypeInHeap::new);
+    public static final EventFactory<AnalysisField> FieldRead = factory(FieldRead::new);
+    public static final EventFactory<Consumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess>> ReachabilityNotificationCallback = factory(ReachabilityNotificationCallback::new);
+    public static final EventFactory<BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Class<?>>> SubtypeReachableNotificationCallback = factory(SubtypeReachableNotificationCallback::new);
+    public static final EventFactory<BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Executable>> OverrideReachableNotificationCallback = factory(OverrideReachableNotificationCallback::new);
+    public static final EventFactory<String> ConfigurationCondition = factory(ConfigurationCondition::new);
+    public static final EventFactory<URI> ConfigurationFile = factory(ConfigurationFile::new);
+    public static final EventFactory<Class<?>> UnknownHeapObject = factory(UnknownHeapObject::new);
+    public static final EventFactory<Class<?>> BuildTimeClassInitialization = factory(BuildTimeClassInitialization::new);
+    public static final EventFactory<Class<?>> HeapObjectDynamicHub = factory(HeapObjectDynamicHub::new);
+    public static final EventFactory<Class<?>> HeapObjectClass = factory(HeapObjectClass::new);
+    public static final EventFactory<org.graalvm.nativeimage.hosted.Feature> Feature = factory(Feature::new);
+    public static final CodeEventFactory InlinedMethodCode = CausalityExportActivation.getActivationStatus() == CausalityExportActivation.DISABLED ? new DummyCodeEventFactory() : new InterningCodeEventFactory();
+    public static final EventFactory2<BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Executable>, AnalysisMethod> OverrideReachableNotificationCallbackInvocation = factory(OverrideReachableNotificationCallbackInvocation::new);
+    public static final EventFactory2<BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Class<?>>, AnalysisType> SubtypeReachableNotificationCallbackInvocation = factory(SubtypeReachableNotificationCallbackInvocation::new);
+    public static final JniCallVariantWrapperEventFactory JniCallVariantWrapper = CausalityExportActivation.getActivationStatus() == CausalityExportActivation.DISABLED ? new DummyJniCallVariantWrapperEventFactory() : new InterningJniCallVariantWrapperEventFactory();
+    public static final EventFactory<AnnotatedElement> JNIRegistration = factory(CausalityExport.JNIRegistration::new);
+    public static final EventFactory<AnnotatedElement> ReflectionRegistration = factory(ReflectionRegistration::new);
+    public static final EventFactory<AnnotatedElement> ReflectionObjectInHeap = factory(ReflectionObjectInHeap::new);
+}
