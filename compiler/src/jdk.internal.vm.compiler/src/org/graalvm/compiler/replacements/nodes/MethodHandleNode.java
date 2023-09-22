@@ -137,14 +137,6 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
          */
         public abstract <T extends ValueNode> T add(T node);
 
-        /**
-         * @return an {@link AnchoringNode} if floating guards should be created, otherwise
-         *         {@link FixedGuardNode}s will be used.
-         */
-        public AnchoringNode getGuardAnchor() {
-            return null;
-        }
-
         public Assumptions getAssumptions() {
             return graph.getAssumptions();
         }
@@ -326,19 +318,10 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
                     assert !inst.isAlive();
                     if (!inst.isTautology()) {
                         inst = adder.add(inst);
-                        AnchoringNode guardAnchor = adder.getGuardAnchor();
                         DeoptimizationReason reason = DeoptimizationReason.ClassCastException;
                         DeoptimizationAction action = DeoptimizationAction.InvalidateRecompile;
                         Speculation speculation = SpeculationLog.NO_SPECULATION;
-                        GuardingNode guard;
-                        if (guardAnchor == null) {
-                            FixedGuardNode fixedGuard = adder.add(new FixedGuardNode(inst, reason, action, speculation, false));
-                            guard = fixedGuard;
-                        } else {
-                            GuardNode newGuard = adder.add(new GuardNode(inst, guardAnchor, reason, action, false, speculation, null));
-                            adder.add(new ValueAnchorNode(newGuard));
-                            guard = newGuard;
-                        }
+                        GuardingNode guard = adder.add(new FixedGuardNode(inst, reason, action, speculation, false));
                         ValueNode valueNode = adder.add(PiNode.create(argument, StampFactory.object(targetType), guard.asNode()));
                         arguments[index] = valueNode;
                     }

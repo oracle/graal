@@ -440,7 +440,7 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                     GraphUtil.unlinkFixedNode(node);
                     GraphUtil.killWithUnusedFloatingInputs(node);
                 } else {
-                    ValueAnchorNode valueAnchor = node.graph().add(new ValueAnchorNode(null));
+                    ValueAnchorNode valueAnchor = node.graph().add(new ValueAnchorNode());
                     node.replaceAtUsages(valueAnchor);
                     node.graph().replaceFixedWithFixed(node, valueAnchor);
                 }
