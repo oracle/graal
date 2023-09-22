@@ -1520,9 +1520,9 @@ def clinittest(args):
         mx.ensure_dir_exists(build_dir)
 
         if new_class_init_policy:
-            policy_args = svm_experimental_options(['-H:+StrictImageHeap', '-H:+SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
+            policy_args = svm_experimental_options(['-H:+SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
         else:
-            policy_args = svm_experimental_options(['-H:-SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
+            policy_args = svm_experimental_options(['-H:-StrictImageHeap', '-H:-SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
 
         # Build and run the example
         binary_path = join(build_dir, 'clinittest')
