@@ -199,7 +199,7 @@ suite = {
       ],
       "checkPackagePrefix": "false",
       "checkstyleVersion" : "10.7.0",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "workingSets" : "API,Graal",
       "jacoco" : "include",
       "jacocoExcludePackages" : [
@@ -227,7 +227,7 @@ suite = {
       ],
       "checkPackagePrefix": "false",
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
     },
 
     "jdk.internal.vm.compiler.test" : {
@@ -255,6 +255,7 @@ suite = {
         "java.base" : [
           "jdk.internal.module",
           "jdk.internal.misc",
+          "jdk.internal.util",
         ],
         "java.instrument" : [
           "sun.instrument",
@@ -279,7 +280,7 @@ suite = {
         "truffle:TRUFFLE_DSL_PROCESSOR"
       ],
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "jacoco" : "exclude",
     },
 
@@ -297,33 +298,8 @@ suite = {
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
       ],
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "workingSets" : "Graal,HotSpot",
-    },
-
-    "org.graalvm.compiler.hotspot.jdk20.test" : {
-      "testProject" : True,
-      "subDir" : "src",
-      "sourceDirs" : ["src"],
-      "dependencies" : [
-        "jdk.internal.vm.compiler.test",
-      ],
-      "requires" : [
-        "jdk.jfr",
-      ],
-      "requiresConcealed" : {
-        "java.base" : [
-          "jdk.internal.misc",
-        ],
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.meta",
-        ],
-      },
-      "checkstyle": "jdk.internal.vm.compiler",
-      "javaCompliance" : "20+",
-      "javaPreviewNeeded": "20+",
-      "javac.lint.overrides": "none",
-      "workingSets" : "Graal,HotSpot,Test",
     },
 
     "org.graalvm.compiler.hotspot.jdk21.test" : {
@@ -349,7 +325,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : ["mx:JMH_1_21", "org.graalvm.compiler.microbenchmarks"],
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
       "workingSets" : "Graal,Bench",
@@ -370,7 +346,7 @@ suite = {
         ],
       },
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -407,7 +383,7 @@ suite = {
         "mx:JMH_1_21",
       ],
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "checkPackagePrefix" : "false",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
@@ -423,7 +399,7 @@ suite = {
         "sdk:COLLECTIONS",
       ],
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
     },
 
     "org.graalvm.profdiff.test" : {
@@ -434,7 +410,7 @@ suite = {
         "mx:JUNIT",
       ],
       "checkstyle" : "jdk.internal.vm.compiler",
-      "javaCompliance" : "17+",
+      "javaCompliance" : "21+",
       "workingSets" : "Graal,Test",
     },
   },
@@ -468,7 +444,6 @@ suite = {
     "GRAAL_TEST_PREVIEW_FEATURE" : {
       "subDir" : "src",
       "dependencies" : [
-        "org.graalvm.compiler.hotspot.jdk20.test",
         "org.graalvm.compiler.hotspot.jdk21.test",
       ],
       "distDependencies" : [

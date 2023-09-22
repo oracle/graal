@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.jdk20.test;
+package org.graalvm.compiler.jtt.jdk;
 
 import static org.junit.Assume.assumeTrue;
 
@@ -42,24 +42,23 @@ import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.code.Architecture;
 
 @RunWith(Parameterized.class)
-public class LongShuffleBitsTest extends JTTTest {
+public class IntegerShuffleBitsTest extends JTTTest {
 
     @Parameterized.Parameters(name = "{0}, {1}")
     public static Collection<Object[]> testData() {
-        long[] inputs = {0L, 1L, -1L, Long.MIN_VALUE, Long.MAX_VALUE, 0x5555555555555555L, 0xAAAAAAAAAAAAAAAAL,
-                        0xCAFEBABECAFEBABEL, 0xFF00FFF0FF00FFF0L, 0x0000CABAB0000CABABL};
+        int[] inputs = {0, 1, -1, Integer.MIN_VALUE, Integer.MAX_VALUE, 0x55555555, 0xAAAAAAAA, 0xCAFEBABE, 0xFF00FFF0, 0x0000CABAB};
 
         List<Object[]> testParameters = new ArrayList<>();
-        for (long a : inputs) {
-            for (long b : inputs) {
+        for (int a : inputs) {
+            for (int b : inputs) {
                 testParameters.add(new Object[]{a, b});
             }
         }
         return testParameters;
     }
 
-    @Parameterized.Parameter(value = 0) public long input0;
-    @Parameterized.Parameter(value = 1) public long input1;
+    @Parameterized.Parameter(value = 0) public int input0;
+    @Parameterized.Parameter(value = 1) public int input1;
 
     @Before
     public void checkPreview() {
@@ -68,39 +67,39 @@ public class LongShuffleBitsTest extends JTTTest {
         assumeTrue("bmi2 not supported", ((AMD64) arch).getFeatures().contains(AMD64.CPUFeature.BMI2));
     }
 
-    public static long lCompress(long i, long mask) {
-        return Long.compress(i, mask);
+    public static int iCompress(int i, int mask) {
+        return Integer.compress(i, mask);
     }
 
-    public static long lExpand(long i, long mask) {
-        return Long.expand(i, mask);
+    public static int iExpand(int i, int mask) {
+        return Integer.expand(i, mask);
     }
 
-    public static long lCompressExpand(long i, long mask) {
-        return Long.compress(Long.expand(i, mask), mask);
+    public static int iCompressExpand(int i, int mask) {
+        return Integer.compress(Integer.expand(i, mask), mask);
     }
 
-    public static long lExpandCompress(long i, long mask) {
-        return Long.expand(Long.compress(i, mask), mask);
-    }
-
-    @Test
-    public void testLCompress() {
-        runTest("lCompress", input0, input1);
+    public static int iExpandCompress(int i, int mask) {
+        return Integer.expand(Integer.compress(i, mask), mask);
     }
 
     @Test
-    public void testLExpand() {
-        runTest("lExpand", input0, input1);
+    public void testICompress() {
+        runTest("iCompress", input0, input1);
     }
 
     @Test
-    public void testLCompressExpand() {
-        runTest("lCompressExpand", input0, input1);
+    public void testIExpand() {
+        runTest("iExpand", input0, input1);
     }
 
     @Test
-    public void testLExpandCompress() {
-        runTest("lExpandCompress", input0, input1);
+    public void testICompressExpand() {
+        runTest("iCompressExpand", input0, input1);
+    }
+
+    @Test
+    public void testIExpandCompress() {
+        runTest("iExpandCompress", input0, input1);
     }
 }

@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.hotspot;
 
+import static jdk.vm.ci.services.Services.getSavedProperty;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Formatter;
@@ -41,7 +43,6 @@ import jdk.vm.ci.common.JVMCIError;
 import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
 import jdk.vm.ci.hotspot.VMField;
-import jdk.vm.ci.services.Services;
 
 /**
  * Interposes on {@link HotSpotVMConfigAccess} to {@linkplain #isPresent check} when retrieving VM
@@ -60,7 +61,7 @@ public class GraalHotSpotVMConfigAccess {
         this.vmConstants = store.getConstants();
         this.vmFields = store.getFields();
 
-        String value = getProperty("os.name");
+        String value = getSavedProperty("os.name");
         switch (value) {
             case "Linux":
                 value = "linux";
@@ -82,7 +83,7 @@ public class GraalHotSpotVMConfigAccess {
         assert KNOWN_OS_NAMES.contains(value);
         this.osName = value;
 
-        String arch = getProperty("os.arch");
+        String arch = getSavedProperty("os.arch");
         switch (arch) {
             case "x86_64":
                 arch = "amd64";
@@ -94,18 +95,6 @@ public class GraalHotSpotVMConfigAccess {
 
     public HotSpotVMConfigStore getStore() {
         return access.getStore();
-    }
-
-    protected static String getProperty(String name, String def) {
-        String value = Services.getSavedProperties().get(name);
-        if (value == null) {
-            return def;
-        }
-        return value;
-    }
-
-    protected static String getProperty(String name) {
-        return getProperty(name, null);
     }
 
     public static final Set<String> KNOWN_ARCHITECTURES = new HashSet<>(Arrays.asList("amd64", "aarch64", "riscv64"));
@@ -121,31 +110,17 @@ public class GraalHotSpotVMConfigAccess {
      */
     public final String osArch;
 
-    protected static final Version JVMCI_23_0_b04 = new Version(23, 0, 4);
-    protected static final Version JVMCI_23_0_b05 = new Version(23, 0, 5);
-    protected static final Version JVMCI_23_0_b06 = new Version(23, 0, 6);
-    protected static final Version JVMCI_23_0_b07 = new Version(23, 0, 7);
-    protected static final Version JVMCI_23_0_b10 = new Version(23, 0, 10);
-
-    protected static final Version JVMCI_23_1_b02 = new Version(23, 1, 2);
-    protected static final Version JVMCI_23_1_b04 = new Version(23, 1, 4);
-    protected static final Version JVMCI_23_1_b07 = new Version(23, 1, 7);
-
-    protected static final Version JVMCI_23_1_b13 = new Version(23, 1, 13);
-
     public static boolean jvmciGE(Version v) {
         return JVMCI && !JVMCI_VERSION.isLessThan(v);
     }
 
     public static final int JDK = Runtime.version().feature();
-    static final int JDK_UPDATE = Runtime.version().update();
-    static final int JDK_BUILD = Runtime.version().build().orElse(0);
-    public static final boolean IS_OPENJDK = getProperty("java.vm.name", "").startsWith("OpenJDK");
+    public static final int JDK_UPDATE = Runtime.version().update();
     public static final Version JVMCI_VERSION;
     public static final boolean JVMCI;
     public static final boolean JDK_PRERELEASE;
     static {
-        String vmVersion = getProperty("java.vm.version");
+        String vmVersion = getSavedProperty("java.vm.version");
         JVMCI_VERSION = Version.parse(vmVersion);
         JDK_PRERELEASE = vmVersion.contains("SNAPSHOT") || vmVersion.contains("-dev");
         JVMCI = JVMCI_VERSION != null;
@@ -212,9 +187,9 @@ public class GraalHotSpotVMConfigAccess {
             String jvmci = JVMCI_VERSION == null ? "" : " jvmci-" + JVMCI_VERSION;
             String runtime = String.format("JDK %d%s %s-%s (java.home=%s, java.vm.name=%s, java.vm.version=%s)",
                             JDK, jvmci, osName, osArch,
-                            getProperty("java.home"),
-                            getProperty("java.vm.name"),
-                            getProperty("java.vm.version"));
+                            getSavedProperty("java.home"),
+                            getSavedProperty("java.vm.name"),
+                            getSavedProperty("java.vm.version"));
             List<String> messages = new ArrayList<>();
             if (!missing.isEmpty()) {
                 messages.add(String.format("VM config values missing that should be present in %s:%n    %s", runtime,
@@ -240,8 +215,8 @@ public class GraalHotSpotVMConfigAccess {
         }
         boolean warn = "warn".equals(value) || JDK_PRERELEASE;
         Formatter message = new Formatter().format(rawErrorMessage);
-        String javaHome = getProperty("java.home");
-        String vmName = getProperty("java.vm.name");
+        String javaHome = getSavedProperty("java.home");
+        String vmName = getSavedProperty("java.vm.name");
         if (warn) {
             message.format("%nSet the JVMCI_CONFIG_CHECK environment variable to \"ignore\" to suppress ");
             message.format("this warning and continue execution.%n");

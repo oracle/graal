@@ -38,7 +38,7 @@ import jdk.vm.ci.services.Services;
 public final class Versions {
     static final Versions VERSIONS;
     static {
-        String home = Services.getSavedProperties().get("java.home");
+        String home = Services.getSavedProperty("java.home");
         VERSIONS = new Versions(home);
     }
 

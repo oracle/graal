@@ -225,7 +225,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                 if (inputArguments != null) {
                     ps.println("VM Arguments: " + String.join(" ", inputArguments));
                 }
-                String cmd = Services.getSavedProperties().get("sun.java.command");
+                String cmd = Services.getSavedProperty("sun.java.command");
                 if (cmd != null) {
                     ps.println("sun.java.command=" + cmd);
                 }

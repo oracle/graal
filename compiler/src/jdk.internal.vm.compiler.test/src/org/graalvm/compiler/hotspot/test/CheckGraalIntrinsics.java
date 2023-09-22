@@ -49,7 +49,6 @@ import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.graalvm.compiler.test.GraalTest;
-import org.junit.Assume;
 import org.junit.Test;
 
 import jdk.vm.ci.hotspot.HotSpotVMConfigStore;
@@ -147,7 +146,6 @@ public class CheckGraalIntrinsics extends GraalTest {
     @Test
     @SuppressWarnings("try")
     public void test() throws ClassNotFoundException {
-        Assume.assumeTrue("CheckGraalIntrinsics now relies on both VMIntrinsicMethod.isAvailable and VMIntrinsicMethod.c2Supported fields being present.", config.isIntrinsicAvailableExported());
         HotSpotProviders providers = rt.getHostBackend().getProviders();
         Plugins graphBuilderPlugins = providers.getGraphBuilderPlugins();
         InvocationPlugins invocationPlugins = graphBuilderPlugins.getInvocationPlugins();

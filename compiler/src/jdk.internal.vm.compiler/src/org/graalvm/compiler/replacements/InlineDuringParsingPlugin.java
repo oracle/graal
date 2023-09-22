@@ -41,7 +41,7 @@ import jdk.vm.ci.services.Services;
 public final class InlineDuringParsingPlugin implements InlineInvokePlugin {
 
     private static int getInteger(String name, int def) {
-        String value = Services.getSavedProperties().get(name);
+        String value = Services.getSavedProperty(name);
         if (value != null) {
             return Integer.parseInt(value);
         }

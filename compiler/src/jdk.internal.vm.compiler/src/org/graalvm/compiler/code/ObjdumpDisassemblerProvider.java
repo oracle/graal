@@ -102,7 +102,7 @@ public class ObjdumpDisassemblerProvider implements DisassemblerProvider {
             }
 
             String[] cmdline;
-            String arch = Services.getSavedProperties().get("os.arch");
+            String arch = Services.getSavedProperty("os.arch");
             if (arch.equals("amd64") || arch.equals("x86_64")) {
                 cmdline = new String[]{objdump, "-D", "-b", "binary", "-M", "x86-64", "-m", "i386", tmp.getAbsolutePath()};
             } else if (arch.equals("aarch64")) {

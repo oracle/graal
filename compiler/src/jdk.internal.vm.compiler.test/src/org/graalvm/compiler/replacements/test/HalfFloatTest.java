@@ -22,7 +22,7 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.jdk20.test;
+package org.graalvm.compiler.replacements.test;
 
 import static org.graalvm.compiler.serviceprovider.JavaVersionUtil.JAVA_SPEC;
 import static org.junit.Assume.assumeTrue;

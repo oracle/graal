@@ -451,19 +451,8 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     public void emitZeroMemory(Value address, Value length, boolean isAligned) {
         final EnumSet<AArch64.Flag> flags = ((AArch64) target().arch).getFlags();
 
-        boolean isDcZvaProhibited = true;
         int zvaLength = config.zvaLength;
-        if (zvaLength != Integer.MAX_VALUE) {
-            isDcZvaProhibited = 0 == zvaLength;
-        } else {
-            int dczidValue = config.psrInfoDczidValue;
-
-            // ARMv8-A architecture reference manual D12.2.35 Data Cache Zero ID register says:
-            // * BS, bits [3:0] indicate log2 of the DC ZVA block size in (4-byte) words.
-            // * DZP, bit [4] of indicates whether use of DC ZVA instruction is prohibited.
-            zvaLength = 4 << (dczidValue & 0xF);
-            isDcZvaProhibited = ((dczidValue & 0x10) != 0);
-        }
+        boolean isDcZvaProhibited = 0 == zvaLength;
 
         // Use DC ZVA if it's not prohibited and AArch64 HotSpot flag UseBlockZeroing is on.
         boolean useDcZva = !isDcZvaProhibited && flags.contains(AArch64.Flag.UseBlockZeroing);
