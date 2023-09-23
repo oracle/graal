@@ -547,46 +547,20 @@ public class CausalityExport {
         }
     }
 
-    public static final class AutomaticFeatureRegistration extends Event {
-        public static final AutomaticFeatureRegistration Instance = new AutomaticFeatureRegistration();
+    public static final class RootEvent extends Event {
+        public final String label;
 
-        private AutomaticFeatureRegistration() {}
+        private RootEvent(String label) {
+            this.label = label;
+        }
+
+        public static final Event AutomaticFeatureRegistration = new RootEvent("[Automatic Feature Registration]");
+        public static final Event UserEnabledFeatureRegistration = new RootEvent("[User-Requested Feature Registration]");
+        public static final Event InitialRegistration = new RootEvent("[Initial Registrations]");
 
         @Override
         public String toString() {
-            return "[Automatic Feature Registration]";
-        }
-
-        @Override
-        public boolean root() {
-            return true;
-        }
-    }
-
-    public static final class UserEnabledFeatureRegistration extends Event {
-        public static final UserEnabledFeatureRegistration Instance = new UserEnabledFeatureRegistration();
-
-        private UserEnabledFeatureRegistration() {}
-
-        @Override
-        public String toString() {
-            return "[User-Requested Feature Registration]";
-        }
-
-        @Override
-        public boolean root() {
-            return true;
-        }
-    }
-
-    public static final class InitialRegistration extends Event {
-        public static InitialRegistration Instance = new InitialRegistration();
-
-        private InitialRegistration() { }
-
-        @Override
-        public String toString() {
-            return "[Initial Registrations]";
+            return label;
         }
 
         @Override

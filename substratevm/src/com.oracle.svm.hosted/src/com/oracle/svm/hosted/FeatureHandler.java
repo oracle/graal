@@ -173,7 +173,7 @@ public class FeatureHandler {
         Function<Class<?>, Class<?>> specificClassProvider = specificAutomaticFeatures::get;
 
         for (Class<?> featureClass : automaticFeatures) {
-            try (var ignored = CausalityExport.setCause(CausalityExport.AutomaticFeatureRegistration.Instance)) {
+            try (var ignored = CausalityExport.setCause(CausalityExport.RootEvent.AutomaticFeatureRegistration)) {
                 registerFeature(featureClass, specificClassProvider, access);
             }
         }
@@ -185,7 +185,7 @@ public class FeatureHandler {
             } catch (ClassNotFoundException e) {
                 throw UserError.abort("Feature %s class not found on the classpath. Ensure that the name is correct and that the class is on the classpath.", featureName);
             }
-            try (var ignored = CausalityExport.setCause(CausalityExport.UserEnabledFeatureRegistration.Instance)) {
+            try (var ignored = CausalityExport.setCause(CausalityExport.RootEvent.UserEnabledFeatureRegistration)) {
                 registerFeature(featureClass, specificClassProvider, access);
             }
         }

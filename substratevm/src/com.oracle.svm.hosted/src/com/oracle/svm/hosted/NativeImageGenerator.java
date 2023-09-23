@@ -1104,7 +1104,7 @@ public class NativeImageGenerator {
          * good example.
          */
         try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods");
-             var ignored2 = CausalityExport.setCause(CausalityExport.InitialRegistration.Instance)) {
+             var ignored2 = CausalityExport.setCause(CausalityExport.RootEvent.InitialRegistration)) {
             bb.registerTypeAsInHeap(bb.addRootClass(Object.class, false, false), "root class");
             bb.addRootField(DynamicHub.class, "vtable");
             bb.registerTypeAsInHeap(bb.addRootClass(String.class, false, false), "root class");
