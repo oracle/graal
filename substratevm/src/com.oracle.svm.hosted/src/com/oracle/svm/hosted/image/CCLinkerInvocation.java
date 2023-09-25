@@ -264,6 +264,11 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             additionalPreOptions.add("-z");
             additionalPreOptions.add("notext");
 
+            // [GR-48722] Default on linux-amd64, but not on other arches (e.g. aarch64). See
+            // https://sourceware.org/git/?p=binutils-gdb.git;a=commit;h=f6aec96dce1ddbd8961a3aa8a2925db2021719bb
+            additionalPreOptions.add("-z");
+            additionalPreOptions.add("separate-code");
+
             if (SubstrateOptions.ForceNoROSectionRelocations.getValue()) {
                 additionalPreOptions.add("-fuse-ld=gold");
                 additionalPreOptions.add("-Wl,--rosegment");
