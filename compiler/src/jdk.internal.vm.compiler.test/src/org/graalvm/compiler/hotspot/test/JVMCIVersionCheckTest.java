@@ -63,12 +63,10 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
 
     }
 
-    private static final long SEED = Long.getLong("test.seed", System.nanoTime());
-
     @Parameters(name = "{0} vs {1}")
     public static Collection<Object[]> data() {
         List<Object[]> ret = new ArrayList<>();
-        Random random = new Random(SEED);
+        Random random = getRandomInstance();
 
         for (String minJdkVersion : JDK_VERSIONS) {
             for (String jdkVersion : JDK_VERSIONS) {
@@ -115,12 +113,15 @@ public class JVMCIVersionCheckTest extends GraalCompilerTest {
             try {
                 JVMCIVersionCheck.check(props, minVersion, "21", javaVmVersion, false);
             } catch (InternalError e) {
-                throw new AssertionError("Failed " + JVMCIVersionCheckTest.class.getSimpleName() + " with -Dtest.seed=" + SEED, e);
+                throw new AssertionError("Failed " + JVMCIVersionCheckTest.class.getSimpleName(), e);
             }
         } else {
             try {
                 JVMCIVersionCheck.check(props, minVersion, "21", javaVmVersion, false);
-                Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion + " (-Dtest.seed=" + SEED + ")");
+                String value = System.getenv("JVMCI_VERSION_CHECK");
+                if (!"warn".equals(value) && !"ignore".equals(value)) {
+                    Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion);
+                }
             } catch (InternalError e) {
                 // pass
             }
