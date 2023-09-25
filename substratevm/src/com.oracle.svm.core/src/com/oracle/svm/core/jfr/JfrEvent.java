@@ -129,11 +129,6 @@ public final class JfrEvent {
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     private boolean shouldEmit0() {
-        return shouldCommit() && SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this);
-    }
-
-    @Uninterruptible(reason = "This is executed before the recording state is checked", mayBeInlined = true, calleeMustBe = false)
-    private boolean shouldCommit() {
-        return SubstrateJVM.get().shouldCommit(this);
+        return SubstrateJVM.get().shouldCommit(this) && SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this);
     }
 }

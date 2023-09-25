@@ -86,6 +86,7 @@ public class JfrManager {
         return isFirstIsolate -> {
             parseFlightRecorderLogging(SubstrateOptions.FlightRecorderLogging.getValue());
             periodicEventSetup();
+            com.oracle.svm.core.jfr.SubstrateJVM.getJfrRandom().resetSeed();
             if (isJFREnabled()) {
                 initRecording();
             }

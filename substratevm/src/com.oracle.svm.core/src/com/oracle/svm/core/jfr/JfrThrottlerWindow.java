@@ -25,6 +25,7 @@
  */
 package com.oracle.svm.core.jfr;
 
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 
 import static java.lang.Math.log;
@@ -61,6 +62,7 @@ public class JfrThrottlerWindow {
      *
      * Threads calling this method may not have acquired the JfrThrottler lock.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean sample() {
         // Guarantees only one thread can record the last event of the window
         long prevMeasuredPopSize = measuredPopSize.getAndIncrement();
@@ -72,6 +74,7 @@ public class JfrThrottlerWindow {
     }
 
     /** Thread's calling this method should have acquired the JftThrottler lock. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long samplesTaken() {
         if (measuredPopSize.get() > maxSampleablePopulation) {
             return samplesExpected();
@@ -80,11 +83,13 @@ public class JfrThrottlerWindow {
     }
 
     /** Thread's calling this method should have acquired the JftThrottler lock. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long samplesExpected() {
         return samplesPerWindow + debt;
     }
 
     /** Thread's calling this method should have acquired the JftThrottler lock. */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void configure(long newDebt, double projectedPopSize) {
         this.debt = newDebt;
         if (projectedPopSize <= samplesExpected()) {
@@ -92,7 +97,7 @@ public class JfrThrottlerWindow {
         } else {
 
             double projectedProbability = samplesExpected() / projectedPopSize;
-            samplingInterval = nextGeometric(projectedProbability, Math.random());
+            samplingInterval = nextGeometric(projectedProbability, SubstrateJVM.getNextRandomUniform());
         }
 
         this.maxSampleablePopulation = samplesExpected() * samplingInterval;
@@ -104,7 +109,7 @@ public class JfrThrottlerWindow {
             // There is a need to mock JfrTicks for testing.
             endTicks.set(currentTestNanos + windowDurationNs);
         } else {
-            endTicks.set(JfrTicks.currentTimeNanos() + windowDurationNs);
+            endTicks.set(System.nanoTime() + windowDurationNs);
         }
     }
 
@@ -112,6 +117,7 @@ public class JfrThrottlerWindow {
      * This method is essentially the same as jfrAdaptiveSampler::next_geometric(double, double) in
      * the OpenJDK.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long nextGeometric(double probability, double u) {
         double randomVar = u;
         if (randomVar == 0.0) {
@@ -121,13 +127,14 @@ public class JfrThrottlerWindow {
         return (long) Math.ceil(log(1.0 - randomVar) / log(1.0 - probability));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isExpired() {
         if (isTest) {
             // There is a need to mock JfrTicks for testing.
             if (currentTestNanos >= endTicks.get()) {
                 return true;
             }
-        } else if (JfrTicks.currentTimeNanos() >= endTicks.get()) {
+        } else if (System.nanoTime() >= endTicks.get()) {
             return true;
         }
         return false;

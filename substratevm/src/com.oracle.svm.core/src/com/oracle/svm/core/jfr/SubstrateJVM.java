@@ -41,6 +41,7 @@ import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
+import com.oracle.svm.core.jfr.utils.JfrRandom;
 import com.oracle.svm.core.sampler.SamplerBufferPool;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
@@ -79,10 +80,8 @@ public class SubstrateJVM {
     private final SamplerBufferPool samplerBufferPool;
     private final JfrUnlockedChunkWriter unlockedChunkWriter;
     private final JfrRecorderThread recorderThread;
-
-// private final JfrThrottlerSupport jfrThrottlerSupport;
-
     private final JfrLogging jfrLogging;
+    private final JfrRandom jfrRandom;
 
     private boolean initialized;
     /*
@@ -118,6 +117,7 @@ public class SubstrateJVM {
         recorderThread = new JfrRecorderThread(globalMemory, unlockedChunkWriter);
 
         jfrLogging = new JfrLogging();
+        jfrRandom = new JfrRandom();
 
         initialized = false;
         recording = false;
@@ -190,6 +190,15 @@ public class SubstrateJVM {
         return get().jfrLogging;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static double getNextRandomUniform() {
+        return get().jfrRandom.nextUniform();
+    }
+
+    public static JfrRandom getJfrRandom() {
+        return get().jfrRandom;
+    }
+
     public static Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
         try {
             Field f = eventClass.getDeclaredField("eventHandler");
@@ -201,7 +210,7 @@ public class SubstrateJVM {
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
-    protected boolean isRecording() {
+    public boolean isRecording() {
         return recording;
     }
 
@@ -661,10 +670,7 @@ public class SubstrateJVM {
         return eventSettings[(int) event.getId()].isEnabled();
     }
 
-// public boolean shouldCommit(JfrEvent event) {
-// return jfrThrottlerSupport.shouldCommit(event.getId());
-// }
-
+@Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean shouldCommit(JfrEvent event) {
         JfrThrottler throttler = event.getThrottler();
         if (throttler != null) {
@@ -672,10 +678,6 @@ public class SubstrateJVM {
         }
         return true;
     }
-
-// public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
-// return jfrThrottlerSupport.setThrottle(eventTypeId, eventSampleSize, periodMs);
-// }
 
     public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
         for (JfrEvent event : JfrEvent.getEvents()) {
