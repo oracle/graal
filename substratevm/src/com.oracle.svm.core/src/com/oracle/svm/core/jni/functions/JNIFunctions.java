@@ -57,6 +57,7 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateDiagnostics;
+import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -1179,20 +1180,24 @@ public final class JNIFunctions {
         static class JNIJavaVMEnterAttachThreadEnsureJavaThreadPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVM vm) {
-                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true) != CEntryPointErrors.NO_ERROR) {
-                    return JNIErrors.JNI_ERR();
-                }
-                return CEntryPointErrors.NO_ERROR;
+                /*
+                 * DetachCurrentThread and DestroyJavaVM never return a more specific error than
+                 * JNI_ERR on HotSpot. So, we need to do the same.
+                 */
+                int code = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, true);
+                return convertCEntryPointErrorToJNIError(code, false);
             }
         }
 
         static class JNIJavaVMEnterAttachThreadManualJavaThreadPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
             static int enter(JNIJavaVM vm) {
-                if (CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, false) != CEntryPointErrors.NO_ERROR) {
-                    return JNIErrors.JNI_ERR();
-                }
-                return CEntryPointErrors.NO_ERROR;
+                /*
+                 * AttachCurrentThread and AttachCurrentThreadAsDaemon never return a more specific
+                 * error than JNI_ERR on HotSpot. So, we need to do the same.
+                 */
+                int code = CEntryPointActions.enterAttachThread(vm.getFunctions().getIsolate(), false, false);
+                return convertCEntryPointErrorToJNIError(code, false);
             }
         }
 
@@ -1258,6 +1263,50 @@ public final class JNIFunctions {
                 CEntryPointActions.leaveDetachThread();
                 return error;
             }
+        }
+
+        /**
+         * We use one of the approaches below when mapping our internal {@link CEntryPointErrors} to
+         * {@link JNIErrors}. Which approach is used depends on the method arguments and the value
+         * of {@link SubstrateOptions#JNIEnhancedErrorCodes}.
+         * <ul>
+         * <li>Map all internal errors to {@link JNIErrors#JNI_ERR()}. This is needed for some
+         * methods to maximize compatibility with HotSpot.</li>
+         * <li>Map internal errors to roughly matching standard JNI errors. Internal errors that
+         * don't have a counterpart will be mapped to {@link JNIErrors#JNI_ERR()}.</li>
+         * <li>Map all internal errors to non-standard JNI errors.</li>
+         * </ul>
+         */
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        static int convertCEntryPointErrorToJNIError(int code, boolean mapToMatchingStandardJNIError) {
+            if (code == CEntryPointErrors.NO_ERROR) {
+                return JNIErrors.JNI_OK();
+            }
+
+            if (SubstrateOptions.JNIEnhancedErrorCodes.getValue()) {
+                /*
+                 * Return a non-standard JNI error so that callers such as libgraal can figure out
+                 * what went wrong.
+                 */
+                int result = -1000000000 - code;
+                if (result == JNIErrors.JNI_OK() || result >= -100) {
+                    return JNIErrors.JNI_ERR(); // non-negative or potential actual JNI error
+                }
+                return result;
+            }
+
+            if (mapToMatchingStandardJNIError) {
+                /* Map some internal errors to standard JNI errors. */
+                switch (code) {
+                    case CEntryPointErrors.ALLOCATION_FAILED:
+                    case CEntryPointErrors.MAP_HEAP_FAILED:
+                    case CEntryPointErrors.RESERVE_ADDRESS_SPACE_FAILED:
+                    case CEntryPointErrors.INSUFFICIENT_ADDRESS_SPACE:
+                        return JNIErrors.JNI_ENOMEM();
+                }
+            }
+
+            return JNIErrors.JNI_ERR();
         }
 
         static JNIMethodId getMethodID(JNIObjectHandle hclazz, CCharPointer cname, CCharPointer csig, boolean isStatic) {
