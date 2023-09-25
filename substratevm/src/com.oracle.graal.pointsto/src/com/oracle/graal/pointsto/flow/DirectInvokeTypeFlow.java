@@ -83,7 +83,7 @@ public abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
     }
 
     private Collection<AnalysisMethod> getAllCalleesHelper(boolean allComputed) {
-        if (allComputed || targetMethod.isImplementationInvoked()) {
+        if (allComputed || targetMethod.isImplementationInvoked() || isDeoptInvokeTypeFlow()) {
             /*
              * When type states are filtered (e.g. due to context sensitivity), it is possible for a
              * callee to be set, but for it not to be linked.

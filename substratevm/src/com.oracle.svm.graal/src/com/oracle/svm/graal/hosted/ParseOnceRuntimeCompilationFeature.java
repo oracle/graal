@@ -152,18 +152,25 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
     public static final class CallTreeNode extends AbstractCallTreeNode {
         final BytecodePosition position;
+        final boolean inlined;
 
-        CallTreeNode(AnalysisMethod implementationMethod, AnalysisMethod targetMethod, CallTreeNode parent, BytecodePosition position) {
+        CallTreeNode(AnalysisMethod implementationMethod, AnalysisMethod targetMethod, CallTreeNode parent, BytecodePosition position, boolean inlined) {
             super(parent, targetMethod, implementationMethod);
             this.position = position;
+            this.inlined = inlined;
         }
 
         @Override
         public String getPosition() {
-            if (position == null) {
-                return "[root]";
+            String message = "";
+            if (inlined) {
+                message += "(inlined: some parent frames may be missing) ";
+
             }
-            return position.toString();
+            if (getParent() == null) {
+                message += "[root] ";
+            }
+            return message + position;
         }
 
         /**
@@ -432,7 +439,8 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
     @Override
     protected AbstractCallTreeNode getCallTreeNode(ResolvedJavaMethod method) {
-        var result = runtimeCompiledMethodCallTree.get(method);
+        ResolvedJavaMethod origMethod = method instanceof MultiMethod m ? (ResolvedJavaMethod) m.getMultiMethod(ORIGINAL_METHOD) : method;
+        var result = runtimeCompiledMethodCallTree.get(origMethod);
         assert result != null;
         return result;
     }
@@ -467,7 +475,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             var runtimeRoot = root.getMultiMethod(RUNTIME_COMPILED_METHOD);
             if (runtimeRoot != null) {
                 runtimeCandidateCallTree.computeIfAbsent(new RuntimeCompilationCandidateImpl(root, root), (candidate) -> {
-                    var result = new CallTreeNode(root, root, null, null);
+                    var result = new CallTreeNode(root, root, null, new BytecodePosition(null, root, BytecodeFrame.UNKNOWN_BCI), false);
                     worklist.add(result);
                     return result;
                 });
@@ -480,7 +488,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
          * Note within the maps we store the original methods, not the runtime methods.
          */
         while (!worklist.isEmpty()) {
-            var caller = worklist.remove();
+            CallTreeNode caller = worklist.remove();
             caller.linkAsChild();
 
             /*
@@ -493,23 +501,24 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             } else {
                 runtimeCompiledMethodCallTree.put(method, caller);
             }
-            var runtimeMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
+            AnalysisMethod runtimeMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
             assert runtimeMethod != null;
 
             for (InvokeInfo invokeInfo : runtimeMethod.getInvokes()) {
                 AnalysisMethod invokeTarget = invokeInfo.getTargetMethod();
-                if (invokeInfo.isDeoptInvokeTypeFlow()) {
+                boolean deoptInvokeTypeFlow = invokeInfo.isDeoptInvokeTypeFlow();
+                if (deoptInvokeTypeFlow) {
                     assert SubstrateCompilationDirectives.isRuntimeCompiledMethod(invokeTarget);
                     invokeTarget = invokeTarget.getMultiMethod(ORIGINAL_METHOD);
                 }
                 AnalysisMethod target = invokeTarget;
                 assert target.isOriginalMethod();
                 for (AnalysisMethod implementation : invokeInfo.getAllCallees()) {
-                    if (SubstrateCompilationDirectives.isRuntimeCompiledMethod(implementation)) {
+                    if (deoptInvokeTypeFlow || SubstrateCompilationDirectives.isRuntimeCompiledMethod(implementation)) {
                         var origImpl = implementation.getMultiMethod(ORIGINAL_METHOD);
                         assert origImpl != null;
                         runtimeCandidateCallTree.computeIfAbsent(new RuntimeCompilationCandidateImpl(origImpl, target), (candidate) -> {
-                            var result = new CallTreeNode(origImpl, target, caller, invokeInfo.getPosition());
+                            var result = new CallTreeNode(origImpl, target, caller, invokeInfo.getPosition(), deoptInvokeTypeFlow);
                             worklist.add(result);
                             return result;
                         });
@@ -520,7 +529,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                          */
                         runtimeCandidateCallTree.computeIfAbsent(new RuntimeCompilationCandidateImpl(implementation, target),
                                         (candidate) -> {
-                                            var result = new CallTreeNode(implementation, target, caller, invokeInfo.getPosition());
+                                            var result = new CallTreeNode(implementation, target, caller, invokeInfo.getPosition(), false);
                                             result.linkAsChild();
                                             return result;
                                         });
