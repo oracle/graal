@@ -29,9 +29,11 @@ package com.oracle.svm.core.jfr;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.util.TimeUtils;
-
+import com.oracle.svm.core.jfr.utils.JfrReadWriteLock;
 /**
- * Each event that allows throttling should have its own throttler instance.
+ * Each event that allows throttling should have its own throttler instance. Multiple threads may use the same
+ * throttler instance when emitting a particular JFR event type. The throttler uses a rotating window scheme. The active
+ * window is guaranteed not to change while there are threads busy sampling.
  */
 public class JfrThrottler {
     // The following are set to match the values in OpenJDK
@@ -39,9 +41,9 @@ public class JfrThrottler {
     private static final int LOW_RATE_UPPER_BOUND = 9;
     private final JfrThrottlerWindow window0;
     private final JfrThrottlerWindow window1;
-    private final VMMutex rotationLock;
+    private final JfrReadWriteLock rwlock;
 
-    // The following fields are only be accessed by threads holding the lock
+    // The following fields are only be accessed by threads holding the writer lock
     private long periodNs;
     private long eventSampleSize;
     private double ewmaPopulationSizeAlpha = 0;
@@ -54,13 +56,13 @@ public class JfrThrottler {
     private volatile JfrThrottlerWindow activeWindow;
     private volatile boolean disabled;
 
-    public JfrThrottler(VMMutex mutex) {
+    public JfrThrottler() {
         reconfigure = false;
         disabled = true;
         window0 = new JfrThrottlerWindow();
         window1 = new JfrThrottlerWindow();
         activeWindow = window0;
-        this.rotationLock = mutex;
+        rwlock = new JfrReadWriteLock();
     }
 
     /**
@@ -69,8 +71,9 @@ public class JfrThrottler {
      * critical section because setting the sample size and period must be done together atomically.
      * Otherwise, we risk a window's params being set with only one of the two updated.
      */
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void normalize(long samplesPerPeriod, double periodMs) {
-        assert rotationLock.isOwner();
+        assert rwlock.isWriteOwner();
         // Do we want more than 10samples/s ? If so convert to samples/s
         double periodsPerSecond = 1000.0 / periodMs;
         double samplesPerSecond = samplesPerPeriod * periodsPerSecond;
@@ -84,6 +87,7 @@ public class JfrThrottler {
         this.periodNs = (long) periodMs * 1000000;
     }
 
+    @Uninterruptible(reason = "Avoid deadlock due to locking without transition.")
     public boolean setThrottle(long eventSampleSize, long periodMs) {
         if (eventSampleSize == Target_jdk_jfr_internal_settings_ThrottleSetting.OFF) {
             disabled = true;
@@ -91,49 +95,51 @@ public class JfrThrottler {
         }
 
         // Blocking lock because new settings MUST be applied.
-        rotationLock.lock();
+        rwlock.writeLockNoTransition();
         try {
             normalize(eventSampleSize, periodMs);
             reconfigure = true;
             rotateWindow();
         } finally {
-            rotationLock.unlock();
+            rwlock.unlock();
         }
         disabled = false;
         return true;
     }
 
     /**
-     * The real active window may change while we're doing the sampling. That's fine as long as we
-     * perform operations with respect to a consistent window during this method. It's fine if the
-     * active window changes after we've read it from memory, because now we'll be writing to the
-     * next window (which gets reset before becoming active again).
+     * Immediately acquiring the reader lock when entering this method prevents the active window from changing while
+     * sampling is in progress. If we encounter an expired window, there's no point in sampling, so the reader
+     * lock can be returned. An expired window should be rotated. The writer lock must be acquired before attempting
+     * to rotate. Once an expired window is detected, it is guaranteed to be rotated before any NEW threads (readers)
+     * are allowed to begin sampling.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean sample() {
         if (disabled) {
             return true;
         }
-        JfrThrottlerWindow window = activeWindow;
-        boolean expired = window.isExpired();
-        if (expired) {
-            // Check lock in case thread is already rotating.
-            rotationLock.lockNoTransition();
-            try {
+        // New readers will block here if there is a writer waiting for the lock.
+        rwlock.readLockNoTransition();
+        try {
+            boolean expired = activeWindow.isExpired();
+            if (expired) {
+                rwlock.unlock();
+                rwlock.writeLockNoTransition();
                 /*
-                 * Once in critical section, ensure active window is still expired. Another thread
+                 * Once in the critical section, ensure the active window is still expired. Another thread
                  * may have already handled the expired window, or new settings may have already
                  * triggered a rotation.
                  */
                 if (activeWindow.isExpired()) {
                     rotateWindow();
                 }
-            } finally {
-                rotationLock.unlock();
+                return false;
             }
-            return false;
+            return activeWindow.sample();
+        } finally {
+            rwlock.unlock();
         }
-        return window.sample();
     }
 
     /**
@@ -144,20 +150,20 @@ public class JfrThrottler {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void rotateWindow() {
-        assert rotationLock.isOwner();
+        assert rwlock.isWriteOwner();
         configure();
         installNextWindow();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void installNextWindow() {
-        assert rotationLock.isOwner();
+        assert rwlock.isWriteOwner();
         activeWindow = getNextWindow();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private JfrThrottlerWindow getNextWindow() {
-        assert rotationLock.isOwner();
+        assert rwlock.isWriteOwner();
         if (window0 == activeWindow) {
             return window1;
         }
@@ -166,7 +172,7 @@ public class JfrThrottler {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private long computeAccumulatedDebtCarryLimit(long windowDurationNs) {
-        assert rotationLock.isOwner();
+        assert rwlock.isWriteOwner();
         if (periodNs == 0 || windowDurationNs >= TimeUtils.nanosPerSecond) {
             return 1;
         }
@@ -175,7 +181,7 @@ public class JfrThrottler {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private long amortizeDebt(JfrThrottlerWindow lastWindow) {
-        assert rotationLock.isOwner();
+        assert rwlock.isWriteOwner();
         if (accumulatedDebtCarryCount == accumulatedDebtCarryLimit) {
             accumulatedDebtCarryCount = 1;
             return 0; // reset because new settings have been applied
@@ -190,7 +196,7 @@ public class JfrThrottler {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void setSamplePointsAndWindowDuration() {
-        assert rotationLock.isOwner();
+        assert rwlock.isWriteOwner();
         assert reconfigure;
         JfrThrottlerWindow next = getNextWindow();
         long samplesPerWindow = eventSampleSize / WINDOW_DIVISOR;
@@ -211,7 +217,7 @@ public class JfrThrottler {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void configure() {
-        assert rotationLock.isOwner();
+        assert rwlock.isWriteOwner();
         JfrThrottlerWindow next = getNextWindow();
 
         // Store updated parameters to both windows.
@@ -244,7 +250,7 @@ public class JfrThrottler {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private double projectPopulationSize(long lastWindowMeasuredPop) {
-        assert rotationLock.isOwner();
+        assert rwlock.isWriteOwner();
         avgPopulationSize = exponentiallyWeightedMovingAverage(lastWindowMeasuredPop, ewmaPopulationSizeAlpha, avgPopulationSize);
         return avgPopulationSize;
     }

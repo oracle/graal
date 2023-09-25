@@ -85,7 +85,7 @@ public final class JfrEvent {
         this.name = name;
         this.hasDuration = hasDuration;
         if (hasThrottling) {
-            throttler = new JfrThrottler(new VMMutex("jfrThrottler_" + name));
+            throttler = new JfrThrottler();
         }
         events.add(this);
     }

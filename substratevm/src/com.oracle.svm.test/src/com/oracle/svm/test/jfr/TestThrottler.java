@@ -43,8 +43,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
-import com.oracle.svm.core.locks.VMMutex;
-
 public class TestThrottler extends JfrRecordingTest {
 
     // Based on the hardcoded value in the throttler class.
@@ -53,7 +51,6 @@ public class TestThrottler extends JfrRecordingTest {
     private static final long WINDOW_DURATION_MS = 200;
     private static final long SAMPLES_PER_WINDOW = 10;
     private static final long SECOND_IN_MS = 1000;
-    private static final VMMutex mutex = new VMMutex("testThrottler");
 
     /**
      * This is the simplest test that ensures that sampling stops after the cap is hit. Single
@@ -62,7 +59,7 @@ public class TestThrottler extends JfrRecordingTest {
     @Test
     public void testCapSingleThread() {
         // Doesn't rotate after starting sampling
-        JfrThrottler throttler = new JfrThrottler(mutex);
+        JfrThrottler throttler = new JfrThrottler();
         throttler.setThrottle(SAMPLES_PER_WINDOW * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         for (int i = 0; i < SAMPLES_PER_WINDOW * WINDOWS_PER_PERIOD; i++) {
             boolean sample = throttler.sample();
@@ -81,7 +78,7 @@ public class TestThrottler extends JfrRecordingTest {
         final int testingThreadCount = 10;
         final AtomicInteger count = new AtomicInteger();
         List<Thread> testingThreads = new ArrayList<>();
-        JfrThrottler throttler = new JfrThrottler(mutex);
+        JfrThrottler throttler = new JfrThrottler();
         TestingBackDoor.beginTest(throttler, samplesPerWindow * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         Runnable doSampling = () -> {
             for (int i = 0; i < samplesPerWindow; i++) {
@@ -126,7 +123,7 @@ public class TestThrottler extends JfrRecordingTest {
     @Test
     public void testExpiry() {
         final long samplesPerWindow = 10;
-        JfrThrottler throttler = new JfrThrottler(mutex);
+        JfrThrottler throttler = new JfrThrottler();
         TestingBackDoor.beginTest(throttler, samplesPerWindow * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         int count = 0;
 
@@ -154,7 +151,7 @@ public class TestThrottler extends JfrRecordingTest {
     public void testEWMA() {
         // Results in 50 samples per second
         final long samplesPerWindow = 10;
-        JfrThrottler throttler = new JfrThrottler(mutex);
+        JfrThrottler throttler = new JfrThrottler();
         TestingBackDoor.beginTest(throttler, samplesPerWindow * WINDOWS_PER_PERIOD, SECOND_IN_MS);
         assertTrue(TestingBackDoor.getWindowLookback(throttler) == 25.0);
         // Arbitrarily chosen
@@ -178,7 +175,7 @@ public class TestThrottler extends JfrRecordingTest {
     public void testDebt() {
         final long samplesPerWindow = 10;
         final long populationPerWindow = 50;
-        JfrThrottler throttler = new JfrThrottler(mutex);
+        JfrThrottler throttler = new JfrThrottler();
         TestingBackDoor.beginTest(throttler, samplesPerWindow * WINDOWS_PER_PERIOD, WINDOWS_PER_PERIOD * WINDOW_DURATION_MS);
 
         for (int p = 0; p < 50; p++) {
@@ -226,7 +223,7 @@ public class TestThrottler extends JfrRecordingTest {
     public void testNormalization() {
         long sampleSize = 10 * 600;
         long periodMs = 60 * SECOND_IN_MS;
-        JfrThrottler throttler = new JfrThrottler(mutex);
+        JfrThrottler throttler = new JfrThrottler();
         TestingBackDoor.beginTest(throttler, sampleSize, periodMs);
         assertTrue(TestingBackDoor.getPeriodNs(throttler) + " " + TestingBackDoor.getEventSampleSize(throttler),
                         TestingBackDoor.getEventSampleSize(throttler) == sampleSize / 60 && TestingBackDoor.getPeriodNs(throttler) == 1000000 * SECOND_IN_MS);
@@ -244,7 +241,7 @@ public class TestThrottler extends JfrRecordingTest {
     @Test
     public void testZeroRate() throws Throwable {
         // Test throttler in isolation
-        JfrThrottler throttler = new JfrThrottler(mutex);
+        JfrThrottler throttler = new JfrThrottler();
         throttler.setThrottle(0, 2 * SECOND_IN_MS);
         assertFalse(throttler.sample());
         throttler.setThrottle(10, 2 * SECOND_IN_MS);
@@ -329,7 +326,7 @@ public class TestThrottler extends JfrRecordingTest {
         final int expectedSamplesPerWindow = 50;
         final int expectedSamples = expectedSamplesPerWindow * windowCount;
 
-        JfrThrottler throttler = new JfrThrottler(mutex);
+        JfrThrottler throttler = new JfrThrottler();
         TestingBackDoor.beginTest(throttler, expectedSamplesPerWindow * WINDOWS_PER_PERIOD, windowDurationMs * WINDOWS_PER_PERIOD);
 
         int[] population = new int[distributionSlots];
