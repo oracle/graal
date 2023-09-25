@@ -29,6 +29,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.GraalGraphError;
@@ -150,12 +151,24 @@ public final class GraphOrder {
         }
     }
 
+    public static boolean assertSchedulableGraph(StructuredGraph g) {
+        assert GraphOrder.assertNonCyclicGraph(g);
+        assert g.getGuardsStage() == GuardsStage.AFTER_FSA || GraphOrder.assertScheduleableBeforeFSA(g);
+        if (g.getGuardsStage() == GuardsStage.AFTER_FSA && Assertions.detailedAssertionsEnabled(g.getOptions())) {
+            // we still want to do a memory verification of the schedule even if we can
+            // no longer use assertSchedulableGraph after the floating reads phase
+            SchedulePhase.runWithoutContextOptimizations(g, SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS, true);
+        }
+        assert g.verify();
+        return true;
+    }
+
     /**
      * This method schedules the graph and makes sure that, for every node, all inputs are available
      * at the position where it is scheduled. This is a very expensive assertion.
      */
     @SuppressWarnings("try")
-    public static boolean assertSchedulableGraph(final StructuredGraph graph) {
+    private static boolean assertScheduleableBeforeFSA(final StructuredGraph graph) {
         assert graph.getGuardsStage() != GuardsStage.AFTER_FSA : "Cannot use the BlockIteratorClosure after FrameState Assignment, HIR Loop Data Structures are no longer valid.";
         try (DebugContext.Scope s = graph.getDebug().scope("AssertSchedulableGraph")) {
             SchedulePhase.runWithoutContextOptimizations(graph, getSchedulingPolicy(graph), true);
