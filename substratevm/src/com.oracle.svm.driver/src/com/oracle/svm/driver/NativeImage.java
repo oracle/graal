@@ -1814,14 +1814,6 @@ public class NativeImage {
         performBuild(new BuildConfiguration(Arrays.asList(args)), defaultNativeImageProvider);
     }
 
-    public static void build(BuildConfiguration config) {
-        build(config, defaultNativeImageProvider);
-    }
-
-    public static void agentBuild(Path javaHome, Path workDir, List<String> buildArgs) {
-        performBuild(new BuildConfiguration(javaHome, workDir, buildArgs), NativeImage::new);
-    }
-
     public static List<String> translateAPIOptions(List<String> arguments) {
         var handler = new APIOptionHandler(new NativeImage(new BuildConfiguration(arguments)));
         var argumentQueue = new ArgumentQueue(OptionOrigin.originDriver);
