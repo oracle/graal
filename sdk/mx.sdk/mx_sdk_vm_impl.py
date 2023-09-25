@@ -2377,6 +2377,7 @@ class GraalVmSVMNativeImageBuildTask(GraalVmNativeImageBuildTask):
 
     def get_build_args(self):
         build_args = [
+            '-EJVMCI_VERSION_CHECK', # Propagate this env var when running native image from mx
             '--parallelism=' + str(self.parallelism),
         ] + svm_experimental_options([
             '-H:+BuildOutputPrefix',
