@@ -1310,6 +1310,21 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
     stability="supported",
 ))
 
+mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
+    suite=_suite,
+    name='XZ',
+    short_name='xz',
+    dir_name='xz',
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=['Truffle'],
+    truffle_jars=['truffle:TRUFFLE_XZ'],
+    support_distributions=['truffle:TRUFFLE_XZ_GRAALVM_SUPPORT'],
+    installable=True,
+    standalone=False,
+    stability="supported",
+))
+
 
 mx.update_commands(_suite, {
     'check-filename-length' : [check_filename_length, ""],
