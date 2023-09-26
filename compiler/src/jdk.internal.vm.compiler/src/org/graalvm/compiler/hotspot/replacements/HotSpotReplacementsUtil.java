@@ -467,7 +467,7 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static boolean useHeavyMonitors(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.useHeavyMonitors;
+        return config.useHeavyMonitors();
     }
 
     @Fold
