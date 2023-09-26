@@ -30,6 +30,11 @@ import com.oracle.svm.core.jdk.UninterruptibleUtils;
 
 import static java.lang.Math.log;
 
+/**
+ * This class is based on JfrSamplerWindow in hotspot/share/jfr/support/jfrAdaptiveSampler.cpp and
+ * hotspot/share/jfr/support/jfrAdaptiveSampler.hpp. Commit hash:
+ * 1100dbc6b2a1f2d5c431c6f5c6eb0b9092aee817. Openjdk version "22-internal".
+ */
 public class JfrThrottlerWindow {
     // reset every rotation
     public UninterruptibleUtils.AtomicLong measuredPopSize;
@@ -55,12 +60,8 @@ public class JfrThrottlerWindow {
     }
 
     /**
-     * A rotation of the active window could happen while in this method. If so, then this window
-     * will be updated as usual, although it is now the "next" window. This results in some wasted
-     * effort, but doesn't affect correctness because this window will be reset before it becomes
-     * active again.
-     *
-     * Threads calling this method may not have acquired the JfrThrottler lock.
+     * The reader lock must be acquired here. The active window will not change while in this
+     * method.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean sample() {
@@ -73,7 +74,7 @@ public class JfrThrottlerWindow {
                         (prevMeasuredPopSize < maxSampleablePopulation);
     }
 
-    /** Thread's calling this method should have acquired the JftThrottler lock. */
+    /** Thread's calling this method should have acquired the JftThrottler writer lcok. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long samplesTaken() {
         if (measuredPopSize.get() > maxSampleablePopulation) {
@@ -82,13 +83,13 @@ public class JfrThrottlerWindow {
         return measuredPopSize.get() / samplingInterval;
     }
 
-    /** Thread's calling this method should have acquired the JftThrottler lock. */
+    /** Thread's calling this method should have acquired the JftThrottler writer lock. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long samplesExpected() {
         return samplesPerWindow + debt;
     }
 
-    /** Thread's calling this method should have acquired the JftThrottler lock. */
+    /** Thread's calling this method should have acquired the JftThrottler writer lock. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void configure(long newDebt, double projectedPopSize) {
         this.debt = newDebt;

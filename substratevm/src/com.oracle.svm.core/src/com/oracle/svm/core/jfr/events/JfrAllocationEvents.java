@@ -26,6 +26,7 @@
 
 package com.oracle.svm.core.jfr.events;
 
+import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.UnsignedWord;
 
@@ -44,6 +45,10 @@ import com.oracle.svm.core.thread.JavaThreads;
 
 public class JfrAllocationEvents {
     private static final FastThreadLocalLong lastAllocationSize = FastThreadLocalFactory.createLong("ObjectAllocationSampleEvent.lastAllocationSize");
+
+    public static void resetLastAllocationSize(IsolateThread thread) {
+        lastAllocationSize.set(thread, 0);
+    }
 
     public static void emit(long startTicks, DynamicHub hub, UnsignedWord allocationSize, UnsignedWord tlabSize) {
         if (HasJfrSupport.get()) {

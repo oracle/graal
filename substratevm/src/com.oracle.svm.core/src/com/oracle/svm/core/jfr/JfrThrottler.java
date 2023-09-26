@@ -27,13 +27,19 @@
 package com.oracle.svm.core.jfr;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.locks.VMMutex;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.jfr.utils.JfrReadWriteLock;
+
 /**
- * Each event that allows throttling should have its own throttler instance. Multiple threads may use the same
- * throttler instance when emitting a particular JFR event type. The throttler uses a rotating window scheme. The active
- * window is guaranteed not to change while there are threads busy sampling.
+ * Each event that allows throttling should have its own throttler instance. Multiple threads may
+ * use the same throttler instance when emitting a particular JFR event type. The throttler uses a
+ * rotating window scheme where each window represents a time slice. The data from the current
+ * window is used to set the parameters of the next window. The active window is guaranteed not to
+ * change while there are threads using it for sampling.
+ *
+ * This class is based on JfrAdaptiveSampler in hotspot/share/jfr/support/jfrAdaptiveSampler.cpp and
+ * hotspot/share/jfr/support/jfrAdaptiveSampler.hpp. Commit
+ * hash:1100dbc6b2a1f2d5c431c6f5c6eb0b9092aee817. Openjdk version "22-internal".
  */
 public class JfrThrottler {
     // The following are set to match the values in OpenJDK
@@ -88,10 +94,12 @@ public class JfrThrottler {
     }
 
     @Uninterruptible(reason = "Avoid deadlock due to locking without transition.")
-    public boolean setThrottle(long eventSampleSize, long periodMs) {
+    public void setThrottle(long eventSampleSize, long periodMs) {
         if (eventSampleSize == Target_jdk_jfr_internal_settings_ThrottleSetting.OFF) {
             disabled = true;
-            return true;
+            return;
+        } else if (eventSampleSize < 0 || periodMs < 0) {
+            return;
         }
 
         // Blocking lock because new settings MUST be applied.
@@ -104,15 +112,15 @@ public class JfrThrottler {
             rwlock.unlock();
         }
         disabled = false;
-        return true;
     }
 
     /**
-     * Immediately acquiring the reader lock when entering this method prevents the active window from changing while
-     * sampling is in progress. If we encounter an expired window, there's no point in sampling, so the reader
-     * lock can be returned. An expired window should be rotated. The writer lock must be acquired before attempting
-     * to rotate. Once an expired window is detected, it is guaranteed to be rotated before any NEW threads (readers)
-     * are allowed to begin sampling.
+     * Acquiring the reader lock before using the active window prevents the active window from
+     * changing while sampling is in progress. If we encounter an expired window, there's no point
+     * in sampling, so the reader lock can be returned. An expired window should be rotated. The
+     * writer lock must be acquired before attempting to rotate. Once an expired window is detected,
+     * it is likely, but not guaranteed, to be rotated before any NEW threads (readers) are allowed
+     * to begin sampling.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean sample() {
@@ -127,9 +135,9 @@ public class JfrThrottler {
                 rwlock.unlock();
                 rwlock.writeLockNoTransition();
                 /*
-                 * Once in the critical section, ensure the active window is still expired. Another thread
-                 * may have already handled the expired window, or new settings may have already
-                 * triggered a rotation.
+                 * Once in the critical section, ensure the active window is still expired. Another
+                 * thread may have already handled the expired window, or new settings may have
+                 * already triggered a rotation.
                  */
                 if (activeWindow.isExpired()) {
                     rotateWindow();

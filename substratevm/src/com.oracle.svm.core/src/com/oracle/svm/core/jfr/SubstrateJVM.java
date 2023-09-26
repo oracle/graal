@@ -39,6 +39,7 @@ import org.graalvm.word.WordFactory;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.hub.DynamicHub;
+import com.oracle.svm.core.jfr.events.JfrAllocationEvents;
 import com.oracle.svm.core.jfr.logging.JfrLogging;
 import com.oracle.svm.core.jfr.sampler.JfrExecutionSampler;
 import com.oracle.svm.core.jfr.utils.JfrRandom;
@@ -670,7 +671,7 @@ public class SubstrateJVM {
         return eventSettings[(int) event.getId()].isEnabled();
     }
 
-@Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean shouldCommit(JfrEvent event) {
         JfrThrottler throttler = event.getThrottler();
         if (throttler != null) {
@@ -684,12 +685,12 @@ public class SubstrateJVM {
             if (eventTypeId == event.getId()) {
                 JfrThrottler throttler = event.getThrottler();
                 if (throttler != null) {
-                    return throttler.setThrottle(eventSampleSize, periodMs);
+                    throttler.setThrottle(eventSampleSize, periodMs);
+                    break;
                 }
-                return false;
             }
         }
-        return false;
+        return true;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -748,6 +749,10 @@ public class SubstrateJVM {
 
         @Override
         protected void operate() {
+            for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
+                JfrAllocationEvents.resetLastAllocationSize(isolateThread);
+            }
+
             SubstrateJVM.get().recording = true;
             /* Recording is enabled, so JFR events can be triggered at any time. */
             SubstrateJVM.getThreadRepo().registerRunningThreads();

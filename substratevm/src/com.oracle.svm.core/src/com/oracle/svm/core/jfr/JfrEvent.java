@@ -28,7 +28,6 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.locks.VMMutex;
 
 import java.util.ArrayList;
 import java.util.List;
