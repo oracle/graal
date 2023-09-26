@@ -27,6 +27,8 @@
 package org.graalvm.compiler.hotspot.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.isStackSlot;
+import static jdk.vm.ci.meta.JavaConstant.INT_0;
+import static jdk.vm.ci.meta.JavaConstant.LONG_0;
 import static org.graalvm.compiler.lir.LIRValueUtil.asConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.asJavaConstant;
 import static org.graalvm.compiler.lir.LIRValueUtil.isConstantValue;
@@ -63,6 +65,7 @@ import org.graalvm.compiler.hotspot.debug.BenchmarkCounters;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotRegistersProvider;
 import org.graalvm.compiler.hotspot.stubs.Stub;
+import org.graalvm.compiler.lir.ConstantValue;
 import org.graalvm.compiler.lir.LIRFrameState;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.LabelRef;
@@ -88,7 +91,6 @@ import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterValue;
-import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
@@ -140,8 +142,14 @@ public class AArch64HotSpotLIRGenerator extends AArch64LIRGenerator implements H
     protected Value getCompareValueForConstantPointer(Value v) {
         if (isConstantValue(v)) {
             Constant c = asConstant(v);
-            if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
-                return AArch64.zr.asValue(LIRKind.value(AArch64Kind.DWORD));
+            if (JavaConstant.isNull(c)) {
+                /*
+                 * On HotSpot null values can be represented by the zero value of appropriate
+                 * length.
+                 */
+                var platformKind = v.getPlatformKind();
+                assert platformKind.equals(AArch64Kind.DWORD) || platformKind.equals(AArch64Kind.QWORD) : String.format("unexpected null value: %s[%s]", platformKind, v);
+                return new ConstantValue(LIRKind.value(platformKind), platformKind.getSizeInBytes() == Integer.BYTES ? INT_0 : LONG_0);
             } else if (c instanceof HotSpotObjectConstant) {
                 return asAllocatable(v);
             }
