@@ -367,16 +367,19 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
         }
 
         // custom operations
+        boolean customOperationDeclared = false;
         for (TypeElement te : ElementFilter.typesIn(typeElement.getEnclosedElements())) {
             AnnotationMirror mir = ElementUtils.findAnnotationMirror(te, types.Operation);
             if (mir == null) {
                 continue;
             }
 
+            customOperationDeclared = true;
             CustomOperationParser.forCodeGeneration(model, types.Operation).parseCustomOperation(te, mir);
         }
 
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.OperationProxy)) {
+            customOperationDeclared = true;
             AnnotationValue mirrorValue = ElementUtils.getAnnotationValue(mir, "value");
             TypeMirror proxiedType = getTypeMirror(mirrorValue);
 
@@ -401,8 +404,8 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
         }
 
         for (AnnotationMirror mir : ElementUtils.getRepeatedAnnotation(typeElement.getAnnotationMirrors(), types.ShortCircuitOperation)) {
+            customOperationDeclared = true;
             TypeMirror proxiedType = getTypeMirror(ElementUtils.getAnnotationValue(mir, "booleanConverter"));
-
             if (proxiedType.getKind() != TypeKind.DECLARED) {
                 model.addError("Could not proxy operation: the proxied type must be a class, not %s", proxiedType);
                 continue;
@@ -411,6 +414,11 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
             TypeElement te = (TypeElement) ((DeclaredType) proxiedType).asElement();
 
             CustomOperationParser.forCodeGeneration(model, types.ShortCircuitOperation).parseCustomOperation(te, mir);
+        }
+
+        if (!customOperationDeclared) {
+            model.addError("At least one operation must be declared using @%s, @%s, or @%s.", getSimpleName(types.Operation), getSimpleName(types.OperationProxy),
+                            getSimpleName(types.ShortCircuitOperation));
         }
 
         // error sync
