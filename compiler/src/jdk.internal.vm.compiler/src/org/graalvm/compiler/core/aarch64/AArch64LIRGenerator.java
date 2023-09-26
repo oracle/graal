@@ -342,18 +342,29 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
         Value leftVal = getCompareValueForConstantPointer(left);
         Value rightVal = getCompareValueForConstantPointer(right);
 
-        if (cond == Condition.EQ) {
+        if (cond == Condition.EQ || cond == Condition.NE) {
             // try to use cbz instruction for comparisons against zero
             boolean leftZero = LIRValueUtil.isNullConstant(leftVal) || isIntConstant(leftVal, 0);
             boolean rightZero = LIRValueUtil.isNullConstant(rightVal) || isIntConstant(rightVal, 0);
 
-            if (rightZero) {
-                append(new CompareBranchZeroOp(asAllocatable(leftVal), trueDestination, falseDestination,
-                                trueDestinationProbability));
-                return;
-            } else if (leftZero) {
-                append(new CompareBranchZeroOp(asAllocatable(rightVal), trueDestination, falseDestination,
-                                trueDestinationProbability));
+            if (rightZero || leftZero) {
+                Value cbzValue = rightZero ? leftVal : rightVal;
+                LabelRef cbzTrueDest;
+                LabelRef cbzFalseDest;
+                double cbzProbability;
+                if (cond == Condition.EQ) {
+                    cbzTrueDest = trueDestination;
+                    cbzFalseDest = falseDestination;
+                    cbzProbability = trueDestinationProbability;
+                } else {
+                    // flip the destinations and the probability
+                    cbzTrueDest = falseDestination;
+                    cbzFalseDest = trueDestination;
+                    cbzProbability = 1 - trueDestinationProbability;
+                }
+
+                append(new CompareBranchZeroOp(asAllocatable(cbzValue), cbzTrueDest, cbzFalseDest,
+                                cbzProbability));
                 return;
             }
         }
