@@ -515,8 +515,7 @@ abstract class OperationNodeWithLocalIntrospection extends RootNode implements O
     @Operation
     public static final class GetLocals {
         @Specialization
-        public static Map<String, Object> getLocals(VirtualFrame frame, @Bind("$root") Node rootNode) {
-            OperationNodeWithLocalIntrospection operationRootNode = (OperationNodeWithLocalIntrospection) rootNode;
+        public static Map<String, Object> getLocals(VirtualFrame frame, @Bind("$root") OperationNodeWithLocalIntrospection operationRootNode) {
             Object[] locals = operationRootNode.getLocals(frame);
             return makeMap(operationRootNode.localNames, locals);
         }

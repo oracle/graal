@@ -97,12 +97,12 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
     @Override
     protected OperationsModelList parse(Element element, List<AnnotationMirror> mirror) {
         TypeElement typeElement = (TypeElement) element;
-
-        // In regular usage, a language annotates a RootNode with {@link GenerateOperations} and the
-        // DSL generates a single bytecode interpreter. However, for internal testing purposes, we
-        // may use {@link GenerateOperationsTestVariants} to generate multiple interpreters. In the
-        // latter case, we need to parse multiple configurations and ensure they agree.
-
+        /*
+         * In regular usage, a language annotates a RootNode with {@link GenerateOperations} and the
+         * DSL generates a single bytecode interpreter. However, for internal testing purposes, we
+         * may use {@link GenerateOperationsTestVariants} to generate multiple interpreters. In the
+         * latter case, we need to parse multiple configurations and ensure they agree.
+         */
         AnnotationMirror generateOperationsTestVariantsMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), types.GenerateOperationsTestVariants);
         List<OperationsModel> models;
         AnnotationMirror topLevelAnnotationMirror;

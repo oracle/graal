@@ -512,10 +512,12 @@ public final class NodeParser extends AbstractParser<NodeData> {
         TypeElement accessingType = node.getTemplateType();
 
         if (mode == ParseMode.OPERATION) {
-            // Operation nodes resolve expressions differently. In particular, they have extra bind
-            // variables, and names used in expressions should be visible from the package of the
-            // generated OperationRootNode.
-            globalMembers.add(new CodeVariableElement(types.Node, "$root"));
+            /*
+             * Operation nodes resolve expressions differently. In particular, they have extra bind
+             * variables, and names used in expressions should be visible from the package of the
+             * generated OperationRootNode.
+             */
+            globalMembers.add(new CodeVariableElement(operationRootNodeType.asType(), "$root"));
             globalMembers.add(new CodeVariableElement(context.getType(int.class), "$bci"));
             accessingType = operationRootNodeType;
         }

@@ -232,8 +232,8 @@ abstract class OperationNodeWithStoredBci extends RootNode implements OperationR
     @Operation
     public static final class MakeRootAndFrame {
         @Specialization
-        public static RootAndFrame perform(VirtualFrame frame, @Bind("$root") Node rootNode) {
-            return new RootAndFrame((OperationNodeWithStoredBci) rootNode, frame);
+        public static RootAndFrame perform(VirtualFrame frame, @Bind("$root") OperationNodeWithStoredBci rootNode) {
+            return new RootAndFrame(rootNode, frame);
         }
     }
 
