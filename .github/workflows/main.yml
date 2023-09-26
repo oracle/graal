@@ -74,16 +74,16 @@ jobs:
               GATE_TAGS: "style,fullbuild"
               PRIMARY: "substratevm"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,helloworld,native_unittests"
               PRIMARY: "substratevm"
               PIP_PACKAGES: "jsonschema==4.6.1"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,debuginfotest"
               PRIMARY: "substratevm"
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "hellomodule"
               PRIMARY: "substratevm"
           # /sulong
@@ -98,7 +98,7 @@ jobs:
               PRIMARY: "truffle"
           # /vm
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build,sulong"
               GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"
@@ -107,7 +107,7 @@ jobs:
               DISABLE_POLYGLOT: true
               DISABLE_LIBPOLYGLOT: true
           - env:
-              JDK_VERSION: "21"
+              JDK_VERSION: "latest"
               GATE_TAGS: "build"
               GATE_OPTS: "--no-warning-as-error"
               PRIMARY: "vm"

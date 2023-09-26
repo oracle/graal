@@ -835,6 +835,15 @@ local devkits = graal_common.devkits;
   deploy_vm_espresso_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_espresso('darwin', 'aarch64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-darwin-aarch64', notify_groups:: ["deploy"]},
   deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.sulong_windows + self.deploy_build + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
 
+  local sulong_vm_tests = self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
+     run: [
+       ['export', 'SVM_SUITE=' + vm.svm_suite],
+       ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
+     ],
+     timelimit: '1:00:00',
+     name: 'gate-vm-native-sulong-' + self.jdk_name + '-linux-amd64',
+  },
+
   local builds = [
     #
     # Gates
@@ -846,14 +855,8 @@ local devkits = graal_common.devkits;
      name: 'gate-vm-style-jdk21-linux-amd64',
     },
 
-    vm.vm_java_21 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
-     run: [
-       ['export', 'SVM_SUITE=' + vm.svm_suite],
-       ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
-     ],
-     timelimit: '1:00:00',
-     name: 'gate-vm-native-sulong-' + self.jdk_version + '-linux-amd64',
-    },
+    vm.vm_java_21 + sulong_vm_tests,
+    vm.vm_java_Latest + sulong_vm_tests,
   ] + (import 'libgraal.jsonnet').builds,
 
   builds:: [{'defined_in': std.thisFile} + b for b in builds],
