@@ -568,6 +568,14 @@ public class ErrorTests {
         }
     }
 
+    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @ExpectError({"At least one operation must be declared using @Operation, @OperationProxy, or @ShortCircuitOperation."})
+    public abstract static class NoOperationsTest extends RootNode implements OperationRootNode {
+        protected NoOperationsTest(TruffleLanguage<?> language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+    }
+
 // todo: test for bad quicken decision when we parse those
     @ExpectError({
                     "Unknown optimization decision type: 'MadeUpType'.",
