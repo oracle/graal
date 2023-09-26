@@ -47,7 +47,7 @@ public class JfrRandom {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrRandom() {
-        mutex = new VMMutex("asdf");
+        mutex = new VMMutex("JfrRandom");
     }
 
     /**
@@ -60,7 +60,7 @@ public class JfrRandom {
         mutex.lockNoTransition();
         try {
             if (random == 0) {
-                random = System.currentTimeMillis(); // TODO reset in startup hook
+                random = System.currentTimeMillis();
             }
             long next = (prngMult * random + prngAdd) & modMask;
             random = next;

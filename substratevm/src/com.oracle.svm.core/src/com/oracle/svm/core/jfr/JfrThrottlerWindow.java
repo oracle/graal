@@ -105,13 +105,12 @@ public class JfrThrottlerWindow {
 
         // reset
         measuredPopSize.set(0);
+        advanceEndTicks();
+    }
 
-        if (isTest) {
-            // There is a need to mock JfrTicks for testing.
-            endTicks.set(currentTestNanos + windowDurationNs);
-        } else {
-            endTicks.set(System.nanoTime() + windowDurationNs);
-        }
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    protected void advanceEndTicks() {
+        endTicks.set(System.nanoTime() + windowDurationNs);
     }
 
     /**
@@ -130,20 +129,9 @@ public class JfrThrottlerWindow {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public boolean isExpired() {
-        if (isTest) {
-            // There is a need to mock JfrTicks for testing.
-            if (currentTestNanos >= endTicks.get()) {
-                return true;
-            }
-        } else if (System.nanoTime() >= endTicks.get()) {
+        if (System.nanoTime() >= endTicks.get()) {
             return true;
         }
         return false;
     }
-
-    /** Visible for testing. */
-    public volatile boolean isTest = false;
-
-    /** Visible for testing. */
-    public volatile long currentTestNanos = 0;
 }

@@ -43,32 +43,36 @@ import com.oracle.svm.core.jfr.utils.JfrReadWriteLock;
  */
 public class JfrThrottler {
     // The following are set to match the values in OpenJDK
-    private static final int WINDOW_DIVISOR = 5;
-    private static final int LOW_RATE_UPPER_BOUND = 9;
-    private final JfrThrottlerWindow window0;
-    private final JfrThrottlerWindow window1;
+    protected static final int WINDOW_DIVISOR = 5;
+    protected static final int LOW_RATE_UPPER_BOUND = 9;
+    protected JfrThrottlerWindow window0;
+    protected JfrThrottlerWindow window1;
     private final JfrReadWriteLock rwlock;
 
     // The following fields are only be accessed by threads holding the writer lock
-    private long periodNs;
-    private long eventSampleSize;
+    protected long periodNs;
+    protected long eventSampleSize;
     private double ewmaPopulationSizeAlpha = 0;
-    private double avgPopulationSize = 0;
+    protected double avgPopulationSize = 0;
     private boolean reconfigure;
     private long accumulatedDebtCarryLimit;
     private long accumulatedDebtCarryCount;
 
     // The following fields may be accessed by multiple threads without acquiring the lock
-    private volatile JfrThrottlerWindow activeWindow;
+    protected volatile JfrThrottlerWindow activeWindow;
     private volatile boolean disabled;
 
     public JfrThrottler() {
         reconfigure = false;
         disabled = true;
+        initializeWindows();
+        rwlock = new JfrReadWriteLock();
+    }
+
+    protected void initializeWindows() {
         window0 = new JfrThrottlerWindow();
         window1 = new JfrThrottlerWindow();
         activeWindow = window0;
-        rwlock = new JfrReadWriteLock();
     }
 
     /**
@@ -90,7 +94,7 @@ public class JfrThrottler {
         }
 
         this.eventSampleSize = samplesPerPeriod;
-        this.periodNs = (long) periodMs * 1000000;
+        this.periodNs = TimeUtils.millisToNanos((long) periodMs);
     }
 
     @Uninterruptible(reason = "Avoid deadlock due to locking without transition.")
@@ -246,7 +250,7 @@ public class JfrThrottler {
      * The lookback values are set to match the values in OpenJDK.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    private static double windowLookback(JfrThrottlerWindow window) {
+    protected static double windowLookback(JfrThrottlerWindow window) {
         if (window.windowDurationNs <= TimeUtils.nanosPerSecond) {
             return 25.0;
         } else if (window.windowDurationNs <= TimeUtils.nanosPerSecond * 60L) {
@@ -266,50 +270,5 @@ public class JfrThrottler {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static double exponentiallyWeightedMovingAverage(double currentMeasurement, double alpha, double prevEwma) {
         return alpha * currentMeasurement + (1 - alpha) * prevEwma;
-    }
-
-    /** Visible for testing. This assumes the tests are taking care of synchronization. */
-    public static class TestingBackDoor {
-
-        public static void beginTest(JfrThrottler throttler, long eventSampleSize, long periodMs) {
-            throttler.window0.isTest = true;
-            throttler.window1.isTest = true;
-            throttler.window0.currentTestNanos = 0;
-            throttler.window1.currentTestNanos = 0;
-            throttler.setThrottle(eventSampleSize, periodMs);
-        }
-
-        public static double getActiveWindowProjectedPopulationSize(JfrThrottler throttler) {
-            return throttler.avgPopulationSize;
-        }
-
-        public static long getActiveWindowDebt(JfrThrottler throttler) {
-            return throttler.activeWindow.debt;
-        }
-
-        public static double getWindowLookback(JfrThrottler throttler) {
-            return windowLookback(throttler.activeWindow);
-        }
-
-        public static boolean isActiveWindowExpired(JfrThrottler throttler) {
-            return throttler.activeWindow.isExpired();
-        }
-
-        public static long getPeriodNs(JfrThrottler throttler) {
-            return throttler.periodNs;
-        }
-
-        public static long getEventSampleSize(JfrThrottler throttler) {
-            return throttler.eventSampleSize;
-        }
-
-        public static void expireActiveWindow(JfrThrottler throttler) {
-            if (throttler.eventSampleSize <= LOW_RATE_UPPER_BOUND || throttler.periodNs > TimeUtils.nanosPerSecond) {
-                throttler.window0.currentTestNanos += throttler.periodNs;
-                throttler.window1.currentTestNanos += throttler.periodNs;
-            }
-            throttler.window0.currentTestNanos += throttler.periodNs / WINDOW_DIVISOR;
-            throttler.window1.currentTestNanos += throttler.periodNs / WINDOW_DIVISOR;
-        }
     }
 }

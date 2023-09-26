@@ -27,10 +27,11 @@
 package com.oracle.svm.test.jfr;
 
 import com.oracle.svm.core.NeverInline;
+import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.genscavenge.HeapParameters;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.JfrThrottler;
-import com.oracle.svm.core.jfr.JfrThrottler.TestingBackDoor;
+import com.oracle.svm.core.jfr.JfrThrottlerWindow;
 import com.oracle.svm.core.util.UnsignedUtils;
 import jdk.jfr.Recording;
 import org.junit.Test;
@@ -59,7 +60,7 @@ public class TestThrottler extends JfrRecordingTest {
     @Test
     public void testCapSingleThread() {
         // Doesn't rotate after starting sampling
-        JfrThrottler throttler = new JfrThrottler();
+        JfrThrottler throttler = new JfrTestThrottler();
         throttler.setThrottle(SAMPLES_PER_WINDOW * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         for (int i = 0; i < SAMPLES_PER_WINDOW * WINDOWS_PER_PERIOD; i++) {
             boolean sample = throttler.sample();
@@ -78,8 +79,8 @@ public class TestThrottler extends JfrRecordingTest {
         final int testingThreadCount = 10;
         final AtomicInteger count = new AtomicInteger();
         List<Thread> testingThreads = new ArrayList<>();
-        JfrThrottler throttler = new JfrThrottler();
-        TestingBackDoor.beginTest(throttler, samplesPerWindow * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
+        JfrTestThrottler throttler = new JfrTestThrottler();
+        throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         Runnable doSampling = () -> {
             for (int i = 0; i < samplesPerWindow; i++) {
                 boolean sample = throttler.sample();
@@ -123,8 +124,8 @@ public class TestThrottler extends JfrRecordingTest {
     @Test
     public void testExpiry() {
         final long samplesPerWindow = 10;
-        JfrThrottler throttler = new JfrThrottler();
-        TestingBackDoor.beginTest(throttler, samplesPerWindow * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
+        JfrTestThrottler throttler = new JfrTestThrottler();
+        throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOW_DURATION_MS * WINDOWS_PER_PERIOD);
         int count = 0;
 
         for (int i = 0; i < samplesPerWindow * 10; i++) {
@@ -151,9 +152,9 @@ public class TestThrottler extends JfrRecordingTest {
     public void testEWMA() {
         // Results in 50 samples per second
         final long samplesPerWindow = 10;
-        JfrThrottler throttler = new JfrThrottler();
-        TestingBackDoor.beginTest(throttler, samplesPerWindow * WINDOWS_PER_PERIOD, SECOND_IN_MS);
-        assertTrue(TestingBackDoor.getWindowLookback(throttler) == 25.0);
+        JfrTestThrottler throttler = new JfrTestThrottler();
+        throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, SECOND_IN_MS);
+        assertTrue(throttler.getWindowLookback() == 25.0);
         // Arbitrarily chosen
         int[] population = {310, 410, 610, 310, 910, 420, 770, 290, 880, 640, 220, 110, 330, 590};
         // actualProjections are the expected EWMA values
@@ -163,7 +164,7 @@ public class TestThrottler extends JfrRecordingTest {
                 throttler.sample();
             }
             expireAndRotate(throttler);
-            double projectedPopulation = TestingBackDoor.getActiveWindowProjectedPopulationSize(throttler);
+            double projectedPopulation = throttler.getActiveWindowProjectedPopulationSize();
             assertTrue(actualProjections[p] == (int) projectedPopulation);
         }
     }
@@ -175,8 +176,8 @@ public class TestThrottler extends JfrRecordingTest {
     public void testDebt() {
         final long samplesPerWindow = 10;
         final long populationPerWindow = 50;
-        JfrThrottler throttler = new JfrThrottler();
-        TestingBackDoor.beginTest(throttler, samplesPerWindow * WINDOWS_PER_PERIOD, WINDOWS_PER_PERIOD * WINDOW_DURATION_MS);
+        JfrTestThrottler throttler = new JfrTestThrottler();
+        throttler.beginTest(samplesPerWindow * WINDOWS_PER_PERIOD, WINDOWS_PER_PERIOD * WINDOW_DURATION_MS);
 
         for (int p = 0; p < 50; p++) {
             for (int i = 0; i < populationPerWindow; i++) {
@@ -189,7 +190,7 @@ public class TestThrottler extends JfrRecordingTest {
         expireAndRotate(throttler);
 
         // Debt should be at least 10 because we took no samples last window.
-        long debt = TestingBackDoor.getActiveWindowDebt(throttler);
+        long debt = throttler.getActiveWindowDebt();
         assertTrue("Should have debt from under sampling.", debt >= 10);
 
         // Limit max potential samples to half samplesPerWindow. This means debt must increase by at
@@ -198,7 +199,7 @@ public class TestThrottler extends JfrRecordingTest {
             throttler.sample();
         }
         expireAndRotate(throttler);
-        assertTrue("Should have debt from under sampling.", TestingBackDoor.getActiveWindowDebt(throttler) >= debt + samplesPerWindow / 2);
+        assertTrue("Should have debt from under sampling.", throttler.getActiveWindowDebt() >= debt + samplesPerWindow / 2);
 
         // Window lookback is 25. Do not sample for 25 windows.
         for (int i = 0; i < 25; i++) {
@@ -213,7 +214,7 @@ public class TestThrottler extends JfrRecordingTest {
         assertFalse(throttler.sample());
 
         expireAndRotate(throttler);
-        assertTrue("Should not have any debt remaining.", TestingBackDoor.getActiveWindowDebt(throttler) == 0);
+        assertTrue("Should not have any debt remaining.", throttler.getActiveWindowDebt() == 0);
     }
 
     /**
@@ -223,16 +224,16 @@ public class TestThrottler extends JfrRecordingTest {
     public void testNormalization() {
         long sampleSize = 10 * 600;
         long periodMs = 60 * SECOND_IN_MS;
-        JfrThrottler throttler = new JfrThrottler();
-        TestingBackDoor.beginTest(throttler, sampleSize, periodMs);
-        assertTrue(TestingBackDoor.getPeriodNs(throttler) + " " + TestingBackDoor.getEventSampleSize(throttler),
-                        TestingBackDoor.getEventSampleSize(throttler) == sampleSize / 60 && TestingBackDoor.getPeriodNs(throttler) == 1000000 * SECOND_IN_MS);
+        JfrTestThrottler throttler = new JfrTestThrottler();
+        throttler.beginTest(sampleSize, periodMs);
+        assertTrue(throttler.getPeriodNs() + " " + throttler.getEventSampleSize(),
+                        throttler.getEventSampleSize() == sampleSize / 60 && throttler.getPeriodNs() == 1000000 * SECOND_IN_MS);
 
         sampleSize = 10 * 3600;
         periodMs = 3600 * SECOND_IN_MS;
         throttler.setThrottle(sampleSize, periodMs);
-        assertTrue(TestingBackDoor.getPeriodNs(throttler) + " " + TestingBackDoor.getEventSampleSize(throttler),
-                        TestingBackDoor.getEventSampleSize(throttler) == sampleSize / 3600 && TestingBackDoor.getPeriodNs(throttler) == 1000000 * SECOND_IN_MS);
+        assertTrue(throttler.getPeriodNs() + " " + throttler.getEventSampleSize(),
+                        throttler.getEventSampleSize() == sampleSize / 3600 && throttler.getPeriodNs() == 1000000 * SECOND_IN_MS);
     }
 
     /**
@@ -241,7 +242,7 @@ public class TestThrottler extends JfrRecordingTest {
     @Test
     public void testZeroRate() throws Throwable {
         // Test throttler in isolation
-        JfrThrottler throttler = new JfrThrottler();
+        JfrTestThrottler throttler = new JfrTestThrottler();
         throttler.setThrottle(0, 2 * SECOND_IN_MS);
         assertFalse(throttler.sample());
         throttler.setThrottle(10, 2 * SECOND_IN_MS);
@@ -326,8 +327,8 @@ public class TestThrottler extends JfrRecordingTest {
         final int expectedSamplesPerWindow = 50;
         final int expectedSamples = expectedSamplesPerWindow * windowCount;
 
-        JfrThrottler throttler = new JfrThrottler();
-        TestingBackDoor.beginTest(throttler, expectedSamplesPerWindow * WINDOWS_PER_PERIOD, windowDurationMs * WINDOWS_PER_PERIOD);
+        JfrTestThrottler throttler = new JfrTestThrottler();
+        throttler.beginTest(expectedSamplesPerWindow * WINDOWS_PER_PERIOD, windowDurationMs * WINDOWS_PER_PERIOD);
 
         int[] population = new int[distributionSlots];
         int[] sample = new int[distributionSlots];
@@ -391,9 +392,84 @@ public class TestThrottler extends JfrRecordingTest {
     /**
      * Helper method that expires and rotates a throttler's active window.
      */
-    private static void expireAndRotate(JfrThrottler throttler) {
-        TestingBackDoor.expireActiveWindow(throttler);
-        assertTrue("should be expired", TestingBackDoor.isActiveWindowExpired(throttler));
+    private static void expireAndRotate(JfrTestThrottler throttler) {
+        throttler.expireActiveWindow();
+        assertTrue("should be expired", throttler.isActiveWindowExpired());
         assertFalse("Should have rotated not sampled!", throttler.sample());
+    }
+
+    private static class JfrTestThrottler extends JfrThrottler {
+        @Override
+        protected void initializeWindows() {
+            window0 = new JfrTestThrottlerWindow();
+            window1 = new JfrTestThrottlerWindow();
+            activeWindow = window0;
+        }
+
+        public void beginTest(long eventSampleSize, long periodMs) {
+            window0().currentTestNanos = 0;
+            window1().currentTestNanos = 0;
+            setThrottle(eventSampleSize, periodMs);
+        }
+
+        public double getActiveWindowProjectedPopulationSize() {
+            return avgPopulationSize;
+        }
+
+        public long getActiveWindowDebt() {
+            return activeWindow.debt;
+        }
+
+        public double getWindowLookback() {
+            return windowLookback(activeWindow);
+        }
+
+        public boolean isActiveWindowExpired() {
+            return activeWindow.isExpired();
+        }
+
+        public long getPeriodNs() {
+            return periodNs;
+        }
+
+        public long getEventSampleSize() {
+            return eventSampleSize;
+        }
+
+        public void expireActiveWindow() {
+            if (eventSampleSize <= LOW_RATE_UPPER_BOUND || periodNs > com.oracle.svm.core.util.TimeUtils.nanosPerSecond) {
+                window0().currentTestNanos += periodNs;
+                window1().currentTestNanos += periodNs;
+            }
+            window0().currentTestNanos += periodNs / WINDOW_DIVISOR;
+            window1().currentTestNanos += periodNs / WINDOW_DIVISOR;
+        }
+
+        private JfrTestThrottlerWindow window0() {
+            return (JfrTestThrottlerWindow) window0;
+        }
+
+        private JfrTestThrottlerWindow window1() {
+            return (JfrTestThrottlerWindow) window1;
+        }
+    }
+
+    private static class JfrTestThrottlerWindow extends JfrThrottlerWindow {
+        public volatile long currentTestNanos = 0;
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public boolean isExpired() {
+            if (currentTestNanos >= endTicks.get()) {
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        protected void advanceEndTicks() {
+            endTicks.set(currentTestNanos + windowDurationNs);
+        }
     }
 }
