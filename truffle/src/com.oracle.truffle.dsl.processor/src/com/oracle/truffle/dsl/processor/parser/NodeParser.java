@@ -513,12 +513,15 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
         if (mode == ParseMode.OPERATION) {
             /*
-             * Operation nodes resolve expressions differently. In particular, they have extra bind
-             * variables, and names used in expressions should be visible from the package of the
-             * generated OperationRootNode.
+             * Operation nodes can bind extra variables.
+             *
+             * Note that Proxyable nodes can also bind these names. To allow such nodes to be used
+             * for both operation and regular node execution, the DSLExpressionResolver supplies
+             * default values when these names are used.
              */
             globalMembers.add(new CodeVariableElement(operationRootNodeType.asType(), "$root"));
             globalMembers.add(new CodeVariableElement(context.getType(int.class), "$bci"));
+            // Names should be visible from the package of the generated OperationRootNode.
             accessingType = operationRootNodeType;
         }
         return new DSLExpressionResolver(context, accessingType, globalMembers);

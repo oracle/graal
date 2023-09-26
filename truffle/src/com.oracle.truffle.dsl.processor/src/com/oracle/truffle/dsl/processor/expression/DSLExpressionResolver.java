@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.dsl.processor.expression;
 
+import static com.oracle.truffle.dsl.processor.java.ElementUtils.findAnnotationMirror;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -83,6 +85,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
     private final ProcessorContext context;
     private final DSLExpressionResolver parent;
     private final TypeElement accessType;
+    private final boolean isOperationProxyable;
 
     private final List<? extends Element> unprocessedElements;
     private boolean processed;
@@ -91,6 +94,7 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
         this.context = context;
         this.parent = parent;
         this.accessType = accessType;
+        this.isOperationProxyable = findAnnotationMirror(accessType, context.getTypes().OperationProxy_Proxyable) != null;
         this.unprocessedElements = new ArrayList<>(lookupElements);
     }
 
@@ -296,16 +300,15 @@ public class DSLExpressionResolver implements DSLExpressionVisitor {
                 }
 
                 /**
-                 * TODO: This is a hack to suppress build failures for now. The Operation
-                 * implementation for SL modifies the existing AST nodes, also binding $root and
-                 * $bci, which causes build errors when they are processed as regular Truffle DSL
-                 * nodes. This hack patches in values to avoid build failures, but we should
-                 * actually fix the SL implementation.
+                 * An @OperationProxy.Proxyable node can bind operation values. In non-operation
+                 * contexts (e.g., when executing like a regular node), we patch in default values.
                  */
-                if (name.equals("$root")) {
-                    return new CodeVariableElement(ProcessorContext.getInstance().getTypes().Node, "this");
-                } else if (name.equals("$bci")) {
-                    return new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "-1");
+                if (isOperationProxyable) {
+                    if (name.equals("$root")) {
+                        return new CodeVariableElement(ProcessorContext.getInstance().getTypes().Node, "this");
+                    } else if (name.equals("$bci")) {
+                        return new CodeVariableElement(new CodeTypeMirror(TypeKind.INT), "-1");
+                    }
                 }
 
                 return null;
