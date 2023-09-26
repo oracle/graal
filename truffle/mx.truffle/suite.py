@@ -1309,6 +1309,7 @@ suite = {
       ],
       "useModulePath": True,
       "description" : "Module with JUnit tests for testing Truffle API in modular applications.",
+      "unittestConfig": "truffle",
       "maven": False,
     },
 
@@ -1328,6 +1329,7 @@ suite = {
       ],
       "useModulePath": True,
       "description" : "Separate test module for testing Truffle API in modular applications.",
+      "unittestConfig": "truffle",
       "maven": False,
     },
 
@@ -1709,6 +1711,7 @@ suite = {
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
       "allowsJavadocWarnings": True,
       "testDistribution" : False,
+      "unittestConfig": "truffle-tck",
       "maven": {
           "tag": ["default", "public"],
       },
@@ -1829,6 +1832,7 @@ suite = {
           "TRUFFLE_TCK",
           "TRUFFLE_SL"
       ],
+      "unittestConfig": "truffle",
       "maven" : False
     },
 
@@ -1878,6 +1882,7 @@ suite = {
         "TRUFFLE_API",
         "TRUFFLE_ST"
       ],
+      "unittestConfig": "truffle",
       "maven" : False
     },
 
@@ -1917,6 +1922,7 @@ suite = {
          "TRUFFLE_TCK",
          "TRUFFLE_TCK_INSTRUMENTATION",
       ],
+      "unittestConfig": "truffle",
       "maven" : False,
      },
 
@@ -1929,7 +1935,8 @@ suite = {
          "com.oracle.truffle.nfi.test.native.isolation",
        ],
        "testDistribution" : True,
-      "maven" : False,
+       "unittestConfig": "truffle",
+       "maven" : False,
      },
 
     "TRUFFLE_NFI_GRAALVM_SUPPORT" : {
