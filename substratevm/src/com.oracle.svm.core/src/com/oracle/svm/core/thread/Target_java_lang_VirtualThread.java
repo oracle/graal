@@ -30,6 +30,8 @@ import static com.oracle.svm.core.thread.VirtualThreadHelper.asThread;
 import java.util.Locale;
 import java.util.concurrent.Executor;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
@@ -37,6 +39,8 @@ import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
@@ -56,8 +60,12 @@ public final class Target_java_lang_VirtualThread {
     @Alias static int PINNED;
     @Alias static int YIELDING;
     @Alias static int TERMINATED;
-    @Alias static int RUNNABLE_SUSPENDED;
-    @Alias static int PARKED_SUSPENDED;
+    @Alias //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) //
+    static int RUNNABLE_SUSPENDED;
+    @Alias //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) //
+    static int PARKED_SUSPENDED;
     @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
     // Checkstyle: resume
 
@@ -188,7 +196,7 @@ public final class Target_java_lang_VirtualThread {
             } else {
                 return Thread.State.RUNNABLE;
             }
-        } else if (state == RUNNABLE || state == RUNNABLE_SUSPENDED) {
+        } else if (state == RUNNABLE || (JavaVersionUtil.JAVA_SPEC <= 21 && state == RUNNABLE_SUSPENDED)) {
             return Thread.State.RUNNABLE;
         } else if (state == RUNNING) {
             Object token = VirtualThreadHelper.acquireInterruptLockMaybeSwitch(this);
@@ -203,7 +211,7 @@ public final class Target_java_lang_VirtualThread {
             return Thread.State.RUNNABLE;
         } else if (state == PARKING || state == YIELDING) {
             return Thread.State.RUNNABLE;
-        } else if (state == PARKED || state == PARKED_SUSPENDED || state == PINNED) {
+        } else if (state == PARKED || (JavaVersionUtil.JAVA_SPEC <= 21 && state == PARKED_SUSPENDED) || state == PINNED) {
             int parkedThreadStatus = MonitorSupport.singleton().getParkedThreadStatus(asThread(this), false);
             switch (parkedThreadStatus) {
                 case ThreadStatus.BLOCKED_ON_MONITOR_ENTER:
