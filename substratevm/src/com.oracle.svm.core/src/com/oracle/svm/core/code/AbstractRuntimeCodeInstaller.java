@@ -47,11 +47,13 @@ public class AbstractRuntimeCodeInstaller {
     }
 
     protected void makeCodeMemoryExecutableReadOnly(Pointer start, UnsignedWord size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, size);
+        int result = RuntimeCodeInfoAccess.makeCodeMemoryExecutableReadOnly((CodePointer) start, size);
+        VMError.guarantee(result == 0, "Failed to make code memory read only.");
     }
 
     protected void makeCodeMemoryExecutableWritable(Pointer start, UnsignedWord size) {
-        RuntimeCodeInfoAccess.makeCodeMemoryExecutableWritable((CodePointer) start, size);
+        int result = RuntimeCodeInfoAccess.makeCodeMemoryExecutableWritable((CodePointer) start, size);
+        VMError.guarantee(result == 0, "Failed to make code memory writable.");
     }
 
     protected static void doInstallPrepared(SharedMethod method, CodeInfo codeInfo, SubstrateInstalledCode installedCode) {
