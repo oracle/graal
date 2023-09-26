@@ -719,7 +719,9 @@ public class ProgressReporter {
         if (generator.getBigbang() != null && ImageBuildStatistics.Options.CollectImageBuildStatistics.getValue(parsedHostedOptions)) {
             artifacts.add(ArtifactType.BUILD_INFO, reportImageBuildStatistics());
         }
-        ImageSingletons.lookup(ProgressReporterFeature.class).createAdditionalArtifacts(artifacts);
+        if (error.isEmpty()) {
+            ImageSingletons.lookup(ProgressReporterFeature.class).createAdditionalArtifacts(artifacts);
+        }
         BuildArtifactsExporter.run(imageName, artifacts, generator.getBuildArtifacts());
     }
 
@@ -1414,7 +1416,7 @@ public class ProgressReporter {
             if (filenameOnly) {
                 Path filename = normalized.getFileName();
                 if (filename != null) {
-                    name = normalized.toString();
+                    name = filename.toString();
                 } else {
                     throw VMError.shouldNotReachHere("filename should never be null, illegal path: " + path);
                 }
