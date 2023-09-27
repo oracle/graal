@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -1538,24 +1538,27 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
 
                             /*
-                             * there is no guarantee that a given result is in the range of the
+                             * There is no guarantee that a given result is in the range of the
                              * input because of holes in ranges resulting from signed / unsigned
                              * extension, so we must ensure that the extension bits are all zeros
                              * otherwise we cannot represent the result, and we have to return an
-                             * unrestricted stamp
+                             * empty stamp.
                              *
                              * This case is much less likely to happen than the case for SignExtend
                              * but the following is defensive to ensure that we only perform valid
                              * inversions.
                              */
-                            long alwaysSetOutputBits = stamp.downMask();
-                            long alwaysSetExtensionBits = alwaysSetOutputBits >>> inputBits;
-                            if (alwaysSetExtensionBits != 0) {
-                                StampFactory.forInteger(inputBits).empty();
+                            long mustBeSetOutputBits = stamp.downMask();
+                            long mustBeSetExtensionBits = mustBeSetOutputBits >>> inputBits;
+                            if (mustBeSetExtensionBits != 0) {
+                                return StampFactory.forInteger(inputBits).empty();
                             }
 
                             long inputMask = CodeUtil.mask(inputBits);
-                            return StampFactory.forUnsignedInteger(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask() & inputMask, stamp.upMask() & inputMask);
+                            long inputUpperBound = maxValueForMasks(inputBits, stamp.downMask() & inputMask, stamp.upMask() & inputMask);
+                            long inputLowerBound = minValueForMasks(inputBits, stamp.downMask() & inputMask, stamp.upMask() & inputMask);
+
+                            return StampFactory.forIntegerWithMask(inputBits, inputLowerBound, inputUpperBound, stamp.downMask() & inputMask, stamp.upMask() & inputMask);
                         }
                     },
 
@@ -1591,11 +1594,11 @@ public final class IntegerStamp extends PrimitiveStamp {
                             }
 
                             /*
-                             * there is no guarantee that a given result bit is in the range of the
+                             * There is no guarantee that a given result bit is in the range of the
                              * input because of holes in ranges resulting from signed / unsigned
                              * extension, so we must ensure that the extension bits are either all
                              * zeros or all ones otherwise we cannot represent the result, and we
-                             * have to return an unrestricted stamp
+                             * have to return an empty stamp.
                              *
                              * As an example:
                              * @formatter:off
@@ -1618,17 +1621,38 @@ public final class IntegerStamp extends PrimitiveStamp {
                              * ZeroExtend to get 0xb308, but then we try to invert the SignExtend.
                              * The sign extend could only have produced 0xff__ or 0x00__ from a byte
                              * but 0xb308 has 0xb3, and so we cannot invert the stamp. In this case
-                             * the only sensible inversion is the unrestricted stamp.
+                             * the only sensible inversion is the empty stamp.
                              */
-                            long alwaysSetOutputBits = stamp.downMask();
-                            long alwaysSetExtensionBits = alwaysSetOutputBits >>> inputBits;
-                            long outputMask = CodeUtil.mask(resultBits);
-                            if (alwaysSetExtensionBits != 0 && alwaysSetExtensionBits != (outputMask >>> inputBits)) {
+                            long mustBeSetExtensionBits = stamp.downMask() >>> inputBits;
+                            long mayBeSetExtensionBits = stamp.upMask() >>> inputBits;
+                            long extensionMask = CodeUtil.mask(stamp.getBits()) >>> inputBits;
+
+                            boolean zeroInExtension = mayBeSetExtensionBits != extensionMask;
+                            boolean oneInExtension = mustBeSetExtensionBits != 0;
+                            boolean inputMSBOne = significantBit(inputBits, stamp.downMask()) == 1;
+                            boolean inputMSBZero = significantBit(inputBits, stamp.upMask()) == 0;
+
+                            /*
+                             * Checks for contradictions in the extension and returns an empty stamp in such cases.
+                             * Examples for contradictions for a stamp after an artificial 4->8 bit sign extension:
+                             *
+                             * @formatter:off
+                             *
+                             * 1) 01xx xxxx --> extension cannot contain zeroes and ones
+                             * 2) x0xx 1xxx --> extension cannot contain a zero if the MSB of the extended value is 1
+                             * 3) xx1x 0xxx --> extension cannot contain a one if the MSB of the extended value is 0
+                             *
+                             * @formatter:on
+                             */
+                            if ((zeroInExtension && oneInExtension) || (inputMSBOne && zeroInExtension) || (inputMSBZero && oneInExtension)) {
                                 return StampFactory.forInteger(inputBits).empty();
                             }
 
                             long inputMask = CodeUtil.mask(inputBits);
-                            return StampFactory.forIntegerWithMask(inputBits, stamp.lowerBound(), stamp.upperBound(), stamp.downMask() & inputMask, stamp.upMask() & inputMask);
+                            long inputUpperBound = maxValueForMasks(inputBits, stamp.downMask() & inputMask, stamp.upMask() & inputMask);
+                            long inputLowerBound = minValueForMasks(inputBits, stamp.downMask() & inputMask, stamp.upMask() & inputMask);
+
+                            return StampFactory.forIntegerWithMask(inputBits, inputLowerBound, inputUpperBound, stamp.downMask() & inputMask, stamp.upMask() & inputMask);
                         }
                     },
 
