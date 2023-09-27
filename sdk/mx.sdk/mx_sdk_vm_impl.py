@@ -3516,7 +3516,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 main_dists[label].append(debuginfo_dist.name)
 
     _final_graalvm_distribution = get_final_graalvm_distribution()
-    register_main_dist(_final_graalvm_distribution, 'graalvm')
 
     # Add the macros if SubstrateVM is in stage1, as images could be created later with an installable Native Image
     with_svm = has_component('svm', stage1=True)
@@ -3615,16 +3614,17 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         native_image_resources_filelist_project = NativeImageResourcesFileList(None, ni_resources_components, dir_name, deps)
         register_project(native_image_resources_filelist_project)
 
-    # Create installables
-    # installable_names = []
+    # Register main distribution
+    register_main_dist(_final_graalvm_distribution, 'graalvm')
+
+    # Register installables
     for components in installables.values():
         main_component = _get_main_component(components)
         installable_component = GraalVmInstallableComponent(main_component, extra_components=[c for c in components if c != main_component])
         register_main_dist(installable_component, 'graalvm_installables')
 
-    # Create standalones
+    # Register standalones
     needs_java_standalone_jimage = False
-    # standalone_names = []
     for components in installables.values():
         main_component = _get_main_component(components)
         svm_support = _get_svm_support()
@@ -3648,7 +3648,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
 
                     for library_config in _get_library_configs(main_component):
                         if isinstance(library_config, mx_sdk.LanguageLibraryConfig) and library_config.launchers:
-                            # Create dedicated NativeLibraryLauncherProject for JVM Standalones, which can find the JVM
+                            # Register dedicated NativeLibraryLauncherProject for JVM Standalones, which can find the JVM
                             jvm_standalone_launcher_project = NativeLibraryLauncherProject(main_component, library_config, jvm_standalone=java_standalone, defaultBuild=False)
                             register_project(jvm_standalone_launcher_project)
 
