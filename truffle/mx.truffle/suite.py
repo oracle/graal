@@ -2017,7 +2017,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports.
-          "org.graalvm.shadowed.com.ibm.icu.lang to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.lang to com.oracle.truffle.regex, org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.math to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.number to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.text to org.graalvm.js, org.graalvm.py",
