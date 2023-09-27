@@ -50,7 +50,7 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
 
 3. A standalone comes with a JVM in addition to its native launcher. Check the version to see the Java on Truffle runtime is active:
     ```shell
-    ./path/to/bin/java -truffle --version
+    ./path/to/bin/java -truffle -version
     ```
 
 ## Run Java on Truffle
