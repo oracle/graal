@@ -114,6 +114,7 @@ import org.graalvm.compiler.nodes.spi.NodeWithState;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
 
+import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CallingConvention;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.code.ValueUtil;
@@ -405,6 +406,8 @@ public abstract class NodeLIRBuilder implements NodeLIRBuilderTool, LIRGeneratio
                                 doRoot(valueNode);
                             } catch (GraalError e) {
                                 throw GraalGraphError.transformAndAddContext(e, valueNode);
+                            } catch (BailoutException e) {
+                                throw e;
                             } catch (Throwable e) {
                                 throw new GraalGraphError(e).addContext(valueNode);
                             }
