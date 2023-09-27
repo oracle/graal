@@ -42,12 +42,12 @@
     "labsjdk-ee-21Debug": {"name": "labsjdk",   "version": "ee-21+35-jvmci-23.1-b15-debug", "platformspecific": true },
     "labsjdk-ee-21-llvm": {"name": "labsjdk",   "version": "ee-21+35-jvmci-23.1-b15-sulong", "platformspecific": true },
 
-    "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-22+16-jvmci-b01-20230923201446-4b584020e4", "platformspecific": true },
-    "labsjdk-ce-latestDebug": {"name": "labsjdk",   "version": "ce-22+16-jvmci-b01-20230923201446-4b584020e4-debug", "platformspecific": true },
-    "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-22+16-jvmci-b01-20230923201446-4b584020e4-sulong", "platformspecific": true },
-    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-22+16-jvmci-b01-20230923195157-49702071d7+0038c8030b", "platformspecific": true },
-    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-22+16-jvmci-b01-20230923195157-49702071d7+0038c8030b-debug", "platformspecific": true },
-    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-22+16-jvmci-b01-20230923195157-49702071d7+0038c8030b-sulong", "platformspecific": true }
+    "labsjdk-ce-latest":      {"name": "labsjdk",   "version": "ce-22+16-jvmci-b01-20230927100311-58a6f05134", "platformspecific": true },
+    "labsjdk-ce-latestDebug": {"name": "labsjdk",   "version": "ce-22+16-jvmci-b01-20230927100311-58a6f05134-debug", "platformspecific": true },
+    "labsjdk-ce-latest-llvm": {"name": "labsjdk",   "version": "ce-22+16-jvmci-b01-20230927100311-58a6f05134-sulong", "platformspecific": true },
+    "labsjdk-ee-latest":      {"name": "labsjdk",   "version": "ee-22+16-jvmci-b01-20230927100523-3b32adc3ab+0038c8030b", "platformspecific": true },
+    "labsjdk-ee-latestDebug": {"name": "labsjdk",   "version": "ee-22+16-jvmci-b01-20230927100523-3b32adc3ab+0038c8030b-debug", "platformspecific": true },
+    "labsjdk-ee-latest-llvm": {"name": "labsjdk",   "version": "ee-22+16-jvmci-b01-20230927100523-3b32adc3ab+0038c8030b-sulong", "platformspecific": true }
   },
 
   "eclipse": {
