@@ -122,8 +122,6 @@ public class SubstrateJVM {
 
         initialized = false;
         recording = false;
-
-// jfrThrottlerSupport = new JfrThrottlerSupport();
     }
 
     @Fold

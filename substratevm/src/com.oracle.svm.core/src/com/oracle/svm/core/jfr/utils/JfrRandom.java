@@ -43,7 +43,7 @@ public class JfrRandom {
     private static final long modMask = (1L << prngModPower) - 1;
     private volatile long random = 0;
 
-    private static com.oracle.svm.core.locks.VMMutex mutex;
+    private VMMutex mutex;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrRandom() {

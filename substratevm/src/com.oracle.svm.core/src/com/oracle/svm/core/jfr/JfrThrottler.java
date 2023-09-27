@@ -42,37 +42,32 @@ import com.oracle.svm.core.jfr.utils.JfrReadWriteLock;
  * hash:1100dbc6b2a1f2d5c431c6f5c6eb0b9092aee817. Openjdk version "22-internal".
  */
 public class JfrThrottler {
+    private final JfrReadWriteLock rwlock;
+    private volatile boolean disabled;
+    protected volatile JfrThrottlerWindow activeWindow;
+
     // The following are set to match the values in OpenJDK
     protected static final int WINDOW_DIVISOR = 5;
     protected static final int LOW_RATE_UPPER_BOUND = 9;
     protected JfrThrottlerWindow window0;
     protected JfrThrottlerWindow window1;
-    private final JfrReadWriteLock rwlock;
 
     // The following fields are only be accessed by threads holding the writer lock
-    protected long periodNs;
-    protected long eventSampleSize;
     private double ewmaPopulationSizeAlpha = 0;
-    protected double avgPopulationSize = 0;
     private boolean reconfigure;
     private long accumulatedDebtCarryLimit;
     private long accumulatedDebtCarryCount;
-
-    // The following fields may be accessed by multiple threads without acquiring the lock
-    protected volatile JfrThrottlerWindow activeWindow;
-    private volatile boolean disabled;
+    protected long periodNs;
+    protected long eventSampleSize;
+    protected double avgPopulationSize = 0;
 
     public JfrThrottler() {
         reconfigure = false;
         disabled = true;
-        initializeWindows();
-        rwlock = new JfrReadWriteLock();
-    }
-
-    protected void initializeWindows() {
         window0 = new JfrThrottlerWindow();
         window1 = new JfrThrottlerWindow();
         activeWindow = window0;
+        rwlock = new JfrReadWriteLock();
     }
 
     /**

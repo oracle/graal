@@ -413,7 +413,7 @@ public final class Target_jdk_jfr_internal_JVM {
 
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
-    public boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
+    public static boolean setThrottle(long eventTypeId, long eventSampleSize, long periodMs) {
         return SubstrateJVM.get().setThrottle(eventTypeId, eventSampleSize, periodMs);
     }
 

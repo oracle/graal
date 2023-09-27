@@ -28,7 +28,6 @@ This changelog summarizes major changes to GraalVM Native Image.
 * (GR-46420) Switch to directly using cgroup support from the JDK.
 * (GR-29688) More sophisticated intrinsification and inlining of method handle usages, both explicit and implicit (lambdas, string concatenation and record classes), and various fixes for non-intrinsified usages.
 
-
 ## GraalVM for JDK 17 and GraalVM for JDK 20 (Internal Version 23.0.0)
 * (GR-40187) Report invalid use of SVM specific classes on image class- or module-path as error. As a temporary workaround, `-H:+AllowDeprecatedBuilderClassesOnImageClasspath` allows turning the error into a warning.
 * (GR-41196) Provide `.debug.svm.imagebuild.*` sections that contain build options and properties used in the build of the image.

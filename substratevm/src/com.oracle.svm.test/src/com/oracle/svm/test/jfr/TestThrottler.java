@@ -399,14 +399,10 @@ public class TestThrottler extends JfrRecordingTest {
     }
 
     private static class JfrTestThrottler extends JfrThrottler {
-        @Override
-        protected void initializeWindows() {
+        public void beginTest(long eventSampleSize, long periodMs) {
             window0 = new JfrTestThrottlerWindow();
             window1 = new JfrTestThrottlerWindow();
             activeWindow = window0;
-        }
-
-        public void beginTest(long eventSampleSize, long periodMs) {
             window0().currentTestNanos = 0;
             window1().currentTestNanos = 0;
             setThrottle(eventSampleSize, periodMs);
