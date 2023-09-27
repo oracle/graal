@@ -985,7 +985,16 @@ public final class ArithmeticOpTable {
         }
 
         /**
-         * Computes the stamp of the input for the given output stamp.
+         * Computes the stamp of the input for the given output stamp. This method returns
+         * {@code null} if a stamp cannot be inverted for an operation (i.e., {@link Narrow}). When
+         * inverting non-exact stamps, i.e. {@code 0xx0xxxx}, the inversion keeps all available
+         * information. If the stamp to invert contains contradictions regarding the post condition
+         * of the operation, an empty stamp is returned. An example for a contradiction would be a
+         * {@code SignExtend} with both {@code 0} and {@code 1} in the extension.
+         *
+         * @return {@code null} - if stamp inversion is not supported </br>
+         *         empty stamp - if the output stamp contains contradictions </br>
+         *         inverted output stamp - otherwise </br>
          */
         public abstract Stamp invertStamp(int inputBits, int resultBits, Stamp outStamp);
     }
