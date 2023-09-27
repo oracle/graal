@@ -92,6 +92,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
 
     @Specialization(limit = "LIBRARY_LIMIT")
     public static Object readSLObject(SLObject receiver, Object name,
+                    @Bind("$root") Node rootNode,
                     @Bind("this") Node node,
                     @CachedLibrary("receiver") DynamicObjectLibrary objectLibrary,
                     @Cached SLToTruffleStringNode toTruffleStringNode,
@@ -100,7 +101,7 @@ public abstract class SLReadPropertyNode extends SLExpressionNode {
         Object result = objectLibrary.getOrDefault(receiver, nameTS, null);
         if (result == null) {
             // read was not successful. In SL we only have basic support for errors.
-            throw SLUndefinedNameException.undefinedProperty(node, bci, nameTS);
+            throw SLUndefinedNameException.undefinedProperty(rootNode, bci, nameTS);
         }
         return result;
     }

@@ -97,7 +97,7 @@ import com.oracle.truffle.sl.runtime.SLNull;
 public final class SLOperationsVisitor extends SLBaseVisitor {
 
     private static final boolean DO_LOG_NODE_CREATION = false;
-    private static final boolean FORCE_SERIALIZE = true;
+    private static final boolean FORCE_SERIALIZE = false;
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
         OperationParser<SLOperationRootNodeGen.Builder> slParser = (b) -> {
@@ -114,7 +114,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
                 throw new RuntimeException(ex);
             }
         } else {
-            nodes = SLOperationRootNodeGen.create(OperationConfig.WITH_SOURCE, slParser);
+            nodes = SLOperationRootNodeGen.create(OperationConfig.DEFAULT, slParser);
         }
 
         for (SLOperationRootNode node : nodes.getNodes()) {
@@ -181,8 +181,6 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
     public Void visitFunction(FunctionContext ctx) {
         TruffleString name = asTruffleString(ctx.IDENTIFIER(0).getSymbol(), false);
         b.beginRoot(language);
-
-// b.setMethodName(name);
 
         b.beginSource(source);
         b.beginTag(StandardTags.RootTag.class);
