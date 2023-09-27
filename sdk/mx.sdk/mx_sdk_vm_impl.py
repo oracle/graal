@@ -3498,12 +3498,25 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     :type register_project: (mx.Project) -> None
     :type register_distribution: (mx.Distribution) -> None
     """
-    with_debuginfo = []
+    main_dists = {
+        'graalvm': [],
+        'graalvm_installables': [],
+        'graalvm_standalones': [],
+    }
     with_non_rebuildable_configs = False
+
+    def register_main_dist(dist, label):
+        assert label in main_dists, f"Unknown label: '{label}'. Expected: '{list(main_dists.keys())}'"
+        register_distribution(dist)
+        main_dists[label].append(dist.name)
+        if _debuginfo_dists():
+            if _get_svm_support().is_debug_supported() or mx.get_opts().strip_jars or with_non_rebuildable_configs:
+                debuginfo_dist = DebuginfoDistribution(dist)
+                register_distribution(debuginfo_dist)
+                main_dists[label].append(debuginfo_dist.name)
+
     _final_graalvm_distribution = get_final_graalvm_distribution()
-    register_distribution(_final_graalvm_distribution)
-    with_debuginfo.append(_final_graalvm_distribution)
-    other_graalvm_artifact_names = []
+    register_main_dist(_final_graalvm_distribution, 'graalvm')
 
     # Add the macros if SubstrateVM is in stage1, as images could be created later with an installable Native Image
     with_svm = has_component('svm', stage1=True)
@@ -3602,32 +3615,16 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
         native_image_resources_filelist_project = NativeImageResourcesFileList(None, ni_resources_components, dir_name, deps)
         register_project(native_image_resources_filelist_project)
 
-    # Trivial distribution to trigger the build of the final GraalVM distribution and its dependencies
-    register_distribution(mx.LayoutDirDistribution(
-        suite=_suite,
-        name="GRAALVM",
-        deps=[_final_graalvm_distribution.name],
-        layout={
-            "./deps": "string:" + _final_graalvm_distribution.name,
-        },
-        path=None,
-        platformDependent=False,
-        theLicense=None,
-        defaultBuild=False,
-    ))
-
     # Create installables
-    installable_names = []
+    # installable_names = []
     for components in installables.values():
         main_component = _get_main_component(components)
         installable_component = GraalVmInstallableComponent(main_component, extra_components=[c for c in components if c != main_component])
-        installable_names.append(installable_component.name)
-        register_distribution(installable_component)
-        with_debuginfo.append(installable_component)
+        register_main_dist(installable_component, 'graalvm_installables')
 
     # Create standalones
     needs_java_standalone_jimage = False
-    standalone_names = []
+    # standalone_names = []
     for components in installables.values():
         main_component = _get_main_component(components)
         svm_support = _get_svm_support()
@@ -3647,9 +3644,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 else:
                     needs_java_standalone_jimage = True
                     java_standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution, is_jvm=True, defaultBuild=False)
-                    standalone_names.append(java_standalone.name)
-                    register_distribution(java_standalone)
-                    with_debuginfo.append(java_standalone)
+                    register_main_dist(java_standalone, 'graalvm_standalones')
 
                     for library_config in _get_library_configs(main_component):
                         if isinstance(library_config, mx_sdk.LanguageLibraryConfig) and library_config.launchers:
@@ -3662,9 +3657,7 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 only_native_libraries = not main_component.library_configs or (svm_support.is_supported() and not _has_skipped_libraries(main_component))
                 if only_native_launchers and only_native_libraries:
                     native_standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution, is_jvm=False, defaultBuild=False)
-                    standalone_names.append(native_standalone.name)
-                    register_distribution(native_standalone)
-                    with_debuginfo.append(native_standalone)
+                    register_main_dist(native_standalone, 'graalvm_standalones')
 
     if needs_java_standalone_jimage:
         java_standalone_jimage_jars = set()
@@ -3683,20 +3676,6 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
             default_to_jvmci='lib' if _get_libgraal_component() is not None else False,
         )
         register_project(java_standalone_jimage)
-
-    # Trivial distribution to trigger the build of all standalones and their dependencies (they have `defaultBuild=False`)
-    register_distribution(mx.LayoutDirDistribution(
-        suite=_suite,
-        name="GRAALVM_STANDALONES",
-        deps=standalone_names,
-        layout={
-            "./standalone_deps_names": "string:" + ",".join(standalone_names),
-        },
-        path=None,
-        platformDependent=False,
-        theLicense=None,
-        defaultBuild=False,
-    ))
 
     if needs_stage1:
         if register_project:
@@ -3744,21 +3723,30 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                 jimage_project=final_jimage_project,
         ))
 
-    if _debuginfo_dists():
-        if _get_svm_support().is_debug_supported() or mx.get_opts().strip_jars or with_non_rebuildable_configs:
-            for d in with_debuginfo:
-                debuginfo_dist = DebuginfoDistribution(d)
-                register_distribution(debuginfo_dist)
-                other_graalvm_artifact_names.append(debuginfo_dist.name)
+    # Trivial distributions to trigger the build of the final GraalVM distribution, installables, and standalones
+    all_main_dists = []
+    for label, dists in main_dists.items():
+        if dists:
+            all_main_dists += dists
+            register_distribution(mx.LayoutDirDistribution(
+                suite=_suite,
+                name=label.upper(),
+                deps=dists,
+                layout={
+                    "./deps": "string:" + ",".join(dists),
+                },
+                path=None,
+                platformDependent=False,
+                theLicense=None,
+                defaultBuild=False,
+            ))
 
-    # Trivial distribution to trigger the build of the final GraalVM distribution and of all standalones
-    all_artifacts_deps = ["GRAALVM", "GRAALVM_STANDALONES"] + installable_names + other_graalvm_artifact_names
     register_distribution(mx.LayoutDirDistribution(
         suite=_suite,
         name="ALL_GRAALVM_ARTIFACTS",
-        deps=all_artifacts_deps,
+        deps=all_main_dists,
         layout={
-            "./deps": "string:" + ",".join(all_artifacts_deps),
+            "./deps": "string:" + ",".join(all_main_dists),
         },
         path=None,
         platformDependent=False,
@@ -4280,6 +4268,11 @@ def graalvm_show(args, forced_graalvm_dist=None):
                 for _, cfg in sorted(jvm_configs.items()):
                     for config in cfg['configs']:
                         print(f" {config} (from {cfg['source']})")
+            if args.verbose:
+                for dist_name in 'GRAALVM', 'GRAALVM_INSTALLABLES', 'GRAALVM_STANDALONES', 'ALL_GRAALVM_ARTIFACTS':
+                    dist = mx.distribution(dist_name, fatalIfMissing=False)
+                    if dist is not None:
+                        print(f"Dependencies of the '{dist_name}' distribution:\n -", '\n - '.join(sorted(dep.name for dep in dist.deps)))
 
         if args.print_env:
             def _print_env(name, val):

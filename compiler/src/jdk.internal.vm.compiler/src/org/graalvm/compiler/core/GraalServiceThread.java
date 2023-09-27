@@ -65,7 +65,7 @@ public class GraalServiceThread extends Thread {
      * @param error the error
      */
     protected void onAttachError(InternalError error) {
-        if (Boolean.parseBoolean(Services.getSavedProperties().getOrDefault("GraalServiceThread.verbose", "false"))) {
+        if (Boolean.parseBoolean(Services.getSavedProperty("GraalServiceThread.verbose", "false"))) {
             error.printStackTrace();
         }
     }

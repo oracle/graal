@@ -37,7 +37,7 @@ import org.graalvm.compiler.options.OptionType;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
-import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.util.LogUtils;
 
 public final class ClassInitializationOptions {
 
@@ -101,11 +101,12 @@ public final class ClassInitializationOptions {
     @Option(help = "Assert class initialization is specified for all classes.", type = OptionType.Debug)//
     public static final HostedOptionKey<Boolean> AssertInitializationSpecifiedForAllClasses = new HostedOptionKey<>(false);
 
-    @APIOption(name = "strict-image-heap")//
-    @Option(help = "Enable the strict image heap mode that allows all classes to be used at build-time but also requires types of all objects in the heap to be explicitly marked for build-time initialization.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> StrictImageHeap = new HostedOptionKey<>(false, k -> {
+    @APIOption(name = "strict-image-heap", deprecated = "'--strict-image-heap' is now the default. You can remove the option.") //
+    @Option(help = "Enable the strict image heap mode that allows all classes to be used at build-time but also requires types of all objects in the heap to be explicitly marked for build-time initialization.", //
+                    type = OptionType.User, deprecated = true, deprecationMessage = "The strict image heap mode is now the default. You can remove the option.") //
+    public static final HostedOptionKey<Boolean> StrictImageHeap = new HostedOptionKey<>(true, k -> {
         if (k.hasBeenSet() && Boolean.FALSE.equals(k.getValue())) {
-            throw UserError.abort("Strict image heap mode cannot be explicitly disabled.");
+            LogUtils.warning("The non-strict image heap mode should be avoided as it is deprecated and marked for removal.");
         }
     });
 

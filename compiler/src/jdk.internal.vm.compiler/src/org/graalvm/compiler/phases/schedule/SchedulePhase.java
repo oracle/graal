@@ -44,6 +44,7 @@ import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
 import org.graalvm.compiler.core.common.cfg.BlockMap;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph.NodeEvent;
@@ -79,8 +80,8 @@ import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.VirtualState;
 import org.graalvm.compiler.nodes.calc.ConvertNode;
 import org.graalvm.compiler.nodes.calc.IsNullNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.HIRLoop;
 import org.graalvm.compiler.nodes.cfg.LocationSet;
 import org.graalvm.compiler.nodes.memory.FloatingReadNode;
@@ -584,7 +585,7 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                          */
                         continue;
                     }
-                    latestBlock = calcBlockForUsage(currentNode, usage, latestBlock, currentNodeMap, moveInputsIntoDominator);
+                    latestBlock = calcLatestBlockForUsage(currentNode, usage, earliestBlock, latestBlock, currentNodeMap, moveInputsIntoDominator);
                     checkLatestEarliestRelation(currentNode, earliestBlock, latestBlock, usage);
                 }
 
@@ -667,7 +668,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
 
         private static Node getUnproxifiedUncompressed(Node node) {
             Node result = node;
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: unproxifying inputs
+                CompilationAlarm.checkProgress(node.graph());
                 if (result instanceof ValueProxy) {
                     ValueProxy valueProxy = (ValueProxy) result;
                     result = valueProxy.getOriginalNode();
@@ -685,9 +687,10 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             return result;
         }
 
-        private static HIRBlock calcBlockForUsage(Node node, Node usage, HIRBlock startBlock, NodeMap<HIRBlock> currentNodeMap, NodeBitMap moveInputsToDominator) {
+        private static HIRBlock calcLatestBlockForUsage(Node node, Node usage, HIRBlock earliestBlock, HIRBlock initialLatestBlock, NodeMap<HIRBlock> currentNodeMap,
+                        NodeBitMap moveInputsToDominator) {
             assert !(node instanceof PhiNode);
-            HIRBlock currentBlock = startBlock;
+            HIRBlock currentBlock = initialLatestBlock;
             if (usage instanceof PhiNode) {
                 // An input to a PhiNode is used at the end of the predecessor block that
                 // corresponds to the PhiNode input. One PhiNode can use an input multiple times.
@@ -709,7 +712,16 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
                 }
 
                 if (!(node instanceof VirtualState) && !moveInputsToDominator.isNew(usage) && moveInputsToDominator.isMarked(usage)) {
-                    otherBlock = otherBlock.getDominator();
+                    /*
+                     * The usage is marked as forcing its inputs into the dominator. Respect that if
+                     * we can, but the dominator might not be a legal position for the node. This is
+                     * the case for loop-variant floating nodes between a loop phi and a virtual
+                     * state on the loop begin.
+                     */
+                    HIRBlock dominator = otherBlock.getDominator();
+                    if (AbstractControlFlowGraph.dominates(earliestBlock, dominator)) {
+                        otherBlock = dominator;
+                    }
                     GraalError.guarantee(otherBlock != null, "Dominators need to be computed in the CFG");
                 }
 
@@ -998,7 +1010,8 @@ public final class SchedulePhase extends BasePhase<CoreProviders> {
             assert !visited.isMarked(first);
             stack.push(first);
             Node current = first;
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: processing stack until empty
+                CompilationAlarm.checkProgress(first.graph());
                 if (current instanceof PhiNode) {
                     processStackPhi(stack, (PhiNode) current, nodeToMicroBlock, visited);
                 } else if (current instanceof ProxyNode) {

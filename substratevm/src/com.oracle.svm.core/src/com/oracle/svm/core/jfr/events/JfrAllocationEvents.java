@@ -63,6 +63,7 @@ public class JfrAllocationEvents {
         if (JfrEvent.ObjectAllocationInNewTLAB.shouldEmit()) {
             JfrNativeEventWriterData data = StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ObjectAllocationInNewTLAB);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putEventThread(data);

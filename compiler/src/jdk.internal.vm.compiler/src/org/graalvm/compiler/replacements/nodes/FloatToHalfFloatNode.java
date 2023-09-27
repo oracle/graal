@@ -27,11 +27,7 @@ package org.graalvm.compiler.replacements.nodes;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_32;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_32;
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
 import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -57,20 +53,11 @@ public final class FloatToHalfFloatNode extends UnaryNode implements LIRLowerabl
         super(TYPE, StampFactory.forKind(JavaKind.Short), value);
     }
 
-    private static short floatToFloat16(float f) {
-        try {
-            Method floatToFloat16 = Float.class.getDeclaredMethod("floatToFloat16", float.class);
-            return (Short) floatToFloat16.invoke(null, f);
-        } catch (NoSuchMethodException | InvocationTargetException | IllegalAccessException e) {
-            throw GraalError.shouldNotReachHere(e, "Float.floatToFloat16 is introduced in Java 20");
-        }
-    }
-
     @Override
     public ValueNode canonical(CanonicalizerTool tool, ValueNode forValue) {
         if (forValue instanceof ConstantNode) {
             float f = forValue.asJavaConstant().asFloat();
-            return ConstantNode.forPrimitive(JavaConstant.forShort(floatToFloat16(f)));
+            return ConstantNode.forPrimitive(JavaConstant.forShort(Float.floatToFloat16(f)));
         }
         return this;
     }

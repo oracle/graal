@@ -94,7 +94,6 @@ import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.flow.MethodTypeFlow;
 import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.Universe;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -728,15 +727,6 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
             if (hasUsages && allowConstantFolding && !nodeTypeState.canBeNull()) {
                 JavaConstant constantValue = nodeTypeState.asConstant();
-                if (constantValue instanceof ImageHeapConstant) {
-                    /*
-                     * GR-42996: until the AOT compilation can properly constant fold also
-                     * ImageHeapConstant, we unwrap the ImageHeapConstant to the hosted object. This
-                     * also means we do not constant fold yet when the constant does not wrap a
-                     * hosted object.
-                     */
-                    constantValue = ((ImageHeapConstant) constantValue).getHostedObject();
-                }
                 if (constantValue != null) {
                     return constantValue;
                 }

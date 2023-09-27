@@ -4,6 +4,8 @@ This changelog summarizes major changes to GraalVM Native Image.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
 * (GR-48304) Red Hat added support for the JFR event ThreadAllocationStatistics.
+* (GR-48343) Red Hat added support for the JFR events AllocationRequiringGC and SystemGC.
+* (GR-48612) Enable `--strict-image-heap` by default. The option is now deprecated and can be removed from your argument list. A blog post with more information will follow shortly.
 * (GR-47109) JFR event throttling support was added, along with the jdk.ObjectAllocationSample event.
 
 ## GraalVM for JDK 21 (Internal Version 23.1.0)

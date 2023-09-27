@@ -171,13 +171,12 @@ public class ClassInitializationFeature implements InternalFeature {
             if (ClassInitializationOptions.StrictImageHeap.getValue()) {
                 msg += System.lineSeparator();
                 msg += """
-                                If you are seeing this message after enabling %s, this means that some objects ended up in the image heap without their type being marked with --initialize-at-build-time.
+                                If you are seeing this message after upgrading to a new GraalVM release, this means that some objects ended up in the image heap without their type being marked with --initialize-at-build-time.
                                 To fix this, include %s in your configuration. If the classes do not originate from your code, it is advised to update all library or framework dependencies to the latest version before addressing this error.
-                                Please address this problem to be prepared for future releases of GraalVM.
                                 """
                                 .replaceAll("\n", System.lineSeparator())
                                 .formatted(
-                                                SubstrateOptionsParser.commandArgument(ClassInitializationOptions.StrictImageHeap, "+", "strict-image-heap", true, false),
+                                                SubstrateOptionsParser.commandArgument(ClassInitializationOptions.StrictImageHeap, "+", true, false),
                                                 SubstrateOptionsParser.commandArgument(ClassInitializationOptions.ClassInitialization, proxyOrLambda ? proxyLambdaInterfaceCSV : typeName,
                                                                 "initialize-at-build-time", true, false));
             }

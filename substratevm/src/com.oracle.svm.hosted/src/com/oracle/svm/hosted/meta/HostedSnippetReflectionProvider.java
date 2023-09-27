@@ -38,6 +38,7 @@ import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
 import jdk.vm.ci.meta.JavaConstant;
+import jdk.vm.ci.meta.JavaKind;
 
 public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionProvider {
     private ImageHeapScanner heapScanner;
@@ -54,13 +55,23 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
     @Override
     public JavaConstant forObject(Object object) {
         /* RelocatedPointer values will be represented as a RelocatableConstant by GR-48681. */
-        if (object instanceof WordBase word && !(object instanceof RelocatedPointer)) {
+        if (object instanceof RelocatedPointer pointer) {
+            return new RelocatableConstant(pointer);
+        } else if (object instanceof WordBase word) {
             /* Relocated pointers are subject to relocation, so we don't know their value yet. */
             return JavaConstant.forIntegerKind(FrameAccess.getWordKind(), word.rawValue());
         }
         AnalysisConstantReflectionProvider.validateRawObjectConstant(object);
         /* Redirect constant lookup through the shadow heap. */
         return heapScanner.createImageHeapConstant(super.forObject(object), OtherReason.UNKNOWN);
+    }
+
+    @Override
+    public JavaConstant forBoxed(JavaKind kind, Object value) {
+        if (kind == JavaKind.Object) {
+            return forObject(value);
+        }
+        return JavaConstant.forBoxedPrimitive(value);
     }
 
     @Override
@@ -74,6 +85,9 @@ public class HostedSnippetReflectionProvider extends SubstrateSnippetReflectionP
     @Override
     public <T> T asObject(Class<T> type, JavaConstant c) {
         JavaConstant constant = c;
+        if (constant instanceof RelocatableConstant relocatable) {
+            return type.cast(relocatable.getPointer());
+        }
         if (constant instanceof ImageHeapConstant imageHeapConstant) {
             constant = imageHeapConstant.getHostedObject();
             if (constant == null) {

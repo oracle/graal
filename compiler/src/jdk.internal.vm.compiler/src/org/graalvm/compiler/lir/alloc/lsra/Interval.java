@@ -42,6 +42,7 @@ import org.graalvm.compiler.core.common.util.IntList;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.lir.LIR;
 import org.graalvm.compiler.lir.LIRInstruction;
 import org.graalvm.compiler.lir.Variable;
 
@@ -438,6 +439,8 @@ public final class Interval {
 
     protected static final int END_MARKER_OPERAND_NUMBER = Integer.MIN_VALUE;
 
+    private final LIR lir;
+
     /**
      * The {@linkplain RegisterValue register} or {@linkplain Variable variable} for this interval
      * prior to register allocation.
@@ -713,7 +716,8 @@ public final class Interval {
         return current.intersectsAt(it.current);
     }
 
-    Interval(AllocatableValue operand, int operandNumber, Interval intervalEndMarker, Range rangeEndMarker) {
+    Interval(LIR lir, AllocatableValue operand, int operandNumber, Interval intervalEndMarker, Range rangeEndMarker) {
+        this.lir = lir;
         assert operand != null;
         this.operand = operand;
         this.operandNumber = operandNumber;
@@ -1042,7 +1046,7 @@ public final class Interval {
             first.to = Math.max(to, first().to);
         } else {
             // insert new range
-            first = new Range(from, to, first());
+            first = new Range(from, to, first(), lir);
         }
     }
 
@@ -1098,7 +1102,7 @@ public final class Interval {
         assert !cur.isEndMarker() : "split interval after end of last range";
 
         if (cur.from < splitPos) {
-            result.first = new Range(splitPos, cur.to, cur.next);
+            result.first = new Range(splitPos, cur.to, cur.next, lir);
             cur.to = splitPos;
             cur.next = allocator.rangeEndMarker;
 

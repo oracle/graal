@@ -136,7 +136,7 @@ public final class BigIntegerIntrinsicsTest extends HotSpotGraalCompilerTest {
     @Test
     public void testMontgomery() throws ClassNotFoundException {
         // Intrinsic must be available.
-        Assume.assumeTrue(config.useMontgomeryMultiplyIntrinsic() || config.useMontgomerySquareIntrinsic());
+        Assume.assumeTrue(config.montgomeryMultiply != 0L || config.montgomerySquare != 0L);
 
         Class<?> javaclass = Class.forName("java.math.BigInteger");
 

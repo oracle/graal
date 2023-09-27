@@ -233,10 +233,10 @@ public final class ThreadLocalAllocation {
         UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewInstanceWithoutAllocating", DynamicHub.toClass(hub).getName());
-            GCImpl.getGCImpl().maybeCollectOnAllocation();
+            GCImpl.getGCImpl().maybeCollectOnAllocation(size);
 
             AlignedHeader newTlab = HeapImpl.getChunkProvider().produceAlignedChunk();
-            return allocateInstanceInNewTlab(hub, newTlab, size);
+            return allocateInstanceInNewTlab(hub, size, newTlab);
         } finally {
             JfrAllocationEvents.emit(startTicks, hub, size, HeapParameters.getAlignedHeapChunkSize());
             DeoptTester.enableDeoptTesting();
@@ -297,7 +297,7 @@ public final class ThreadLocalAllocation {
         UnsignedWord tlabSize = HeapParameters.getAlignedHeapChunkSize();
         try {
             HeapImpl.exitIfAllocationDisallowed("ThreadLocalAllocation.slowPathNewArrayOrPodWithoutAllocating", DynamicHub.toClass(hub).getName());
-            GCImpl.getGCImpl().maybeCollectOnAllocation();
+            GCImpl.getGCImpl().maybeCollectOnAllocation(size);
 
             if (size.aboveOrEqual(HeapParameters.getLargeArrayThreshold())) {
                 /* Large arrays go into their own unaligned chunk. */
@@ -306,10 +306,12 @@ public final class ThreadLocalAllocation {
                 tlabSize = UnalignedHeapChunk.getChunkSizeForObject(size);
                 return allocateLargeArrayLikeObjectInNewTlab(hub, length, size, newTlabChunk, needsZeroing, podReferenceMap);
             }
-            /* Small arrays go into the regular aligned chunk. */
 
-            // We might have allocated in the caller and acquired a TLAB with enough space already
-            // (but we need to check in an uninterruptible method to be safe)
+            /*
+             * Small arrays go into the regular aligned chunk. We might have allocated in the caller
+             * and acquired a TLAB with enough space already (but we need to check in an
+             * uninterruptible method to be safe).
+             */
             Object array = allocateSmallArrayLikeObjectInCurrentTlab(hub, length, size, podReferenceMap);
             if (array == null) { // We need a new chunk.
                 AlignedHeader newTlabChunk = HeapImpl.getChunkProvider().produceAlignedChunk();
@@ -323,7 +325,9 @@ public final class ThreadLocalAllocation {
     }
 
     @Uninterruptible(reason = "Holds uninitialized memory.")
-    private static Object allocateInstanceInNewTlab(DynamicHub hub, AlignedHeader newTlabChunk, UnsignedWord size) {
+
+    private static Object allocateInstanceInNewTlab(DynamicHub hub, UnsignedWord size, AlignedHeader newTlabChunk) {
+        assert size.equal(LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding()));
         Pointer memory = allocateRawMemoryInNewTlab(size, newTlabChunk);
         return FormatObjectNode.formatObject(memory, DynamicHub.toClass(hub), false, FillContent.WITH_ZEROES, true);
     }

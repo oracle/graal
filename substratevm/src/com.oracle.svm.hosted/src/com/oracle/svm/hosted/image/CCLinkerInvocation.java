@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -257,6 +257,14 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
             super(imageKind, nativeLibs, symbols);
             additionalPreOptions.add("-z");
             additionalPreOptions.add("noexecstack");
+
+            /*
+             * This is needed if the default linker is ld.lld from LLVM. On the GNU linker this
+             * option is the default, so we can just set it unconditionally.
+             */
+            additionalPreOptions.add("-z");
+            additionalPreOptions.add("notext");
+
             if (SubstrateOptions.ForceNoROSectionRelocations.getValue()) {
                 additionalPreOptions.add("-fuse-ld=gold");
                 additionalPreOptions.add("-Wl,--rosegment");

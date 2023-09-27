@@ -181,7 +181,7 @@ public class DynamicHubInitializer {
              */
             enumConstants = (Enum<?>[]) javaClass.getEnumConstants();
         } else {
-            enumConstants = metaAccess.getUniverse().getSnippetReflection().asObject(Enum[].class, constantReflection.readFieldValue(found, null));
+            enumConstants = bb.getSnippetReflectionProvider().asObject(Enum[].class, constantReflection.readFieldValue(found, null));
             assert enumConstants != null;
         }
         return enumConstants;

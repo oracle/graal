@@ -22,16 +22,19 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.jdk20.test;
+package org.graalvm.compiler.hotspot.test;
 
-import static org.graalvm.compiler.test.GraalTest.assertTrue;
-import static org.graalvm.compiler.test.GraalTest.fail;
-
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadFactory;
+
+import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.test.SubprocessTest;
+import org.graalvm.compiler.options.OptionValues;
+import org.junit.Test;
 
 import jdk.jfr.Event;
 import jdk.jfr.Name;
@@ -39,12 +42,9 @@ import jdk.jfr.Recording;
 import jdk.jfr.consumer.RecordedEvent;
 import jdk.jfr.consumer.RecordedThread;
 import jdk.jfr.consumer.RecordingFile;
+import jdk.vm.ci.code.InstalledCode;
 
-/**
- * This class is compiled with a higher class file version due to the preview feature
- * {@code Thread#ofVirtual}. It cannot be loaded without --enable-preview.
- */
-public class VirtualThreadsJFRTest {
+public class VirtualThreadJFRTest extends SubprocessTest {
     private static final int VIRTUAL_THREAD_COUNT = 100_000;
     private static final int STARTER_THREADS = 10;
 
@@ -52,8 +52,7 @@ public class VirtualThreadsJFRTest {
     private static class TestEvent extends Event {
     }
 
-    @SuppressWarnings("preview")
-    public static void test() {
+    public static void testSnippet() {
         try (Recording r = new Recording()) {
             r.start();
 
@@ -63,7 +62,7 @@ public class VirtualThreadsJFRTest {
                 c[j] = CompletableFuture.runAsync(() -> {
                     for (int i = 0; i < VIRTUAL_THREAD_COUNT / STARTER_THREADS; i++) {
                         try {
-                            Thread vt = factory.newThread(VirtualThreadsJFRTest::emitEvent);
+                            Thread vt = factory.newThread(VirtualThreadJFRTest::emitEvent);
                             vt.start();
                             vt.join();
                         } catch (InterruptedException ie) {
@@ -104,4 +103,26 @@ public class VirtualThreadsJFRTest {
         TestEvent t = new TestEvent();
         t.commit();
     }
+
+    public void testJFR() {
+        try {
+            // resolve class, profile exceptions
+            testSnippet();
+            Class<?> clazz = Class.forName("java.lang.VirtualThread");
+            InstalledCode code = getCode(getResolvedJavaMethod(clazz, "mount"), null, true, true,
+                            new OptionValues(getInitialOptions(), GraalOptions.RemoveNeverExecutedCode, false));
+            assertTrue(code.isValid());
+            testSnippet();
+            assertTrue(code.isValid());
+            code.invalidate();
+        } catch (ClassNotFoundException e) {
+            fail(e.getMessage());
+        }
+    }
+
+    @Test
+    public void testInSubprocess() throws InterruptedException, IOException {
+        launchSubprocess(this::testJFR);
+    }
+
 }

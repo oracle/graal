@@ -482,27 +482,11 @@ local devkits = graal_common.devkits;
   full_vm_build_darwin_aarch64: self.ruby_python_vm_build_darwin_aarch64,
 
   graalvm_complete_build_deps(edition, os, arch):
-      local java_deps(edition) =
-        if (edition == 'ce') then
-          {
-            downloads+: {
-              # We still need to run on JDK 17 until doclet work on JDK 21 (GR-48400)
-              JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17'],
-              EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-' + edition + '-21'],
-            },
-            environment+: {
-              JDK_VERSION_CHECK: 'ignore',
-              JVMCI_VERSION_CHECK: 'ignore',
-            },
-          }
-        else if (edition == 'ee') then
-          {
-            downloads+: {
-              JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
-            }
-          }
-        else
-          error 'Unknown edition: ' + edition;
+      local java_deps(edition) = {
+        downloads+: {
+          JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+        }
+      };
 
       if (os == 'linux') then
         if (arch == 'amd64') then
@@ -724,12 +708,6 @@ local devkits = graal_common.devkits;
   record_file_sizes:: ['benchmark', 'file-size:*', '--results-file', 'sizes.json'],
   upload_file_sizes:: ['bench-uploader.py', 'sizes.json'],
 
-  # These dummy artifacts are required by notify_releaser_build in order to trigger the releaser service
-  # after the deploy jobs have completed.
-  create_releaser_notifier_artifact:: [
-    ['python3', '-c', "from os import environ; open('../' + environ['BUILD_NAME'], 'a').close()"],
-  ],
-
   build_base_graalvm_image: [
     $.mx_vm_common + vm.vm_profiles + ['graalvm-show'],
     $.mx_vm_common + vm.vm_profiles + ['build'],
@@ -772,20 +750,34 @@ local devkits = graal_common.devkits;
     run: $.patch_env(self.os, self.arch, java_version) + vm.collect_profiles() + $.build_base_graalvm_image + [
       $.mx_vm_common + vm.vm_profiles + $.record_file_sizes,
       $.upload_file_sizes,
-    ] + $.deploy_sdk_base(self.os) + $.create_releaser_notifier_artifact + $.check_base_graalvm_image(self.os, self.arch, java_version),
+    ] + $.deploy_sdk_base(self.os) + $.check_base_graalvm_image(self.os, self.arch, java_version),
     notify_groups:: ['deploy'],
     timelimit: "1:00:00"
   },
 
-  deploy_graalvm_components(java_version, tags): vm.check_structure + {
+  deploy_graalvm_components(java_version, installables, standalones, record_file_sizes=false): vm.check_structure + {
+    build_deps:: std.join(',', []
+      + (if (record_file_sizes) then ['GRAALVM'] else [])
+      + (if (installables) then ['GRAALVM_INSTALLABLES'] else [])
+      + (if (standalones) then ['GRAALVM_STANDALONES'] else [])
+    ),
+
+    tags:: std.join(',', []
+      + (if (installables) then ['installable'] else [])
+      + (if (standalones) then ['standalone'] else [])
+    ),
+
     run: $.patch_env(self.os, self.arch, java_version) + [
       $.mx_vm_installables + ['graalvm-show'],
-      $.mx_vm_installables + ['build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
-      ['set-export', 'GRAALVM_HOME', $.mx_vm_installables + ['--quiet', '--no-warning', 'graalvm-home']],
-    ] + $.deploy_sdk_components(self.os, tags) + [
-      $.mx_vm_installables + $.record_file_sizes,
-      $.upload_file_sizes,
-    ] + $.create_releaser_notifier_artifact + vm.check_graalvm_complete_build($.mx_vm_installables, self.os, self.arch, java_version),
+      $.mx_vm_installables + ['build', '--dependencies', self.build_deps],
+    ]
+    + $.deploy_sdk_components(self.os, self.tags)
+    + (
+      if (record_file_sizes) then [
+        $.mx_vm_installables + $.record_file_sizes,
+        $.upload_file_sizes,
+      ] else []
+    ),
     notify_groups:: ['deploy'],
     timelimit: "1:30:00"
   },
@@ -801,7 +793,7 @@ local devkits = graal_common.devkits;
       ['set-export', 'GRAALVM_HOME', $.mx_vm_common + ['--quiet', '--no-warning', 'graalvm-home']],
       ['set-export', 'DACAPO_JAR', $.mx_vm_common + ['--quiet', '--no-warning', 'paths', '--download', 'DACAPO_MR1_2baec49']],
       ['${GRAALVM_HOME}/bin/java', '-jar', '${DACAPO_JAR}', 'luindex'],
-    ] + $.create_releaser_notifier_artifact,
+    ],
     notify_groups:: ['deploy'],
     timelimit: '1:45:00',
   },
@@ -813,25 +805,25 @@ local devkits = graal_common.devkits;
 
   # Linux/AMD64
   deploy_vm_base_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_vm_linux_amd64 + self.deploy_graalvm_base("java21") + {name: 'post-merge-deploy-vm-base-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
-  deploy_vm_installables_standalones_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_components("java21", "installable,standalone") + {name: 'daily-deploy-vm-installables-standalones-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
+  deploy_vm_installables_standalones_java21_linux_amd64: vm.vm_java_21_llvm + self.full_vm_build_linux_amd64 + self.linux_deploy + self.deploy_daily_vm_linux_amd64 + self.deploy_graalvm_components("java21", installables=true, standalones=true, record_file_sizes=true) + {name: 'daily-deploy-vm-installables-standalones-java21-linux-amd64', diskspace_required: vm.diskspace_required.java21_linux_amd64, notify_groups:: ["deploy"]},
   # Linux/AARCH64
   deploy_vm_base_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_base("java21") + {name: 'daily-deploy-vm-base-java21-linux-aarch64', notify_groups:: ["deploy"], timelimit: '1:30:00', capabilities+: ["!xgene3"]},
-  deploy_vm_installables_standalones_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_components("java21", "installable,standalone") + {name: 'daily-deploy-vm-installables-standalones-java21-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
+  deploy_vm_installables_standalones_java21_linux_aarch64: vm.vm_java_21 + self.full_vm_build_linux_aarch64 + self.linux_deploy + self.deploy_daily_vm_linux_aarch64 + self.deploy_graalvm_components("java21", installables=true, standalones=true) + {name: 'daily-deploy-vm-installables-standalones-java21-linux-aarch64', notify_groups:: ["deploy"], capabilities+: ["!xgene3"]},
 
   # Darwin/AMD64
   deploy_vm_base_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_base("java21") + {name: 'daily-deploy-vm-base-java21-darwin-amd64', notify_groups:: ["deploy"], timelimit: '1:45:00'},
-  deploy_vm_installables_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_weekly_vm_darwin_amd64 + self.deploy_graalvm_components("java21", "installable") + {name: 'weekly-deploy-vm-installables-java21-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"], timelimit: '3:00:00'},
-  deploy_vm_standalones_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_components("java21", "standalone") + {name: 'daily-deploy-vm-standalones-java21-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"], timelimit: '3:00:00'},
+  deploy_vm_installables_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_weekly_vm_darwin_amd64 + self.deploy_graalvm_components("java21", installables=true, standalones=false) + {name: 'weekly-deploy-vm-installables-java21-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"], timelimit: '3:00:00'},
+  deploy_vm_standalones_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_components("java21", installables=false, standalones=true) + {name: 'daily-deploy-vm-standalones-java21-darwin-amd64', diskspace_required: "31GB", notify_groups:: ["deploy"], timelimit: '3:00:00'},
 
   # Darwin/AARCH64
   deploy_vm_base_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_base("java21") + {name: 'daily-deploy-vm-base-java21-darwin-aarch64', notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '1:45:00'},
-  deploy_vm_installables_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_weekly_vm_darwin_aarch64 + self.deploy_graalvm_components("java21", "installable") + {name: 'weekly-deploy-vm-installables-java21-darwin-aarch64', diskspace_required: "31GB", notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
-  deploy_vm_standalones_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_components("java21", "standalone") + {name: 'daily-deploy-vm-standalones-java21-darwin-aarch64', diskspace_required: "31GB", notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
+  deploy_vm_installables_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_weekly_vm_darwin_aarch64 + self.deploy_graalvm_components("java21", installables=true, standalones=false) + {name: 'weekly-deploy-vm-installables-java21-darwin-aarch64', diskspace_required: "31GB", notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
+  deploy_vm_standalones_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_components("java21", installables=false, standalones=true) + {name: 'daily-deploy-vm-standalones-java21-darwin-aarch64', diskspace_required: "31GB", notify_groups:: ["deploy"], notify_emails+: ["bernhard.urban-forster@oracle.com"], timelimit: '3:00:00'},
 
   # Windows/AMD64
   deploy_vm_base_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_base("java21") + self.deploy_build + {name: 'daily-deploy-vm-base-java21-windows-amd64', notify_groups:: ["deploy"], timelimit: '1:30:00'},
-  deploy_vm_installables_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows + self.deploy_weekly_vm_windows_jdk21 + self.deploy_graalvm_components("java21", "installable") + self.deploy_build + {name: 'weekly-deploy-vm-installables-java21-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
-  deploy_vm_standalones_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_components("java21", "standalone") + self.deploy_build + {name: 'daily-deploy-vm-standalones-java21-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
+  deploy_vm_installables_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows + self.deploy_weekly_vm_windows_jdk21 + self.deploy_graalvm_components("java21", installables=true, standalones=false) + self.deploy_build + {name: 'weekly-deploy-vm-installables-java21-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
+  deploy_vm_standalones_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.js_windows_jdk21 + self.sulong_windows + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_components("java21", installables=false, standalones=true) + self.deploy_build + {name: 'daily-deploy-vm-standalones-java21-windows-amd64', diskspace_required: "31GB", timelimit: '2:30:00', notify_groups:: ["deploy"]},
 
   #
   # Deploy the GraalVM Espresso artifact (GraalVM Base + espresso - native image)
@@ -842,6 +834,15 @@ local devkits = graal_common.devkits;
   deploy_vm_espresso_java21_darwin_amd64: vm.vm_java_21_llvm + self.full_vm_build_darwin_amd64 + self.darwin_deploy + self.deploy_daily_vm_darwin_amd64 + self.deploy_graalvm_espresso('darwin', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-darwin-amd64', notify_groups:: ["deploy"]},
   deploy_vm_espresso_java21_darwin_aarch64: vm.vm_java_21 + self.full_vm_build_darwin_aarch64 + self.darwin_deploy + self.deploy_daily_vm_darwin_aarch64 + self.deploy_graalvm_espresso('darwin', 'aarch64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-darwin-aarch64', notify_groups:: ["deploy"]},
   deploy_vm_espresso_java21_windows_amd64: vm.vm_java_21 + self.svm_common_windows_amd64("21") + self.sulong_windows + self.deploy_build + self.deploy_daily_vm_windows_jdk21 + self.deploy_graalvm_espresso('windows', 'amd64', 'java21') + {name: 'daily-deploy-vm-espresso-java21-windows-amd64', notify_groups:: ["deploy"]},
+
+  local sulong_vm_tests = self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
+     run: [
+       ['export', 'SVM_SUITE=' + vm.svm_suite],
+       ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
+     ],
+     timelimit: '1:00:00',
+     name: 'gate-vm-native-sulong-' + self.jdk_name + '-linux-amd64',
+  },
 
   local builds = [
     #
@@ -854,14 +855,8 @@ local devkits = graal_common.devkits;
      name: 'gate-vm-style-jdk21-linux-amd64',
     },
 
-    vm.vm_java_21 + self.svm_common_linux_amd64 + self.sulong_linux + vm.custom_vm_linux + self.gate_vm_linux_amd64 + {
-     run: [
-       ['export', 'SVM_SUITE=' + vm.svm_suite],
-       ['mx', '--dynamicimports', '$SVM_SUITE,/sulong', '--disable-polyglot', '--disable-libpolyglot', 'gate', '--no-warning-as-error', '--tags', 'build,sulong'],
-     ],
-     timelimit: '1:00:00',
-     name: 'gate-vm-native-sulong-' + self.jdk_version + '-linux-amd64',
-    },
+    vm.vm_java_21 + sulong_vm_tests,
+    vm.vm_java_Latest + sulong_vm_tests,
   ] + (import 'libgraal.jsonnet').builds,
 
   builds:: [{'defined_in': std.thisFile} + b for b in builds],

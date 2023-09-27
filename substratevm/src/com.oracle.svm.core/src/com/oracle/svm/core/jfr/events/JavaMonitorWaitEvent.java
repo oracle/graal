@@ -50,6 +50,7 @@ public class JavaMonitorWaitEvent {
         if (JfrEvent.JavaMonitorWait.shouldEmit(duration)) {
             JfrNativeEventWriterData data = org.graalvm.nativeimage.StackValue.get(JfrNativeEventWriterData.class);
             JfrNativeEventWriterDataAccess.initializeThreadLocalNativeBuffer(data);
+
             JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.JavaMonitorWait);
             JfrNativeEventWriter.putLong(data, startTicks);
             JfrNativeEventWriter.putLong(data, duration);

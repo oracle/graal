@@ -961,7 +961,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         // so that compilation errors or effects are still properly waited for.
         boolean interrupted = false;
         try {
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: busy loop
                 try {
                     task.awaitCompletion();
                     break;
@@ -1045,7 +1045,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
 
     @SuppressWarnings("deprecation")
     private static com.oracle.truffle.api.object.LayoutFactory selectObjectLayoutFactory(Iterable<? extends Iterable<com.oracle.truffle.api.object.LayoutFactory>> availableLayoutFactories) {
-        String layoutFactoryImplName = Services.getSavedProperties().get("truffle.object.LayoutFactory");
+        String layoutFactoryImplName = Services.getSavedProperty("truffle.object.LayoutFactory");
         com.oracle.truffle.api.object.LayoutFactory bestLayoutFactory = null;
         for (Iterable<com.oracle.truffle.api.object.LayoutFactory> currentLayoutFactories : availableLayoutFactories) {
             for (com.oracle.truffle.api.object.LayoutFactory currentLayoutFactory : currentLayoutFactories) {

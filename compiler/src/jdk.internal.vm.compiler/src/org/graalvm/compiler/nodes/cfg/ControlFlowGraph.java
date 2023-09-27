@@ -24,8 +24,6 @@
  */
 package org.graalvm.compiler.nodes.cfg;
 
-import static org.graalvm.compiler.core.common.cfg.BasicBlock.BLOCK_ID_COMPARATOR;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
@@ -34,9 +32,11 @@ import java.util.function.Function;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.cfg.AbstractControlFlowGraph;
+import org.graalvm.compiler.core.common.cfg.BasicBlock;
 import org.graalvm.compiler.core.common.cfg.BasicBlockSet;
 import org.graalvm.compiler.core.common.cfg.CFGVerifier;
 import org.graalvm.compiler.core.common.cfg.Loop;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -506,7 +506,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
             boolean wasExit = predecessorBlockSequentialLoopExit(b);
 
             FixedNode f = b.getBeginNode();
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: processing loop exit node predecessors
+                CompilationAlarm.checkProgress(graph);
                 if (f instanceof LoopExitNode) {
                     LoopBeginNode closedLoop = ((LoopExitNode) f).loopBegin();
                     RPOLoopVerification lv = openLoops[tos - 1];
@@ -590,7 +591,8 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
         while (cur.getPredecessorCount() == 1 && cur.getPredecessorAt(0).getSuccessorCount() == 1) {
             HIRBlock pred = cur.getPredecessorAt(0);
             FixedNode f = pred.getBeginNode();
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: process loop exit predecessor nodes
+                CompilationAlarm.checkProgress(b.getCfg().graph);
                 if (f instanceof LoopExitNode) {
                     return true;
                 }
@@ -737,7 +739,9 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
 
     private void identifyBlock(HIRBlock block) {
         FixedWithNextNode cur = block.getBeginNode();
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: processing fixed nodes of a basic block, bound if
+                       // the graph is valid
+            CompilationAlarm.checkProgress(graph);
             assert cur.isAlive() : cur;
             assert nodeToBlock.get(cur) == null;
             nodeToBlock.set(cur, block);
@@ -1143,7 +1147,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                             }
                         }
                     }
-                    loop.getNaturalExits().sort(BLOCK_ID_COMPARATOR);
+                    loop.getNaturalExits().sort(BasicBlock.BLOCK_ID_COMPARATOR);
 
                     if (!graph.getGuardsStage().areFrameStatesAtDeopts()) {
                         for (LoopExitNode exit : loopBegin.loopExits()) {
@@ -1152,7 +1156,7 @@ public final class ControlFlowGraph implements AbstractControlFlowGraph<HIRBlock
                             computeLoopBlocks(exitBlock.getFirstPredecessor(), loop, stack, true);
                             loop.getLoopExits().add(exitBlock);
                         }
-                        loop.getLoopExits().sort(BLOCK_ID_COMPARATOR);
+                        loop.getLoopExits().sort(BasicBlock.BLOCK_ID_COMPARATOR);
 
                         // The following loop can add new blocks to the end of the loop's block
                         // list.

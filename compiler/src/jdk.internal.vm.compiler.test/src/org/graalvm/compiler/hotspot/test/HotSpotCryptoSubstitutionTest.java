@@ -49,6 +49,10 @@ import org.graalvm.compiler.replacements.SnippetSubstitutionNode;
 import org.graalvm.compiler.replacements.nodes.AESNode;
 import org.graalvm.compiler.replacements.nodes.CipherBlockChainingAESNode;
 import org.graalvm.compiler.replacements.nodes.CounterModeAESNode;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
+import org.graalvm.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Before;
@@ -272,25 +276,25 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testDigestBaseSHA() throws Exception {
-        Assume.assumeTrue("SHA1 not supported", runtime().getVMConfig().useSHA1Intrinsics());
+        Assume.assumeTrue("SHA1 not supported", runtime().getVMConfig().sha1ImplCompressMultiBlock != 0L);
         testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA-1", SHA_IMPL_COMPRESS_MB);
     }
 
     @Test
     public void testDigestBaseSHA2() throws Exception {
-        Assume.assumeTrue("SHA256 not supported", runtime().getVMConfig().useSHA256Intrinsics());
+        Assume.assumeTrue("SHA256 not supported", runtime().getVMConfig().sha256ImplCompressMultiBlock != 0L);
         testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA-256", SHA2_IMPL_COMPRESS_MB);
     }
 
     @Test
     public void testDigestBaseSHA5() throws Exception {
-        Assume.assumeTrue("SHA512 not supported", runtime().getVMConfig().useSHA512Intrinsics());
+        Assume.assumeTrue("SHA512 not supported", runtime().getVMConfig().sha512ImplCompressMultiBlock != 0L);
         testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA-512", SHA5_IMPL_COMPRESS_MB);
     }
 
     @Test
     public void testDigestBaseSHA3() throws Exception {
-        Assume.assumeTrue("SHA3 not supported", runtime().getVMConfig().useSHA3Intrinsics());
+        Assume.assumeTrue("SHA3 not supported", runtime().getVMConfig().sha3ImplCompressMultiBlock != 0L);
         testDigestBase("sun.security.provider.DigestBase", "implCompressMultiBlock", "SHA3-512", SHA3_IMPL_COMPRESS_MB);
     }
 
@@ -363,7 +367,7 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testSha1() {
-        Assume.assumeTrue("SHA1 not supported", runtime().getVMConfig().useSHA1Intrinsics());
+        Assume.assumeTrue("SHA1 not supported", SHA1Node.isSupported(getArchitecture()));
         testWithInstalledIntrinsic("sun.security.provider.SHA", "implCompress0", "testDigest", "SHA-1", getData());
     }
 
@@ -405,25 +409,24 @@ public class HotSpotCryptoSubstitutionTest extends HotSpotGraalCompilerTest {
 
     @Test
     public void testSha256() {
-        Assume.assumeTrue("SHA256 not supported", runtime().getVMConfig().useSHA256Intrinsics());
+        Assume.assumeTrue("SHA256 not supported", SHA256Node.isSupported(getArchitecture()));
         testWithInstalledIntrinsic("sun.security.provider.SHA2", "implCompress0", "testDigest", "SHA-256", getData());
     }
 
     @Test
     public void testSha512() {
-        Assume.assumeTrue("SHA512 not supported", runtime().getVMConfig().useSHA512Intrinsics());
+        Assume.assumeTrue("SHA512 not supported", SHA512Node.isSupported(getArchitecture()));
         testWithInstalledIntrinsic("sun.security.provider.SHA5", "implCompress0", "testDigest", "SHA-512", getData());
     }
 
     @Test
     public void testSha3() {
-        Assume.assumeTrue("SHA3 not supported", runtime().getVMConfig().sha3ImplCompress != 0L);
+        Assume.assumeTrue("SHA3 not supported", SHA3Node.isSupported(getArchitecture()));
         testWithInstalledIntrinsic("sun.security.provider.SHA3", "implCompress0", "testDigest", "SHA3-512", getData());
     }
 
     @Test
     public void testMD5() {
-        Assume.assumeTrue("MD5 not supported", runtime().getVMConfig().md5ImplCompress != 0L);
         testWithInstalledIntrinsic("sun.security.provider.MD5", "implCompress0", "testDigest", "MD5", getData());
     }
 }

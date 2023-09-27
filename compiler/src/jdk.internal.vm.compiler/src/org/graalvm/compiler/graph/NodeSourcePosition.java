@@ -44,8 +44,8 @@ import jdk.vm.ci.services.Services;
 
 public class NodeSourcePosition extends BytecodePosition implements Iterable<NodeSourcePosition> {
 
-    private static final boolean STRICT_SOURCE_POSITION = Boolean.parseBoolean(Services.getSavedProperties().get("debug.graal.SourcePositionStrictChecks"));
-    private static final boolean SOURCE_POSITION_BYTECODES = Boolean.parseBoolean(Services.getSavedProperties().get("debug.graal.SourcePositionDisassemble"));
+    private static final boolean STRICT_SOURCE_POSITION = Boolean.parseBoolean(Services.getSavedProperty("debug.graal.SourcePositionStrictChecks"));
+    private static final boolean SOURCE_POSITION_BYTECODES = Boolean.parseBoolean(Services.getSavedProperty("debug.graal.SourcePositionDisassemble"));
 
     private final int hashCode;
     private final Marker marker;

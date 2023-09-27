@@ -103,7 +103,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     private MonitorIdNode[] monitorIds;
     private final StructuredGraph graph;
-    private final boolean clearNonLiveLocals;
+    private final boolean shouldRetainLocalVariables;
     private FrameState outerFrameState;
     private NodeSourcePosition outerSourcePosition;
 
@@ -125,11 +125,18 @@ public final class FrameStateBuilder implements SideEffectsState {
 
     /**
      * Creates a new frame state builder for the given code attribute, method and the given target
-     * graph. Additionally specifies if nonLiveLocals should be retained.
+     * graph.
      *
      * @param code the bytecode in which the frame exists
      * @param graph the target graph of Graal nodes created by the builder
-     * @param shouldRetainLocalVariables specifies if nonLiveLocals should be retained in state.
+     * @param shouldRetainLocalVariables specifies if locals should be retained in the state being
+     *            built irrespective of whether they are dead according to a {@link LocalLiveness}
+     *            object. This is true when a debugger has requested capabilities implying it wants
+     *            to access variables that are live according Java source scope. The source scope of
+     *            a variable is often larger than a compiler's liveness scope (which ends at the
+     *            last read of the variable).
+     *
+     * @see "https://github.com/openjdk/jdk/blob/4b8f5d031a081347ca611fa649cd75c4c1ec9fb3/src/hotspot/share/prims/jvmtiManageCapabilities.cpp#L377-L379"
      */
     public FrameStateBuilder(GraphBuilderTool tool, Bytecode code, StructuredGraph graph, boolean shouldRetainLocalVariables) {
         this.tool = tool;
@@ -147,7 +154,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
         this.monitorIds = EMPTY_MONITOR_ARRAY;
         this.graph = graph;
-        this.clearNonLiveLocals = !shouldRetainLocalVariables;
+        this.shouldRetainLocalVariables = shouldRetainLocalVariables;
         this.canVerifyKind = true;
         this.verifyState = true;
     }
@@ -295,7 +302,7 @@ public final class FrameStateBuilder implements SideEffectsState {
 
         assert other.graph != null;
         graph = other.graph;
-        clearNonLiveLocals = other.clearNonLiveLocals;
+        shouldRetainLocalVariables = other.shouldRetainLocalVariables;
         monitorIds = other.monitorIds.length == 0 ? other.monitorIds : other.monitorIds.clone();
 
         assert lockedObjects.length == monitorIds.length;
@@ -733,15 +740,18 @@ public final class FrameStateBuilder implements SideEffectsState {
      * @param liveIn true if live in, false if live out
      */
     public void clearNonLiveLocals(BciBlock block, LocalLiveness liveness, boolean liveIn) {
-        /*
-         * Non-live local clearing is mandatory for the entry block of an OSR compilation so that
-         * dead object slots at the OSR entry are cleared. It's not sufficient to rely on PiNodes
-         * with Kind.Illegal, because the conflicting branch might not have been parsed.
-         */
-        boolean isOSREntryBlock = graph.isOSR() && getMethod().equals(graph.method()) && graph.getEntryBCI() == block.startBci;
-        if (!clearNonLiveLocals && !isOSREntryBlock) {
-            return;
+        if (shouldRetainLocalVariables) {
+            /*
+             * Clearing of dead oops for an OSR compilation is done in
+             * OnStackReplacementPhase.initLocal if the JDK can supply an oop map for a method. If
+             * not, we need to use compiler liveness instead.
+             */
+            boolean blockIsOSREntryPoint = graph.isOSR() && getMethod().equals(graph.method()) && graph.getEntryBCI() == block.startBci;
+            if (!blockIsOSREntryPoint || !parser.mustClearNonLiveLocalsAtOSREntry()) {
+                return;
+            }
         }
+
         if (liveIn) {
             for (int i = 0; i < locals.length; i++) {
                 if (!liveness.localIsLiveIn(block, i)) {

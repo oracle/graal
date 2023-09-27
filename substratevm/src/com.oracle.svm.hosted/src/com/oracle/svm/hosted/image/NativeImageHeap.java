@@ -83,6 +83,7 @@ import com.oracle.svm.hosted.meta.HostedMetaAccess;
 import com.oracle.svm.hosted.meta.HostedType;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.meta.MaterializedConstantFields;
+import com.oracle.svm.hosted.meta.RelocatableConstant;
 import com.oracle.svm.hosted.meta.UniverseBuilder;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -544,7 +545,7 @@ public final class NativeImageHeap implements ImageHeap {
                             JavaConstant fieldValueConstant = hConstantReflection.readFieldValue(field, constant);
                             if (fieldValueConstant.getJavaKind() == JavaKind.Object) {
                                 if (spawnIsolates()) {
-                                    fieldRelocatable = hMetaAccess.isInstanceOf(fieldValueConstant, RelocatedPointer.class);
+                                    fieldRelocatable = fieldValueConstant instanceof RelocatableConstant;
                                 }
                                 recursiveAddConstant(fieldValueConstant, fieldsAreImmutable, info);
                                 references = true;
@@ -708,7 +709,7 @@ public final class NativeImageHeap implements ImageHeap {
             JavaConstant value = hConstantReflection.readArrayElement(array, idx);
             /* Object replacement is done as part as constant refection. */
             if (spawnIsolates()) {
-                relocatable = relocatable || hMetaAccess.isInstanceOf(value, RelocatedPointer.class);
+                relocatable = relocatable || value instanceof RelocatableConstant;
             }
             recursiveAddConstant(value, false, reason);
         }

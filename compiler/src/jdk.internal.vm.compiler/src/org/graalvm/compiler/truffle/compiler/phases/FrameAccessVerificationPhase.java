@@ -35,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Node;
@@ -394,11 +395,9 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
         protected EconomicMap<LoopExitNode, State> processLoop(LoopBeginNode loop, State initial) {
             State initialState = initial;
             LoopInfo<State> info;
-            /*
-             * Loops are processed iteratively until the merged state is the same as the initial
-             * state.
-             */
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: Loops are processed iteratively until the merged
+                           // state is the same as the initial state.
+                CompilationAlarm.checkProgress(loop.graph());
                 int sizeBeforeLoop = effects.size();
                 info = ReentrantNodeIterator.processLoop(this, loop, initialState.clone());
                 ArrayList<State> states = new ArrayList<>();

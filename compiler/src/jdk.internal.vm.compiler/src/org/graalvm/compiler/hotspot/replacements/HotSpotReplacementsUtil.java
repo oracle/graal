@@ -323,11 +323,6 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity PROTOTYPE_MARK_WORD_LOCATION = NamedLocationIdentity.mutable("PrototypeMarkWord");
 
-    @Fold
-    public static int prototypeMarkWordOffset(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.prototypeMarkWordOffset;
-    }
-
     public static final LocationIdentity KLASS_ACCESS_FLAGS_LOCATION = NamedLocationIdentity.immutable("Klass::_access_flags");
 
     @Fold
@@ -517,27 +512,7 @@ public class HotSpotReplacementsUtil {
      */
     @Fold
     public static int lockMaskInPlace(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.getLockMaskInPlace();
-    }
-
-    @Fold
-    public static int epochMaskInPlace(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.epochMaskInPlace;
-    }
-
-    /**
-     * Pattern for a biasable, unlocked mark word.
-     *
-     * <pre>
-     * +----------------------------------+-+-+
-     * |                                 1|0|1|
-     * +----------------------------------+-+-+
-     * </pre>
-     *
-     */
-    @Fold
-    public static int biasedLockPattern(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.biasedLockPattern;
+        return config.lockMaskInPlace;
     }
 
     @Fold
@@ -667,23 +642,8 @@ public class HotSpotReplacementsUtil {
     }
 
     @Fold
-    public static boolean useBiasedLocking(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.useBiasedLocking;
-    }
-
-    @Fold
     static int heldMonitorCountOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.threadHeldMonitorCountOffset;
-    }
-
-    @Fold
-    static boolean heldMonitorCountIsWord(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.threadHeldMonitorCountIsWord;
-    }
-
-    @Fold
-    static boolean updateHeldMonitorCount(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.updateHeldMonitorCount;
     }
 
     @Fold

@@ -190,41 +190,45 @@
     capabilities+: ["ram16gb"],
   },
 
+  jdk_latest:: "Latest",
+
   # This map defines the builders that run as gates. Each key in this map
   # must correspond to the name of a build created by `make_build`.
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local gates = {
-    "gate-compiler-test-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
-    "gate-compiler-test-labsjdk-21-linux-aarch64": t("1:50:00"),
-    "gate-compiler-test-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
-    "gate-compiler-test-labsjdk-21-darwin-aarch64": t("1:00:00"),
-    "gate-compiler-test-labsjdk-21-windows-amd64": t("1:30:00"),
-    "gate-compiler-test_zgc-labsjdk-21-linux-amd64": t("1:00:00") + c.mach5_target,
-    "gate-compiler-test_zgc-labsjdk-21-linux-aarch64": t("1:50:00"),
-    "gate-compiler-test_zgc-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
-    "gate-compiler-test_zgc-labsjdk-21-darwin-aarch64": t("1:00:00"),
+    "gate-compiler-test-labsjdk-latest-linux-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test-labsjdk-latest-linux-aarch64": t("1:50:00"),
+    "gate-compiler-test-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
+    "gate-compiler-test-labsjdk-latest-darwin-aarch64": t("1:00:00"),
+    "gate-compiler-test-labsjdk-latest-windows-amd64": t("1:30:00"),
+    "gate-compiler-test_zgc-labsjdk-latest-linux-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-test_zgc-labsjdk-latest-linux-aarch64": t("1:50:00"),
+    "gate-compiler-test_zgc-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target + s.ram16gb,
+    "gate-compiler-test_zgc-labsjdk-latest-darwin-aarch64": t("1:00:00"),
 
+    # Style jobs need to stay on a JDK compatible with all the style
+    # checking tools (SpotBugs, Checkstyle, Eclipse formatter etc).
     "gate-compiler-style-labsjdk-21-linux-amd64": t("45:00"),
     "gate-compiler-build-labsjdk-latest-linux-amd64": t("25:00"),
 
-    "gate-compiler-ctw-labsjdk-21-linux-amd64": c.mach5_target,
-    "gate-compiler-ctw-labsjdk-21-windows-amd64": t("1:50:00"),
-    "gate-compiler-ctw_zgc-labsjdk-21-linux-amd64": c.mach5_target,
+    "gate-compiler-ctw-labsjdk-latest-linux-amd64": c.mach5_target,
+    "gate-compiler-ctw-labsjdk-latest-windows-amd64": t("1:50:00"),
+    "gate-compiler-ctw_zgc-labsjdk-latest-linux-amd64": c.mach5_target,
 
-    "gate-compiler-ctw_economy-labsjdk-21-linux-amd64": {},
-    "gate-compiler-ctw_economy-labsjdk-21-windows-amd64": t("1:50:00"),
+    "gate-compiler-ctw_economy-labsjdk-latest-linux-amd64": {},
+    "gate-compiler-ctw_economy-labsjdk-latest-windows-amd64": t("1:50:00"),
 
-    "gate-compiler-benchmarktest-labsjdk-21-linux-amd64": {},
-    "gate-compiler-benchmarktest_zgc-labsjdk-21-linux-amd64": {},
+    "gate-compiler-benchmarktest-labsjdk-latest-linux-amd64": {},
+    "gate-compiler-benchmarktest_zgc-labsjdk-latest-linux-amd64": {},
 
-    "gate-compiler-truffle_xcomp-labsjdk-21-linux-amd64": t("1:30:00"),
-    "gate-compiler-truffle_xcomp_zgc-labsjdk-21-linux-amd64": t("1:30:00"),
+    "gate-compiler-truffle_xcomp-labsjdk-latest-linux-amd64": t("1:30:00"),
+    "gate-compiler-truffle_xcomp_zgc-labsjdk-latest-linux-amd64": t("1:30:00"),
 
-    "gate-compiler-bootstrap_lite-labsjdk-21-darwin-amd64": t("1:00:00") + c.mach5_target,
+    "gate-compiler-bootstrap_lite-labsjdk-latest-darwin-amd64": t("1:00:00") + c.mach5_target,
 
-    "gate-compiler-bootstrap_full-labsjdk-21-linux-amd64": s.many_cores + c.mach5_target,
-    "gate-compiler-bootstrap_full_zgc-labsjdk-21-linux-amd64": s.many_cores + c.mach5_target
+    "gate-compiler-bootstrap_full-labsjdk-latest-linux-amd64": s.many_cores + c.mach5_target,
+    "gate-compiler-bootstrap_full_zgc-labsjdk-latest-linux-amd64": s.many_cores + c.mach5_target
   },
 
   # This map defines the builders that run daily. Each key in this map
@@ -233,13 +237,13 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local dailies = {
-    "daily-compiler-ctw-labsjdk-21-linux-aarch64": {},
-    "daily-compiler-ctw-labsjdk-21-darwin-amd64": {},
-    "daily-compiler-ctw-labsjdk-21-darwin-aarch64": {},
+    "daily-compiler-ctw-labsjdk-latest-linux-aarch64": {},
+    "daily-compiler-ctw-labsjdk-latest-darwin-amd64": {},
+    "daily-compiler-ctw-labsjdk-latest-darwin-aarch64": {},
 
-    "daily-compiler-ctw_economy-labsjdk-21-linux-aarch64": {},
-    "daily-compiler-ctw_economy-labsjdk-21-darwin-amd64": {},
-    "daily-compiler-ctw_economy-labsjdk-21-darwin-aarch64": {},
+    "daily-compiler-ctw_economy-labsjdk-latest-linux-aarch64": {},
+    "daily-compiler-ctw_economy-labsjdk-latest-darwin-amd64": {},
+    "daily-compiler-ctw_economy-labsjdk-latest-darwin-aarch64": {},
   },
 
   # This map defines the builders that run weekly. Each key in this map
@@ -248,31 +252,31 @@
   # Each value in this map is an object that overrides or extends the
   # fields of the denoted build.
   local weeklies = {
-    "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-21-linux-amd64": {
+    "weekly-compiler-ctw_phaseplan_fuzzing-labsjdk-latest-linux-amd64": {
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
     },
 
-    "weekly-compiler-test_vec16-labsjdk-21-linux-amd64": {},
-    "weekly-compiler-test_avx0-labsjdk-21-linux-amd64": {},
-    "weekly-compiler-test_avx1-labsjdk-21-linux-amd64": {},
+    "weekly-compiler-test_vec16-labsjdk-latest-linux-amd64": {},
+    "weekly-compiler-test_avx0-labsjdk-latest-linux-amd64": {},
+    "weekly-compiler-test_avx1-labsjdk-latest-linux-amd64": {},
 
-    "weekly-compiler-test_jtt_phaseplan_fuzzing-labsjdk-21-linux-amd64": {
+    "weekly-compiler-test_jtt_phaseplan_fuzzing-labsjdk-latest-linux-amd64": {
       notify_groups: [],
       notify_emails: ["gergo.barany@oracle.com"],
     },
 
-    "weekly-compiler-benchmarktest-labsjdk-21Debug-linux-amd64": t("3:00:00"),
+    "weekly-compiler-benchmarktest-labsjdk-latestDebug-linux-amd64": t("3:00:00"),
 
     "weekly-compiler-coverage*": {},
 
-    "weekly-compiler-test_serialgc-labsjdk-21-linux-amd64": t("1:30:00") + c.mach5_target,
-    "weekly-compiler-test_serialgc-labsjdk-21-linux-aarch64": t("1:50:00"),
-    "weekly-compiler-test_serialgc-labsjdk-21-darwin-amd64": t("1:30:00") + c.mach5_target,
-    "weekly-compiler-test_serialgc-labsjdk-21-darwin-aarch64": t("1:30:00"),
+    "weekly-compiler-test_serialgc-labsjdk-latest-linux-amd64": t("1:30:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-latest-linux-aarch64": t("1:50:00"),
+    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-amd64": t("1:30:00") + c.mach5_target,
+    "weekly-compiler-test_serialgc-labsjdk-latest-darwin-aarch64": t("1:30:00"),
 
-    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-21-linux-amd64": t("1:30:00"),
-    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-21-linux-aarch64": t("1:30:00"),
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-amd64": t("1:30:00"),
+    "weekly-compiler-truffle_xcomp_serialgc-labsjdk-latest-linux-aarch64": t("1:30:00"),
   },
 
   # This map defines overrides and field extensions for monthly builds.
@@ -376,23 +380,40 @@
       "truffle_xcomp",
       "ctw",
       "ctw_economy",
-      "coverage",
-      "coverage_ctw",
       "benchmarktest",
       "bootstrap_lite",
       "bootstrap_full"
+    ]
+
+    # Run jobs on latest and last LTS (21)
+    for jdk in [
+      self.jdk_latest,
+      "21"
+    ]
+    for os_arch in all_os_arches
+  ],
+
+  # Coverage builds run on all platforms (platform = JDK + OS + ARCH)
+  # that support JaCoCo (GR-46676)
+  local all_coverage_builds = [self.make_build(jdk, os_arch, task).build
+    for task in [
+      "coverage",
+      "coverage_ctw",
     ]
     for jdk in [
       "21"
     ]
     for os_arch in all_os_arches
+  ] + [
+     # Run AVX3 tests only on linux-amd64
+     self.make_build("21", "linux-amd64", "coverage_avx3").build
   ],
 
     # Test ZGC on support platforms.  Windows requires version 1083 or later which will
     # probably require adding some capabilities.
     local all_zgc_builds = [self.make_build(jdk, os_arch, task).build
       for jdk in [
-        "21"
+        self.jdk_latest
       ]
       for os_arch in [
         "linux-amd64",
@@ -410,7 +431,7 @@
     ],
 
   # Run unittests with SerialGC.
-  local all_serialgc_builds = [self.make_build("21", os_arch, task).build
+  local all_serialgc_builds = [self.make_build(self.jdk_latest, os_arch, task).build
     for os_arch in [
       "linux-amd64",
       "linux-aarch64",
@@ -423,11 +444,10 @@
     ]
   ],
 
-  # Builds run on only on linux-amd64-jdk21
-  local linux_amd64_jdk21_builds = [self.make_build("21", "linux-amd64", task).build
+  # Builds run on only on linux-amd64-jdk-latest
+  local linux_amd64_jdk_latest_builds = [self.make_build(self.jdk_latest, "linux-amd64", task).build
     for task in [
       "ctw_phaseplan_fuzzing",
-      "coverage_avx3",
       "test_vec16",
       "test_avx0",
       "test_avx1",
@@ -442,15 +462,15 @@
         JVMCI_VERSION_CHECK: "strict",
       },
   }],
-  local jdk_latest_version_check_builds = [self.make_build("Latest", "linux-amd64", "build", extra_tasks={build:: s.base("build"),}).build + {
+  local jdk_latest_version_check_builds = [self.make_build(self.jdk_latest, "linux-amd64", "build", extra_tasks={build:: s.base("build"),}).build + {
       environment+: {
         # Run the strict JVMCI version check, i.e., that JVMCIVersionCheck.JVMCI_MIN_VERSION matches the versions in common.json.
         JVMCI_VERSION_CHECK: "strict",
       },
   }],
 
-  # Builds run on only on linux-amd64-jdk21Debug
-  local linux_amd64_jdk21Debug_builds = [self.make_build("21Debug", "linux-amd64", task).build
+  # Builds run on only on linux-amd64-jdk-latestDebug
+  local linux_amd64_jdk_latestDebug_builds = [self.make_build("LatestDebug", "linux-amd64", task).build
     for task in [
       "benchmarktest",
     ]
@@ -459,12 +479,13 @@
   # Complete set of builds defined in this file
   local all_builds =
     all_platforms_builds +
+    all_coverage_builds +
     all_zgc_builds +
     all_serialgc_builds +
     style_builds +
     jdk_latest_version_check_builds +
-    linux_amd64_jdk21_builds +
-    linux_amd64_jdk21Debug_builds,
+    linux_amd64_jdk_latest_builds +
+    linux_amd64_jdk_latestDebug_builds,
 
   builds: if
       self.check_manifest(gates,     all_builds, std.thisFile, "gates").result &&

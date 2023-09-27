@@ -55,6 +55,7 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
+import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -67,6 +68,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -356,6 +358,7 @@ public class NativeImageGenerator {
          * parsing at run time.
          */
         optionProvider.getHostedValues().put(GraalOptions.EagerSnippets, true);
+        optionProvider.getHostedValues().put(CompilationAlarm.Options.CompilationNoProgressPeriod, 0D);
         optionProvider.getRuntimeValues().put(GraalOptions.EagerSnippets, true);
 
         if (!optionProvider.getHostedValues().containsKey(BciBlockMapping.Options.MaxDuplicationFactor)) {
@@ -603,7 +606,7 @@ public class NativeImageGenerator {
 
                 hUniverse = new HostedUniverse(bb);
                 hMetaAccess = new HostedMetaAccess(hUniverse, bb.getMetaAccess());
-                ((SVMImageHeapScanner) aUniverse.getHeapScanner()).setHostedMetaAccess(hMetaAccess);
+                ((AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider()).setHostedMetaAccess(hMetaAccess);
 
                 BeforeUniverseBuildingAccessImpl beforeUniverseBuildingConfig = new BeforeUniverseBuildingAccessImpl(featureHandler, loader, debug, hMetaAccess);
                 featureHandler.forEachFeature(feature -> feature.beforeUniverseBuilding(beforeUniverseBuildingConfig));
@@ -980,11 +983,23 @@ public class NativeImageGenerator {
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
                                 new SubstrateClassInitializationPlugin((SVMHost) aUniverse.hostVM()), this.isStubBasedPluginsSupported(), aProviders);
+
+                loader.classLoaderSupport.getClassesToIncludeUnconditionally().forEach(this::registerTypeForBaseImage);
+
                 registerEntryPointStubs(entryPoints);
             }
 
             ProgressReporter.singleton().printInitializeEnd(featureHandler.getUserSpecificFeatures(), loader);
         }
+    }
+
+    private void registerTypeForBaseImage(Class<?> cls) {
+        String reason = "Included in the base image";
+        if (!(Modifier.isAbstract(cls.getModifiers()) || cls.isInterface() || cls.isPrimitive())) {
+            bb.getMetaAccess().lookupJavaType(cls).registerAsAllocated(reason);
+        }
+        Stream.concat(Arrays.stream(cls.getDeclaredConstructors()), Arrays.stream(cls.getDeclaredMethods()))
+                        .forEach(mthd -> bb.addRootMethod(mthd, false, reason));
     }
 
     protected void registerEntryPointStubs(Map<Method, CEntryPointData> entryPoints) {
@@ -1126,6 +1141,21 @@ public class NativeImageGenerator {
             bb.getMetaAccess().lookupJavaType(JavaKind.Void.toJavaClass()).registerAsReachable("root class");
             bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.util.Counter.class).registerAsReachable("root class");
             bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.allocationprofile.AllocationCounter.class).registerAsReachable("root class");
+            /*
+             * SubstrateAllocationProfilingData is not actually present in the image since it is
+             * only allocated at build time, is passed to snippets as a @ConstantParameter, and it
+             * only contains final fields that are constant-folded. However, since the profiling
+             * object is only allocated during lowering it is processed by the shadow heap after
+             * analysis, so its type needs to be already marked reachable at this point.
+             */
+            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.SubstrateAllocationProfilingData.class).registerAsReachable("root class");
+            /*
+             * Similarly to above, StackSlotIdentity only gets reachable during lowering, through
+             * build time allocated constants. It doesn't actually end up in the image heap since
+             * all its fields are final and are constant-folded, but the type becomes reachable,
+             * through the shadow heap processing, after analysis.
+             */
+            bb.getMetaAccess().lookupJavaType(com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity.class).registerAsReachable("root class");
 
             NativeImageGenerator.registerGraphBuilderPlugins(featureHandler, null, aProviders, aMetaAccess, aUniverse, null, null, nativeLibraries, loader, ParsingReason.PointsToAnalysis,
                             bb.getAnnotationSubstitutionProcessor(), classInitializationPlugin, ConfigurationValues.getTarget(), supportsStubBasedPlugins);

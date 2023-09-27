@@ -78,6 +78,7 @@ public final class GCAccounting {
         return incrementalCollectionTotalNanos;
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public long getCompleteCollectionCount() {
         return completeCollectionCount;
     }

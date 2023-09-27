@@ -22,35 +22,23 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package org.graalvm.compiler.hotspot.jdk20.test;
-
-import static org.graalvm.compiler.test.GraalTest.fail;
-import static org.junit.Assume.assumeTrue;
-
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
+package org.graalvm.compiler.core.common.util;
 
 /**
- * This class is compiled with a higher class file version due to the preview feature
- * {@code Thread#ofVirtual}. It cannot be loaded without --enable-preview.
+ * Interface representing a counter that can overflow to trigger certain events.
  */
-public class CarrierThreadTest {
+public interface EventCounter {
 
-    @SuppressWarnings("preview")
-    public static void test() {
-        try {
-            Thread.ofVirtual().start(() -> {
-                try {
-                    Method m = Thread.class.getDeclaredMethod("currentCarrierThread");
-                    m.setAccessible(true);
-                    Thread t = (Thread) m.invoke(null);
-                    assumeTrue(t != Thread.currentThread());
-                } catch (IllegalAccessException | InvocationTargetException | NoSuchMethodException e) {
-                    e.printStackTrace();
-                }
-            }).join();
-        } catch (InterruptedException e) {
-            fail(e.getMessage());
-        }
+    /**
+     * Increment the current counter and determine if it overflows max and reset it if so. Users of
+     * this class typically take some action if an overflow happens.
+     *
+     * @return {@code true} if the overflow is hit, {@code false} otherwise.
+     */
+    boolean eventCounterOverflows(int max);
+
+    default String eventCounterToString() {
+        return toString();
     }
+
 }

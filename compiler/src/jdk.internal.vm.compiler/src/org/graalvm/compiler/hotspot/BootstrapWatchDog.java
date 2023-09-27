@@ -110,7 +110,7 @@ final class BootstrapWatchDog extends Thread {
     /**
      * Set to true to debug the watch dog.
      */
-    private static final boolean DEBUG = Boolean.parseBoolean(Services.getSavedProperties().get("debug.graal.BootstrapWatchDog"));
+    private static final boolean DEBUG = Boolean.parseBoolean(Services.getSavedProperty("debug.graal.BootstrapWatchDog"));
 
     /**
      * Seconds to delay before starting to measure the compilation rate.
@@ -143,7 +143,7 @@ final class BootstrapWatchDog extends Thread {
         Map<Thread, StackTraceElement[]> stacksAtTimeout = null;
         try {
             Thread.sleep(INITIAL_DELAY * 1000);
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: busy wait loop
                 int currentCompilations = compilations.get();
                 long elapsed = System.currentTimeMillis() - start;
                 double rate = currentCompilations / seconds(elapsed);

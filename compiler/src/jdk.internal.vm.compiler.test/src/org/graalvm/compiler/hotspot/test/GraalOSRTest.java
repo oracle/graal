@@ -24,10 +24,21 @@
  */
 package org.graalvm.compiler.hotspot.test;
 
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
 import org.graalvm.compiler.api.directives.GraalDirectives;
+import org.graalvm.compiler.bytecode.BytecodeDisassembler;
 import org.junit.Assert;
 import org.junit.Test;
 
+import jdk.vm.ci.code.stack.InspectedFrame;
+import jdk.vm.ci.code.stack.InspectedFrameVisitor;
+import jdk.vm.ci.code.stack.StackIntrospection;
+import jdk.vm.ci.hotspot.HotSpotJVMCIRuntime;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import sun.misc.Unsafe;
 
 /**
@@ -135,5 +146,124 @@ public class GraalOSRTest extends GraalOSRTestBase {
         }
         GraalDirectives.controlFlowAnchor();
         return ReturnValue.SUCCESS;
+    }
+
+    public static volatile boolean stopped;
+
+    /**
+     * A method that shows the need for {@code HotSpotResolvedJavaMethod.getOopMapAt(int bci)} to
+     * clear oops at OSR entry points.
+     *
+     * The Java source code below should produce {@link #TEST_OOP_MAP_BYTECODE}.
+     */
+    public static ReturnValue testOopMap(Object[] local0, AtomicInteger local1, Runnable local2) {
+        try {
+            // 1. Block defining local4 as an Object
+            Object local3 = local0;
+            local3.hashCode();
+            Object local4 = local0;
+            local4.hashCode();
+        } catch (NullPointerException local3) {
+            // 2. Exception handler defining local4 as an int
+            int local4 = 0x54321;
+            String.valueOf(local4);
+        }
+
+        // 3. Merge of 1 and 2. If an exception never occurred, Graal only
+        // parses block 1 so local4 is available here. In contrast,
+        // the interpreter says local4 is dead here.
+        //
+        // See OnStackReplacementPhase.narrowOsrLocal for more detail.
+        while (local1.decrementAndGet() >= 0) {
+            if (local2 != null) {
+                local2.run();
+            }
+        }
+        return ReturnValue.SUCCESS;
+    }
+
+    /**
+     * Expected bytecode for {@link #testOopMap(Object[], AtomicInteger, Runnable)}.
+     */
+    // @formatter:off
+    private static final String TEST_OOP_MAP_BYTECODE = """
+           0: aload_0
+           1: astore_3
+           2: aload_3
+           3: invokevirtual #12         // java.lang.Object.hashCode:()int
+           6: pop
+           7: aload_0
+           8: astore        4
+          10: aload         4
+          12: invokevirtual #12         // java.lang.Object.hashCode:()int
+          15: pop
+          16: goto          30
+          19: astore_3
+          20: ldc           #110        // 344865
+          22: istore        4
+          24: iload         4
+          26: invokestatic  #13         // java.lang.String.valueOf:(int)java.lang.String
+          29: pop
+          30: aload_1
+          31: invokevirtual #14         // java.util.concurrent.atomic.AtomicInteger.decrementAndGet:()int
+          34: iflt          50
+          37: aload_2
+          38: ifnull        30
+          41: aload_2
+          42: invokeinterface#15, 1      // java.lang.Runnable.run:()void
+          47: goto          30
+          50: getstatic     #1          // org.graalvm.compiler.hotspot.test.GraalOSRTestBase$ReturnValue.SUCCESS:org.graalvm.compiler.hotspot.test.GraalOSRTestBase$ReturnValue
+          53: areturn""";
+    // @formatter:on
+
+    /**
+     * Tests that dead oops are cleared at OSR entry points.
+     */
+    @Test
+    public void testOSR06() {
+        // Check that javap produced what we expect
+        ResolvedJavaMethod method = getResolvedJavaMethod("testOopMap");
+        String dis = new BytecodeDisassembler().disassemble(method);
+        String actual = normalizedDisassembly(dis);
+        String expect = normalizedDisassembly(TEST_OOP_MAP_BYTECODE);
+        Assert.assertEquals(String.format("unexpected disassembly {%n%s}", dis), expect, actual);
+
+        Object[] arr = {"1", "2", "3"};
+        testOopMap(arr, new AtomicInteger(4), null);
+        TestOopMapFrameChecker checker = new TestOopMapFrameChecker();
+        Runnable r = () -> {
+            stackIntrospection.iterateFrames(null, null, 0, checker);
+        };
+        AtomicInteger iterations = new AtomicInteger(Integer.getInteger("OSRIterations", 50000));
+        testOSR(getInitialOptions(), "testOopMap", null, null, iterations, r);
+
+        Assert.assertTrue(String.valueOf(iterations), checker.checked);
+    }
+
+    static StackIntrospection stackIntrospection = HotSpotJVMCIRuntime.runtime().getHostJVMCIBackend().getStackIntrospection();
+
+    static class TestOopMapFrameChecker implements InspectedFrameVisitor<Object> {
+        boolean checked;
+
+        @Override
+        public Object visitFrame(InspectedFrame frame) {
+            ResolvedJavaMethod method = frame.getMethod();
+            if (!checked && method.getName().equals("testOopMap")) {
+                Assert.assertEquals(5, method.getMaxLocals());
+                Assert.assertNull("local4 should have been cleared by OnStackReplacementPhase", frame.getLocal(4));
+                checked = true;
+            }
+            return null;
+        }
+    }
+
+    /**
+     * Normalizes the bytecode disassembly in {@code dis} into trimmed lines with constant pool
+     * indexes converted to {@code "#__"}. This makes {@link #TEST_OOP_MAP_BYTECODE} resilient to
+     * changes in this source file (apart from rearranging code in {@link #testOopMap} itself).
+     */
+    private static String normalizedDisassembly(String dis) {
+        Pattern cpRef = Pattern.compile("#\\d+");
+        return Stream.of(dis.split("\n")).map(line -> cpRef.matcher(line.trim()).replaceAll(mr -> "#__")).collect(Collectors.joining(System.lineSeparator()));
     }
 }

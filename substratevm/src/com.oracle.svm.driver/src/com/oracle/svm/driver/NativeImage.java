@@ -1873,7 +1873,7 @@ public class NativeImage {
         return translatedOptions;
     }
 
-    private static void performBuild(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
+    protected static void performBuild(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
         try {
             build(config, nativeImageProvider);
         } catch (NativeImageError e) {
@@ -1894,7 +1894,7 @@ public class NativeImage {
         System.exit(ExitStatus.OK.getValue());
     }
 
-    protected static void build(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
+    private static void build(BuildConfiguration config, Function<BuildConfiguration, NativeImage> nativeImageProvider) {
         NativeImage nativeImage = nativeImageProvider.apply(config);
         if (config.getBuildArgs().isEmpty()) {
             nativeImage.showMessage(usageText);

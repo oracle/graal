@@ -27,8 +27,10 @@ package com.oracle.truffle.tools.chromeinspector.objects;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 
 /**
  * A base class for arrays returned by Inspector module.
@@ -42,6 +44,12 @@ abstract class AbstractInspectorArray implements TruffleObject {
     @ExportMessage
     abstract Object readArrayElement(long index) throws InvalidArrayIndexException;
 
+    @ExportMessage
+    @SuppressWarnings("unused")
+    void writeArrayElement(long index, Object value) throws InvalidArrayIndexException, UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
+    }
+
     @SuppressWarnings("static-method")
     @ExportMessage
     final boolean hasArrayElements() {
@@ -52,5 +60,21 @@ abstract class AbstractInspectorArray implements TruffleObject {
     boolean isArrayElementReadable(long index) {
         return index >= 0 && index < getArraySize();
     }
+
+    @ExportMessage
+    boolean isArrayElementModifiable(@SuppressWarnings("unused") long index) {
+        return false;
+    }
+
+    @ExportMessage
+    boolean isArrayElementInsertable(@SuppressWarnings("unused") long index) {
+        return false;
+    }
+
+    @ExportMessage
+    abstract TriState isIdenticalOrUndefined(Object other);
+
+    @ExportMessage
+    abstract int identityHashCode();
 
 }

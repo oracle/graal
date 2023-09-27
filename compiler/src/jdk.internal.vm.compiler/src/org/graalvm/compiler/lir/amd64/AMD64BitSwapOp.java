@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.lir.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.GFNI;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
@@ -99,7 +100,7 @@ public final class AMD64BitSwapOp extends AMD64LIRInstruction {
 
         switch ((AMD64Kind) dstValue.getPlatformKind()) {
             case DWORD:
-                if (masm.supportsCPUFeature("GFNI")) {
+                if (masm.supports(GFNI)) {
                     // Galois field instruction based bit reversal based on following algorithm.
                     // http://0x80.pl/articles/avx512-galois-field-for-bit-shuffling.html
                     Register xtmp1 = asRegister(xtmp1Value);
@@ -140,7 +141,7 @@ public final class AMD64BitSwapOp extends AMD64LIRInstruction {
                 masm.bswapl(dst);
                 break;
             case QWORD:
-                if (masm.supportsCPUFeature("GFNI")) {
+                if (masm.supports(GFNI)) {
                     // Galois field instruction based bit reversal based on following algorithm.
                     // http://0x80.pl/articles/avx512-galois-field-for-bit-shuffling.html
                     Register xtmp1 = asRegister(xtmp1Value);

@@ -67,6 +67,8 @@ public final class JfrEvent {
     public static final JfrEvent ObjectAllocationInNewTLAB = create("jdk.ObjectAllocationInNewTLAB", false, false);
     public static final JfrEvent GCHeapSummary = create("jdk.GCHeapSummary", false, false);
     public static final JfrEvent ThreadAllocationStatistics = create("jdk.ThreadAllocationStatistics", false, false);
+    public static final JfrEvent SystemGC = create("jdk.SystemGC", true, false);
+    public static final JfrEvent AllocationRequiringGC = create("jdk.AllocationRequiringGC", false, false);
     public static final JfrEvent ObjectAllocationSample = create("jdk.ObjectAllocationSample", false, true);
     private final long id;
     private final String name;

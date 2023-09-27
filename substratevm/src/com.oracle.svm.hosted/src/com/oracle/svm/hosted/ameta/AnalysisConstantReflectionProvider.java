@@ -46,6 +46,7 @@ import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.RuntimeAssertionsSupport;
 import com.oracle.svm.core.annotate.InjectAccessors;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.meta.ObjectConstantEquality;
@@ -54,13 +55,17 @@ import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.classinitialization.SimulateClassInitializerSupport;
+import com.oracle.svm.hosted.meta.HostedField;
+import com.oracle.svm.hosted.meta.HostedLookupSnippetReflectionProvider;
 import com.oracle.svm.hosted.meta.HostedMetaAccess;
+import com.oracle.svm.hosted.meta.RelocatableConstant;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MemoryAccessProvider;
 import jdk.vm.ci.meta.MethodHandleAccessProvider;
+import jdk.vm.ci.meta.PrimitiveConstant;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -68,6 +73,7 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public class AnalysisConstantReflectionProvider extends SharedConstantReflectionProvider {
     private final AnalysisUniverse universe;
     private final UniverseMetaAccess metaAccess;
+    private HostedMetaAccess hMetaAccess;
     private final ClassInitializationSupport classInitializationSupport;
     private final AnalysisMethodHandleAccessProvider methodHandleAccess;
     private SimulateClassInitializerSupport simulateClassInitializerSupport;
@@ -77,6 +83,10 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         this.metaAccess = metaAccess;
         this.classInitializationSupport = classInitializationSupport;
         this.methodHandleAccess = new AnalysisMethodHandleAccessProvider(universe);
+    }
+
+    public void setHostedMetaAccess(HostedMetaAccess hMetaAccess) {
+        this.hMetaAccess = hMetaAccess;
     }
 
     @Override
@@ -212,7 +222,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     /** Read the field value and wrap it in a value supplier without performing any replacements. */
-    public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, HostedMetaAccess hMetaAccess, JavaConstant receiver, boolean returnSimulatedValues) {
+    public ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
         if (returnSimulatedValues) {
             var simulatedValue = readSimulatedValue(field);
             if (simulatedValue != null) {
@@ -233,7 +243,17 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
          * during analysis or in a later phase. Attempts to materialize the value before it becomes
          * available will result in an error.
          */
-        return ValueSupplier.lazyValue(() -> doReadValue(field, receiver, hMetaAccess), () -> ReadableJavaField.isValueAvailable(field));
+        return ValueSupplier.lazyValue(() -> doReadValue(field, receiver), () -> ReadableJavaField.isValueAvailable(field));
+    }
+
+    /**
+     * The {@link HostedMetaAccess} is used to access the {@link HostedField} in the re-computation
+     * of {@link RecomputeFieldValue.Kind#AtomicFieldUpdaterOffset} and
+     * {@link RecomputeFieldValue.Kind#TranslateFieldOffset} annotated fields .
+     */
+    private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver) {
+        Objects.requireNonNull(hMetaAccess);
+        return doReadValue(field, receiver, hMetaAccess);
     }
 
     private JavaConstant doReadValue(AnalysisField field, JavaConstant receiver, UniverseMetaAccess access) {
@@ -265,7 +285,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             result = filterInjectedAccessor(field, result);
             result = replaceObject(result);
             result = interceptAssertionStatus(field, result);
-            result = interceptWordType(suppliedMetaAccess, field, result);
+            result = interceptWordField(suppliedMetaAccess, field, result);
         }
         return result;
     }
@@ -321,23 +341,17 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     /**
-     * Intercept {@link Word} types. They are boxed objects in the hosted world, but primitive
-     * values in the runtime world.
+     * Intercept {@link Word} fields. {@link Word} values are boxed objects in the hosted world, but
+     * primitive values in the runtime world, so the default value of {@link Word} fields is 0.
+     * 
+     * {@link HostedLookupSnippetReflectionProvider} replaces relocatable pointers with
+     * {@link RelocatableConstant} and regular {@link WordBase} values with
+     * {@link PrimitiveConstant}. No other {@link WordBase} values can be reachable at this point.
      */
-    private JavaConstant interceptWordType(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {
+    private JavaConstant interceptWordField(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant value) {
         if (value.getJavaKind() == JavaKind.Object) {
-            if (universe.hostVM().isRelocatedPointer(suppliedMetaAccess, value)) {
-                /*
-                 * Such pointers are subject to relocation therefore we don't know their values yet.
-                 * Therefore there should not be a relocated pointer constant in a function which is
-                 * compiled. RelocatedPointers are only allowed in non-constant fields. The caller
-                 * of readValue is responsible of handling the returned value correctly.
-                 */
-                return value;
-            } else if (suppliedMetaAccess.isInstanceOf(value, WordBase.class)) {
-                Object originalObject = universe.getSnippetReflection().asObject(Object.class, value);
-                return JavaConstant.forIntegerKind(universe.getWordKind(), ((WordBase) originalObject).rawValue());
-            } else if (value.isNull() && field.getType().isWordType()) {
+            VMError.guarantee(value instanceof RelocatableConstant || !suppliedMetaAccess.isInstanceOf(value, WordBase.class));
+            if (value.isNull() && field.getType().isWordType()) {
                 return JavaConstant.forIntegerKind(universe.getWordKind(), 0);
             }
         }
@@ -364,7 +378,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return SubstrateObjectConstant.forObject(getHostVM().dynamicHub(type));
+        return universe.getHeapScanner().createImageHeapConstant(super.forObject(getHostVM().dynamicHub(type)), ObjectScanner.OtherReason.UNKNOWN);
     }
 
     @Override
