@@ -383,7 +383,8 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeExecutableElement ex = GeneratorUtils.override(types.Node, "getSourceSection");
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.startIf().string("sourceInfo == null || sourceInfo.length == 0").end().startBlock();
+        b.statement("nodes.ensureSources()");
+        b.startIf().string("sourceInfo.length == 0").end().startBlock();
         b.returnNull();
         b.end();
 
@@ -403,7 +404,8 @@ public class OperationsNodeFactory implements ElementHelpers {
         ex.renameArguments("bci");
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.startIf().string("sourceInfo == null || sourceInfo.length == 0").end().startBlock();
+        b.statement("nodes.ensureSources()");
+        b.startIf().string("sourceInfo.length == 0").end().startBlock();
         b.returnNull();
         b.end();
 

@@ -87,7 +87,7 @@ public abstract class SLMulNode extends SLBinaryNode {
     }
 
     @Fallback
-    public static Object typeError(Object left, Object right, @Bind("this") Node node, @Bind("$bci") int bci) {
+    public static Object typeError(Object left, Object right, @Bind("$root") Node node, @Bind("$bci") int bci) {
         throw SLException.typeError(node, "*", bci, left, right);
     }
 

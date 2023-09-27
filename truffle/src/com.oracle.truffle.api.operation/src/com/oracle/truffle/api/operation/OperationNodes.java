@@ -112,14 +112,14 @@ public abstract class OperationNodes<T extends RootNode & OperationRootNode> {
     /**
      * Checks if the sources are present, and if not tries to reparse to get them.
      */
-    protected final void ensureSources() {
+    public final void ensureSources() {
         if (sources == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             reparse(OperationConfig.WITH_SOURCE);
         }
     }
 
-    protected final void ensureInstrumentation() {
+    public final void ensureInstrumentation() {
         if (!hasInstrumentation) {
             CompilerDirectives.transferToInterpreter();
             reparse(OperationConfig.COMPLETE);

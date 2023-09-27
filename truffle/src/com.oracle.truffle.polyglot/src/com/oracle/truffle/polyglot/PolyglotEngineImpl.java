@@ -1675,12 +1675,11 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
 
         @ExportMessage(name = "getSourceLocation")
         @TruffleBoundary
-        public SourceSection getSourceSection() throws UnsupportedMessageException {
+        public SourceSection getSourceLocation() throws UnsupportedMessageException {
             if (sourceSection != null) {
                 return sourceSection;
             }
-            Node location = getLocation();
-            SourceSection section = location != null ? location.getEncapsulatingSourceSection() : null;
+            SourceSection section = getSourceSection();
             if (section == null) {
                 throw UnsupportedMessageException.create();
             }

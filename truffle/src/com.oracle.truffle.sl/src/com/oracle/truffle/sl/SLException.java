@@ -90,21 +90,21 @@ public class SLException extends AbstractOperationsTruffleException {
      */
     @TruffleBoundary
     @SuppressWarnings("deprecation")
-    public static SLException typeError(Node operation, String operationName, int bci, Object... values) {
+    public static SLException typeError(Node location, String operationName, int bci, Object... values) {
         StringBuilder result = new StringBuilder();
         result.append("Type error");
 
-        SLException ex = new SLException("", operation, bci);
+        SLException ex = new SLException("", location, bci);
 
-        if (operation != null) {
-            SourceSection ss = ex.getLocation().getEncapsulatingSourceSection();
+        if (location != null) {
+            SourceSection ss = ex.getSourceSection();
             if (ss != null && ss.isAvailable()) {
                 result.append(" at ").append(ss.getSource().getName()).append(" line ").append(ss.getStartLine()).append(" col ").append(ss.getStartColumn());
             }
         }
 
         result.append(": operation");
-        if (operation != null) {
+        if (location != null) {
             result.append(" \"").append(operationName).append("\"");
         }
 
@@ -146,7 +146,7 @@ public class SLException extends AbstractOperationsTruffleException {
                 }
             }
         }
-        return new SLException(result.toString(), operation, bci);
+        return new SLException(result.toString(), location, bci);
     }
 
 }

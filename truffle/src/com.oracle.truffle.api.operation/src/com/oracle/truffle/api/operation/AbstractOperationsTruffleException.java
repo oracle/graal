@@ -44,58 +44,57 @@ import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.SourceSection;
 
+/**
+ * Subclass of {@link AbstractTruffleException} that can be used for operations interpreters.
+ *
+ * Operations interpreters do not necessarily have {@link Node nodes} to use as source location
+ * markers. Instead, when possible, this class uses the {@code bci} to {@link getSourceSection
+ * compute source sections}.
+ *
+ * @since 24.0
+ */
 public abstract class AbstractOperationsTruffleException extends AbstractTruffleException {
 
     private static final long serialVersionUID = -534184847100559365L;
+    private static final int INVALID_BCI = -1;
+
+    private final int bci;
 
     public AbstractOperationsTruffleException() {
         super();
-    }
-
-    public AbstractOperationsTruffleException(AbstractOperationsTruffleException prototype) {
-        super(prototype);
-    }
-
-    public AbstractOperationsTruffleException(Node location, int bci) {
-        super(getLocation(location, bci));
-    }
-
-    public AbstractOperationsTruffleException(String message, Node location, int bci) {
-        super(message, getLocation(location, bci));
-    }
-
-    public AbstractOperationsTruffleException(String message, Throwable cause, int stackTraceElementLimit, Node location, int bci) {
-        super(message, cause, stackTraceElementLimit, getLocation(location, bci));
+        bci = INVALID_BCI;
     }
 
     public AbstractOperationsTruffleException(String message) {
         super(message);
+        this.bci = INVALID_BCI;
     }
 
-    private static Node getLocation(Node location, int bci) {
-        if (bci >= 0) {
-            return new SourceLocationNode(((OperationRootNode) location).getSourceSectionAtBci(bci));
-        } else {
-            return location;
-        }
+    public AbstractOperationsTruffleException(AbstractOperationsTruffleException prototype) {
+        super(prototype);
+        this.bci = prototype.bci;
     }
 
-    private static class SourceLocationNode extends Node {
-        private final SourceSection location;
+    public AbstractOperationsTruffleException(Node location, int bci) {
+        super(location);
+        this.bci = bci;
+    }
 
-        SourceLocationNode(SourceSection location) {
-            this.location = location;
+    public AbstractOperationsTruffleException(String message, Node location, int bci) {
+        super(message, location);
+        this.bci = bci;
+    }
+
+    public AbstractOperationsTruffleException(String message, Throwable cause, int stackTraceElementLimit, Node location, int bci) {
+        super(message, cause, stackTraceElementLimit, location);
+        this.bci = bci;
+    }
+
+    @Override
+    public SourceSection getSourceSection() {
+        if (bci == INVALID_BCI || !(getLocation() instanceof OperationRootNode operationRootNode)) {
+            return super.getSourceSection();
         }
-
-        @Override
-        public SourceSection getSourceSection() {
-            return location;
-        }
-
-        @Override
-        public SourceSection getEncapsulatingSourceSection() {
-            return location;
-        }
-
+        return operationRootNode.getSourceSectionAtBci(bci);
     }
 }
