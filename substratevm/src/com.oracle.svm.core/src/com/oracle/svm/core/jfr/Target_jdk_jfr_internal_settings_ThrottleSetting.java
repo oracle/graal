@@ -31,6 +31,5 @@ import com.oracle.svm.core.annotate.TargetClass;
 
 @TargetClass(className = "jdk.jfr.internal.settings.ThrottleSetting", onlyWith = HasJfrSupport.class)
 final class Target_jdk_jfr_internal_settings_ThrottleSetting {
-    @Alias
-    static long OFF;
+    @Alias static long OFF;
 }

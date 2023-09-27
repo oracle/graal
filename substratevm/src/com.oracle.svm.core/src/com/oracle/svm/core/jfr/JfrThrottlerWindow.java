@@ -124,7 +124,7 @@ public class JfrThrottlerWindow {
             randomVar = 0.01;
         }
         // Inverse CDF for the geometric distribution.
-        return (long) Math.ceil(log(1.0 - randomVar) / log(1.0 - probability));
+        return UninterruptibleUtils.Math.ceil(log(1.0 - randomVar) / log(1.0 - probability));
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

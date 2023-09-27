@@ -438,6 +438,17 @@ public class UninterruptibleUtils {
         public static long abs(long a) {
             return (a < 0) ? -a : a;
         }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static long floor(double a) {
+            return (long) a;
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static long ceil(double a) {
+            long floor = floor(a);
+            return a > floor ? floor + 1 : floor;
+        }
     }
 
     public static class Byte {
