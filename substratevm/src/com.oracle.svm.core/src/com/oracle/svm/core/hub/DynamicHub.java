@@ -72,6 +72,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -1946,6 +1947,7 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
      */
     @Substitute
     @TargetElement(onlyWith = JDK22OrLater.class)
+    @Fold // cut off the alternative branch, already during analysis
     static boolean useOldSerializableConstructor() {
         return true;
     }
