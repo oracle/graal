@@ -32,6 +32,16 @@ public abstract class BytecodeSwitch {
         return (bci + 4) & 0xfffffffc;
     }
 
+    public static BytecodeSwitch get(int opcode) {
+        if (opcode == Bytecodes.TABLESWITCH) {
+            return BytecodeTableSwitch.INSTANCE;
+        }
+        if (opcode == Bytecodes.LOOKUPSWITCH) {
+            return BytecodeLookupSwitch.INSTANCE;
+        }
+        return null;
+    }
+
     /**
      * Gets the index of the instruction denoted by the {@code i}'th switch target.
      *
