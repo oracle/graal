@@ -1255,16 +1255,18 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         @Override
-        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod target) {
-            if (callerMultiMethodKey != ORIGINAL_METHOD) {
+        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation) {
+            if (callerMultiMethodKey == RUNTIME_COMPILED_METHOD || implementation.isDeoptTarget()) {
                 /*
                  * If the method may be intrinsified later, the implementation can change.
+                 *
+                 * We also must ensure deopt methods always return a superset of the original
+                 * method.
                  */
-                var originalTarget = target.getMultiMethod(ORIGINAL_METHOD);
+                var origImpl = implementation.getMultiMethod(ORIGINAL_METHOD);
                 var options = bb.getOptions();
-                return (hostedProviders.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(originalTarget, options) != null) ||
-                                hostedProviders.getReplacements().hasSubstitution(originalTarget, options);
-
+                return (hostedProviders.getGraphBuilderPlugins().getInvocationPlugins().lookupInvocation(origImpl, options) != null) ||
+                                hostedProviders.getReplacements().hasSubstitution(origImpl, options);
             }
             return false;
         }

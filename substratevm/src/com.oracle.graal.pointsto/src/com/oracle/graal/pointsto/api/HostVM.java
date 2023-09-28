@@ -359,7 +359,7 @@ public abstract class HostVM {
          * Some methods can be transformed after analysis; in these cases we do not know what the
          * returned value will be.
          */
-        boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod target);
+        boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation);
 
     }
 
@@ -394,7 +394,7 @@ public abstract class HostVM {
         }
 
         @Override
-        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod target) {
+        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation) {
             return false;
         }
     };

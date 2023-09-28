@@ -246,7 +246,7 @@ public class ParseOnceDeoptTestFeature implements InternalFeature {
         }
 
         @Override
-        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod target) {
+        public boolean unknownReturnValue(BigBang bb, MultiMethod.MultiMethodKey callerMultiMethodKey, AnalysisMethod implementation) {
             return false;
         }
     }
