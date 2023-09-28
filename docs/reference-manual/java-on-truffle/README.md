@@ -39,15 +39,17 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
    * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062484081E0631818000A781E/content)
 
 2. Unzip the archive:
-   ```shell
-   tar -xzf <archive>.tar.gz
-   ```
-   Alternatively, open the file in the Finder.
-   > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+
+    > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
     ```shell
     sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
     ```
-
+    
+    Extact:
+    ```shell
+    tar -xzf <archive>.tar.gz
+    ```
+   
 3. A standalone comes with a JVM in addition to its native launcher. Check the version to see the Java on Truffle runtime is active:
     ```shell
     ./path/to/bin/java -truffle --version
