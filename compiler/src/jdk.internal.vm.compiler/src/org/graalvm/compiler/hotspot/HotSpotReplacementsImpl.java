@@ -41,7 +41,6 @@ import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
 import org.graalvm.compiler.hotspot.meta.HotSpotWordOperationPlugin;
 import org.graalvm.compiler.hotspot.word.HotSpotOperation;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
-import org.graalvm.compiler.nodes.FixedGuardNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -63,8 +62,6 @@ import org.graalvm.compiler.replacements.ReplacementsImpl;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.common.NativeImageReinitialize;
-import jdk.vm.ci.meta.DeoptimizationAction;
-import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.MetaUtil;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
@@ -147,16 +144,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
 
         @Override
         public GuardingNode intrinsicRangeCheck(LogicNode condition, boolean negated) {
-            /*
-             * On HotSpot it's simplest to always deoptimize. We could dispatch to the fallback code
-             * instead but that will greatly expand what's emitted for the intrinsic since it will
-             * have both the fast and slow versions inline. Actually deoptimizing here is unlikely
-             * as the most common uses of this method are in plugins for JDK internal methods. Those
-             * methods are generally unlikely to have arguments that lead to exceptions. The deopt
-             * action of None also keeps this guard from turning into a floating so it will stay
-             * fixed in the control flow.
-             */
-            return add(new FixedGuardNode(condition, DeoptimizationReason.BoundsCheckException, DeoptimizationAction.None, !negated));
+            return HotSpotBytecodeParser.doIntrinsicRangeCheck(this, condition, negated);
         }
     }
 
