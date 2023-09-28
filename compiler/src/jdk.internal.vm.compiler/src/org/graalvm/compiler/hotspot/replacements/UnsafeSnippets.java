@@ -55,16 +55,6 @@ public class UnsafeSnippets implements Snippets {
         Word srcAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(srcBase, srcOffset));
         Word dstAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(destBase, destOffset));
         Word size = WordFactory.signed(bytes);
-
-        HotSpotBackend.unsafeArraycopy(srcAddr, dstAddr, size);
-    }
-
-    @SuppressWarnings("unused")
-    @Snippet
-    static void copyMemoryGuarded(Object receiver, Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes) {
-        Word srcAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(srcBase, srcOffset));
-        Word dstAddr = WordFactory.unsigned(ComputeObjectAddressNode.get(destBase, destOffset));
-        Word size = WordFactory.signed(bytes);
         Word javaThread = CurrentJavaThreadNode.get();
         int offset = doingUnsafeAccessOffset(INJECTED_VMCONFIG);
         LocationIdentity any = LocationIdentity.any();
@@ -79,19 +69,17 @@ public class UnsafeSnippets implements Snippets {
     public static class Templates extends AbstractTemplates {
 
         private final SnippetInfo copyMemory;
-        private final SnippetInfo copyMemoryGuarded;
 
         @SuppressWarnings("this-escape")
         public Templates(OptionValues options, HotSpotProviders providers) {
             super(options, providers);
 
             this.copyMemory = snippet(providers, UnsafeSnippets.class, "copyMemory");
-            this.copyMemoryGuarded = snippet(providers, UnsafeSnippets.class, "copyMemoryGuarded");
         }
 
         public void lower(UnsafeCopyMemoryNode copyMemoryNode, LoweringTool tool) {
             StructuredGraph graph = copyMemoryNode.graph();
-            Arguments args = new Arguments(copyMemoryNode.isGuarded() ? copyMemoryGuarded : copyMemory, graph.getGuardsStage(), tool.getLoweringStage());
+            Arguments args = new Arguments(copyMemory, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("receiver", copyMemoryNode.receiver);
             args.add("srcBase", copyMemoryNode.srcBase);
             args.add("srcOffset", copyMemoryNode.srcOffset);

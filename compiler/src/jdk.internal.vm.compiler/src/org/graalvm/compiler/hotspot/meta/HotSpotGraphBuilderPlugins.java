@@ -245,7 +245,7 @@ public class HotSpotGraphBuilderPlugins {
                 registerBigIntegerPlugins(invocationPlugins, config, replacements);
                 registerSHAPlugins(invocationPlugins, config, replacements);
                 registerBase64Plugins(invocationPlugins, config, metaAccess, replacements);
-                registerUnsafePlugins(invocationPlugins, config, replacements);
+                registerUnsafePlugins(invocationPlugins, replacements);
                 StandardGraphBuilderPlugins.registerInvocationPlugins(snippetReflection, invocationPlugins, replacements, true, false, true, graalRuntime.getHostProviders().getLowerer());
                 registerArrayPlugins(invocationPlugins, replacements, config);
                 registerStringPlugins(invocationPlugins, replacements, wordTypes, foreignCalls, config);
@@ -481,13 +481,13 @@ public class HotSpotGraphBuilderPlugins {
         });
     }
 
-    private static void registerUnsafePlugins(InvocationPlugins plugins, GraalHotSpotVMConfig config, Replacements replacements) {
+    private static void registerUnsafePlugins(InvocationPlugins plugins, Replacements replacements) {
         Registration r = new Registration(plugins, "jdk.internal.misc.Unsafe", replacements);
         r.register(new InvocationPlugin("copyMemory0", Receiver.class, Object.class, long.class, Object.class, long.class, long.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver, ValueNode srcBase, ValueNode srcOffset, ValueNode destBase,
                             ValueNode destOffset, ValueNode bytes) {
-                b.add(new UnsafeCopyMemoryNode(config.doingUnsafeAccessOffset != Integer.MAX_VALUE, receiver.get(), srcBase, srcOffset, destBase, destOffset, bytes));
+                b.add(new UnsafeCopyMemoryNode(receiver.get(), srcBase, srcOffset, destBase, destOffset, bytes));
                 return true;
             }
         });
