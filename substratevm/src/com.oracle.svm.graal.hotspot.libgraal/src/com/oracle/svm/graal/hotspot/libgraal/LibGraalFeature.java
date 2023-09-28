@@ -739,11 +739,7 @@ final class Target_org_graalvm_compiler_serviceprovider_GraalServices {
 
     @Substitute
     private static void notifyLowMemoryPoint(boolean fullGC) {
-        HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) HotSpotJVMCIRuntime.runtime().getCompiler();
-        // With Xcomp, do not force GCs as we don't care about RSS in this mode.
-        if (!compiler.getGraalRuntime().getVMConfig().xcompMode) {
-            Heap.getHeap().getGC().collectionHint(fullGC);
-        }
+        Heap.getHeap().getGC().collectionHint(fullGC);
     }
 }
 

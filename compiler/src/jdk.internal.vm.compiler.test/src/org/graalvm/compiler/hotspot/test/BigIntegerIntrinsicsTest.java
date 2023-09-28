@@ -297,7 +297,7 @@ public final class BigIntegerIntrinsicsTest extends HotSpotGraalCompilerTest {
     private static GraalHotSpotVMConfig config = ((HotSpotGraalRuntimeProvider) Graal.getRequiredCapability(RuntimeProvider.class)).getVMConfig();
 
     private static BigInteger bigTwo = BigInteger.valueOf(2);
-    private static Random rnd = new Random(17);
+    private static Random rnd = getRandomInstance();
 
     private static BigInteger randomBig(int i) {
         return new BigInteger(rnd.nextInt(4096) + i2sz(i), rnd);

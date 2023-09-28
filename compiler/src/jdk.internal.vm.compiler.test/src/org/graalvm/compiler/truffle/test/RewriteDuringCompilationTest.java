@@ -36,6 +36,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
+import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.junit.Assert;
@@ -222,7 +223,7 @@ public class RewriteDuringCompilationTest extends AbstractPolyglotTest {
         });
 
         AtomicReference<DetectInvalidCodeNode> nodeToRewriteReference = new AtomicReference<>(nodeToRewrite);
-        Random rnd = new Random();
+        Random rnd = GraalCompilerTest.getRandomInstance();
         CountDownLatch nodeRewritingLatch = new CountDownLatch(1);
         List<Object> callTargetsToCheck = new ArrayList<>();
         rewriting = true;

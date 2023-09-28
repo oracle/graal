@@ -37,7 +37,7 @@ import jdk.vm.ci.amd64.AMD64;
 
 public class ReassociateAndCanonicalTest extends GraalCompilerTest {
 
-    private static final Random random = new Random(11);
+    private static final Random random = getRandomInstance();
     public static int rnd = random.nextInt();
     private static float rndF = random.nextFloat();
     private static double rndD = random.nextDouble();
