@@ -117,7 +117,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
     public final boolean useFastLocking = getFlag("JVMCIUseFastLocking", Boolean.class);
-    private final boolean useHeavyMonitors = JDK < 22 && getFlag("UseHeavyMonitors", Boolean.class);
+    private final boolean useHeavyMonitors = JDK < 21 && getFlag("UseHeavyMonitors", Boolean.class);
 
     // Use only heavy monitors for locking
     public static final int LM_MONITOR = 0;
@@ -889,7 +889,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
 
     /**
      * Whether Heavy monitors should be used. The {@code LockingMode} flag was introduced in JDK 21.
-     * In JDK 22, the legacy {@code UseHeavyMonitors} was removed.
+     * In JDK 21, the legacy {@code UseHeavyMonitors} was removed.
      *
      * @see <a href=
      *      "https://github.com/openjdk/jdk/commit/3301fb1e8ad11d7de01a052e0a2d6178a7579ba6">JDK-8315869:
