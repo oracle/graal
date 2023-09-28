@@ -129,6 +129,11 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
         config = new GraalHotSpotVMConfig(store);
 
+        if (config.lockingMode == GraalHotSpotVMConfig.LM_LIGHTWEIGHT) {
+            TTY.println("Lightweight locking (-XX:LockingMode=2) is not supported");
+            jvmciRuntime.exitHotSpot(-1);
+        }
+
         // Only set HotSpotPrintInlining if it still has its default value (false).
         if (GraalOptions.HotSpotPrintInlining.getValue(initialOptions) == false && config.printInlining) {
             options = new OptionValues(initialOptions, HotSpotPrintInlining, true);
