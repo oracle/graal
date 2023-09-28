@@ -33,6 +33,7 @@ import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.regi
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
@@ -1298,8 +1299,25 @@ public class NativeImageGenerator {
         @Override
         protected void register(Type declaringClass, InvocationPlugin plugin, boolean allowOverwrite) {
             Type targetClass;
-            if (declaringClass instanceof Class) {
-                targetClass = annotationSubstitutionProcessor.getTargetClass((Class<?>) declaringClass);
+            if (declaringClass instanceof Class<?> annotatedClass) {
+                targetClass = annotationSubstitutionProcessor.getTargetClass(annotatedClass);
+                if (targetClass != declaringClass) {
+                    /* Found a target class. Check if it is included. */
+                    Executable annotatedMethod = plugin.name.equals("<init>") ? resolveConstructor(annotatedClass, plugin) : resolveMethod(annotatedClass, plugin);
+                    String originalName = annotationSubstitutionProcessor.findOriginalElementName(annotatedMethod, (Class<?>) targetClass);
+                    if (originalName == null) {
+                        /*
+                         * If the name is null, the element should not be substituted. Thus, we
+                         * should also not register the invocation plugin.
+                         */
+                        return;
+                    }
+                    if (!originalName.equals(plugin.name)) {
+                        throw VMError.unimplemented(String.format("""
+                                        InvocationPlugins cannot yet deal with substitution methods that set the target name via the @TargetElement(name = ...) property.
+                                        Annotated method "%s" vs target method "%s".""", plugin.name, originalName));
+                    }
+                }
             } else {
                 targetClass = declaringClass;
             }
