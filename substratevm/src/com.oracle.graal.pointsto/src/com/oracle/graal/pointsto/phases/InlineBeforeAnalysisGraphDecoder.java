@@ -502,6 +502,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
     @Override
     protected FixedWithNextNode afterMethodScopeCreation(PEMethodScope is, FixedWithNextNode predecessor) {
         InlineBeforeAnalysisMethodScope inlineScope = cast(is);
-        return policy.processInvokeArgs(inlineScope.method, predecessor, inlineScope.getArguments());
+        var sourcePosition = inlineScope.invokeData.invoke.asNode().getNodeSourcePosition();
+        return policy.processInvokeArgs(inlineScope.method, predecessor, inlineScope.getArguments(), sourcePosition);
     }
 }

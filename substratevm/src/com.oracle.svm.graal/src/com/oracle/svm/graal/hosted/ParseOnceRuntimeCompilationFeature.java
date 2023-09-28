@@ -53,6 +53,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -569,7 +570,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         assert method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
 
         AnalysisMethod aMethod = method.getWrapped();
-        StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null);
+        StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, false);
         if (graph == null) {
             throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)"));
         }
@@ -1021,9 +1022,10 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         @Override
-        protected FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments) {
+        protected FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition) {
             StructuredGraph graph = insertionPoint.graph();
             InlinedInvokeArgumentsNode newNode = graph.add(new InlinedInvokeArgumentsNode(targetMethod, arguments));
+            newNode.setNodeSourcePosition(sourcePosition);
             graph.addAfterFixed(insertionPoint, newNode);
             return newNode;
         }
