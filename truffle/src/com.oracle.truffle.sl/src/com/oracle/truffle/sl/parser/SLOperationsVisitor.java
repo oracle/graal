@@ -358,14 +358,15 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
 
         b.beginTag(StandardTags.ExpressionTag.class);
 
-        b.beginSLOr();
-        for (Logic_termContext term : ctx.logic_term()) {
-            visit(term);
+        List<Logic_termContext> terms = ctx.logic_term();
+        if (terms.size() == 1) {
+            visit(terms.get(0));
+        } else {
+            b.beginSLOr();
+            emitShortCircuitOperands(terms);
+            b.endSLOr();
         }
-        b.endSLOr();
-
         b.endTag();
-
         return null;
     }
 
@@ -375,16 +376,31 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         b.beginTag(StandardTags.ExpressionTag.class);
         b.beginSLUnbox();
 
-        b.beginSLAnd();
-        for (Logic_factorContext factor : ctx.logic_factor()) {
-            visit(factor);
+        List<Logic_factorContext> factors = ctx.logic_factor();
+        if (factors.size() == 1) {
+            visit(factors.get(0));
+        } else {
+            b.beginSLAnd();
+            emitShortCircuitOperands(factors);
+            b.endSLAnd();
         }
-        b.endSLAnd();
-
         b.endSLUnbox();
         b.endTag();
 
         return null;
+    }
+
+    private void emitShortCircuitOperands(List<? extends ParseTree> operands) {
+        for (int i = 0; i < operands.size(); i++) {
+            if (i == operands.size() - 1) {
+                // Short circuit operations don't convert the last operand to a boolean.
+                b.beginSLToBoolean();
+                visit(operands.get(i));
+                b.endSLToBoolean();
+            } else {
+                visit(operands.get(i));
+            }
+        }
     }
 
     @Override
