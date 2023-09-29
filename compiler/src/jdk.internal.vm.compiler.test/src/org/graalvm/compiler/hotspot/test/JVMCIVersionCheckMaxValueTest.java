@@ -54,7 +54,10 @@ public class JVMCIVersionCheckMaxValueTest extends GraalCompilerTest {
             JVMCIVersionCheck.Version minVersion = new JVMCIVersionCheck.Version(20, 0, 1);
             // Use a javaSpecVersion that will likely not fail in the near future
             JVMCIVersionCheck.check(JVMCIVersionCheckTest.props, minVersion, "99", javaVmVersion, false);
-            Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion);
+            String value = System.getenv("JVMCI_VERSION_CHECK");
+            if (!"warn".equals(value) && !"ignore".equals(value)) {
+                Assert.fail("expected to fail checking " + javaVmVersion + " against " + minVersion);
+            }
         } catch (InternalError e) {
             if (!e.getMessage().contains(EXPECTED_MSG)) {
                 throw new AssertionError("Unexpected exception message. Expected: " + EXPECTED_MSG, e);

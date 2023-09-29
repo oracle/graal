@@ -1109,6 +1109,12 @@ public class NativeImage {
             }
         }
 
+        /*
+         * Work around "JDK-8315810: Reimplement
+         * sun.reflect.ReflectionFactory::newConstructorForSerialization with method handles"
+         * [GR-48901]
+         */
+        imageBuilderJavaArgs.add("-Djdk.reflect.useOldSerializableConstructor=true");
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.disableEagerInitialization=true");
         // The following two are for backwards compatibility reasons. They should be removed.
         imageBuilderJavaArgs.add("-Djdk.internal.lambda.eagerlyInitialize=false");

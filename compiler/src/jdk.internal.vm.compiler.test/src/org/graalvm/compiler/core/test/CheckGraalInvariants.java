@@ -97,12 +97,13 @@ import org.graalvm.compiler.phases.contract.VerifyNodeCosts;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.runtime.RuntimeProvider;
-import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
+import org.graalvm.compiler.test.AddExports;
 import org.graalvm.word.LocationIdentity;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;
 
+import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.Register.RegisterCategory;
@@ -121,6 +122,7 @@ import jdk.vm.ci.meta.Value;
  * Checks that all Graal classes comply with global invariants such as using
  * {@link Object#equals(Object)} to compare certain types instead of identity comparisons.
  */
+@AddExports({"java.base/jdk.internal.misc"})
 public class CheckGraalInvariants extends GraalCompilerTest {
 
     /**
@@ -566,7 +568,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                      * initialize them anyway, and doing it here eagerly while being single-threaded
                      * avoids race conditions.
                      */
-                    GraalUnsafeAccess.getUnsafe().ensureClassInitialized(c);
+                    Unsafe.getUnsafe().ensureClassInitialized(c);
                 }
                 classes.add(c);
             } catch (UnsupportedClassVersionError e) {

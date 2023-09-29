@@ -72,6 +72,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -1936,6 +1937,30 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         boolean isReadOnly = isFinal && (!override || langReflectAccess.isTrustedFinalField(field));
         return UnsafeFieldAccessorFactory.newFieldAccessor(field, isReadOnly);
     }
+
+    /**
+     * Work around "JDK-8315810: Reimplement
+     * sun.reflect.ReflectionFactory::newConstructorForSerialization with method handles"
+     * [GR-48901].
+     *
+     * @see Target_jdk_internal_reflect_DirectConstructorHandleAccessor
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    @Fold // cut off the alternative branch, already during analysis
+    static boolean useOldSerializableConstructor() {
+        return true;
+    }
+}
+
+/**
+ * Ensure that we are not accidentally using the method handle based constructor accessor.
+ *
+ * @see Target_jdk_internal_reflect_ReflectionFactory#useOldSerializableConstructor()
+ */
+@Delete
+@TargetClass(className = "jdk.internal.reflect.DirectConstructorHandleAccessor")
+final class Target_jdk_internal_reflect_DirectConstructorHandleAccessor {
 }
 
 @TargetClass(className = "java.lang.Class", innerClass = "EnclosingMethodInfo")

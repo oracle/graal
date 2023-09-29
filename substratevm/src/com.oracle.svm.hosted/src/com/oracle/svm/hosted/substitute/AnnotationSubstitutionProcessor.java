@@ -33,6 +33,7 @@ import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Field;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Comparator;
@@ -834,18 +835,32 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         }
     }
 
-    private ResolvedJavaMethod findOriginalMethod(Executable annotatedMethod, Class<?> originalClass) {
-        TargetElement targetElementAnnotation = lookupAnnotation(annotatedMethod, TargetElement.class);
+    /**
+     * Finds the original name of an {@link AnnotatedElement}.
+     *
+     * @return the original name, or {@code null} if the element is not {@linkplain #isIncluded
+     *         included}.
+     */
+    public String findOriginalElementName(AnnotatedElement annotatedElement, Class<?> originalClass) {
+        TargetElement targetElementAnnotation = lookupAnnotation(annotatedElement, TargetElement.class);
         String originalName = "";
         if (targetElementAnnotation != null) {
             originalName = targetElementAnnotation.name();
-            if (!isIncluded(targetElementAnnotation, originalClass, annotatedMethod)) {
+            if (!isIncluded(targetElementAnnotation, originalClass, annotatedElement)) {
                 return null;
             }
         }
 
         if (originalName.length() == 0) {
-            originalName = annotatedMethod.getName();
+            originalName = ((Member) annotatedElement).getName();
+        }
+        return originalName;
+    }
+
+    private ResolvedJavaMethod findOriginalMethod(Executable annotatedMethod, Class<?> originalClass) {
+        String originalName = findOriginalElementName(annotatedMethod, originalClass);
+        if (originalName == null) {
+            return null;
         }
 
         try {
@@ -875,16 +890,9 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
     }
 
     private ResolvedJavaField findOriginalField(Field annotatedField, Class<?> originalClass, boolean forceOptional) {
-        TargetElement targetElementAnnotation = lookupAnnotation(annotatedField, TargetElement.class);
-        String originalName = "";
-        if (targetElementAnnotation != null) {
-            originalName = targetElementAnnotation.name();
-            if (!isIncluded(targetElementAnnotation, originalClass, annotatedField)) {
-                return null;
-            }
-        }
-        if (originalName.length() == 0) {
-            originalName = annotatedField.getName();
+        String originalName = findOriginalElementName(annotatedField, originalClass);
+        if (originalName == null) {
+            return null;
         }
 
         try {

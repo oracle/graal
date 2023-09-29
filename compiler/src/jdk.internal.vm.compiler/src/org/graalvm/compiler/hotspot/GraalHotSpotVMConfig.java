@@ -121,7 +121,16 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
     public final boolean useFastLocking = getFlag("JVMCIUseFastLocking", Boolean.class);
-    public final boolean useHeavyMonitors = getFlag("UseHeavyMonitors", Boolean.class);
+    private final boolean useHeavyMonitors = JDK < 22 && getFlag("UseHeavyMonitors", Boolean.class);
+
+    // Use only heavy monitors for locking
+    public static final int LM_MONITOR = 0;
+    // Legacy stack-locking, with monitors as 2nd tier
+    public static final int LM_LEGACY = 1;
+    // New lightweight locking, with monitors as 2nd tier
+    public static final int LM_LIGHTWEIGHT = 2;
+
+    public final int lockingMode = getFlag("LockingMode", Integer.class);
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
     public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);
 
@@ -682,5 +691,20 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public boolean supportsMethodHandleDeoptimizationEntry() {
         return HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY.isAvailable() && VMINTRINSIC_FIRST_MH_SIG_POLY != -1 && VMINTRINSIC_LAST_MH_SIG_POLY != -1 && VMINTRINSIC_INVOKE_GENERIC != -1 &&
                         VMINTRINSIC_COMPILED_LAMBDA_FORM != -1;
+    }
+
+    /**
+     * Whether Heavy monitors should be used. The {@code LockingMode} flag was introduced in JDK 21.
+     * In JDK 22, the legacy {@code UseHeavyMonitors} was removed.
+     *
+     * @see <a href=
+     *      "https://github.com/openjdk/jdk/commit/3301fb1e8ad11d7de01a052e0a2d6178a7579ba6">JDK-8315869:
+     *      UseHeavyMonitors not used</a>
+     * @see <a href=
+     *      "https://github.com/openjdk/jdk/commit/7f6358a8b53a35a87c9413c68f8fe6c5fdec0caf">JDK-8291555:
+     *      Implement alternative fast-locking scheme</a>
+     */
+    public boolean useHeavyMonitors() {
+        return useHeavyMonitors || lockingMode == LM_MONITOR;
     }
 }
