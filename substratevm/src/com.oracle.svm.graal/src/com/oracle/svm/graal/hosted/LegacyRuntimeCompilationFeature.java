@@ -544,8 +544,11 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
     }
 
     @Override
-    protected void requireFrameInformationForMethodHelper(AnalysisMethod aMethod) {
+    protected void requireFrameInformationForMethodHelper(AnalysisMethod aMethod, FeatureImpl.BeforeAnalysisAccessImpl config, boolean registerAsRoot) {
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(aMethod, aMethod);
+        if (registerAsRoot) {
+            config.registerAsRoot(aMethod, true, "Frame information required, registered in " + LegacyRuntimeCompilationFeature.class);
+        }
     }
 
     @Override

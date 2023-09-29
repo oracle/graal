@@ -532,16 +532,16 @@ public abstract class RuntimeCompilationFeature {
         }
     }
 
-    public SubstrateMethod requireFrameInformationForMethod(ResolvedJavaMethod method) {
+    public SubstrateMethod requireFrameInformationForMethod(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config, boolean registerAsRoot) {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         SubstrateMethod sMethod = objectReplacer.createMethod(aMethod);
 
-        requireFrameInformationForMethodHelper(aMethod);
+        requireFrameInformationForMethodHelper(aMethod, config, registerAsRoot);
 
         return sMethod;
     }
 
-    protected abstract void requireFrameInformationForMethodHelper(AnalysisMethod aMethod);
+    protected abstract void requireFrameInformationForMethodHelper(AnalysisMethod aMethod, BeforeAnalysisAccessImpl config, boolean registerAsRoot);
 
     public SubstrateMethod prepareMethodForRuntimeCompilation(Executable method, BeforeAnalysisAccessImpl config) {
         return prepareMethodForRuntimeCompilation(config.getMetaAccess().lookupJavaMethod(method), config);

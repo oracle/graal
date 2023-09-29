@@ -300,6 +300,7 @@ public class SubstrateCompilationDirectives {
      */
     public void resetDeoptEntries() {
         assert !deoptInfoSealed;
+        assert SubstrateOptions.parseOnce();
         // all methods which are registered for deopt testing cannot be cleared
         Map<AnalysisMethod, Map<Long, DeoptSourceFrameInfo>> newDeoptEntries = new ConcurrentHashMap<>();
         for (var deoptForTestingMethod : deoptForTestingMethods) {
@@ -310,6 +311,11 @@ public class SubstrateCompilationDirectives {
         }
         deoptEntries = newDeoptEntries;
         // all methods which require frame information must have a deoptimization entry
-        frameInformationRequired.forEach(m -> deoptEntries.computeIfAbsent(m, n -> new ConcurrentHashMap<>()));
+        frameInformationRequired.forEach(m -> {
+            assert m.isOriginalMethod();
+            var deoptMethod = m.getMultiMethod(MultiMethod.DEOPT_TARGET_METHOD);
+            assert deoptMethod != null;
+            deoptEntries.computeIfAbsent(deoptMethod, n -> new ConcurrentHashMap<>());
+        });
     }
 }
