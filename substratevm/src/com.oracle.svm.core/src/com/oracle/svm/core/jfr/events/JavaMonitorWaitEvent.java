@@ -39,7 +39,7 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 
 public class JavaMonitorWaitEvent {
     public static void emit(long startTicks, Object obj, long notifier, long timeout, boolean timedOut) {
-        if (HasJfrSupport.get()) {
+        if (HasJfrSupport.get() && !obj.getClass().getName().equals("jdk.jfr.internal.JVM$ChunkRotationMonitor")) {
             emit0(startTicks, obj, notifier, timeout, timedOut);
         }
     }
