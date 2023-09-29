@@ -24,25 +24,25 @@
  */
 package org.graalvm.compiler.hotspot.aarch64;
 
-import static jdk.vm.ci.hotspot.HotSpotCompressedNullConstant.COMPRESSED_NULL;
 import static jdk.vm.ci.meta.JavaConstant.INT_0;
 import static jdk.vm.ci.meta.JavaConstant.LONG_0;
 
 import org.graalvm.compiler.core.aarch64.AArch64MoveFactory;
 import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
 
-import jdk.vm.ci.hotspot.HotSpotCompressedNullConstant;
+import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.hotspot.HotSpotConstant;
 import jdk.vm.ci.hotspot.HotSpotMetaspaceConstant;
 import jdk.vm.ci.hotspot.HotSpotObjectConstant;
 import jdk.vm.ci.meta.AllocatableValue;
 import jdk.vm.ci.meta.Constant;
+import jdk.vm.ci.meta.JavaConstant;
 
 public class AArch64HotSpotMoveFactory extends AArch64MoveFactory {
 
     @Override
     public boolean canInlineConstant(Constant c) {
-        if (HotSpotCompressedNullConstant.COMPRESSED_NULL.equals(c)) {
+        if (JavaConstant.isNull(c)) {
             return true;
         } else if (c instanceof HotSpotObjectConstant || c instanceof HotSpotMetaspaceConstant) {
             return false;
@@ -54,10 +54,13 @@ public class AArch64HotSpotMoveFactory extends AArch64MoveFactory {
     @Override
     public AArch64LIRInstruction createLoad(AllocatableValue dst, Constant src) {
         Constant usedSource;
-        if (COMPRESSED_NULL.equals(src)) {
-            usedSource = INT_0;
-        } else if (src instanceof HotSpotObjectConstant && ((HotSpotObjectConstant) src).isNull()) {
-            usedSource = LONG_0;
+        if (JavaConstant.isNull(src)) {
+            /*
+             * On HotSpot null values can be represented by the zero value of appropriate length.
+             */
+            var platformKind = dst.getPlatformKind();
+            assert platformKind.equals(AArch64Kind.DWORD) || platformKind.equals(AArch64Kind.QWORD) : String.format("unexpected null value: %s[%s]", platformKind, src);
+            usedSource = platformKind.getSizeInBytes() == Integer.BYTES ? INT_0 : LONG_0;
         } else {
             usedSource = src;
         }
