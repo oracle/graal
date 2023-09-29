@@ -76,12 +76,12 @@ import com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant;
 @GenerateOperationsTestVariants({
                 @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true)),
                 @Variant(suffix = "Unsafe", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true)),
-                @Variant(suffix = "WithBaseline", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, enableBaselineInterpreter = true)),
+                @Variant(suffix = "WithUncached", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true)),
                 @Variant(suffix = "WithBE", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, boxingEliminationTypes = {
                                 long.class})),
                 @Variant(suffix = "WithOptimizations", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, decisionsFile = "operations_example_decisions.json")),
                 // A typical "production" configuration with all of the bells and whistles.
-                @Variant(suffix = "Production", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true, enableBaselineInterpreter = true, //
+                @Variant(suffix = "Production", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true, enableUncachedInterpreter = true, //
                                 boxingEliminationTypes = {long.class}, decisionsFile = "operations_example_decisions.json"))
 })
 @GenerateAOT

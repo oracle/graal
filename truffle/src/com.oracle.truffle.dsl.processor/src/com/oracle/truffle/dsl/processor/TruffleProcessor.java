@@ -58,15 +58,18 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic.Kind;
 
+import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
 import com.oracle.truffle.dsl.processor.generator.TypeSystemCodeGenerator;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.library.ExportsGenerator;
 import com.oracle.truffle.dsl.processor.library.ExportsParser;
 import com.oracle.truffle.dsl.processor.library.LibraryGenerator;
 import com.oracle.truffle.dsl.processor.library.LibraryParser;
 import com.oracle.truffle.dsl.processor.operations.generator.OperationsCodeGenerator;
+import com.oracle.truffle.dsl.processor.operations.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.operations.parser.CustomOperationParser;
 import com.oracle.truffle.dsl.processor.operations.parser.OperationsParser;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
@@ -193,7 +196,13 @@ public final class TruffleProcessor extends AbstractProcessor {
         generators.add(new AnnotationProcessor<>(NodeParser.createDefaultParser(), new NodeCodeGenerator()));
         generators.add(new AnnotationProcessor<>(new LibraryParser(), new LibraryGenerator()));
         generators.add(new AnnotationProcessor<>(new ExportsParser(), new ExportsGenerator(new StaticConstants())));
-        generators.add(new AnnotationProcessor<>(CustomOperationParser.forProxyValidation(), null));
+        generators.add(new AnnotationProcessor<>(CustomOperationParser.forProxyValidation(), new CodeTypeElementFactory<CustomOperationModel>() {
+
+            @Override
+            public List<CodeTypeElement> create(ProcessorContext context, AnnotationProcessor<?> processor, CustomOperationModel m) {
+                return null;
+            }
+        }));
         generators.add(new AnnotationProcessor<>(new OperationsParser(), new OperationsCodeGenerator()));
         return generators;
     }

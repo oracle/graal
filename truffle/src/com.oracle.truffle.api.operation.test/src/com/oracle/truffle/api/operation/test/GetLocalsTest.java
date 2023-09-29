@@ -52,7 +52,7 @@ import com.oracle.truffle.api.operation.Variadic;
 public class GetLocalsTest {
     @Parameters(name = "{0}")
     public static List<Class<? extends OperationNodeWithLocalIntrospection>> getInterpreterClasses() {
-        return List.of(OperationNodeWithLocalIntrospectionBase.class, OperationNodeWithLocalIntrospectionWithBaseline.class);
+        return List.of(OperationNodeWithLocalIntrospectionBase.class, OperationNodeWithLocalIntrospectionWithUncached.class);
     }
 
     @Parameter(0) public Class<? extends OperationNodeWithLocalIntrospection> interpreterClass;
@@ -497,7 +497,7 @@ public class GetLocalsTest {
 
 @GenerateOperationsTestVariants({
                 @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true)),
-                @Variant(suffix = "WithBaseline", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableBaselineInterpreter = true))
+                @Variant(suffix = "WithUncached", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableUncachedInterpreter = true))
 })
 @OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
 abstract class OperationNodeWithLocalIntrospection extends RootNode implements OperationRootNode {

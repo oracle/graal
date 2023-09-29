@@ -31,7 +31,7 @@ public class OperationsExampleFindBciTest {
 
     @Parameters(name = "{0}")
     public static List<Class<? extends OperationsExample>> getInterpreterClasses() {
-        return List.of(OperationsExampleBase.class, OperationsExampleWithBaseline.class);
+        return List.of(OperationsExampleBase.class, OperationsExampleWithUncached.class);
     }
 
     @Parameter(0) public Class<? extends OperationsExample> interpreterClass;

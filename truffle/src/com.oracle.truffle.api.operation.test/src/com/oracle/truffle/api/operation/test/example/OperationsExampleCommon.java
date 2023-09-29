@@ -56,7 +56,7 @@ public class OperationsExampleCommon {
     }
 
     public static List<Class<? extends OperationsExample>> allInterpreters() {
-        return List.of(OperationsExampleBase.class, OperationsExampleUnsafe.class, OperationsExampleWithBaseline.class, OperationsExampleWithBE.class, OperationsExampleWithOptimizations.class,
+        return List.of(OperationsExampleBase.class, OperationsExampleUnsafe.class, OperationsExampleWithUncached.class, OperationsExampleWithBE.class, OperationsExampleWithOptimizations.class,
                         OperationsExampleProduction.class);
     }
 

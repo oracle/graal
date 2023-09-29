@@ -52,11 +52,11 @@ import com.oracle.truffle.api.operation.OperationRootNode;
 
 @GenerateOperationsTestVariants({
                 @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class)),
-                @Variant(suffix = "WithBaseline", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, enableBaselineInterpreter = true)),
+                @Variant(suffix = "WithUncached", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, enableUncachedInterpreter = true)),
                 @Variant(suffix = "Unsafe", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, allowUnsafe = true)),
                 @Variant(suffix = "BoxingEliminated", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, boxingEliminationTypes = {int.class, boolean.class})),
                 @Variant(suffix = "Quickened", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, decisionsFile = "decisions.json")),
-                @Variant(suffix = "All", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, enableBaselineInterpreter = true, allowUnsafe = true, boxingEliminationTypes = {
+                @Variant(suffix = "All", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, enableUncachedInterpreter = true, allowUnsafe = true, boxingEliminationTypes = {
                                 int.class, boolean.class}, decisionsFile = "decisions.json"))
 })
 abstract class BMOperationRootNode extends RootNode implements OperationRootNode {

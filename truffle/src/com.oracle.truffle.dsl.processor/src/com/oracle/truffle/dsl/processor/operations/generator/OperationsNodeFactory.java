@@ -191,13 +191,13 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.addAll(createFrameLayoutConstants());
 
         // Define the interpreter implementations.
-        if (model.enableBaselineInterpreter) {
-            operationNodeGen.add(new ContinueAtFactory(InterpreterTier.TIER0).create());
-            operationNodeGen.add(createSetBaselineInterpreterThreshold());
+        if (model.enableUncachedInterpreter) {
+            operationNodeGen.add(new ContinueAtFactory(InterpreterTier.UNCACHED).create());
+            operationNodeGen.add(createUncachedInterpreterThreshold());
         }
         operationNodeGen.addAll(createInterpreterTiers());
         operationNodeGen.add(createCurrentTierField());
-        operationNodeGen.add(new ContinueAtFactory(InterpreterTier.TIER1).create());
+        operationNodeGen.add(new ContinueAtFactory(InterpreterTier.CACHED).create());
         operationNodeGen.add(new ContinueAtFactory(InterpreterTier.INSTRUMENTED).create());
 
         // Define the builder class.
@@ -296,8 +296,8 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numNodes")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numConditionalBranches")));
         operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex")));
-        if (model.enableBaselineInterpreter) {
-            operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "baselineExecuteCount")).createInitBuilder().string("16");
+        if (model.enableUncachedInterpreter) {
+            operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "uncachedExecuteCount")).createInitBuilder().string("16");
         }
         if (model.enableTracing) {
             operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean[].class), "basicBlockBoundary")));
@@ -356,10 +356,10 @@ public class OperationsNodeFactory implements ElementHelpers {
         List<CodeVariableElement> result = new ArrayList<>();
         int reserved = 0;
 
-        int baselineBciIndex = -1;
+        int uncachedBciIndex = -1;
         if (model.needsBciSlot()) {
-            baselineBciIndex = reserved++;
-            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, BCI_IDX, baselineBciIndex + ""));
+            uncachedBciIndex = reserved++;
+            result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, BCI_IDX, uncachedBciIndex + ""));
         }
 
         int coroutineFrameIndex = 1;
@@ -453,11 +453,11 @@ public class OperationsNodeFactory implements ElementHelpers {
         // Some fields should be manually reinitialized to default values.
         b.statement("clone.cachedNodes = null"); // cachedNodes will be set on first execution
 
-        if (model.enableBaselineInterpreter) {
-            b.statement("clone.baselineExecuteCount = 16");
-            b.statement("clone.currentTier = " + InterpreterTier.TIER0.name());
+        if (model.enableUncachedInterpreter) {
+            b.statement("clone.uncachedExecuteCount = 16");
+            b.statement("clone.currentTier = " + InterpreterTier.UNCACHED.name());
         } else {
-            b.statement("clone.currentTier = " + InterpreterTier.TIER1.name());
+            b.statement("clone.currentTier = " + InterpreterTier.CACHED.name());
         }
 
         b.startReturn().string("clone").end();
@@ -465,21 +465,21 @@ public class OperationsNodeFactory implements ElementHelpers {
         return ex;
     }
 
-    private CodeExecutableElement createSetBaselineInterpreterThreshold() {
-        CodeExecutableElement ex = GeneratorUtils.override(types.OperationRootNode, "setBaselineInterpreterThreshold");
+    private CodeExecutableElement createUncachedInterpreterThreshold() {
+        CodeExecutableElement ex = GeneratorUtils.override(types.OperationRootNode, "setUncachedInterpreterThreshold");
 
         CodeTreeBuilder b = ex.createBuilder();
-        b.startAssign("baselineExecuteCount").string("invocationCount").end();
+        b.startAssign("uncachedExecuteCount").string("invocationCount").end();
         b.startIf().string("invocationCount == 0").end().startBlock();
-        b.startAssign("currentTier").string(InterpreterTier.TIER1.name()).end();
+        b.startAssign("currentTier").string(InterpreterTier.CACHED.name()).end();
         b.end();
 
         return ex;
     }
 
     private enum InterpreterTier {
-        TIER0("Tier0", true, false),
-        TIER1("Tier1", false, false),
+        UNCACHED("Uncached", true, false),
+        CACHED("Cached", false, false),
         INSTRUMENTED("Instrumented", false, true);
 
         final String friendlyName;
@@ -499,10 +499,10 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private List<InterpreterTier> getInterpreterTiers() {
         List<InterpreterTier> tiers = new ArrayList<>();
-        if (model.enableBaselineInterpreter) {
-            tiers.add(InterpreterTier.TIER0);
+        if (model.enableUncachedInterpreter) {
+            tiers.add(InterpreterTier.UNCACHED);
         }
-        tiers.add(InterpreterTier.TIER1);
+        tiers.add(InterpreterTier.CACHED);
         tiers.add(InterpreterTier.INSTRUMENTED);
         return tiers;
     }
@@ -523,10 +523,10 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeVariableElement fld = new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "currentTier");
         fld = compFinal(fld);
 
-        if (model.enableBaselineInterpreter) {
-            fld.createInitBuilder().string(InterpreterTier.TIER0.name());
+        if (model.enableUncachedInterpreter) {
+            fld.createInitBuilder().string(InterpreterTier.UNCACHED.name());
         } else {
-            fld.createInitBuilder().string(InterpreterTier.TIER1.name());
+            fld.createInitBuilder().string(InterpreterTier.CACHED.name());
         }
 
         return fld;
@@ -1173,7 +1173,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.returnStatement();
         b.end();
 
-        b.startIf().string("newTier == TIER1 && currentTier == INSTRUMENTED").end().startBlock();
+        b.startIf().string("newTier == CACHED && currentTier == INSTRUMENTED").end().startBlock();
         b.returnStatement();
         b.end();
 
@@ -3917,7 +3917,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("int sp = (startState >> 16) & 0xffff");
             b.declaration(loopCounter.asType(), "loopCounter", CodeTreeBuilder.createBuilder().startNew(loopCounter.asType()).end());
             if (model.needsBciSlot() && !model.storeBciInFrame && !tier.isUncached) {
-                // If a bci slot is allocated but not used for non-baseline interpreters, set it to
+                // If a bci slot is allocated but not used for non-uncached interpreters, set it to
                 // an invalid value just in case it gets read during a stack walk.
                 b.statement("ACCESS.setInt(" + localFrame() + ", " + BCI_IDX + ", -1)");
             }
@@ -3934,7 +3934,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             if (tier.isUncached) {
-                b.statement("int baselineExecuteCount = $this.baselineExecuteCount");
+                b.statement("int uncachedExecuteCount = $this.uncachedExecuteCount");
             }
 
             b.string("loop: ").startWhile().string("true").end().startBlock();
@@ -3972,9 +3972,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case BRANCH_BACKWARD:
                         if (tier.isUncached) {
-                            b.startIf().string("baselineExecuteCount-- <= 0").end().startBlock();
+                            b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                            b.statement("$this.changeInterpreters(TIER1)");
+                            b.statement("$this.changeInterpreters(CACHED)");
                             b.statement("return (sp << 16) | " + readBc("bci + 1"));
                             b.end();
                         } else {
@@ -4055,11 +4055,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                         break;
                     case RETURN:
                         if (tier.isUncached) {
-                            b.startIf().string("baselineExecuteCount-- <= 0").end().startBlock();
+                            b.startIf().string("uncachedExecuteCount-- <= 0").end().startBlock();
                             b.tree(createTransferToInterpreterAndInvalidate("$this"));
-                            b.statement("$this.changeInterpreters(TIER1)");
+                            b.statement("$this.changeInterpreters(CACHED)");
                             b.end().startElseBlock();
-                            b.statement("$this.baselineExecuteCount = baselineExecuteCount");
+                            b.statement("$this.uncachedExecuteCount = uncachedExecuteCount");
                             b.end();
                         } else {
                             emitReportLoopCount(b, CodeTreeBuilder.singleString("loopCounter.value > 0"), false);
@@ -4305,7 +4305,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             storeBciInFrameIfNecessary(b);
 
             if (!tier.isUncached) {
-                // If not in the baseline interpreter, we need to retrieve the node for the call.
+                // If not in the uncached interpreter, we need to retrieve the node for the call.
                 InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
                 String nodeIndex = readBc("bci + " + imm.offset);
                 CodeTree readNode = CodeTreeBuilder.createBuilder().string(readNode(cachedType, nodeIndex)).build();
@@ -4423,7 +4423,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         /**
-         * When in the baseline interpreter or an interpreter with storeBciInFrame set to true, we
+         * When in the uncached interpreter or an interpreter with storeBciInFrame set to true, we
          * need to store the bci in the frame before escaping operations (e.g., returning, yielding,
          * throwing) or potentially-escaping operations (e.g., a custom operation that could invoke
          * another root node).
@@ -4738,7 +4738,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                 }
             }
 
-            if (OperationsNodeFactory.this.model.enableBaselineInterpreter) {
+            if (OperationsNodeFactory.this.model.enableUncachedInterpreter) {
                 // We inject a method to ensure the uncached entrypoint is statically known. We do
                 // not need this method on the base class.
                 for (ExecutableElement met : ElementFilter.methodsIn(el.getEnclosedElements())) {
