@@ -108,7 +108,7 @@ public final class RegexSyntaxException extends AbstractTruffleException {
     }
 
     @ExportMessage(name = "getSourceLocation")
-    SourceSection getSourceSection() {
+    SourceSection getSourceLocation() {
         return sourceSection;
     }
 
