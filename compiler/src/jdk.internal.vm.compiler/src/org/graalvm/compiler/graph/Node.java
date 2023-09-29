@@ -1351,6 +1351,18 @@ public abstract class Node implements Cloneable, Formattable {
                 assertTrue(expectedType.isAssignableFrom(input.getClass()), "Invalid input type for %s: expected a %s but was a %s", pos, expectedType, input.getClass());
             }
         }
+        /*
+         * Verify properties of input list objects themselves, as opposed to their contents. The
+         * iteration over input positions above visits the contents of input lists but does not
+         * distinguish between null and empty lists.
+         */
+        InputEdges inputEdges = nodeClass.getInputEdges();
+        for (int i = inputEdges.getDirectCount(); i < inputEdges.getCount(); i++) {
+            Object inputList = inputEdges.get(this, i);
+            if (inputList == null) {
+                assertTrue(inputEdges.isOptional(i), "non-optional input list %s cannot be null in %s (fix nullness or use @OptionalInput)", inputEdges.getName(i), this);
+            }
+        }
         return true;
     }
 
