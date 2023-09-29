@@ -45,10 +45,7 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
-import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.Stamp;
@@ -67,7 +64,6 @@ import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
 import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StateSplit;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -114,7 +110,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     protected Providers providers;
     public final SnippetReflectionProvider snippetReflection;
     public final TargetDescription target;
-    private GraphBuilderConfiguration.Plugins graphBuilderPlugins;
+    protected GraphBuilderConfiguration.Plugins graphBuilderPlugins;
     private final DebugHandlersFactory debugHandlersFactory;
 
     /**
@@ -334,8 +330,7 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
 
     @Override
     public boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options) {
-        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method, options);
-        return plugin != null;
+        return false;
     }
 
     @Override
@@ -346,35 +341,6 @@ public abstract class ReplacementsImpl implements Replacements, InlineInvokePlug
     @Override
     public StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
                     AllowAssumptions allowAssumptions, OptionValues options) {
-        assert invokeBci >= 0 : method;
-        if (!inlineControl.allowSubstitution()) {
-            return null;
-        }
-        StructuredGraph result;
-        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method, options);
-        if (plugin != null) {
-            Bytecode code = new ResolvedJavaMethodBytecode(method);
-            try (DebugContext debug = openSnippetDebugContext("Substitution_", method, options)) {
-                result = new IntrinsicGraphBuilder(options, debug, providers, code, invokeBci, allowAssumptions).buildGraph(plugin);
-            }
-        } else {
-            result = null;
-        }
-        return result;
-    }
-
-    @SuppressWarnings("try")
-    @Override
-    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, AllowAssumptions allowAssumptions, Cancellable cancellable) {
-        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method, debug.getOptions());
-        if (plugin != null && !plugin.inlineOnly()) {
-            assert !plugin.isDecorator() : "lookupInvocation shouldn't return decorator plugins";
-            Bytecode code = new ResolvedJavaMethodBytecode(method);
-            OptionValues options = debug.getOptions();
-            Plugins plugins = new Plugins(getGraphBuilderPlugins());
-            GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
-            return new IntrinsicGraphBuilder(options, debug, providers, code, -1, StructuredGraph.AllowAssumptions.YES, config).buildGraph(plugin);
-        }
         return null;
     }
 

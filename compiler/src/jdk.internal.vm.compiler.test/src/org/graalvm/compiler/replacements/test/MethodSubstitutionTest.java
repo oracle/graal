@@ -24,9 +24,6 @@
  */
 package org.graalvm.compiler.replacements.test;
 
-import java.lang.reflect.InvocationTargetException;
-import java.util.Arrays;
-
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Node;
@@ -41,7 +38,6 @@ import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.replacements.nodes.MacroNode;
 
 import jdk.vm.ci.code.InstalledCode;
-import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -126,15 +122,6 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
         }
     }
 
-    protected static StructuredGraph assertNotInGraph(StructuredGraph graph, Class<?> clazz) {
-        for (Node node : graph.getNodes()) {
-            if (clazz.isInstance(node)) {
-                fail(String.format("found unexpected instance of %s in %s: %s", clazz, graph, node.toString()));
-            }
-        }
-        return graph;
-    }
-
     protected void testSubstitution(String testMethodName, Class<?> intrinsicClass, Class<?> holder, String methodName, Class<?>[] parameterTypes, boolean optional, boolean forceCompilation,
                     Object[] args1, Object[] args2) {
         ResolvedJavaMethod realMethod = getResolvedJavaMethod(holder, methodName, parameterTypes);
@@ -159,39 +146,6 @@ public abstract class MethodSubstitutionTest extends GraalCompilerTest {
             assertDeepEquals(expected, invokeSafe(testMethod, null, arg1, arg2));
             // Verify that the generated code and the original produce the same value
             assertDeepEquals(expected, executeVarargsSafe(code, arg1, arg2));
-        }
-    }
-
-    protected static StructuredGraph assertInGraph(StructuredGraph graph, Class<?>... clazzes) {
-        for (Node node : graph.getNodes()) {
-            for (Class<?> clazz : clazzes) {
-                if (clazz.isInstance(node)) {
-                    return graph;
-                }
-            }
-        }
-        if (clazzes.length == 1) {
-            fail("Graph does not contain a node of class " + clazzes[0].getName());
-        } else {
-            fail("Graph does not contain a node of one these classes class " + Arrays.toString(clazzes));
-
-        }
-        return graph;
-    }
-
-    protected static Object executeVarargsSafe(InstalledCode code, Object... args) {
-        try {
-            return code.executeVarargs(args);
-        } catch (InvalidInstalledCodeException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    protected Object invokeSafe(ResolvedJavaMethod method, Object receiver, Object... args) {
-        try {
-            return invoke(method, receiver, args);
-        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | InstantiationException e) {
-            throw new RuntimeException(e);
         }
     }
 

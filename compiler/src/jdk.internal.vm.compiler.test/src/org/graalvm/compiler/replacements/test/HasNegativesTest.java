@@ -25,7 +25,7 @@
 package org.graalvm.compiler.replacements.test;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.test.AddExports;
@@ -34,7 +34,7 @@ import org.junit.Test;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AddExports("java.base/java.lang")
-public class HasNegativesTest extends GraalCompilerTest {
+public class HasNegativesTest extends HotSpotGraalCompilerTest {
 
     protected final String[] testData = new String[]{
                     "A", "\uFF21", "AB", "A", "a", "Ab", "AA", "\uFF21",
@@ -72,7 +72,7 @@ public class HasNegativesTest extends GraalCompilerTest {
 
     @Override
     protected StructuredGraph parseForCompile(ResolvedJavaMethod method, CompilationIdentifier compilationId, OptionValues options) {
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
+        StructuredGraph graph = getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
         if (graph != null) {
             return graph;
         }

@@ -50,6 +50,8 @@ import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugDumpHandler;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.GlobalMetrics;
+import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 import org.graalvm.compiler.serviceprovider.GraalUnsafeAccess;
@@ -290,6 +292,32 @@ public class GraalTest {
         }
         // anything else just use the non-ulps version
         assertDeepEquals(message, expected, actual, equalFloatsOrDoublesDelta());
+    }
+
+    protected static StructuredGraph assertNotInGraph(StructuredGraph graph, Class<?> clazz) {
+        for (Node node : graph.getNodes()) {
+            if (clazz.isInstance(node)) {
+                fail(String.format("found unexpected instance of %s in %s: %s", clazz, graph, node.toString()));
+            }
+        }
+        return graph;
+    }
+
+    protected static StructuredGraph assertInGraph(StructuredGraph graph, Class<?>... clazzes) {
+        for (Node node : graph.getNodes()) {
+            for (Class<?> clazz : clazzes) {
+                if (clazz.isInstance(node)) {
+                    return graph;
+                }
+            }
+        }
+        if (clazzes.length == 1) {
+            fail("Graph does not contain a node of class " + clazzes[0].getName());
+        } else {
+            fail("Graph does not contain a node of one these classes class " + Arrays.toString(clazzes));
+
+        }
+        return graph;
     }
 
     /**
