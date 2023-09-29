@@ -134,6 +134,10 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+        /* Eagerly ensure context insensitive invoke is created before the saturated flag is set. */
+        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false, callerMultiMethodKey);
+        contextInsensitiveInvoke.addInvokeLocation(getSource());
+
         setSaturated();
 
         /*
@@ -165,10 +169,6 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
             }
         }
 
-        /* Link the saturated invoke. */
-        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = getSaturatedTypeFlow(bb);
-        contextInsensitiveInvoke.addInvokeLocation(getSource());
-
         /*
          * Link the call site actual parameters to the saturated invoke actual parameters. The
          * receiver is already set in the saturated invoke.
@@ -183,17 +183,6 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
             /* Link the actual return. */
             contextInsensitiveInvoke.getActualReturn().addUse(bb, actualReturn);
         }
-    }
-
-    /*
-     * If the invoke has just been set to saturated in a different thread, it is possible that the
-     * context insensitive invoke has yet to be created.
-     */
-    @Override
-    public AbstractVirtualInvokeTypeFlow getSaturatedTypeFlow(PointsToAnalysis bb) {
-        assert isSaturated();
-
-        return (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false, callerMultiMethodKey);
     }
 
     @Override

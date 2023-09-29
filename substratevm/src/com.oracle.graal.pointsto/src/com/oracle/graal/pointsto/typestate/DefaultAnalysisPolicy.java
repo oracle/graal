@@ -247,7 +247,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
          * insensitive invoke.
          */
         if (invoke.isSaturated()) {
-            InvokeTypeFlow contextInsensitiveInvoke = invoke.getSaturatedTypeFlow(bb);
+            InvokeTypeFlow contextInsensitiveInvoke = invoke.getTargetMethod().getContextInsensitiveVirtualInvoke(invoke.getCallerMultiMethodKey());
             contextInsensitiveInvoke.getActualReturn().addUse(bb, invoke.getActualReturn());
         }
     }

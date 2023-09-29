@@ -353,15 +353,6 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
      */
     public abstract Collection<AnalysisMethod> getCalleesForReturnLinking();
 
-    /**
-     * Returns the saturated type flow for this method.
-     */
-    public InvokeTypeFlow getSaturatedTypeFlow(PointsToAnalysis bb) {
-        assert isSaturated();
-
-        return getTargetMethod().getContextInsensitiveVirtualInvoke(getCallerMultiMethodKey());
-    }
-
     @Override
     public BytecodePosition getPosition() {
         return getSource();
