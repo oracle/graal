@@ -7,6 +7,7 @@
     name: 'graal-publish-javadoc-' + utils.prefixed_jdk(self.jdk_version),
     environment+: {
       JVMCI_VERSION_CHECK: 'ignore',
+      JDK_VERSION_CHECK: 'ignore',
     },
     run+: [
       ["cd", "./sdk"],
