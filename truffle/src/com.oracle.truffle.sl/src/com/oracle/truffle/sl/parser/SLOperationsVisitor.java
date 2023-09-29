@@ -186,10 +186,13 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
         b.beginTag(StandardTags.RootTag.class);
         b.beginBlock();
 
-        int numArguments = enterFunction(ctx).size();
+        int parameterCount = enterFunction(ctx).size();
 
-        for (int i = 0; i < numArguments; i++) {
-            OperationLocal argLocal = b.createLocal();
+        for (int i = 0; i < parameterCount; i++) {
+            Token paramToken = ctx.IDENTIFIER(i + 1).getSymbol();
+
+            TruffleString paramName = asTruffleString(paramToken, false);
+            OperationLocal argLocal = b.createLocal(paramName);
             locals.add(argLocal);
 
             b.beginStoreLocal(argLocal);
@@ -226,9 +229,9 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
     public Void visitBlock(BlockContext ctx) {
         b.beginBlock();
 
-        int numLocals = enterBlock(ctx).size();
-        for (int i = 0; i < numLocals; i++) {
-            locals.add(b.createLocal());
+        List<TruffleString> newLocals = enterBlock(ctx);
+        for (TruffleString newLocal : newLocals) {
+            locals.add(b.createLocal(newLocal));
         }
 
         for (StatementContext child : ctx.statement()) {
