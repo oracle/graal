@@ -38,7 +38,7 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
 
     private static <T extends OperationsExampleBuilder> OperationsExample parseNodeForPE(Class<? extends OperationsExample> interpreterClass, String rootName, OperationParser<T> builder) {
         OperationsExample result = parseNode(interpreterClass, rootName, builder);
-        result.setBaselineInterpreterThreshold(0); // force interpreter to skip tier 0
+        result.setUncachedInterpreterThreshold(0); // force interpreter to skip tier 0
         return result;
     }
 

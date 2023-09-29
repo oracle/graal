@@ -106,6 +106,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeM
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeParameterElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedTypeMirror;
+import com.oracle.truffle.dsl.processor.model.SpecializationData;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.InstructionImmediate;
@@ -4302,7 +4303,9 @@ public class OperationsNodeFactory implements ElementHelpers {
             // Since an instruction produces at most one value, stackEffect is at most 1.
             int stackEffect = (isVoid ? 0 : 1) - instr.signature.valueCount;
 
-            storeBciInFrameIfNecessary(b);
+            if (customInstructionMayReadBci(instr)) {
+                storeBciInFrameIfNecessary(b);
+            }
 
             if (!tier.isUncached) {
                 // If not in the uncached interpreter, we need to retrieve the node for the call.
@@ -4432,6 +4435,21 @@ public class OperationsNodeFactory implements ElementHelpers {
             if (tier.isUncached || model.storeBciInFrame) {
                 b.statement("ACCESS.setInt(" + localFrame() + ", " + BCI_IDX + ", bci)");
             }
+        }
+
+        /**
+         * To avoid storing the bci in cases when the operation is simple, we use the heuristic that
+         * a node will not escape/read its own bci unless it has a cached value.
+         *
+         * Note: the caches list includes bind values, so @Bind("$root") is included in the check.
+         */
+        private boolean customInstructionMayReadBci(InstructionModel instr) {
+            for (SpecializationData spec : instr.nodeData.getSpecializations()) {
+                if (!spec.getCaches().isEmpty()) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private String customInstructionHelperName(InstructionModel instr) {

@@ -28,6 +28,16 @@ import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.operation.OperationRootNode;
 
 public class ReadBciFromFrameTest {
+    /*
+     * NB: The tests in this class test some undocumented behaviour.
+     *
+     * We only store the bci back into the frame when control can possibly reach a point where the
+     * bci can be read. This happens when exiting the root node (return, throw, yield) or executing
+     * a custom operation that has a specialization with a cached parameter. An example of this
+     * latter case is a @Cached parameter that calls another root node, which then performs a stack
+     * walk. @Bind variables are also included in this criteria, because the operation
+     * could @Bind("$root") and then invoke {@link OperationRootNode#readBciFromFrame} on $root.
+     */
     public OperationNodeWithStoredBci parseNode(OperationParser<OperationNodeWithStoredBciGen.Builder> builder) {
         return OperationNodeWithStoredBciGen.create(OperationConfig.WITH_SOURCE, builder).getNodes().get(0);
     }
@@ -74,8 +84,8 @@ public class ReadBciFromFrameTest {
             b.endRoot();
         });
 
-        assertEquals("foo", root.getCallTarget().call(true));
-        assertEquals("bar", root.getCallTarget().call(false));
+        assertEquals("arg0 ? foo : bar", root.getCallTarget().call(true));
+        assertEquals("arg0 ? foo : bar", root.getCallTarget().call(false));
     }
 
     @Test
