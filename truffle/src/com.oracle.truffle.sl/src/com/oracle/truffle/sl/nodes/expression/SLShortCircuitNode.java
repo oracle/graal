@@ -78,7 +78,7 @@ public abstract class SLShortCircuitNode extends SLExpressionNode {
         try {
             leftValue = left.executeBoolean(frame);
         } catch (UnexpectedResultException e) {
-            throw SLException.typeError(this, -1, e.getResult(), null);
+            throw SLException.typeError(this, "toBoolean", -1, e.getResult());
         }
         boolean rightValue;
         try {
@@ -88,7 +88,7 @@ public abstract class SLShortCircuitNode extends SLExpressionNode {
                 rightValue = false;
             }
         } catch (UnexpectedResultException e) {
-            throw SLException.typeError(this, -1, leftValue, e.getResult());
+            throw SLException.typeError(this, "toBoolean", -1, e.getResult());
         }
         return execute(leftValue, rightValue);
     }
