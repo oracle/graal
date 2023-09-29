@@ -82,7 +82,7 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     }
 
     private static final String NAME_OPERATION = "simple:operation-base";
-    private static final String NAME_OPERATION_BASELINE = "simple:operation-baseline";
+    private static final String NAME_OPERATION_UNCACHED = "simple:operation-uncached";
     private static final String NAME_OPERATION_UNSAFE = "simple:operation-unsafe";
     private static final String NAME_OPERATION_BE = "simple:operation-be";
     private static final String NAME_OPERATION_QUICKENED = "simple:operation-quickened";
@@ -95,7 +95,7 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     private static final String NAME_AST = "simple:ast";
 
     private static final Source SOURCE_OPERATION = Source.create("bm", NAME_OPERATION);
-    private static final Source SOURCE_OPERATION_BASELINE = Source.create("bm", NAME_OPERATION_BASELINE);
+    private static final Source SOURCE_OPERATION_UNCACHED = Source.create("bm", NAME_OPERATION_UNCACHED);
     private static final Source SOURCE_OPERATION_UNSAFE = Source.create("bm", NAME_OPERATION_UNSAFE);
     private static final Source SOURCE_OPERATION_BE = Source.create("bm", NAME_OPERATION_BE);
     private static final Source SOURCE_OPERATION_QUICKENED = Source.create("bm", NAME_OPERATION_QUICKENED);
@@ -107,8 +107,8 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     private static final Source SOURCE_MANUAL_NODED_UNSAFE_NO_BE = Source.create("bm", NAME_MANUAL_NODED_UNSAFE_NO_BE);
     private static final Source SOURCE_AST = Source.create("bm", NAME_AST);
 
-    // Keep the baseline interpreter around so we can manually reset its invocation threshold.
-    private static BMOperationRootNode operationBaselineRootNode;
+    // Keep the uncached interpreter around so we can manually reset its invocation threshold.
+    private static BMOperationRootNode operationUncachedRootNode;
 
     private static final int LOC_I = 4;
     private static final int LOC_SUM = 5;
@@ -331,9 +331,9 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
         BenchmarkLanguage.registerName(NAME_OPERATION, BMOperationRootNodeBase.class, (lang, b) -> {
             createSimpleLoop(lang, b);
         });
-        BenchmarkLanguage.registerName(NAME_OPERATION_BASELINE, BMOperationRootNodeWithBaseline.class, (lang, b) -> {
-            operationBaselineRootNode = createSimpleLoop(lang, b);
-            operationBaselineRootNode.setBaselineInterpreterThreshold(Integer.MAX_VALUE);
+        BenchmarkLanguage.registerName(NAME_OPERATION_UNCACHED, BMOperationRootNodeWithUncached.class, (lang, b) -> {
+            operationUncachedRootNode = createSimpleLoop(lang, b);
+            operationUncachedRootNode.setUncachedInterpreterThreshold(Integer.MAX_VALUE);
         });
         BenchmarkLanguage.registerName(NAME_OPERATION_UNSAFE, BMOperationRootNodeUnsafe.class, (lang, b) -> {
             createSimpleLoop(lang, b);
@@ -538,8 +538,8 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
          * several orders of magnitude less than this threshold, so it should never transition to
          * the cached interpreter.
          */
-        if (operationBaselineRootNode != null) {
-            operationBaselineRootNode.setBaselineInterpreterThreshold(Integer.MAX_VALUE);
+        if (operationUncachedRootNode != null) {
+            operationUncachedRootNode.setUncachedInterpreterThreshold(Integer.MAX_VALUE);
         }
     }
 
@@ -563,8 +563,8 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     }
 
     @Benchmark
-    public void operationWithBaseline() {
-        doEval(SOURCE_OPERATION_BASELINE);
+    public void operationWithUncached() {
+        doEval(SOURCE_OPERATION_UNCACHED);
     }
 
     @Benchmark

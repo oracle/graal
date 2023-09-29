@@ -5,7 +5,6 @@ import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.test.ExpectError;
 
 @OperationProxy.Proxyable
-@ExpectError("Message redirected from element NonPublicGuardExpressionOperationProxy.addGuarded(int, int):\nError parsing expression 'guardCondition()': The method guardCondition() is not visible.")
 public final class NonPublicGuardExpressionOperationProxy {
     @Specialization(guards = "guardCondition()")
     public static int addGuarded(int x, int y) {

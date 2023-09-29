@@ -90,7 +90,7 @@ public class OperationsModel extends Template implements PrettyPrintable {
     private final LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
 
     public DeclaredType languageClass;
-    public boolean enableBaselineInterpreter;
+    public boolean enableUncachedInterpreter;
     public boolean enableSerialization;
     public boolean allowUnsafe;
     public boolean enableYield;
@@ -294,8 +294,7 @@ public class OperationsModel extends Template implements PrettyPrintable {
 
     public InstructionModel instruction(InstructionKind kind, String name) {
         if (instructions.containsKey(name)) {
-            addError("Multiple instructions declared with name %s. Instruction names must be distinct.", name);
-            return null;
+            throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", name));
         }
         InstructionModel instr = new InstructionModel(instructionId++, kind, name);
         instructions.put(name, instr);
@@ -339,7 +338,7 @@ public class OperationsModel extends Template implements PrettyPrintable {
     }
 
     public boolean needsBciSlot() {
-        return enableBaselineInterpreter || storeBciInFrame;
+        return enableUncachedInterpreter || storeBciInFrame;
     }
 
     @Override

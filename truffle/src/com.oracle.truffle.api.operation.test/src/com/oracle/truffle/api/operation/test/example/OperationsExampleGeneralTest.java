@@ -853,7 +853,7 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
 
             b.endRoot();
         });
-        node.setBaselineInterpreterThreshold(16);
+        node.setUncachedInterpreterThreshold(16);
         RootCallTarget root = node.getCallTarget();
 
         // Run enough times to trigger cached execution.

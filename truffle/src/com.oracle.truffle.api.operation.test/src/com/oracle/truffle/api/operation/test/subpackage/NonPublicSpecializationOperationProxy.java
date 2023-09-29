@@ -12,13 +12,11 @@ import com.oracle.truffle.api.operation.test.ExpectError;
 @OperationProxy.Proxyable
 public final class NonPublicSpecializationOperationProxy {
     @Specialization
-    @ExpectError("Operation specialization is not visible to the generated Operation node.")
     static int add(int x, int y) {
         return x + y;
     }
 
     @Fallback
-    @ExpectError("Operation specialization is not visible to the generated Operation node.")
     @SuppressWarnings("unused")
     static Object fallback(Object a, Object b) {
         return a;

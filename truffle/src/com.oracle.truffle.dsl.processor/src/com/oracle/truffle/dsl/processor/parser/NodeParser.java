@@ -1006,7 +1006,7 @@ public final class NodeParser extends AbstractParser<NodeData> {
 
     }
 
-    static boolean isGenerateUncached(TypeElement templateType) {
+    public static boolean isGenerateUncached(TypeElement templateType) {
         AnnotationMirror annotation = findGenerateAnnotation(templateType.asType(), ProcessorContext.getInstance().getTypes().GenerateUncached);
         Boolean value = Boolean.FALSE;
         if (annotation != null) {

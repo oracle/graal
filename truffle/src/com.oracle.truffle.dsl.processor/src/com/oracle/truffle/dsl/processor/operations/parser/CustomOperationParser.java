@@ -110,9 +110,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
     public static CustomOperationParser forProxyValidation() {
         ProcessorContext context = ProcessorContext.getInstance();
+        CodeTypeElement dummyOperationsClass = new CodeTypeElement(Set.of(), ElementKind.CLASS, null, "DummyOperationsClass");
+        dummyOperationsClass.setSuperClass(context.getTypes().Node);
+        dummyOperationsClass.setEnclosingElement(new GeneratedPackageElement("dummy"));
         return new CustomOperationParser(
                         context,
-                        new OperationsModel(context, new CodeTypeElement(Set.of(), ElementKind.CLASS, null, "DummyOperationsClass"), null, ""),
+                        new OperationsModel(context, dummyOperationsClass, null, ""),
                         context.getTypes().OperationProxy_Proxyable,
                         true);
     }
@@ -151,10 +154,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
         AnnotationMirror mirror = annotationMirrors.getFirst();
 
-        parseCustomOperation(typeElement, mirror);
-
-        // In validation mode there's no code to generate, so don't return the model.
-        return null;
+        return parseCustomOperation(typeElement, mirror);
     }
 
     public CustomOperationModel parseCustomOperation(TypeElement typeElement, AnnotationMirror mirror) {
@@ -255,8 +255,8 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             if (specialization.getModifiers().contains(Modifier.PRIVATE)) {
                 customOperation.addError(specialization, "Operation specialization cannot be private.");
             } else if (!validationOnly && !ElementUtils.isVisible(parent.getTemplateType(), specialization)) {
-                // We can only perform visibility checks during generation
-                customOperation.addError(specialization, "Operation specialization is not visible to the generated Operation node.");
+                // We can only perform visibility checks during generation.
+                parent.addError(mirror, null, "Operation %s's specialization \"%s\" must be visible from this node.", typeElement.getSimpleName(), specialization.getSimpleName());
             }
         }
 
@@ -293,12 +293,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         }
 
         // Use @GenerateUncached so that FlatNodeGenFactory generates an uncached execute method.
-        // The baseline interpreter will call this method.
-        if (shouldGenerateBaseline(mirror)) {
+        // The uncached interpreter will call this method.
+        if (shouldGenerateUncached(typeElement)) {
             nodeType.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
         }
 
-        nodeType.addAll(createExecuteMethods(signature, mirror));
+        nodeType.addAll(createExecuteMethods(signature, typeElement));
 
         // Add @NodeChildren to this node for each argument to the operation. These get used by
         // FlatNodeGenFactory to synthesize specialization logic. We remove the fields afterwards.
@@ -388,7 +388,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return ex;
     }
 
-    private List<CodeExecutableElement> createExecuteMethods(Signature signature, AnnotationMirror mirror) {
+    private List<CodeExecutableElement> createExecuteMethods(Signature signature, TypeElement typeElement) {
         List<CodeExecutableElement> result = new ArrayList<>();
 
         if (signature.isVoid) {
@@ -401,7 +401,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
             }
         }
 
-        if (shouldGenerateBaseline(mirror)) {
+        if (shouldGenerateUncached(typeElement)) {
             if (signature.isVoid) {
                 result.add(createExecuteMethod(signature, "executeUncached", context.getType(void.class), false, true));
             } else {
@@ -440,33 +440,40 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         String namePrefix = isShortCircuit() ? "sc." : "c.";
 
         InstructionModel instr = parent.instruction(kind, namePrefix + nameSuffix);
-        if (instr == null) {
-            return null;
-        }
         instr.nodeType = nodeType;
         instr.signature = signature;
 
-        try {
-            NodeParser parser = NodeParser.createOperationParser(parent.getTemplateType());
-            instr.nodeData = parser.parse(nodeType, false);
-        } catch (Throwable ex) {
-            StringWriter wr = new StringWriter();
-            ex.printStackTrace(new PrintWriter(wr));
-            customOperation.addError("Error generating instruction for Operation node %s: \n%s", parent.getName(), wr.toString());
-            return instr;
-        }
+        /*
+         * Here, we use the NodeParser to validate the node specification. A proxied node will
+         * already be validated during regular DSL processing, but we also need to ensure any
+         * cache/guard expressions are visible to the generated operation node.
+         *
+         * We skip this step during Proxyable validation since we don't have an operation node to
+         * check visibility against.
+         */
+        if (!validationOnly) {
+            try {
+                NodeParser parser = NodeParser.createOperationParser(parent.getTemplateType());
+                instr.nodeData = parser.parse(nodeType, false);
+            } catch (Throwable ex) {
+                StringWriter wr = new StringWriter();
+                ex.printStackTrace(new PrintWriter(wr));
+                customOperation.addError("Error generating instruction for Operation node %s: \n%s", parent.getName(), wr.toString());
+                return instr;
+            }
 
-        if (instr.nodeData == null) {
-            customOperation.addError("Error generating instruction for Operation node %s. This is likely a bug in the Operation DSL.", parent.getName());
-            return instr;
-        }
+            if (instr.nodeData == null) {
+                customOperation.addError("Error generating instruction for Operation node %s. This is likely a bug in the Operation DSL.", parent.getName());
+                return instr;
+            }
 
-        if (instr.nodeData.getTypeSystem().isDefault()) {
-            instr.nodeData.setTypeSystem(parent.typeSystem);
-        }
+            if (instr.nodeData.getTypeSystem().isDefault()) {
+                instr.nodeData.setTypeSystem(parent.typeSystem);
+            }
 
-        instr.nodeData.redirectMessages(customOperation);
-        instr.nodeData.redirectMessagesOnGeneratedElements(customOperation);
+            instr.nodeData.redirectMessages(parent);
+            instr.nodeData.redirectMessagesOnGeneratedElements(parent);
+        }
 
         if (isShortCircuit()) {
             instr.continueWhen = (boolean) ElementUtils.getAnnotationValue(customOperation.getTemplateTypeAnnotation(), "continueWhen").getValue();
@@ -711,11 +718,17 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return ElementUtils.findAnnotationMirror(ex, types.Specialization) != null || ElementUtils.findAnnotationMirror(ex, types.Fallback) != null;
     }
 
-    private boolean shouldGenerateBaseline(AnnotationMirror mirror) {
+    private boolean shouldGenerateUncached(TypeElement typeElement) {
         if (validationOnly) {
-            return ElementUtils.getAnnotationValue(Boolean.class, mirror, "allowBaseline");
+            /*
+             * NB: When we're just validating a Proxyable node, we do not know whether it'll be used
+             * in an uncached interpreter. However, a Proxyable can only be used in an uncached
+             * interpreter when it declares @GenerateUncached, so this annotation suffices for
+             * validation.
+             */
+            return NodeParser.isGenerateUncached(typeElement);
         } else {
-            return parent.enableBaselineInterpreter;
+            return parent.enableUncachedInterpreter;
         }
     }
 

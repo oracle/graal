@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.dsl.TypeSystem;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
@@ -243,7 +244,7 @@ public class ErrorTests {
                     "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.NonStaticMemberOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.BadSignatureOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.operation.test.ErrorTests.Underscored_Operation_Proxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Could not use com.oracle.truffle.api.operation.test.ErrorTests.UnproxyableOperationProxy as an operation proxy: the class must be annotated with com.oracle.truffle.api.operation.OperationProxy.Proxyable.",
+                    "Could not use com.oracle.truffle.api.operation.test.ErrorTests.UnproxyableOperationProxy as an operation proxy: the class must be annotated with @OperationProxy.Proxyable.",
     })
     @OperationProxy(NonFinalOperationProxy.class)
     @OperationProxy(NonStaticInnerOperationProxy.class)
@@ -354,8 +355,11 @@ public class ErrorTests {
     }
 
     @GenerateOperations(languageClass = ErrorLanguage.class)
-    @ExpectError({"Encountered errors using com.oracle.truffle.api.operation.test.subpackage.NonPublicSpecializationOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
-                    "Encountered errors using com.oracle.truffle.api.operation.test.subpackage.NonPublicGuardExpressionOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed."
+    @ExpectError({
+                    "Operation NonPublicSpecializationOperationProxy's specialization \"add\" must be visible from this node.",
+                    "Operation NonPublicSpecializationOperationProxy's specialization \"fallback\" must be visible from this node.",
+                    "Message redirected from element com.oracle.truffle.api.operation.test.subpackage.NonPublicGuardExpressionOperationProxy.addGuarded(int, int):\n" +
+                                    "Error parsing expression 'guardCondition()': The method guardCondition() is not visible."
     })
     @OperationProxy(PackagePrivateSpecializationOperationProxy.class)
     @OperationProxy(NonPublicSpecializationOperationProxy.class)
@@ -409,8 +413,6 @@ public class ErrorTests {
             }
         }
     }
-
-// Proxy node definitions
 
     @ExpectError("Operation class must be declared final. Inheritance in operation specifications is not supported.")
     @OperationProxy.Proxyable
@@ -514,28 +516,27 @@ public class ErrorTests {
         }
     }
 
-    @GenerateOperations(languageClass = ErrorLanguage.class, enableBaselineInterpreter = true)
-    @ExpectError({
-                    "Could not use com.oracle.truffle.api.operation.test.ErrorTests.NoBaselineOperationProxy as an operation proxy: the class does not allow a baseline implementation.",
-    })
-    @OperationProxy(BaselineOperationProxy.class)
-    @OperationProxy(NoBaselineOperationProxy.class)
-    public abstract static class OperationErrorBaselineTests extends RootNode implements OperationRootNode {
-        protected OperationErrorBaselineTests(TruffleLanguage<?> language, FrameDescriptor builder) {
+    @GenerateOperations(languageClass = ErrorLanguage.class, enableUncachedInterpreter = true)
+    @ExpectError({"Could not use com.oracle.truffle.api.operation.test.ErrorTests.NoUncachedOperationProxy as an operation proxy: the class must be annotated with @GenerateUncached when an uncached interpreter is requested."})
+    @OperationProxy(UncachedOperationProxy.class)
+    @OperationProxy(NoUncachedOperationProxy.class)
+    public abstract static class OperationErrorUncachedTests extends RootNode implements OperationRootNode {
+        protected OperationErrorUncachedTests(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
     }
 
-    @OperationProxy.Proxyable(allowBaseline = true)
-    public static final class BaselineOperationProxy {
+    @OperationProxy.Proxyable
+    @GenerateUncached
+    public static final class UncachedOperationProxy {
         @Specialization
         static int add(int x, int y) {
             return x + y;
         }
     }
 
-    @OperationProxy.Proxyable(allowBaseline = false)
-    public static final class NoBaselineOperationProxy {
+    @OperationProxy.Proxyable
+    public static final class NoUncachedOperationProxy {
         @Specialization
         static int add(int x, int y) {
             return x + y;

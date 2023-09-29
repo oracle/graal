@@ -83,6 +83,7 @@ import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsMo
 import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel.QuickenDecision;
 import com.oracle.truffle.dsl.processor.operations.model.OptimizationDecisionsModel.SuperInstructionDecision;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
+import com.oracle.truffle.dsl.processor.parser.NodeParser;
 import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
 import org.graalvm.shadowed.org.json.JSONArray;
 import org.graalvm.shadowed.org.json.JSONException;
@@ -184,7 +185,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
     @SuppressWarnings("unchecked")
     private void parseOperationsModel(TypeElement typeElement, OperationsModel model, AnnotationMirror generateOperationsMirror) {
         model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass").getValue();
-        model.enableBaselineInterpreter = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableBaselineInterpreter", true).getValue();
+        model.enableUncachedInterpreter = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableUncachedInterpreter", true).getValue();
         model.enableSerialization = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableSerialization", true).getValue();
         model.allowUnsafe = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "allowUnsafe", true).getValue();
         model.enableYield = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableYield", true).getValue();
@@ -268,7 +269,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
                         ElementUtils.findMethod(types.BytecodeOSRNode, "setOSRMetadata"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "storeParentFrameInArguments"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "restoreParentFrameFromArguments"),
-                        ElementUtils.findMethod(types.OperationRootNode, "setBaselineInterpreterThreshold"),
+                        ElementUtils.findMethod(types.OperationRootNode, "setUncachedInterpreterThreshold"),
                         ElementUtils.findMethod(types.OperationRootNode, "materializeInstrumentTree"),
                         ElementUtils.findMethod(types.OperationRootNode, "getSourceSectionAtBci"),
                         ElementUtils.findMethod(types.OperationRootNode, "findBciOfOperationNode"),
@@ -391,10 +392,11 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
             TypeElement te = (TypeElement) ((DeclaredType) proxiedType).asElement();
             AnnotationMirror proxyable = ElementUtils.findAnnotationMirror(te.getAnnotationMirrors(), types.OperationProxy_Proxyable);
             if (proxyable == null) {
-                model.addError(mir, mirrorValue, "Could not use %s as an operation proxy: the class must be annotated with %s.", te.getQualifiedName(), types.OperationProxy_Proxyable);
-            }
-            if (model.enableBaselineInterpreter && !ElementUtils.getAnnotationValue(Boolean.class, proxyable, "allowBaseline")) {
-                model.addError(mir, mirrorValue, "Could not use %s as an operation proxy: the class does not allow a baseline implementation.", te.getQualifiedName());
+                model.addError(mir, mirrorValue, "Could not use %s as an operation proxy: the class must be annotated with @%s.%s.", te.getQualifiedName(), getSimpleName(types.OperationProxy),
+                                getSimpleName(types.OperationProxy_Proxyable));
+            } else if (model.enableUncachedInterpreter && !NodeParser.isGenerateUncached(te)) {
+                model.addError(mir, mirrorValue, "Could not use %s as an operation proxy: the class must be annotated with @%s when an uncached interpreter is requested.", te.getQualifiedName(),
+                                getSimpleName(types.GenerateUncached));
             }
 
             CustomOperationModel customOperation = CustomOperationParser.forCodeGeneration(model, types.OperationProxy_Proxyable).parseCustomOperation(te, mir);
@@ -433,9 +435,6 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
             for (SuperInstructionDecision decision : model.optimizationDecisions.superInstructionDecisions) {
                 String resultingInstructionName = "si." + String.join(".", decision.instructions);
                 InstructionModel instr = model.instruction(InstructionKind.SUPERINSTRUCTION, resultingInstructionName);
-                if (instr == null) {
-                    continue;
-                }
                 instr.subInstructions = new ArrayList<>();
 
                 for (String instrName : decision.instructions) {

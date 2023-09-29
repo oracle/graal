@@ -43,6 +43,7 @@ package com.oracle.truffle.api.operation;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
@@ -80,7 +81,8 @@ public final class ContinuationResult {
     }
 
     @GenerateInline(true)
-    @OperationProxy.Proxyable(allowBaseline = true)
+    @GenerateUncached
+    @OperationProxy.Proxyable
     public abstract static class ContinueNode extends Node {
 
         public final Object execute(ContinuationResult result, Object value) {

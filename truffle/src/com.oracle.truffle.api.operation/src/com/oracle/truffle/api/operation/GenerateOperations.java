@@ -75,7 +75,7 @@ import com.oracle.truffle.api.TruffleLanguage;
  * contains (among other things) a full bytecode encoding, an optimizing interpreter, and a
  * {@code Builder} class to generate and validate bytecode automatically.
  *
- * A node can opt in to additional features, like a baseline interpreter, serialization and
+ * A node can opt in to additional features, like an uncached interpreter, serialization and
  * deserialization, coroutines, and support for quickened instructions and superinstructions. This
  * annotation controls which features are included in the generated code.
  *
@@ -93,15 +93,15 @@ public @interface GenerateOperations {
     Class<? extends TruffleLanguage<?>> languageClass();
 
     /**
-     * Whether to generate a baseline interpreter. The baseline interpreter improves start-up
+     * Whether to generate an uncached interpreter. The uncached interpreter improves start-up
      * performance by executing {@link com.oracle.truffle.api.dsl.GenerateUncached uncached} nodes
      * rather than specializing nodes.
      *
      * The node will transition to a specializing interpreter after enough invocations/back-edges
-     * (as determined by the {@link OperationRootNode#setBaselineInterpreterThreshold baseline
+     * (as determined by the {@link OperationRootNode#setUncachedInterpreterThreshold uncached
      * interpreter threshold}).
      */
-    boolean enableBaselineInterpreter() default false;
+    boolean enableUncachedInterpreter() default false;
 
     /**
      * Whether the generated interpreter should support serialization and deserialization.

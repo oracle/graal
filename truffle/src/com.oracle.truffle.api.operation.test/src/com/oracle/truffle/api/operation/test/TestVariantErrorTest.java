@@ -1,6 +1,7 @@
 package com.oracle.truffle.api.operation.test;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.Node;
@@ -51,11 +52,11 @@ public class TestVariantErrorTest {
     // no errors expected
     @GenerateOperationsTestVariants({
                     @Variant(suffix = "Tier1", configuration = @GenerateOperations(languageClass = ErrorLanguage.class)),
-                    @Variant(suffix = "Tier0", configuration = @GenerateOperations(languageClass = ErrorLanguage.class, enableBaselineInterpreter = true))
+                    @Variant(suffix = "Tier0", configuration = @GenerateOperations(languageClass = ErrorLanguage.class, enableUncachedInterpreter = true))
     })
     @OperationProxy(ConstantOperation.class)
-    public abstract static class DifferentBaselineInterpreters extends RootNode implements OperationRootNode {
-        protected DifferentBaselineInterpreters(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    public abstract static class DifferentUncachedInterpreters extends RootNode implements OperationRootNode {
+        protected DifferentUncachedInterpreters(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
     }
@@ -77,7 +78,8 @@ public class TestVariantErrorTest {
 }
 
 @SuppressWarnings("truffle-inlining")
-@OperationProxy.Proxyable(allowBaseline = true)
+@OperationProxy.Proxyable
+@GenerateUncached
 abstract class ConstantOperation extends Node {
     public abstract long execute();
 
