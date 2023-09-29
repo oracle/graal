@@ -52,6 +52,7 @@ import com.oracle.truffle.api.frame.FrameInstance.FrameAccess;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.operation.OperationRootNode;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.sl.SLLanguage;
@@ -101,11 +102,17 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
                 }
                 str.appendStringUncached(FRAME);
                 str.appendStringUncached(getRootNodeName(rn));
+                boolean isOperation = rn instanceof OperationRootNode;
                 FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
                 int count = frameDescriptor.getNumberOfSlots();
                 for (int i = 0; i < count; i++) {
-                    str.appendStringUncached(SEPARATOR);
                     TruffleString slotName = (TruffleString) frameDescriptor.getSlotName(i);
+                    if (isOperation && slotName == null) {
+                        // The operation interpreter allocates space for its own locals. We can
+                        // ignore those.
+                        continue;
+                    }
+                    str.appendStringUncached(SEPARATOR);
                     str.appendStringUncached(slotName == null ? UNKNOWN : slotName);
                     str.appendStringUncached(EQUALS);
                     str.appendStringUncached(SLStrings.fromObject(frame.getValue(i)));

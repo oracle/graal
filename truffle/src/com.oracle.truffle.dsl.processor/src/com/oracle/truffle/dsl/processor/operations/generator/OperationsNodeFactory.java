@@ -168,6 +168,9 @@ public class OperationsNodeFactory implements ElementHelpers {
     // Singleton field for accessing arrays and the frame.
     private final CodeVariableElement fastAccess;
 
+    // Represents the index that user locals start from. Depends on the number of reserved slots.
+    private int userLocalsStartIndex;
+
     public OperationsNodeFactory(OperationsModel model) {
         this.model = model;
         operationNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.getName(), model.templateType.asType());
@@ -370,6 +373,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         result.add(createInitializedVariable(Set.of(PRIVATE, STATIC, FINAL), int.class, USER_LOCALS_START_IDX, reserved + ""));
+        userLocalsStartIndex = reserved;
 
         return result;
     }
@@ -1494,6 +1498,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeTypeElement bytecodeLocation = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "BytecodeLocation");
 
         TypeMirror unresolvedLabelsType = generic(HashMap.class, types.OperationLabel, generic(context.getDeclaredType(ArrayList.class), bytecodeLocation.asType()));
+        TypeMirror localNamesType = generic(ArrayList.class, context.getDeclaredType(Object.class));
 
         // When we enter a FinallyTry, these fields get stored on the FinallyTryContext.
         // On exit, they are restored.
@@ -1524,6 +1529,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "opSeqNum"),
                         new CodeVariableElement(Set.of(PRIVATE), finallyTryContext.asType(), "finallyTryContext"),
                         new CodeVariableElement(Set.of(PRIVATE), constantPool.asType(), "constantPool"),
+                        new CodeVariableElement(Set.of(PRIVATE), localNamesType, "localNames"),
                         // must be last
                         new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState")));
 
@@ -1778,6 +1784,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             builder.addAll(builderState);
 
             builder.add(createCreateLocal());
+            builder.add(createCreateLocalWithName());
             builder.add(createCreateLabel());
             builder.add(createRegisterUnresolvedLabel());
             builder.add(createResolveUnresolvedLabel());
@@ -2061,13 +2068,25 @@ public class OperationsNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.OperationLocal, "createLocal");
             CodeTreeBuilder b = ex.createBuilder();
 
+            b.startReturn().startCall("createLocal").string("null").end(2);
+
+            return ex;
+        }
+
+        private CodeExecutableElement createCreateLocalWithName() {
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.OperationLocal, "createLocal");
+            ex.addParameter(new CodeVariableElement(context.getDeclaredType(Object.class), "name"));
+            CodeTreeBuilder b = ex.createBuilder();
+
             if (model.enableSerialization) {
                 b.startIf().string("serialization != null").end().startBlock();
                 serializationWrapException(b, () -> {
                     serializationElements.writeShort(b, serializationElements.codeCreateLocal);
+                    // TODO: serialize the name
                 });
                 b.end();
             }
+            b.statement("localNames.add(name)");
             b.startReturn().startNew(operationLocalImpl.asType()).string("numLocals++").end(2);
 
             return ex;
@@ -2367,6 +2386,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.statement("numLabels = 0");
             b.statement("numNodes = 0");
             b.statement("constantPool = new ConstantPool()");
+            b.statement("localNames = new ArrayList<>()");
 
             b.startIf().string("withSource").end().startBlock();
             b.statement("sourceIndexStack = new int[1]");
@@ -2690,10 +2710,30 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.cast(types.TruffleLanguage).string("rootData[1]");
             b.end();
 
+            // Construct the frame descriptor.
             CodeTree newBuilderCall = CodeTreeBuilder.createBuilder().startStaticCall(types.FrameDescriptor, "newBuilder").string("numLocals + maxStack").end().build();
             b.declaration(types.FrameDescriptor_Builder, "fdb", newBuilderCall);
+
+            if (userLocalsStartIndex > 0) {
+                // Allocate reserved slots
+                b.startStatement().startCall("fdb.addSlots");
+                b.string(USER_LOCALS_START_IDX);
+                b.staticReference(types.FrameSlotKind, "Illegal");
+                b.end(2);
+            }
+
+            // Allocate user locals
+            b.startFor().string("Object name : localNames").end().startBlock();
+            b.startStatement().startCall("fdb.addSlot");
+            b.staticReference(types.FrameSlotKind, "Illegal");
+            b.string("name");
+            b.string("null"); // description
+            b.end(2);
+            b.end();
+
+            // Allocate stack
             b.startStatement().startCall("fdb.addSlots");
-            b.string("numLocals + maxStack");
+            b.string("maxStack");
             b.staticReference(types.FrameSlotKind, "Illegal");
             b.end(2);
 
