@@ -156,9 +156,14 @@ public abstract class Log implements AutoCloseable {
     public abstract Log string(byte[] value, int offset, int length);
 
     /**
-     * Prints the C string.
+     * Prints the null-terminated C string.
      */
     public abstract Log string(CCharPointer value);
+
+    /**
+     * Prints the C string.
+     */
+    public abstract Log string(CCharPointer value, int length);
 
     /**
      * Prints the provided character.
@@ -428,6 +433,11 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log string(CCharPointer value) {
+            return this;
+        }
+
+        @Override
+        public Log string(CCharPointer bytes, int length) {
             return this;
         }
 

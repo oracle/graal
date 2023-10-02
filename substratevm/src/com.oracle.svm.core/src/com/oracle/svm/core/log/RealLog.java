@@ -179,6 +179,13 @@ public class RealLog extends Log {
         return this;
     }
 
+    @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
+    public Log string(CCharPointer bytes, int length) {
+        assert bytes.isNonNull();
+        assert length >= 0;
+        return rawBytes(bytes, WordFactory.unsigned(length));
+    }
+
     @Override
     @NeverInline("Logging is always slow-path code")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate when logging.")
@@ -661,7 +668,6 @@ public class RealLog extends Log {
                 printRemainingFramesCount(remaining);
             }
         }
-        newline();
         return this;
     }
 

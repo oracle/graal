@@ -166,7 +166,13 @@ public final class Space {
     }
 
     public void logUsage(Log log, boolean logIfEmpty) {
-        UnsignedWord chunkBytes = getChunkBytes();
+        UnsignedWord chunkBytes;
+        if (isEdenSpace() && !VMOperation.isGCInProgress()) {
+            chunkBytes = HeapImpl.getAccounting().getEdenUsedBytes();
+        } else {
+            chunkBytes = getChunkBytes();
+        }
+
         if (logIfEmpty || chunkBytes.aboveThan(0)) {
             log.string(getName()).string(": ").rational(chunkBytes, GCImpl.M, 2).string("M (")
                             .rational(accounting.getAlignedChunkBytes(), GCImpl.M, 2).string("M in ").signed(accounting.getAlignedChunkCount()).string(" aligned chunks, ")

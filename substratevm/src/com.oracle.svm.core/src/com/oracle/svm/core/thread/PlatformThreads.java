@@ -629,7 +629,7 @@ public abstract class PlatformThreads {
             try {
                 thread.interrupt(); // not final and subclasses can unexpectedly throw
             } catch (Throwable t) {
-                trace.string(" threw (ignored): ").exception(t);
+                trace.string(" threw (ignored): ").exception(t).newline();
             }
             trace.newline().flush();
 
@@ -670,7 +670,7 @@ public abstract class PlatformThreads {
                     pool.shutdownNow();
                 }
             } catch (Throwable t) {
-                trace.string(" threw (ignored): ").exception(t);
+                trace.string(" threw (ignored): ").exception(t).newline();
             }
             trace.newline().flush();
             trace.string("  shutdown initiated: ").object(pool).newline().flush();
