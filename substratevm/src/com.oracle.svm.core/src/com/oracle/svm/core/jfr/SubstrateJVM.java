@@ -697,6 +697,7 @@ public class SubstrateJVM {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
     }
 
+<<<<<<< HEAD
     public void setExcluded(Thread thread, boolean excluded) {
         JfrThreadLocal.setExcluded(thread, excluded);
     }
@@ -717,6 +718,8 @@ public class SubstrateJVM {
         return JfrThreadLocal.isCurrentThreadExcluded();
     }
 
+=======
+>>>>>>> d67f0ea1509 (Use PlatformThreads.getCurrentThreadOrNull() instead of Thread.currentThread() in JFR.)
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
         JfrBeginRecordingOperation() {
             super(VMOperationInfos.get(JfrBeginRecordingOperation.class, "JFR begin recording", SystemEffect.SAFEPOINT));

@@ -25,11 +25,7 @@
 package com.oracle.svm.core.jfr;
 
 import java.util.List;
-import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.ProcessProperties;
 
 import com.oracle.svm.core.Containers;
@@ -38,34 +34,18 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jfr.traceid.JfrTraceId;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.jfr.internal.JVM;
-import jdk.jfr.internal.LogTag;
 
 @SuppressWarnings({"static-method", "unused"})
-@TargetClass(value = jdk.jfr.internal.JVM.class, onlyWith = HasJfrSupport.class)
-public final class Target_jdk_jfr_internal_JVM {
-    // Checkstyle: stop
-    @Alias //
-    @TargetElement(onlyWith = HasChunkRotationMonitorField.class) //
-    static Object CHUNK_ROTATION_MONITOR;
-
-    @Alias //
-    @TargetElement(onlyWith = HasFileDeltaChangeField.class) //
-    static Object FILE_DELTA_CHANGE;
-    // Checkstyle: resume
+@TargetClass(value = JVM.class, onlyWith = {JDK21OrEarlier.class, HasJfrSupport.class})
+final class Target_jdk_jfr_internal_JVM_JDK21 {
 
     @Alias //
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     private volatile boolean nativeOK;
-
-    /** See {@link JVM#registerNatives}. */
-    @Substitute
-    private static void registerNatives() {
-    }
 
     @Substitute
     public void markChunkFinal() {
@@ -91,12 +71,6 @@ public final class Target_jdk_jfr_internal_JVM {
         SubstrateJVM.get().endRecording();
     }
 
-    /** See {@link JVM#counterTime}. */
-    @Substitute
-    public static long counterTime() {
-        return JfrTicks.elapsedTicks();
-    }
-
     /** See {@link JVM#emitEvent}. */
     @Substitute
     public boolean emitEvent(long eventTypeId, long timestamp, long when) {
@@ -113,17 +87,6 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     public long getUnloadedEventClassCount() {
         return 0;
-    }
-
-    /** See {@link JVM#getClassId}. Intrinsified on HotSpot. */
-    @Substitute
-    @Uninterruptible(reason = "Needed for SubstrateJVM.getClassId().")
-    public static long getClassId(Class<?> clazz) {
-        /*
-         * The result is only valid until the epoch changes but this is fine because EventWriter
-         * instances are invalidated when the epoch changes.
-         */
-        return SubstrateJVM.get().getClassId(clazz);
     }
 
     /** See {@link JVM#getPid}. */
@@ -154,24 +117,6 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     public long getTicksFrequency() {
         return JfrTicks.getTicksFrequency();
-    }
-
-    /** See {@link JVM#log}. */
-    @Substitute
-    public static void log(int tagSetId, int level, String message) {
-        SubstrateJVM.get().log(tagSetId, level, message);
-    }
-
-    /** See {@link JVM#logEvent}. */
-    @Substitute
-    public static void logEvent(int level, String[] lines, boolean system) {
-        SubstrateJVM.get().logEvent(level, lines, system);
-    }
-
-    /** See {@link JVM#subscribeLogLevel}. */
-    @Substitute
-    public static void subscribeLogLevel(LogTag lt, int tagSetId) {
-        SubstrateJVM.get().subscribeLogLevel(lt, tagSetId);
     }
 
     /** See {@link JVM#retransformClasses}. */
@@ -299,32 +244,9 @@ public final class Target_jdk_jfr_internal_JVM {
         return JfrTraceId.getTraceId(clazz);
     }
 
-    /** See {@link JVM#getEventWriter}. */
-    @Substitute
-    public static Object getEventWriter() {
-        return SubstrateJVM.get().getEventWriter();
-    }
-
-    /** See {@link JVM#newEventWriter}. */
-    @Substitute
-    public static Target_jdk_jfr_internal_event_EventWriter newEventWriter() {
-        return SubstrateJVM.get().newEventWriter();
-    }
-
-    /** See {@link JVM#flush}. */
-    @Substitute
-    public static void flush(Target_jdk_jfr_internal_event_EventWriter writer, int uncommittedSize, int requestedSize) {
-        SubstrateJVM.get().flush(writer, uncommittedSize, requestedSize);
-    }
-
     @Substitute
     public void flush() {
         SubstrateJVM.get().flush();
-    }
-
-    @Substitute
-    public static long commit(long nextPosition) {
-        return SubstrateJVM.get().commit(nextPosition);
     }
 
     /** See {@link JVM#setRepositoryLocation}. */
@@ -349,12 +271,6 @@ public final class Target_jdk_jfr_internal_JVM {
     @Substitute
     public void abort(String errorMsg) {
         SubstrateJVM.get().abort(errorMsg);
-    }
-
-    /** See {@link JVM#addStringConstant}. */
-    @Substitute
-    public static boolean addStringConstant(long id, String s) {
-        return false;
     }
 
     /** See {@link JVM#uncaughtException}. */
@@ -389,36 +305,18 @@ public final class Target_jdk_jfr_internal_JVM {
     }
 
     @Substitute
-<<<<<<< HEAD
     public void include(Thread thread) {
-        SubstrateJVM.get().setExcluded(thread, false);
-    }
-
-    @Substitute
-    public void exclude(Thread thread) {
-        SubstrateJVM.get().setExcluded(thread, true);
-    }
-
-    @Substitute
-    public boolean isExcluded(Thread thread) {
-        return SubstrateJVM.get().isExcluded(thread);
-=======
-    @TargetElement(onlyWith = JDK22OrLater.class)
-    public static void include(Thread thread) {
         JfrThreadLocal.setExcluded(thread, false);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
-    public static void exclude(Thread thread) {
+    public void exclude(Thread thread) {
         JfrThreadLocal.setExcluded(thread, true);
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK22OrLater.class)
-    public static boolean isExcluded(Thread thread) {
+    public boolean isExcluded(Thread thread) {
         return JfrThreadLocal.isThreadExcluded(thread);
->>>>>>> d67f0ea1509 (Use PlatformThreads.getCurrentThreadOrNull() instead of Thread.currentThread() in JFR.)
     }
 
     @Substitute
@@ -465,29 +363,5 @@ public final class Target_jdk_jfr_internal_JVM {
     public long hostTotalMemory() {
         /* Not implemented at the moment. */
         return 0;
-    }
-}
-
-class HasChunkRotationMonitorField implements BooleanSupplier {
-    private static final boolean HAS_FIELD = ReflectionUtil.lookupField(true, JVM.class, "CHUNK_ROTATION_MONITOR") != null;
-
-    @Override
-    public boolean getAsBoolean() {
-        return HAS_FIELD;
-    }
-
-    @Fold
-    public static boolean get() {
-        return HAS_FIELD;
-    }
-}
-
-@Platforms(Platform.HOSTED_ONLY.class)
-class HasFileDeltaChangeField implements BooleanSupplier {
-    private static final boolean HAS_FIELD = ReflectionUtil.lookupField(true, JVM.class, "FILE_DELTA_CHANGE") != null;
-
-    @Override
-    public boolean getAsBoolean() {
-        return HAS_FIELD;
     }
 }
