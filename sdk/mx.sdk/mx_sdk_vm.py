@@ -1199,12 +1199,13 @@ def _verify_graalvm_configs(args):
     parser = ArgumentParser(prog='mx verify-graalvm-configs', description='Verify registered GraalVM configs')
     parser.add_argument('--suites', help='comma-separated list of suites')
     parser.add_argument('--from', dest='start_from', help='start verification from the indicated env file')
+    parser.add_argument('--all', dest='all', help='verify all configs, otherwise exit on first error', action='store_true')
     args = parser.parse_args(args)
     suites = args.suites if args.suites is None else args.suites.split(',')
-    verify_graalvm_configs(suites=suites, start_from=args.start_from)
+    verify_graalvm_configs(suites=suites, start_from=args.start_from, check_all=args.all)
 
 
-def verify_graalvm_configs(suites=None, start_from=None):
+def verify_graalvm_configs(suites=None, start_from=None, check_all=False):
     """
     Check the consistency of registered GraalVM configs.
     :param suites: optionally restrict the check to the configs registered by this list of suites.
@@ -1217,6 +1218,8 @@ def verify_graalvm_configs(suites=None, start_from=None):
         if env_var in child_env:
             del child_env[env_var]
     started = start_from is None
+    on_error = mx.warn if check_all else mx.abort
+    has_errors = False
     for dist_name, _, components, suite, env_file in _vm_configs:
         if env_file is not False and (suites is None or suite.name in suites):
             _env_file = env_file or dist_name
@@ -1249,7 +1252,8 @@ def verify_graalvm_configs(suites=None, start_from=None):
                         added = list(got_components_set - components_set)
                         removed = list(components_set - got_components_set)
                         diff = ('Added:\n{}\n'.format(added) if added else '') + ('Removed:\n{}\n'.format(removed) if removed else '')
-                    mx.abort("""\
+                    has_errors = True
+                    on_error("""\
 Unexpected GraalVM dist name for env file '{}' in suite '{}'.
 Expected dist name: '{}'
 Actual dist name: '{}'.
@@ -1258,3 +1262,5 @@ Expected component list:
 Actual component list:
 {}
 {}Did you forget to update the registration of the GraalVM config?""".format(_env_file, suite.name, graalvm_dist_name, '\n'.join(out.lines + err.lines), sorted(components), got_components, diff))
+    if has_errors:
+        mx.abort("Errors during verification")
