@@ -30,23 +30,16 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.graph.spi.NodeWithIdentity;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.debug.ControlFlowAnchored;
-import org.graalvm.compiler.nodes.memory.FixedAccessNode;
+import org.graalvm.compiler.nodes.spi.Canonicalizable;
+import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
 import org.graalvm.compiler.nodes.spi.LIRLowerable;
 import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
-import org.graalvm.compiler.nodes.spi.Virtualizable;
-import org.graalvm.compiler.nodes.spi.VirtualizerTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 
 /**
  * This node can be used to keep nodes below a certain point in the graph by using this node as an
@@ -58,7 +51,7 @@ import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
  * {@link ControlFlowAnchored}.
  */
 @NodeInfo(allowedUsageTypes = {Anchor, Guard}, cycles = CYCLES_0, size = SIZE_0)
-public final class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, AnchoringNode, GuardingNode, NodeWithIdentity {
+public final class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, AnchoringNode, GuardingNode, NodeWithIdentity {
 
     public static final NodeClass<ValueAnchorNode> TYPE = NodeClass.create(ValueAnchorNode.class);
 
@@ -77,10 +70,5 @@ public final class ValueAnchorNode extends FixedWithNextNode implements LIRLower
             return null;
         }
         return this;
-    }
-
-    @Override
-    public void virtualize(VirtualizerTool tool) {
-        tool.delete();
     }
 }
