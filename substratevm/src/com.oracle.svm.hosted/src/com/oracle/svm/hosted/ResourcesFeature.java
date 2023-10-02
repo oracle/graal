@@ -304,7 +304,7 @@ public final class ResourcesFeature implements InternalFeature {
             }
 
             if (isDirectory) {
-                Resources.singleton().registerDirectoryResource(module, resourcePath, content);
+                Resources.singleton().registerDirectoryResource(module, resourcePath, content, fromJar);
             } else {
                 Resources.singleton().registerResource(module, resourcePath, is, fromJar);
             }
@@ -495,36 +495,38 @@ public final class ResourcesFeature implements InternalFeature {
 
         private final Set<String> alreadyAddedResources = new HashSet<>();
 
-        private void registerResourceIfNeeded(boolean isDirectory, Object... arguments) {
-            Module module = (Module) arguments[0];
-            String resourceName = (String) arguments[1];
+        public void registerResourceIfNeeded(Module module, String resourceName) {
             // we only do this if we are on the classPath
-            if ((module == null || !module.isNamed()) && !alreadyAddedResources.contains(resourceName)) {
-                if (isDirectory) {
-                    String content = (String) arguments[2];
-                    boolean fromJar = (boolean) arguments[3];
-                    addDirectoryResource(module, resourceName, content, fromJar);
-                } else {
+            if ((module == null || !module.isNamed())) {
+                if (!alreadyAddedResources.contains(resourceName)) {
                     ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourceName);
+                    alreadyAddedResources.add(resourceName);
                 }
-
-                alreadyAddedResources.add(resourceName);
+            } else {
+                // we should always try to register module entries (checked later in addEntries)
+                ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourceName);
             }
+
         }
 
         @Override
         public void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar) {
-            registerResource(debugContext, module, resourceName, resourceStream, fromJar);
+            registerResourceIfNeeded(module, resourceName);
         }
 
         @Override
         public void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition) {
-            access.registerReachabilityHandler(e -> registerResourceIfNeeded(false, module, resourceName), access.findClassByName(condition.getTypeName()));
+            access.registerReachabilityHandler(e -> registerResourceIfNeeded(module, resourceName), access.findClassByName(condition.getTypeName()));
         }
 
         @Override
         public void addDirectoryResource(Module module, String dir, String content, boolean fromJar) {
-            registerDirectoryResource(debugContext, module, dir, content, fromJar);
+            registerResourceIfNeeded(module, dir);
+        }
+
+        @Override
+        public void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition, String content, boolean fromJar) {
+            access.registerReachabilityHandler(e -> registerResourceIfNeeded(module, dir), access.findClassByName(condition.getTypeName()));
         }
 
         @Override
@@ -535,11 +537,6 @@ public final class ResourcesFeature implements InternalFeature {
         @Override
         public void registerNegativeQuery(Module module, String resourceName) {
             Resources.singleton().registerNegativeQuery(module, resourceName);
-        }
-
-        @Override
-        public void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition, String content, boolean fromJar) {
-            access.registerReachabilityHandler(e -> registerResourceIfNeeded(true, module, dir, content, fromJar), access.findClassByName(condition.getTypeName()));
         }
     }
 
@@ -596,24 +593,6 @@ public final class ResourcesFeature implements InternalFeature {
         FallbackFeature.FallbackImageRequest resourceFallback = ImageSingletons.lookup(FallbackFeature.class).resourceFallback;
         if (resourceFallback != null && Options.IncludeResources.getValue().values().isEmpty() && loadedConfigurations == 0) {
             throw resourceFallback;
-        }
-    }
-
-    @SuppressWarnings("try")
-    private static void registerResource(DebugContext debugContext, Module module, String resourceName, InputStream resourceStream, boolean fromJar) {
-        try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            String moduleNamePrefix = module == null ? "" : module.getName() + ":";
-            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, resourceName);
-            Resources.singleton().registerResource(module, resourceName, resourceStream, fromJar);
-        }
-    }
-
-    @SuppressWarnings("try")
-    private static void registerDirectoryResource(DebugContext debugContext, Module module, String dir, String content, boolean fromJar) {
-        try (DebugContext.Scope s = debugContext.scope("registerResource")) {
-            String moduleNamePrefix = module == null ? "" : module.getName() + ":";
-            debugContext.log(DebugContext.VERBOSE_LEVEL, "ResourcesFeature: registerResource: %s%s", moduleNamePrefix, dir);
-            Resources.singleton().registerDirectoryResource(module, dir, content, fromJar);
         }
     }
 

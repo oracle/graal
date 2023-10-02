@@ -35,6 +35,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -165,6 +166,8 @@ public final class Resources {
         }
     }
 
+    private HashSet<String> set = new HashSet();
+
     @Platforms(Platform.HOSTED_ONLY.class)
     private void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar, boolean isNegativeQuery) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
@@ -194,23 +197,13 @@ public final class Resources {
                 }
             }
 
+            if (set.contains(resourceName)) {
+                System.out.println("RESOURCE: " + resourceName + " in module: " + module + " from jar: " + fromJar);
+                System.out.println("IS NEGATIVE QUERY: " + isNegativeQuery);
+            }
             entry.getData().add(data);
+            set.add(resourceName);
         }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public static void registerResource(String resourceName, InputStream is) {
-        singleton().registerResource(null, resourceName, is, true);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerResource(String resourceName, InputStream is, boolean fromJar) {
-        registerResource(null, resourceName, is, fromJar);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerResource(Module module, String resourceName, InputStream is) {
-        registerResource(module, resourceName, is, true);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -224,21 +217,6 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerDirectoryResource(String resourceDirName, String content) {
-        registerDirectoryResource(null, resourceDirName, content, true);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerDirectoryResource(String resourceDirName, String content, boolean fromJar) {
-        registerDirectoryResource(null, resourceDirName, content, fromJar);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerDirectoryResource(Module module, String resourceDirName, String content) {
-        registerDirectoryResource(module, resourceDirName, content, true);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
     public void registerDirectoryResource(Module module, String resourceDirName, String content, boolean fromJar) {
         /*
          * A directory content represents the names of all files and subdirectories located in the
@@ -246,11 +224,6 @@ public final class Resources {
          * is later converted into a byte array and placed into the resources map.
          */
         addEntry(module, resourceDirName, true, content.getBytes(), fromJar, false);
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void registerIOException(String resourceName, IOException e, boolean linkAtBuildTime) {
-        registerIOException(null, resourceName, e, linkAtBuildTime);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
