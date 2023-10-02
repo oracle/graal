@@ -529,11 +529,12 @@ def _is_graalvm(jdk):
     return False
 
 
+_shouldRunTCKUnittestConfig = True
 
 
 def should_add_tck_participant(shouldInstal):
-    print("BYPASS!")
-    pass
+    global _shouldRunTCKUnittestConfig
+    _shouldRunTCKUnittestConfig = shouldInstal
 
 
 def _collect_distributions(dist_filter, dist_collector):
@@ -622,17 +623,20 @@ class TCKUnittestConfig(mx_unittest.MxUnittestConfig):
         super(TCKUnittestConfig, self).__init__(name='truffle-tck')
 
     def processDeps(self, deps):
-        languages = []
-        providers = []
-        _collect_languages(languages)
-        _collect_distributions_by_name("TRUFFLE_TCK_INSTRUMENTATION", languages)
-        _collect_tck_providers(providers)
-        mx.logv(f'Original unittest distributions {",".join([d.name for d in deps])}')
-        mx.logv(f'Languages distributions to add {",".join([d.name for d in languages])}')
-        mx.logv(f'TCK providers distributions to add {",".join([d.name for d in providers])}')
-        deps.update(languages)
-        deps.update(providers)
-        mx.logv(f'Merged unittest distributions {",".join([d.name for d in deps])}')
+        if _shouldRunTCKUnittestConfig:
+            languages = []
+            providers = []
+            _collect_languages(languages)
+            _collect_distributions_by_name("TRUFFLE_TCK_INSTRUMENTATION", languages)
+            _collect_tck_providers(providers)
+            mx.logv(f'Original unittest distributions {",".join([d.name for d in deps])}')
+            mx.logv(f'Languages distributions to add {",".join([d.name for d in languages])}')
+            mx.logv(f'TCK providers distributions to add {",".join([d.name for d in providers])}')
+            deps.update(languages)
+            deps.update(providers)
+            mx.logv(f'Merged unittest distributions {",".join([d.name for d in deps])}')
+        else:
+            mx.logv('Truffle TCK unnittest config is ignored because _shouldRunTCKUnittestConfig is False.')
 
 
 mx_unittest.register_unittest_config(TCKUnittestConfig())

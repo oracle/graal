@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import re
 import subprocess
 import sys
 import zipfile
+import xml.etree.ElementTree as ET
 
 class Abort(RuntimeError):
     def __init__(self, message, retCode=-1):
@@ -101,6 +102,7 @@ class Mode:
         else:
             raise Abort('Mode must be default or compile')
 
+
 class LogLevel:
     """
     Log level constants to enable verbose output.
@@ -109,99 +111,114 @@ class LogLevel:
     INFO = 800
     FINE = 500
 
+
 _log_level = LogLevel.INFO
 
-class _ClassPathEntry:
-    def __init__(self, path):
-        self.path = path
 
-    def install(self, folder):
-        pass
+def _parse_http_proxy(envVarNames):
+    p = re.compile(r'(?:https?://)?([^:]+):?(\d+)?/?$')
+    for name in envVarNames:
+        value = os.environ.get(name)
+        if value:
+            m = p.match(value)
+            if m:
+                return m.group(1), m.group(2)
+            else:
+                raise Abort('Value of ' + name + ' is not valid:  ' + value)
+    return (None, None)
 
-    def __str__(self):
-        return self.path
 
-class _MvnClassPathEntry(_ClassPathEntry):
+def _run_maven(args, repository=None, cwd=None):
+    extra_args = ['-Dmaven.repo.local=' + repository] if repository else []
+    extra_args.append('-q')
+    host, port = _parse_http_proxy(['HTTP_PROXY', 'http_proxy'])
+    if host:
+        extra_args.append('-DproxyHost=' + host)
+    if port:
+        extra_args.append('-DproxyPort=' + port)
+    host, port = _parse_http_proxy(['HTTPS_PROXY', 'https_proxy'])
+    if host:
+        extra_args.append('-Dhttps.proxyHost=' + host)
+    if port:
+        extra_args.append('-Dhttps.proxyPort=' + port)
+    mvn_cmd = 'mvn'
+    mvn_home = os.environ.get('MAVEN_HOME')
+    if mvn_home:
+        mvn_cmd = os.path.join(mvn_home, 'bin', mvn_cmd)
+    if _is_windows():
+        mvn_cmd += '.cmd'
+        extra_args += ['--batch-mode']
+    return _run([mvn_cmd] + extra_args + args, cwd=cwd)
 
-    def __init__(self, groupId, artifactId, version, required=True, repository=None):
-        self.repository = repository
-        self.groupId = groupId
-        self.artifactId = artifactId
-        self.version = version
-        self.required = required
-        _ClassPathEntry.__init__(self, None)
 
-    def install(self, folder):
-        _log(LogLevel.INFO, 'Installing {0}'.format(self))
-        if self.pull():
-            install_folder = os.path.join(folder, self.artifactId)
-            os.mkdir(install_folder)
-            self.copy(install_folder)
-            self.path = os.pathsep.join([os.path.join(install_folder, f) for f in os.listdir(install_folder) if f.endswith('.jar')])
-        else:
-            self.path = ''
+def _create_pom(target_folder, maven_dependencies, graalvm_version, repository_url):
 
-    def pull(self):
-        process = _MvnClassPathEntry._run_maven(['dependency:get', '-DgroupId=' + self.groupId, '-DartifactId=' + self.artifactId, '-Dversion=' + self.version], self.repository)
-        ret_code = process.wait()
-        if ret_code != 0:
-            if self.required:
-                raise Abort('Cannot download artifact {0} '.format(self))
-            return False
-        else:
-            return True
+    def _add_dependency(deps, maven_coordinate):
+        dependency = ET.SubElement(deps, 'dependency')
+        ET.SubElement(dependency, 'groupId').text = maven_coordinate['groupId']
+        ET.SubElement(dependency, 'artifactId').text = maven_coordinate['artifactId']
+        version = maven_coordinate['version'] if 'version' in maven_coordinate else graalvm_version
+        ET.SubElement(dependency, 'version').text = version
+        artifact_type = maven_coordinate.get('type')
+        if artifact_type:
+            ET.SubElement(dependency, 'type').text = artifact_type
 
-    def copy(self, folder):
-        process = _MvnClassPathEntry._run_maven(['dependency:copy', '-Dartifact=' + self.groupId + ':' + self.artifactId + ':' + self.version, '-DoutputDirectory=' + folder], self.repository)
-        ret_code = process.wait()
-        if ret_code != 0:
-            raise Abort('Cannot copy artifact {0}'.format(self))
+    doc = ET.Element("project", attrib={
+        'xmlns': "http://maven.apache.org/POM/4.0.0",
+        'xmlns:xsi': "http://www.w3.org/2001/XMLSchema-instance",
+        'xsi:schemaLocation': "http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd"
+    })
+    ET.SubElement(doc, 'modelVersion').text = '4.0.0'
+    ET.SubElement(doc, 'groupId').text = 'org.graalvm.truffle'
+    ET.SubElement(doc, 'artifactId').text = 'tck-fetch'
+    ET.SubElement(doc, 'version').text = '1.0'
+    ET.SubElement(doc, 'packaging').text = 'pom'
+    if maven_dependencies:
+        dependencies = ET.SubElement(doc, 'dependencies')
+        for maven_coordinate in maven_dependencies:
+            _add_dependency(dependencies, maven_coordinate)
+    if repository_url:
+        repositories = ET.SubElement(doc, 'repositories')
+        repository = ET.SubElement(repositories, 'repository')
+        ET.SubElement(repository, 'id').text = 'local-snapshots'
+        ET.SubElement(repository, 'name').text = 'Local Snapshot Repository'
+        ET.SubElement(repository, 'url').text = repository_url
+        snapshots = ET.SubElement(repository, 'snapshots')
+        ET.SubElement(snapshots, 'enabled').text = 'true'
+    build = ET.SubElement(doc, 'build')
+    plugins = ET.SubElement(build, 'plugins')
+    plugin = ET.SubElement(plugins, 'plugin')
+    ET.SubElement(plugin, 'groupId').text = 'org.apache.maven.plugins'
+    ET.SubElement(plugin, 'artifactId').text = 'maven-dependency-plugin'
+    ET.SubElement(plugin, "version").text = '3.2.0'
+    executions = ET.SubElement(plugin, 'executions')
+    execution = ET.SubElement(executions, 'execution')
+    ET.SubElement(execution, 'id').text = 'copy-dependencies'
+    ET.SubElement(execution, 'phase').text = 'package'
+    goals = ET.SubElement(execution, 'goals')
+    ET.SubElement(goals, 'goal').text = 'copy-dependencies'
+    configuration = ET.SubElement(execution, 'configuration')
+    ET.SubElement(configuration, 'outputDirectory').text = os.path.abspath(target_folder)
+    pom = os.path.join(target_folder, 'pom.xml')
+    ET.ElementTree(doc).write(pom, encoding='utf-8', xml_declaration=True, method="xml")
 
-    def __str__(self):
-        return '{0}:{1}:{2}'.format(self.groupId, self.artifactId, self.version)
 
-    @staticmethod
-    def _run_maven(args, repository=None):
-        extra_args = ['-Dmaven.repo.local=' + repository] if repository else []
-        extra_args.append('-q')
-        host, port = _MvnClassPathEntry._parse_http_proxy(['HTTP_PROXY', 'http_proxy'])
-        if host:
-            extra_args.append('-DproxyHost=' + host)
-        if port:
-            extra_args.append('-DproxyPort=' + port)
-        host, port = _MvnClassPathEntry._parse_http_proxy(['HTTPS_PROXY', 'https_proxy'])
-        if host:
-            extra_args.append('-Dhttps.proxyHost=' + host)
-        if port:
-            extra_args.append('-Dhttps.proxyPort=' + port)
-        mvn_cmd = 'mvn'
-        mvn_home = os.environ.get('MAVEN_HOME')
-        if mvn_home:
-            mvn_cmd = os.path.join(mvn_home, 'bin', mvn_cmd)
-        if _is_windows():
-            mvn_cmd += '.cmd'
-            extra_args += ['--batch-mode']
-        return _run([mvn_cmd] + extra_args + args)
+def _install_maven_dependencies(target_folder, dependencies, graalvm_version, repository):
+    _create_pom(target_folder, dependencies, graalvm_version, repository)
+    process = _run_maven(['package'], cwd=target_folder)
+    ret_code = process.wait()
+    if ret_code != 0:
+        raise Abort('Failed to install maven dependencies ' + str(dependencies) + ' to ' + target_folder)
 
-    @staticmethod
-    def _parse_http_proxy(envVarNames):
-        p = re.compile(r'(?:https?://)?([^:]+):?(\d+)?/?$')
-        for name in envVarNames:
-            value = os.environ.get(name)
-            if value:
-                m = p.match(value)
-                if m:
-                    return m.group(1), m.group(2)
-                else:
-                    raise Abort('Value of ' + name + ' is not valid:  ' + value)
-        return (None, None)
 
 def _log(level, message, args=None):
     if level != LogLevel.OFF and level >= _log_level:
         print(message.format(args if args else []))
 
+
 def _is_windows():
     return sys.platform.startswith('win32')
+
 
 def _rmdir_recursive(to_delete):
     if os.path.isdir(to_delete):
@@ -211,22 +228,23 @@ def _rmdir_recursive(to_delete):
     else:
         os.unlink(to_delete)
 
-def _run(args, log_level=False):
-    _log(LogLevel.FINE, "exec({0})", ' '.join(args))
-    return subprocess.Popen(args)
 
-def _run_java(javaHome, mainClass, cp=None, truffleCp=None, bootCp=None, vmArgs=None, args=None, dbgPort=None):
+def _run(args, log_level=False, cwd=None):
+    _log(LogLevel.FINE, "exec({0})", ' '.join(args))
+    return subprocess.Popen(args, cwd=cwd)
+
+
+def _run_java(javaHome, mainClass, module_path=None, class_path=None, vmArgs=None, args=None, dbgPort=None):
     if not vmArgs:
         vmArgs = []
     if not args:
         args = []
-    if cp:
+    if module_path:
+        vmArgs.append('-p')
+        vmArgs.append(os.pathsep.join(module_path))
+    if class_path:
         vmArgs.append('-cp')
-        vmArgs.append(os.pathsep.join([e.path for e in cp]))
-    if truffleCp:
-        vmArgs.append('-Dtruffle.class.path.append=' + os.pathsep.join([e.path for e in truffleCp]))
-    if bootCp:
-        vmArgs.append('-Xbootclasspath/a:' + os.pathsep.join([e.path for e in bootCp]))
+        vmArgs.append(os.pathsep.join(class_path))
     java_cmd = os.path.join(javaHome, 'bin', 'java')
     if _is_windows():
         java_cmd += '.exe'
@@ -234,6 +252,7 @@ def _run_java(javaHome, mainClass, cp=None, truffleCp=None, bootCp=None, vmArgs=
         vmArgs.append('-Xdebug')
         vmArgs.append('-Xrunjdwp:transport=dt_socket,server=y,address={0},suspend=y'.format(dbgPort))
     return _run([java_cmd] + vmArgs + [mainClass] + args)
+
 
 def _split_VM_args_and_filters(args):
     jvm_space_separated_args = ['-cp', '-classpath', '-mp', '-modulepath', '-limitmods', '-addmods', '-upgrademodulepath', '-m',
@@ -245,7 +264,8 @@ def _split_VM_args_and_filters(args):
             return args[:i], args[i:]
     return args, []
 
-def _find_unit_tests(cp, pkgs=None):
+
+def _find_unit_tests(class_path, pkgs=None):
     def includes(n):
         if not pkgs:
             return True
@@ -260,8 +280,7 @@ def _find_unit_tests(cp, pkgs=None):
                     return True
             return False
     tests = []
-    for e in cp:
-        path = e.path
+    for path in class_path:
         if zipfile.is_zipfile(path):
             with zipfile.ZipFile(path) as zf:
                 for name in zf.namelist():
@@ -272,8 +291,9 @@ def _find_unit_tests(cp, pkgs=None):
     tests.sort(reverse=True)
     return tests
 
-def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter, cp, truffle_cp, boot_cp, vm_args, debug_port):
-    tests = _find_unit_tests(cp, pkgs=['com.oracle.truffle.tck.tests'])
+
+def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter, module_path, class_path, vm_args, debug_port):
+    tests = _find_unit_tests(class_path, pkgs=['com.oracle.truffle.tck.tests'])
     if mode.name == 'default' and not _has_explicit_assertion_option(vm_args):
         vm_args.append('-ea')
     if mode.name == 'default' and not _has_explicit_system_assertion_option(vm_args):
@@ -290,9 +310,11 @@ def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_
                     return True
             return False
         tests = [test for test in tests if includes(test)]
-    p = _run_java(graalvm_home, 'org.junit.runner.JUnitCore', cp=cp, truffleCp=truffle_cp, bootCp=boot_cp, vmArgs=vm_args, args=tests, dbgPort=debug_port)
+    vm_args = vm_args + ['--add-modules', ','.join(_ROOT_MODULES)]
+    p = _run_java(graalvm_home, 'org.junit.runner.JUnitCore', module_path=module_path, class_path=class_path, vmArgs=vm_args, args=tests, dbgPort=debug_port)
     ret_code = p.wait()
     return ret_code
+
 
 def _has_explicit_assertion_option(vm_args):
     """
@@ -305,6 +327,7 @@ def _has_explicit_assertion_option(vm_args):
             return True
     return False
 
+
 def _has_explicit_system_assertion_option(vm_args):
     """
         Checks if the vm_args contain any option for enabling or disabling system assertions.
@@ -313,7 +336,8 @@ def _has_explicit_system_assertion_option(vm_args):
         """
     return '-esa' in vm_args or '-enablesystemassertions' in vm_args or '-dsa' in vm_args or '-disablesystemassertions' in vm_args
 
-def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_filter=None, tests_filter=None, cp=None, truffle_cp=None, boot_cp=None, vm_args=None, debug_port=None):
+
+def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_filter=None, tests_filter=None, module_path=None, class_path=None, vm_args=None, debug_port=None):
     """
     Executes Truffle TCK with given TCK providers and languages using GraalVM installed in graalvm_home
 
@@ -322,49 +346,24 @@ def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_
     :param language_filter: the language id, limits TCK tests to certain language
     :param values_filter: an iterable of value constructors language ids, limits TCK values to certain language(s)
     :param tests_filter: a substring of TCK test name or an iterable of substrings of TCK test names
-    :param cp: an iterable of paths to add on the Java classpath, the classpath must contain the TCK providers and dependencies
-    :param truffle_cp: an iterable of paths to add to truffle.class.path, the additional languages and instruments must be a part of the truffle_cp
-    :param boot_cp: an iterable of paths to add to Java boot path
+    :param module_path: an iterable of paths to add on the Java module-path containing additional languages, instruments and TCK provider(s)
+    :param class_path: an iterable of paths to add on the Java class-path containing additional TCK provider(s)
     :param vm_args: an iterable containing additional Java VM args
     :param debug_port: a port the Java VM should listen on for debugger connection
     """
-    if not cp:
-        cp = []
-    if not truffle_cp:
-        truffle_cp = []
-    if not boot_cp:
-        boot_cp = []
+    if not module_path:
+        module_path = []
+    if not class_path:
+        class_path = []
     if not vm_args:
         vm_args = []
 
     if tests_filter and isinstance(tests_filter, str):
         tests_filter = [tests_filter]
 
-    # Interface InlineVerifier defined in truffle-tck-common.jar is used to define the service exposed by the VerifierInstrument.
-    # Instruments are loaded by our custom ClassLoader and if the InlineVerifier interface is loaded by the custom class loader
-    # when the instrument is defined and by the app class loader when the service is looked up, then the lookup fails.
-    # For that reason we used to put the truffle-tck-common.jar together with its dependencies to bootclasspath on JDK8.
-    # On JDK9+ this does not work as one of the dependencies is Graal SDK which is in Java module org.graalvm.sdk, so instead
-    # we patch the org.graalvm.sdk module to include the truffle-tck-common.jar and also its other dependency polyglot-tck.jar.
-    # GR-35018 was filed to resolve this inconvenience.
-    additional_vm_arguments = []
-    jarsToPatch = []
-    for jarPath in cp:
-        if 'polyglot-tck.jar' in jarPath:
-            additional_vm_arguments.append('--add-exports=org.graalvm.polyglot/org.graalvm.polyglot.tck=ALL-UNNAMED')
-            jarsToPatch.append(os.path.abspath(jarPath))
-        if 'truffle-tck-common.jar' in jarPath:
-            additional_vm_arguments.append('--add-exports=org.graalvm.polyglot/com.oracle.truffle.tck.common.inline=ALL-UNNAMED')
-            jarsToPatch.append(os.path.abspath(jarPath))
-    if jarsToPatch:
-        additional_vm_arguments.extend(['--patch-module', 'org.graalvm.polyglot=' + ':'.join(jarsToPatch)])
+    return _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter, module_path, class_path,
+                             vm_args if isinstance(vm_args, list) else list(vm_args), debug_port)
 
-    return _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter,
-        [_ClassPathEntry(os.path.abspath(e)) for e in cp],
-        [_ClassPathEntry(os.path.abspath(e)) for e in truffle_cp],
-        [],
-        additional_vm_arguments + (vm_args if isinstance(vm_args, list) else list(vm_args)),
-        debug_port)
 
 def set_log_level(log_level):
     """
@@ -375,22 +374,28 @@ def set_log_level(log_level):
     global _log_level
     _log_level = log_level
 
+
 _MVN_DEPENDENCIES = {
-    'TESTS' : [
-        {'groupId':'junit', 'artifactId':'junit', 'version':'4.12', 'required':True},
-        {'groupId':'org/hamcrest', 'artifactId':'hamcrest-all', 'version':'1.3', 'required':True},
-        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-tests', 'required':False},
+    'RUNTIME': [
+        {'groupId': 'org.graalvm.truffle', 'artifactId': 'truffle-runtime'},
     ],
-    'TCK' : [
-        {'groupId':'org.graalvm.sdk', 'artifactId':'polyglot-tck', 'required':True}
+    'TCK': [
+        {'groupId': 'org.graalvm.sdk', 'artifactId': 'polyglot-tck'},
+        {'groupId': 'org.graalvm.truffle', 'artifactId': 'truffle-tck-common'},
+        {'groupId': 'org.graalvm.truffle', 'artifactId': 'truffle-tck-instrumentation'},
     ],
-    'COMMON' : [
-        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-common', 'required':True}
+    'TESTS': [
+        {'groupId': 'junit', 'artifactId': 'junit', 'version': '4.12'},
+        {'groupId': 'org.hamcrest', 'artifactId': 'hamcrest-all', 'version': '1.3'},
+        {'groupId': 'org.graalvm.truffle', 'artifactId': 'truffle-tck-tests'},
     ],
-    'INSTRUMENTS' : [
-        {'groupId':'org.graalvm.truffle', 'artifactId':'truffle-tck-instrumentation', 'required':True},
-    ]
 }
+
+_ROOT_MODULES = [
+    'org.graalvm.polyglot_tck',
+    'truffle.tck.common',
+]
+
 
 def _main(argv):
 
@@ -418,10 +423,14 @@ def _main(argv):
     parser.add_argument('-g', '--graalvm-home', type=str, dest='graalvm_home', help='GraalVM to execute TCK on', required=True, metavar='<graalvm home>')
     parser.add_argument('--dbg', type=int, dest='dbg_port', help='make TCK tests wait on <port> for a debugger', metavar='<port>')
     parser.add_argument('-d', action='store_const', const=8000, dest='dbg_port', help='alias for "-dbg 8000"')
-    parser.add_argument('--tck-version', type=str, dest='tck_version', help='maven TCK version, default is LATEST', default='LATEST', metavar='<version>')
+    parser.add_argument('--graalvm-version', type=str, dest='graalvm_version', help='graalvm version used to dowload the graalvm maven artifacts, default is LATEST', default='LATEST', metavar='<version>')
+    parser.add_argument('--maven-repository', type=str, dest='maven_repository', help='an explicitly defined Maven repository for fetching GraalVM artifacts. By default, it corresponds to the default repository configured in the Maven command', default=None, metavar='<repository>')
     parser.add_argument('--tck-values', type=str, dest='tck_values', help="language ids of value providers to use, separated by ','", metavar='<value providers>')
+    parser.add_argument('-p', '--module-path', type=str, dest='module_path', help='module path containing additional language(s) and TCK provider(s)', metavar='<modulepath>')
     parser.add_argument('-cp', '--class-path', type=str, dest='class_path', help='classpath containing additional TCK provider(s)', metavar='<classpath>')
-    parser.add_argument('-lp', '--language-path', type=str, dest='truffle_path', help='classpath containing additinal language jar(s)', metavar='<classpath>')
+    parser.add_argument('--artifact', type=str, dest='artifacts',  nargs='+', help='additional maven artifacts to add to a module path. The format is groupid:artifactid:version?:type?. ' +
+                        'If version is not specified, the graalvm-version is used. '
+                        'If type is not specified, the \'jar\' is assumed.', metavar='<artifact>')
 
     usage = parser.format_usage().strip()
     if usage.startswith('usage: '):
@@ -446,6 +455,9 @@ def _main(argv):
     global _log_level
     _log_level = parsed_args.log_level
     cache_folder = 'cache'
+    modules_folder = os.path.join(cache_folder, 'modules')
+    tests_folder = os.path.join(cache_folder, 'tests')
+    graalvm_version = parsed_args.graalvm_version
     try:
         vm_args, other_args = _split_VM_args_and_filters(args)
         for pattern in other_args:
@@ -463,21 +475,33 @@ def _main(argv):
             tests_filter = other_args[2:]
         if parsed_args.tck_values:
             values = parsed_args.tck_values.split(',')
+
         os.mkdir(cache_folder)
-        boot = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['COMMON']]
-        cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['TESTS']]
-        truffle_cp = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['INSTRUMENTS']]
-        tck = [_MvnClassPathEntry(e['groupId'], e['artifactId'], e['version'] if 'version' in e else parsed_args.tck_version, e['required']) for e in _MVN_DEPENDENCIES['TCK']]
-        cp.extend(tck)
+        os.mkdir(modules_folder)
+        os.mkdir(tests_folder)
+
+        artifacts = _MVN_DEPENDENCIES['RUNTIME'] + _MVN_DEPENDENCIES['TCK']
+        if parsed_args.artifacts:
+            for maven_coordinate in parsed_args.artifacts:
+                coordinate_parts = maven_coordinate.split(':')
+                groupId = coordinate_parts[0]
+                artifactId = coordinate_parts[1]
+                version = coordinate_parts[2] if len(coordinate_parts) > 2 and coordinate_parts[2] else graalvm_version
+                type = coordinate_parts[3] if len(coordinate_parts) > 3 and coordinate_parts[3] else 'jar'
+                artifacts.append({'groupId': groupId, 'artifactId': artifactId, 'version': version, 'type': type})
+        _install_maven_dependencies(modules_folder, artifacts, graalvm_version, parsed_args.maven_repository)
+        _install_maven_dependencies(tests_folder, _MVN_DEPENDENCIES['TESTS'], graalvm_version,
+                                    parsed_args.maven_repository)
+
+        module_path = [os.path.abspath(modules_folder)]
+        if parsed_args.module_path:
+            for e in parsed_args.module_path.split(os.pathsep):
+                module_path.append(os.path.abspath(e))
+        class_path = [os.path.join(tests_folder, p) for p in os.listdir(tests_folder) if p.lower().endswith('.jar')]
         if parsed_args.class_path:
             for e in parsed_args.class_path.split(os.pathsep):
-                cp.append(_ClassPathEntry(os.path.abspath(e)))
-        if parsed_args.truffle_path:
-            for e in parsed_args.truffle_path.split(os.pathsep):
-                truffle_cp.append(_ClassPathEntry(os.path.abspath(e)))
-        for entry in boot + cp + truffle_cp:
-            entry.install(cache_folder)
-        ret_code = _execute_tck_impl(parsed_args.graalvm_home, mode, language, values, tests_filter, cp, truffle_cp, boot, vm_args, parsed_args.dbg_port)
+                class_path.append(os.path.abspath(e))
+        ret_code = _execute_tck_impl(parsed_args.graalvm_home, mode, language, values, tests_filter, module_path, class_path, vm_args, parsed_args.dbg_port)
         sys.exit(ret_code)
     except Abort as abort:
         sys.stderr.write(abort.message)
@@ -486,6 +510,7 @@ def _main(argv):
     finally:
         if os.path.isdir(cache_folder):
             _rmdir_recursive(cache_folder)
+
 
 if __name__ == '__main__':
     _main(sys.argv)
