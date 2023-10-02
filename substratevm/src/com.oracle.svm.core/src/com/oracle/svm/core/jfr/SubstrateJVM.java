@@ -524,8 +524,13 @@ public class SubstrateJVM {
     @Uninterruptible(reason = "Accesses a native JFR buffer.")
     public long commit(long nextPosition) {
         assert nextPosition != 0 : "invariant";
-        JfrBuffer current = threadLocal.getJavaBuffer();
-        assert current.isNonNull() : "invariant";
+
+        JfrBuffer current = threadLocal.getExistingJavaBuffer();
+        if (current.isNull()) {
+            /* This is a commit for a recording session that is no longer active - ignore it. */
+            return nextPosition;
+        }
+
         Pointer next = WordFactory.pointer(nextPosition);
         assert next.aboveOrEqual(current.getCommittedPos()) : "invariant";
         assert next.belowOrEqual(JfrBufferAccess.getDataEnd(current)) : "invariant";

@@ -318,6 +318,11 @@ public class JfrThreadLocal implements ThreadListener {
     }
 
     @Uninterruptible(reason = "Accesses a JFR buffer.")
+    public JfrBuffer getExistingJavaBuffer() {
+        return javaBuffer.get();
+    }
+
+    @Uninterruptible(reason = "Accesses a JFR buffer.")
     public JfrBuffer getJavaBuffer() {
         JfrBuffer buffer = javaBuffer.get();
         if (buffer.isNull()) {
