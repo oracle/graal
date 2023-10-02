@@ -28,7 +28,7 @@ import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.thread.PlatformThreads;
+import com.oracle.svm.core.thread.JavaThreads;
 
 /**
  * This file contains the VM-level events that Native Image supports on all JDK versions. The event
@@ -93,31 +93,23 @@ public final class JfrEvent {
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean shouldEmit() {
         assert !hasDuration;
-<<<<<<< HEAD
-        return shouldEmit0();
-=======
-        return shouldEmit0() && !JfrThreadLocal.isThreadExcluded(PlatformThreads.getCurrentThreadOrNull());
+        return shouldEmit0() && !JfrThreadLocal.isThreadExcluded(JavaThreads.getCurrentThreadOrNull());
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean shouldEmit(Thread thread) {
         assert !hasDuration;
         return shouldEmit0() && !JfrThreadLocal.isThreadExcluded(thread);
->>>>>>> d67f0ea1509 (Use PlatformThreads.getCurrentThreadOrNull() instead of Thread.currentThread() in JFR.)
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     public boolean shouldEmit(long durationTicks) {
         assert hasDuration;
-<<<<<<< HEAD
-        return shouldEmit0() && durationTicks >= SubstrateJVM.get().getThresholdTicks(this);
-=======
-        return shouldEmit0() && durationTicks >= SubstrateJVM.get().getThresholdTicks(this) && !JfrThreadLocal.isThreadExcluded(PlatformThreads.getCurrentThreadOrNull());
->>>>>>> d67f0ea1509 (Use PlatformThreads.getCurrentThreadOrNull() instead of Thread.currentThread() in JFR.)
+        return shouldEmit0() && durationTicks >= SubstrateJVM.get().getThresholdTicks(this) && !JfrThreadLocal.isThreadExcluded(JavaThreads.getCurrentThreadOrNull());
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
     private boolean shouldEmit0() {
-        return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this) && !SubstrateJVM.get().isCurrentThreadExcluded();
+        return SubstrateJVM.get().isRecording() && SubstrateJVM.get().isEnabled(this);
     }
 }

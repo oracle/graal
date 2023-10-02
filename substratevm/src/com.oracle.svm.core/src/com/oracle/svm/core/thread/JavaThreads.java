@@ -408,6 +408,17 @@ public final class JavaThreads {
         }
         return 0L;
     }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static Thread getCurrentThreadOrNull() {
+        Thread thread = PlatformThreads.currentThread.get();
+        if (thread == null) {
+            return null;
+        }
+
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
+        return (tjlt.vthread != null) ? tjlt.vthread : thread;
+    }
 }
 
 /* GR-43733: this class can be removed when we drop the JDK 17 support. */

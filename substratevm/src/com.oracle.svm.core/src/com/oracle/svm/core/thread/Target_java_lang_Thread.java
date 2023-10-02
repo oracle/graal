@@ -329,7 +329,7 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(name = "currentThread", onlyWith = ContinuationsSupported.class)
     static Thread currentVThread() {
-        Thread thread = PlatformThreads.getCurrentThreadOrNull();
+        Thread thread = JavaThreads.getCurrentThreadOrNull();
         if (GraalDirectives.inIntrinsic()) {
             ReplacementsUtil.dynamicAssert(thread != null, "Thread has not been set yet");
         } else {
