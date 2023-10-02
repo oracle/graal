@@ -1837,33 +1837,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.truffle.test",
       ],
-<<<<<<< HEAD
-=======
-      "requiresConcealed" : {
-        "java.base" : [
-          "jdk.internal.module",
-          "jdk.internal.misc",
-          "jdk.internal.vm.annotation",
-        ],
-        "java.instrument" : [
-          "sun.instrument",
-        ],
-        "jdk.internal.vm.ci" : [
-          "jdk.vm.ci.meta",
-          "jdk.vm.ci.code",
-          "jdk.vm.ci.code.site",
-          "jdk.vm.ci.code.stack",
-          "jdk.vm.ci.common",
-          "jdk.vm.ci.amd64",
-          "jdk.vm.ci.aarch64",
-          "jdk.vm.ci.services",
-          "jdk.vm.ci.runtime",
-          "jdk.vm.ci.hotspot",
-          "jdk.vm.ci.hotspot.amd64",
-          "jdk.vm.ci.hotspot.aarch64",
-        ],
-      },
->>>>>>> b0945882acc (Add HumongousReferenceObjectTest)
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
         "truffle:TRUFFLE_DSL_PROCESSOR"
