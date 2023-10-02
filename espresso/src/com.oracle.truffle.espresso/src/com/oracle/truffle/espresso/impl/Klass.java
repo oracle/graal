@@ -432,6 +432,7 @@ public abstract class Klass extends ContextAccessImpl implements ModifiersProvid
                 return doObject(receiver, args, receiverInterop, LookupDeclaredMethodNodeGen.getUncached(), OverLoadedMethodSelectorNodeGen.getUncached(), InvokeEspressoNodeGen.getUncached(),
                                 ToEspressoNodeFactory.DynamicToEspressoNodeGen.getUncached());
             }
+            CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere();
         }
 
