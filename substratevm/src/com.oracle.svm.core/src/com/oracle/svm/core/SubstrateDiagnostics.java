@@ -883,14 +883,12 @@ public class SubstrateDiagnostics {
             if (!success && DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel)) {
                 /*
                  * If the stack pointer is not sufficiently aligned, then we might be in the middle
-                 * of a call (i.e., only the return address and the arguments are on the stack).
+                 * of a call (i.e., only the arguments and the return address are on the stack).
                  */
                 int expectedStackAlignment = ConfigurationValues.getTarget().stackAlignment;
                 if (sp.unsignedRemainder(expectedStackAlignment).notEqual(0) && sp.unsignedRemainder(ConfigurationValues.getTarget().wordSize).equal(0)) {
                     log.newline();
-                    // Checkstyle: Allow raw info or warning printing - begin
                     log.string("Warning: stack pointer is not aligned to ").signed(expectedStackAlignment).string(" bytes.").newline();
-                    // Checkstyle: Allow raw info or warning printing - end
                 }
 
                 startStackWalkInMostLikelyCaller(log, invocationCount, sp);
@@ -906,20 +904,17 @@ public class SubstrateDiagnostics {
                 stackBase = originalSp.add(32);
             }
 
-            /* Search until we find a valid (return address, stack pointer) tuple. */
+            /* Search until we find a valid return address. We may encounter false-positives. */
             int wordSize = ConfigurationValues.getTarget().wordSize;
             Pointer pos = originalSp;
             while (pos.belowThan(stackBase)) {
                 CodePointer possibleIp = pos.readWord(0);
                 if (pointsIntoNativeImageCode(possibleIp)) {
-                    Pointer possibleCallerSp = pos.readWord(wordSize);
-                    if (possibleCallerSp.aboveThan(originalSp) && possibleCallerSp.belowThan(stackBase)) {
-                        Pointer sp = pos.add(wordSize);
-                        log.newline();
-                        log.string("Starting the stack walk in a possible caller:").newline();
-                        ThreadStackPrinter.printStacktrace(sp, possibleIp, printVisitors[invocationCount - 1].reset(), log);
-                        break;
-                    }
+                    Pointer sp = pos.add(wordSize);
+                    log.newline();
+                    log.string("Starting the stack walk in a possible caller:").newline();
+                    ThreadStackPrinter.printStacktrace(sp, possibleIp, printVisitors[invocationCount - 1].reset(), log);
+                    break;
                 }
                 pos = pos.add(wordSize);
             }
