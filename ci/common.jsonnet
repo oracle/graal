@@ -92,8 +92,11 @@ local common_json = import "../common.json";
     labsjdk20ce: self["labsjdk-ce-20"],
     labsjdk20ee: self["labsjdk-ee-20"],
 
-    labsjdkLatestCE: self["labsjdk-ce-21"],
-    labsjdkLatestEE: self["labsjdk-ee-21"],
+    labsjdk21ce: self["labsjdk-ce-21"],
+    labsjdk21ee: self["labsjdk-ee-21"],
+
+    labsjdkLatestCE: self["labsjdk-ce-latest"],
+    labsjdkLatestEE: self["labsjdk-ee-latest"],
 
     oraclejdkLatest: self["oraclejdk-latest"],
   },
