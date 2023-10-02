@@ -40,8 +40,6 @@ import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.nodes.spi.Virtualizable;
-import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 
 /**
  * This node can be used to keep nodes below a certain point in the graph by using this node as an
@@ -53,7 +51,7 @@ import jdk.graal.compiler.nodes.spi.VirtualizerTool;
  * {@link ControlFlowAnchored}.
  */
 @NodeInfo(allowedUsageTypes = {Anchor, Guard}, cycles = CYCLES_0, size = SIZE_0)
-public final class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, Virtualizable, AnchoringNode, GuardingNode, NodeWithIdentity {
+public final class ValueAnchorNode extends FixedWithNextNode implements LIRLowerable, Canonicalizable, AnchoringNode, GuardingNode, NodeWithIdentity {
 
     public static final NodeClass<ValueAnchorNode> TYPE = NodeClass.create(ValueAnchorNode.class);
 
@@ -72,10 +70,5 @@ public final class ValueAnchorNode extends FixedWithNextNode implements LIRLower
             return null;
         }
         return this;
-    }
-
-    @Override
-    public void virtualize(VirtualizerTool tool) {
-        tool.delete();
     }
 }
