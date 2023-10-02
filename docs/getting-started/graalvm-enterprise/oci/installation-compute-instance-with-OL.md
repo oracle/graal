@@ -73,15 +73,14 @@ Confirm that the installed package size is correct by entering `yes` at the prom
 
 On Oracle Linux 8 and 9 with `dnf` or `microdnf` default package managers, run these commands one by one:
 ```shell
-dnf update -y oraclelinux-release-el8
+sudo dnf update -y oraclelinux-release-el8
 ```
 ```shell
-dnf config-manager --set-enabled ol8_codeready_builder
+sudo dnf config-manager --set-enabled ol8_codeready_builder
 ```
 ```shell
-dnf install graalvm-21-native-image
+sudo dnf install graalvm-21-native-image
 ```
-Confirm that the installed package size is correct by entering `yes` at the prompt.
 
 ### Configure Environment Variables
 
