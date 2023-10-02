@@ -220,6 +220,9 @@ public final class Target_java_lang_Thread {
     @TargetElement(name = "currentThread", onlyWith = ContinuationsSupported.class)
     static Thread currentVThread() {
         Thread thread = PlatformThreads.currentThread.get();
+        if (thread == null) {
+            return null;
+        }
         Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
         return (tjlt.vthread != null) ? tjlt.vthread : thread;
     }
