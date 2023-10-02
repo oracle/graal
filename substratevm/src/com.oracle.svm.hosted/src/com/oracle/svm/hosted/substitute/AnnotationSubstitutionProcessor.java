@@ -1105,7 +1105,7 @@ public class AnnotationSubstitutionProcessor extends SubstitutionProcessor {
         return holder;
     }
 
-    private static Class<?> findInnerClass(Class<?> outerClass, String innerClassSimpleName) {
+    protected static Class<?> findInnerClass(Class<?> outerClass, String innerClassSimpleName) {
         for (Class<?> innerClass : outerClass.getDeclaredClasses()) {
             // Checkstyle: allow Class.getSimpleName
             String simpleName = innerClass.getSimpleName();
