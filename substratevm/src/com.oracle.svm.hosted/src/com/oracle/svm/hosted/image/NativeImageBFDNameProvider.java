@@ -412,7 +412,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
      * Make the provider aware of the current native libraries. This is needed because the provider
      * is created in a feature after registration but the native libraries are only available before
      * analysis.
-     * 
+     *
      * @param nativeLibs the current native libraries singleton.
      */
     public void setNativeLibs(NativeLibraries nativeLibs) {
@@ -460,7 +460,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
          * resulting bindings would be S_ ==> Hello, S0_ ==> Hello::compareTo, S1_ ==> Hello and S2_
          * ==> Hello* i.e. both S_ and S1_ would demangle to Hello. This situation should never
          * arise. A name can always be correctly encoded without repeats. In the above example that
-         * woudl be _ZN5Hello9compareToEJiPS_.
+         * would be _ZN5Hello9compareToEJiPS_.
          */
         final NativeImageBFDNameProvider nameProvider;
         final StringBuilder sb;
@@ -488,87 +488,30 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
          * lookup name (if, say, we needed to encode type Foo**). In practice, that case should not
          * arise with Java method signatures.
          */
-        private abstract class LookupName {
-            String value;
-
-            protected LookupName(String value) {
-                assert value != null;
-                this.value = value;
-            }
-
-            @Override
-            public abstract String toString();
+        private interface LookupName {
         }
 
-        private class SimpleLookupName extends LookupName {
-            SimpleLookupName(String value) {
-                super(value);
-            }
+        private interface CompositeLookupName extends LookupName {
+        }
 
-            @Override
-            public boolean equals(Object other) {
-                if (other instanceof SimpleLookupName otherSimpleLookupName) {
-                    return this.value.equals(otherSimpleLookupName.value);
-                }
-                return false;
-            }
-
-            @Override
-            public int hashCode() {
-                return value.hashCode();
-            }
-
+        private record SimpleLookupName(String value) implements LookupName {
             @Override
             public String toString() {
                 return value;
             }
         }
 
-        private abstract class CompositeLookupName extends LookupName {
-            LookupName tail;
-
-            CompositeLookupName(String value, LookupName tail) {
-                super(value);
-                assert tail != null;
-                this.tail = tail;
-            }
-
-            public boolean equals(Object other) {
-                if (other instanceof CompositeLookupName otherCompositeLookupName) {
-                    assert tail != null && otherCompositeLookupName.tail != null;
-                    return value.equals(otherCompositeLookupName.value) && tail.equals(otherCompositeLookupName.tail);
-                }
-                return false;
-            }
-
+        private record NamespaceLookupName(String prefix, LookupName tail) implements CompositeLookupName {
             @Override
-            public int hashCode() {
-                return value.hashCode() ^ (tail.hashCode() + 37);
+            public String toString() {
+                return prefix + "::" + tail.toString();
             }
         }
 
-        private class NamespaceLookupName extends CompositeLookupName {
-            NamespaceLookupName(String value, LookupName tail) {
-                super(value, tail);
-            }
-
+        private record PointerLookupName(LookupName tail) implements CompositeLookupName {
             @Override
             public String toString() {
-                return value + "::" + tail.toString();
-            }
-        }
-
-        private class PointerLookupName extends NamespaceLookupName {
-            PointerLookupName(LookupName prefix) {
-                // use * as the value to compose with the prefix because it cannot
-                // arise as a simple name
-                super("*", prefix);
-            }
-
-            @Override
-            public String toString() {
-                // don't insert a '::' separator when composing
-                return tail.toString() + value;
+                return tail.toString() + "*";
             }
         }
 
@@ -951,7 +894,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
     /**
      * Determine whether a type modeled as a Java object type needs to be encoded using pointer
      * prefix P.
-     * 
+     *
      * @param type The type to be checked.
      * @return true if the type needs to be encoded using pointer prefix P otherwise false.
      */
