@@ -7,7 +7,7 @@ permalink: /getting-started/container-images/
 
 ## Oracle GraalVM Container Images
 
-Oracle GraalVM container images are available in [Oracle Container Registry (OCR)](https://container-registry.oracle.com) under the [GraalVM Free Terms and Conditions (GFTC) license](https://www.oracle.com/downloads/licenses/graal-free-license.html).
+Oracle GraalVM container images are available in [Oracle Container Registry (OCR)](https://container-registry.oracle.com/ords/ocr/ba/graalvm) under the [GraalVM Free Terms and Conditions (GFTC) license](https://www.oracle.com/downloads/licenses/graal-free-license.html).
 
 ## Repositories
 
