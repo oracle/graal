@@ -69,4 +69,8 @@ public abstract class SubprocessTest extends GraalCompilerTest {
             assertTrue(proc.exitCode == 0, proc.toString() + " failed with exit code " + proc.exitCode);
         }
     }
+
+    @SuppressWarnings("unused")
+    public void configSubprocess(List<String> vmArgs) {
+    }
 }
