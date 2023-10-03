@@ -493,6 +493,17 @@ public abstract class PlatformThreads {
         currentVThreadId.set(JavaThreads.getThreadId(thread));
     }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static Thread getCurrentThreadOrNull() {
+        Thread thread = PlatformThreads.currentThread.get();
+        if (thread == null) {
+            return null;
+        }
+
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
+        return (tjlt.vthread != null) ? tjlt.vthread : thread;
+    }
+
     /** Returns the mounted virtual thread if one exists, otherwise null. */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
     public static Thread getVThread(Thread thread) {

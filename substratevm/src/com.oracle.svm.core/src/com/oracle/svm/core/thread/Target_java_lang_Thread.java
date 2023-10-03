@@ -219,9 +219,13 @@ public final class Target_java_lang_Thread {
     @Substitute
     @TargetElement(name = "currentThread", onlyWith = ContinuationsSupported.class)
     static Thread currentVThread() {
-        Thread thread = PlatformThreads.currentThread.get();
-        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
-        return (tjlt.vthread != null) ? tjlt.vthread : thread;
+        Thread thread = PlatformThreads.getCurrentThreadOrNull();
+        if (GraalDirectives.inIntrinsic()) {
+            ReplacementsUtil.dynamicAssert(thread != null, "Thread has not been set yet");
+        } else {
+            assert thread != null : "Thread has not been set yet";
+        }
+        return thread;
     }
 
     @SuppressWarnings("static-method")

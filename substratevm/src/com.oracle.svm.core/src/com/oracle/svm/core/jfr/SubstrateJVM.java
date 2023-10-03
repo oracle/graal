@@ -524,8 +524,13 @@ public class SubstrateJVM {
     @Uninterruptible(reason = "Accesses a native JFR buffer.")
     public long commit(long nextPosition) {
         assert nextPosition != 0 : "invariant";
-        JfrBuffer current = threadLocal.getJavaBuffer();
-        assert current.isNonNull() : "invariant";
+
+        JfrBuffer current = threadLocal.getExistingJavaBuffer();
+        if (current.isNull()) {
+            /* This is a commit for a recording session that is no longer active - ignore it. */
+            return nextPosition;
+        }
+
         Pointer next = WordFactory.pointer(nextPosition);
         assert next.aboveOrEqual(current.getCommittedPos()) : "invariant";
         assert next.belowOrEqual(JfrBufferAccess.getDataEnd(current)) : "invariant";
@@ -695,15 +700,6 @@ public class SubstrateJVM {
 
     public Object getConfiguration(Class<? extends Event> eventClass) {
         return DynamicHub.fromClass(eventClass).getJfrEventConfiguration();
-    }
-
-    public void setExcluded(Thread thread, boolean excluded) {
-        JfrThreadLocal.setExcluded(thread, excluded);
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isExcluded(Thread thread) {
-        return JfrThreadLocal.isThreadExcluded(thread);
     }
 
     private static class JfrBeginRecordingOperation extends JavaVMOperation {
