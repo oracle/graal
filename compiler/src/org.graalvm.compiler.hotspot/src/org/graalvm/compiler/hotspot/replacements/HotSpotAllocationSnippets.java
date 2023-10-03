@@ -150,8 +150,8 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     @Snippet
     protected Object allocateInstance(KlassPointer hub,
                     Word prototypeMarkWord,
-                    @ConstantParameter long size,
                     @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter long size,
                     @ConstantParameter boolean fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
@@ -681,8 +681,9 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             args.add("hub", hub);
             args.add("prototypeMarkWord", type.prototypeMarkWord());
             // instanceSize returns a negative number for types which should be slow path allocated
-            args.addConst("size", Math.abs(size));
             args.addConst("forceSlowPath", size < 0);
+            args.addConst("size", Math.abs(size));
+            args.addConst("fillContents", node.fillContents());
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("profilingData", getProfilingData(localOptions, "instance", type));
 
