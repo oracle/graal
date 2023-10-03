@@ -155,7 +155,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
-        Object result = allocateInstanceImpl(hub.asWord(), prototypeMarkWord, forceSlowPath, WordFactory.unsigned(size), fillContents, emitMemoryBarrier, profilingData);
+        Object result = allocateInstanceImpl(hub.asWord(), prototypeMarkWord, forceSlowPath, WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -216,7 +216,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                      * binding of parameters is not yet supported by the GraphBuilderPlugin system.
                      */
                     UnsignedWord size = WordFactory.unsigned(layoutHelper);
-                    return allocateInstanceImpl(nonNullHub.asWord(), prototypeMarkWord, false, size, fillContents, emitMemoryBarrier, profilingData);
+                    return allocateInstanceImpl(nonNullHub.asWord(), prototypeMarkWord, false, size, fillContents, emitMemoryBarrier, false, profilingData);
                 }
             } else {
                 DeoptimizeNode.deopt(None, RuntimeConstraint);
