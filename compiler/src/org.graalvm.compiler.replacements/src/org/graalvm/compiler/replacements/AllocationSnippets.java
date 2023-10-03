@@ -49,13 +49,9 @@ import jdk.vm.ci.code.MemoryBarriers;
 public abstract class AllocationSnippets implements Snippets {
     protected Object allocateInstanceImpl(Word hub,
                     Word prototypeMarkWord,
-                    UnsignedWord size,
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.replacements/src/org/graalvm/compiler/replacements/AllocationSnippets.java
-                    boolean fillContents,
-=======
                     boolean forceSlowPath,
-                    FillContent fillContents,
->>>>>>> 6cbcc1a98a0 (Disable fast path allocation for types which must be slow path allocated):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/replacements/AllocationSnippets.java
+                    UnsignedWord size,
+                    boolean fillContents,
                     boolean emitMemoryBarrier,
                     boolean constantSize,
                     AllocationProfilingData profilingData) {
