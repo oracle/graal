@@ -58,19 +58,20 @@ public class LowTier extends BaseTier<LowTierContext> {
     }
 
     private final CanonicalizerPhase canonicalizerWithoutGVN;
+    private final CanonicalizerPhase canonicalizerWithGVN;
 
     @SuppressWarnings("this-escape")
     public LowTier(OptionValues options) {
-        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-        this.canonicalizerWithoutGVN = canonicalizer.copyWithoutGVN();
+        this.canonicalizerWithGVN = CanonicalizerPhase.create();
+        this.canonicalizerWithoutGVN = canonicalizerWithGVN.copyWithoutGVN();
 
         if (Options.ProfileCompiledMethods.getValue(options)) {
             appendPhase(new ProfileCompiledMethodsPhase());
         }
 
-        appendPhase(new LowTierLoweringPhase(canonicalizer));
+        appendPhase(new LowTierLoweringPhase(canonicalizerWithGVN));
 
-        appendPhase(new ExpandLogicPhase(canonicalizer));
+        appendPhase(new ExpandLogicPhase(canonicalizerWithGVN));
 
         appendPhase(new FixReadsPhase(true,
                         new SchedulePhase(GraalOptions.StressTestEarlyReads.getValue(options) ? SchedulingStrategy.EARLIEST : SchedulingStrategy.LATEST_OUT_OF_LOOPS_IMPLICIT_NULL_CHECKS)));
@@ -95,7 +96,11 @@ public class LowTier extends BaseTier<LowTierContext> {
         appendPhase(new SchedulePhase(SchedulePhase.SchedulingStrategy.LATEST_OUT_OF_LOOPS));
     }
 
-    public CanonicalizerPhase getCanonicalizerWithoutGVN() {
+    public final CanonicalizerPhase getCanonicalizerWithoutGVN() {
         return canonicalizerWithoutGVN;
+    }
+
+    public final CanonicalizerPhase getCanonicalizer() {
+        return canonicalizerWithGVN;
     }
 }

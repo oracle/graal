@@ -527,6 +527,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
+        assert ((StructuredGraph) node.graph()).getGraphState().isBeforeStage(StageFlag.FIXED_READS) : "GVN must not occur after fixing reads, trying to gvn " + node + " for graph " + node.graph();
         return gvn(node, nodeClass);
     }
 
