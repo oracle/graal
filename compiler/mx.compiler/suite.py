@@ -1837,6 +1837,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.truffle.test",
       ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.vm.annotation",
+        ]
+      },
       "annotationProcessors" : [
         "GRAAL_PROCESSOR",
         "truffle:TRUFFLE_DSL_PROCESSOR"
