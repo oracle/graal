@@ -121,7 +121,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedHub = checkHub(hub);
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), false, WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -130,7 +130,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     long size,
                     @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedHub = checkHub(hub);
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), WordFactory.unsigned(size),
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), false, WordFactory.unsigned(size),
                         false, true, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
@@ -157,7 +157,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub, @ConstantParameter boolean fillContents, @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
         UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), size, fillContents, emitMemoryBarrier, false, profilingData);
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), false, size, fillContents, emitMemoryBarrier, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
