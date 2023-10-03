@@ -1590,6 +1590,11 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.core.test",
       ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.vm.annotation",
+        ]
+      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Test",
@@ -1822,9 +1827,6 @@ suite = {
         "org.graalvm.compiler.truffle.test",
       ],
       "requiresConcealed" : {
-        "java.base" : [
-          "jdk.internal.vm.annotation",
-        ],
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
         ],
