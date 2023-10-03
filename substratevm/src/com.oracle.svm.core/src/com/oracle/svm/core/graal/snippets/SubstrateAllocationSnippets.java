@@ -130,7 +130,7 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     long size,
                     @ConstantParameter AllocationProfilingData profilingData) {
         DynamicHub checkedHub = checkHub(hub);
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), WordFactory.unsigned(size),
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), false, WordFactory.unsigned(size),
                         false, true, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
