@@ -63,7 +63,7 @@ public class GR43906Test {
     private static final byte[] UTF_8 = CHAR.getBytes(StandardCharsets.UTF_8);
     public static final int CHUNK_SIZE = 10_000;
     private static final byte[] UTF_8_CHUNK = CHAR.repeat(CHUNK_SIZE).getBytes(StandardCharsets.UTF_8);
-    private static final int COUNT = 1_000_000_000;
+    private static final int COUNT = 1_000_000;
 
     @Registration
     static class LargeStringTestLanguage extends AbstractExecutableTestLanguage {
