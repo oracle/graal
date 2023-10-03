@@ -26,6 +26,7 @@ package com.oracle.graal.pointsto.typestate;
 
 import java.lang.reflect.Modifier;
 import java.util.Collection;
+import java.util.Collections;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -133,6 +134,10 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
 
     @Override
     public void onObservedSaturated(PointsToAnalysis bb, TypeFlow<?> observed) {
+        /* Eagerly ensure context insensitive invoke is created before the saturated flag is set. */
+        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false, callerMultiMethodKey);
+        contextInsensitiveInvoke.addInvokeLocation(getSource());
+
         setSaturated();
 
         /*
@@ -163,10 +168,6 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
                 calleeFlows.getReturnFlow().removeUse(actualReturn);
             }
         }
-
-        /* Link the saturated invoke. */
-        AbstractVirtualInvokeTypeFlow contextInsensitiveInvoke = (AbstractVirtualInvokeTypeFlow) targetMethod.initAndGetContextInsensitiveInvoke(bb, source, false, callerMultiMethodKey);
-        contextInsensitiveInvoke.addInvokeLocation(getSource());
 
         /*
          * Link the call site actual parameters to the saturated invoke actual parameters. The
@@ -209,6 +210,15 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
     public Collection<AnalysisMethod> getAllCallees() {
         if (isSaturated()) {
             return targetMethod.getContextInsensitiveVirtualInvoke(callerMultiMethodKey).getAllCallees();
+        } else {
+            return super.getAllCallees();
+        }
+    }
+
+    public Collection<AnalysisMethod> getCalleesForReturnLinking() {
+        if (isSaturated()) {
+            /* If the invoke has saturated, then it is not necessary to link the callees. */
+            return Collections.emptyList();
         } else {
             return super.getAllCallees();
         }

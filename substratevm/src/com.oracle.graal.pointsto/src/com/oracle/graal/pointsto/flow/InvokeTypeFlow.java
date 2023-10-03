@@ -348,10 +348,10 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
     public abstract Collection<AnalysisMethod> getAllCallees();
 
     /**
-     * Returns all callees which have been computed for this method. It is possible that these
-     * callees have yet to have their typeflow created and also they may not be fully linked.
+     * Returns all callees which have been computed for this method which should be linked to the
+     * return. It is possible that these callees have yet to have their typeflow created.
      */
-    public abstract Collection<AnalysisMethod> getAllComputedCallees();
+    public abstract Collection<AnalysisMethod> getCalleesForReturnLinking();
 
     @Override
     public BytecodePosition getPosition() {

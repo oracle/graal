@@ -238,10 +238,14 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
          * may not be fully linked if they have been {@code DirectInvokeTypeFlow#initializeCallees}
          * but not yet processed.
          */
-        for (AnalysisMethod callee : invoke.getAllComputedCallees()) {
+        for (AnalysisMethod callee : invoke.getCalleesForReturnLinking()) {
             MethodFlowsGraphInfo calleeFlows = ((PointsToAnalysisMethod) callee).getTypeFlow().getOrCreateMethodFlowsGraphInfo(bb, invoke);
             invoke.linkReturn(bb, isStatic, calleeFlows);
         }
+        /*
+         * If the invoke is saturated then we must ensure the actual return is linked to the context
+         * insensitive invoke.
+         */
         if (invoke.isSaturated()) {
             InvokeTypeFlow contextInsensitiveInvoke = invoke.getTargetMethod().getContextInsensitiveVirtualInvoke(invoke.getCallerMultiMethodKey());
             contextInsensitiveInvoke.getActualReturn().addUse(bb, invoke.getActualReturn());
