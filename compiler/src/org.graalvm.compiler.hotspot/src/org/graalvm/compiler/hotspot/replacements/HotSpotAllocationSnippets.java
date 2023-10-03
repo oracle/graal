@@ -151,18 +151,11 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     protected Object allocateInstance(KlassPointer hub,
                     Word prototypeMarkWord,
                     @ConstantParameter long size,
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/replacements/HotSpotAllocationSnippets.java
+                    @ConstantParameter boolean forceSlowPath,
                     @ConstantParameter boolean fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
-        Object result = allocateInstanceImpl(hub.asWord(), prototypeMarkWord, WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
-=======
-                    @ConstantParameter boolean forceSlowPath,
-                    @ConstantParameter FillContent fillContents,
-                    @ConstantParameter boolean emitMemoryBarrier,
-                    @ConstantParameter HotSpotAllocationProfilingData profilingData) {
-        Object result = allocateInstanceImpl(hub.asWord(), WordFactory.unsigned(size), forceSlowPath, fillContents, emitMemoryBarrier, true, profilingData);
->>>>>>> 6cbcc1a98a0 (Disable fast path allocation for types which must be slow path allocated):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/replacements/HotSpotAllocationSnippets.java
+        Object result = allocateInstanceImpl(hub.asWord(), prototypeMarkWord, forceSlowPath, WordFactory.unsigned(size), fillContents, emitMemoryBarrier, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -223,11 +216,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                      * binding of parameters is not yet supported by the GraphBuilderPlugin system.
                      */
                     UnsignedWord size = WordFactory.unsigned(layoutHelper);
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/replacements/HotSpotAllocationSnippets.java
-                    return allocateInstanceImpl(nonNullHub.asWord(), prototypeMarkWord, size, fillContents, emitMemoryBarrier, false, profilingData);
-=======
-                    return allocateInstanceImpl(nonNullHub.asWord(), size, false, fillContents, emitMemoryBarrier, false, profilingData);
->>>>>>> 6cbcc1a98a0 (Disable fast path allocation for types which must be slow path allocated):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/replacements/HotSpotAllocationSnippets.java
+                    return allocateInstanceImpl(nonNullHub.asWord(), prototypeMarkWord, false, size, fillContents, emitMemoryBarrier, profilingData);
                 }
             } else {
                 DeoptimizeNode.deopt(None, RuntimeConstraint);
@@ -683,28 +672,17 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             StructuredGraph graph = node.graph();
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) node.instanceClass();
             assert !type.isArray();
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/replacements/HotSpotAllocationSnippets.java
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), graph);
-            long size = instanceSize(type);
-=======
-            ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), tool.getMetaAccess(), graph);
             long size = type.instanceSize();
->>>>>>> 6cbcc1a98a0 (Disable fast path allocation for types which must be slow path allocated):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/replacements/HotSpotAllocationSnippets.java
 
             OptionValues localOptions = graph.getOptions();
             SnippetInfo snippet = GeneratePIC.getValue(localOptions) ? allocateInstancePIC : allocateInstance;
             Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
-<<<<<<< HEAD:compiler/src/org.graalvm.compiler.hotspot/src/org/graalvm/compiler/hotspot/replacements/HotSpotAllocationSnippets.java
             args.add("prototypeMarkWord", type.prototypeMarkWord());
-            args.addConst("size", size);
-            args.addConst("fillContents", node.fillContents());
-=======
             // instanceSize returns a negative number for types which should be slow path allocated
             args.addConst("size", Math.abs(size));
             args.addConst("forceSlowPath", size < 0);
-            args.addConst("fillContents", FillContent.fromBoolean(node.fillContents()));
->>>>>>> 6cbcc1a98a0 (Disable fast path allocation for types which must be slow path allocated):compiler/src/jdk.internal.vm.compiler/src/org/graalvm/compiler/hotspot/replacements/HotSpotAllocationSnippets.java
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("profilingData", getProfilingData(localOptions, "instance", type));
 

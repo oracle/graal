@@ -119,12 +119,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
                     @ConstantParameter boolean fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
-<<<<<<< HEAD
         DynamicHub checkedHub = checkHub(hub);
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
-=======
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.unsigned(size), false, fillContents, emitMemoryBarrier, true, profilingData);
->>>>>>> 6cbcc1a98a0 (Disable fast path allocation for types which must be slow path allocated)
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(checkedHub), WordFactory.nullPointer(), false, WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -148,83 +144,8 @@ public abstract class SubstrateAllocationSnippets extends AllocationSnippets {
     @Snippet
     public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub, @ConstantParameter boolean fillContents, @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter AllocationProfilingData profilingData) {
-<<<<<<< HEAD
         UnsignedWord size = LayoutEncoding.getInstanceSize(hub.getLayoutEncoding());
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), size, fillContents, emitMemoryBarrier, false, profilingData);
-=======
-        Word thread = getTLABInfo();
-        Word top = readTlabTop(thread);
-        Word end = readTlabEnd(thread);
-        ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
-
-        // A negative array length will result in an array size larger than the largest possible
-        // TLAB. Therefore, this case will always end up in the stub call.
-        UnsignedWord allocationSize = arrayAllocationSize(length, arrayBaseOffset, log2ElementSize);
-        Word newTop = top.add(allocationSize);
-
-        Object result;
-        if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
-            writeTlabTop(thread, newTop);
-            emitPrefetchAllocate(newTop, true);
-            result = formatStoredContinuation(encodeAsTLABObjectHeader(hub), allocationSize, length, top, emitMemoryBarrier, ipOffset, profilingData.snippetCounters);
-        } else {
-            profilingData.snippetCounters.stub.inc();
-            result = callSlowNewStoredContinuation(gcAllocationSupport().getNewStoredContinuationStub(), encodeAsTLABObjectHeader(hub), length);
-        }
-        profileAllocation(profilingData, allocationSize);
-        return piArrayCastToSnippetReplaceeStamp(verifyOop(result), length);
-    }
-
-    @Snippet
-    public Object allocatePod(@NonNullParameter DynamicHub hub,
-                    int arrayLength,
-                    byte[] referenceMap,
-                    @ConstantParameter boolean emitMemoryBarrier,
-                    @ConstantParameter boolean maybeUnroll,
-                    @ConstantParameter boolean supportsBulkZeroing,
-                    @ConstantParameter boolean supportsOptimizedFilling,
-                    @ConstantParameter AllocationSnippets.AllocationProfilingData profilingData) {
-        Word thread = getTLABInfo();
-        Word top = readTlabTop(thread);
-        Word end = readTlabEnd(thread);
-        ReplacementsUtil.dynamicAssert(end.subtract(top).belowOrEqual(Integer.MAX_VALUE), "TLAB is too large");
-
-        // A negative array length will result in an array size larger than the largest possible
-        // TLAB. Therefore, this case will always end up in the stub call.
-        int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(hub.getLayoutEncoding());
-        UnsignedWord allocationSize = arrayAllocationSize(arrayLength, arrayBaseOffset, 0);
-        Word newTop = top.add(allocationSize);
-
-        Object result;
-        if (useTLAB() && probability(FAST_PATH_PROBABILITY, shouldAllocateInTLAB(allocationSize, true)) && probability(FAST_PATH_PROBABILITY, newTop.belowOrEqual(end))) {
-            writeTlabTop(thread, newTop);
-            emitPrefetchAllocate(newTop, true);
-            result = formatPod(encodeAsTLABObjectHeader(hub), hub, allocationSize, arrayLength, referenceMap, top, AllocationSnippets.FillContent.WITH_ZEROES,
-                            emitMemoryBarrier, maybeUnroll, supportsBulkZeroing, supportsOptimizedFilling, profilingData.snippetCounters);
-        } else {
-            profilingData.snippetCounters.stub.inc();
-            result = callSlowNewPodInstance(gcAllocationSupport().getNewPodInstanceStub(), encodeAsTLABObjectHeader(hub), arrayLength, referenceMap);
-        }
-        profileAllocation(profilingData, allocationSize);
-        return piArrayCastToSnippetReplaceeStamp(verifyOop(result), arrayLength);
-    }
-
-    @Snippet
-    public Object allocateInstanceDynamic(@NonNullParameter DynamicHub hub,
-                    @ConstantParameter FillContent fillContents,
-                    @ConstantParameter boolean emitMemoryBarrier,
-                    @ConstantParameter boolean supportsBulkZeroing,
-                    @ConstantParameter boolean supportsOptimizedFilling,
-                    @ConstantParameter AllocationProfilingData profilingData) {
-        return allocateInstanceDynamicImpl(hub, fillContents, emitMemoryBarrier, supportsBulkZeroing, supportsOptimizedFilling, profilingData);
-    }
-
-    protected Object allocateInstanceDynamicImpl(DynamicHub hub, FillContent fillContents, boolean emitMemoryBarrier, @SuppressWarnings("unused") boolean supportsBulkZeroing,
-                    @SuppressWarnings("unused") boolean supportsOptimizedFilling, AllocationProfilingData profilingData) {
-        // The hub was already verified by a ValidateNewInstanceClassNode.
-        UnsignedWord size = LayoutEncoding.getPureInstanceAllocationSize(hub.getLayoutEncoding());
-        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), size, false, fillContents, emitMemoryBarrier, false, profilingData);
->>>>>>> 6cbcc1a98a0 (Disable fast path allocation for types which must be slow path allocated)
+        Object result = allocateInstanceImpl(encodeAsTLABObjectHeader(hub), WordFactory.nullPointer(), false, size, fillContents, emitMemoryBarrier, false, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
