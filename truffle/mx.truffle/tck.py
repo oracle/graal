@@ -234,17 +234,11 @@ def _run(args, log_level=False, cwd=None):
     return subprocess.Popen(args, cwd=cwd)
 
 
-def _run_java(javaHome, mainClass, module_path=None, class_path=None, vmArgs=None, args=None, dbgPort=None):
+def _run_java(javaHome, mainClass, vmArgs=None, args=None, dbgPort=None):
     if not vmArgs:
         vmArgs = []
     if not args:
         args = []
-    if module_path:
-        vmArgs.append('-p')
-        vmArgs.append(os.pathsep.join(module_path))
-    if class_path:
-        vmArgs.append('-cp')
-        vmArgs.append(os.pathsep.join(class_path))
     java_cmd = os.path.join(javaHome, 'bin', 'java')
     if _is_windows():
         java_cmd += '.exe'
@@ -265,20 +259,25 @@ def _split_VM_args_and_filters(args):
     return args, []
 
 
-def _find_unit_tests(class_path, pkgs=None):
+def _find_unit_tests(class_path, tests_filter=None):
+    tck_tests_packages = ['com.oracle.truffle.tck.tests']
+
     def includes(n):
-        if not pkgs:
-            return True
+        index = n.rfind('.')
+        if index < 0:
+            owner = n
         else:
-            index = n.rfind('.')
-            if index < 0:
-                owner = n
-            else:
-                owner = n[:index]
-            for pkg in pkgs:
-                if pkg == owner:
+            owner = n[:index]
+        for pkg in tck_tests_packages:
+            if pkg == owner:
+                if tests_filter:
+                    for pattern in tests_filter:
+                        if n.find(pattern) >= 0:
+                            return True
+                else:
                     return True
-            return False
+        return False
+
     tests = []
     for path in class_path:
         if zipfile.is_zipfile(path):
@@ -292,8 +291,7 @@ def _find_unit_tests(class_path, pkgs=None):
     return tests
 
 
-def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter, module_path, class_path, vm_args, debug_port):
-    tests = _find_unit_tests(class_path, pkgs=['com.oracle.truffle.tck.tests'])
+def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests, vm_args, debug_port):
     if mode.name == 'default' and not _has_explicit_assertion_option(vm_args):
         vm_args.append('-ea')
     if mode.name == 'default' and not _has_explicit_system_assertion_option(vm_args):
@@ -303,15 +301,8 @@ def _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_
         vm_args.append('-Dtck.language={0}'.format(language_filter))
     if values_filter:
         vm_args.append('-Dtck.values={0}'.format(','.join(values_filter)))
-    if tests_filter:
-        def includes(test):
-            for pattern in tests_filter:
-                if test.find(pattern) >= 0:
-                    return True
-            return False
-        tests = [test for test in tests if includes(test)]
     vm_args = vm_args + ['--add-modules', ','.join(_ROOT_MODULES)]
-    p = _run_java(graalvm_home, 'org.junit.runner.JUnitCore', module_path=module_path, class_path=class_path, vmArgs=vm_args, args=tests, dbgPort=debug_port)
+    p = _run_java(graalvm_home, 'org.junit.runner.JUnitCore', vmArgs=vm_args, args=tests, dbgPort=debug_port)
     ret_code = p.wait()
     return ret_code
 
@@ -337,7 +328,7 @@ def _has_explicit_system_assertion_option(vm_args):
     return '-esa' in vm_args or '-enablesystemassertions' in vm_args or '-dsa' in vm_args or '-disablesystemassertions' in vm_args
 
 
-def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_filter=None, tests_filter=None, module_path=None, class_path=None, vm_args=None, debug_port=None):
+def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_filter=None, tests_filter=None, vm_args=None, debug_port=None):
     """
     Executes Truffle TCK with given TCK providers and languages using GraalVM installed in graalvm_home
 
@@ -346,23 +337,27 @@ def execute_tck(graalvm_home, mode=Mode.default(), language_filter=None, values_
     :param language_filter: the language id, limits TCK tests to certain language
     :param values_filter: an iterable of value constructors language ids, limits TCK values to certain language(s)
     :param tests_filter: a substring of TCK test name or an iterable of substrings of TCK test names
-    :param module_path: an iterable of paths to add on the Java module-path containing additional languages, instruments and TCK provider(s)
-    :param class_path: an iterable of paths to add on the Java class-path containing additional TCK provider(s)
     :param vm_args: an iterable containing additional Java VM args
     :param debug_port: a port the Java VM should listen on for debugger connection
     """
-    if not module_path:
-        module_path = []
-    if not class_path:
-        class_path = []
+    if tests_filter and isinstance(tests_filter, str):
+        tests_filter = [tests_filter]
     if not vm_args:
         vm_args = []
 
-    if tests_filter and isinstance(tests_filter, str):
-        tests_filter = [tests_filter]
+    def _find_classpath(args):
+        index = 0
+        while index < len(args):
+            arg = args[index]
+            if arg == '-cp':
+                index += 1
+                arg = args[index]
+                return arg.split(os.pathsep)
+            index += 1
+        return []
 
-    return _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests_filter, module_path, class_path,
-                             vm_args if isinstance(vm_args, list) else list(vm_args), debug_port)
+    tests = _find_unit_tests(_find_classpath(vm_args), tests_filter)
+    return _execute_tck_impl(graalvm_home, mode, language_filter, values_filter, tests, vm_args, debug_port)
 
 
 def set_log_level(log_level):
@@ -393,7 +388,6 @@ _MVN_DEPENDENCIES = {
 
 _ROOT_MODULES = [
     'org.graalvm.polyglot_tck',
-    'truffle.tck.common',
 ]
 
 
@@ -497,11 +491,16 @@ def _main(argv):
         if parsed_args.module_path:
             for e in parsed_args.module_path.split(os.pathsep):
                 module_path.append(os.path.abspath(e))
+        vm_args.append('-p')
+        vm_args.append(os.pathsep.join(module_path))
         class_path = [os.path.join(tests_folder, p) for p in os.listdir(tests_folder) if p.lower().endswith('.jar')]
         if parsed_args.class_path:
             for e in parsed_args.class_path.split(os.pathsep):
                 class_path.append(os.path.abspath(e))
-        ret_code = _execute_tck_impl(parsed_args.graalvm_home, mode, language, values, tests_filter, module_path, class_path, vm_args, parsed_args.dbg_port)
+        vm_args.append('-cp')
+        vm_args.append(os.pathsep.join(class_path))
+        tests = _find_unit_tests(class_path, tests_filter)
+        ret_code = _execute_tck_impl(parsed_args.graalvm_home, mode, language, values, tests, vm_args, parsed_args.dbg_port)
         sys.exit(ret_code)
     except Abort as abort:
         sys.stderr.write(abort.message)

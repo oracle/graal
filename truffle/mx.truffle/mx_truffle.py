@@ -45,7 +45,6 @@ import tempfile
 import difflib
 import zipfile
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
-from collections import OrderedDict
 from os.path import exists, isdir, join, abspath
 from urllib.parse import urljoin # pylint: disable=unused-import,no-name-in-module
 
@@ -737,15 +736,15 @@ def execute_tck(graalvm_home, mode='default', language_filter=None, values_filte
     :param tests_filter: a substring of TCK test name or an iterable of substrings of TCK test names
     :param vm_args: iterable containing additional Java VM args
     """
-    cp = OrderedDict()
-    _collect_tck_providers(cp, dict())
-    truffle_cp = OrderedDict()
-    _collect_class_path_entries_by_name("TRUFFLE_TCK_INSTRUMENTATION", truffle_cp, dict())
-    _collect_class_path_entries_by_name("TRUFFLE_SL", truffle_cp, dict())
-    boot_cp = OrderedDict()
-    _collect_class_path_entries_by_name("TRUFFLE_TCK_COMMON", boot_cp, dict())
-    return tck.execute_tck(graalvm_home, mode=tck.Mode.for_name(mode), language_filter=language_filter, values_filter=values_filter,
-        tests_filter=tests_filter, cp=cp.keys(), truffle_cp=truffle_cp.keys(), boot_cp=boot_cp, vm_args=vm_args)
+    dists = list()
+    _collect_languages(dists)
+    _collect_tck_providers(dists)
+    _collect_distributions_by_name("TRUFFLE_TCK_INSTRUMENTATION", dists)
+    jvm_args = mx.get_runtime_jvm_args(dists)
+    if vm_args:
+        jvm_args.extend(vm_args)
+    return tck.execute_tck(graalvm_home, mode=tck.Mode.for_name(mode), language_filter=language_filter,
+                           values_filter=values_filter, tests_filter=tests_filter, vm_args=jvm_args)
 
 
 def _tck(args):
