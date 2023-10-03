@@ -163,7 +163,7 @@ public abstract class NativeImageCodeCache {
         return codeAreaSize;
     }
 
-    protected void setCodeAreaSize(int codeAreaSize) {
+    public void setCodeAreaSize(int codeAreaSize) {
         this.codeAreaSize = codeAreaSize;
     }
 
