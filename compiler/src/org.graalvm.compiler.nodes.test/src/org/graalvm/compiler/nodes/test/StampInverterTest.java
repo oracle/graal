@@ -80,6 +80,22 @@ public class StampInverterTest extends GraalTest {
         assertTrue("Stamp cannot be inverted and should be empty!", invertSignExtend(stamp).isEmpty());
     }
 
+    @Test
+    public void invertIntegerSignExtend05() {
+        // 32 -> 8bit: xx...x0 xxxxxxxx -> 0xxxxxxx (msb has to be 0)
+        IntegerStamp stamp = IntegerStamp.stampForMask(32, 0, CodeUtil.mask(32) ^ 256);
+        Stamp expected = IntegerStamp.stampForMask(8, 0, CodeUtil.mask(7));
+        assertEquals(expected, invertSignExtend(stamp));
+    }
+
+    @Test
+    public void invertIntegerSignExtend06() {
+        // 32 -> 8bit: xx...x1 xxxxxxxx -> 1xxxxxxx (msb has to be 1)
+        IntegerStamp stamp = IntegerStamp.stampForMask(32, 256, CodeUtil.mask(32));
+        Stamp expected = IntegerStamp.stampForMask(8, 128, CodeUtil.mask(8));
+        assertEquals(expected, invertSignExtend(stamp));
+    }
+
     private static Stamp invertZeroExtend(Stamp toInvert) {
         IntegerConvertOp<ZeroExtend> signExtend = ArithmeticOpTable.forStamp(toInvert).getZeroExtend();
         return signExtend.invertStamp(8, 32, toInvert);
