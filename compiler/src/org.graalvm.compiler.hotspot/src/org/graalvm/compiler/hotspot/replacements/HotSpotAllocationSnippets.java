@@ -150,8 +150,8 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     @Snippet
     protected Object allocateInstance(KlassPointer hub,
                     Word prototypeMarkWord,
-                    @ConstantParameter long size,
                     @ConstantParameter boolean forceSlowPath,
+                    @ConstantParameter long size,
                     @ConstantParameter boolean fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
