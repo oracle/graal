@@ -5,9 +5,6 @@
 
   local javadoc_publisher = {
     name: 'graal-publish-javadoc-' + utils.prefixed_jdk(self.jdk_version),
-    environment+: {
-      JVMCI_VERSION_CHECK: 'ignore',
-    },
     run+: [
       ["cd", "./sdk"],
       ["mx", "build"],
@@ -62,7 +59,7 @@
   },
 
   local all_builds = [
-    common.post_merge + linux_amd64 + common.labsjdk17 + javadoc_publisher,
+    common.post_merge + linux_amd64 + common.labsjdk21 + javadoc_publisher,
   ],
   // adds a "defined_in" field to all builds mentioning the location of this current file
   builds:: [{ defined_in: std.thisFile } + b for b in all_builds]
