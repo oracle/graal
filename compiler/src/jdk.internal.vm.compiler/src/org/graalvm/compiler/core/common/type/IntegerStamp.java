@@ -2092,11 +2092,40 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 return createEmptyStamp(inputBits);
                             }
 
+                            /*
+                             * Calculate bounds and mayBeSet/mustBeSet bits for the input based on
+                             * bit width and potentially inferred msb.
+                             */
                             long inputMask = CodeUtil.mask(inputBits);
-                            long inputUpperBound = maxValueForMasks(inputBits, stamp.mustBeSet() & inputMask, stamp.mayBeSet() & inputMask);
-                            long inputLowerBound = minValueForMasks(inputBits, stamp.mustBeSet() & inputMask, stamp.mayBeSet() & inputMask);
+                            long inputMustBeSet = stamp.mustBeSet() & inputMask;
+                            long inputMayBeSet = stamp.mayBeSet() & inputMask;
 
-                            return StampFactory.forIntegerWithMask(inputBits, inputLowerBound, inputUpperBound, stamp.mustBeSet() & inputMask, stamp.mayBeSet() & inputMask);
+                            if (!inputMSBOne && !inputMSBZero) {
+                                /*
+                                 * Input MSB yet unknown, try to infer it from the extension:
+                                 *
+                                 * @formatter:off
+                                 *
+                                 * xx0x xxxx implies that the extension is 0000 which implies that the MSB of the input is 0
+                                 * x1xx xxxx implies that the extension is 1111 which implies that the MSB of the input is 1
+                                 *
+                                 * @formatter:on
+                                 */
+                                if (zeroInExtension) {
+                                    long msbZeroMask = inputMask ^ (1 << (inputBits - 1));
+                                    inputMustBeSet &= msbZeroMask;
+                                    inputMayBeSet &= msbZeroMask;
+                                } else if (oneInExtension) {
+                                    long msbOneMask = 1 << (inputBits - 1);
+                                    inputMustBeSet |= msbOneMask;
+                                    inputMayBeSet |= msbOneMask;
+                                }
+                            }
+
+                            long inputUpperBound = maxValueForMasks(inputBits, inputMustBeSet, inputMayBeSet);
+                            long inputLowerBound = minValueForMasks(inputBits, inputMustBeSet, inputMayBeSet);
+
+                            return StampFactory.forIntegerWithMask(inputBits, inputLowerBound, inputUpperBound, inputMustBeSet, inputMayBeSet);
                         }
                     },
 
