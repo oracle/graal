@@ -201,7 +201,7 @@ class LibFFIContext {
 
     @TruffleBoundary
     LibFFILibrary loadLibrary(String name, int flags) {
-        return LibFFILibrary.create(loadLibrary(nativeContext, name, flags));
+        return LibFFILibrary.create(loadLibrary(nativeContext, name, flags), name);
     }
 
     Object lookupSymbol(LibFFILibrary library, String name) {
