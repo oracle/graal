@@ -777,6 +777,9 @@ suite = {
         "org.graalvm.compiler.hotspot.test"
       ],
       "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.vm.annotation",
+        ],
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
           "jdk.vm.ci.code",
@@ -1590,11 +1593,6 @@ suite = {
       "dependencies" : [
         "org.graalvm.compiler.core.test",
       ],
-      "requiresConcealed" : {
-        "java.base" : [
-          "jdk.internal.vm.annotation",
-        ]
-      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "8+",
       "workingSets" : "Graal,Test",
