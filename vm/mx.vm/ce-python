@@ -1,5 +1,4 @@
-# Do not modify this env file without updating the Graal.Python benchmark builders
-DYNAMIC_IMPORTS=/compiler,/graal-js,/regex,/sdk,/substratevm,/sulong,/tools,/truffle,graalpython
-COMPONENTS=antlr4,cmp,cov,dap,dis,gu,gvm,icu4j,ins,insight,insightheap,lg,llp,llrc,llrl,llrn,lsp,nfi-libffi,pbm,pmh,poly,polynative,pro,pyn,pynl,rgx,sdk,sdkl,tfl,tfla,tflc,tflm,truffle-json
-NATIVE_IMAGES=lib:pythonvm,lib:jvmcicompiler,graalpy-polyglot-get
+DYNAMIC_IMPORTS=/compiler,/regex,/sdk,/substratevm,/sulong,/tools,/truffle,graalpython
+COMPONENTS=antlr4,cmp,cov,dap,dis,gu,gvm,icu4j,xz,ins,insight,insightheap,lg,llp,llrc,llrl,llrn,lsp,nfi-libffi,pbm,pmh,poly,polynative,pro,pyn,pynl,rgx,sdk,sdkl,tfl,tfla,tflc,tflm,truffle-json
+NATIVE_IMAGES=lib:pythonvm,lib:jvmcicompiler,graalpy-polyglot-get,graalvm-native-binutil,graalvm-native-clang,graalvm-native-clang-cl,graalvm-native-clang++,graalvm-native-flang,graalvm-native-ld
 DISABLE_INSTALLABLES=False
