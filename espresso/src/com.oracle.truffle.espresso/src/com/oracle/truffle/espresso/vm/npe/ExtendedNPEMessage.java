@@ -41,14 +41,25 @@ public final class ExtendedNPEMessage {
         if (frames == null) {
             return null;
         }
+        // Ensure the top frame is the actual java frame where the NPE happened.
+        if (!frames.isTopFrameVisible()) {
+            return null;
+        }
         VM.StackElement top = frames.top();
         if (top == null || top.getBci() < 0 /*- native, unknown or foreign frame */) {
             return null;
         }
         // If this NPE was created via reflection, we have no real NPE.
-        if (top.getMethod().getDeclaringKlass().getType() == Symbol.Type.jdk_internal_reflect_ConstructorAccessorImpl) {
+        if (top.getMethod().getDeclaringKlass().getType() == Symbol.Type.jdk_internal_reflect_NativeConstructorAccessorImpl) {
             return null;
         }
-        return Analysis.analyze(top.getMethod(), top.getBci()).buildMessage();
+        try {
+            return Analysis.analyze(top.getMethod(), top.getBci()).buildMessage();
+        } catch (Throwable e) {
+            // Unexpected host exception
+            ctx.getLogger().warning(() -> "Unexpected throw during extended NPE message construction: bailing out...");
+            ctx.getLogger().warning(e::toString);
+            return null;
+        }
     }
 }

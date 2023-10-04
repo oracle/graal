@@ -772,6 +772,7 @@ public final class Symbol<T> extends ByteSequence {
         public static final Symbol<Type> jdk_internal_reflect_MethodAccessorImpl = StaticSymbols.putType("Ljdk/internal/reflect/MethodAccessorImpl;");
         public static final Symbol<Type> sun_reflect_ConstructorAccessorImpl = StaticSymbols.putType("Lsun/reflect/ConstructorAccessorImpl;");
         public static final Symbol<Type> jdk_internal_reflect_ConstructorAccessorImpl = StaticSymbols.putType("Ljdk/internal/reflect/ConstructorAccessorImpl;");
+        public static final Symbol<Type> jdk_internal_reflect_NativeConstructorAccessorImpl = StaticSymbols.putType("Ljdk/internal/reflect/NativeConstructorAccessorImpl;");
 
         public static final Symbol<Type> sun_reflect_ConstantPool = StaticSymbols.putType("Lsun/reflect/ConstantPool;");
         public static final Symbol<Type> jdk_internal_reflect_ConstantPool = StaticSymbols.putType("Ljdk/internal/reflect/ConstantPool;");

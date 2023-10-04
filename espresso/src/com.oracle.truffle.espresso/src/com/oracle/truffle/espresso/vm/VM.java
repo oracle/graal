@@ -1833,6 +1833,7 @@ public final class VM extends NativeEnv {
         public StackElement[] trace;
         public int size;
         public int capacity;
+        private boolean hiddenTop;
 
         public StackTrace() {
             this(DEFAULT_STACK_SIZE);
@@ -1851,6 +1852,10 @@ public final class VM extends NativeEnv {
             return null;
         }
 
+        public boolean isTopFrameVisible() {
+            return !hiddenTop;
+        }
+
         void add(StackElement e) {
             if (size < capacity) {
                 trace[size++] = e;
@@ -1859,9 +1864,14 @@ public final class VM extends NativeEnv {
                 trace[size++] = e;
             }
         }
+
+        void markTopFrameHidden() {
+            hiddenTop = true;
+        }
     }
 
     @VmImpl(isJni = true)
+    @TruffleBoundary
     public @JavaType(String.class) StaticObject JVM_GetExtendedNPEMessage(@SuppressWarnings("unused") @JavaType(Throwable.class) StaticObject throwable) {
         return getMeta().toGuestString(ExtendedNPEMessage.getNPEMessage(throwable));
     }
