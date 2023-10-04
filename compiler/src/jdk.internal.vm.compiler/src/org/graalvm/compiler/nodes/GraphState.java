@@ -625,6 +625,7 @@ public final class GraphState {
         VECTOR_LOWERING,
         EXPAND_LOGIC,
         FIXED_READS,
+        PARTIAL_REDUNDANCY_SCHEDULE,
         ADDRESS_LOWERING,
         FINAL_CANONICALIZATION,
         TARGET_VECTOR_LOWERING,
