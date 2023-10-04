@@ -10,11 +10,11 @@ function printTypes(type) {
   println(isInstance(type, 42 == 42));
   println(isInstance(type, new()));
   println(isInstance(type, null));
-  println(isInstance(type, nnn()));
+  println(isInstance(type, null()));
   println("");
 }
 
-function nnn() {
+function null() {
 }
 
 function main() {
@@ -22,13 +22,13 @@ function main() {
   string = typeOf("42");
   boolean = typeOf(42 == 42);
   object = typeOf(new());
-  f = typeOf(nnn);
-  null = typeOf(nnn());
+  f = typeOf(null);
+  null_type = typeOf(null());
   
   printTypes(number);
   printTypes(string);
   printTypes(boolean);
   printTypes(object);
   printTypes(f);
-  printTypes(null);
+  printTypes(null_type);
 }
