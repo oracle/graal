@@ -129,7 +129,7 @@ final class MessageBuildHelper {
         if (maxDetail <= 0) {
             return false;
         }
-        Stack stack = analysis.stackAt(currentBci);
+        SimulatedStack stack = analysis.stackAt(currentBci);
         if (stack == null) {
             return false;
         }

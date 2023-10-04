@@ -23,8 +23,6 @@
 
 package com.oracle.truffle.espresso.vm.npe;
 
-import java.util.Objects;
-
 final class StackObject {
     static final int UNKNOWN_BCI = -1;
     static final StackObject UNKNOWN_CONFLICT = new StackObject(UNKNOWN_BCI, StackType.CONFLICT);
@@ -95,28 +93,4 @@ final class StackObject {
     public StackType type() {
         return type;
     }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (obj == this)
-            return true;
-        if (obj == null || obj.getClass() != this.getClass())
-            return false;
-        var that = (StackObject) obj;
-        return this.originBci() == that.originBci() &&
-                        Objects.equals(this.type(), that.type());
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(originBci(), type());
-    }
-
-    @Override
-    public String toString() {
-        return "StackObject[" +
-                        "originBci=" + originBci() + ", " +
-                        "type=" + type() + ']';
-    }
-
 }

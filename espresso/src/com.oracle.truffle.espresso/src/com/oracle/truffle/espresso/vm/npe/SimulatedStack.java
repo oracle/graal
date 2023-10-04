@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.vm.npe;
 
-final class Stack {
+final class SimulatedStack {
 
     final StackObject[] stack;
     int top = 0;
@@ -40,15 +40,15 @@ final class Stack {
      */
     long writtenLocalSlots = 0L;
 
-    Stack(int maxStack) {
+    SimulatedStack(int maxStack) {
         this.stack = new StackObject[maxStack];
     }
 
-    Stack(Stack copy) {
+    SimulatedStack(SimulatedStack copy) {
         this(copy, copy.size());
     }
 
-    Stack(Stack copy, int requestedLength) {
+    SimulatedStack(SimulatedStack copy, int requestedLength) {
         assert requestedLength >= copy.size();
         StackObject[] newStack = new StackObject[requestedLength];
         System.arraycopy(copy.stack, 0, newStack, 0, copy.size());
@@ -57,14 +57,14 @@ final class Stack {
         this.writtenLocalSlots = copy.writtenLocalSlots;
     }
 
-    static Stack merge(Stack s1, Stack s2) {
+    static SimulatedStack merge(SimulatedStack s1, SimulatedStack s2) {
         if (s1 == null) {
-            return new Stack(s2);
+            return new SimulatedStack(s2);
         }
         if (s2 == null) {
-            return new Stack(s1);
+            return new SimulatedStack(s1);
         }
-        Stack merge = new Stack(s1.size());
+        SimulatedStack merge = new SimulatedStack(s1.size());
         // Verifier guarantees same stack size.
         for (int i = 0; i < s1.size(); i++) {
             merge.put(i, StackObject.merge(s1.get(i), s2.get(i)));
@@ -74,7 +74,7 @@ final class Stack {
         return merge;
     }
 
-    Stack push(int bci, StackType type) {
+    SimulatedStack push(int bci, StackType type) {
         if (type == StackType.VOID) {
             return this;
         }
@@ -82,13 +82,13 @@ final class Stack {
     }
 
     // Push object to the stack
-    Stack pushRaw(StackObject obj) {
+    SimulatedStack pushRaw(StackObject obj) {
         stack[top++] = obj;
         return this;
     }
 
     // Push object to the stack, push it again if it is a long or double.
-    private Stack push(StackObject obj) {
+    private SimulatedStack push(StackObject obj) {
         pushRaw(obj);
         if (obj.type().hasTwoSlots()) {
             pushRaw(obj);

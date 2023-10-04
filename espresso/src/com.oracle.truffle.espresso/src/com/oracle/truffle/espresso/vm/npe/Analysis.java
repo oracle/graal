@@ -243,7 +243,7 @@ import com.oracle.truffle.espresso.impl.LanguageAccess;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.meta.ExceptionHandler;
 
-public final class Analysis implements LanguageAccess {
+final class Analysis implements LanguageAccess {
 
     private final EspressoLanguage lang;
     final Method m;
@@ -251,7 +251,7 @@ public final class Analysis implements LanguageAccess {
     private final int maxStack;
 
     final BytecodeStream bs;
-    private final Stack[] stacks;
+    private final SimulatedStack[] stacks;
 
     // Control of the return condition of the analysis
     private boolean allDone = false;
@@ -280,7 +280,7 @@ public final class Analysis implements LanguageAccess {
         this.m = m;
         this.targetBci = targetBci;
         this.bs = new BytecodeStream(m.getOriginalCode());
-        this.stacks = new Stack[bs.endBCI()];
+        this.stacks = new SimulatedStack[bs.endBCI()];
         this.maxStack = m.getMethodVersion().getMaxStackSize();
         this.lang = m.getLanguage();
         analyze();
@@ -288,11 +288,11 @@ public final class Analysis implements LanguageAccess {
 
     private void analyze() {
         // Initialize stack at bci 0
-        registerStack(new Stack(maxStack), 0);
+        registerStack(new SimulatedStack(maxStack), 0);
         // Initialize stack at exception handlers
         for (ExceptionHandler handler : m.getExceptionHandlers()) {
             int bci = handler.getHandlerBCI();
-            registerStack(new Stack(maxStack).push(UNKNOWN_BCI, OBJECT), bci);
+            registerStack(new SimulatedStack(maxStack).push(UNKNOWN_BCI, OBJECT), bci);
         }
         do {
             allDone = true;
@@ -313,14 +313,14 @@ public final class Analysis implements LanguageAccess {
     }
 
     private void processInstr(int bci, int nextBci) {
-        Stack origStack = stacks[bci];
+        SimulatedStack origStack = stacks[bci];
         if (origStack == null) {
             // No stack info, cannot process yet
             allDone = false;
             return;
         }
         // Work on a local copy
-        Stack stack = new Stack(origStack, maxStack);
+        SimulatedStack stack = new SimulatedStack(origStack, maxStack);
         ArrayList<Integer> branches = new ArrayList<>(2);
         boolean endOfFlow = false;
 
@@ -683,17 +683,17 @@ public final class Analysis implements LanguageAccess {
         return getSignatures().parsed(sig);
     }
 
-    Stack stackAt(int bci) {
+    SimulatedStack stackAt(int bci) {
         return stacks[bci];
     }
 
-    private void registerStack(Stack stack, int nextBci) {
-        Stack oldStack = stacks[nextBci];
+    private void registerStack(SimulatedStack stack, int nextBci) {
+        SimulatedStack oldStack = stacks[nextBci];
         if (oldStack == null) {
             newStackInfo = true;
             entries += stack.size();
         }
-        stacks[nextBci] = Stack.merge(stack, oldStack);
+        stacks[nextBci] = SimulatedStack.merge(stack, oldStack);
     }
 
 }
