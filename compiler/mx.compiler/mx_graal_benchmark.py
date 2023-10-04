@@ -526,7 +526,7 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
     def filter_distribution(self, dist):
         return super(JMHDistWhiteboxBenchmarkSuite, self).filter_distribution(dist) and \
                any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist)) and \
-               not any(dep.name.startswith('com.oracle.truffle.enterprise.dispatch.jmh') for dep in dist.deps)
+               not any(dep.name.startswith('com.oracle.truffle.enterprise.jmh') for dep in dist.deps)
 
 
     def extraVmArgs(self):
