@@ -746,6 +746,9 @@ suite = {
         "org.graalvm.compiler.hotspot.test"
       ],
       "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.vm.annotation",
+        ],
         "jdk.internal.vm.ci" : [
           "jdk.vm.ci.meta",
           "jdk.vm.ci.code",

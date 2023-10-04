@@ -150,11 +150,12 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
     @Snippet
     protected Object allocateInstance(KlassPointer hub,
                     Word prototypeMarkWord,
+                    @ConstantParameter boolean forceSlowPath,
                     @ConstantParameter long size,
                     @ConstantParameter boolean fillContents,
                     @ConstantParameter boolean emitMemoryBarrier,
                     @ConstantParameter HotSpotAllocationProfilingData profilingData) {
-        Object result = allocateInstanceImpl(hub.asWord(), prototypeMarkWord, WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
+        Object result = allocateInstanceImpl(hub.asWord(), prototypeMarkWord, forceSlowPath, WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -186,7 +187,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
         // just load it from the corresponding cell and avoid the resolution check. We have to use a
         // fixed load though, to prevent it from floating above the initialization.
         KlassPointer picHub = LoadConstantIndirectlyFixedNode.loadKlass(hub);
-        Object result = allocateInstanceImpl(picHub.asWord(), prototypeMarkWord, WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
+        Object result = allocateInstanceImpl(picHub.asWord(), prototypeMarkWord, false, WordFactory.unsigned(size), fillContents, emitMemoryBarrier, true, profilingData);
         return piCastToSnippetReplaceeStamp(result);
     }
 
@@ -215,7 +216,7 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
                      * binding of parameters is not yet supported by the GraphBuilderPlugin system.
                      */
                     UnsignedWord size = WordFactory.unsigned(layoutHelper);
-                    return allocateInstanceImpl(nonNullHub.asWord(), prototypeMarkWord, size, fillContents, emitMemoryBarrier, false, profilingData);
+                    return allocateInstanceImpl(nonNullHub.asWord(), prototypeMarkWord, false, size, fillContents, emitMemoryBarrier, false, profilingData);
                 }
             } else {
                 DeoptimizeNode.deopt(None, RuntimeConstraint);
@@ -672,14 +673,16 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             HotSpotResolvedObjectType type = (HotSpotResolvedObjectType) node.instanceClass();
             assert !type.isArray();
             ConstantNode hub = ConstantNode.forConstant(KlassPointerStamp.klassNonNull(), type.klass(), providers.getMetaAccess(), graph);
-            long size = instanceSize(type);
+            long size = type.instanceSize();
 
             OptionValues localOptions = graph.getOptions();
             SnippetInfo snippet = GeneratePIC.getValue(localOptions) ? allocateInstancePIC : allocateInstance;
             Arguments args = new Arguments(snippet, graph.getGuardsStage(), tool.getLoweringStage());
             args.add("hub", hub);
             args.add("prototypeMarkWord", type.prototypeMarkWord());
-            args.addConst("size", size);
+            // instanceSize returns a negative number for types which should be slow path allocated
+            args.addConst("forceSlowPath", size < 0);
+            args.addConst("size", Math.abs(size));
             args.addConst("fillContents", node.fillContents());
             args.addConst("emitMemoryBarrier", node.emitMemoryBarrier());
             args.addConst("profilingData", getProfilingData(localOptions, "instance", type));
@@ -826,11 +829,6 @@ public class HotSpotAllocationSnippets extends AllocationSnippets {
             return HotSpotAllocationSnippets.lookupArrayClass(tool.getMetaAccess(), kind);
         }
 
-        private static long instanceSize(HotSpotResolvedObjectType type) {
-            long size = type.instanceSize();
-            assert size >= 0;
-            return size;
-        }
     }
 
     private static class HotSpotAllocationProfilingData extends AllocationProfilingData {
