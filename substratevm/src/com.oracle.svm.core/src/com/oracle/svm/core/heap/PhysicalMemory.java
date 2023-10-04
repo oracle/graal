@@ -107,7 +107,7 @@ public class PhysicalMemory {
                         if (expired) {
                             throw new InternalError("Expired latch!");
                         }
-                        VMError.guarantee(cachedSize != UNSET_SENTINEL, "Expected chached size to be set");
+                        VMError.guarantee(cachedSize != UNSET_SENTINEL, "Expected cached size to be set");
                         return cachedSize;
                     } catch (InterruptedException e) {
                         throw VMError.shouldNotReachHere("Interrupt on countdown latch!");
