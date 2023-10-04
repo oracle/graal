@@ -223,6 +223,8 @@ import static com.oracle.truffle.espresso.bytecode.Bytecodes.SIPUSH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.SWAP;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.TABLESWITCH;
 import static com.oracle.truffle.espresso.bytecode.Bytecodes.stackEffectOf;
+import static com.oracle.truffle.espresso.vm.npe.StackObject.UNKNOWN_BCI;
+import static com.oracle.truffle.espresso.vm.npe.StackType.OBJECT;
 import static com.oracle.truffle.espresso.vm.npe.StackType.rtype;
 
 import java.util.ArrayList;
@@ -234,6 +236,7 @@ import com.oracle.truffle.espresso.bytecode.Bytecodes;
 import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Signatures;
 import com.oracle.truffle.espresso.descriptors.Symbol;
+import com.oracle.truffle.espresso.descriptors.Symbol.Name;
 import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.impl.LanguageAccess;
@@ -243,11 +246,11 @@ import com.oracle.truffle.espresso.meta.ExceptionHandler;
 public final class Analysis implements LanguageAccess {
 
     private final EspressoLanguage lang;
-    private final Method m;
+    final Method m;
     private final int targetBci;
     private final int maxStack;
 
-    private final BytecodeStream bs;
+    final BytecodeStream bs;
     private final Stack[] stacks;
 
     // Control of the return condition of the analysis
@@ -255,12 +258,17 @@ public final class Analysis implements LanguageAccess {
     // Whether a new stack has been added during the last step.
     private boolean newStackInfo = false;
 
+    // Keep track of how many stack objects are being remembered, so we can bail out in case of
+    // unreasonably big methods.
+    private int entries = 0;
+    private static final int MAX_ENTRIES = 100_000;
+
     static Analysis analyze(Method m, int bci) {
         return new Analysis(m, bci);
     }
 
     String buildMessage() {
-        return null;
+        return MessageBuildHelper.buildCause(this, targetBci);
     }
 
     @Override
@@ -284,7 +292,7 @@ public final class Analysis implements LanguageAccess {
         // Initialize stack at exception handlers
         for (ExceptionHandler handler : m.getExceptionHandlers()) {
             int bci = handler.getHandlerBCI();
-            registerStack(new Stack(maxStack).push(StackObject.UNKNOWN_OBJECT), bci);
+            registerStack(new Stack(maxStack).push(UNKNOWN_BCI, OBJECT), bci);
         }
         do {
             allDone = true;
@@ -295,6 +303,9 @@ public final class Analysis implements LanguageAccess {
             while (bci < bs.endBCI()) {
                 nextBci = bs.nextBCI(bci);
                 processInstr(bci, nextBci);
+                if (entries > MAX_ENTRIES) {
+                    return;
+                }
                 bci = nextBci;
             }
 
@@ -309,7 +320,7 @@ public final class Analysis implements LanguageAccess {
             return;
         }
         // Work on a local copy
-        Stack stack = new Stack(origStack);
+        Stack stack = new Stack(origStack, maxStack);
         ArrayList<Integer> branches = new ArrayList<>(2);
         boolean endOfFlow = false;
 
@@ -634,12 +645,33 @@ public final class Analysis implements LanguageAccess {
         }
     }
 
-    private Symbol<Type> getFieldType(int bci) {
+    Symbol<Name> getFieldName(int bci) {
+        int cpi = bs.readCPI(bci);
+        return m.getConstantPool().fieldAt(cpi).getName(m.getConstantPool());
+    }
+
+    Symbol<Type> getFieldType(int bci) {
         int cpi = bs.readCPI(bci);
         return m.getConstantPool().fieldAt(cpi).getType(m.getConstantPool());
     }
 
-    private Symbol<Type>[] getInvokeSignature(int bci, int opcode) {
+    Symbol<Name> getInvokeHolder(int bci, int opcode) {
+        assert Bytecodes.isInvoke(opcode);
+        int cpi = bs.readCPI(bci);
+        return m.getConstantPool().methodAt(cpi).getHolderKlassName(m.getConstantPool());
+    }
+
+    Symbol<Name> getInvokeName(int bci, int opcode) {
+        assert Bytecodes.isInvoke(opcode);
+        int cpi = bs.readCPI(bci);
+        if (opcode == INVOKEDYNAMIC) {
+            return m.getConstantPool().indyAt(cpi).getName(m.getConstantPool());
+        } else {
+            return m.getConstantPool().methodAt(cpi).getName(m.getConstantPool());
+        }
+    }
+
+    Symbol<Type>[] getInvokeSignature(int bci, int opcode) {
         assert Bytecodes.isInvoke(opcode);
         int cpi = bs.readCPI(bci);
         Symbol<Signature> sig;
@@ -651,10 +683,15 @@ public final class Analysis implements LanguageAccess {
         return getSignatures().parsed(sig);
     }
 
+    Stack stackAt(int bci) {
+        return stacks[bci];
+    }
+
     private void registerStack(Stack stack, int nextBci) {
         Stack oldStack = stacks[nextBci];
         if (oldStack == null) {
             newStackInfo = true;
+            entries += stack.size();
         }
         stacks[nextBci] = Stack.merge(stack, oldStack);
     }

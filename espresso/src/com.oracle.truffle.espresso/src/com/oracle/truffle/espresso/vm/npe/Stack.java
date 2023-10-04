@@ -45,7 +45,14 @@ final class Stack {
     }
 
     Stack(Stack copy) {
-        this.stack = copy.stack.clone();
+        this(copy, copy.size());
+    }
+
+    Stack(Stack copy, int requestedLength) {
+        assert requestedLength >= copy.size();
+        StackObject[] newStack = new StackObject[requestedLength];
+        System.arraycopy(copy.stack, 0, newStack, 0, copy.size());
+        this.stack = newStack;
         this.top = copy.top;
         this.writtenLocalSlots = copy.writtenLocalSlots;
     }
@@ -57,7 +64,7 @@ final class Stack {
         if (s2 == null) {
             return new Stack(s1);
         }
-        Stack merge = new Stack(s1.stack.length);
+        Stack merge = new Stack(s1.size());
         // Verifier guarantees same stack size.
         for (int i = 0; i < s1.size(); i++) {
             merge.put(i, StackObject.merge(s1.get(i), s2.get(i)));
@@ -71,8 +78,7 @@ final class Stack {
         if (type == StackType.VOID) {
             return this;
         }
-        push(new StackObject(bci, type));
-        return this;
+        return push(StackObject.create(bci, type));
     }
 
     // Push object to the stack
@@ -82,7 +88,7 @@ final class Stack {
     }
 
     // Push object to the stack, push it again if it is a long or double.
-    Stack push(StackObject obj) {
+    private Stack push(StackObject obj) {
         pushRaw(obj);
         if (obj.type().hasTwoSlots()) {
             pushRaw(obj);

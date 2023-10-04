@@ -33,10 +33,22 @@ final class StackObject {
     private final int originBci;
     private final StackType type;
 
-    StackObject(int originBci, StackType type) {
+    private StackObject(int originBci, StackType type) {
         assert type != StackType.VOID;
         this.originBci = originBci;
         this.type = type;
+    }
+
+    static StackObject create(int bci, StackType type) {
+        if (bci == UNKNOWN_BCI) {
+            if (type == StackType.CONFLICT) {
+                return UNKNOWN_CONFLICT;
+            }
+            if (type == StackType.OBJECT) {
+                return UNKNOWN_OBJECT;
+            }
+        }
+        return new StackObject(bci, type);
     }
 
     static StackObject merge(StackObject o1, StackObject o2) {
@@ -55,7 +67,6 @@ final class StackObject {
                 return UNKNOWN_CONFLICT;
             }
         } else {
-
             mergeType = o1.type();
             reuseCandidate = o1;
         }
@@ -70,11 +81,15 @@ final class StackObject {
         if (reuseCandidate != null) {
             return reuseCandidate;
         }
-        return new StackObject(mergeBci, mergeType);
+        return create(mergeBci, mergeType);
     }
 
     public int originBci() {
         return originBci;
+    }
+
+    public boolean hasBci() {
+        return originBci != UNKNOWN_BCI;
     }
 
     public StackType type() {
