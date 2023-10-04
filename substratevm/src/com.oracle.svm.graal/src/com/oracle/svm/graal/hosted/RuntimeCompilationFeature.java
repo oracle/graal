@@ -179,11 +179,7 @@ public abstract class RuntimeCompilationFeature {
     }
 
     public static Class<? extends Feature> getRuntimeCompilationFeature() {
-        if (SubstrateOptions.ParseOnceJIT.getValue()) {
-            return ParseOnceRuntimeCompilationFeature.class;
-        } else {
-            return LegacyRuntimeCompilationFeature.class;
-        }
+        return ParseOnceRuntimeCompilationFeature.class;
     }
 
     public interface RuntimeCompilationCandidatePredicate {

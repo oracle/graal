@@ -40,13 +40,6 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.core.common.GraalOptions;
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionKey;
-import jdk.compiler.graal.options.OptionStability;
-import jdk.compiler.graal.options.OptionType;
-import jdk.compiler.graal.options.OptionValues;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
@@ -54,7 +47,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.c.libc.LibCBase;
 import com.oracle.svm.core.c.libc.MuslLibC;
-import com.oracle.svm.core.deopt.DeoptimizationSupport;
 import com.oracle.svm.core.heap.ReferenceHandler;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.APIOptionGroup;
@@ -70,15 +62,21 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.core.common.GraalOptions;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionKey;
+import jdk.compiler.graal.options.OptionStability;
+import jdk.compiler.graal.options.OptionType;
+import jdk.compiler.graal.options.OptionValues;
 import jdk.internal.misc.Unsafe;
 
 public class SubstrateOptions {
 
-    @Option(help = "When true, compiler graphs are parsed only once before static analysis. When false, compiler graphs are parsed for static analysis and again for AOT compilation.")//
+    @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
     public static final HostedOptionKey<Boolean> ParseOnce = new HostedOptionKey<>(true);
-    @Option(help = "When true, each compiler graph version (DeoptTarget, AOT, JIT) needed for runtime compilation will be separately analyzed during static analysis." +
-                    "When false, only one version of the compiler graph (AOT) will be used in static analysis, and then three new versions will be parsed for compilation.")//
-    public static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
+    @Option(help = "Deprecated, option no longer has any effect.", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
+    static final HostedOptionKey<Boolean> ParseOnceJIT = new HostedOptionKey<>(true);
     @Option(help = "Preserve the local variable information for every Java source line to allow line-by-line stepping in the debugger. Allow the lookup of Java-level method information, e.g., in stack traces.")//
     public static final HostedOptionKey<Boolean> SourceLevelDebug = new HostedOptionKey<>(false);
     @Option(help = "Constrain debug info generation to the comma-separated list of package prefixes given to this option.")//
@@ -89,10 +87,10 @@ public class SubstrateOptions {
 
     public static boolean parseOnce() {
         /*
-         * Parsing all graphs before static analysis is work-in-progress and for JIT compilation is
-         * only enabled when ParseOnceJIT is set.
+         * GR-48579: Old code only reachable when this method would return false will be deleted
+         * later.
          */
-        return ParseOnce.getValue() && (ParseOnceJIT.getValue() || !DeoptimizationSupport.enabled());
+        return true;
     }
 
     @Option(help = "Module containing the class that contains the main entry point. Optional if --shared is used.", type = OptionType.User)//
