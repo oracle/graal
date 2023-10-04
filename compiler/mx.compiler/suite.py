@@ -1526,6 +1526,11 @@ suite = {
       "requires" : [
         "jdk.unsupported",
       ],
+      "requiresConcealed" : {
+        "java.base" : [
+          "jdk.internal.vm.annotation",
+        ]
+      },
       "checkstyle" : "org.graalvm.compiler.graph",
       "javaCompliance" : "17+",
       "workingSets" : "Graal,Test",
