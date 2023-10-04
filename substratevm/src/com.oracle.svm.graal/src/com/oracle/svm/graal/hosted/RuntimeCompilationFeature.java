@@ -527,7 +527,7 @@ public abstract class RuntimeCompilationFeature {
         runtimeCompilationCandidatePredicateUpdated = true;
         deoptimizeOnExceptionPredicate = newDeoptimizeOnExceptionPredicate;
 
-        if (SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
+        if (SubstrateOptions.IncludeNodeSourcePositions.getValue() || SubstrateOptions.parseOnce()) {
             graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
         }
     }

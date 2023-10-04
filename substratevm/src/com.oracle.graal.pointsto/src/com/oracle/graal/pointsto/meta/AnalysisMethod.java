@@ -927,11 +927,19 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
     }
 
+    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences) {
+        if (analyzedGraph == null) {
+            return null;
+        }
+
+        return decodeAnalyzedGraph(debug, nodeReferences, analyzedGraph.trackNodeSourcePosition());
+    }
+
     /**
      * Returns the {@link StructuredGraph Graal IR} for the method that has been processed by the
      * static analysis.
      */
-    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences) {
+    public StructuredGraph decodeAnalyzedGraph(DebugContext debug, Iterable<EncodedNodeReference> nodeReferences, boolean trackNodeSourcePosition) {
         if (analyzedGraph == null) {
             return null;
         }
@@ -939,7 +947,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         var allowAssumptions = getUniverse().hostVM().allowAssumptions(this);
         // Note we never record inlined methods. This is correct even for runtime compiled methods
         StructuredGraph result = new StructuredGraph.Builder(debug.getOptions(), debug, allowAssumptions).method(this).recordInlinedMethods(false).trackNodeSourcePosition(
-                        analyzedGraph.trackNodeSourcePosition()).build();
+                        trackNodeSourcePosition).build();
         GraphDecoder decoder = new GraphDecoder(AnalysisParsedGraph.HOST_ARCHITECTURE, result);
         decoder.decode(analyzedGraph, nodeReferences);
         /*

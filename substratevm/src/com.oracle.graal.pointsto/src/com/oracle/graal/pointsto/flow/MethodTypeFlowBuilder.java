@@ -1474,7 +1474,7 @@ public class MethodTypeFlowBuilder {
     }
 
     /* Get a reasonable position for inlined invokes, avoiding cycles in the parsing backtrace. */
-    private BytecodePosition getInvokePosition(FixedNode invokeNode) {
+    protected BytecodePosition getInvokePosition(FixedNode invokeNode) {
         BytecodePosition invokePosition = invokeNode.getNodeSourcePosition();
         /* Get the outermost caller position for inlined invokes. */
         while (invokePosition != null && invokePosition.getCaller() != null) {
