@@ -44,6 +44,7 @@ import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -283,6 +284,28 @@ public final class Utilities {
             }
         }
         return false;
+    }
+
+    public static boolean equals(List<? extends TypeMirror> first, List<? extends TypeMirror> second, Types types) {
+        if (first.size() != second.size()) {
+            return false;
+        }
+        for (Iterator<? extends TypeMirror> fit = first.iterator(), sit = second.iterator(); fit.hasNext();) {
+            TypeMirror ft = fit.next();
+            TypeMirror st = sit.next();
+            if (!types.isSameType(ft, st)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    public static List<? extends TypeMirror> erasure(List<? extends TypeMirror> list, Types types) {
+        List<TypeMirror> result = new ArrayList<>(list.size());
+        for (TypeMirror type : list) {
+            result.add(types.erasure(type));
+        }
+        return result;
     }
 
     public static PackageElement getEnclosingPackageElement(TypeElement typeElement) {

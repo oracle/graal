@@ -396,9 +396,8 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
     }
 
     private static CharSequence generateStoreResult(CodeBuilder builder, MarshallerSnippet snippets, TypeMirror returnType, CharSequence nativeCall) {
-        CharSequence result = nativeCall;
         CharSequence endPointResultVariable = snippets.storeRawResult(builder, returnType, nativeCall, null);
-        return endPointResultVariable != null ? endPointResultVariable : result;
+        return endPointResultVariable != null ? endPointResultVariable : nativeCall;
     }
 
     private CharSequence generateBinaryInputInitForByteArray(CodeBuilder builder, CharSequence byteArray) {
@@ -803,30 +802,25 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
     private String jniCMethodSymbol(MethodData methodData, CharSequence targetClassSimpleName) {
         String packageName = Utilities.getEnclosingPackageElement((TypeElement) definitionData.annotatedType.asElement()).getQualifiedName().toString();
         String classSimpleName = targetClassSimpleName + "$" + factoryMethod.startPointSimpleName;
-        String entryPointName = String.format("Java_%s_%s_%s",
-                        Utilities.cSymbol(packageName),
-                        Utilities.cSymbol(classSimpleName),
-                        Utilities.cSymbol(jniMethodName(methodData.element)));
+        StringBuilder dylibSymbol = new StringBuilder();
+        dylibSymbol.append("Java_");
+        dylibSymbol.append(Utilities.cSymbol(packageName));
+        dylibSymbol.append("_");
+        dylibSymbol.append(Utilities.cSymbol(classSimpleName));
+        dylibSymbol.append("_");
+        dylibSymbol.append(Utilities.cSymbol(jniMethodName(methodData.element)));
         if (methodData.hasOverload()) {
-            StringBuilder sb = new StringBuilder(entryPointName);
-            sb.append("__");
-            encodeTypeForJniCMethodSymbol(sb, types.getPrimitiveType(TypeKind.LONG));   // Isolate
-                                                                                        // thread
-            encodeTypeForJniCMethodSymbol(sb, types.getPrimitiveType(TypeKind.LONG));   // Object
-                                                                                        // handle
-            List<? extends VariableElement> params = methodData.element.getParameters();
-            int nonReceiverParameterStart = definitionData.hasCustomDispatch() ? 1 : 0;
-            for (int i = nonReceiverParameterStart; i < params.size(); i++) {
-                encodeTypeForJniCMethodSymbol(sb, types.erasure(params.get(i).asType()));
+            // function has an overload, we need to add a signature to the dynamic library symbol
+            dylibSymbol.append("__");
+            for (TypeMirror parameterType : parser.endPointMethodProvider.getEntryPointSignature(methodData, definitionData.hasCustomDispatch())) {
+                encodeTypeForJniCMethodSymbol(dylibSymbol, types.erasure(parameterType));
             }
-            entryPointName = sb.toString();
         }
-        return entryPointName;
+        return dylibSymbol.toString();
     }
 
-    private static void encodeTypeForJniCMethodSymbol(StringBuilder into, TypeMirror type) {
-        Utilities.encodeType(into, type, "_3",
-                        (te) -> "L" + Utilities.cSymbol(te.getQualifiedName().toString()) + "_2");
+    private void encodeTypeForJniCMethodSymbol(StringBuilder into, TypeMirror type) {
+        Utilities.encodeType(into, type, "_3", (te) -> "L" + Utilities.cSymbol(parser.elements.getBinaryName(te).toString()) + "_2");
     }
 
     private abstract static class HotSpotToNativeMarshallerSnippet extends MarshallerSnippet {
@@ -840,18 +834,14 @@ final class HotSpotToNativeBridgeGenerator extends AbstractBridgeGenerator {
 
         static HotSpotToNativeMarshallerSnippet forData(NativeBridgeProcessor processor, DefinitionData data, MarshallerData marshallerData,
                         Types types, TypeCache typeCache, BinaryNameCache binaryNameCache) {
-            switch (marshallerData.kind) {
-                case VALUE:
-                    return new DirectSnippet(processor, marshallerData, types, typeCache, binaryNameCache);
-                case REFERENCE:
-                    return new ReferenceSnippet(processor, data, marshallerData, types, typeCache, binaryNameCache);
-                case RAW_REFERENCE:
-                    return new RawReferenceSnippet(processor, marshallerData, types, typeCache, binaryNameCache);
-                case CUSTOM:
-                    return new CustomSnippet(processor, marshallerData, types, typeCache, binaryNameCache);
-                default:
-                    throw new IllegalArgumentException(String.valueOf(marshallerData.kind));
-            }
+            return switch (marshallerData.kind) {
+                case VALUE -> new DirectSnippet(processor, marshallerData, types, typeCache, binaryNameCache);
+                case REFERENCE ->
+                    new ReferenceSnippet(processor, data, marshallerData, types, typeCache, binaryNameCache);
+                case RAW_REFERENCE ->
+                    new RawReferenceSnippet(processor, marshallerData, types, typeCache, binaryNameCache);
+                case CUSTOM -> new CustomSnippet(processor, marshallerData, types, typeCache, binaryNameCache);
+            };
         }
 
         private static final class DirectSnippet extends HotSpotToNativeMarshallerSnippet {

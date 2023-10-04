@@ -89,17 +89,20 @@ abstract class AbstractBridgeParser {
     final Types types;
     final Elements elements;
     final AbstractTypeCache typeCache;
+    final AbstractEndPointMethodProvider endPointMethodProvider;
     private final Configuration myConfiguration;
     private final Configuration otherConfiguration;
     private final Set<DeclaredType> ignoreAnnotations;
     private Set<DeclaredType> marshallerAnnotations;
     private boolean hasErrors;
 
-    AbstractBridgeParser(NativeBridgeProcessor processor, AbstractTypeCache typeCache, Configuration myConfiguration, Configuration otherConfiguration) {
+    AbstractBridgeParser(NativeBridgeProcessor processor, AbstractTypeCache typeCache, AbstractEndPointMethodProvider endPointMethodProvider,
+                    Configuration myConfiguration, Configuration otherConfiguration) {
         this.processor = processor;
         this.types = processor.env().getTypeUtils();
         this.elements = processor.env().getElementUtils();
         this.typeCache = typeCache;
+        this.endPointMethodProvider = endPointMethodProvider;
         this.myConfiguration = myConfiguration;
         this.otherConfiguration = otherConfiguration;
         this.ignoreAnnotations = new HashSet<>();
@@ -462,23 +465,27 @@ abstract class AbstractBridgeParser {
     private Collection<MethodData> createMethodData(DeclaredType annotatedType, DeclaredType serviceType, List<ExecutableElement> methods,
                     boolean customDispatch, boolean enforceIdempotent, Map<String, DeclaredType> alwaysByReference) {
         Collection<ExecutableElement> methodsToGenerate = methodsToGenerate(annotatedType, methods);
+        Set<? extends CharSequence> overloadedMethods = methodsToGenerate.stream().//
+                        collect(Collectors.groupingBy(ExecutableElement::getSimpleName, Collectors.counting())).//
+                        entrySet().stream().//
+                        filter((e) -> e.getValue() > 1).//
+                        map(Map.Entry::getKey).//
+                        collect(Collectors.toSet());
+        Map<CharSequence, Integer> simpleNameCounter = new HashMap<>();
+        Map<ExecutableElement, Integer> overloadIds = new HashMap<>();
         for (ExecutableElement methodToGenerate : methodsToGenerate) {
             if (methodToGenerate.getEnclosingElement().equals(annotatedType.asElement()) && !methodToGenerate.getModifiers().contains(Modifier.ABSTRACT)) {
                 emitError(methodToGenerate, null, "Should be `final` to prevent override in the generated class or `abstract` to be generated.%n" +
                                 "To fix this add a `final` modifier or remove implementation in the `%s`.", Utilities.getTypeName(annotatedType));
             }
-        }
-        Set<? extends CharSequence> overloadedMethods = methodsToGenerate.stream().collect(Collectors.toMap(ExecutableElement::getSimpleName, (e) -> 1, (l, r) -> l + r)).entrySet().stream().filter(
-                        (e) -> e.getValue() > 1).map((e) -> e.getKey()).collect(Collectors.toSet());
-        Map<CharSequence, Integer> simpleNameCounter = new HashMap<>();
-        Map<ExecutableElement, Integer> overloadIds = new HashMap<>();
-        for (ExecutableElement methodToGenerate : methodsToGenerate) {
             CharSequence simpleName = methodToGenerate.getSimpleName();
-            int index = overloadedMethods.contains(simpleName) ? simpleNameCounter.compute(simpleName, (id, prev) -> prev == null ? 1 : prev + 1) : 0;
-            overloadIds.put(methodToGenerate, index);
+            int overloadId = overloadedMethods.contains(simpleName) ? simpleNameCounter.compute(simpleName, (id, prev) -> prev == null ? 1 : prev + 1) : 0;
+            overloadIds.put(methodToGenerate, overloadId);
         }
         Collection<MethodData> toGenerate = new ArrayList<>(methodsToGenerate.size());
         Set<String> usedCacheFields = new HashSet<>();
+        Map<String, List<Signature>> startPointMethodNames = computeBaseClassOverrides(annotatedType);
+        Map<String, List<Signature>> endPointMethodNames = computeBaseClassOverrides(typeCache.object);
         for (ExecutableElement methodToGenerate : methodsToGenerate) {
             ExecutableType methodToGenerateType = (ExecutableType) types.asMemberOf(annotatedType, methodToGenerate);
             MarshallerData retMarshaller = lookupMarshaller(methodToGenerate, methodToGenerateType.getReturnType(), methodToGenerate.getAnnotationMirrors(), customDispatch, alwaysByReference);
@@ -536,12 +543,51 @@ abstract class AbstractBridgeParser {
                                 "To fix this, split the method into two methods, one having the reference return type, the other with marshalled Out parameter(s).",
                                 Utilities.getTypeName(typeCache.idempotent));
             } else {
-                MethodData methodData = new MethodData(methodToGenerate, methodToGenerateType, overloadIds.get(methodToGenerate),
-                                receiverMethod, retMarshaller, paramsMarshallers, cacheData);
-                toGenerate.add(methodData);
+                int overloadId = overloadIds.get(methodToGenerate);
+                MethodData methodData = new MethodData(methodToGenerate, methodToGenerateType, overloadId, receiverMethod, retMarshaller, paramsMarshallers, cacheData);
+                String entryPointMethodName = endPointMethodProvider.getEntryPointMethodName(methodData);
+                List<? extends TypeMirror> entryPointSignature = entryPointMethodName != null ? Utilities.erasure(endPointMethodProvider.getEntryPointSignature(methodData, customDispatch), types)
+                                : null;
+                String endPointMethodName = endPointMethodProvider.getEndPointMethodName(methodData);
+                List<? extends TypeMirror> endPointSignature = Utilities.erasure(endPointMethodProvider.getEndPointSignature(methodData, serviceType, customDispatch), types);
+                if (hasCollision(endPointMethodNames, endPointMethodName, endPointSignature) ||
+                                (entryPointMethodName != null && hasCollision(startPointMethodNames, entryPointMethodName, entryPointSignature))) {
+                    emitError(methodToGenerate, null, "Colliding overloads", Utilities.getTypeName(annotatedType));
+                } else {
+                    toGenerate.add(methodData);
+                }
+                endPointMethodNames.computeIfAbsent(endPointMethodName, (n) -> new ArrayList<>()).add(new Signature(endPointSignature));
+                if (entryPointMethodName != null) {
+                    startPointMethodNames.computeIfAbsent(entryPointMethodName, (n) -> new ArrayList<>()).add(new Signature(entryPointSignature));
+                }
             }
         }
         return toGenerate;
+    }
+
+    private boolean hasCollision(Map<String, List<Signature>> overloads, String name, List<? extends TypeMirror> signature) {
+        List<Signature> usedSignatures = overloads.get(name);
+        if (usedSignatures != null) {
+            for (Signature usedSignature : usedSignatures) {
+                if (Utilities.equals(signature, usedSignature.parameterTypes, types)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private Map<String, List<Signature>> computeBaseClassOverrides(DeclaredType forType) {
+        Map<String, List<Signature>> map = new HashMap<>();
+        for (ExecutableElement method : ElementFilter.methodsIn(elements.getAllMembers((TypeElement) forType.asElement()))) {
+            if (!method.getModifiers().contains(Modifier.PRIVATE)) {
+                String name = method.getSimpleName().toString();
+                ExecutableType methodToGenerateType = (ExecutableType) types.asMemberOf(forType, method);
+                Signature signature = new Signature(Utilities.erasure(methodToGenerateType.getParameterTypes(), types));
+                map.computeIfAbsent(name, (n) -> new ArrayList<>()).add(signature);
+            }
+        }
+        return map;
     }
 
     private Collection<ExecutableElement> methodsToGenerate(DeclaredType annotatedType, Iterable<? extends ExecutableElement> methods) {
@@ -1445,5 +1491,23 @@ abstract class AbstractBridgeParser {
         Iterable<List<? extends TypeMirror>> getHandleReferenceConstructorTypes() {
             return handleReferenceConstructorTypes;
         }
+    }
+
+    abstract static class AbstractEndPointMethodProvider {
+
+        abstract TypeMirror getEntryPointMethodParameterType(MarshallerData marshaller, TypeMirror type);
+
+        abstract TypeMirror getEndPointMethodParameterType(MarshallerData marshaller, TypeMirror type);
+
+        abstract String getEntryPointMethodName(MethodData methodData);
+
+        abstract String getEndPointMethodName(MethodData methodData);
+
+        abstract List<TypeMirror> getEntryPointSignature(MethodData methodData, boolean hasCustomDispatch);
+
+        abstract List<TypeMirror> getEndPointSignature(MethodData methodData, TypeMirror serviceType, boolean hasCustomDispatch);
+    }
+
+    private record Signature(List<? extends TypeMirror> parameterTypes) {
     }
 }

@@ -53,6 +53,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.graalvm.nativebridge.processor.HotSpotToNativeBridgeParser.HotSpotToNativeDefinitionData;
+import org.graalvm.nativebridge.processor.HotSpotToNativeBridgeParser.HotSpotToNativeEndPointMethodProvider;
 import org.graalvm.nativebridge.processor.HotSpotToNativeBridgeParser.TypeCache;
 
 final class NativeToNativeBridgeParser extends AbstractBridgeParser {
@@ -60,7 +61,7 @@ final class NativeToNativeBridgeParser extends AbstractBridgeParser {
     static final String GENERATE_NATIVE_TO_NATIVE_ANNOTATION = "org.graalvm.nativebridge.GenerateNativeToNativeBridge";
 
     private NativeToNativeBridgeParser(NativeBridgeProcessor processor, TypeCache typeCache) {
-        super(processor, typeCache,
+        super(processor, typeCache, new HotSpotToNativeEndPointMethodProvider(processor.env().getTypeUtils(), typeCache),
                         createConfiguration(processor.env().getTypeUtils(), typeCache),
                         NativeToHotSpotBridgeParser.createConfiguration(typeCache));
     }
