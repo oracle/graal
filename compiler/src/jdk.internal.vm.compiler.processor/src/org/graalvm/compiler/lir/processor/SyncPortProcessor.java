@@ -72,6 +72,7 @@ public class SyncPortProcessor extends AbstractProcessor {
     static final String SYNC_OVERWRITE_ENV_VAR = "HOTSPOT_PORT_SYNC_OVERWRITE";
 
     static final String JDK_LATEST = "https://raw.githubusercontent.com/openjdk/jdk/master/";
+    static final String JDK_LATEST_HUMAN = "https://github.com/openjdk/jdk/blob/master/";
     static final String JDK_LATEST_INFO = "https://api.github.com/repos/openjdk/jdk/git/matching-refs/heads/master";
 
     static final String SYNC_PORT_CLASS_NAME = "org.graalvm.compiler.lir.SyncPort";
@@ -168,7 +169,7 @@ public class SyncPortProcessor extends AbstractProcessor {
                             String.format("Sha1 digest of %s (ported by %s) does not match %s%s#L%d-L%d : expected %s but was %s.%s",
                                             from,
                                             toString(element),
-                                            urlPrefix,
+                                            isURLOverwritten ? overwriteURL : JDK_LATEST_HUMAN,
                                             path,
                                             lineStart,
                                             lineEnd,
