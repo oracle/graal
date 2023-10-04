@@ -90,6 +90,8 @@ final class DirectMemoryAccessors {
      * otherwise.
      */
     private static boolean isInitialized;
+    private static final int INITIALIZING = 1;
+    private static final int INITIALIZED = 2;
     private static final AtomicInteger INIT_COUNT = new AtomicInteger();
     private static final long STATIC_DIRECT_MEMORY_AMOUNT = 25 * 1024 * 1024;
     private static long directMemory;
@@ -102,9 +104,9 @@ final class DirectMemoryAccessors {
     }
 
     private static void initialize() {
-        if (INIT_COUNT.get() == 2) {
+        if (INIT_COUNT.get() == INITIALIZED) {
             /*
-             * Shouldn't really happen, but safeguard for recursive init anyway
+             * Safeguard for recursive init
              */
             return;
         }
@@ -130,18 +132,18 @@ final class DirectMemoryAccessors {
                  * of 1, since we read the directMemory field during container support code
                  * execution which runs when PhysicalMemory is still initializing.
                  */
-                VMError.guarantee(INIT_COUNT.get() <= 1, "Initial run needs to have init count 0 or 1");
+                VMError.guarantee(INIT_COUNT.get() <= INITIALIZING, "Initial run needs to have init count 0 or 1");
                 newDirectMemory = STATIC_DIRECT_MEMORY_AMOUNT; // Static value during initialization
-                INIT_COUNT.incrementAndGet();
+                INIT_COUNT.setRelease(INITIALIZING);
             } else {
-                VMError.guarantee(INIT_COUNT.get() <= 1, "Runtime.maxMemory() invariant");
+                VMError.guarantee(INIT_COUNT.get() <= INITIALIZING, "Runtime.maxMemory() invariant");
                 /*
                  * Once we know PhysicalMemory has been properly initialized we can use
                  * Runtime.maxMemory(). Note that we might end up in this branch for code explicitly
                  * using the JDK cgroups code. At that point PhysicalMemory has likely been
                  * initialized.
                  */
-                INIT_COUNT.incrementAndGet();
+                INIT_COUNT.setRelease(INITIALIZED);
                 newDirectMemory = Runtime.getRuntime().maxMemory();
             }
         } else {
@@ -161,7 +163,7 @@ final class DirectMemoryAccessors {
 
         Unsafe.getUnsafe().storeFence();
         directMemory = newDirectMemory;
-        if (PhysicalMemory.isInitialized()) {
+        if (PhysicalMemory.isInitialized() && INITIALIZED == INIT_COUNT.get()) {
             /*
              * Complete initialization hand-shake once PhysicalMemory is properly initialized. Also
              * set the VM init level to 1 so as to provoke the NIO code to re-set the internal
