@@ -52,10 +52,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionStability;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import jdk.compiler.graal.options.OptionKey;
+import jdk.compiler.graal.options.OptionStability;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.serviceprovider.GraalServices;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ImageSingletonsSupport;

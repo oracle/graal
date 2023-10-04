@@ -31,8 +31,8 @@ import static com.oracle.svm.hosted.classinitialization.InitKind.SEPARATOR;
 
 import java.util.function.Function;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionType;
 
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;

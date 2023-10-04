@@ -30,7 +30,7 @@ import static com.oracle.svm.core.Isolates.IMAGE_HEAP_WRITABLE_END;
 import static com.oracle.svm.core.util.PointerUtils.roundUp;
 
 import com.oracle.svm.core.code.DynamicMethodAddressResolutionHeapSupport;
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;

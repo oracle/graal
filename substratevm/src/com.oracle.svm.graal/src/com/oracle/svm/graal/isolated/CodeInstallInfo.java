@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
+import jdk.compiler.graal.core.common.CompilationIdentifier;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.word.PointerBase;

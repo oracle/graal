@@ -28,15 +28,15 @@ import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.R
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.PauseNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.options.Option;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
+import jdk.compiler.graal.graph.Node.ConstantNodeParameter;
+import jdk.compiler.graal.graph.Node.NodeIntrinsic;
+import jdk.compiler.graal.nodes.PauseNode;
+import jdk.compiler.graal.nodes.extended.BranchProbabilityNode;
+import jdk.compiler.graal.nodes.extended.ForeignCallNode;
+import jdk.compiler.graal.nodes.extended.MembarNode;
+import jdk.compiler.graal.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;

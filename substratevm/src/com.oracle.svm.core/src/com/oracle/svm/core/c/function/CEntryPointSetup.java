@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.c.function;
 
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.type.CCharPointer;

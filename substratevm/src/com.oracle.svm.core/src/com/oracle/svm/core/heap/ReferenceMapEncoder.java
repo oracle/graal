@@ -33,8 +33,8 @@ import java.util.NoSuchElementException;
 import java.util.PrimitiveIterator;
 import java.util.Set;
 
-import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.compiler.graal.core.common.util.TypeConversion;
+import jdk.compiler.graal.core.common.util.UnsafeArrayTypeWriter;
 
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;

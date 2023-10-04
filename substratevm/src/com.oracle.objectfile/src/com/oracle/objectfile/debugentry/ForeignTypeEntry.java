@@ -30,7 +30,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugForeignTypeInfo;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.compiler.graal.debug.DebugContext;
 
 public class ForeignTypeEntry extends ClassEntry {
     private static final int FLAG_WORD = 1 << 0;

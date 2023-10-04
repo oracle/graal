@@ -27,10 +27,10 @@ package com.oracle.svm.hosted.phases;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.compiler.graal.nodes.CallTargetNode.InvokeKind;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.nodes.graphbuilderconf.NodePlugin;
 
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.util.VMError;

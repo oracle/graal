@@ -29,9 +29,9 @@ import java.io.StringWriter;
 import java.nio.file.Path;
 import java.util.List;
 
-import org.graalvm.compiler.debug.MethodFilter;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionValues;
+import jdk.compiler.graal.debug.MethodFilter;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionValues;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisElement;

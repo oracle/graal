@@ -77,8 +77,8 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
+import jdk.compiler.graal.options.OptionKey;
+import jdk.compiler.graal.options.OptionValues;
 import org.graalvm.nativeimage.impl.AnnotationExtractor;
 
 import com.oracle.svm.core.NativeImageClassLoaderOptions;

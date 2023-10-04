@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.reachability;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;

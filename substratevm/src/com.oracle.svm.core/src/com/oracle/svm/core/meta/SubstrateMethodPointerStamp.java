@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.meta;
 
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.spi.LIRKindTool;
-import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.compiler.graal.core.common.LIRKind;
+import jdk.compiler.graal.core.common.spi.LIRKindTool;
+import jdk.compiler.graal.core.common.type.AbstractPointerStamp;
+import jdk.compiler.graal.core.common.type.Stamp;
+import jdk.compiler.graal.debug.GraalError;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;

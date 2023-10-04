@@ -66,9 +66,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.core.common.util.TypeConversion;
+import jdk.compiler.graal.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;

@@ -42,8 +42,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

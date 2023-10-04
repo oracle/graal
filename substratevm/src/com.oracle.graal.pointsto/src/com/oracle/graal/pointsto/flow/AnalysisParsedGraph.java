@@ -24,24 +24,24 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
-import org.graalvm.compiler.bytecode.Bytecode;
-import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
-import org.graalvm.compiler.core.common.PermanentBailoutException;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.DebugContext.Builder;
-import org.graalvm.compiler.debug.DebugContext.Description;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.nodes.EncodedGraph;
-import org.graalvm.compiler.nodes.GraphEncoder;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.runtime.RuntimeProvider;
+import jdk.compiler.graal.api.runtime.GraalJVMCICompiler;
+import jdk.compiler.graal.bytecode.Bytecode;
+import jdk.compiler.graal.bytecode.ResolvedJavaMethodBytecode;
+import jdk.compiler.graal.core.common.PermanentBailoutException;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.debug.DebugContext.Builder;
+import jdk.compiler.graal.debug.DebugContext.Description;
+import jdk.compiler.graal.debug.Indent;
+import jdk.compiler.graal.nodes.EncodedGraph;
+import jdk.compiler.graal.nodes.GraphEncoder;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.BytecodeExceptionMode;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.phases.OptimisticOptimizations;
+import jdk.compiler.graal.printer.GraalDebugHandlersFactory;
+import jdk.compiler.graal.runtime.RuntimeProvider;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.api.HostVM;

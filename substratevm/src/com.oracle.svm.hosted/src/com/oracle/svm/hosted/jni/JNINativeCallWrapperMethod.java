@@ -30,14 +30,14 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.MonitorEnterNode;
-import org.graalvm.compiler.nodes.java.MonitorExitNode;
-import org.graalvm.compiler.nodes.java.MonitorIdNode;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.nodes.ConstantNode;
+import jdk.compiler.graal.nodes.InvokeWithExceptionNode;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.java.MonitorEnterNode;
+import jdk.compiler.graal.nodes.java.MonitorExitNode;
+import jdk.compiler.graal.nodes.java.MonitorIdNode;
 
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.HostedProviders;

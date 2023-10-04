@@ -27,12 +27,12 @@ package com.oracle.svm.core.graal.llvm;
 import java.nio.file.Path;
 import java.util.Map;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodes.java.LoadExceptionObjectNode;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.phases.util.Providers;
+import jdk.compiler.graal.replacements.TargetGraphBuilderPlugins;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

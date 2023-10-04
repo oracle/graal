@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
+import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_0;
 
 import java.util.List;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.compiler.graal.core.common.type.StampFactory;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.graph.NodeSourcePosition;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.FixedWithNextNode;
+import jdk.compiler.graal.nodes.spi.LIRLowerable;
+import jdk.compiler.graal.nodes.spi.NodeLIRBuilderTool;
 
 import com.oracle.svm.core.graal.lir.DeoptSourcePositionInfoOp;
 

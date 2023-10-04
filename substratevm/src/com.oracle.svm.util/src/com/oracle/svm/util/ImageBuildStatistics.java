@@ -31,10 +31,10 @@ import java.util.TreeMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.nodes.extended.BytecodeExceptionNode;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionKey;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public class ImageBuildStatistics {

@@ -24,25 +24,25 @@
  */
 package com.oracle.svm.core.graal.jdk;
 
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
+import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_8;
 
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.InputType;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.VirtualizerTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
-import org.graalvm.compiler.replacements.nodes.ObjectClone;
+import jdk.compiler.graal.core.common.type.StampPair;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.InputType;
+import jdk.compiler.graal.nodeinfo.NodeCycles;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.AbstractBeginNode;
+import jdk.compiler.graal.nodes.CallTargetNode.InvokeKind;
+import jdk.compiler.graal.nodes.FixedNode;
+import jdk.compiler.graal.nodes.FrameState;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.WithExceptionNode;
+import jdk.compiler.graal.nodes.memory.SingleMemoryKill;
+import jdk.compiler.graal.nodes.spi.Lowerable;
+import jdk.compiler.graal.nodes.spi.VirtualizerTool;
+import jdk.compiler.graal.nodes.util.GraphUtil;
+import jdk.compiler.graal.replacements.nodes.MacroNode.MacroParams;
+import jdk.compiler.graal.replacements.nodes.ObjectClone;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;

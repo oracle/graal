@@ -28,7 +28,7 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.util.List;
 
-import org.graalvm.compiler.options.Option;
+import jdk.compiler.graal.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

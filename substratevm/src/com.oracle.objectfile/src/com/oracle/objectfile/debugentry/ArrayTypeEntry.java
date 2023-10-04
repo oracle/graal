@@ -30,7 +30,7 @@ import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugArrayTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo.DebugTypeKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.compiler.graal.debug.DebugContext;
 
 public class ArrayTypeEntry extends StructureTypeEntry {
     private TypeEntry elementType;

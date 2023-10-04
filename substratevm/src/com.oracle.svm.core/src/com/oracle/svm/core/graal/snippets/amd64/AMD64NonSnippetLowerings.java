@@ -27,12 +27,12 @@ package com.oracle.svm.core.graal.snippets.amd64;
 import java.util.Map;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.calc.FloatConvertNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.amd64.AMD64ConvertSnippets;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.nodes.calc.FloatConvertNode;
+import jdk.compiler.graal.nodes.spi.LoweringTool;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.phases.util.Providers;
+import jdk.compiler.graal.replacements.amd64.AMD64ConvertSnippets;
 
 import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;

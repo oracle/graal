@@ -26,7 +26,7 @@
 
 package com.oracle.svm.core.jfr.events;
 
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.word.Word;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jfr.HasJfrSupport;

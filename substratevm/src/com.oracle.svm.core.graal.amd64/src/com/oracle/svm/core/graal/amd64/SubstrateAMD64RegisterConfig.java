@@ -69,7 +69,7 @@ import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.graalvm.compiler.core.common.LIRKind;
+import jdk.compiler.graal.core.common.LIRKind;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.ReservedRegisters;

@@ -27,9 +27,9 @@ package com.oracle.svm.core.option;
 import com.oracle.svm.common.option.LocatableOption;
 import com.oracle.svm.common.option.MultiOptionValue;
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionKey;
 
 import java.util.function.Consumer;
 

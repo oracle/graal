@@ -26,10 +26,10 @@ package com.oracle.svm.hosted.code.aarch64;
 
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.asm.Assembler;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.compiler.graal.asm.Assembler;
+import jdk.compiler.graal.asm.aarch64.AArch64MacroAssembler;
+import jdk.compiler.graal.code.CompilationResult;
+import jdk.compiler.graal.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

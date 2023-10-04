@@ -30,10 +30,10 @@ import java.security.AccessController;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.replacements.ReplacementsUtil;
+import jdk.compiler.graal.api.directives.GraalDirectives;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.core.common.SuppressFBWarnings;
+import jdk.compiler.graal.replacements.ReplacementsUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;

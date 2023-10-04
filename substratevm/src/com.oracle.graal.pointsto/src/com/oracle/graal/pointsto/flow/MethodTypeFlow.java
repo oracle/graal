@@ -31,11 +31,11 @@ import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.debug.Assertions;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.compiler.graal.debug.Assertions;
+import jdk.compiler.graal.nodes.ParameterNode;
+import jdk.compiler.graal.nodes.ReturnNode;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;

@@ -26,7 +26,7 @@
 
 package com.oracle.graal.pointsto.standalone;
 
-import static org.graalvm.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
+import static jdk.compiler.graal.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.File;
 import java.lang.reflect.Method;
@@ -39,15 +39,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.debug.Indent;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.phases.util.Providers;
+import jdk.compiler.graal.printer.GraalDebugHandlersFactory;
+import jdk.compiler.graal.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;

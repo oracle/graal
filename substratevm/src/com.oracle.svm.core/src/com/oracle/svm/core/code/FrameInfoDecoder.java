@@ -28,8 +28,8 @@ import static com.oracle.svm.core.code.CodeInfoDecoder.FrameInfoState.NO_SUCCESS
 
 import java.util.Arrays;
 
-import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.nodes.FrameState;
+import jdk.compiler.graal.core.common.util.TypeConversion;
+import jdk.compiler.graal.nodes.FrameState;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;

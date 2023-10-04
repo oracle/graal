@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.deopt;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
+import jdk.compiler.graal.core.common.CompilationIdentifier;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;

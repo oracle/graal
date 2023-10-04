@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import org.graalvm.compiler.nodes.UnreachableNode;
+import jdk.compiler.graal.nodes.UnreachableNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.Platforms;

@@ -157,7 +157,7 @@ def _check_jvmci_version(jdk):
 
 @mx.command(_suite.name, 'jvmci-version-check')
 def _run_jvmci_version_check(args=None, jdk=jdk, **kwargs):
-    source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'org', 'graalvm', 'compiler', 'hotspot',
+    source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'jdk', 'compiler', 'graal', 'hotspot',
                        'JVMCIVersionCheck.java')
     return mx.run([jdk.java, '-Xlog:disable', source_path] + (args or []), **kwargs)
 
@@ -166,6 +166,7 @@ if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
 mx_gate.add_jacoco_includes(['org.graalvm.*'])
+mx_gate.add_jacoco_includes(['jdk.compiler.graal.*'])
 mx_gate.add_jacoco_excludes(['com.oracle.truffle'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
 
@@ -228,7 +229,7 @@ def _ctw_system_properties_suffix():
     out.data = 'System properties for CTW:\n\n'
     args = ['-XX:+EnableJVMCI'] + _ctw_jvmci_export_args()
     cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
-    args.extend(['-cp', cp, '-DCompileTheWorld.Help=true', 'org.graalvm.compiler.hotspot.test.CompileTheWorld'])
+    args.extend(['-cp', cp, '-DCompileTheWorld.Help=true', 'jdk.compiler.graal.hotspot.test.CompileTheWorld'])
     run_java(args, out=out, addDefaultArgs=False)
     return out.data
 
@@ -281,7 +282,7 @@ def ctw(args, extraVMarguments=None):
             vmargs.append('-DCompileTheWorld.Classpath=' + cp)
         cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
         vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
-        mainClassAndArgs = ['org.graalvm.compiler.hotspot.test.CompileTheWorld']
+        mainClassAndArgs = ['jdk.compiler.graal.hotspot.test.CompileTheWorld']
 
     run_vm(vmargs + mainClassAndArgs)
 
@@ -1052,7 +1053,7 @@ def collate_metrics(args):
         if not filename.endswith('.csv'):
             mx.abort('Cannot collate metrics from non-CSV files: ' + filename)
 
-        # Keep in sync with org.graalvm.compiler.debug.GlobalMetrics.print(OptionValues)
+        # Keep in sync with jdk.compiler.graal.debug.GlobalMetrics.print(OptionValues)
         abs_filename = join(os.getcwd(), filename)
         directory = dirname(abs_filename)
         rootname = basename(filename)[0:-len('.csv')]
@@ -1280,7 +1281,7 @@ class GraalArchiveParticipant:
                 else:
                     version = None
                 provider = arcname[:-len('.class'):].replace('/', '.')
-                service = 'org.graalvm.compiler.options.OptionDescriptors'
+                service = 'jdk.compiler.graal.options.OptionDescriptors'
                 add_serviceprovider(service, provider, version)
         return False
 
@@ -1365,7 +1366,7 @@ def phaseplan_fuzz_jtt_tests(args, extraVMarguments=None, extraUnitTestArguments
             target_tests.append(arg)
             args.remove(arg)
     if not target_tests:
-        target_tests = ['org.graalvm.compiler.jtt.']
+        target_tests = ['jdk.compiler.graal.jtt.']
 
     for test in target_tests:
         UnitTestRun("Fuzz phase plan for tests matching substring " + test, [], tags=GraalTags.unittest + GraalTags.phaseplan_fuzz_jtt_tests).\

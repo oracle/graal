@@ -27,7 +27,7 @@ package com.oracle.svm.core.deopt;
 import java.util.Objects;
 
 import com.oracle.svm.core.SubstrateOptions;
-import org.graalvm.compiler.graph.NodeSourcePosition;
+import jdk.compiler.graal.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.Pointer;

@@ -24,19 +24,19 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
+import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_2;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
+import jdk.compiler.graal.core.common.type.StampFactory;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.FixedNode;
+import jdk.compiler.graal.nodes.FixedWithNextNode;
+import jdk.compiler.graal.nodes.ReturnNode;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.spi.Lowerable;
+import jdk.compiler.graal.nodes.spi.LoweringTool;
+import jdk.compiler.graal.nodes.util.GraphUtil;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_2)
 public class MethodReturnNode extends FixedWithNextNode implements Lowerable {

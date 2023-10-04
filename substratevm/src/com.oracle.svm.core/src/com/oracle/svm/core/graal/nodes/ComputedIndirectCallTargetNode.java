@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.LoweredCallTargetNode;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.compiler.graal.core.common.type.StampPair;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.LoweredCallTargetNode;
+import jdk.compiler.graal.nodes.ValueNode;
 
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 

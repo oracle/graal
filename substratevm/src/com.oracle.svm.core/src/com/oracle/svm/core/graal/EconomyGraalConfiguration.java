@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal;
 
-import org.graalvm.compiler.hotspot.EconomyCompilerConfigurationFactory;
+import jdk.compiler.graal.hotspot.EconomyCompilerConfigurationFactory;
 
 public class EconomyGraalConfiguration extends GraalConfiguration {
 

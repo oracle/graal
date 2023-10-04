@@ -39,8 +39,8 @@ import java.util.function.Function;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.debug.Indent;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.objectfile.ObjectFile;

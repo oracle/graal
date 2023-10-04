@@ -27,9 +27,9 @@ package com.oracle.svm.hosted.phases;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.compiler.graal.nodes.ConstantNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.nodes.graphbuilderconf.NodePlugin;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;
 import com.oracle.svm.core.RuntimeAssertionsSupport;

@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.heap;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.extended.MembarNode;
-import org.graalvm.compiler.nodes.java.ArrayLengthNode;
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.api.directives.GraalDirectives;
+import jdk.compiler.graal.graph.Node.NodeIntrinsic;
+import jdk.compiler.graal.nodes.extended.MembarNode;
+import jdk.compiler.graal.nodes.java.ArrayLengthNode;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;

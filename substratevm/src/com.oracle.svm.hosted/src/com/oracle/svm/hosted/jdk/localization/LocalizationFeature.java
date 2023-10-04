@@ -61,12 +61,12 @@ import java.util.spi.TimeZoneNameProvider;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionStability;
-import org.graalvm.compiler.options.OptionType;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.nodes.graphbuilderconf.NodePlugin;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionStability;
+import jdk.compiler.graal.options.OptionType;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

@@ -25,15 +25,15 @@
 package com.oracle.svm.core.graal.llvm.util;
 
 import static com.oracle.svm.shadowed.org.bytedeco.llvm.global.LLVM.LLVMTypeOf;
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
-import static org.graalvm.compiler.debug.GraalError.unimplementedOverride;
+import static jdk.compiler.graal.debug.GraalError.shouldNotReachHere;
+import static jdk.compiler.graal.debug.GraalError.unimplementedOverride;
 
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.spi.LIRKindTool;
-import org.graalvm.compiler.lir.ConstantValue;
-import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.lir.VirtualStackSlot;
+import jdk.compiler.graal.core.common.LIRKind;
+import jdk.compiler.graal.core.common.NumUtil;
+import jdk.compiler.graal.core.common.spi.LIRKindTool;
+import jdk.compiler.graal.lir.ConstantValue;
+import jdk.compiler.graal.lir.Variable;
+import jdk.compiler.graal.lir.VirtualStackSlot;
 
 import com.oracle.svm.core.graal.llvm.LLVMGenerator;
 import com.oracle.svm.shadowed.org.bytedeco.llvm.LLVM.LLVMTypeRef;

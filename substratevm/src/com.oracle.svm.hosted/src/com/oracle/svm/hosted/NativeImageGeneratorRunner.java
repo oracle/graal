@@ -47,10 +47,10 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.core.riscv64.ShadowedRISCV64;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import jdk.compiler.graal.core.riscv64.ShadowedRISCV64;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;

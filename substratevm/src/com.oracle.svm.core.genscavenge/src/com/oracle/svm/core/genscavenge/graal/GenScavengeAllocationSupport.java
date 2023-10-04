@@ -27,8 +27,8 @@ package com.oracle.svm.core.genscavenge.graal;
 import com.oracle.svm.core.heap.Pod;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.thread.Continuation;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.genscavenge.HeapParameters;

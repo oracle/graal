@@ -27,7 +27,7 @@ package com.oracle.graal.pointsto.typestate;
 import java.util.BitSet;
 import java.util.Objects;
 
-import org.graalvm.compiler.options.OptionValues;
+import jdk.compiler.graal.options.OptionValues;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;

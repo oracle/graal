@@ -35,7 +35,7 @@ import com.oracle.objectfile.debugentry.MethodEntry;
 import com.oracle.objectfile.debugentry.StructureTypeEntry;
 import com.oracle.objectfile.debugentry.TypeEntry;
 
-import org.graalvm.compiler.debug.GraalError;
+import jdk.compiler.graal.debug.GraalError;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;

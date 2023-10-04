@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.hosted.reflect;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.CallTargetNode;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.IndirectCallTargetNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.compiler.graal.core.common.type.StampFactory;
+import jdk.compiler.graal.core.common.type.StampPair;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.nodes.CallTargetNode;
+import jdk.compiler.graal.nodes.CallTargetNode.InvokeKind;
+import jdk.compiler.graal.nodes.IndirectCallTargetNode;
+import jdk.compiler.graal.nodes.InvokeWithExceptionNode;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;

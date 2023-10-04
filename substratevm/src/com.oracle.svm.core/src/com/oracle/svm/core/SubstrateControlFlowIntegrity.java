@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.compiler.graal.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public interface SubstrateControlFlowIntegrity {

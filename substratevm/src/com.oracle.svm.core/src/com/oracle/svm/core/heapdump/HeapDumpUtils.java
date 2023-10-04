@@ -26,7 +26,7 @@ package com.oracle.svm.core.heapdump;
 
 import static com.oracle.svm.core.snippets.KnownIntrinsics.readCallerStackPointer;
 
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;

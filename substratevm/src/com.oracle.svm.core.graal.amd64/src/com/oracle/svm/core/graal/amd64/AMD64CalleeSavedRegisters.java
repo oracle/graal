@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import static org.graalvm.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
+import static jdk.compiler.graal.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -34,18 +34,18 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.asm.Label;
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.asm.amd64.AMD64Assembler;
-import org.graalvm.compiler.asm.amd64.AMD64BaseAssembler;
-import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.asm.Label;
+import jdk.compiler.graal.asm.amd64.AMD64Address;
+import jdk.compiler.graal.asm.amd64.AMD64Assembler;
+import jdk.compiler.graal.asm.amd64.AMD64BaseAssembler;
+import jdk.compiler.graal.asm.amd64.AMD64MacroAssembler;
+import jdk.compiler.graal.core.common.NumUtil;
+import jdk.compiler.graal.core.common.Stride;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.lir.asm.CompilationResultBuilder;
+import jdk.compiler.graal.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

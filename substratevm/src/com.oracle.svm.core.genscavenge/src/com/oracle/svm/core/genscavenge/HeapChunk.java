@@ -26,8 +26,8 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.function.IntUnaryOperator;
 
-import org.graalvm.compiler.api.directives.GraalDirectives;
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.api.directives.GraalDirectives;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.RawField;

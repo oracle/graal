@@ -24,31 +24,31 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.InputType.State;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
+import static jdk.compiler.graal.nodeinfo.InputType.Memory;
+import static jdk.compiler.graal.nodeinfo.InputType.State;
+import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_2;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.Node.NodeIntrinsicFactory;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.graph.NodeInputList;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.Verbosity;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.UnreachableBeginNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.WithExceptionNode;
-import org.graalvm.compiler.nodes.extended.ForeignCall;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.spi.Simplifiable;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
-import org.graalvm.compiler.nodes.util.GraphUtil;
+import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
+import jdk.compiler.graal.core.common.type.Stamp;
+import jdk.compiler.graal.core.common.type.StampFactory;
+import jdk.compiler.graal.graph.Node.NodeIntrinsicFactory;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.graph.NodeInputList;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodeinfo.Verbosity;
+import jdk.compiler.graal.nodes.AbstractBeginNode;
+import jdk.compiler.graal.nodes.FixedNode;
+import jdk.compiler.graal.nodes.FrameState;
+import jdk.compiler.graal.nodes.UnreachableBeginNode;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.WithExceptionNode;
+import jdk.compiler.graal.nodes.extended.ForeignCall;
+import jdk.compiler.graal.nodes.extended.ForeignCallNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.nodes.spi.Simplifiable;
+import jdk.compiler.graal.nodes.spi.SimplifierTool;
+import jdk.compiler.graal.nodes.util.GraphUtil;
 
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;

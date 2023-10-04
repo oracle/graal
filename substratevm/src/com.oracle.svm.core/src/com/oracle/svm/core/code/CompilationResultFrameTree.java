@@ -31,9 +31,9 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.code.SourceMapping;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.compiler.graal.code.CompilationResult;
+import jdk.compiler.graal.code.SourceMapping;
+import jdk.compiler.graal.debug.DebugContext;
 
 import com.oracle.svm.core.util.VMError;
 

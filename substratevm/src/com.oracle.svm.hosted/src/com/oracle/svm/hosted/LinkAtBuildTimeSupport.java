@@ -28,7 +28,7 @@ package com.oracle.svm.hosted;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.options.Option;
+import jdk.compiler.graal.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.OriginalClassProvider;

@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.core.genscavenge.graal.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_16;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_16;
+import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_16;
+import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_16;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.Lowerable;
+import jdk.compiler.graal.core.common.type.StampFactory;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.FixedWithNextNode;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.spi.Lowerable;
 import org.graalvm.word.Pointer;
 
 @NodeInfo(cycles = CYCLES_16, size = SIZE_16)

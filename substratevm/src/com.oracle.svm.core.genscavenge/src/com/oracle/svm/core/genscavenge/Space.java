@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.VERY_SLOW_PATH_PROBABILITY;
+import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.probability;
 
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.word.ObjectAccess;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;

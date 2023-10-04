@@ -26,7 +26,7 @@ package com.oracle.svm.core.os;
 
 import java.io.File;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.compiler.graal.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;

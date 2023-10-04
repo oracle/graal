@@ -1,7 +1,7 @@
-org.graalvm.compiler.replacements.processor.ReplacementsAnnotationProcessor
-org.graalvm.compiler.nodeinfo.processor.GraphNodeProcessor
-org.graalvm.compiler.lir.processor.IntrinsicStubProcessor
-org.graalvm.compiler.lir.processor.SyncPortProcessor
-org.graalvm.compiler.core.match.processor.MatchProcessor
-org.graalvm.compiler.options.processor.OptionProcessor
-org.graalvm.compiler.serviceprovider.processor.ServiceProviderProcessor
+jdk.compiler.graal.replacements.processor.ReplacementsAnnotationProcessor
+jdk.compiler.graal.nodeinfo.processor.GraphNodeProcessor
+jdk.compiler.graal.lir.processor.IntrinsicStubProcessor
+jdk.compiler.graal.lir.processor.SyncPortProcessor
+jdk.compiler.graal.core.match.processor.MatchProcessor
+jdk.compiler.graal.options.processor.OptionProcessor
+jdk.compiler.graal.serviceprovider.processor.ServiceProviderProcessor

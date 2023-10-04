@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.driver.metainf;
 
-import org.graalvm.compiler.options.OptionKey;
+import jdk.compiler.graal.options.OptionKey;
 
 import com.oracle.svm.core.configure.ConfigurationFile;
 import com.oracle.svm.core.configure.ConfigurationFiles;

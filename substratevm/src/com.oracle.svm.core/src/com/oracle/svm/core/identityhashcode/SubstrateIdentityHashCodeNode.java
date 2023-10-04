@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.core.identityhashcode;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.type.TypedConstant;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.replacements.nodes.IdentityHashCodeNode;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.core.common.type.TypedConstant;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.NodeCycles;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodeinfo.NodeSize;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.replacements.nodes.IdentityHashCodeNode;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.config.ConfigurationValues;

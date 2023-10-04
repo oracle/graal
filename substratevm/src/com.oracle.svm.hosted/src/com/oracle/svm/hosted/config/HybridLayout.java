@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.config;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.compiler.graal.core.common.NumUtil;
 
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.hub.Hybrid;

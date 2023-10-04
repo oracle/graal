@@ -43,7 +43,7 @@ package com.oracle.truffle.runtime.serviceprovider;
 import java.util.ServiceLoader;
 
 /**
- * A subset of the methods defined in {@code org.graalvm.compiler.serviceprovider.GraalServices}.
+ * A subset of the methods defined in {@code jdk.compiler.graal.serviceprovider.GraalServices}.
  */
 public final class TruffleRuntimeServices {
 

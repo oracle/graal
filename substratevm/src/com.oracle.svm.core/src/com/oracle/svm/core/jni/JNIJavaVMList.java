@@ -29,7 +29,7 @@ import static org.graalvm.word.WordFactory.nullPointer;
 import static org.graalvm.word.WordFactory.unsigned;
 import static org.graalvm.word.WordFactory.zero;
 
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;

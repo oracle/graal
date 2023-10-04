@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.nodes.spi.LoweringTool;
 
 public interface NodeLoweringProvider<T extends Node> {
 

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core;
 
-import org.graalvm.compiler.options.Option;
+import jdk.compiler.graal.options.Option;
 
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.HostedOptionKey;

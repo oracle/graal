@@ -28,8 +28,8 @@ import java.lang.invoke.MethodType;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.HostedProviders;

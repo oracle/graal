@@ -24,14 +24,14 @@
  */
 package com.oracle.graal.pointsto.plugins;
 
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.Receiver;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.replacements.arraycopy.ArrayCopySnippets;
-import org.graalvm.compiler.replacements.nodes.MacroNode.MacroParams;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin.Receiver;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.compiler.graal.replacements.arraycopy.ArrayCopySnippets;
+import jdk.compiler.graal.replacements.nodes.MacroNode.MacroParams;
 
 import com.oracle.graal.pointsto.nodes.AnalysisObjectCloneNode;
 

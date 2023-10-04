@@ -30,16 +30,16 @@ import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.TRUE;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpTypes;
 import static com.oracle.svm.core.graal.llvm.util.LLVMUtils.dumpValues;
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHere;
+import static jdk.compiler.graal.debug.GraalError.shouldNotReachHere;
 
 import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.calc.Condition;
-import org.graalvm.compiler.core.common.calc.FloatConvert;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
+import jdk.compiler.graal.core.common.NumUtil;
+import jdk.compiler.graal.core.common.calc.Condition;
+import jdk.compiler.graal.core.common.calc.FloatConvert;
+import jdk.compiler.graal.core.common.memory.MemoryOrderMode;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;

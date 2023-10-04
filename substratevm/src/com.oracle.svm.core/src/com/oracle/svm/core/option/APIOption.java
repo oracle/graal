@@ -31,7 +31,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import java.util.function.Function;
 
-import org.graalvm.compiler.options.Option;
+import jdk.compiler.graal.options.Option;
 
 import com.oracle.svm.core.util.VMError;
 

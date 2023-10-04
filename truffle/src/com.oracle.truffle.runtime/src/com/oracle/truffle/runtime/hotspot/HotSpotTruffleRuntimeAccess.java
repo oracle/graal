@@ -54,6 +54,8 @@ import jdk.vm.ci.hotspot.HotSpotVMConfigAccess;
 import jdk.vm.ci.runtime.JVMCI;
 import jdk.vm.ci.services.Services;
 
+import java.util.Set;
+
 public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
 
     public HotSpotTruffleRuntimeAccess() {
@@ -124,8 +126,9 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                  * That the compiler has a qualified export to Truffle may not be enough if truffle
                  * is running in an isolated module layer.
                  */
-                Modules.addExports(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot", HotSpotTruffleRuntimeAccess.class.getModule());
-                Class<?> hotspotCompilationSupport = Class.forName(compilerModule, "org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport");
+                String pkg = getTruffleGraalHotSpotPackage(compilerModule);
+                Modules.addExports(compilerModule, pkg, HotSpotTruffleRuntimeAccess.class.getModule());
+                Class<?> hotspotCompilationSupport = Class.forName(compilerModule, pkg + ".HotSpotTruffleCompilationSupport");
                 compilationSupport = (TruffleCompilationSupport) hotspotCompilationSupport.getConstructor().newInstance();
             } catch (ReflectiveOperationException e) {
                 throw new InternalError(e);
@@ -136,4 +139,21 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         return rt;
     }
 
+    /**
+     * Handle history of renamings applied to Graal.
+     */
+    private static String getTruffleGraalHotSpotPackage(Module compilerModule) {
+        String[] history = {
+                        "jdk.compiler.graal.truffle.hotspot",
+                        "org.graalvm.compiler.truffle.compiler.hotspot"
+        };
+        Set<String> packages = compilerModule.getPackages();
+        for (String name : history) {
+            if (packages.contains(name)) {
+                return name;
+            }
+        }
+        throw new InternalError(String.format("Cannot find package containing Truffle runtime in %s module (names searched: %s)",
+                        compilerModule.getName(), String.join(", ", history)));
+    }
 }

@@ -47,7 +47,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.compiler.graal.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.ELFObjectFile;

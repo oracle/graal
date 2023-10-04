@@ -27,8 +27,8 @@ package com.oracle.svm.hosted.code;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
+import jdk.compiler.graal.nodes.java.AbstractNewObjectNode;
+import jdk.compiler.graal.nodes.java.NewInstanceNode;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;

@@ -36,8 +36,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionStability;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionStability;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 

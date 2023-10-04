@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jni.functions;
 
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import jdk.compiler.graal.serviceprovider.IsolateUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.LogHandler;

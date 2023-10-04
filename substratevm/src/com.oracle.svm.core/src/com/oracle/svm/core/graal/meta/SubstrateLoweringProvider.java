@@ -26,16 +26,16 @@ package com.oracle.svm.core.graal.meta;
 
 import java.util.Map;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.LoweringProvider;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.compiler.graal.core.common.spi.ForeignCallsProvider;
+import jdk.compiler.graal.core.common.spi.MetaAccessExtensionProvider;
+import jdk.compiler.graal.core.common.type.Stamp;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.spi.LoweringProvider;
+import jdk.compiler.graal.nodes.spi.PlatformConfigurationProvider;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.phases.util.Providers;
 
 import com.oracle.svm.core.graal.GraalConfiguration;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;

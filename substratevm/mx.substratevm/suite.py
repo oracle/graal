@@ -1446,7 +1446,7 @@ suite = {
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
-                    "org.graalvm.compiler.options.OptionDescriptors",
+                    "jdk.compiler.graal.options.OptionDescriptors",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                     "java.util.spi.ResourceBundleControlProvider",
                     "com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration",
@@ -1750,7 +1750,7 @@ suite = {
                 "com.oracle.svm.driver.metainf",
               ],
               "uses" : [
-                "org.graalvm.compiler.options.OptionDescriptors",
+                "jdk.compiler.graal.options.OptionDescriptors",
               ],
               "requires" : [
                 "org.graalvm.nativeimage.builder",
@@ -1946,7 +1946,7 @@ suite = {
                         "jdk.vm.ci.runtime",
                     ],
                     "jdk.internal.vm.compiler" : [
-                        "org.graalvm.compiler.options"
+                        "jdk.compiler.graal.options"
                     ]
                 }
             },

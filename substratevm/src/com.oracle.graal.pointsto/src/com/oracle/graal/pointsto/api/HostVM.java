@@ -36,15 +36,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
+import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
+import jdk.compiler.graal.core.common.spi.ForeignCallsProvider;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.java.GraphBuilderPhase.Instance;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.compiler.graal.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.phases.OptimisticOptimizations;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;

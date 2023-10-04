@@ -29,10 +29,10 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import org.graalvm.compiler.core.common.util.FrequencyEncoder;
-import org.graalvm.compiler.core.common.util.TypeConversion;
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
-import org.graalvm.compiler.graph.NodeSourcePosition;
+import jdk.compiler.graal.core.common.util.FrequencyEncoder;
+import jdk.compiler.graal.core.common.util.TypeConversion;
+import jdk.compiler.graal.core.common.util.UnsafeArrayTypeWriter;
+import jdk.compiler.graal.graph.NodeSourcePosition;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.NonmovableArray;

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.thread;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.compiler.graal.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.ObjectHandle;
 import org.graalvm.nativeimage.Platform;

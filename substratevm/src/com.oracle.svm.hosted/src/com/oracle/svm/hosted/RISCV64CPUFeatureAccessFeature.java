@@ -27,7 +27,7 @@ package com.oracle.svm.hosted;
 import java.lang.reflect.Method;
 import java.util.EnumSet;
 
-import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
+import jdk.compiler.graal.core.riscv64.RISCV64ReflectionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

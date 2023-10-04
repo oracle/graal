@@ -26,10 +26,10 @@
 
 package com.oracle.graal.pointsto.standalone;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValues;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionKey;
+import jdk.compiler.graal.options.OptionType;
+import jdk.compiler.graal.options.OptionValues;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;

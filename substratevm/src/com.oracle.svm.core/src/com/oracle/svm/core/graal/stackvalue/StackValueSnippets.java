@@ -24,25 +24,25 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
+import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.Snippets;
+import jdk.compiler.graal.api.replacements.Snippet;
+import jdk.compiler.graal.api.replacements.Snippet.ConstantParameter;
+import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.graph.Node.ConstantNodeParameter;
+import jdk.compiler.graal.graph.Node.NodeIntrinsic;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.extended.ForeignCallNode;
+import jdk.compiler.graal.nodes.spi.LoweringTool;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.phases.util.Providers;
+import jdk.compiler.graal.replacements.SnippetTemplate;
+import jdk.compiler.graal.replacements.Snippets;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordBase;
 

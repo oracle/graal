@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.core.graal.llvm.replacements;
 
-import static org.graalvm.compiler.debug.GraalError.shouldNotReachHereUnexpectedValue;
+import static jdk.compiler.graal.debug.GraalError.shouldNotReachHereUnexpectedValue;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.gen.ArithmeticLIRGeneratorTool;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.ConstantNode;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.spi.CanonicalizerTool;
+import jdk.compiler.graal.nodes.spi.NodeLIRBuilderTool;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

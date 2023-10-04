@@ -27,7 +27,7 @@ package com.oracle.svm.core.thread;
 import java.util.concurrent.Callable;
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

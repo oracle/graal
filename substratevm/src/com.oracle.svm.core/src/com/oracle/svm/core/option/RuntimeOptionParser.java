@@ -30,11 +30,11 @@ import java.util.Optional;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.OptionsParser;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.options.OptionDescriptor;
+import jdk.compiler.graal.options.OptionKey;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.options.OptionsParser;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

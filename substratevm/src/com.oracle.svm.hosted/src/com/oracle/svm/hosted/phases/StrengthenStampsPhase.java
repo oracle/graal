@@ -24,26 +24,26 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.FixedGuardNode;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.LogicConstantNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ParameterNode;
-import org.graalvm.compiler.nodes.PhiNode;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.java.InstanceOfNode;
-import org.graalvm.compiler.nodes.java.LoadFieldNode;
-import org.graalvm.compiler.nodes.spi.LimitedValueProxy;
-import org.graalvm.compiler.phases.Phase;
+import jdk.compiler.graal.core.common.type.AbstractObjectStamp;
+import jdk.compiler.graal.core.common.type.ObjectStamp;
+import jdk.compiler.graal.core.common.type.Stamp;
+import jdk.compiler.graal.core.common.type.StampFactory;
+import jdk.compiler.graal.core.common.type.TypeReference;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.nodes.FixedGuardNode;
+import jdk.compiler.graal.nodes.FixedWithNextNode;
+import jdk.compiler.graal.nodes.InvokeWithExceptionNode;
+import jdk.compiler.graal.nodes.LogicConstantNode;
+import jdk.compiler.graal.nodes.NodeView;
+import jdk.compiler.graal.nodes.ParameterNode;
+import jdk.compiler.graal.nodes.PhiNode;
+import jdk.compiler.graal.nodes.PiNode;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.java.InstanceOfNode;
+import jdk.compiler.graal.nodes.java.LoadFieldNode;
+import jdk.compiler.graal.nodes.spi.LimitedValueProxy;
+import jdk.compiler.graal.phases.Phase;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.hosted.meta.HostedField;

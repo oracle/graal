@@ -27,21 +27,21 @@ package com.oracle.graal.pointsto.phases;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.bytecode.Bytecode;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.MergeNode;
-import org.graalvm.compiler.nodes.StateSplit;
-import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
-import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GeneratedInvocationPlugin;
-import org.graalvm.compiler.nodes.java.MonitorIdNode;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.common.inlining.InliningUtil;
-import org.graalvm.compiler.replacements.IntrinsicGraphBuilder;
+import jdk.compiler.graal.bytecode.Bytecode;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.nodes.FrameState;
+import jdk.compiler.graal.nodes.MergeNode;
+import jdk.compiler.graal.nodes.StateSplit;
+import jdk.compiler.graal.nodes.StructuredGraph.AllowAssumptions;
+import jdk.compiler.graal.nodes.UnwindNode;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GeneratedInvocationPlugin;
+import jdk.compiler.graal.nodes.java.MonitorIdNode;
+import jdk.compiler.graal.nodes.spi.CoreProviders;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.phases.common.inlining.InliningUtil;
+import jdk.compiler.graal.replacements.IntrinsicGraphBuilder;
 
 import jdk.vm.ci.meta.JavaKind;
 

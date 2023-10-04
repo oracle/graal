@@ -116,8 +116,8 @@ def updategraalinopenjdk(args):
                  SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word'], [])]),
             # JDK module jdk.internal.vm.compiler.management is composed of sources from:
             GraalJDKModule('jdk.internal.vm.compiler.management',
-                # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
-                [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], ['libgraal'])]),
+                # 1. Classes in the compiler suite under the jdk.compiler.graal.hotspot.management namespace
+                [SuiteJDKInfo('compiler', ['jdk.compiler.graal.hotspot.management'], ['libgraal'])]),
         ]
     else:
         if args.version < 15:
@@ -134,8 +134,8 @@ def updategraalinopenjdk(args):
                  SuiteJDKInfo('sdk', ['org.graalvm.collections', 'org.graalvm.word', 'org.graalvm.nativeimage', 'org.graalvm.options'], [])]),
             # JDK module jdk.internal.vm.compiler.management is composed of sources from:
             GraalJDKModule('jdk.internal.vm.compiler.management',
-                # 1. Classes in the compiler suite under the org.graalvm.compiler.hotspot.management namespace
-                [SuiteJDKInfo('compiler', ['org.graalvm.compiler.hotspot.management'], ['libgraal'])]),
+                # 1. Classes in the compiler suite under the jdk.compiler.graal.hotspot.management namespace
+                [SuiteJDKInfo('compiler', ['jdk.compiler.graal.hotspot.management'], ['libgraal'])]),
         ]
 
 
@@ -183,10 +183,10 @@ def updategraalinopenjdk(args):
     copied_source_dirs = []
     jdk_internal_vm_compiler_EXCLUDES = set() # pylint: disable=invalid-name
     jdk_internal_vm_compiler_test_SRC = set() # pylint: disable=invalid-name
-    # Add org.graalvm.compiler.processor since it is only a dependency
+    # Add jdk.compiler.graal.processor since it is only a dependency
     # for (most) Graal annotation processors and is not needed to
     # run Graal.
-    jdk_internal_vm_compiler_EXCLUDES.add('org.graalvm.compiler.processor')
+    jdk_internal_vm_compiler_EXCLUDES.add('jdk.compiler.graal.processor')
     for m in graal_modules:
         classes_dir = join(jdkrepo, 'src', m.name, 'share', 'classes')
         for info in m.suites:
@@ -389,16 +389,16 @@ def updategraalinopenjdk(args):
 
     # replace renamed service
     compiler_module_info = join(jdkrepo, 'src', 'jdk.internal.vm.compiler', 'share', 'classes', 'module-info.java')
-    old_line = '    uses org.graalvm.compiler.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;\n'
-    new_line = '    uses org.graalvm.compiler.nodes.graphbuilderconf.GeneratedPluginFactory;\n'
+    old_line = '    uses jdk.compiler.graal.nodes.graphbuilderconf.NodeIntrinsicPluginFactory;\n'
+    new_line = '    uses jdk.compiler.graal.nodes.graphbuilderconf.GeneratedPluginFactory;\n'
     replace_line(compiler_module_info, old_line, new_line)
 
     # Update 'SRC' in the 'Compile graalunit tests' section of make/test/JtregGraalUnit.gmk
     # to include all test packages.
     JtregGraalUnit_gmk = join(jdkrepo, 'make', 'test', 'JtregGraalUnit.gmk') # pylint: disable=invalid-name
     new_lines = []
-    jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.compiler.microbenchmarks')
-    jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.compiler.virtual.bench')
+    jdk_internal_vm_compiler_test_SRC.discard('jdk.compiler.graal.microbenchmarks')
+    jdk_internal_vm_compiler_test_SRC.discard('jdk.compiler.graal.virtual.bench')
     jdk_internal_vm_compiler_test_SRC.discard('org.graalvm.micro.benchmarks')
     for pkg in sorted(jdk_internal_vm_compiler_test_SRC):
         new_lines.append('$(SRC_DIR)/' + pkg + '/src \\\n')
@@ -415,7 +415,7 @@ def updategraalinopenjdk(args):
         # Update 'PROCESSOR_JARS' and 'PROC_SRC_SUBDIRS' in make/modules/jdk.internal.vm.compiler/Gensrc.gmk
         Gensrc_gmk = join(jdkrepo, 'make', 'modules', 'jdk.internal.vm.compiler', 'Gensrc.gmk') # pylint: disable=invalid-name
         begin_lines = ['PROC_SRC_SUBDIRS := \\']
-        end_line = 'org.graalvm.compiler.virtual \\'
+        end_line = 'jdk.compiler.graal.virtual \\'
         new_lines = ['    jdk.internal.vm.compiler.libgraal.jni \\\n']
         replace_lines(Gensrc_gmk, begin_lines, end_line, new_lines, old_line_check, preserve_indent=True, append_mode=True)
 
@@ -431,7 +431,7 @@ def updategraalinopenjdk(args):
         new_lines = ['\n  $(eval $(call SetupJavaCompilation, BUILD_VM_COMPILER_LIBGRAAL_JNI_PROCESSOR, \\\n',
                      '      TARGET_RELEASE := $(TARGET_RELEASE_BOOTJDK), \\\n',
                      '      SRC := \\\n',
-                     '          $(SRC_DIR)/org.graalvm.compiler.processor/src \\\n',
+                     '          $(SRC_DIR)/jdk.compiler.graal.processor/src \\\n',
                      '          $(SRC_DIR)/jdk.internal.vm.compiler.libgraal.jni.annotation/src \\\n',
                      '          $(SRC_DIR)/jdk.internal.vm.compiler.libgraal.jni.processor/src \\\n',
                      '          , \\\n',

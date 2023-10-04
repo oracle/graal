@@ -27,7 +27,7 @@
 package com.oracle.objectfile.pecoff.cv;
 
 import com.oracle.objectfile.debugentry.FileEntry;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.compiler.graal.debug.GraalError;
 
 import java.io.IOException;
 import java.nio.file.Files;

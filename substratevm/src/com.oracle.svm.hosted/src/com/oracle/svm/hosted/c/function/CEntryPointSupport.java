@@ -24,20 +24,20 @@
  */
 package com.oracle.svm.hosted.c.function;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.IfNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.AddNode;
-import org.graalvm.compiler.nodes.extended.BranchProbabilityNode;
-import org.graalvm.compiler.nodes.extended.StateSplitProxyNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.phases.util.Providers;
+import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.nodes.AbstractBeginNode;
+import jdk.compiler.graal.nodes.ConstantNode;
+import jdk.compiler.graal.nodes.IfNode;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.calc.AddNode;
+import jdk.compiler.graal.nodes.extended.BranchProbabilityNode;
+import jdk.compiler.graal.nodes.extended.StateSplitProxyNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.compiler.graal.phases.util.Providers;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;

@@ -259,9 +259,9 @@ local common_json = import "../common.json";
 
   local common = mx + {
     catch_files+: [
-      # Keep in sync with org.graalvm.compiler.debug.StandardPathUtilitiesProvider#DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP
+      # Keep in sync with jdk.compiler.graal.debug.StandardPathUtilitiesProvider#DIAGNOSTIC_OUTPUT_DIRECTORY_MESSAGE_REGEXP
       "Graal diagnostic output saved in '(?P<filename>[^']+)'",
-      # Keep in sync with org.graalvm.compiler.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
+      # Keep in sync with jdk.compiler.graal.debug.DebugContext#DUMP_FILE_MESSAGE_REGEXP
       "Dumping debug output to '(?P<filename>[^']+)'",
       # Keep in sync with com.oracle.svm.hosted.NativeImageOptions#DEFAULT_ERROR_FILE_NAME
       " (?P<filename>.+/svm_err_b_\\d+T\\d+\\.\\d+_pid\\d+\\.md)",

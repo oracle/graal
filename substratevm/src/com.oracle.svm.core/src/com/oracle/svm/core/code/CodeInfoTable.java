@@ -29,8 +29,8 @@ import java.lang.management.MemoryPoolMXBean;
 import java.util.Arrays;
 import java.util.List;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.hosted.Feature;

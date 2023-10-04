@@ -31,7 +31,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
 
 import jdk.internal.reflect.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;

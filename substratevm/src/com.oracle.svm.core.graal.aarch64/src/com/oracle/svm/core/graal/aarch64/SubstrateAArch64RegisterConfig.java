@@ -70,7 +70,7 @@ import static jdk.vm.ci.aarch64.AArch64.zr;
 
 import java.util.ArrayList;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.compiler.graal.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.ReservedRegisters;

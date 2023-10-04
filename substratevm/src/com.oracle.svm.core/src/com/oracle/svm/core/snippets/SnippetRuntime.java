@@ -28,9 +28,9 @@ import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.GC_
 
 import java.lang.reflect.Method;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
+import jdk.compiler.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import jdk.compiler.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 

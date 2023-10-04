@@ -26,11 +26,11 @@ package com.oracle.svm.core.graal.lir;
 
 import java.util.List;
 
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.lir.LIRFrameState;
-import org.graalvm.compiler.lir.LIRInstruction;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import jdk.compiler.graal.code.CompilationResult;
+import jdk.compiler.graal.lir.LIRFrameState;
+import jdk.compiler.graal.lir.LIRInstruction;
+import jdk.compiler.graal.lir.LIRInstructionClass;
+import jdk.compiler.graal.lir.asm.CompilationResultBuilder;
 
 import com.oracle.svm.core.code.CodeInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;

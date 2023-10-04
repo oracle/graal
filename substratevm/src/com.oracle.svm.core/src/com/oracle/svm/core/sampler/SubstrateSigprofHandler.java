@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.sampler;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.compiler.graal.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;

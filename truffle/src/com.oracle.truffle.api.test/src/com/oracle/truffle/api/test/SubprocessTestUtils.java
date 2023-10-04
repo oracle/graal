@@ -359,7 +359,7 @@ public final class SubprocessTestUtils {
 
     }
 
-    // Methods and constants copied from org.graalvm.compiler.test.SubprocessUtil
+    // Methods and constants copied from jdk.compiler.graal.test.SubprocessUtil
 
     /**
      * The name of the boolean system property that can be set to preserve temporary files created

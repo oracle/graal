@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import org.graalvm.compiler.core.phases.EconomyCompilerConfiguration;
+import jdk.compiler.graal.core.phases.EconomyCompilerConfiguration;
 
 import com.oracle.svm.core.graal.code.SubstrateSuitesCreatorProvider;
 

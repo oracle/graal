@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
-import org.graalvm.compiler.core.common.type.CompressibleConstant;
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.nodes.CompressionNode.CompressionOp;
-import org.graalvm.compiler.nodes.type.NarrowOopStamp;
+import jdk.compiler.graal.core.common.CompressEncoding;
+import jdk.compiler.graal.core.common.type.AbstractObjectStamp;
+import jdk.compiler.graal.core.common.type.CompressibleConstant;
+import jdk.compiler.graal.core.common.type.ObjectStamp;
+import jdk.compiler.graal.core.common.type.Stamp;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.nodes.CompressionNode.CompressionOp;
+import jdk.compiler.graal.nodes.type.NarrowOopStamp;
 
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;
 import com.oracle.svm.core.heap.ReferenceAccess;

@@ -40,8 +40,8 @@ import java.util.Scanner;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import org.graalvm.compiler.core.riscv64.RISCV64ReflectionUtil;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.compiler.graal.core.riscv64.RISCV64ReflectionUtil;
+import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 

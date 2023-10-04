@@ -26,12 +26,12 @@ package com.oracle.svm.hosted.phases;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.nodes.ConstantNode;
+import jdk.compiler.graal.nodes.FrameState;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.ClassInitializationPlugin;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
 
 import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.hosted.SVMHost;

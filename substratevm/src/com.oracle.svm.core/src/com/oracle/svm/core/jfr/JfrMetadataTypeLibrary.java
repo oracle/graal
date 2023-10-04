@@ -28,8 +28,8 @@ import java.lang.reflect.Method;
 import java.util.Collection;
 import java.util.HashMap;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.options.OptionsParser;
+import jdk.compiler.graal.core.common.NumUtil;
+import jdk.compiler.graal.options.OptionsParser;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

@@ -32,7 +32,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import org.graalvm.util.json.JSONParserException;
+import jdk.compiler.graal.util.json.JSONParserException;
 
 import com.oracle.svm.core.jdk.proxy.DynamicProxyRegistry;
 

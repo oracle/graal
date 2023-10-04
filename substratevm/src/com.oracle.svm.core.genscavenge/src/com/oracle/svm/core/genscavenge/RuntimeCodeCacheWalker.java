@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

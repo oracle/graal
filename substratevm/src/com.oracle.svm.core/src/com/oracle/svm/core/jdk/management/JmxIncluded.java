@@ -28,7 +28,7 @@ package com.oracle.svm.core.jdk.management;
 
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.compiler.graal.api.replacements.Fold;
 
 import com.oracle.svm.core.VMInspectionOptions;
 

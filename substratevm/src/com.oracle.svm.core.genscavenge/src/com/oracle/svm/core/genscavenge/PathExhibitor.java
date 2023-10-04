@@ -28,7 +28,7 @@ package com.oracle.svm.core.genscavenge;
 import java.util.ArrayList;
 
 import com.oracle.svm.core.heap.VMOperationInfos;
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;

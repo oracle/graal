@@ -27,22 +27,22 @@ package com.oracle.svm.core.graal.llvm.replacements;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.replacements.TargetGraphBuilderPlugins;
-import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
-import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import org.graalvm.compiler.replacements.nodes.BitCountNode;
-import org.graalvm.compiler.replacements.nodes.FusedMultiplyAddNode;
-import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
-import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import jdk.compiler.graal.nodes.ConstantNode;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.compiler.graal.nodes.spi.Replacements;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.replacements.TargetGraphBuilderPlugins;
+import jdk.compiler.graal.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.compiler.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import jdk.compiler.graal.replacements.nodes.BitCountNode;
+import jdk.compiler.graal.replacements.nodes.FusedMultiplyAddNode;
+import jdk.compiler.graal.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.compiler.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import com.oracle.svm.core.graal.llvm.replacements.LLVMIntrinsicNode.LLVMIntrinsicOperation;
 
