@@ -98,7 +98,7 @@ The most-specific tag is unique and always points to the same image, while the l
     docker pull --platform linux/aarch64 ghcr.io/graalvm/native-image-community:17
     ```
 
-If you are looking for Oracle GraalVM container images, they are published in the [Oracle Container Registry](https://container-registry.oracle.com).
+If you are looking for Oracle GraalVM container images, they are published in the [Oracle Container Registry](https://container-registry.oracle.com/ords/ocr/ba/graalvm).
 
 ### Learn More
 
