@@ -50,6 +50,7 @@ You can download a standalone based on Oracle GraalVM or GraalVM Community Editi
 
 3. A standalone comes with a JVM in addition to its native launcher. Check the version to see the Java on Truffle runtime is active:
     ```shell
+    # Path to Java on Truffle (Espresso) installation
     ./path/to/bin/java -truffle -version
     ```
 
@@ -97,7 +98,8 @@ This might be important for options such as `MaxDirectMemorySize` which can be s
 
 To ensure you have successfully installed Java on Truffle, verify its version:
 ```shell
-java -truffle -version
+# Path to Java on Truffle (Espresso) installation
+./path/to/bin/java -truffle -version
 ```
 
 Taking this `HelloWorld.java` example, compile it and run from the command line:
