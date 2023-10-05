@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.heap;
 
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 import org.graalvm.nativeimage.ImageSingletons;
@@ -34,7 +32,6 @@ import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Containers;
 import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicInteger;
 import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.VMOperation;
@@ -58,22 +55,16 @@ public class PhysicalMemory {
         UnsignedWord size();
     }
 
-    private static final CountDownLatch CACHED_SIZE_AVAIL_LATCH = new CountDownLatch(1);
-    private static final AtomicInteger INITIALIZING = new AtomicInteger(0);
     private static final ReentrantLock LOCK = new ReentrantLock();
     private static final UnsignedWord UNSET_SENTINEL = UnsignedUtils.MAX_VALUE;
     private static UnsignedWord cachedSize = UNSET_SENTINEL;
 
     public static boolean isInitialized() {
-        return INITIALIZING.get() > 1;
+        return cachedSize != UNSET_SENTINEL;
     }
 
-    /**
-     *
-     * @return {@code true} when PhycialMemory.size() is still initializing
-     */
-    private static boolean isInitializing() {
-        return INITIALIZING.get() == 1;
+    public static boolean isInitializationInProgress() {
+        return LOCK.isHeldByCurrentThread();
     }
 
     /**
@@ -92,42 +83,23 @@ public class PhysicalMemory {
             throw VMError.shouldNotReachHere("Accessing the physical memory size may require allocation and synchronization");
         }
 
-        LOCK.lock();
-        try {
-            if (!isInitialized()) {
-                if (isInitializing()) {
-                    /*
-                     * Recursive initializations need to wait for the one initializing thread to
-                     * finish so as to get correct reads of the cachedSize value.
-                     */
-                    try {
-                        boolean expired = !CACHED_SIZE_AVAIL_LATCH.await(1L, TimeUnit.SECONDS);
-                        if (expired) {
-                            throw new InternalError("Expired latch!");
-                        }
-                        VMError.guarantee(cachedSize != UNSET_SENTINEL, "Expected cached size to be set");
-                        return cachedSize;
-                    } catch (InterruptedException e) {
-                        throw VMError.shouldNotReachHere("Interrupt on countdown latch!");
+        if (!isInitialized()) {
+            long memoryLimit = SubstrateOptions.MaxRAM.getValue();
+            if (memoryLimit > 0) {
+                cachedSize = WordFactory.unsigned(memoryLimit);
+            } else {
+                LOCK.lock();
+                try {
+                    if (!isInitialized()) {
+                        memoryLimit = Containers.memoryLimitInBytes();
+                        cachedSize = memoryLimit > 0
+                                        ? WordFactory.unsigned(memoryLimit)
+                                        : ImageSingletons.lookup(PhysicalMemorySupport.class).size();
                     }
+                } finally {
+                    LOCK.unlock();
                 }
-                INITIALIZING.incrementAndGet();
-                long memoryLimit = SubstrateOptions.MaxRAM.getValue();
-                if (memoryLimit > 0) {
-                    cachedSize = WordFactory.unsigned(memoryLimit);
-                } else {
-                    memoryLimit = Containers.memoryLimitInBytes();
-                    cachedSize = memoryLimit > 0
-                                    ? WordFactory.unsigned(memoryLimit)
-                                    : ImageSingletons.lookup(PhysicalMemorySupport.class).size();
-                }
-                // Now that we have set the cachedSize let other threads know it's
-                // available to use.
-                INITIALIZING.incrementAndGet();
-                CACHED_SIZE_AVAIL_LATCH.countDown();
             }
-        } finally {
-            LOCK.unlock();
         }
 
         return cachedSize;
