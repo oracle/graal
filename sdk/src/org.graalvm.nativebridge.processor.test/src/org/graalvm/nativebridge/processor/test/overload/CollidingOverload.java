@@ -40,26 +40,17 @@
  */
 package org.graalvm.nativebridge.processor.test.overload;
 
-import org.graalvm.jniutils.HSObject;
-import org.graalvm.jniutils.JNI;
-import org.graalvm.nativebridge.ByReference;
-import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
 import org.graalvm.nativebridge.processor.test.Service;
-import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
-@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
-abstract class HSNameCollision extends HSObject implements NameCollision {
+import java.time.Duration;
 
-    HSNameCollision(JNI.JNIEnv env, JNI.JObject handle) {
-        super(env, handle);
-    }
+public interface CollidingOverload {
 
-    final void colliding2() {
-    }
+    void colliding(Duration duration);
 
-    @Override
-    public abstract void byReferenceColliding(@ByReference(NativeService.class) Service service);
+    void colliding(Duration[] duration);
 
-    @Override
-    public abstract void byReferenceColliding(@ByReference(NativeNameCollision.class) NameCollision service);
+    void byReferenceColliding(Service service);
+
+    void byReferenceColliding(NonCollidingOverload service);
 }

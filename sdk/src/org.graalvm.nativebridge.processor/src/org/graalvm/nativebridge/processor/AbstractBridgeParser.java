@@ -73,6 +73,7 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -459,7 +460,7 @@ abstract class AbstractBridgeParser {
 
     private Collection<MethodData> createMethodData(DeclaredType annotatedType, DeclaredType serviceType, List<ExecutableElement> methods,
                     boolean customDispatch, boolean enforceIdempotent, Map<String, DeclaredType> alwaysByReference) {
-        Collection<ExecutableElement> methodsToGenerate = methodsToGenerate(annotatedType, methods);
+        List<ExecutableElement> methodsToGenerate = methodsToGenerate(annotatedType, methods);
         Set<? extends CharSequence> overloadedMethods = methodsToGenerate.stream().//
                         collect(Collectors.groupingBy(ExecutableElement::getSimpleName, Collectors.counting())).//
                         entrySet().stream().//
@@ -479,8 +480,8 @@ abstract class AbstractBridgeParser {
         }
         Collection<MethodData> toGenerate = new ArrayList<>(methodsToGenerate.size());
         Set<String> usedCacheFields = new HashSet<>();
-        Map<String, List<Signature>> startPointMethodNames = computeBaseClassOverrides(annotatedType);
-        Map<String, List<Signature>> endPointMethodNames = computeBaseClassOverrides(typeCache.object);
+        Map<String, List<Entry<Signature, ExecutableElement>>> startPointMethodNames = computeBaseClassOverrides(annotatedType);
+        Map<String, List<Entry<Signature, ExecutableElement>>> endPointMethodNames = computeBaseClassOverrides(typeCache.object);
         for (ExecutableElement methodToGenerate : methodsToGenerate) {
             ExecutableType methodToGenerateType = (ExecutableType) types.asMemberOf(annotatedType, methodToGenerate);
             MarshallerData retMarshaller = lookupMarshaller(methodToGenerate, methodToGenerateType.getReturnType(), methodToGenerate.getAnnotationMirrors(), customDispatch, alwaysByReference);
@@ -545,47 +546,62 @@ abstract class AbstractBridgeParser {
                                 : null;
                 String endPointMethodName = endPointMethodProvider.getEndPointMethodName(methodData);
                 List<? extends TypeMirror> endPointSignature = Utilities.erasure(endPointMethodProvider.getEndPointSignature(methodData, serviceType, customDispatch), types);
-                if (hasCollision(endPointMethodNames, endPointMethodName, endPointSignature) ||
-                                (entryPointMethodName != null && hasCollision(startPointMethodNames, entryPointMethodName, entryPointSignature))) {
-                    emitError(methodToGenerate, null, "Colliding overloads", Utilities.getTypeName(annotatedType));
+                // Check a collision in the end-point class.
+                ExecutableElement collidesWith = hasCollision(endPointMethodNames, endPointMethodName, endPointSignature);
+                if (collidesWith == null) {
+                    // Check a collision in the start-point class if an entry method is generated in
+                    // it.
+                    collidesWith = entryPointMethodName != null ? hasCollision(startPointMethodNames, entryPointMethodName, entryPointSignature) : null;
+                }
+                if (collidesWith != null) {
+                    String errorMessageFormat = "The method generated for `%s` conflicts with a generated method for an overloaded method `%s`. " +
+                                    "To resolve this, make `%s` final within the `%s` and delegate its functionality to a new abstract method. " +
+                                    "This new method should have a unique name, the same signature, and be annotated with `@%s`. " +
+                                    "For more details, please refer to the `%s` JavaDoc.";
+                    CharSequence newMethod = Utilities.printMethod(methodToGenerate);
+                    CharSequence prevMethod = Utilities.printMethod(collidesWith);
+                    CharSequence receiverMethodName = Utilities.getTypeName(typeCache.receiverMethod);
+                    String errorMessage = String.format(errorMessageFormat, newMethod, prevMethod, newMethod,
+                                    Utilities.getTypeName(annotatedType), receiverMethodName, receiverMethodName);
+                    emitError(methodToGenerate, null, errorMessage, Utilities.getTypeName(annotatedType));
                 } else {
                     toGenerate.add(methodData);
                 }
-                endPointMethodNames.computeIfAbsent(endPointMethodName, (n) -> new ArrayList<>()).add(new Signature(endPointSignature));
+                endPointMethodNames.computeIfAbsent(endPointMethodName, (n) -> new ArrayList<>()).add(new SimpleImmutableEntry<>(new Signature(endPointSignature), methodToGenerate));
                 if (entryPointMethodName != null) {
-                    startPointMethodNames.computeIfAbsent(entryPointMethodName, (n) -> new ArrayList<>()).add(new Signature(entryPointSignature));
+                    startPointMethodNames.computeIfAbsent(entryPointMethodName, (n) -> new ArrayList<>()).add(new SimpleImmutableEntry<>(new Signature(entryPointSignature), methodToGenerate));
                 }
             }
         }
         return toGenerate;
     }
 
-    private boolean hasCollision(Map<String, List<Signature>> overloads, String name, List<? extends TypeMirror> signature) {
-        List<Signature> usedSignatures = overloads.get(name);
+    private ExecutableElement hasCollision(Map<String, List<Entry<Signature, ExecutableElement>>> overloads, String name, List<? extends TypeMirror> signature) {
+        List<Entry<Signature, ExecutableElement>> usedSignatures = overloads.get(name);
         if (usedSignatures != null) {
-            for (Signature usedSignature : usedSignatures) {
-                if (Utilities.equals(signature, usedSignature.parameterTypes, types)) {
-                    return true;
+            for (Entry<Signature, ExecutableElement> usedSignature : usedSignatures) {
+                if (Utilities.equals(signature, usedSignature.getKey().parameterTypes(), types)) {
+                    return usedSignature.getValue();
                 }
             }
         }
-        return false;
+        return null;
     }
 
-    private Map<String, List<Signature>> computeBaseClassOverrides(DeclaredType forType) {
-        Map<String, List<Signature>> map = new HashMap<>();
+    private Map<String, List<Entry<Signature, ExecutableElement>>> computeBaseClassOverrides(DeclaredType forType) {
+        Map<String, List<Entry<Signature, ExecutableElement>>> map = new HashMap<>();
         for (ExecutableElement method : ElementFilter.methodsIn(elements.getAllMembers((TypeElement) forType.asElement()))) {
             if (!method.getModifiers().contains(Modifier.PRIVATE)) {
                 String name = method.getSimpleName().toString();
                 ExecutableType methodToGenerateType = (ExecutableType) types.asMemberOf(forType, method);
                 Signature signature = new Signature(Utilities.erasure(methodToGenerateType.getParameterTypes(), types));
-                map.computeIfAbsent(name, (n) -> new ArrayList<>()).add(signature);
+                map.computeIfAbsent(name, (n) -> new ArrayList<>()).add(new SimpleImmutableEntry<>(signature, method));
             }
         }
         return map;
     }
 
-    private Collection<ExecutableElement> methodsToGenerate(DeclaredType annotatedType, Iterable<? extends ExecutableElement> methods) {
+    private List<ExecutableElement> methodsToGenerate(DeclaredType annotatedType, Iterable<? extends ExecutableElement> methods) {
         List<ExecutableElement> res = new ArrayList<>();
         for (ExecutableElement method : methods) {
             Set<Modifier> modifiers = method.getModifiers();
@@ -602,6 +618,7 @@ abstract class AbstractBridgeParser {
             }
             res.add(method);
         }
+        res.sort(Utilities.executableElementComparator(elements, types));
         return res;
     }
 

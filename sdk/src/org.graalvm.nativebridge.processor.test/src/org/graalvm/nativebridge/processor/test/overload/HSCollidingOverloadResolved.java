@@ -40,25 +40,35 @@
  */
 package org.graalvm.nativebridge.processor.test.overload;
 
-import org.graalvm.nativebridge.processor.test.Service;
+import org.graalvm.jniutils.HSObject;
+import org.graalvm.jniutils.JNI;
+import org.graalvm.nativebridge.ByReference;
+import org.graalvm.nativebridge.GenerateNativeToHotSpotBridge;
+import org.graalvm.nativebridge.ReceiverMethod;
+import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 
 import java.time.Duration;
 
-public interface NameCollision {
+@GenerateNativeToHotSpotBridge(jniConfig = TestJNIConfig.class)
+abstract class HSCollidingOverloadResolved extends HSObject implements CollidingOverload {
 
-    void colliding(Duration duration);
+    HSCollidingOverloadResolved(JNI.JNIEnv env, JNI.JObject handle) {
+        super(env, handle);
+    }
 
-    void colliding(Duration[] duration);
+    @Override
+    public final void colliding(Duration[] duration) {
+        collidingResolved(duration);
+    }
 
-    void colliding0(String str);
+    @ReceiverMethod("colliding")
+    abstract void collidingResolved(Duration[] duration);
 
-    void colliding1(Duration duration);
+    @Override
+    public final void byReferenceColliding(NonCollidingOverload service) {
+        byReferenceCollidingResolved(service);
+    }
 
-    void nonColliding(int a, Duration duration);
-
-    void nonColliding(String a, Duration duration);
-
-    void byReferenceColliding(NameCollision service);
-
-    void byReferenceColliding(Service service);
+    @ReceiverMethod("byReferenceColliding")
+    abstract void byReferenceCollidingResolved(@ByReference(NativeNonCollidingOverload.class) NonCollidingOverload service);
 }

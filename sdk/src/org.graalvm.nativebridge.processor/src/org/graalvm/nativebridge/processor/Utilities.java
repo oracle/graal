@@ -44,6 +44,7 @@ import java.util.AbstractMap.SimpleImmutableEntry;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +61,7 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
 import javax.lang.model.type.ArrayType;
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.ExecutableType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.Elements;
@@ -364,5 +366,33 @@ public final class Utilities {
             }
         }
         return result.toString();
+    }
+
+    public static Comparator<ExecutableElement> executableElementComparator(Elements elements, Types types) {
+        return new ExecutableElementComparator(elements, types);
+    }
+
+    private static final class ExecutableElementComparator implements Comparator<ExecutableElement> {
+
+        private final Elements elements;
+        private final Types types;
+
+        ExecutableElementComparator(Elements elements, Types types) {
+            this.elements = elements;
+            this.types = types;
+        }
+
+        @Override
+        public int compare(ExecutableElement o1, ExecutableElement o2) {
+            int res = o1.getSimpleName().toString().compareTo(o2.getSimpleName().toString());
+            if (res == 0) {
+                TypeMirror[] pt1 = ((ExecutableType) o1.asType()).getParameterTypes().toArray(new TypeMirror[0]);
+                TypeMirror[] pt2 = ((ExecutableType) o2.asType()).getParameterTypes().toArray(new TypeMirror[0]);
+                String sig1 = encodeMethodSignature(elements, types, o1.getReturnType(), pt1).toString();
+                String sig2 = encodeMethodSignature(elements, types, o2.getReturnType(), pt2).toString();
+                res = sig1.compareTo(sig2);
+            }
+            return res;
+        }
     }
 }
