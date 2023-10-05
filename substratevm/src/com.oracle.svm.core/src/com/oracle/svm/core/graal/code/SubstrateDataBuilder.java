@@ -28,7 +28,6 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.nio.ByteBuffer;
 
-import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import org.graalvm.compiler.code.DataSection.Data;
 import org.graalvm.compiler.code.DataSection.Patches;
 import org.graalvm.compiler.core.common.type.CompressibleConstant;
@@ -51,11 +50,8 @@ public class SubstrateDataBuilder extends DataBuilder {
     @Override
     public Data createDataItem(Constant constant) {
         int size;
-        if (constant instanceof SubstrateMethodPointerConstant methodPointerConstant) {
-            size = FrameAccess.wordSize();
-            return new ObjectData(size, size, methodPointerConstant);
-        } else if (constant instanceof VMConstant vmConstant) {
-            assert constant instanceof CompressibleConstant && constant instanceof TypedConstant : constant;
+        if (constant instanceof VMConstant vmConstant) {
+            assert constant instanceof JavaConstant && constant instanceof CompressibleConstant && constant instanceof TypedConstant : constant;
             return new ObjectData(vmConstant);
         } else if (JavaConstant.isNull(constant)) {
             if (SubstrateObjectConstant.isCompressed((JavaConstant) constant)) {
@@ -64,8 +60,9 @@ public class SubstrateDataBuilder extends DataBuilder {
                 size = FrameAccess.uncompressedReferenceSize();
             }
             return createZeroData(size, size);
-        } else if (constant instanceof SerializableConstant serializableConstant) {
-            return createSerializableData(serializableConstant);
+        } else if (constant instanceof SerializableConstant) {
+            SerializableConstant s = (SerializableConstant) constant;
+            return createSerializableData(s);
         } else {
             throw new JVMCIError(String.valueOf(constant));
         }
@@ -74,19 +71,15 @@ public class SubstrateDataBuilder extends DataBuilder {
     public static class ObjectData extends Data {
         private final VMConstant constant;
 
-        protected ObjectData(int alignment, int size, VMConstant constant) {
-            super(alignment, size);
+        protected ObjectData(VMConstant constant) {
+            super(ConfigurationValues.getObjectLayout().getReferenceSize(), ConfigurationValues.getObjectLayout().getReferenceSize());
+            assert ((CompressibleConstant) constant).isCompressed() == ReferenceAccess.singleton()
+                            .haveCompressedReferences() : "Constant object references in compiled code must be compressed (base-relative)";
             this.constant = constant;
         }
 
-        protected ObjectData(VMConstant constant) {
-            this(ConfigurationValues.getObjectLayout().getReferenceSize(), ConfigurationValues.getObjectLayout().getReferenceSize(), constant);
-            assert ((CompressibleConstant) constant).isCompressed() == ReferenceAccess.singleton()
-                            .haveCompressedReferences() : "Constant object references in compiled code must be compressed (base-relative)";
-        }
-
-        public VMConstant getConstant() {
-            return constant;
+        public JavaConstant getConstant() {
+            return (JavaConstant) constant;
         }
 
         @Override
@@ -99,7 +92,7 @@ public class SubstrateDataBuilder extends DataBuilder {
             if (size == Integer.BYTES) {
                 buffer.putInt(0);
             } else if (size == Long.BYTES) {
-                buffer.putLong(0);
+                buffer.putLong(0L);
             } else {
                 shouldNotReachHere("Unsupported object constant reference size: " + size);
             }

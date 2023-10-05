@@ -37,7 +37,6 @@ import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.WordBase;
@@ -169,16 +168,10 @@ public final class NativeImageHeapWriter {
     private final boolean useHeapBase = NativeImageHeap.useHeapBase();
     private final CompressEncoding compressEncoding = ImageSingletons.lookup(CompressEncoding.class);
 
-    void writeReference(RelocatableBuffer buffer, int index, Constant constant, Object reason) {
+    void writeReference(RelocatableBuffer buffer, int index, JavaConstant target, Object reason) {
+        assert !(heap.hMetaAccess.isInstanceOf(target, WordBase.class)) : "word values are not references";
         mustBeReferenceAligned(index);
-
-        if (constant instanceof JavaConstant target) {
-            assert !(heap.hMetaAccess.isInstanceOf(target, WordBase.class)) : "word values are not references";
-
-            if (target.isNull()) {
-                return;
-            }
-
+        if (target.isNonNull()) {
             ObjectInfo targetInfo = heap.getConstantInfo(target);
             verifyTargetDidNotChange(target, reason, targetInfo);
             if (useHeapBase) {
@@ -187,9 +180,6 @@ public final class NativeImageHeapWriter {
             } else {
                 addDirectRelocationWithoutAddend(buffer, index, referenceSize(), target);
             }
-        } else {
-            assert Platform.includedIn(Platform.DARWIN_AMD64.class) : "[GR-43389] Workaround for ld64 bug that does not allow direct8 relocations in .text on amd64";
-            buffer.addRelocationWithoutAddend(index, ObjectFile.RelocationKind.DIRECT_8, ((SubstrateMethodPointerConstant) constant).pointer());
         }
     }
 
