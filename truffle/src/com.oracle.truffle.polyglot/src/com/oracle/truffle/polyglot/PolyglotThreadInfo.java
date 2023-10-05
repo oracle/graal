@@ -54,7 +54,6 @@ import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.nodes.EncapsulatingNodeReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.utilities.TruffleWeakReference;
-import com.oracle.truffle.polyglot.PolyglotLocals.LocalLocation;
 
 final class PolyglotThreadInfo {
 
@@ -172,6 +171,7 @@ final class PolyglotThreadInfo {
     public void setContextThreadLocals(Object[] contextThreadLocals) {
         assert Thread.holdsLock(context);
         this.contextThreadLocals = contextThreadLocals;
+        this.fastThreadLocals[PolyglotFastThreadLocals.CONTEXT_THREAD_LOCALS_INDEX] = contextThreadLocals;
     }
 
     boolean isCurrent() {
@@ -254,12 +254,7 @@ final class PolyglotThreadInfo {
         }
     }
 
-    Object getThreadLocal(LocalLocation l) {
-        // thread id is guaranteed to be unique
-        return l.readLocal(this.context, getThreadLocals(l.engine), true);
-    }
-
-    private Object[] getThreadLocals(PolyglotEngineImpl e) {
+    Object[] getThreadLocals(PolyglotEngineImpl e) {
         CompilerAsserts.partialEvaluationConstant(e);
         Object[] locals = this.contextThreadLocals;
         assert locals != null : "thread local not initialized.";

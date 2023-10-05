@@ -68,7 +68,7 @@ final class DefaultContextThreadLocal extends AbstractFastThreadLocal {
     @Override
     @SuppressWarnings("unchecked")
     @TruffleBoundary
-    public <C> C fastGet(int index, Class<C> castType, boolean invalidateOnNull) {
+    public <C> C fastGet(int index, Class<C> castType, boolean invalidateOnNull, boolean nonNullResult) {
         Object[] data = get();
         if (data == null) {
             return null;
