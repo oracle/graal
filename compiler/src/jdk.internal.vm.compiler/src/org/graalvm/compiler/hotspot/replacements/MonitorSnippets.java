@@ -219,25 +219,26 @@ public class MonitorSnippets implements Snippets {
             }
         }
 
-        if (probability(SLOW_PATH_PROBABILITY, mark.and(monitorMask(INJECTED_VMCONFIG)).notEqual(0))) {
-            // Inflated case
-            if (tryEnterInflated(object, lock, mark, thread, trace, counters)) {
-                return;
-            }
+        if (tryFastPathLocking(object, stackPointerRegister, trace, counters, mark, lock, thread)) {
+            incrementHeldMonitorCount(thread);
         } else {
-            if (useLightweightLocking(INJECTED_VMCONFIG)) {
-                if (tryLightweightLocking(object, lock, mark, thread, trace, counters, stackPointerRegister)) {
-                    return;
-                }
-            } else if (useStackLocking(INJECTED_VMCONFIG)) {
-                if (tryStackLocking(object, lock, mark, thread, trace, counters, stackPointerRegister)) {
-                    return;
-                }
-            }
+            // slow-path runtime-call
+            monitorenterStubC(MONITORENTER, object, lock);
         }
+    }
 
-        // slow-path runtime-call
-        monitorenterStubC(MONITORENTER, object, lock);
+    /**
+     * Dispatch to the appropriate locking strategy based on the {@code LockingMode} flag value.
+     */
+    private static boolean tryFastPathLocking(Object object, Register stackPointerRegister, boolean trace, Counters counters, Word mark, Word lock, Word thread) {
+        if (useLightweightLocking(INJECTED_VMCONFIG)) {
+            return tryLightweightLocking(object, lock, mark, thread, trace, counters, stackPointerRegister);
+        } else if (useStackLocking(INJECTED_VMCONFIG)) {
+            return tryStackLocking(object, lock, mark, thread, trace, counters, stackPointerRegister);
+        } else {
+            // LM_MONITOR case
+            return false;
+        }
     }
 
     private static boolean tryEnterInflated(Object object, Word lock, Word mark, Word thread, boolean trace, Counters counters) {
@@ -257,7 +258,6 @@ public class MonitorSnippets implements Snippets {
                 // success
                 traceObject(trace, "+lock{inflated:cas}", object, true);
                 counters.inflatedCas.inc();
-                incrementHeldMonitorCount(thread);
                 return true;
             } else {
                 traceObject(trace, "+lock{stub:inflated:failed-cas}", object, true);
@@ -269,7 +269,6 @@ public class MonitorSnippets implements Snippets {
             monitor.writeWord(recursionsOffset, recursions.add(1), OBJECT_MONITOR_RECURSION_LOCATION);
             traceObject(trace, "+lock{inflated:recursive}", object, true);
             counters.inflatedRecursive.inc();
-            incrementHeldMonitorCount(thread);
             return true;
         } else {
             traceObject(trace, "+lock{stub:inflated:owned}", object, true);
@@ -279,6 +278,11 @@ public class MonitorSnippets implements Snippets {
     }
 
     private static boolean tryStackLocking(Object object, Word lock, Word mark, Word thread, boolean trace, Counters counters, Register stackPointerRegister) {
+        if (probability(SLOW_PATH_PROBABILITY, mark.and(monitorMask(INJECTED_VMCONFIG)).notEqual(0))) {
+            // Inflated case
+            return tryEnterInflated(object, lock, mark, thread, trace, counters);
+        }
+
         Pointer objectPointer = Word.objectToTrackedPointer(object);
 
         // Create the unlocked mark word pattern
@@ -298,7 +302,6 @@ public class MonitorSnippets implements Snippets {
             traceObject(trace, "+lock{stack:cas}", object, true);
             counters.lockCas.inc();
             mark(object);
-            incrementHeldMonitorCount(thread);
             return true;
         } else {
             trace(trace, "      currentMark: 0x%016lx\n", currentMark);
@@ -324,7 +327,6 @@ public class MonitorSnippets implements Snippets {
                 lock.writeWord(lockDisplacedMarkOffset(INJECTED_VMCONFIG), zero(), DISPLACED_MARK_WORD_LOCATION);
                 traceObject(trace, "+lock{stack:cas:recursive}", object, true);
                 counters.lockCasRecursive.inc();
-                incrementHeldMonitorCount(thread);
                 return true;
             }
             traceObject(trace, "+lock{stub:stack:failed-cas}", object, true);
@@ -338,6 +340,11 @@ public class MonitorSnippets implements Snippets {
               sha1 = "7a02d52b6b621959389e574984ca20b52100fe5e")
     // @formatter:on
     private static boolean tryLightweightLocking(Object object, Word lock, Word mark, Word thread, boolean trace, Counters counters, Register stackPointerRegister) {
+        if (probability(SLOW_PATH_PROBABILITY, mark.and(monitorMask(INJECTED_VMCONFIG)).notEqual(0))) {
+            // Inflated case
+            return tryEnterInflated(object, lock, mark, thread, trace, counters);
+        }
+
         Pointer objectPointer = Word.objectToTrackedPointer(object);
         // First we need to check if the lock-stack has room for pushing the object reference.
         // Note: hotspot forces 'greater' comparison by subtracting 1 from the end-offset. We still
@@ -359,7 +366,6 @@ public class MonitorSnippets implements Snippets {
             thread.writeInt(javaThreadLockStackTopOffset(INJECTED_VMCONFIG), lockStackTop + wordSize(), JAVA_THREAD_LOCK_STACK_TOP_LOCATION);
             traceObject(trace, "+lock{lightweight:cas}", object, true);
             counters.lockCas.inc();
-            incrementHeldMonitorCount(thread);
             return true;
         }
 
@@ -381,29 +387,27 @@ public class MonitorSnippets implements Snippets {
         trace(trace, "             lock: 0x%016lx\n", lock);
         trace(trace, "    displacedMark: 0x%016lx\n", displacedMark);
 
-        if (useLightweightLocking(INJECTED_VMCONFIG)) {
-            if (tryLightweightUnlocking(object, thread, trace, counters)) {
-                endLockScope();
-                decCounter();
-                return;
-            }
-        } else if (useStackLocking(INJECTED_VMCONFIG)) {
-            if (tryStackUnlocking(object, displacedMark, thread, lock, trace, counters)) {
-                endLockScope();
-                decCounter();
-                return;
-            }
+        if (tryFastPathUnlocking(object, trace, counters, thread, lock, displacedMark)) {
+            decrementHeldMonitorCount(thread);
         } else {
-            if (tryExitInflated(object, thread, trace, counters)) {
-                endLockScope();
-                decCounter();
-                return;
-            }
+            monitorexitStubC(MONITOREXIT, object, lock);
         }
-
-        monitorexitStubC(MONITOREXIT, object, lock);
         endLockScope();
         decCounter();
+    }
+
+    /**
+     * Dispatch to the appropriate unlocking strategy based on the {@code LockingMode} flag value.
+     */
+    private static boolean tryFastPathUnlocking(Object object, boolean trace, Counters counters, Word thread, Word lock, Word displacedMark) {
+        if (useLightweightLocking(INJECTED_VMCONFIG)) {
+            return tryLightweightUnlocking(object, thread, trace, counters);
+        } else if (useStackLocking(INJECTED_VMCONFIG)) {
+            return tryStackUnlocking(object, displacedMark, thread, lock, trace, counters);
+        } else {
+            // LM_MONITOR case
+            return false;
+        }
     }
 
     private static boolean tryStackUnlocking(Object object, Word displacedMark, Word thread, Word lock, boolean trace, Counters counters) {
@@ -411,7 +415,6 @@ public class MonitorSnippets implements Snippets {
             // Recursive locking => done
             traceObject(trace, "-lock{recursive}", object, false);
             counters.unlockCasRecursive.inc();
-            decrementHeldMonitorCount(thread);
             return true;
         }
 
@@ -425,7 +428,6 @@ public class MonitorSnippets implements Snippets {
                         lock, displacedMark, MARK_WORD_LOCATION))) {
             traceObject(trace, "-lock{stack:cas}", object, false);
             counters.unlockCas.inc();
-            decrementHeldMonitorCount(thread);
             return true;
         }
 
@@ -459,7 +461,6 @@ public class MonitorSnippets implements Snippets {
             }
             traceObject(trace, "-lock{lightweight:cas}", object, false);
             counters.unlockCas.inc();
-            decrementHeldMonitorCount(thread);
             return true;
         }
 
@@ -509,7 +510,6 @@ public class MonitorSnippets implements Snippets {
                 monitor.writeWord(ownerOffset, zero());
                 traceObject(trace, "-lock{inflated:simple}", object, false);
                 counters.unlockInflatedSimple.inc();
-                decrementHeldMonitorCount(thread);
                 return true;
             } else {
                 int succOffset = objectMonitorSuccOffset(INJECTED_VMCONFIG);
@@ -524,7 +524,6 @@ public class MonitorSnippets implements Snippets {
                         // notices.
                         traceObject(trace, "-lock{inflated:transfer}", object, false);
                         counters.unlockInflatedTransfer.inc();
-                        decrementHeldMonitorCount(thread);
                         return true;
                     } else {
                         // Either the monitor is grabbed by a spinning thread, or the spinning
@@ -533,7 +532,6 @@ public class MonitorSnippets implements Snippets {
                             // The monitor is stolen.
                             traceObject(trace, "-lock{inflated:transfer}", object, false);
                             counters.unlockInflatedTransfer.inc();
-                            decrementHeldMonitorCount(thread);
                             return true;
                         }
                     }
@@ -544,7 +542,6 @@ public class MonitorSnippets implements Snippets {
             monitor.writeWord(recursionsOffset, recursions.subtract(1), OBJECT_MONITOR_RECURSION_LOCATION);
             counters.unlockInflatedRecursive.inc();
             traceObject(trace, "-lock{stub:recursive}", object, false);
-            decrementHeldMonitorCount(thread);
             return true;
         }
         counters.unlockStubInflated.inc();
