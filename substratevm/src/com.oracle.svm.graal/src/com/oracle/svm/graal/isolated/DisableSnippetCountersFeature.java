@@ -24,7 +24,14 @@
  */
 package com.oracle.svm.graal.isolated;
 
+import com.oracle.svm.core.ParsingReason;
+import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
+import com.oracle.svm.core.feature.InternalFeature;
+import com.oracle.svm.core.option.HostedOptionValues;
+
 import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.core.common.GraalOptions;
 import jdk.compiler.graal.hotspot.SymbolicSnippetEncoder;
 import jdk.compiler.graal.nodes.ConstantNode;
 import jdk.compiler.graal.nodes.ValueNode;
@@ -34,12 +41,6 @@ import jdk.compiler.graal.nodes.graphbuilderconf.NodePlugin;
 import jdk.compiler.graal.phases.util.Providers;
 import jdk.compiler.graal.replacements.SnippetCounter;
 import jdk.compiler.graal.replacements.SnippetIntegerHistogram;
-
-import com.oracle.svm.core.ParsingReason;
-import com.oracle.svm.core.SubstrateOptions;
-import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
-import com.oracle.svm.core.feature.InternalFeature;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
@@ -72,12 +73,14 @@ final class DisableSnippetCountersPlugin implements NodePlugin {
 /**
  * Disables snippet counters because they need a {@link SnippetReflectionProvider} which is not
  * fully supported for cross-isolate compilations.
+ *
+ * In general snippets counters should only enabled if the flag SnippetCounters is set.
  */
 @AutomaticallyRegisteredFeature
 final class DisableSnippetCountersFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
-        return SubstrateOptions.supportCompileInIsolates();
+        return SubstrateOptions.supportCompileInIsolates() || !GraalOptions.SnippetCounters.getValue(HostedOptionValues.singleton());
     }
 
     @Override
