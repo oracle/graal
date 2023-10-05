@@ -2759,6 +2759,11 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         default_jvm_libs_dir = base_dir + 'jvmlibs/'
         layout = {}
 
+        # JVM standalones do not include the native libraries of LanguageLibraryConfig ('thin launchers') of:
+        # - the main component
+        # - every other component that defines a language library that overrides (i.e., has the same destination) one of the main component
+        main_libraries_destinations = [base_dir + library_config.destination for library_config in main_component.library_configs if isinstance(library_config, mx_sdk.LanguageLibraryConfig)]
+
         assert require_svm(self.involved_components), "The '{}' standalone does not require SVM. This has not been tested in a while and might not work as intended. Involved components: '{}'".format(name, [c.name for c in self.involved_components])
 
         # Compute paths from standalone component launchers to other homes
@@ -2797,7 +2802,6 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             :type path_prefix: str
             :type excluded_paths: list[str]
             """
-            is_main = comp == main_component
             launcher_configs = _get_launcher_configs(comp)
             library_configs = _get_library_configs(comp)
             self.native_image_configs += launcher_configs + library_configs
@@ -2867,8 +2871,9 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
             for library_config in library_configs:
                 library_dest = path_prefix + library_config.destination
+                is_main_library_config = library_dest in main_libraries_destinations
                 if library_config.destination not in excluded_paths:
-                    if self.is_jvm and is_main:
+                    if self.is_jvm and is_main_library_config:
                         if not isinstance(library_config, mx_sdk.LanguageLibraryConfig):
                             mx.warn("Component '{}' declares '{}' as 'library_config', which is ignored by the build process of the '{}' jvm standalone".format(comp.name, library_config, name))
                     else:
@@ -2892,11 +2897,11 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         for executable in library_config.launchers:
                             layout.setdefault(path_prefix + executable, []).append({
                                 'source_type': 'dependency',
-                                'dependency': NativeLibraryLauncherProject.library_launcher_project_name(library_config, for_jvm_standalone=is_main and self.is_jvm),
+                                'dependency': NativeLibraryLauncherProject.library_launcher_project_name(library_config, for_jvm_standalone=self.is_jvm and is_main_library_config),
                                 'exclude': excluded_paths,
                                 'path': None,
                             })
-                        if is_main:
+                        if is_main_library_config:  # should probably be: `if self.is_jvm && is_main_library_config`
                             for jar_distribution in [j for j in library_config.jar_distributions if j not in self.jvm_modules]:
                                 layout.setdefault(default_jvm_modules_dir, []).append({
                                     'source_type': 'dependency',
@@ -3647,7 +3652,10 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
                     java_standalone = GraalVmStandaloneComponent(get_component(main_component.name, fatalIfMissing=True), _final_graalvm_distribution, is_jvm=True, defaultBuild=False)
                     register_main_dist(java_standalone, 'graalvm_standalones')
 
-                    for library_config in _get_library_configs(main_component):
+                    # Use `main_component.library_configs` rather than `_get_library_configs(main_component)` because we
+                    # need to create a `NativeLibraryLauncherProject` for the JVM standalone even when one of the
+                    # libraries of the main component is overridden by another component.
+                    for library_config in main_component.library_configs:
                         if isinstance(library_config, mx_sdk.LanguageLibraryConfig) and library_config.launchers:
                             # Register dedicated NativeLibraryLauncherProject for JVM Standalones, which can find the JVM
                             jvm_standalone_launcher_project = NativeLibraryLauncherProject(main_component, library_config, jvm_standalone=java_standalone, defaultBuild=False)
