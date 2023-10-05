@@ -2789,15 +2789,15 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     })
                     component_list.append(jar_dist)
 
-        def add_files_from_component(comp, is_main, path_prefix, excluded_paths):
+        def add_files_from_component(comp, path_prefix, excluded_paths):
             """
             Add to the layout relevant files of a component.
 
             :type comp: mx_sdk_vm.GraalVmComponent
-            :type is_main: bool
             :type path_prefix: str
             :type excluded_paths: list[str]
             """
+            is_main = comp == main_component
             launcher_configs = _get_launcher_configs(comp)
             library_configs = _get_library_configs(comp)
             self.native_image_configs += launcher_configs + library_configs
@@ -2933,13 +2933,13 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             assert dependency not in added_components
             excluded_paths = [mx_subst.path_substitutions.substitute(excluded) for excluded in excluded_paths]
             dependency_path_prefix = base_dir + ((dependency_path + '/') if dependency_path else '')
-            add_files_from_component(dependency, is_main=False, path_prefix=dependency_path_prefix, excluded_paths=excluded_paths)
+            add_files_from_component(dependency, path_prefix=dependency_path_prefix, excluded_paths=excluded_paths)
             added_components.append(dependency)
 
         # Add files from the main standalone component.
         # Must be done for both Native and JVM Standalones.
         assert main_component not in added_components
-        add_files_from_component(main_component, is_main=True, path_prefix=base_dir, excluded_paths=[])
+        add_files_from_component(main_component, path_prefix=base_dir, excluded_paths=[])
         added_components.append(main_component)
 
         # Add the `release` file.
@@ -3023,7 +3023,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                         # component.
                         tool_component_dependencies = GraalVmLayoutDistribution._add_dependencies([tool], excluded_components + added_components)
                         for tool_component_dependency in tool_component_dependencies:
-                            add_files_from_component(tool_component_dependency, is_main=False, path_prefix=default_jvm_modules_dir, excluded_paths=['native-image.properties'])
+                            add_files_from_component(tool_component_dependency, path_prefix=default_jvm_modules_dir, excluded_paths=['native-image.properties'])
                             added_components.append(tool_component_dependency)
 
             # `jvmci_parent_jars` and `boot_jars` of these components are added as modules of `java-standalone-jimage`.
