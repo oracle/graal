@@ -112,10 +112,11 @@ import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_java_lang_BaseVirtualThread;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
-import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.Utf8;
 import com.oracle.svm.core.util.VMError;
 
@@ -1028,11 +1029,11 @@ public final class JNIFunctions {
             throw new NullPointerException();
         }
         boolean pinned = false;
-        if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
+        if (ContinuationSupport.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
             // Acquiring monitors via JNI associates them with the carrier thread via
             // JNIThreadOwnedMonitors, so we must pin the virtual thread
             try {
-                VirtualThreads.singleton().pinCurrent();
+                Target_jdk_internal_vm_Continuation.pin();
             } catch (IllegalStateException e) { // too many pins
                 throw new IllegalMonitorStateException();
             }
@@ -1053,7 +1054,7 @@ public final class JNIFunctions {
                     MonitorSupport.singleton().monitorExit(obj, MonitorInflationCause.VM_INTERNAL);
                 }
                 if (pinned) {
-                    VirtualThreads.singleton().unpinCurrent();
+                    Target_jdk_internal_vm_Continuation.unpin();
                 }
             } catch (Throwable u) {
                 throw VMError.shouldNotReachHere(u);
@@ -1077,9 +1078,9 @@ public final class JNIFunctions {
         }
         MonitorSupport.singleton().monitorExit(obj, MonitorInflationCause.JNI_EXIT);
         JNIThreadOwnedMonitors.exited(obj);
-        if (VirtualThreads.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
+        if (ContinuationSupport.isSupported() && JavaThreads.isCurrentThreadVirtual()) {
             try {
-                VirtualThreads.singleton().unpinCurrent();
+                Target_jdk_internal_vm_Continuation.unpin();
             } catch (IllegalStateException e) { // not pinned?
                 throw new IllegalMonitorStateException();
             }

@@ -28,7 +28,6 @@ import static com.oracle.svm.core.thread.VirtualThreadHelper.asTarget;
 import static com.oracle.svm.core.thread.VirtualThreadHelper.asThread;
 
 import java.util.Locale;
-import java.util.concurrent.Executor;
 
 import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
 
@@ -41,14 +40,13 @@ import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.LoomJDK;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "java.lang.VirtualThread", onlyWith = LoomJDK.class)
+@TargetClass(className = "java.lang.VirtualThread")
 public final class Target_java_lang_VirtualThread {
     // Checkstyle: stop
     @Alias static int NEW;
@@ -103,8 +101,6 @@ public final class Target_java_lang_VirtualThread {
         // unimplemented (GR-45392)
     }
 
-    @Alias Executor scheduler;
-
     @Alias volatile Thread carrierThread;
 
     @Alias volatile Target_sun_nio_ch_Interruptible nioBlocker;
@@ -113,9 +109,6 @@ public final class Target_java_lang_VirtualThread {
 
     @Alias
     public static native Target_jdk_internal_vm_ContinuationScope continuationScope();
-
-    @Alias
-    native boolean joinNanos(long nanos) throws InterruptedException;
 
     @Delete
     native StackTraceElement[] asyncGetStackTrace();

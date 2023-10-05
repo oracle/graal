@@ -30,23 +30,25 @@ import java.security.AccessController;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-import jdk.compiler.graal.api.directives.GraalDirectives;
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.core.common.SuppressFBWarnings;
-import jdk.compiler.graal.replacements.ReplacementsUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;
 import org.graalvm.word.Pointer;
+import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.util.ReflectionUtil;
+
+import jdk.compiler.graal.api.directives.GraalDirectives;
+import jdk.compiler.graal.core.common.SuppressFBWarnings;
+import jdk.compiler.graal.replacements.ReplacementsUtil;
 
 /**
  * Implements operations on {@linkplain Target_java_lang_Thread Java threads}, which are on a higher
@@ -65,10 +67,6 @@ import com.oracle.svm.util.ReflectionUtil;
  * Methods with <em>platform</em> or <em>carrier</em> in their names must be called <em>only</em>
  * for that type of thread. Methods without that designation distinguish between the thread types
  * and choose the appropriate action.
- *
- * @see VirtualThreads
- * @see <a href="https://openjdk.java.net/projects/loom/">Wiki and source code of Project Loom on
- *      which concepts of virtual threads, carrier threads, etc. are modeled</a>
  */
 public final class JavaThreads {
     /** For Thread.nextThreadID(). */
@@ -139,46 +137,33 @@ public final class JavaThreads {
         return toTarget(thread).interrupted;
     }
 
-    static boolean getAndClearInterrupt(Thread thread) {
-        if (supportsVirtual() && isVirtual(thread)) {
-            return VirtualThreads.singleton().getAndClearInterrupt(thread);
-        }
-        /*
-         * As we don't use a lock, it is possible to observe any kinds of races with other threads
-         * that try to set the interrupted status to true. However, those races don't cause any
-         * correctness issues as we only reset it to false if we observed that it was true earlier.
-         * There also can't be any problematic races with other calls to check the interrupt status
-         * because it is cleared only by the current thread.
-         */
-        if (!isInterrupted(thread)) {
-            return false;
-        }
-        toTarget(thread).interrupted = false;
-        return true;
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getParentThreadId(Thread thread) {
         return toTarget(thread).parentThreadId;
     }
 
-    @Fold
-    static boolean supportsVirtual() {
-        return VirtualThreads.isSupported();
-    }
-
+    /**
+     * Indicates whether a thread is <em>truly</em> virtual, whereas {@link Thread#isVirtual()} also
+     * returns {@code true} for platform threads of type {@code BoundVirtualThread}.
+     */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isVirtual(Thread thread) {
-        return supportsVirtual() && VirtualThreads.singleton().isVirtual(thread);
+        return Target_java_lang_VirtualThread.class.isInstance(thread);
     }
 
-    /** @see PlatformThreads#setCurrentThread */
+    /** @see #isVirtual */
     public static boolean isCurrentThreadVirtual() {
-        if (!supportsVirtual()) {
-            return false;
-        }
         Thread thread = PlatformThreads.currentThread.get();
         return thread != null && toTarget(thread).vthread != null;
+    }
+
+    /**
+     * Indicates whether the current thread is <em>truly</em> virtual (see {@link #isVirtual}) and
+     * currently pinned to its carrier thread.
+     */
+    public static boolean isCurrentThreadVirtualAndPinned() {
+        Target_java_lang_Thread carrier = JavaThreads.toTarget(Target_java_lang_Thread.currentCarrierThread());
+        return carrier != null && carrier.vthread != null && Target_jdk_internal_vm_Continuation.isPinned(carrier.cont.getScope());
     }
 
     @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
@@ -186,15 +171,9 @@ public final class JavaThreads {
         return Target_java_lang_ThreadGroup.class.cast(threadGroup);
     }
 
-    static void join(Thread thread, long millis) throws InterruptedException {
-        if (millis < 0) {
-            throw new IllegalArgumentException("Timeout value is negative");
-        }
-        if (supportsVirtual() && isVirtual(thread)) {
-            VirtualThreads.singleton().join(thread, millis);
-        } else {
-            PlatformThreads.join(thread, millis);
-        }
+    @SuppressFBWarnings(value = "BC", justification = "Cast for @TargetClass")
+    private static Target_java_lang_VirtualThread toVirtualTarget(Thread thread) {
+        return Target_java_lang_VirtualThread.class.cast(thread);
     }
 
     @NeverInline("Starting a stack walk in the caller frame")
@@ -206,10 +185,55 @@ public final class JavaThreads {
          */
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
 
-        if (supportsVirtual()) { // NOTE: also for platform threads!
-            return VirtualThreads.singleton().getVirtualOrPlatformThreadStackTrace(filterExceptions, thread, callerSP);
+        if (isVirtual(thread)) {
+            if (thread == Thread.currentThread()) {
+                return getMountedVirtualThreadStackTrace(filterExceptions, thread, callerSP);
+            }
+            assert !filterExceptions : "exception stack traces can be taken only for the current thread";
+            return asyncGetVirtualThreadStackTrace(toVirtualTarget(thread));
+        } else {
+            return PlatformThreads.getStackTrace(filterExceptions, thread, callerSP);
         }
-        return PlatformThreads.getStackTrace(filterExceptions, thread, callerSP);
+    }
+
+    private static StackTraceElement[] getMountedVirtualThreadStackTrace(boolean filterExceptions, Thread thread, Pointer callerSP) {
+        Thread carrier = toVirtualTarget(thread).carrierThread;
+        if (carrier == null) {
+            return null;
+        }
+        Pointer endSP = PlatformThreads.getCarrierSPOrElse(carrier, WordFactory.nullPointer());
+        if (endSP.isNull()) {
+            return null;
+        }
+        if (carrier == PlatformThreads.currentThread.get()) {
+            return StackTraceUtils.getStackTrace(filterExceptions, callerSP, endSP);
+        }
+        assert VMOperation.isInProgressAtSafepoint();
+        return StackTraceUtils.getThreadStackTraceAtSafepoint(PlatformThreads.getIsolateThread(carrier), endSP);
+    }
+
+    public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread, Pointer callerSP) {
+        if (isVirtual(thread)) {
+            return getMountedVirtualThreadStackTrace(false, thread, callerSP);
+        } else {
+            return PlatformThreads.getStackTraceAtSafepoint(thread, callerSP);
+        }
+    }
+
+    /** Adapted from {@code VirtualThread.asyncGetStackTrace()}. */
+    private static StackTraceElement[] asyncGetVirtualThreadStackTrace(Target_java_lang_VirtualThread thread) {
+        StackTraceElement[] stackTrace;
+        do {
+            if (thread.carrierThread != null) {
+                stackTrace = StackTraceUtils.asyncGetStackTrace(SubstrateUtil.cast(thread, Thread.class));
+            } else {
+                stackTrace = thread.tryGetStackTrace();
+            }
+            if (stackTrace == null) {
+                Thread.yield();
+            }
+        } while (stackTrace == null);
+        return stackTrace;
     }
 
     @NeverInline("Starting a stack walk in the caller frame")
@@ -221,10 +245,20 @@ public final class JavaThreads {
          */
         Pointer callerSP = KnownIntrinsics.readCallerStackPointer();
 
-        if (supportsVirtual()) { // NOTE: also for platform threads!
-            VirtualThreads.singleton().visitCurrentVirtualOrPlatformThreadStackFrames(callerSP, visitor);
+        if (isVirtual(Thread.currentThread())) {
+            visitCurrentVirtualThreadStackFrames(callerSP, visitor);
         } else {
             PlatformThreads.visitCurrentStackFrames(callerSP, visitor);
+        }
+    }
+
+    private static void visitCurrentVirtualThreadStackFrames(Pointer callerSP, StackFrameVisitor visitor) {
+        Thread carrier = toVirtualTarget(Thread.currentThread()).carrierThread;
+        if (carrier != null) {
+            Pointer endSP = PlatformThreads.getCarrierSPOrElse(carrier, WordFactory.nullPointer());
+            if (endSP.isNonNull()) {
+                StackTraceUtils.visitCurrentThreadStackFrames(callerSP, endSP, visitor);
+            }
         }
     }
 
@@ -297,9 +331,7 @@ public final class JavaThreads {
 
         initThreadFields(tjlt, group, target, stackSize, priority, daemon);
 
-        if (!VirtualThreads.isSupported() || !VirtualThreads.singleton().isVirtual(fromTarget(tjlt))) {
-            PlatformThreads.setThreadStatus(fromTarget(tjlt), ThreadStatus.NEW);
-        }
+        PlatformThreads.setThreadStatus(fromTarget(tjlt), ThreadStatus.NEW);
 
         tjlt.inheritedAccessControlContext = acc != null ? acc : AccessController.getContext();
 
@@ -328,25 +360,18 @@ public final class JavaThreads {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static void setCurrentThreadLockHelper(Object helper) {
-        if (supportsVirtual()) {
-            toTarget(Thread.currentThread()).lockHelper = helper;
-        } else {
-            PlatformThreads.lockHelper.set(helper);
-        }
+        toTarget(Thread.currentThread()).lockHelper = helper;
     }
 
     @AlwaysInline("Locking fast path.")
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static Object getCurrentThreadLockHelper() {
-        if (supportsVirtual()) {
-            return toTarget(Thread.currentThread()).lockHelper;
-        }
-        return PlatformThreads.lockHelper.get();
+        return toTarget(Thread.currentThread()).lockHelper;
     }
 
-    public static void blockedOn(Target_sun_nio_ch_Interruptible b) {
-        if (supportsVirtual() && isCurrentThreadVirtual()) {
-            VirtualThreads.singleton().blockedOn(b);
+    static void blockedOn(Target_sun_nio_ch_Interruptible b) {
+        if (isCurrentThreadVirtual()) {
+            VirtualThreadHelper.blockedOn(b);
         } else {
             PlatformThreads.blockedOn(b);
         }

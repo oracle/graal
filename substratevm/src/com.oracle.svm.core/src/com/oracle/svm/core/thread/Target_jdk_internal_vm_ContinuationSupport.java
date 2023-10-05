@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -22,15 +22,26 @@
  * or visit www.oracle.com if you need additional information or have any
  * questions.
  */
-package com.oracle.svm.core.jdk;
+package com.oracle.svm.core.thread;
 
-import java.util.function.BooleanSupplier;
+import org.graalvm.nativeimage.Platform;
+import org.graalvm.nativeimage.Platforms;
+import org.graalvm.nativeimage.hosted.FieldValueTransformer;
 
-import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.RecomputeFieldValue;
+import com.oracle.svm.core.annotate.TargetClass;
 
-public class ContinuationsNotSupported implements BooleanSupplier {
+@TargetClass(className = "jdk.internal.vm.ContinuationSupport")
+final class Target_jdk_internal_vm_ContinuationSupport {
+    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = ComputeContinuationsSupported.class, isFinal = true) //
+    static boolean SUPPORTED;
+}
+
+@Platforms(Platform.HOSTED_ONLY.class)
+final class ComputeContinuationsSupported implements FieldValueTransformer {
     @Override
-    public boolean getAsBoolean() {
-        return !Continuation.isSupported();
+    public Object transform(Object receiver, Object originalValue) {
+        return ContinuationsFeature.isSupported();
     }
 }

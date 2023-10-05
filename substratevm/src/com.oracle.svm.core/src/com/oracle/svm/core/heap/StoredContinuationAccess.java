@@ -39,9 +39,9 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -126,7 +126,7 @@ public final class StoredContinuationAccess {
         if (!yield) {
             PreemptVisitor visitor = new PreemptVisitor(baseSp);
             JavaStackWalker.walkThread(targetThread, visitor);
-            if (visitor.preemptStatus != Continuation.FREEZE_OK) {
+            if (visitor.preemptStatus != ContinuationSupport.FREEZE_OK) {
                 return visitor.preemptStatus;
             }
             startSp = visitor.leafSP;
@@ -139,7 +139,7 @@ public final class StoredContinuationAccess {
         StoredContinuation instance = allocate(framesSize);
         fillUninterruptibly(instance, startIp, startSp, framesSize);
         cont.stored = instance;
-        return Continuation.FREEZE_OK;
+        return ContinuationSupport.FREEZE_OK;
     }
 
     @Uninterruptible(reason = "Prevent modifications to the stack while initializing instance and copying frames.")
@@ -300,7 +300,7 @@ public final class StoredContinuationAccess {
 
         Pointer leafSP;
         CodePointer leafIP;
-        int preemptStatus = Continuation.FREEZE_OK;
+        int preemptStatus = ContinuationSupport.FREEZE_OK;
 
         PreemptVisitor(Pointer endSP) {
             this.endSP = endSP;
@@ -315,7 +315,7 @@ public final class StoredContinuationAccess {
             FrameInfoQueryResult frameInfo = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip).getFrameInfo();
             if (frameInfo.getSourceClass().equals(StoredContinuationAccess.class) && frameInfo.getSourceMethodName().equals("allocateToYield")) {
                 // Continuation is already in the process of yielding, cancel preemption.
-                preemptStatus = Continuation.YIELDING;
+                preemptStatus = ContinuationSupport.FREEZE_YIELDING;
                 return false;
             }
 
