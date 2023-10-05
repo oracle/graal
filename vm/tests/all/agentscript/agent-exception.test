@@ -1,3 +1,8 @@
+> java CopyStripLicense.java agent-exception.js ${TMP_DIR}/agent-exception.js
+> java CopyStripLicense.java log.js ${TMP_DIR}/log.js
+> java CopyStripLicense.java agent-error* ${TMP_DIR}/
+> cd ${TMP_DIR}
+#
 >[7] js --jvm --insight=agent-exception.js -f log.js -e "howAreYou()"
 Hello GraalVM Insight!
 How
