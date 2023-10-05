@@ -25,9 +25,6 @@
  */
 package com.oracle.svm.hosted.image;
 
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
-import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
-
 import java.lang.reflect.Modifier;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -58,7 +55,6 @@ import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaType;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
-import com.oracle.svm.core.OS;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.code.CompilationResultFrameTree.Builder;
@@ -67,7 +63,7 @@ import com.oracle.svm.core.code.CompilationResultFrameTree.FrameNode;
 import com.oracle.svm.core.code.CompilationResultFrameTree.Visitor;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackend.SubstrateMarkId;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import com.oracle.svm.hosted.c.NativeLibraries;
@@ -97,7 +93,6 @@ import com.oracle.svm.util.ClassUtil;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;
-import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.code.Register;
@@ -116,6 +111,9 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.Value;
 
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.CONTRACT;
+import static com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange.Type.EXTEND;
+
 /**
  * Implementation of the DebugInfoProvider API interface that allows type, code and heap data info
  * to be passed to an ObjectFile when generation of debug info is enabled.
@@ -125,8 +123,8 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
     private final Set<HostedMethod> allOverrides;
 
     NativeImageDebugInfoProvider(DebugContext debugContext, NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess,
-                            SubstrateRegisterConfig registerConfig) {
-        super(codeCache, heap, nativeLibs, metaAccess, registerConfig);
+                    RuntimeConfiguration runtimeConfiguration) {
+        super(codeCache, heap, nativeLibs, metaAccess, runtimeConfiguration);
         this.debugContext = debugContext;
         /* Calculate the set of all HostedMethods that are overrides. */
         allOverrides = heap.hUniverse.getMethods().stream()
@@ -1891,8 +1889,9 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
                     // need to redefine the value for this param using a stack slot value
                     // that allows for the stack being extended by framesize. however we
                     // also need to remove any adjustment that was made to allow for the
-                    // difference between the caller SP and the pre-extend callee SP.
-                    int adjustment = frameSize - PRE_EXTEND_FRAME_ADJUSTMENT;
+                    // difference between the caller SP and the pre-extend callee SP
+                    // because of a stacked return address.
+                    int adjustment = frameSize - PRE_EXTEND_FRAME_SIZE;
                     NativeImageDebugLocalValue value = NativeImageDebugStackValue.create(localInfo, adjustment);
                     NativeImageDebugLocalValueInfo nativeLocalInfo = (NativeImageDebugLocalValueInfo) localInfo;
                     NativeImageDebugLocalValueInfo newLocalinfo = new NativeImageDebugLocalValueInfo(nativeLocalInfo.name,
@@ -1970,12 +1969,11 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
                 JavaKind kind = ownerType.getJavaKind();
                 JavaKind storageKind = isForeignWordType(ownerType, ownerType) ? JavaKind.Long : kind;
                 assert kind == JavaKind.Object : "must be an object";
-                // NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
                 NativeImageDebugLocalValue value = locProducer.thisLocation();
                 debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, storageKind);
                 localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, ownerType, slot, firstLine));
-                slot += storageKind.getSlotCount();
+                slot += kind.getSlotCount();
                 localIdx++;
             }
             for (int i = 0; i < parameterCount; i++) {
@@ -1984,12 +1982,11 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
                 ResolvedJavaType paramType = (ResolvedJavaType) signature.getParameterType(i, ownerType);
                 JavaKind kind = paramType.getJavaKind();
                 JavaKind storageKind = isForeignWordType(paramType, ownerType) ? JavaKind.Long : kind;
-                // NativeImageDebugLocalValue value = locProducer.nextLocation(kind);
                 NativeImageDebugLocalValue value = locProducer.paramLocation(i);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "locals[%d] %s type %s slot %d", localIdx, name, ownerType.getName(), slot);
                 debugContext.log(DebugContext.DETAILED_LEVEL, "  =>  %s kind %s", value, storageKind);
                 localInfos.add(new NativeImageDebugLocalValueInfo(name, value, storageKind, paramType, slot, firstLine));
-                slot += storageKind.getSlotCount();
+                slot += kind.getSlotCount();
                 localIdx++;
             }
             return localInfos;
@@ -2168,63 +2165,15 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
     };
 
     /**
-     * Adjustment in bytes that needs to be added to incoming parameter raw offsets to derive the
-     * parameter offset relative to the unadjusted callee stack pointer.
+     * Size in bytes of the frame at call entry before any stack extend. Essentially this accounts
+     * for any automatically pushed return address whose presence depends upon the architecture.
      */
-    static final int PRE_EXTEND_FRAME_ADJUSTMENT;
-
-    /**
-     * Adjustment in bytes added to raw offset for stack passed parameters on AMD64.
-     *
-     * The value includes a word offset from the unadjusted (pre-extend) sp to allow for the stacked
-     * return address.
-     */
-    static final int AMD64_PRE_EXTEND_FRAME_ADJUSTMENT = 8;
-
-    /**
-     * Adjustment in bytes added to raw offset for stack passed parameters on AARCH64.
-     *
-     * The value is zero because nothing is pushed until the stack extend occurs.
-     */
-    static final int AARCH64_PRE_EXTEND_FRAME_ADJUSTMENT = 0;
-
-    static {
-        Architecture arch = ConfigurationValues.getTarget().arch;
-        assert arch instanceof AMD64 || arch instanceof AArch64 : "unexpected architecture";
-        OS os = OS.getCurrent();
-        assert os == OS.LINUX || os == OS.WINDOWS : "unexpected os";
-        if (arch instanceof AMD64) {
-            // reported amd64 frame size includes an extra 8 bytes for the stacked return address
-            PRE_EXTEND_FRAME_ADJUSTMENT = AMD64_PRE_EXTEND_FRAME_ADJUSTMENT;
-        } else {
-            PRE_EXTEND_FRAME_ADJUSTMENT = AARCH64_PRE_EXTEND_FRAME_ADJUSTMENT;
-        }
-    }
+    static final int PRE_EXTEND_FRAME_SIZE = ConfigurationValues.getTarget().arch.getReturnAddressSize();
 
     class ParamLocationProducer {
         private final HostedMethod hostedMethod;
         private final CallingConvention callingConvention;
         private boolean usesStack;
-
-        private static final int adjustment;
-
-        static {
-            final Architecture arch = ConfigurationValues.getTarget().arch;
-            // make sure this is the right arch and os
-            assert arch instanceof AMD64 || arch instanceof AArch64 : "unexpected architecture";
-            OS os = OS.getCurrent();
-            assert os == OS.LINUX || os == OS.WINDOWS : "unexpected os";
-            if (arch instanceof AMD64) {
-                // on x86 the position of incoming stack arguments relative to the
-                // unadjusted stack pointer needs adjusting to allow for a pushed
-                // return address
-                adjustment = AMD64_PRE_EXTEND_FRAME_ADJUSTMENT;
-            } else {
-                // on aarch64 the position of incoming stack arguments relative to the
-                // unadjusted stack pointer is just the raw offset
-                adjustment = AARCH64_PRE_EXTEND_FRAME_ADJUSTMENT;
-            }
-        }
 
         ParamLocationProducer(HostedMethod method) {
             this.hostedMethod = method;
@@ -2255,10 +2204,10 @@ class NativeImageDebugInfoProvider extends NativeImageDebugInfoProviderBase impl
                 // call argument must be a stack slot if it is not a register
                 StackSlot stackSlot = (StackSlot) value;
                 this.usesStack = true;
-                // the calling convention provides raw offsets from the SP at point
-                // of call but these need adjusting to allow for a stacked return
-                // address and/or frame pointer according to the architecture
-                return new NativeImageDebugStackValue(stackSlot.getRawOffset() + adjustment);
+                // the calling convention provides offsets from the SP relative to the current
+                // frame size. At the point of call the frame may or may not include a return
+                // address depending on the architecture.
+                return NativeImageDebugStackValue.create(stackSlot, PRE_EXTEND_FRAME_SIZE);
             }
         }
 

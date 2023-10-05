@@ -25,6 +25,10 @@
  */
 package com.oracle.svm.hosted.image;
 
+import java.nio.file.FileSystems;
+import java.nio.file.Path;
+import java.util.HashMap;
+
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
@@ -32,6 +36,7 @@ import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.graal.code.SubstrateCallingConvention;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionKind;
 import com.oracle.svm.core.graal.code.SubstrateCallingConventionType;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.heap.ObjectHeader;
@@ -51,20 +56,17 @@ import com.oracle.svm.hosted.substitute.InjectedFieldsType;
 import com.oracle.svm.hosted.substitute.SubstitutionMethod;
 import com.oracle.svm.hosted.substitute.SubstitutionType;
 import jdk.graal.compiler.core.common.CompressEncoding;
-import jdk.graal.compiler.core.common.LIRKind;
-import jdk.vm.ci.code.ValueKindFactory;
+import jdk.graal.compiler.core.target.Backend;
+import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
+
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordBase;
-
-import java.nio.file.FileSystems;
-import java.nio.file.Path;
-import java.util.HashMap;
 
 import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.ADDRESS;
 import static com.oracle.svm.hosted.c.info.AccessorInfo.AccessorKind.GETTER;
@@ -78,7 +80,7 @@ public abstract class NativeImageDebugInfoProviderBase {
     protected final NativeImageHeap heap;
     protected final NativeImageCodeCache codeCache;
     protected final NativeLibraries nativeLibs;
-    protected final SubstrateRegisterConfig registerConfig;
+    protected final RuntimeConfiguration runtimeConfiguration;
     protected final boolean useHeapBase;
     protected final int compressShift;
     protected final int referenceSize;
@@ -92,21 +94,12 @@ public abstract class NativeImageDebugInfoProviderBase {
     protected final HostedType wordBaseType;
     final HashMap<JavaKind, HostedType> javaKindToHostedType;
     private final Path cachePath = SubstrateOptions.getDebugInfoSourceCacheRoot();
-    /*
-     * A factory used when deriving the calling convention for a specific method
-     */
-    private static final ValueKindFactory<LIRKind> valueKindFactory = new ValueKindFactory<>() {
-        @Override
-        public LIRKind getValueKind(JavaKind javaKind) {
-            return LIRKind.fromJavaKind(ConfigurationValues.getTarget().arch, javaKind);
-        }
-    };
 
-    public NativeImageDebugInfoProviderBase(NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess, SubstrateRegisterConfig registerConfig) {
+    public NativeImageDebugInfoProviderBase(NativeImageCodeCache codeCache, NativeImageHeap heap, NativeLibraries nativeLibs, HostedMetaAccess metaAccess, RuntimeConfiguration runtimeConfiguration) {
         this.heap = heap;
         this.codeCache = codeCache;
         this.nativeLibs = nativeLibs;
-        this.registerConfig = registerConfig;
+        this.runtimeConfiguration = runtimeConfiguration;
         this.hubType = metaAccess.lookupJavaType(Class.class);
         this.wordBaseType = metaAccess.lookupJavaType(WordBase.class);
         this.pointerSize = ConfigurationValues.getTarget().wordSize;
@@ -457,7 +450,10 @@ public abstract class NativeImageDebugInfoProviderBase {
         HostedType receiverType = method.isStatic() ? null : declaringClass;
         Signature signature = method.getSignature();
         SubstrateCallingConventionType type = callingConventionKind.toType(false);
-        return (SubstrateCallingConvention) registerConfig.getCallingConvention(type, signature.getReturnType(declaringClass), signature.toParameterTypes(receiverType), valueKindFactory);
+        Backend backend = runtimeConfiguration.lookupBackend(method);
+        RegisterConfig registerConfig = backend.getCodeCache().getRegisterConfig();
+        assert registerConfig instanceof SubstrateRegisterConfig;
+        return (SubstrateCallingConvention) registerConfig.getCallingConvention(type, signature.getReturnType(null), signature.toParameterTypes(receiverType), backend);
     }
 
     /*

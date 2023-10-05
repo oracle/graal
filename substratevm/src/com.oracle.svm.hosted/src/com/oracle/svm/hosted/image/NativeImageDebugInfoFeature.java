@@ -29,7 +29,7 @@ import java.util.function.Function;
 
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
-import jdk.vm.ci.code.RegisterConfig;
+import com.oracle.svm.core.graal.meta.RuntimeConfiguration;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 
@@ -44,7 +44,6 @@ import com.oracle.svm.core.UniqueShortNameProvider;
 import com.oracle.svm.core.UniqueShortNameProviderDefaultImpl;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.graal.meta.SubstrateRegisterConfig;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ProgressReporter;
@@ -109,10 +108,9 @@ class NativeImageDebugInfoFeature implements InternalFeature {
             var accessImpl = (FeatureImpl.BeforeImageWriteAccessImpl) access;
             var image = accessImpl.getImage();
             var debugContext = new DebugContext.Builder(HostedOptionValues.singleton(), new GraalDebugHandlersFactory(GraalAccess.getOriginalSnippetReflection())).build();
-            RegisterConfig registerConfig = ((FeatureImpl.BeforeImageWriteAccessImpl) access).getRuntimeConfiguration().getBackendForNormalMethod().getCodeCache().getRegisterConfig();
-            assert registerConfig instanceof SubstrateRegisterConfig : "unexpected register configuration!";
+            RuntimeConfiguration runtimeConfiguration = ((FeatureImpl.BeforeImageWriteAccessImpl) access).getRuntimeConfiguration();
             DebugInfoProvider provider = new NativeImageDebugInfoProvider(debugContext, image.getCodeCache(), image.getHeap(), image.getNativeLibs(), accessImpl.getHostedMetaAccess(),
-                    (SubstrateRegisterConfig) registerConfig);
+                            runtimeConfiguration);
             var objectFile = image.getObjectFile();
             objectFile.installDebugInfo(provider);
 
