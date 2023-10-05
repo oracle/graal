@@ -2717,9 +2717,9 @@ class GraalVmInstallableComponent(BaseGraalVmLayoutDistribution, mx.LayoutJARDis
 
 
 class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
-    def __init__(self, component, graalvm, is_jvm, **kw_args):
+    def __init__(self, main_component, graalvm, is_jvm, **kw_args):
         """
-        :param mx_sdk.GraalVmTruffleComponent component
+        :param mx_sdk.GraalVmTruffleComponent main_component
         :param GraalVmLayoutDistribution graalvm
         :param bool is_jvm: True for JVM Standalones, False for Native Standalones
         """
@@ -2732,15 +2732,15 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
         svm_support = _get_svm_support()
         self.is_jvm = is_jvm
-        self.main_comp_dir_name = component.dir_name
+        self.main_comp_dir_name = main_component.dir_name
         self.jvm_modules = []
         self.jvm_libs = []
         self.pre_extracted_libs = {}
         self.native_image_configs = []  # type: List[mx_sdk_vm.AbstractNativeImageConfig]
 
         other_comp_names = []
-        dependencies = component.standalone_dependencies_enterprise if svm_support.is_ee_supported() else component.standalone_dependencies
-        self.involved_components = [component] + [get_component(dep) for dep in dependencies]
+        dependencies = main_component.standalone_dependencies_enterprise if svm_support.is_ee_supported() else main_component.standalone_dependencies
+        self.involved_components = [main_component] + [get_component(dep) for dep in dependencies]
 
         if svm_support.is_supported():
             other_comp_names.append('svm')
@@ -2751,8 +2751,8 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
         other_comp_names = sorted(other_comp_names)
 
-        name = '_'.join([component.installable_id, 'java' if self.is_jvm else 'native', 'standalone'] + other_comp_names + ['java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
-        dir_name = component.standalone_dir_name_enterprise if svm_support.is_ee_supported() else component.standalone_dir_name
+        name = '_'.join([main_component.installable_id, 'java' if self.is_jvm else 'native', 'standalone'] + other_comp_names + ['java{}'.format(_src_jdk_version)]).upper().replace('-', '_')
+        dir_name = main_component.standalone_dir_name_enterprise if svm_support.is_ee_supported() else main_component.standalone_dir_name
         self.base_dir_name = graalvm.string_substitutions.substitute(dir_name)
         base_dir = './{}/'.format(self.base_dir_name)
         default_jvm_modules_dir = base_dir + 'modules/'
@@ -2938,9 +2938,9 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
 
         # Add files from the main standalone component.
         # Must be done for both Native and JVM Standalones.
-        assert component not in added_components
-        add_files_from_component(component, is_main=True, path_prefix=base_dir, excluded_paths=[])
-        added_components.append(component)
+        assert main_component not in added_components
+        add_files_from_component(main_component, is_main=True, path_prefix=base_dir, excluded_paths=[])
+        added_components.append(main_component)
 
         # Add the `release` file.
         sorted_suites = sorted(mx.suites(), key=lambda s: s.name)
@@ -2961,7 +2961,7 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
             # named) `_add_dependency()` function that computes the transitive dependencies of the main component, but
             # they are excluded individually later on.
             excluded_components = GraalVmStandaloneComponent.default_jvm_components() + GraalVmStandaloneComponent.default_module_components()
-            main_component_dependencies = GraalVmLayoutDistribution._add_dependencies([component], excluded_components)
+            main_component_dependencies = GraalVmLayoutDistribution._add_dependencies([main_component], excluded_components)
             for main_component_dependency in main_component_dependencies:
                 if main_component_dependency not in added_components:
                     add_jars_from_component(main_component_dependency)
