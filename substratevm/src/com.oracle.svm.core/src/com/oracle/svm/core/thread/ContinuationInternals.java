@@ -25,7 +25,6 @@
 package com.oracle.svm.core.thread;
 
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
@@ -34,7 +33,6 @@ import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
-import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.InternalVMMethod;
 import com.oracle.svm.core.snippets.ImplicitExceptions;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
@@ -163,35 +161,5 @@ public final class ContinuationInternals {
 
         KnownIntrinsics.farReturn(null, returnSP, returnIP, false);
         throw VMError.shouldNotReachHereAtRuntime();
-    }
-}
-
-/** Implements preemption of virtual threads, which is currently not supported in the JDK. */
-final class TryPreemptOperation extends JavaVMOperation {
-    int preemptStatus = ContinuationSupport.FREEZE_OK;
-
-    final Target_jdk_internal_vm_Continuation cont;
-    final Thread thread;
-
-    TryPreemptOperation(Target_jdk_internal_vm_Continuation cont, Thread thread) {
-        super(VMOperationInfos.get(TryPreemptOperation.class, "Try to preempt continuation", SystemEffect.SAFEPOINT));
-        this.cont = cont;
-        this.thread = thread;
-    }
-
-    @Override
-    public void operate() {
-        IsolateThread vmThread = PlatformThreads.getIsolateThread(thread);
-        Pointer baseSP = cont.baseSP;
-        Pointer returnSP = cont.sp;
-        CodePointer returnIP = cont.ip;
-        preemptStatus = StoredContinuationAccess.allocateToPreempt(cont, baseSP, vmThread);
-        if (preemptStatus == ContinuationSupport.FREEZE_OK) {
-            cont.sp = WordFactory.nullPointer();
-            cont.baseSP = WordFactory.nullPointer();
-            cont.ip = WordFactory.nullPointer();
-            VMThreads.ActionOnExitSafepointSupport.setSwitchStack(vmThread);
-            VMThreads.ActionOnExitSafepointSupport.setSwitchStackTarget(vmThread, returnSP, returnIP);
-        }
     }
 }

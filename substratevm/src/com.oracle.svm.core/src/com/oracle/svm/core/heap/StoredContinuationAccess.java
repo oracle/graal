@@ -30,7 +30,6 @@ import jdk.compiler.graal.nodes.extended.MembarNode;
 import jdk.compiler.graal.nodes.java.ArrayLengthNode;
 import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -109,37 +108,12 @@ public final class StoredContinuationAccess {
     }
 
     public static int allocateToYield(Target_jdk_internal_vm_Continuation c, Pointer baseSp, Pointer sp, CodePointer ip) {
-        assert sp.isNonNull() && ip.isNonNull();
-        return allocateFromStack(c, baseSp, sp, ip, WordFactory.nullPointer());
-    }
+        assert baseSp.isNonNull() && sp.isNonNull() && ip.isNonNull();
 
-    public static int allocateToPreempt(Target_jdk_internal_vm_Continuation c, Pointer baseSp, IsolateThread targetThread) {
-        return allocateFromStack(c, baseSp, WordFactory.nullPointer(), WordFactory.nullPointer(), targetThread);
-    }
-
-    private static int allocateFromStack(Target_jdk_internal_vm_Continuation cont, Pointer baseSp, Pointer sp, CodePointer ip, IsolateThread targetThread) {
-        boolean yield = sp.isNonNull();
-        assert yield == ip.isNonNull() && yield == targetThread.isNull();
-        assert baseSp.isNonNull();
-
-        Pointer startSp = sp;
-        CodePointer startIp = ip;
-        if (!yield) {
-            PreemptVisitor visitor = new PreemptVisitor(baseSp);
-            JavaStackWalker.walkThread(targetThread, visitor);
-            if (visitor.preemptStatus != ContinuationSupport.FREEZE_OK) {
-                return visitor.preemptStatus;
-            }
-            startSp = visitor.leafSP;
-            startIp = visitor.leafIP;
-        }
-
-        VMError.guarantee(startSp.isNonNull());
-
-        int framesSize = UnsignedUtils.safeToInt(baseSp.subtract(startSp));
+        int framesSize = UnsignedUtils.safeToInt(baseSp.subtract(sp));
         StoredContinuation instance = allocate(framesSize);
-        fillUninterruptibly(instance, startIp, startSp, framesSize);
-        ContinuationInternals.setStoredContinuation(cont, instance);
+        fillUninterruptibly(instance, ip, sp, framesSize);
+        ContinuationInternals.setStoredContinuation(c, instance);
         return ContinuationSupport.FREEZE_OK;
     }
 

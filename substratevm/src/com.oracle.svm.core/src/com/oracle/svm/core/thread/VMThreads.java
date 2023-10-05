@@ -33,7 +33,6 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CFunction;
-import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 import org.graalvm.word.ComparableWord;
@@ -1003,65 +1002,6 @@ public abstract class VMThreads {
                 }
                 setSynchronizeCode(vmThread);
             }
-        }
-    }
-
-    /**
-     * This follows {@link ActionOnTransitionToJavaSupport}, but only for exiting safepoint.
-     */
-    public static class ActionOnExitSafepointSupport {
-
-        private static final FastThreadLocalInt actionTL = FastThreadLocalFactory.createInt("ActionOnExitSafepointSupport.actionTL");
-        private static final int NO_ACTION = 0;
-        /**
-         * The thread needs to start execution from a different stack, used for preempting a
-         * continuation.
-         */
-        private static final int SWITCH_STACK = NO_ACTION + 1;
-
-        /** Target of stack switching. */
-        private static final FastThreadLocalWord<Pointer> returnSP = FastThreadLocalFactory.createWord("ActionOnExitSafepointSupport.returnSP");
-        private static final FastThreadLocalWord<CodePointer> returnIP = FastThreadLocalFactory.createWord("ActionOnExitSafepointSupport.returnIP");
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isActionPending() {
-            return actionTL.getVolatile() != NO_ACTION;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static boolean isSwitchStackPending() {
-            return actionTL.getVolatile() == SWITCH_STACK;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void setSwitchStack(IsolateThread vmThread) {
-            assert VMOperation.isInProgressAtSafepoint() : "Invariant to avoid races between setting and clearing.";
-            actionTL.setVolatile(vmThread, SWITCH_STACK);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void setSwitchStackTarget(IsolateThread vmThread, Pointer sp, CodePointer ip) {
-            returnSP.setVolatile(vmThread, sp);
-            returnIP.setVolatile(vmThread, ip);
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected static Pointer getSwitchStackSP() {
-            Pointer sp = returnSP.getVolatile();
-            assert sp.isNonNull();
-            return sp;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        protected static CodePointer getSwitchStackIP() {
-            CodePointer ip = returnIP.getVolatile();
-            assert ip.isNonNull();
-            return ip;
-        }
-
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        public static void clearActions() {
-            actionTL.setVolatile(NO_ACTION);
         }
     }
 
