@@ -45,6 +45,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.code.HostedDirectCallTrampolineSupport;
 import com.oracle.svm.hosted.code.HostedImageHeapConstantPatch;
@@ -54,6 +55,7 @@ import com.oracle.svm.hosted.meta.HostedMethod;
 
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.code.site.Call;
+import jdk.vm.ci.code.site.ConstantReference;
 import jdk.vm.ci.code.site.DataPatch;
 import jdk.vm.ci.code.site.Infopoint;
 import jdk.vm.ci.code.site.Reference;
@@ -343,7 +345,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
             // the codecache-relative offset of the compilation
             int compStart = method.getCodeAddressOffset();
 
-            // Build an index of PatchingAnnoations
+            // Build an index of PatchingAnnotations
             Map<Integer, HostedPatcher> patches = new HashMap<>();
             ByteBuffer targetCode = null;
             for (CodeAnnotation codeAnnotation : compilation.getCodeAnnotations()) {
@@ -395,12 +397,25 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
                 }
             }
             for (DataPatch dataPatch : compilation.getDataPatches()) {
+                assert dataPatch.note == null : "Unexpected note: " + dataPatch.note;
                 Reference ref = dataPatch.reference;
-                /*
-                 * Constants are allocated offsets in a separate space, which can be emitted as
-                 * read-only (.rodata) section.
-                 */
-                patches.get(dataPatch.pcOffset).relocate(ref, relocs, compStart);
+                var patcher = patches.get(dataPatch.pcOffset);
+                if (ref instanceof ConstantReference constant && constant.getConstant() instanceof SubstrateMethodPointerConstant methodPtrConstant) {
+                    /*
+                     * We directly patch SubstrateMethodPointerConstants.
+                     */
+                    HostedMethod hMethod = (HostedMethod) methodPtrConstant.pointer().getMethod();
+                    VMError.guarantee(hMethod.isCompiled(), "Method %s is not compiled although there is a method pointer constant created for it.", hMethod);
+                    int targetOffset = hMethod.getCodeAddressOffset();
+                    int pcDisplacement = targetOffset - (compStart + dataPatch.pcOffset);
+                    patcher.patch(compStart, pcDisplacement, compilation.getTargetCode());
+                } else {
+                    /*
+                     * Constants are allocated offsets in a separate space, which can be emitted as
+                     * read-only (.rodata) section.
+                     */
+                    patcher.relocate(ref, relocs, compStart);
+                }
                 boolean noPriorMatch = patchedOffsets.add(dataPatch.pcOffset);
                 VMError.guarantee(noPriorMatch, "Patching same offset twice.");
                 patchesHandled++;

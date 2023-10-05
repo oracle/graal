@@ -54,7 +54,7 @@ public final class AMD64LoadMethodPointerConstantOp extends AMD64LIRInstruction 
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
         Register resultReg = asRegister(result);
         crb.recordInlineDataInCode(constant);
-        masm.movq(resultReg, 0L, true);
+        masm.leaq(resultReg, masm.getPlaceholder(masm.position()));
     }
 
     @Override
