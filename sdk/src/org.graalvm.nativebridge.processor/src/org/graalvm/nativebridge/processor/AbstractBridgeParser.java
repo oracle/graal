@@ -264,18 +264,14 @@ abstract class AbstractBridgeParser {
             if (!res.getModifiers().contains(Modifier.STATIC) || res.getModifiers().contains(Modifier.PRIVATE) || res.getParameters().size() != 1 ||
                             !types.isSameType(serviceType, res.getReturnType())) {
                 Set<Modifier> expectedModifiers = staticNonPrivate(res.getModifiers());
-                List<Map.Entry<TypeMirror, CharSequence>> expectedParameters;
-                switch (res.getParameters().size()) {
-                    case 0:
-                        expectedParameters = Collections.singletonList(new SimpleImmutableEntry<>(typeCache.object, "receiver"));
-                        break;
-                    case 1:
+                List<Map.Entry<TypeMirror, CharSequence>> expectedParameters = switch (res.getParameters().size()) {
+                    case 0 -> Collections.singletonList(new SimpleImmutableEntry<>(typeCache.object, "receiver"));
+                    case 1 -> {
                         VariableElement parameter = res.getParameters().get(0);
-                        expectedParameters = Collections.singletonList(new SimpleImmutableEntry<>(parameter.asType(), parameter.getSimpleName()));
-                        break;
-                    default:
-                        expectedParameters = Collections.singletonList(new SimpleImmutableEntry<>(res.getParameters().get(0).asType(), "receiver"));
-                }
+                        yield Collections.singletonList(new SimpleImmutableEntry<>(parameter.asType(), parameter.getSimpleName()));
+                    }
+                    default -> Collections.singletonList(new SimpleImmutableEntry<>(res.getParameters().get(0).asType(), "receiver"));
+                };
                 emitError(res, annotation, "A method annotated by `%s` must be a non-private static method with a single parameter and `%s` return type.%n" +
                                 "To fix this change the signature to `%s`.", Utilities.getTypeName(typeCache.customDispatchAccessor), Utilities.getTypeName(serviceType),
                                 Utilities.printMethod(expectedModifiers, res.getSimpleName(), serviceType, expectedParameters));
@@ -311,8 +307,7 @@ abstract class AbstractBridgeParser {
                     case 0: {
                         TypeMirror parameterType;
                         if (customDispatchAccessor != null && !customDispatchAccessor.getParameters().isEmpty()) {
-                            TypeMirror dispatchAccessorArg = customDispatchAccessor.getParameters().get(0).asType();
-                            parameterType = dispatchAccessorArg;
+                            parameterType = customDispatchAccessor.getParameters().get(0).asType();
                         } else {
                             parameterType = typeCache.object;
                         }
@@ -1016,7 +1011,7 @@ abstract class AbstractBridgeParser {
 
     private static List<? extends VariableElement> findConstructorParams(DeclaredType type, ConstructorSelector constructorSelector) {
         TypeElement te = (TypeElement) type.asElement();
-        ElementFilter.constructorsIn(te.getEnclosedElements()).stream().forEach(constructorSelector::accept);
+        ElementFilter.constructorsIn(te.getEnclosedElements()).forEach(constructorSelector::accept);
         ExecutableElement selectedConstructor = constructorSelector.get();
         return selectedConstructor == null ? Collections.emptyList() : selectedConstructor.getParameters();
     }
@@ -1280,10 +1275,6 @@ abstract class AbstractBridgeParser {
             return parameterMarshallers.get(arg);
         }
 
-        boolean needsMarshalledDataParameter() {
-            return parameterMarshallers.stream().anyMatch((md) -> md.kind == MarshallerData.Kind.CUSTOM);
-        }
-
         boolean hasOverload() {
             return overloadId > 0;
         }
@@ -1331,12 +1322,6 @@ abstract class AbstractBridgeParser {
             return getAllCustomMarshallers().stream().filter((m) -> types.isSameType(forType, m.forType)).filter((m) -> annotationType == null ? m.annotations.isEmpty()
                             : Utilities.contains(m.annotations.stream().map(AnnotationMirror::getAnnotationType).collect(Collectors.toList()), annotationType, types)).findFirst().orElseThrow(
                                             () -> new IllegalStateException(String.format("No custom marshaller for type %s.", Utilities.getTypeName(forType))));
-        }
-
-        Collection<MarshallerData> getAllReferenceMarshallers() {
-            Set<MarshallerData> res = new HashSet<>();
-            collectAllMarshallers(res, MarshallerData.Kind.REFERENCE);
-            return res;
         }
 
         private void collectAllMarshallers(Set<? super MarshallerData> into, MarshallerData.Kind kind) {

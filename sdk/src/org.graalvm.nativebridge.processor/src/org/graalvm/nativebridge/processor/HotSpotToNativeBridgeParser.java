@@ -149,7 +149,7 @@ final class HotSpotToNativeBridgeParser extends AbstractBridgeParser {
 
         @Override
         TypeMirror getEndPointMethodParameterType(MarshallerData marshaller, TypeMirror type) {
-            return HotSpotToNativeBridgeGenerator.jniTypeForJavaType(getEntryPointMethodParameterType(marshaller, type), types, typeCache);
+            return Utilities.jniTypeForJavaType(getEntryPointMethodParameterType(marshaller, type), types, typeCache);
         }
 
         @Override

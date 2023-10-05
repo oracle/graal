@@ -153,7 +153,7 @@ public final class Utilities {
                     List<? extends Map.Entry<? extends TypeMirror, ? extends CharSequence>> parameters) {
         StringBuilder res = new StringBuilder();
         printModifiers(res, modifiers);
-        if (res.length() > 0) {
+        if (!res.isEmpty()) {
             res.append(" ");
         }
         if (returnType.getKind() != TypeKind.NONE) {
@@ -180,7 +180,7 @@ public final class Utilities {
     public static CharSequence printField(Set<Modifier> modifiers, CharSequence name, TypeMirror type) {
         StringBuilder res = new StringBuilder();
         printModifiers(res, modifiers);
-        if (res.length() > 0) {
+        if (!res.isEmpty()) {
             res.append(" ");
         }
         printType(res, type, false);
@@ -277,6 +277,42 @@ public final class Utilities {
         return name.replace("_", "_1").replace("$", "_00024").replace('.', '_');
     }
 
+    static TypeMirror jniTypeForJavaType(TypeMirror javaType, Types types, AbstractBridgeParser.AbstractTypeCache cache) {
+        if (javaType.getKind().isPrimitive() || javaType.getKind() == TypeKind.VOID) {
+            return javaType;
+        }
+        TypeMirror erasedType = types.erasure(javaType);
+        switch (erasedType.getKind()) {
+            case DECLARED:
+                if (types.isSameType(cache.string, javaType)) {
+                    return cache.jString;
+                } else if (types.isSameType(cache.clazz, javaType)) {
+                    return cache.jClass;
+                } else if (types.isSubtype(javaType, cache.throwable)) {
+                    return cache.jThrowable;
+                } else {
+                    return cache.jObject;
+                }
+            case ARRAY:
+                TypeMirror componentType = types.erasure(((ArrayType) erasedType).getComponentType());
+                return switch (componentType.getKind()) {
+                    case BOOLEAN -> cache.jBooleanArray;
+                    case BYTE -> cache.jByteArray;
+                    case CHAR -> cache.jCharArray;
+                    case SHORT -> cache.jShortArray;
+                    case INT -> cache.jIntArray;
+                    case LONG -> cache.jLongArray;
+                    case FLOAT -> cache.jFloatArray;
+                    case DOUBLE -> cache.jDoubleArray;
+                    case DECLARED -> cache.jObjectArray;
+                    default ->
+                        throw new UnsupportedOperationException("Not supported for array of " + componentType.getKind());
+                };
+            default:
+                throw new UnsupportedOperationException("Not supported for " + javaType.getKind());
+        }
+    }
+
     public static boolean contains(Collection<? extends TypeMirror> collection, TypeMirror mirror, Types types) {
         for (TypeMirror element : collection) {
             if (types.isSameType(element, mirror)) {
@@ -319,7 +355,7 @@ public final class Utilities {
     public static CharSequence javaMemberName(CharSequence... nameComponents) {
         StringBuilder result = new StringBuilder();
         for (CharSequence component : nameComponents) {
-            if (result.length() == 0) {
+            if (result.isEmpty()) {
                 result.append(component);
             } else {
                 String strComponent = component.toString();
