@@ -63,7 +63,7 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackFrameVisitor;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
-import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationInternals;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.Target_java_lang_VirtualThread;
@@ -150,7 +150,7 @@ final class Target_java_lang_StackWalker {
                 var scope = (contScope != null) ? contScope : Target_java_lang_VirtualThread.continuationScope();
                 var top = Target_jdk_internal_vm_Continuation.getCurrentContinuation(scope);
                 if (top != null) { // has a delimitation scope
-                    JavaStackWalker.initWalk(walk, sp, top.internal.getBaseSP());
+                    JavaStackWalker.initWalk(walk, sp, ContinuationInternals.getBaseSP(top));
                 } else { // scope is not present in current continuation chain or null
                     JavaStackWalker.initWalk(walk, sp);
                 }
@@ -268,15 +268,14 @@ final class Target_java_lang_StackWalker {
         @Uninterruptible(reason = "Prevent GC while in this method.")
         private boolean initWalk() {
             assert stored == null;
-            Continuation internal = (continuation != null) ? continuation.internal : null;
-            if (internal == null || internal.stored == null) {
+            if (continuation == null || ContinuationInternals.getStoredContinuation(continuation) == null) {
                 walk.setPossiblyStaleIP(WordFactory.nullPointer());
                 return false;
             }
-            if (!StoredContinuationAccess.initWalk(internal.stored, walk)) {
+            if (!StoredContinuationAccess.initWalk(ContinuationInternals.getStoredContinuation(continuation), walk)) {
                 return false;
             }
-            stored = internal.stored;
+            stored = ContinuationInternals.getStoredContinuation(continuation);
             walk.setStartSP(WordFactory.nullPointer()); // not needed, would turn stale
             return true;
         }

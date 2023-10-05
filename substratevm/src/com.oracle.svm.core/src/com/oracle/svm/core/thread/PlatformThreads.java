@@ -874,7 +874,7 @@ public abstract class PlatformThreads {
         Target_jdk_internal_vm_Continuation cont = toTarget(carrier).cont;
         while (cont != null) {
             if (cont.getScope() == Target_java_lang_VirtualThread.VTHREAD_SCOPE) {
-                return cont.internal.getBaseSP();
+                return ContinuationInternals.getBaseSP(cont);
             }
             cont = cont.getParent();
         }

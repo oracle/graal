@@ -58,9 +58,10 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
-import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationInternals;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -107,16 +108,16 @@ public final class StoredContinuationAccess {
         return s.ip;
     }
 
-    public static int allocateToYield(Continuation c, Pointer baseSp, Pointer sp, CodePointer ip) {
+    public static int allocateToYield(Target_jdk_internal_vm_Continuation c, Pointer baseSp, Pointer sp, CodePointer ip) {
         assert sp.isNonNull() && ip.isNonNull();
         return allocateFromStack(c, baseSp, sp, ip, WordFactory.nullPointer());
     }
 
-    public static int allocateToPreempt(Continuation c, Pointer baseSp, IsolateThread targetThread) {
+    public static int allocateToPreempt(Target_jdk_internal_vm_Continuation c, Pointer baseSp, IsolateThread targetThread) {
         return allocateFromStack(c, baseSp, WordFactory.nullPointer(), WordFactory.nullPointer(), targetThread);
     }
 
-    private static int allocateFromStack(Continuation cont, Pointer baseSp, Pointer sp, CodePointer ip, IsolateThread targetThread) {
+    private static int allocateFromStack(Target_jdk_internal_vm_Continuation cont, Pointer baseSp, Pointer sp, CodePointer ip, IsolateThread targetThread) {
         boolean yield = sp.isNonNull();
         assert yield == ip.isNonNull() && yield == targetThread.isNull();
         assert baseSp.isNonNull();
@@ -138,7 +139,7 @@ public final class StoredContinuationAccess {
         int framesSize = UnsignedUtils.safeToInt(baseSp.subtract(startSp));
         StoredContinuation instance = allocate(framesSize);
         fillUninterruptibly(instance, startIp, startSp, framesSize);
-        cont.stored = instance;
+        ContinuationInternals.setStoredContinuation(cont, instance);
         return ContinuationSupport.FREEZE_OK;
     }
 
