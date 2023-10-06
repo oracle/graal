@@ -193,8 +193,16 @@ public class ReadEliminationBlockState extends EffectsBlockState<ReadElimination
 
     public void killReadCache(LocationIdentity identity, ValueNode index, ValueNode array) {
         if (identity.isAny()) {
-            // ANY aliases with every other location
-            readCache.clear();
+            /**
+             * Kill all mutable locations.
+             */
+            Iterator<CacheEntry<?>> iterator = readCache.getKeys().iterator();
+            while (iterator.hasNext()) {
+                CacheEntry<?> entry = iterator.next();
+                if (entry.getIdentity().isMutable()) {
+                    iterator.remove();
+                }
+            }
             return;
         }
         Iterator<CacheEntry<?>> iterator = readCache.getKeys().iterator();
