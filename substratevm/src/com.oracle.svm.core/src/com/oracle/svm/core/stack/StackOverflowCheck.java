@@ -29,7 +29,6 @@ import org.graalvm.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
-import org.graalvm.word.WordFactory;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.option.HostedOptionKey;
@@ -88,10 +87,6 @@ public interface StackOverflowCheck {
     interface PlatformSupport {
         @Fold
         static PlatformSupport singleton() {
-            if (ImageSingletons.contains(OSSupport.class)) {
-                assert !ImageSingletons.contains(PlatformSupport.class);
-                return ImageSingletons.lookup(OSSupport.class);
-            }
             return ImageSingletons.lookup(PlatformSupport.class);
         }
 
@@ -111,27 +106,6 @@ public interface StackOverflowCheck {
          */
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr);
-    }
-
-    /* Only used by legacy code, will be removed as part of GR-48332. */
-    interface OSSupport extends PlatformSupport {
-        /** The highest address of the stack or zero if not supported. */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        default UnsignedWord lookupStackBase() {
-            return WordFactory.zero();
-        }
-
-        /** The lowest address of the stack. */
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        UnsignedWord lookupStackEnd();
-
-        @Override
-        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-        default boolean lookupStack(WordPointer stackBasePtr, WordPointer stackEndPtr) {
-            stackBasePtr.write(lookupStackBase());
-            stackEndPtr.write(lookupStackEnd());
-            return true;
-        }
     }
 
     @Fold
