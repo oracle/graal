@@ -42,6 +42,12 @@
 #ifndef _WIN64
 #include <cpuid.h>
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#define NO_INLINE __declspec(noinline)
+#else
+#define NO_INLINE __attribute__((noinline))
+#endif
+
 static void read_xem_xcr0(uint32_t *eax, uint32_t *edx) {
   __asm__ __volatile__("xgetbv" : "=a"(*eax), "=d"(*edx) : "c"(0));
 }
@@ -381,8 +387,8 @@ static void initialize_cpuinfo(CpuidInfo *_cpuid_info)
   }
 }
 
-// ported from from vm_version_x86.hpp::feature_flags
-static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
+// ported from from vm_version_x86.cpp::feature_flags
+static void NO_INLINE set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
 {
   if (_cpuid_info->std_cpuid1_edx.bits.cmpxchg8 != 0)
     features->fCX8 = 1;
