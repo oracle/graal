@@ -197,7 +197,7 @@ public final class Target_java_lang_Thread {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     @Substitute
     static Thread currentThread() {
-        Thread thread = PlatformThreads.getCurrentThreadOrNull();
+        Thread thread = JavaThreads.getCurrentThreadOrNull();
         if (GraalDirectives.inIntrinsic()) {
             ReplacementsUtil.dynamicAssert(thread != null, "Thread has not been set yet");
         } else {
@@ -209,7 +209,7 @@ public final class Target_java_lang_Thread {
     @SuppressWarnings("static-method")
     @Substitute
     void setCurrentThread(Thread thread) {
-        PlatformThreads.setCurrentThread(JavaThreads.fromTarget(this), thread);
+        JavaThreads.setCurrentThread(JavaThreads.fromTarget(this), thread);
     }
 
     @Substitute

@@ -229,7 +229,7 @@ public class JfrThreadLocal implements ThreadListener {
      * moment, only the current thread may be excluded/included. See GR-44616.
      */
     public static void setExcluded(Thread thread, boolean excluded) {
-        if (thread == null || thread != PlatformThreads.getCurrentThreadOrNull()) {
+        if (thread == null || thread != JavaThreads.getCurrentThreadOrNull()) {
             return;
         }
         IsolateThread currentIsolateThread = CurrentIsolate.getCurrentThread();
@@ -247,7 +247,7 @@ public class JfrThreadLocal implements ThreadListener {
      * thread, see {@link PlatformThreads#ensureCurrentAssigned(String, ThreadGroup, boolean)} where
      * a {@link Thread} object must be created before it can be assigned to the current thread. This
      * may happen during shutdown in {@link JavaMainWrapper}. Therefore, this method must account
-     * for the case where {@link PlatformThreads#getCurrentThreadOrNull()} returns null.
+     * for the case where {@link JavaThreads#getCurrentThreadOrNull()} returns null.
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isThreadExcluded(Thread thread) {
@@ -286,7 +286,7 @@ public class JfrThreadLocal implements ThreadListener {
             throw new OutOfMemoryError("OOME for thread local buffer");
         }
 
-        Target_jdk_jfr_internal_event_EventWriter result = JfrEventWriterAccess.newEventWriter(buffer, isThreadExcluded(PlatformThreads.getCurrentThreadOrNull()));
+        Target_jdk_jfr_internal_event_EventWriter result = JfrEventWriterAccess.newEventWriter(buffer, isThreadExcluded(JavaThreads.getCurrentThreadOrNull()));
         javaEventWriter.set(result);
         return result;
     }

@@ -307,7 +307,7 @@ final class VirtualThreadHelper {
              * thread might never get unparked, in which case both threads are stuck.
              */
             Thread carrier = self.carrierThread;
-            PlatformThreads.setCurrentThread(carrier, carrier);
+            JavaThreads.setCurrentThread(carrier, carrier);
             token = self;
         }
         Object lock = asTarget(self).interruptLock;
@@ -323,7 +323,7 @@ final class VirtualThreadHelper {
             assert token == self;
             Thread carrier = asVTarget(token).carrierThread;
             assert Thread.currentThread() == carrier;
-            PlatformThreads.setCurrentThread(carrier, asThread(token));
+            JavaThreads.setCurrentThread(carrier, asThread(token));
         }
     }
 

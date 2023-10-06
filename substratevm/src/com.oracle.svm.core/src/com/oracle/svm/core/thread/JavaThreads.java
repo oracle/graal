@@ -44,6 +44,9 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.jdk.StackTraceUtils;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.StackFrameVisitor;
+import com.oracle.svm.core.threadlocal.FastThreadLocal;
+import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
+import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.compiler.graal.api.directives.GraalDirectives;
@@ -69,6 +72,17 @@ import jdk.compiler.graal.replacements.ReplacementsUtil;
  * and choose the appropriate action.
  */
 public final class JavaThreads {
+    /**
+     * The {@linkplain JavaThreads#getThreadId thread id} of the {@link Thread#currentThread()},
+     * which can be a {@linkplain Target_java_lang_Thread#vthread virtual thread} or a
+     * {@linkplain PlatformThreads#currentThread platform thread}.
+     *
+     * As the value of the thread local can change over the thread lifetime (see carrier threads),
+     * it should only be accessed by the owning thread (via {@link FastThreadLocalLong#get()} and
+     * {@link FastThreadLocalLong#set(long)}).
+     */
+    static final FastThreadLocalLong currentVThreadId = FastThreadLocalFactory.createLong("JavaThreads.currentVThreadId").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
+
     /** For Thread.nextThreadID(). */
     static final AtomicLong threadSeqNumber = new AtomicLong();
     /** For Thread.nextThreadNum(). */
@@ -383,7 +397,7 @@ public final class JavaThreads {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getCurrentThreadId() {
-        long id = PlatformThreads.currentVThreadId.get();
+        long id = currentVThreadId.get();
         if (GraalDirectives.inIntrinsic()) {
             ReplacementsUtil.dynamicAssert(id != 0 && id == getThreadId(Thread.currentThread()), "ids must match");
         } else {
@@ -401,8 +415,27 @@ public final class JavaThreads {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static long getCurrentThreadIdOrZero() {
         if (CurrentIsolate.getCurrentThread().isNonNull()) {
-            return PlatformThreads.currentVThreadId.get();
+            return currentVThreadId.get();
         }
         return 0L;
+    }
+
+    @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
+    static void setCurrentThread(Thread carrier, Thread thread) {
+        assert carrier == PlatformThreads.currentThread.get();
+        assert thread == carrier || isVirtual(thread);
+        toTarget(carrier).vthread = (thread != carrier) ? thread : null;
+        currentVThreadId.set(getThreadId(thread));
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static Thread getCurrentThreadOrNull() {
+        Thread thread = PlatformThreads.currentThread.get();
+        if (thread == null) {
+            return null;
+        }
+
+        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
+        return (tjlt.vthread != null) ? tjlt.vthread : thread;
     }
 }

@@ -98,7 +98,6 @@ import com.oracle.svm.core.stack.StackOverflowCheck;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
-import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.threadlocal.FastThreadLocalObject;
 import com.oracle.svm.core.util.TimeUtils;
 import com.oracle.svm.core.util.VMError;
@@ -125,17 +124,6 @@ public abstract class PlatformThreads {
 
     /** The platform {@link java.lang.Thread} for the {@link IsolateThread}. */
     static final FastThreadLocalObject<Thread> currentThread = FastThreadLocalFactory.createObject(Thread.class, "PlatformThreads.currentThread").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
-
-    /**
-     * The {@linkplain JavaThreads#getThreadId thread id} of the {@link Thread#currentThread()},
-     * which can be a {@linkplain Target_java_lang_Thread#vthread virtual thread} or the
-     * {@linkplain #currentThread platform thread itself}.
-     *
-     * As the value of the thread local can change over the thread lifetime (see carrier threads),
-     * it should only be accessed by the owning thread (via {@link FastThreadLocalLong#get()} and
-     * {@link FastThreadLocalLong#set(long)}).
-     */
-    static final FastThreadLocalLong currentVThreadId = FastThreadLocalFactory.createLong("PlatformThreads.currentVThreadId").setMaxOffset(FastThreadLocal.BYTE_OFFSET);
 
     /**
      * The number of running non-daemon threads. The initial value accounts for the main thread,
@@ -452,7 +440,7 @@ public abstract class PlatformThreads {
     @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
     private static void assignCurrent0(Thread thread) {
         VMError.guarantee(currentThread.get() == null, "overwriting existing java.lang.Thread");
-        currentVThreadId.set(JavaThreads.getThreadId(thread));
+        JavaThreads.currentVThreadId.set(JavaThreads.getThreadId(thread));
         currentThread.set(thread);
 
         assert toTarget(thread).isolateThread.isNull();
@@ -460,28 +448,14 @@ public abstract class PlatformThreads {
         ThreadListenerSupport.get().beforeThreadStart(CurrentIsolate.getCurrentThread(), thread);
     }
 
-    @Uninterruptible(reason = "Ensure consistency of vthread and cached vthread id.")
-    static void setCurrentThread(Thread carrier, Thread thread) {
-        assert carrier == currentThread.get();
-        assert thread == carrier || isVirtual(thread);
-        toTarget(carrier).vthread = (thread != carrier) ? thread : null;
-        currentVThreadId.set(JavaThreads.getThreadId(thread));
-    }
-
-    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public static Thread getCurrentThreadOrNull() {
-        Thread thread = PlatformThreads.currentThread.get();
-        if (thread == null) {
-            return null;
-        }
-
-        Target_java_lang_Thread tjlt = SubstrateUtil.cast(thread, Target_java_lang_Thread.class);
-        return (tjlt.vthread != null) ? tjlt.vthread : thread;
-    }
-
-    /** Returns the mounted virtual thread if one exists, otherwise null. */
+    /**
+     * Returns the virtual thread that is mounted on the given platform thread, or {@code null} if
+     * no virtual thread is mounted.
+     */
     @Uninterruptible(reason = CALLED_FROM_UNINTERRUPTIBLE_CODE, mayBeInlined = true)
-    public static Thread getVThread(Thread thread) {
+    public static Thread getMountedVirtualThread(Thread thread) {
+        assert thread == currentThread.get() || VMOperation.isInProgressAtSafepoint();
+        assert !isVirtual(thread);
         return toTarget(thread).vthread;
     }
 
