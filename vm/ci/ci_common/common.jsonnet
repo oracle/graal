@@ -352,6 +352,10 @@ local devkits = graal_common.devkits;
     targets+: ['daily'],
   },
 
+  daily_vm_darwin_aarch64: self.vm_darwin_aarch64 + {
+    targets+: ['daily'],
+  },
+
   daily_vm_windows: self.vm_windows + {
     targets+: ['daily'],
   },
