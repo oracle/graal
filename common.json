@@ -3,8 +3,8 @@
 
   "jdks": {
     "openjdk8":           {"name": "openjdk",   "version": "8u302+06-jvmci-21.3-b05", "platformspecific": true },
-    "oraclejdk8":         {"name": "labsjdk",   "version": "ee-8u391+12-jvmci-21.3-b36", "platformspecific": true },
-    "oraclejdk8Debug":    {"name": "labsjdk",   "version": "ee-8u391+12-jvmci-21.3-b36-fastdebug", "platformspecific": true },
+    "oraclejdk8":         {"name": "labsjdk",   "version": "ee-8u391+13-jvmci-21.3-b37", "platformspecific": true },
+    "oraclejdk8Debug":    {"name": "labsjdk",   "version": "ee-8u391+13-jvmci-21.3-b37-fastdebug", "platformspecific": true },
 
     "openjdk11":          {"name": "openjdk",   "version": "11.0.11+9", "platformspecific": true },
     "oraclejdk11":        {"name": "oraclejdk", "version": "11.0.11+9", "platformspecific": true },
