@@ -97,7 +97,9 @@ import com.oracle.svm.core.graal.code.CGlobalDataReference;
 import com.oracle.svm.core.image.ImageHeapLayoutInfo;
 import com.oracle.svm.core.image.ImageHeapPartition;
 import com.oracle.svm.core.meta.MethodPointer;
+import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.c.CGlobalDataFeature;
@@ -566,8 +568,19 @@ public abstract class NativeImage extends AbstractImage {
         return true;
     }
 
+    private void validateNoDirectRelocationsInTextSection(RelocatableBuffer.Info info) {
+        if (SubstrateOptions.NoDirectRelocationsInText.getValue() && RelocationKind.isDirect(info.getRelocationKind())) {
+            String message = "%nFound direct relocation in text section. This means that the resulting generated image will have relocations present within the text section. If this is okay, you can skip this check by setting the flag %s";
+            throw VMError.shouldNotReachHere(message, SubstrateOptionsParser.commandArgument(SubstrateOptions.NoDirectRelocationsInText, "-"));
+        }
+    }
+
     private void markFunctionRelocationSite(final ProgbitsSectionImpl sectionImpl, final int offset, final RelocatableBuffer.Info info) {
         assert info.getTargetObject() instanceof CFunctionPointer : "Wrong type for FunctionPointer relocation: " + info.getTargetObject().toString();
+
+        if (sectionImpl.getElement() == textSection) {
+            validateNoDirectRelocationsInTextSection(info);
+        }
 
         // References to functions are via relocations to the symbol for the function.
         MethodPointer methodPointer = (MethodPointer) info.getTargetObject();
@@ -622,10 +635,14 @@ public abstract class NativeImage extends AbstractImage {
                         info.getRelocationSize();
         Object target = info.getTargetObject();
         if (target instanceof DataSectionReference) {
+            validateNoDirectRelocationsInTextSection(info);
+
             long addend = ((DataSectionReference) target).getOffset() - info.getAddend();
             assert isAddendAligned(arch, addend, info.getRelocationKind()) : "improper addend alignment";
             sectionImpl.markRelocationSite(offset, info.getRelocationKind(), roDataSection.getName(), addend);
         } else if (target instanceof CGlobalDataReference) {
+            validateNoDirectRelocationsInTextSection(info);
+
             CGlobalDataReference ref = (CGlobalDataReference) target;
             CGlobalDataInfo dataInfo = ref.getDataInfo();
             CGlobalDataImpl<?> data = dataInfo.getData();
