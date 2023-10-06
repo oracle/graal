@@ -35,7 +35,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.Enumeration;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -107,7 +106,7 @@ public final class Resources {
      * specified in the configuration, but we do not want to throw directly (for example when we try
      * to check all the modules for a resource).
      */
-    private static final ResourceStorageEntryBase MISSING_METADATA_MARKER = new ResourceStorageEntryBase();
+    public static final ResourceStorageEntryBase MISSING_METADATA_MARKER = new ResourceStorageEntryBase();
 
     /**
      * Embedding a resource into an image is counted as a modification. Since all resources are
@@ -166,8 +165,6 @@ public final class Resources {
         }
     }
 
-    private HashSet<String> set = new HashSet();
-
     @Platforms(Platform.HOSTED_ONLY.class)
     private void addEntry(Module module, String resourceName, boolean isDirectory, byte[] data, boolean fromJar, boolean isNegativeQuery) {
         VMError.guarantee(!BuildPhaseProvider.isAnalysisFinished(), "Trying to add a resource entry after analysis.");
@@ -197,12 +194,7 @@ public final class Resources {
                 }
             }
 
-            if (set.contains(resourceName)) {
-                System.out.println("RESOURCE: " + resourceName + " in module: " + module + " from jar: " + fromJar);
-                System.out.println("IS NEGATIVE QUERY: " + isNegativeQuery);
-            }
             entry.getData().add(data);
-            set.add(resourceName);
         }
     }
 

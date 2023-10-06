@@ -94,6 +94,7 @@ import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributes;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileAttributesView;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystem;
 import com.oracle.svm.core.jdk.resources.NativeImageResourceFileSystemProvider;
+import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
@@ -583,6 +584,22 @@ public final class ResourcesFeature implements InternalFeature {
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
         sealed = true;
+        var entryIter = Resources.singleton().getResourceStorage().getEntries();
+        while (entryIter.advance()) {
+            var key = entryIter.getKey();
+            ResourceStorageEntryBase val = entryIter.getValue();
+            String valStr;
+            if (val.isException()) {
+                valStr = val.getException().getClass().getName();
+            } else if (val == Resources.NEGATIVE_QUERY_MARKER) {
+                valStr = "NEGATIVE_QUERY_MARKER";
+            } else if (val == Resources.MISSING_METADATA_MARKER) {
+                valStr = "MISSING_METADATA_MARKER";
+            } else {
+                valStr = "" + val.getData().stream().map(bytes -> bytes.length).reduce((a, b) -> a + b).get();
+            }
+            System.out.println("RESOURCE: " + key.getRight() + ": " + valStr);
+        }
     }
 
     @Override

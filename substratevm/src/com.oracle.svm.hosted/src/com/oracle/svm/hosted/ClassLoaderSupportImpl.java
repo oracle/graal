@@ -216,6 +216,10 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     matchedDirectoryResources.add(new ConditionalResource(condition, relativeFilePath));
                 }
 
+                if (conditions.isEmpty()) {
+                    collector.registerNegativeQuery(null, relativeFilePath);
+                }
+
                 try (Stream<Path> pathStream = Files.list(entry)) {
                     Stream<Path> filtered = pathStream;
                     if (ClassUtil.CLASS_MODULE_PATH_EXCLUDE_DIRECTORIES_ROOT.equals(entry)) {
