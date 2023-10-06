@@ -1,6 +1,4 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
 # Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -24,7 +22,7 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
+
 from __future__ import print_function
 
 
