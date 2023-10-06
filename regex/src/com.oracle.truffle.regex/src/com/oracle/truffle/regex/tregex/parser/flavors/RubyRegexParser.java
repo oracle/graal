@@ -327,9 +327,9 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      */
     private CodePointSetAccumulator curCharClass = new CodePointSetAccumulator();
     /**
-     * The characters which are allowed to be full case-foldable (i.e. they are allowed to cross the
-     * ASCII boundary) in this character class. This set is constructed as the set of all characters
-     * that are included in the character class by being mentioned either:
+     * The characters which are allowed to be fully case-foldable (i.e. they are allowed to cross
+     * the ASCII boundary) in this character class. This set is constructed as the set of all
+     * characters that are included in the character class by being mentioned either:
      * <ul>
      * <li>literally, as in [a]</li>
      * <li>as part of a range, e.g. [a-c]</li>
@@ -337,8 +337,21 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
      * <li>through a Unicode property other than \p{Ascii}</li>
      * <li>through a character type other than \w or \W</li>
      * </ul>
-     * This includes character mentioned inside negations, intersections and other nested character
-     * classes.
+     * This differs from the Onigmo/MRI/Joni implementation in order to better nested negation and
+     * intersection of character classes. See the original issue and fix:
+     * <ul>
+     * <li><a href=
+     * "https://bugs.ruby-lang.org/issues/4044#note-24">https://bugs.ruby-lang.org/issues/4044#note-24</a></li>
+     * <li><a href=
+     * "https://github.com/k-takata/Onigmo/commit/4312db54b3424cf832e2a17b356fe87f0d9b792c">https://github.com/k-takata/Onigmo/commit/4312db54b3424cf832e2a17b356fe87f0d9b792c</a></li>
+     * <li><a href=
+     * "https://github.com/k-takata/Onigmo/issues/4#issuecomment-51669968">https://github.com/k-takata/Onigmo/issues/4#issuecomment-51669968</a></li>
+     * </ul>
+     * and the description of the remaining problems which necessitate our deviation from MRI:
+     * <ul>
+     * <li><a href=
+     * "https://bugs.ruby-lang.org/issues/18009">https://bugs.ruby-lang.org/issues/18009</a></li>
+     * </ul>
      */
     private CodePointSetAccumulator fullyFoldableCharacters = new CodePointSetAccumulator();
     /**
@@ -1734,6 +1747,10 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
                         nextSequence();
                         int from = pair.getLeft();
                         int[] to = pair.getRight();
+                        // Only allow crossing the ASCII boundary for characters in
+                        // `fullyFoldableCharacters`. Since `from` is not ASCII (ASCII characters
+                        // don't have multi-codepoint expansions), `to` cannot be ASCII either
+                        // if `from` is not in `fullyFoldableCharacters`.
                         boolean dropAsciiOnStart = !fullyFoldableCharacters.get().contains(from);
                         MultiCharacterCaseFolding.caseFoldUnfoldString(CaseFoldData.CaseFoldAlgorithm.Ruby, to, inSource.getEncoding().getFullSet(), dropAsciiOnStart, astBuilder);
                     }
