@@ -57,7 +57,7 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
 
     @Override
     public void onObservedUpdate(PointsToAnalysis bb) {
-        assert !isSaturated();
+        assert !isSaturated() : this;
 
         /*
          * Filter types not compatible with the receiver type and determine which types have been
@@ -86,7 +86,7 @@ final class DefaultSpecialInvokeTypeFlow extends AbstractSpecialInvokeTypeFlow {
         initializeCallees(bb);
         LightImmutableCollection.forEach(this, CALLEES_ACCESSOR, (PointsToAnalysisMethod callee) -> {
             MethodFlowsGraphInfo calleeFlows = callee.getTypeFlow().getOrCreateMethodFlowsGraphInfo(bb, this);
-            assert calleeFlows.getMethod().equals(callee);
+            assert calleeFlows.getMethod().equals(callee) : callee;
 
             if (!calleesLinked) {
                 linkCallee(bb, false, calleeFlows);

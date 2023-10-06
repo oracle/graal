@@ -370,7 +370,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
          * cache in the policy, but it is simpler to store the cache for each type.
          */
         assert bb.analysisPolicy().needsConstantCache() : "The analysis policy doesn't specify the need for a constants cache.";
-        assert bb.trackConcreteAnalysisObjects(this);
+        assert bb.trackConcreteAnalysisObjects(this) : this;
         assert !(constant instanceof PrimitiveConstant) : "The analysis should not model PrimitiveConstant.";
 
         if (uniqueConstant != null) {
@@ -595,7 +595,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public void registerOverrideReachabilityNotification(AnalysisMethod declaredMethod, MethodOverrideReachableNotification notification) {
-        assert declaredMethod.getDeclaringClass() == this;
+        assert declaredMethod.getDeclaringClass() == this : declaredMethod;
         Set<MethodOverrideReachableNotification> overrideNotifications = ConcurrentLightHashMap.computeIfAbsent(this,
                         overrideReachableNotificationsUpdater, declaredMethod, m -> ConcurrentHashMap.newKeySet());
         overrideNotifications.add(notification);
@@ -807,7 +807,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public boolean isInstantiated() {
         boolean instantiated = isInHeap() || isAllocated();
-        assert !instantiated || isReachable();
+        assert !instantiated || isReachable() : this;
         return instantiated;
     }
 

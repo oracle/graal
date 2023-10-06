@@ -395,7 +395,7 @@ public final class CodeInfoAccess {
         long installedCodeAddress = 0;
         long installedCodeEntryPoint = 0;
         if (installedCode != null) {
-            assert hasInstalledCode == HasInstalledCode.Yes;
+            assert hasInstalledCode == HasInstalledCode.Yes : hasInstalledCode;
             installedCodeAddress = installedCode.getAddress();
             installedCodeEntryPoint = installedCode.getEntryPoint();
         }

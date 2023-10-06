@@ -213,7 +213,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
              * scanner and the verifier also passes it to the root scanner, so when
              * checkHeapSnapshot returns all heap scanning and verification tasks are completed.
              */
-            assert executor.isBeforeStart();
+            assert executor.isBeforeStart() : executor.getState();
             analysisModified = universe.getHeapVerifier().checkHeapSnapshot(metaAccess, executor, "during analysis", true);
         }
         /* Initialize for the next iteration. */
@@ -343,7 +343,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
             @Override
             public DebugContext getDebug(OptionValues opts, List<DebugHandlersFactory> factories) {
-                assert opts == getOptions();
+                assert opts == getOptions() : opts + " != " + getOptions();
                 return DebugContext.disabled(opts);
             }
         });
@@ -394,7 +394,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
                     while (current.outerFrameState() != null) {
                         current = current.outerFrameState();
                     }
-                    assert method.equals(current.getMethod());
+                    assert method.equals(current.getMethod()) : method + " != " + current.getMethod();
                     bci = current.bci;
                 } else if (bci == BytecodeFrame.UNKNOWN_BCI) {
                     /*

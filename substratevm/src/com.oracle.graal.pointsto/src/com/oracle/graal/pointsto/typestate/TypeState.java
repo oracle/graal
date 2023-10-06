@@ -158,7 +158,7 @@ public abstract class TypeState {
 
     /** Wraps the analysis object corresponding to a JavaConstant into a non-null type state. */
     public static TypeState forConstant(PointsToAnalysis bb, JavaConstant constant, AnalysisType exactType) {
-        assert !constant.isNull();
+        assert !constant.isNull() : constant;
         assert exactType.isArray() || (exactType.isInstanceClass() && !Modifier.isAbstract(exactType.getModifiers())) : exactType;
         return bb.analysisPolicy().constantTypeState(bb, constant, exactType);
     }
@@ -202,7 +202,6 @@ public abstract class TypeState {
         } else if (s1 instanceof MultiTypeState && s2 instanceof SingleTypeState) {
             return bb.analysisPolicy().doUnion(bb, (MultiTypeState) s1, (SingleTypeState) s2);
         } else {
-            assert s1 instanceof MultiTypeState && s2 instanceof MultiTypeState;
             if (s1.objectsCount() >= s2.objectsCount()) {
                 return bb.analysisPolicy().doUnion(bb, (MultiTypeState) s1, (MultiTypeState) s2);
             } else {
@@ -232,7 +231,6 @@ public abstract class TypeState {
         } else if (s1 instanceof MultiTypeState && s2 instanceof SingleTypeState) {
             return bb.analysisPolicy().doIntersection(bb, (MultiTypeState) s1, (SingleTypeState) s2);
         } else {
-            assert s1 instanceof MultiTypeState && s2 instanceof MultiTypeState;
             return bb.analysisPolicy().doIntersection(bb, (MultiTypeState) s1, (MultiTypeState) s2);
         }
     }
@@ -258,7 +256,6 @@ public abstract class TypeState {
         } else if (s1 instanceof MultiTypeState && s2 instanceof SingleTypeState) {
             return bb.analysisPolicy().doSubtraction(bb, (MultiTypeState) s1, (SingleTypeState) s2);
         } else {
-            assert s1 instanceof MultiTypeState && s2 instanceof MultiTypeState;
             return bb.analysisPolicy().doSubtraction(bb, (MultiTypeState) s1, (MultiTypeState) s2);
         }
     }

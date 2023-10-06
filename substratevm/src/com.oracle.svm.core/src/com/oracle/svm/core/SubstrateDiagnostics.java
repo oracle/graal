@@ -417,7 +417,7 @@ public class SubstrateDiagnostics {
     }
 
     private static boolean matches(String text, String pattern) {
-        assert pattern.length() > 0;
+        assert pattern.length() > 0 : pattern;
         return matches(text, 0, pattern, 0);
     }
 

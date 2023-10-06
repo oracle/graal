@@ -49,7 +49,7 @@ abstract class AbstractCollectionPolicy implements CollectionPolicy {
 
     @Platforms(Platform.HOSTED_ONLY.class)
     static int getMaxSurvivorSpaces(Integer userValue) {
-        assert userValue == null || userValue >= 0;
+        assert userValue == null || userValue >= 0 : userValue;
         return (userValue != null) ? userValue : AbstractCollectionPolicy.MAX_TENURING_THRESHOLD;
     }
 

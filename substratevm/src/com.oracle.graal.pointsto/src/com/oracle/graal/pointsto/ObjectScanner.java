@@ -157,7 +157,7 @@ public class ObjectScanner {
                 /* The value is not available yet. */
                 return;
             }
-            assert isUnwrapped(receiver);
+            assert isUnwrapped(receiver) : receiver;
 
             JavaConstant fieldValue = readFieldValue(field, receiver);
             if (fieldValue == null) {
@@ -221,7 +221,7 @@ public class ObjectScanner {
      */
     protected final void scanArray(JavaConstant array, ScanReason prevReason) {
 
-        assert isUnwrapped(array);
+        assert isUnwrapped(array) : array;
         AnalysisType arrayType = bb.getMetaAccess().lookupJavaType(array);
         ScanReason reason = new ArrayScan(arrayType, array, prevReason);
 
@@ -418,7 +418,7 @@ public class ObjectScanner {
                 for (ResolvedJavaField javaField : type.getInstanceFields(true)) {
                     AnalysisField field = (AnalysisField) javaField;
                     if (field.isRead()) {
-                        assert !Modifier.isStatic(field.getModifiers());
+                        assert !Modifier.isStatic(field.getModifiers()) : field;
                         scanField(field, entry.constant, entry.reason);
                     }
                 }

@@ -131,7 +131,6 @@ public class SubstrateOptions {
 
         @Override
         public String getValue(OptionValues values) {
-            assert checkDescriptorExists();
             return getValueOrDefault(values.getMap());
         }
     };
@@ -930,7 +929,7 @@ public class SubstrateOptions {
         if (value == 0) {
             return Unsafe.getUnsafe().pageSize();
         }
-        assert value > 0;
+        assert value > 0 : value;
         return value;
     }
 

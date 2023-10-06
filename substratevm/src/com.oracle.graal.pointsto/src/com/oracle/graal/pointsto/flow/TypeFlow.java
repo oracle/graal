@@ -326,7 +326,7 @@ public abstract class TypeFlow<T> {
 
         PointsToStats.registerTypeFlowSuccessfulUpdate(bb, this, add);
 
-        assert !bb.extendedAsserts() || checkTypeState(bb, before, after);
+        assert checkTypeState(bb, before, after);
 
         if (checkSaturated(bb, after)) {
             onSaturated(bb);
@@ -338,7 +338,9 @@ public abstract class TypeFlow<T> {
     }
 
     private boolean checkTypeState(PointsToAnalysis bb, TypeState before, TypeState after) {
-        assert bb.extendedAsserts();
+        if (!bb.extendedAsserts()) {
+            return true;
+        }
 
         if (bb.analysisPolicy().relaxTypeFlowConstraints()) {
             return true;

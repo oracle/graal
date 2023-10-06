@@ -183,7 +183,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
             return TypeState.forIntersection(bb, receiverState, receiverType.getAssignableTypes(true));
         } else {
             // when not filtering, all input types should be assignable
-            assert verifyAllAssignable(bb, receiverState);
+            assert verifyAllAssignable(bb, receiverState) : receiverState;
         }
         return receiverState;
     }
@@ -339,7 +339,7 @@ public abstract class InvokeTypeFlow extends TypeFlow<BytecodePosition> implemen
 
         return getAllCallees().stream().filter(callee -> {
             boolean originalMethod = callee.isOriginalMethod();
-            assert !originalMethod || callee.isImplementationInvoked();
+            assert !originalMethod || callee.isImplementationInvoked() : callee;
             return originalMethod;
         }).collect(Collectors.toUnmodifiableList());
     }

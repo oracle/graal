@@ -365,7 +365,7 @@ public class PointsToStats {
             return;
         }
 
-        assert typeStateStats.containsKey(s1) && typeStateStats.containsKey(s2) && typeStateStats.containsKey(result);
+        assert typeStateStats.containsKey(s1) && typeStateStats.containsKey(s2) && typeStateStats.containsKey(result) : typeFlowStats;
 
         UnionOperation union = new UnionOperation(s1, s2, result);
         AtomicInteger counter = unionStats.computeIfAbsent(union, (k) -> new AtomicInteger());

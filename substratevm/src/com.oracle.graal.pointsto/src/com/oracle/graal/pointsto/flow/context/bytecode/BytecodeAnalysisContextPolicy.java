@@ -47,14 +47,13 @@ public class BytecodeAnalysisContextPolicy extends AnalysisContextPolicy<Bytecod
 
     @Override
     public BytecodeAnalysisContext peel(BytecodeAnalysisContext context, int maxDepth) {
-
-        assert maxDepth >= 0;
+        assert maxDepth >= 0 : maxDepth;
 
         if (context.labels().length <= maxDepth) {
             return context;
         }
 
-        assert context.labels().length > maxDepth;
+        assert context.labels().length > maxDepth : maxDepth;
 
         BytecodePosition[] resultingLabelList = peel(context.labels(), maxDepth);
 

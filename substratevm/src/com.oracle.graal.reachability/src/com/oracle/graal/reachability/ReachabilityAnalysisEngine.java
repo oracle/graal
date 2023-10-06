@@ -147,7 +147,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
 
     @Override
     public AnalysisMethod addRootMethod(AnalysisMethod m, boolean invokeSpecial, Object reason, MultiMethod.MultiMethodKey... otherRoots) {
-        assert otherRoots.length == 0;
+        assert otherRoots.length == 0 : otherRoots;
         ReachabilityAnalysisMethod method = (ReachabilityAnalysisMethod) m;
         if (m.isStatic()) {
             postTask(() -> {
@@ -296,7 +296,7 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
     public boolean finish() throws InterruptedException {
         universe.setAnalysisDataValid(false);
         runReachability();
-        assert executor.getPostedOperations() == 0;
+        assert executor.getPostedOperations() == 0 : executor.getPostedOperations();
         universe.setAnalysisDataValid(true);
         return true;
     }
