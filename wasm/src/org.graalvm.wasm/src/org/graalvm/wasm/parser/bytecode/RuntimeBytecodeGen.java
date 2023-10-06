@@ -291,11 +291,22 @@ public class RuntimeBytecodeGen extends BytecodeGen {
         assert commonResultType == WasmType.NONE_COMMON_TYPE || commonResultType == WasmType.NUM_COMMON_TYPE || commonResultType == WasmType.REF_COMMON_TYPE ||
                         commonResultType == WasmType.MIX_COMMON_TYPE : "invalid result type";
         final int location;
-        if (resultCount <= 1 && stackSize <= 31) {
+        if (resultCount == 0 && stackSize <= 63) {
             add1(Bytecode.SKIP_LABEL_U8);
             location = location();
             add1(Bytecode.LABEL_U8);
-            add1(resultCount << BytecodeBitEncoding.LABEL_U8_RESULT_SHIFT | commonResultType << BytecodeBitEncoding.LABEL_U8_RESULT_TYPE_SHIFT | stackSize);
+            add1(stackSize);
+        } else if (resultCount == 1 && stackSize <= 63) {
+            add1(Bytecode.SKIP_LABEL_U8);
+            location = location();
+            add1(Bytecode.LABEL_U8);
+            if (commonResultType == BytecodeBitEncoding.LABEL_RESULT_TYPE_NUM) {
+                add1(BytecodeBitEncoding.LABEL_U8_RESULT_NUM | stackSize);
+            } else if (commonResultType == BytecodeBitEncoding.LABEL_RESULT_TYPE_REF) {
+                add1(BytecodeBitEncoding.LABEL_U8_RESULT_REF | stackSize);
+            } else {
+                throw CompilerDirectives.shouldNotReachHere("Single result value must either have number or reference type.");
+            }
         } else if (resultCount <= 63 && fitsIntoUnsignedByte(stackSize)) {
             add1(Bytecode.SKIP_LABEL_U16);
             location = location();
