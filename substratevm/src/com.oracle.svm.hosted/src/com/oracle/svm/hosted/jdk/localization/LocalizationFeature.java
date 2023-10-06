@@ -136,6 +136,13 @@ import sun.util.resources.ParallelListResourceBundle;
 @AutomaticallyRegisteredFeature
 public class LocalizationFeature implements InternalFeature {
 
+    /**
+     * Locales required by default in Java.
+     * 
+     * @see Locale#getAvailableLocales()
+     */
+    private static final Locale[] MINIMAL_LOCALES = new Locale[]{Locale.ROOT, Locale.ENGLISH, Locale.US};
+
     protected final boolean optimizedMode = Options.LocalizationOptimizedMode.getValue();
 
     private final boolean substituteLoadLookup = Options.LocalizationSubstituteLoadLookup.getValue();
@@ -372,6 +379,8 @@ public class LocalizationFeature implements InternalFeature {
         if (Options.IncludeAllLocales.getValue()) {
             Collections.addAll(locales, Locale.getAvailableLocales());
             /*- Fallthrough to also allow adding custom locales */
+        } else {
+            Collections.addAll(locales, MINIMAL_LOCALES);
         }
         List<String> invalid = new ArrayList<>();
         for (String tag : Options.IncludeLocales.getValue().values()) {
