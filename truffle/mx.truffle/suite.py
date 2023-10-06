@@ -1705,7 +1705,8 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:POLYGLOT_TCK",
-        "TRUFFLE_TCK_COMMON"
+        "TRUFFLE_TCK_COMMON",
+        "TRUFFLE_TCK_INSTRUMENTATION",
       ],
       "exclude" : ["mx:JUNIT"],
       "description" : "A collection of tests that can certify language implementation to be compliant\nwith most recent requirements of the Truffle infrastructure and tooling.",
@@ -1847,7 +1848,7 @@ suite = {
       ],
       "distDependencies" : [
         "sdk:POLYGLOT_TCK",
-        "TRUFFLE_SL"
+        "TRUFFLE_SL",
       ],
       "maven" : False
     },

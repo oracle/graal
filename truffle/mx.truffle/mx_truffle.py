@@ -601,18 +601,8 @@ def _collect_distributions_by_resource(requiredResources, entries_collector):
     _collect_distributions(has_resource, entries_collector)
 
 
-def _collect_distributions_by_name(distributionName, entries_collector):
-    cp_filter = lambda dist: dist.isJARDistribution() and  dist.name == distributionName and exists(dist.path)
-    _collect_distributions(cp_filter, entries_collector)
-
-
-def _collect_languages(entries_collector):
-    _collect_distributions_by_module_descriptor([
-        "com.oracle.truffle.api.provider.TruffleLanguageProvider"],
-        entries_collector)
-
-
 def _collect_tck_providers(entries_collector):
+    _collect_distributions_by_module_descriptor(["org.graalvm.polyglot.tck.LanguageProvider"], entries_collector)
     _collect_distributions_by_resource(["META-INF/services/org.graalvm.polyglot.tck.LanguageProvider"], entries_collector)
 
 
@@ -623,16 +613,14 @@ class TCKUnittestConfig(mx_unittest.MxUnittestConfig):
 
     def processDeps(self, deps):
         if _shouldRunTCKUnittestConfig:
-            languages = []
             providers = []
-            _collect_languages(languages)
-            _collect_distributions_by_name("TRUFFLE_TCK_INSTRUMENTATION", languages)
             _collect_tck_providers(providers)
+            truffle_runtime = [mx.distribution(n) for n in resolve_truffle_dist_names()]
             mx.logv(f'Original unittest distributions {",".join([d.name for d in deps])}')
-            mx.logv(f'Languages distributions to add {",".join([d.name for d in languages])}')
             mx.logv(f'TCK providers distributions to add {",".join([d.name for d in providers])}')
-            deps.update(languages)
+            mx.logv(f'Truffle runtime used by the TCK {",".join([d.name for d in truffle_runtime])}')
             deps.update(providers)
+            deps.update(truffle_runtime)
             mx.logv(f'Merged unittest distributions {",".join([d.name for d in deps])}')
         else:
             mx.logv('Truffle TCK unnittest config is ignored because _shouldRunTCKUnittestConfig is False.')
@@ -737,9 +725,8 @@ def execute_tck(graalvm_home, mode='default', language_filter=None, values_filte
     :param vm_args: iterable containing additional Java VM args
     """
     dists = list()
-    _collect_languages(dists)
     _collect_tck_providers(dists)
-    _collect_distributions_by_name("TRUFFLE_TCK_INSTRUMENTATION", dists)
+    dists.extend([mx.distribution(n) for n in resolve_truffle_dist_names()])
     jvm_args = mx.get_runtime_jvm_args(dists)
     if vm_args:
         jvm_args.extend(vm_args)
