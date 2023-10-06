@@ -209,6 +209,7 @@ public class SubstrateJVM {
         threadLocal.initialize(options.threadBufferSize.getValue());
         globalMemory.initialize(options.globalBufferSize.getValue(), options.globalBufferCount.getValue());
         unlockedChunkWriter.initialize(options.maxChunkSize.getValue());
+        stackTraceRepo.setStackTraceDepth((int) options.stackDepth.getValue());
 
         recorderThread.start();
 
@@ -444,7 +445,7 @@ public class SubstrateJVM {
      * See {@link JVM#setStackDepth}.
      */
     public void setStackDepth(int depth) {
-        stackTraceRepo.setStackTraceDepth(depth);
+        options.stackDepth.setUserValue(depth);
     }
 
     /**

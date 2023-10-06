@@ -35,6 +35,14 @@ import jdk.jfr.internal.Options;
 /**
  * Holds all JFR-related options that can be set by the user. It is also used to validate and adjust
  * the option values as needed.
+ *
+ * Similar to OpenJDK, the options available by -XX:FlightRecorderOptions cannot be set after JFR is
+ * initialized. This means this that after {@link SubstrateJVM#createJFR(boolean)} is called, this
+ * class is no longer needed.
+ *
+ * This class is used to store options set at the OpenJDK Java-level which propagate down to the VM
+ * level via {@link jdk.jfr.internal.JVM}. The option values are stored here until they are
+ * eventually used when first recording is created and JFR is initialized.
  */
 public class JfrOptionSet {
     private static final int MEMORY_SIZE = 1;
@@ -54,6 +62,7 @@ public class JfrOptionSet {
     public final JfrOptionLong globalBufferCount;
     public final JfrOptionLong memorySize;
     public final JfrOptionLong maxChunkSize;
+    public final JfrOptionLong stackDepth;
 
     @Platforms(Platform.HOSTED_ONLY.class)
     public JfrOptionSet() {
@@ -62,6 +71,7 @@ public class JfrOptionSet {
         globalBufferCount = new JfrOptionLong(Options.getGlobalBufferCount());
         memorySize = new JfrOptionLong(Options.getMemorySize());
         maxChunkSize = new JfrOptionLong(Options.getMaxChunkSize());
+        stackDepth = new JfrOptionLong(Options.getStackDepth());
     }
 
     public void validateAndAdjustMemoryOptions() {
