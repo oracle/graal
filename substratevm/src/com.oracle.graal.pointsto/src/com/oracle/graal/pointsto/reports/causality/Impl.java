@@ -256,10 +256,14 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.A
         direct_edges.removeIf(pair -> pair.from != null && pair.from.unused() || pair.to.unused());
         direct_edges.removeIf(pair -> pair.to instanceof MethodReachable mr && mr.element.isClassInitializer());
 
+        Set<BuildTimeClassInitialization> initialBuildTimeClinits = new HashSet<>();
         HashSet<Event> rootEvents = new HashSet<>();
         forEachEvent(e -> {
             if (e != null && e.root() && !e.unused()) {
                 rootEvents.add(e);
+            }
+            if (e instanceof BuildTimeClassInitialization clinit) {
+                initialBuildTimeClinits.add(clinit);
             }
         });
         rootEvents.forEach(e -> g.add(new Graph.DirectEdge(null, e)));
@@ -279,36 +283,33 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.A
         }
 
         {
-            Set<BuildTimeClassInitialization> buildTimeClinits = new HashSet<>();
+            Set<BuildTimeClassInitialization> visitedBuildTimeClinits = new HashSet<>();
             Set<BuildTimeClassInitialization> buildTimeClinitsWithReason = new HashSet<>();
 
-            for (var e : direct_edges) {
-                if (e.from instanceof BuildTimeClassInitialization init && !buildTimeClinits.contains(init)) {
-                    for (;;) {
-                        buildTimeClinits.add(init);
-                        Object outerInitReason = HeapAssignmentTracing.getInstance().getBuildTimeClinitResponsibleForBuildTimeClinit(init.clazz);
-                        if (outerInitReason == null)
-                            break;
-                        buildTimeClinitsWithReason.add(init);
-                        if (outerInitReason instanceof Class<?> outerInitClass) {
-                            BuildTimeClassInitialization outerInit = (BuildTimeClassInitialization) BuildTimeClassInitialization.create(outerInitClass);
-                            g.add(new Graph.DirectEdge(outerInit, init));
-                            init = outerInit;
-                        } else {
-                            g.add(new Graph.DirectEdge((Event) outerInitReason, init));
-                            break;
-                        }
+            for (BuildTimeClassInitialization init : initialBuildTimeClinits) {
+                while (visitedBuildTimeClinits.add(init)) {
+                    Object outerInitReason = HeapAssignmentTracing.getInstance().getBuildTimeClinitResponsibleForBuildTimeClinit(init.clazz);
+                    if (outerInitReason == null)
+                        break;
+                    buildTimeClinitsWithReason.add(init);
+                    if (outerInitReason instanceof Class<?> outerInitClass) {
+                        BuildTimeClassInitialization outerInit = (BuildTimeClassInitialization) BuildTimeClassInitialization.create(outerInitClass);
+                        g.add(new Graph.DirectEdge(outerInit, init));
+                        init = outerInit;
+                    } else {
+                        g.add(new Graph.DirectEdge((Event) outerInitReason, init));
+                        break;
                     }
                 }
             }
 
-            for(var e : direct_edges) {
+            for (var e : direct_edges) {
                 if (e.to instanceof BuildTimeClassInitialization clinit) {
                     buildTimeClinitsWithReason.add(clinit);
                 }
             }
 
-            buildTimeClinits.stream().sorted(Comparator.comparing(init -> init.clazz.getTypeName())).forEach(init -> {
+            visitedBuildTimeClinits.stream().sorted(Comparator.comparing(init -> init.clazz.getTypeName())).forEach(init -> {
                 AnalysisType t;
                 try {
                     t = bb.getMetaAccess().optionalLookupJavaType(init.clazz).orElse(null);
