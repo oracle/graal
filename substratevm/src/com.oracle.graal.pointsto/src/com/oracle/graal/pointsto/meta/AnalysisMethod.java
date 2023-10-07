@@ -908,7 +908,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
             }
 
             AnalysisParsedGraph graph;
-            try (var ignored = CausalityExport.overwriteCause(CausalityExport.InlinedMethodCode.create(this))) {
+            try (var ignored = CausalityExport.overwriteCause(CausalityExport.MethodGraphParsed.create(this))) {
                 graph = AnalysisParsedGraph.parseBytecode(bb, this);
             }
 

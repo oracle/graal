@@ -272,14 +272,18 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.A
         direct_edges.removeIf(pair -> pair.from != null && pair.from.unused() || pair.to.unused());
         direct_edges.removeIf(pair -> pair.to instanceof MethodReachable mr && mr.element.isClassInitializer());
 
-        Set<BuildTimeClassInitialization> initialBuildTimeClinits = new HashSet<>();
         HashSet<Event> rootEvents = new HashSet<>();
+        Set<BuildTimeClassInitialization> initialBuildTimeClinits = new HashSet<>();
+        HashSet<InlinedMethodCode> allCodeEvents = new HashSet<>();
         forEachEvent(e -> {
             if (e != null && e.root() && !e.unused()) {
                 rootEvents.add(e);
             }
             if (e instanceof BuildTimeClassInitialization clinit) {
                 initialBuildTimeClinits.add(clinit);
+            }
+            if (e instanceof InlinedMethodCode imc) {
+                allCodeEvents.add(imc);
             }
         });
         rootEvents.forEach(e -> g.add(new Graph.DirectEdge(null, e)));
@@ -340,6 +344,10 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.A
                     g.add(new Graph.DirectEdge(null, init));
                 }
             });
+        }
+
+        for (var e : allCodeEvents) {
+            g.add(new Graph.DirectEdge(e, CausalityExport.MethodGraphParsed.create(e.context[0])));
         }
 
         for(Graph.HyperEdge andEdge : hyper_edges) {

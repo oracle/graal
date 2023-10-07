@@ -753,6 +753,24 @@ public class CausalityExport {
         }
     }
 
+    public static final class MethodGraphParsed extends Event {
+        public final AnalysisMethod method;
+
+        private MethodGraphParsed(AnalysisMethod method) {
+            this.method = method;
+        }
+
+        @Override
+        public String toString() {
+            return method.format("%H.%n(%P):%R [Method Graph Parsed]");
+        }
+
+        @Override
+        public boolean essential() {
+            return false;
+        }
+    }
+
     private static String reflectionObjectToString(AnnotatedElement reflectionObject)
     {
         if(reflectionObject instanceof Class<?> clazz) {
@@ -863,9 +881,6 @@ public class CausalityExport {
                     context.add((AnalysisMethod) invokePos.getMethod());
                 }
                 invokePos = invokePos.getCaller();
-
-                if (context.size() >= 2 && context.get(context.size() - 1) == context.get(context.size() - 2))
-                    throw new RuntimeException("Didn't expect the same method to appear twice!");
             }
 
             if (context.isEmpty())
@@ -939,6 +954,7 @@ public class CausalityExport {
     public static final EventFactory<AnalysisMethod> MethodSnippet = factory(MethodSnippet::new);
     public static final EventFactory<AnalysisMethod> RootMethodRegistration = factory(RootMethodRegistration::new);
     public static final EventFactory<AnalysisMethod> VirtualMethodInvoked = factory(VirtualMethodInvoked::new);
+    public static final EventFactory<AnalysisMethod> MethodGraphParsed = factory(MethodGraphParsed::new);
     public static final EventFactory<AnalysisType> TypeReachable = factory(TypeReachable::new);
     public static final EventFactory<AnalysisType> TypeInstantiated = factory(TypeInstantiated::new);
     public static final EventFactory<AnalysisType> TypeInHeap = factory(TypeInHeap::new);
