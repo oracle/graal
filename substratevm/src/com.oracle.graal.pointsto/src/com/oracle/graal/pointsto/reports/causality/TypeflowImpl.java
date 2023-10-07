@@ -350,12 +350,12 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
             // These will be added to allInstantiated immeadiatly.
             // In practice this only shows in big projects and rarely (e.g. 3 times in 170MB spring-petclinic)
             // Therefore we simply employ this quick fix:
-            AnalysisType[] types = e.getValue().toArray(AnalysisType[]::new);
-            for(int i = 0; i < types.length; i += 20) {
+            var typeIter = e.getValue().iterator();
+            while (typeIter.hasNext()) {
                 TypeState state = TypeState.forEmpty();
 
-                for(int j = i; j < i + 20 && j < types.length; j++) {
-                    state = TypeState.forUnion(bb, state, TypeState.forExactType(bb, types[j], false));
+                for(int j = 0; j < 20 && typeIter.hasNext(); j++) {
+                    state = TypeState.forUnion(bb, state, TypeState.forExactType(bb, typeIter.next(), false));
                 }
 
                 Graph.FlowNode intermediate = new Graph.FlowNode("Virtual Flow from Heap", e.getKey().getLeft(), state);
