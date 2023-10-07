@@ -468,7 +468,7 @@ public class SymbolicSnippetEncoder {
                         if (info.isVarargsParameter(i)) {
                             resolvedJavaType = resolvedJavaType.getElementalType();
                         }
-                        assert resolvedJavaType.isPrimitive() || HotSpotReplacementsImpl.isGraalClass(resolvedJavaType) : method +
+                        assert resolvedJavaType.isPrimitive() || isGraalClass(resolvedJavaType) : method +
                                         ": only Graal classes can be @ConstantParameter or @VarargsParameter: " + type;
                         ensureSnippetTypeAvailable(resolvedJavaType);
                     } else {
@@ -605,16 +605,14 @@ public class SymbolicSnippetEncoder {
         @Override
         public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
             JavaConstant javaConstant = constantReflection.readFieldValue(field, receiver);
-            String fieldClass = field.getDeclaringClass().getName();
+            ResolvedJavaType declaringClass = field.getDeclaringClass();
+            String fieldClass = declaringClass.getName();
             if (fieldClass.contains("java/util/EnumMap") || field.getType().getName().contains("java/util/EnumMap")) {
                 throw new GraalError("Snippets should not use EnumMaps in generated code");
             }
 
             if (!safeConstants.contains(receiver) &&
-                            !fieldClass.contains("graalvm") &&
-                            !fieldClass.contains("com/oracle/graal") &&
-                            !fieldClass.contains("jdk/vm/ci/") &&
-                            !fieldClass.contains("jdk/internal/vm/compiler") &&
+                            !isGraalClass(declaringClass) &&
                             !field.getName().equals("TYPE")) {
                 // Only permit constant reflection on compiler classes. This is necessary primarily
                 // because of the boxing snippets which are compiled as snippets but are really just
@@ -831,7 +829,8 @@ public class SymbolicSnippetEncoder {
                     throw new InternalError(stamp.toString());
                 }
                 ResolvedJavaType elementalType = type.getElementalType();
-                if (elementalType.getName().startsWith("Ljdk/vm/ci") || elementalType.getName().startsWith("Lorg/graalvm/") || elementalType.getName().startsWith("Lcom/oracle/graal/")) {
+                String elementalTypeName = elementalType.getName();
+                if (isGraalClass(elementalType)) {
                     if (!type.equals(elementalType)) {
                         // Ensure that the underlying type is available
                         ensureSnippetTypeAvailable(elementalType);

@@ -292,7 +292,7 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     static boolean isGraalClass(ResolvedJavaType type) {
-        return isGraalClass(MetaUtil.internalNameToJava(type.getName(), true, true));
+        return isGraalClass(type.toClassName());
     }
 
     static boolean isGraalClass(Class<?> clazz) {
@@ -300,10 +300,26 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
     }
 
     static boolean isGraalClass(String className) {
-        return className.contains("jdk.vm.ci") ||
-                        className.contains("org.graalvm.") ||
-                        className.contains("com.oracle.graal") ||
-                        className.contains("com.oracle.truffle");
+        String elementClassName;
+        if (className.charAt(0) == '[') {
+            elementClassName = className;
+            while (elementClassName.charAt(0) == '[') {
+                elementClassName = elementClassName.substring(1);
+            }
+            if (elementClassName.charAt(0) != 'L') {
+                // Primitive class
+                return false;
+            }
+
+            // Strip leading 'L' and trailing ';'
+            elementClassName = elementClassName.substring(1, elementClassName.length() - 1);
+        } else {
+            elementClassName = className;
+        }
+        return elementClassName.startsWith("jdk.vm.ci.") ||
+                        elementClassName.startsWith("jdk.compiler.graal.") ||
+                        elementClassName.startsWith("org.graalvm.") ||
+                        elementClassName.startsWith("com.oracle.graal.");
     }
 
     @Override
