@@ -3,14 +3,26 @@ package com.oracle.graal.pointsto.reports;
 import java.lang.reflect.Field;
 
 public class HeapAssignmentTracing {
-    private static HeapAssignmentTracing instance = new HeapAssignmentTracing();
+    private static final HeapAssignmentTracing instance;
+
+    static {
+        HeapAssignmentTracing impl = new NativeImpl();
+        try {
+            // Try to invoke native method
+            impl.getResponsibleClass(new Object());
+        } catch (UnsatisfiedLinkError error) {
+            // JVMTI agent is not loaded
+            impl = new HeapAssignmentTracing();
+        }
+        instance = impl;
+    }
 
     public static HeapAssignmentTracing getInstance() {
         return instance;
     }
 
-    public static void activate() {
-        instance = new NativeImpl();
+    public static boolean isActive() {
+        return instance instanceof NativeImpl;
     }
 
     public Object getResponsibleClass(Object imageHeapObject) {
