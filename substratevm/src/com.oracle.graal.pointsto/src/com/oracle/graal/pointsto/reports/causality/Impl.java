@@ -19,6 +19,8 @@ import jdk.vm.ci.meta.JavaConstant;
 
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,6 +32,7 @@ import static com.oracle.graal.pointsto.reports.CausalityExport.*;
 public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.AbstractImpl {
     private final ConcurrentHashMap<Graph.DirectEdge, Boolean> direct_edges = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Graph.HyperEdge, Boolean> hyper_edges = new ConcurrentHashMap<>();
+    private final Map<Object, Object> originsOfReplacedObjects = new IdentityHashMap<>();
 
     private final ThreadLocal<TContext> threadContexts;
 
@@ -191,19 +194,23 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.A
                 return SimulatedHeapTracing.instance.getHeapFieldAssigner(field, imageHeapConstant);
             } else {
                 o = asObject(bb, Object.class, value);
+                Object original = originsOfReplacedObjects.getOrDefault(o, o);
                 java.lang.reflect.Field f = field.getJavaField();
                 Class<?> declaringClass = f.getDeclaringClass();
-                responsible = HeapAssignmentTracing.getInstance().getClassResponsibleForStaticFieldWrite(declaringClass, f, o);
+                responsible = HeapAssignmentTracing.getInstance().getClassResponsibleForStaticFieldWrite(declaringClass, f, original);
             }
         } else {
             if (receiver instanceof ImageHeapInstance imageHeapConstant && !imageHeapConstant.isBackedByHostedObject()) {
                 return SimulatedHeapTracing.instance.getHeapFieldAssigner(imageHeapConstant, field, value);
             } else {
                 Object receiverO = asObject(bb, Object.class, receiver);
+                receiverO = originsOfReplacedObjects.getOrDefault(receiverO, receiverO);
                 o = asObject(bb, Object.class, value);
+                Object original = originsOfReplacedObjects.getOrDefault(o, o);
+
                 java.lang.reflect.Field f = field.getJavaField();
                 if (f.getDeclaringClass().isAssignableFrom(receiverO.getClass())) {
-                    responsible = HeapAssignmentTracing.getInstance().getClassResponsibleForNonstaticFieldWrite(receiverO, f, o);
+                    responsible = HeapAssignmentTracing.getInstance().getClassResponsibleForNonstaticFieldWrite(receiverO, f, original);
                 } else {
                     // Field must be substituted or recomputed
                     responsible = null;
@@ -222,6 +229,15 @@ public class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.A
         Object o = asObject(bb, Object.class, value);
         Object responsible = HeapAssignmentTracing.getInstance().getClassResponsibleForArrayWrite(asObject(bb, Object[].class, array), elementIndex, o);
         return getEventForHeapReason(responsible, o);
+    }
+
+    @Override
+    protected void registerObjectReplacement(Object source, Object destination) {
+        if (destination != source) {
+            synchronized (originsOfReplacedObjects) {
+                originsOfReplacedObjects.put(destination, source);
+            }
+        }
     }
 
     @Override

@@ -75,6 +75,8 @@ public class CausalityExport {
 
         protected void registerTypeEntering(PointsToAnalysis bb, Event cause, TypeFlow<?> destination, AnalysisType type) {}
 
+        protected void registerObjectReplacement(Object source, Object destination) {}
+
         protected NonThrowingAutoCloseable setCause(Event event, CausalityExport.HeapTracing level, boolean overwriteSilently) {
             return null;
         }
@@ -140,6 +142,10 @@ public class CausalityExport {
 
     public static void registerTypeEntering(PointsToAnalysis bb, Event cause, TypeFlow<?> destination, AnalysisType type) {
         get().registerTypeEntering(bb, cause, destination, type);
+    }
+
+    public static void registerObjectReplacement(Object source, Object destination) {
+        get().registerObjectReplacement(source, destination);
     }
 
     public static NonThrowingAutoCloseable setCause(Event event, HeapTracing level) {

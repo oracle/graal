@@ -626,6 +626,7 @@ public class AnalysisUniverse implements Universe {
         for (Function<Object, Object> replacer : objectReplacers) {
             destination = replacer.apply(destination);
         }
+        CausalityExport.registerObjectReplacement(source, destination);
         return destination;
     }
 
