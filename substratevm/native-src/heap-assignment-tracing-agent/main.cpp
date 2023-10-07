@@ -789,7 +789,7 @@ static void foreach_option(string_view options, auto callback)
 {
     for(size_t start = 0, pos; (pos = options.find(',', start)) != std::string::npos; start = pos + 1)
     {
-        string_view option = options.substr(start, pos);
+        string_view option = options.substr(start, pos - start);
         callback(option);
     }
 }
@@ -801,10 +801,11 @@ JNIEXPORT jint JNICALL Agent_OnLoad(JavaVM *vm, char *options, void *reserved)
             breakpoints_enable = true;
         else if(option == "instrumentation")
             instrumentation_enable = true;
+        else {
+            cerr << "[HeapAssignmentTracingAgent] Unknown option: " << option << endl;
+            exit(1);
+        }
     });
-
-    //cerr << nounitbuf;
-    //iostream::sync_with_stdio(false);
 
     jvmtiEnv* env;
     jint res = vm->GetEnv(reinterpret_cast<void **>(&env), JVMTI_VERSION_1_2);
