@@ -154,6 +154,10 @@ public class CausalityExport {
         return get().setCause(event, HeapTracing.None, true);
     }
 
+    public static NonThrowingAutoCloseable overwriteCause(Event event, HeapTracing level) {
+        return get().setCause(event, level, true);
+    }
+
     public static NonThrowingAutoCloseable resetCause() {
         return overwriteCause(null);
     }
