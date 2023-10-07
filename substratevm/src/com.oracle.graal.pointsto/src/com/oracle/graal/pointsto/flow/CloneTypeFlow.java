@@ -25,7 +25,7 @@
 package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import com.oracle.graal.pointsto.flow.context.AnalysisContext;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;

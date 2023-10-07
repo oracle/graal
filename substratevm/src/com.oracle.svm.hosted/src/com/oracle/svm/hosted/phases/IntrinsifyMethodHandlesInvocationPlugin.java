@@ -39,7 +39,8 @@ import java.util.Objects;
 import java.util.stream.StreamSupport;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.collections.Pair;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -112,7 +113,6 @@ import org.graalvm.compiler.word.WordOperationPlugin;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;
@@ -808,7 +808,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             } else if (oNode.getClass() == LoadFieldNode.class) {
                 LoadFieldNode oLoad = (LoadFieldNode) oNode;
                 ResolvedJavaField tTarget;
-                try (var ignored = CausalityExport.setCause(CausalityExport.InlinedMethodCode.create(oNode.getNodeSourcePosition()))) {
+                try (var ignored = CausalityExport.setCause(CausalityEvents.InlinedMethodCode.create(oNode.getNodeSourcePosition()))) {
                     tTarget = lookup(oLoad.field());
                 }
                 maybeEmitClassInitialization(b, tTarget.isStatic(), tTarget.getDeclaringClass());
@@ -819,7 +819,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             } else if (oNode.getClass() == StoreFieldNode.class) {
                 StoreFieldNode oStore = (StoreFieldNode) oNode;
                 ResolvedJavaField tTarget;
-                try (var ignored = CausalityExport.setCause(CausalityExport.InlinedMethodCode.create(oNode.getNodeSourcePosition()))) {
+                try (var ignored = CausalityExport.setCause(CausalityEvents.InlinedMethodCode.create(oNode.getNodeSourcePosition()))) {
                     tTarget = lookup(oStore.field());
                 }
                 maybeEmitClassInitialization(b, tTarget.isStatic(), tTarget.getDeclaringClass());

@@ -38,7 +38,8 @@ import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
 import org.graalvm.util.json.JSONParserException;
 
@@ -128,7 +129,7 @@ public final class ConfigurationParserUtils {
             } else {
                 uri = ((URL) location).toURI();
             }
-            try (var ignored = CausalityExport.setCause(CausalityExport.ConfigurationFile.create(uri))) {
+            try (var ignored = CausalityExport.setCause(CausalityEvents.ConfigurationFile.create(uri))) {
                 parser.parseAndRegister(uri);
             }
         } catch (IOException | URISyntaxException | JSONParserException e) {

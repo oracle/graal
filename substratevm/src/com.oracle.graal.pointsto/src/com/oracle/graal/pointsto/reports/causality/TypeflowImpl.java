@@ -13,6 +13,8 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
@@ -27,16 +29,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static com.oracle.graal.pointsto.reports.CausalityExport.*;
+import static com.oracle.graal.pointsto.reports.causality.CausalityExport.*;
 
-public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
+class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
     private final ConcurrentHashMap<Pair<TypeFlow<?>, TypeFlow<?>>, Boolean> interflows = new ConcurrentHashMap<>();
 
     /**
      * Saves for each virtual invocation the receiver typeflow before it may have been replaced during saturation.
      */
     private final ConcurrentHashMap<AbstractVirtualInvokeTypeFlow, TypeFlow<?>> originalInvokeReceivers = new ConcurrentHashMap<>();
-    private final ConcurrentHashMap<Pair<Event, TypeFlow<?>>, HashSet<AnalysisType>> flowingFromHeap = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Pair<CausalityEvent, TypeFlow<?>>, HashSet<AnalysisType>> flowingFromHeap = new ConcurrentHashMap<>();
 
     public static final class ThreadContext extends Impl.ThreadContext {
         public int currentlySaturatingDepth; // Inhibits the registration of new typeflow edges
@@ -82,7 +84,7 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
     }
 
     @Override
-    public void registerTypeEntering(PointsToAnalysis bb, Event cause, TypeFlow<?> destination, AnalysisType type) {
+    public void registerTypeEntering(PointsToAnalysis bb, CausalityEvent cause, TypeFlow<?> destination, AnalysisType type) {
         flowingFromHeap.computeIfAbsent(Pair.create(cause, destination), p -> new HashSet<>()).add(type);
     }
 
@@ -104,17 +106,17 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
     }
 
     @Override
-    protected void forEachEvent(Consumer<Event> callback) {
+    protected void forEachEvent(Consumer<CausalityEvent> callback) {
         super.forEachEvent(callback);
 
         flowingFromHeap.keySet().stream().map(Pair::getLeft).forEach(callback);
 
         // TODO: Unsure about this - whether it is necessary and whether it is correct/complete
-        originalInvokeReceivers.keySet().stream().map(InvokeTypeFlow::getTargetMethod).flatMap(targetMethod -> Arrays.stream(targetMethod.getImplementations())).map(MethodImplementationInvoked::create).forEach(callback);
+        originalInvokeReceivers.keySet().stream().map(InvokeTypeFlow::getTargetMethod).flatMap(targetMethod -> Arrays.stream(targetMethod.getImplementations())).map(CausalityEvents.MethodImplementationInvoked::create).forEach(callback);
 
         forEachTypeflow(tf -> {
             if(tf != null) {
-                Event e = getContainingEvent(tf);
+                CausalityEvent e = getContainingEvent(tf);
                 if (e != null) {
                     callback.accept(e);
                 }
@@ -158,7 +160,7 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
         return p;
     }
 
-    private static Event getContainingEvent(TypeFlow<?> f) {
+    private static CausalityEvent getContainingEvent(TypeFlow<?> f) {
         if (f.getSource() instanceof BytecodePosition pos) {
             /*
              * For some reason the BytecodePosition assigned to a TypeFlow isn't always what you would expect from browsing the code.
@@ -171,11 +173,11 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
             } else if (f instanceof ConstantTypeFlow) {
                 pos = takePlausibleFramesFromTop(chopUnwindFrames(pos));
             }
-            return InlinedMethodCode.create(pos);
+            return CausalityEvents.InlinedMethodCode.create(pos);
         } else {
             AnalysisMethod m = f.method();
             if (m != null) {
-                return InlinedMethodCode.create(m);
+                return CausalityEvents.InlinedMethodCode.create(m);
             } else {
                 return null;
             }
@@ -222,7 +224,7 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
                 return null;
 
             return flowMapping.computeIfAbsent(flow, f -> {
-                Event reason = getContainingEvent(f);
+                CausalityEvent reason = getContainingEvent(f);
 
                 if(reason != null && reason.unused())
                     return null;
@@ -273,7 +275,7 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
         }
 
         for (var e : virtual_invokes.entrySet()) {
-            Event reason = MethodImplementationInvoked.create(e.getKey());
+            CausalityEvent reason = CausalityEvents.MethodImplementationInvoked.create(e.getKey());
 
             if(reason.unused())
                 continue;
@@ -287,7 +289,7 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
                     // Root invocation
                     Graph.FlowNode rootCallFlow = new Graph.FlowNode(
                             "Root call to " + invokeFlow.getTargetMethod(),
-                            RootMethodRegistration.create(invokeFlow.getTargetMethod()),
+                            CausalityEvents.RootMethodRegistration.create(invokeFlow.getTargetMethod()),
                             bb.getAllInstantiatedTypeFlow().getState());
 
                     g.add(new Graph.FlowEdge(
@@ -329,7 +331,7 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
 
         for (AnalysisType t : bb.getAllInstantiatedTypes()) {
             TypeState state = TypeState.forExactType(bb, t, false);
-            Graph.FlowNode vfn = new Graph.FlowNode("Virtual Flow Node for reaching " + t.toJavaName(), TypeInstantiated.create(t), state);
+            Graph.FlowNode vfn = new Graph.FlowNode("Virtual Flow Node for reaching " + t.toJavaName(), CausalityEvents.TypeInstantiated.create(t), state);
             g.add(new Graph.FlowEdge(null, vfn));
 
             t.forAllSuperTypes(t1 -> {
@@ -338,7 +340,7 @@ public class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
             });
         }
 
-        for (Map.Entry<Pair<Event, TypeFlow<?>>, HashSet<AnalysisType>> e : flowingFromHeap.entrySet()) {
+        for (Map.Entry<Pair<CausalityEvent, TypeFlow<?>>, HashSet<AnalysisType>> e : flowingFromHeap.entrySet()) {
             Graph.RealFlowNode fieldNode = flowMapper.apply(e.getKey().getRight());
 
             if (fieldNode == null)

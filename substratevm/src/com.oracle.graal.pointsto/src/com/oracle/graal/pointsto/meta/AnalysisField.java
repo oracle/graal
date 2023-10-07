@@ -32,7 +32,8 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicIntegerFieldUpdater;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.api.DefaultUnsafePartition;
@@ -262,7 +263,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     public boolean registerAsAccessed(Object reason) {
         assert isValidReason(reason) : "Registering a field as accessed needs to provide a valid reason.";
-        CausalityExport.registerEvent(CausalityExport.FieldRead.create(this));
+        CausalityExport.registerEvent(CausalityEvents.FieldRead.create(this));
         boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isAccessedUpdater);
         notifyUpdateAccessInfo();
         if (firstAttempt) {
@@ -278,7 +279,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
      */
     public boolean registerAsRead(Object reason) {
         assert isValidReason(reason) : "Registering a field as read needs to provide a valid reason.";
-        CausalityExport.registerEvent(CausalityExport.FieldRead.create(this));
+        CausalityExport.registerEvent(CausalityEvents.FieldRead.create(this));
         boolean firstAttempt = AtomicUtils.atomicSet(this, reason, isReadUpdater);
         notifyUpdateAccessInfo();
         if (readBy != null) {

@@ -37,7 +37,9 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -373,8 +375,8 @@ public class AnalysisUniverse implements Universe {
              * Otherwise, we violate the principle of conservative reasoning in order
              * to get usable results.
              */
-            CausalityExport.Event event = CausalityExport.getCause();
-            try (var ignored = CausalityExport.setCause(event != null ? event : CausalityExport.Ignored.Instance)) {
+            CausalityEvent event = CausalityExport.getCause();
+            try (var ignored = CausalityExport.setCause(event != null ? event : CausalityEvents.Ignored)) {
                 declaringType.registerAsReachable(field);
             }
             declaringType.ensureOnTypeReachableTaskDone();

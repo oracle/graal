@@ -57,8 +57,10 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 
 import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
-import com.oracle.graal.pointsto.reports.CausalityExport;
-import com.oracle.graal.pointsto.reports.CausalityExportActivation;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExportActivation;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.svm.hosted.analysis.ReachabilityTracePrinter;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
@@ -775,7 +777,7 @@ public class NativeImageGenerator {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 ServiceCatalogSupport.singleton().enableServiceCatalogMapTransformer(config);
                 featureHandler.forEachFeature(feature -> {
-                    try (var ignored2 = CausalityExport.setCause(CausalityExport.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
+                    try (var ignored2 = CausalityExport.setCause(CausalityEvents.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
                         feature.beforeAnalysis(config);
                     }
                 });
@@ -792,7 +794,7 @@ public class NativeImageGenerator {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
                             featureHandler.forEachFeature(feature -> {
-                                try (var ignored2 = CausalityExport.setCause(CausalityExport.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
+                                try (var ignored2 = CausalityExport.setCause(CausalityEvents.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
                                     feature.duringAnalysis(config);
                                 }
                             });
@@ -917,7 +919,7 @@ public class NativeImageGenerator {
                 featureHandler.registerFeatures(loader, debug);
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
                 featureHandler.forEachFeature(feature -> {
-                    try (var ignored0 = CausalityExport.setCause(CausalityExport.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
+                    try (var ignored0 = CausalityExport.setCause(CausalityEvents.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
                         feature.afterRegistration(access);
                     }
                 });
@@ -987,7 +989,7 @@ public class NativeImageGenerator {
                 try (Indent ignored2 = debug.logAndIndent("process startup initializers")) {
                     FeatureImpl.DuringSetupAccessImpl config = new FeatureImpl.DuringSetupAccessImpl(featureHandler, loader, bb, debug);
                     featureHandler.forEachFeature(feature -> {
-                        try (var ignored0 = CausalityExport.setCause(CausalityExport.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
+                        try (var ignored0 = CausalityExport.setCause(CausalityEvents.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
                             feature.duringSetup(config);
                         }
                     });
@@ -1104,7 +1106,7 @@ public class NativeImageGenerator {
          * good example.
          */
         try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods");
-             var ignored2 = CausalityExport.setCause(CausalityExport.RootEvent.InitialRegistration)) {
+             var ignored2 = CausalityExport.setCause(CausalityEvents.InitialRegistration)) {
             bb.registerTypeAsInHeap(bb.addRootClass(Object.class, false, false), "root class");
             bb.addRootField(DynamicHub.class, "vtable");
             bb.registerTypeAsInHeap(bb.addRootClass(String.class, false, false), "root class");
@@ -1150,9 +1152,9 @@ public class NativeImageGenerator {
             Collection<StructuredGraph> snippetGraphs = aReplacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
             if (bb instanceof NativeImagePointsToAnalysis) {
                 for (StructuredGraph graph : snippetGraphs) {
-                    CausalityExport.Event snippetRegistrationEvent = CausalityExport.MethodSnippet.create((AnalysisMethod) graph.method());
+                    CausalityEvent snippetRegistrationEvent = CausalityEvents.MethodSnippet.create((AnalysisMethod) graph.method());
                     CausalityExport.registerEvent(snippetRegistrationEvent);
-                    CausalityExport.registerEdge(snippetRegistrationEvent, CausalityExport.InlinedMethodCode.create((AnalysisMethod) graph.method()));
+                    CausalityExport.registerEdge(snippetRegistrationEvent, CausalityEvents.InlinedMethodCode.create((AnalysisMethod) graph.method()));
                     HostedConfiguration.instance().registerUsedElements((PointsToAnalysis) bb, graph, false);
                 }
             } else if (bb instanceof NativeImageReachabilityAnalysisEngine) {

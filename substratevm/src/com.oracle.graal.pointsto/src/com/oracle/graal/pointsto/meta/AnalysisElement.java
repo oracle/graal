@@ -38,8 +38,10 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.debug.GraalError;
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -99,14 +101,14 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
     public void registerReachabilityNotification(ElementNotification notification) {
         ConcurrentLightHashSet.addElement(this, reachableNotificationsUpdater, notification);
-        CausalityExport.Event eventForRegistration = CausalityExport.getCause();
-        CausalityExport.Event thisReachable = null;
+        CausalityEvent eventForRegistration = CausalityExport.getCause();
+        CausalityEvent thisReachable = null;
         if (this instanceof AnalysisMethod m) {
-            thisReachable = CausalityExport.MethodReachable.create(m);
+            thisReachable = CausalityEvents.MethodReachable.create(m);
         } else if (this instanceof AnalysisType t) {
-            thisReachable = CausalityExport.TypeReachable.create(t);
+            thisReachable = CausalityEvents.TypeReachable.create(t);
         }
-        CausalityExport.registerConjunctiveEdge(eventForRegistration, thisReachable, CausalityExport.ReachabilityNotificationCallback.create(notification.callback));
+        CausalityExport.registerConjunctiveEdge(eventForRegistration, thisReachable, CausalityEvents.ReachabilityNotificationCallback.create(notification.callback));
     }
 
     public void notifyReachabilityCallback(AnalysisUniverse universe, ElementNotification notification) {
@@ -153,7 +155,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
             }
 
             AnalysisFuture<Void> newValue = new AnalysisFuture<>(() -> {
-                try (var ignored = CausalityExport.overwriteCause(CausalityExport.ReachabilityNotificationCallback.create(callback))) {
+                try (var ignored = CausalityExport.overwriteCause(CausalityEvents.ReachabilityNotificationCallback.create(callback))) {
                     callback.accept(universe.getConcurrentAnalysisAccess());
                 }
                 return null;
@@ -182,12 +184,12 @@ public abstract class AnalysisElement implements AnnotatedElement {
             assert reachableSubtype.isReachable();
             return seenSubtypes.computeIfAbsent(reachableSubtype, k -> {
                 CausalityExport.registerConjunctiveEdge(
-                        CausalityExport.SubtypeReachableNotificationCallback.create(callback),
-                        CausalityExport.TypeReachable.create(reachableSubtype),
-                        CausalityExport.SubtypeReachableNotificationCallbackInvocation.create(callback, reachableSubtype)
+                        CausalityEvents.SubtypeReachableNotificationCallback.create(callback),
+                        CausalityEvents.TypeReachable.create(reachableSubtype),
+                        CausalityEvents.SubtypeReachableNotificationCallbackInvocation.create(callback, reachableSubtype)
                 );
                 AnalysisFuture<Void> newValue = new AnalysisFuture<>(() -> {
-                    try (var ignored = CausalityExport.setCause(CausalityExport.SubtypeReachableNotificationCallbackInvocation.create(callback, reachableSubtype))) {
+                    try (var ignored = CausalityExport.setCause(CausalityEvents.SubtypeReachableNotificationCallbackInvocation.create(callback, reachableSubtype))) {
                         callback.accept(universe.getConcurrentAnalysisAccess(), reachableSubtype.getJavaClass());
                     }
                     return null;
@@ -213,11 +215,11 @@ public abstract class AnalysisElement implements AnnotatedElement {
                 Executable javaMethod = reachableOverride.getJavaMethod();
                 if (javaMethod != null) {
                     CausalityExport.registerConjunctiveEdge(
-                            CausalityExport.OverrideReachableNotificationCallback.create(callback),
-                            CausalityExport.MethodReachable.create(reachableOverride),
-                            CausalityExport.OverrideReachableNotificationCallbackInvocation.create(callback, reachableOverride));
+                            CausalityEvents.OverrideReachableNotificationCallback.create(callback),
+                            CausalityEvents.MethodReachable.create(reachableOverride),
+                            CausalityEvents.OverrideReachableNotificationCallbackInvocation.create(callback, reachableOverride));
                     execute(universe, () -> {
-                        try (var ignored = CausalityExport.setCause(CausalityExport.OverrideReachableNotificationCallbackInvocation.create(callback, reachableOverride))) {
+                        try (var ignored = CausalityExport.setCause(CausalityEvents.OverrideReachableNotificationCallbackInvocation.create(callback, reachableOverride))) {
                             callback.accept(universe.getConcurrentAnalysisAccess(), javaMethod);
                         }
                     });

@@ -39,8 +39,8 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.CompressEncoding;
 import org.graalvm.compiler.core.common.type.AbstractObjectStamp;
@@ -974,7 +974,7 @@ public class SubstrateGraphBuilderPlugins {
                         AnalysisType type = (AnalysisType) b.getMetaAccess().lookupJavaType(clazz);
                         for (int i = 0; i < dimensionCount; i++) {
                             type = type.getArrayClass();
-                            try (var ignored = CausalityExport.setCause(CausalityExport.InlinedMethodCode.create(AbstractAnalysisEngine.sourcePosition(clazzNode)))) {
+                            try (var ignored = CausalityExport.setCause(CausalityEvents.InlinedMethodCode.create(AbstractAnalysisEngine.sourcePosition(clazzNode)))) {
                                 type.registerAsAllocated(AbstractAnalysisEngine.sourcePosition(clazzNode));
                             }
                         }

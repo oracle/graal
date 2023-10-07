@@ -3,14 +3,13 @@ package com.oracle.svm.hosted;
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import com.oracle.svm.core.BuildArtifacts;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 

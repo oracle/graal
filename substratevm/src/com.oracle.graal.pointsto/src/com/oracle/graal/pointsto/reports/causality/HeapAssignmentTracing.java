@@ -1,4 +1,4 @@
-package com.oracle.graal.pointsto.reports;
+package com.oracle.graal.pointsto.reports.causality;
 
 import java.lang.reflect.Field;
 

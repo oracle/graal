@@ -29,7 +29,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
@@ -44,7 +45,7 @@ public abstract class ConditionalConfigurationRegistry {
             runnable.run();
         } else {
             Collection<Runnable> handlers = pendingReachabilityHandlers.computeIfAbsent(condition.getTypeName(), key -> new ConcurrentLinkedQueue<>());
-            CausalityExport.registerEvent(CausalityExport.ConfigurationCondition.create(condition.getTypeName()));
+            CausalityExport.registerEvent(CausalityEvents.ConfigurationCondition.create(condition.getTypeName()));
             handlers.add(runnable);
         }
     }
@@ -52,7 +53,7 @@ public abstract class ConditionalConfigurationRegistry {
     public void flushConditionalConfiguration(Feature.BeforeAnalysisAccess b) {
         for (Map.Entry<String, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
             TypeResult<Class<?>> typeResult = ((FeatureImpl.BeforeAnalysisAccessImpl) b).getImageClassLoader().findClass(reachabilityEntry.getKey());
-            try (var ignored = CausalityExport.setCause(CausalityExport.ConfigurationCondition.create(reachabilityEntry.getKey()))) {
+            try (var ignored = CausalityExport.setCause(CausalityEvents.ConfigurationCondition.create(reachabilityEntry.getKey()))) {
                 b.registerReachabilityHandler(access -> reachabilityEntry.getValue().forEach(Runnable::run), typeResult.get());
             }
         }

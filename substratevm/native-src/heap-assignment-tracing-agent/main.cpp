@@ -1322,7 +1322,7 @@ extern "C" JNIEXPORT void JNICALL Java_HeapAssignmentTracingHooks_onThreadStart(
 #endif
 }
 
-extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_getResponsibleClass(JNIEnv* env, jobject thisClass, jobject imageHeapObject)
+extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_causality_HeapAssignmentTracing_00024NativeImpl_getResponsibleClass(JNIEnv* env, jobject thisClass, jobject imageHeapObject)
 {
     return acquire_jvmti_and_wrap_exceptions<jobject>([&](jvmtiEnv* jvmti_env)
     {
@@ -1330,7 +1330,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_Heap
     });
 }
 
-extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_getClassResponsibleForNonstaticFieldWrite(JNIEnv* env, jobject thisClass, jobject receiver, jobject field, jobject val)
+extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_causality_HeapAssignmentTracing_00024NativeImpl_getClassResponsibleForNonstaticFieldWrite(JNIEnv* env, jobject thisClass, jobject receiver, jobject field, jobject val)
 {
     return acquire_jvmti_and_wrap_exceptions<jobject>([&](jvmtiEnv* jvmti_env)
     {
@@ -1343,7 +1343,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_Heap
     });
 }
 
-extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_getClassResponsibleForStaticFieldWrite(JNIEnv* env, jobject thisClass, jclass declaring, jobject field, jobject val)
+extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_causality_HeapAssignmentTracing_00024NativeImpl_getClassResponsibleForStaticFieldWrite(JNIEnv* env, jobject thisClass, jclass declaring, jobject field, jobject val)
 {
     return acquire_jvmti_and_wrap_exceptions<jobject>([&](jvmtiEnv* jvmti_env) -> jobject
     {
@@ -1369,7 +1369,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_Heap
     });
 }
 
-extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_getClassResponsibleForArrayWrite(JNIEnv* env, jobject thisClass, jobjectArray array, jint index, jobject val)
+extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_causality_HeapAssignmentTracing_00024NativeImpl_getClassResponsibleForArrayWrite(JNIEnv* env, jobject thisClass, jobjectArray array, jint index, jobject val)
 {
     return acquire_jvmti_and_wrap_exceptions<jobject>([&](jvmtiEnv* jvmti_env)
     {
@@ -1382,7 +1382,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_Heap
     });
 }
 
-extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_getBuildTimeClinitResponsibleForBuildTimeClinit(JNIEnv* env, jobject thisClass, jclass clazz)
+extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_causality_HeapAssignmentTracing_00024NativeImpl_getBuildTimeClinitResponsibleForBuildTimeClinit(JNIEnv* env, jobject thisClass, jclass clazz)
 {
     return acquire_jvmti_and_wrap_exceptions<jobject>([&](jvmtiEnv* jvmti_env)
     {
@@ -1391,7 +1391,7 @@ extern "C" JNIEXPORT jobject JNICALL Java_com_oracle_graal_pointsto_reports_Heap
     });
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_setCause(JNIEnv* env, jobject thisClass, jobject cause, jboolean recordHeapAssignments)
+extern "C" JNIEXPORT void JNICALL Java_com_oracle_graal_pointsto_reports_causality_HeapAssignmentTracing_00024NativeImpl_setCause(JNIEnv* env, jobject thisClass, jobject cause, jboolean recordHeapAssignments)
 {
     acquire_jvmti_and_wrap_exceptions([&](jvmtiEnv* jvmti_env)
     {
@@ -1412,7 +1412,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_oracle_graal_pointsto_reports_HeapAss
     });
 }
 
-extern "C" JNIEXPORT void JNICALL Java_com_oracle_graal_pointsto_reports_HeapAssignmentTracing_00024NativeImpl_dispose(JNIEnv* env, jobject thisClass)
+extern "C" JNIEXPORT void JNICALL Java_com_oracle_graal_pointsto_reports_causality_HeapAssignmentTracing_00024NativeImpl_dispose(JNIEnv* env, jobject thisClass)
 {
     _jvmti_env_backing.reset();
 }

@@ -28,7 +28,7 @@ import java.lang.reflect.Modifier;
 import java.util.Collection;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
 import com.oracle.graal.pointsto.flow.AbstractVirtualInvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.ActualReturnTypeFlow;

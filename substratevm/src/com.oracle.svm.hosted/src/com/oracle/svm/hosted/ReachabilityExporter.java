@@ -42,7 +42,6 @@ import java.util.stream.Collectors;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
-import com.oracle.graal.pointsto.reports.CausalityExport;
 import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.JavaMainWrapper;
 import com.oracle.svm.core.hub.ClassForNameSupport;

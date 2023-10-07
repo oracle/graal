@@ -1,7 +1,5 @@
-package com.oracle.graal.pointsto.reports;
+package com.oracle.graal.pointsto.reports.causality;
 
-import com.oracle.graal.pointsto.reports.causality.Impl;
-import com.oracle.graal.pointsto.reports.causality.TypeflowImpl;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 public enum CausalityExportActivation {

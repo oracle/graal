@@ -50,8 +50,9 @@ package com.oracle.svm.hosted.classinitialization;
 
 import java.util.List;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
-import com.oracle.graal.pointsto.reports.SimulatedHeapTracing;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.SimulatedHeapTracing;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.type.TypedConstant;
@@ -269,7 +270,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             var object = asActiveImageHeapInstance(node.object());
             var value = node.value().asJavaConstant();
             if (object != null && value != null) {
-                SimulatedHeapTracing.instance.traceWrite(CausalityExport.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), object, field);
+                SimulatedHeapTracing.instance.traceWrite(CausalityEvents.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), object, field);
                 object.setFieldValue(field, adaptForImageHeap(value, field.getStorageKind()));
                 return null;
             }
@@ -376,8 +377,8 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         var classInitType = (AnalysisType) node.constantTypeOrNull(providers.getConstantReflection());
         if (classInitType != null) {
             CausalityExport.registerEdge(
-                    CausalityExport.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()),
-                    CausalityExport.BuildTimeClassInitialization.create(classInitType.getJavaClass()));
+                    CausalityEvents.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()),
+                    CausalityEvents.BuildTimeClassInitialization.create(classInitType.getJavaClass()));
             if (support.trySimulateClassInitializer(graph.getDebug(), classInitType, clusterMember)) {
                 /* Class is already simulated initialized, no need for a run-time check. */
                 return null;
@@ -444,7 +445,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         var type = (AnalysisType) node.instanceClass();
         if (accumulateNewInstanceSize(countersScope, type, node)) {
             var instance = new ImageHeapInstance(type);
-            SimulatedHeapTracing.instance.traceAllocation(CausalityExport.BuildTimeClassInitialization.create(this.clusterMember.type.getJavaClass()), instance, type);
+            SimulatedHeapTracing.instance.traceAllocation(CausalityEvents.BuildTimeClassInitialization.create(this.clusterMember.type.getJavaClass()), instance, type);
             for (var field : type.getInstanceFields(true)) {
                 var aField = (AnalysisField) field;
                 instance.setFieldValue(aField, JavaConstant.defaultForKind(aField.getStorageKind()));
@@ -467,7 +468,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
 
     protected ImageHeapArray createNewArray(AnalysisType arrayType, int length) {
         var array = ImageHeapArray.create(arrayType, length);
-        SimulatedHeapTracing.instance.traceAllocation(CausalityExport.BuildTimeClassInitialization.create(this.clusterMember.type.getJavaClass()), array);
+        SimulatedHeapTracing.instance.traceAllocation(CausalityEvents.BuildTimeClassInitialization.create(this.clusterMember.type.getJavaClass()), array);
         var defaultValue = JavaConstant.defaultForKind(arrayType.getComponentType().getStorageKind());
         for (int i = 0; i < length; i++) {
             array.setElement(i, defaultValue);
@@ -508,7 +509,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
         var nextArrayType = curArrayType.getComponentType();
 
         var array = ImageHeapArray.create(curArrayType, dimensions[curDimension]);
-        SimulatedHeapTracing.instance.traceAllocation(CausalityExport.BuildTimeClassInitialization.create(this.clusterMember.type.getJavaClass()), array);
+        SimulatedHeapTracing.instance.traceAllocation(CausalityEvents.BuildTimeClassInitialization.create(this.clusterMember.type.getJavaClass()), array);
         for (int i = 0; i < curLength; i++) {
             array.setElement(i, createNewMultiArray(nextArrayType, nextDimension, dimensions));
         }
@@ -547,7 +548,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             if ((originalImageHeapConstant instanceof ImageHeapArray originalArray && accumulateNewArraySize(countersScope, type, originalArray.getLength(), node.asNode())) ||
                             (type.isCloneableWithAllocation() && accumulateNewInstanceSize(countersScope, type, node.asNode()))) {
                 var cloned = originalImageHeapConstant.forObjectClone();
-                SimulatedHeapTracing.instance.traceClone(CausalityExport.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), originalImageHeapConstant, cloned);
+                SimulatedHeapTracing.instance.traceClone(CausalityEvents.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), originalImageHeapConstant, cloned);
                 currentActiveObjects.add(cloned);
                 return ConstantNode.forConstant(cloned, metaAccess);
             }
@@ -563,7 +564,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             Integer length = providers.getConstantReflection().readArrayLength(original);
             if (length != null && accumulateNewArraySize(countersScope, arrayType, length, node.asNode())) {
                 var array = ImageHeapArray.create(arrayType, length);
-                var clinitEvent = CausalityExport.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass());
+                var clinitEvent = CausalityEvents.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass());
                 SimulatedHeapTracing.instance.traceAllocation(clinitEvent, array);
                 for (int i = 0; i < length; i++) {
                     array.setElement(i, adaptForImageHeap(providers.getConstantReflection().readArrayElement(original, i), arrayType.getComponentType().getStorageKind()));
@@ -628,7 +629,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             return false;
         }
         var instance = new ImageHeapInstance(type);
-        SimulatedHeapTracing.instance.traceAllocation(CausalityExport.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), instance, type);
+        SimulatedHeapTracing.instance.traceAllocation(CausalityEvents.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), instance, type);
         for (int j = 0; j < virtualInstance.entryCount(); j++) {
             var entry = lookupConstantEntry(j, entries);
             if (entry == null) {
@@ -640,7 +641,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             }
             var field = (AnalysisField) virtualInstance.field(j);
             instance.setFieldValue(field, adaptForImageHeap(entry, field.getStorageKind()));
-            SimulatedHeapTracing.instance.traceWrite(CausalityExport.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), instance, field);
+            SimulatedHeapTracing.instance.traceWrite(CausalityEvents.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), instance, field);
         }
         allVirtualObjects.put(virtualInstance, instance);
         currentActiveObjects.add(instance);
@@ -654,7 +655,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
             return false;
         }
         var array = ImageHeapArray.create(arrayType, length);
-        SimulatedHeapTracing.instance.traceAllocation(CausalityExport.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), array);
+        SimulatedHeapTracing.instance.traceAllocation(CausalityEvents.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), array);
         for (int j = 0; j < length; j++) {
             var entry = lookupConstantEntry(j, entries);
             if (entry == null) {
@@ -665,7 +666,7 @@ public class SimulateClassInitializerGraphDecoder extends InlineBeforeAnalysisGr
                 return false;
             }
             array.setElement(j, adaptForImageHeap(entry, arrayType.getComponentType().getStorageKind()));
-            SimulatedHeapTracing.instance.traceWrite(CausalityExport.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), array, j);
+            SimulatedHeapTracing.instance.traceWrite(CausalityEvents.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), array, j);
         }
         allVirtualObjects.put(virtualArray, array);
         currentActiveObjects.add(array);

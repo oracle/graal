@@ -34,9 +34,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
-import jdk.vm.ci.code.BytecodeFrame;
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
@@ -189,7 +189,7 @@ public class MethodTypeFlowBuilder {
         AnalysisParsedGraph analysisParsedGraph = forceReparse ? method.reparseGraph(bb) : method.ensureGraphParsed(bb);
 
         if (analysisParsedGraph.isIntrinsic()) {
-            try (var ignored = CausalityExport.setCause(CausalityExport.Ignored.Instance)) {
+            try (var ignored = CausalityExport.setCause(CausalityEvents.Ignored)) {
                 method.registerAsIntrinsicMethod(reason);
             }
         }
@@ -199,7 +199,7 @@ public class MethodTypeFlowBuilder {
         }
 
         // This is for capturing sideeffects e.g. by SubstrateGraphBuilderPlugin.interceptUpdaterInvoke(...) which adds reflection
-        try (var ignored = CausalityExport.setCause(CausalityExport.InlinedMethodCode.create(method))) {
+        try (var ignored = CausalityExport.setCause(CausalityEvents.InlinedMethodCode.create(method))) {
             graph = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
         }
 
@@ -256,7 +256,7 @@ public class MethodTypeFlowBuilder {
         HostedProviders providers = bb.getProviders(method);
         for (Node n : graph.getNodes()) {
             BytecodePosition reason = n instanceof ValueNode vn ? AbstractAnalysisEngine.sourcePosition(vn) : AbstractAnalysisEngine.syntheticSourcePosition(n, method);
-            try (var ignored = CausalityExport.setCause(CausalityExport.InlinedMethodCode.create(reason))) {
+            try (var ignored = CausalityExport.setCause(CausalityEvents.InlinedMethodCode.create(reason))) {
                 if (n instanceof InstanceOfNode) {
                     InstanceOfNode node = (InstanceOfNode) n;
                     AnalysisType type = (AnalysisType) node.type().getType();
@@ -1574,15 +1574,15 @@ public class MethodTypeFlowBuilder {
             if (createDeoptInvokeTypeFlow) {
                 invokeFlow = bb.analysisPolicy().createDeoptInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
             } else {
-                CausalityExport.Event logicalCallerEvent = CausalityExport.InlinedMethodCode.create(invoke.getNodeSourcePosition());
+                CausalityEvent logicalCallerEvent = CausalityEvents.InlinedMethodCode.create(invoke.getNodeSourcePosition());
                 switch (invokeKind) {
                     case Static:
-                        CausalityExport.registerEdge(logicalCallerEvent, CausalityExport.MethodImplementationInvoked.create(targetMethod));
+                        CausalityExport.registerEdge(logicalCallerEvent, CausalityEvents.MethodImplementationInvoked.create(targetMethod));
                         invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                         break;
                     case Special:
                         // Causality-TODO: This adds one kind of overapproximation: When the DefaultSpecialInvokeTypeFlow can prove that the receiver is null, it won't make the target reachable.
-                        CausalityExport.registerEdge(logicalCallerEvent, CausalityExport.MethodImplementationInvoked.create(targetMethod));
+                        CausalityExport.registerEdge(logicalCallerEvent, CausalityEvents.MethodImplementationInvoked.create(targetMethod));
                         invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                         break;
                     case Virtual:

@@ -2,12 +2,11 @@ package com.oracle.svm.hosted;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
-import com.oracle.graal.pointsto.reports.HeapAssignmentTracing;
+import com.oracle.graal.pointsto.reports.causality.HeapAssignmentTracing;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.annotation.CustomSubstitutionMethod;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.compiler.bytecode.Bytecodes;

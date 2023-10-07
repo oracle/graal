@@ -31,7 +31,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
+import com.oracle.graal.pointsto.reports.causality.events.UnknownHeapObject;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -260,20 +263,20 @@ public abstract class ImageHeapScanner {
             newImageHeapConstant = createImageHeapInstance(constant, type, reason);
             AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(constant);
             if (typeFromClassConstant != null) {
-                CausalityExport.Event cause = null;
+                CausalityEvent cause = null;
                 if (reason instanceof FieldScan fs) {
                     cause = CausalityExport.getHeapFieldAssigner(bb, fs.constant, fs.getField(), constant);
                 } else if (reason instanceof ArrayScan as) {
                     cause = CausalityExport.getHeapArrayAssigner(bb, as.constant, 0 /* Best-effort */, constant);
                 }
 
-                if (cause == null || cause instanceof CausalityExport.UnknownHeapObject) {
+                if (cause == null || cause instanceof UnknownHeapObject) {
                     // Objects created by the analysis itself would add too many types as roots...
-                    cause = CausalityExport.Ignored.Instance; // Causality-TODO!
+                    cause = CausalityEvents.Ignored; // Causality-TODO!
                 }
 
-                CausalityExport.Event typeObjectInHeap =
-                        (asObject(constant) instanceof Class<?> ? CausalityExport.HeapObjectClass : CausalityExport.HeapObjectDynamicHub)
+                CausalityEvent typeObjectInHeap =
+                        (asObject(constant) instanceof Class<?> ? CausalityEvents.HeapObjectClass : CausalityEvents.HeapObjectDynamicHub)
                                 .create(typeFromClassConstant.getJavaClass());
                 CausalityExport.registerEdge(cause, typeObjectInHeap);
 
@@ -302,7 +305,7 @@ public abstract class ImageHeapScanner {
 
     private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
         /* We are about to query the type's fields, the type must be marked as reachable. */
-        var inHeap = CausalityExport.TypeInHeap.create(type);
+        var inHeap = CausalityEvents.TypeInHeap.create(type);
         CausalityExport.registerEdgeFromHeapObject(bb, constant, reason, inHeap);
         try (var ignored = CausalityExport.setCause(inHeap)) {
             type.registerAsReachable(reason);
@@ -487,7 +490,7 @@ public abstract class ImageHeapScanner {
         AnalysisType objectType = metaAccess.lookupJavaType(imageHeapConstant);
         imageHeap.addReachableObject(objectType, imageHeapConstant);
 
-        var inHeap = CausalityExport.TypeInHeap.create(objectType);
+        var inHeap = CausalityEvents.TypeInHeap.create(objectType);
         CausalityExport.registerEdgeFromHeapObject(bb, imageHeapConstant, reason, inHeap);
         try (var ignored = CausalityExport.setCause(inHeap)) {
             markTypeInstantiated(objectType, reason);

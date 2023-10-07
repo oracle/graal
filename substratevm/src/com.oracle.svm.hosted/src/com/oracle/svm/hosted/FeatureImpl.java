@@ -48,7 +48,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.phases.util.Providers;
@@ -285,7 +286,7 @@ public class FeatureImpl {
                 throw VMError.shouldNotReachHere(e);
             }
 
-            CausalityExport.registerEvent(CausalityExport.BuildTimeClassInitialization.create(clazz));
+            CausalityExport.registerEvent(CausalityEvents.BuildTimeClassInitialization.create(clazz));
         }
     }
 

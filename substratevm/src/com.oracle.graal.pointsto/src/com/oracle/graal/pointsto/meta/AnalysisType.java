@@ -40,7 +40,9 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
@@ -487,8 +489,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     public boolean registerAsInHeap(Object reason) {
         assert isValidReason(reason) : "Registering a type as in-heap needs to provide a valid reason.";
-        var inHeap = CausalityExport.TypeInHeap.create(this);
-        var instantiated = CausalityExport.TypeInstantiated.create(this);
+        var inHeap = CausalityEvents.TypeInHeap.create(this);
+        var instantiated = CausalityEvents.TypeInstantiated.create(this);
         CausalityExport.registerEvent(inHeap);
         CausalityExport.registerEdge(inHeap, instantiated);
         try (var ignored = CausalityExport.overwriteCause(instantiated)) {
@@ -508,8 +510,8 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      */
     public boolean registerAsAllocated(Object reason) {
         assert isValidReason(reason) : "Registering a type as allocated needs to provide a valid reason.";
-        CausalityExport.registerEvent(CausalityExport.TypeInstantiated.create(this));
-        try (var ignored = CausalityExport.overwriteCause(CausalityExport.TypeInstantiated.create(this))) {
+        CausalityExport.registerEvent(CausalityEvents.TypeInstantiated.create(this));
+        try (var ignored = CausalityExport.overwriteCause(CausalityEvents.TypeInstantiated.create(this))) {
             registerAsReachable(reason);
         }
         if (AtomicUtils.atomicSet(this, reason, isAllocatedUpdater)) {
@@ -567,12 +569,12 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public boolean registerAsReachable(Object reason) {
         assert isValidReason(reason) : "Registering a type as reachable needs to provide a valid reason.";
-        CausalityExport.registerEvent(CausalityExport.TypeReachable.create(this));
+        CausalityExport.registerEvent(CausalityEvents.TypeReachable.create(this));
         if (!AtomicUtils.isSet(this, isReachableUpdater)) {
             /* Mark this type and all its super types as reachable. */
             forAllSuperTypes(type -> {
                 if(type != this) {
-                    CausalityExport.registerEdge(CausalityExport.TypeReachable.create(this), CausalityExport.TypeReachable.create(type));
+                    CausalityExport.registerEdge(CausalityEvents.TypeReachable.create(this), CausalityEvents.TypeReachable.create(type));
                 }
                 AtomicUtils.atomicSetAndRun(type, reason, isReachableUpdater, type::onReachable);
             });
@@ -622,9 +624,9 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
     }
 
     public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
-        CausalityExport.Event eventForRegistration = CausalityExport.getCause();
-        CausalityExport.Event callbackEvent = CausalityExport.ReachabilityNotificationCallback.create(callback);
-        CausalityExport.registerConjunctiveEdge(eventForRegistration, CausalityExport.TypeInstantiated.create(this), callbackEvent);
+        CausalityEvent eventForRegistration = CausalityExport.getCause();
+        CausalityEvent callbackEvent = CausalityEvents.ReachabilityNotificationCallback.create(callback);
+        CausalityExport.registerConjunctiveEdge(eventForRegistration, CausalityEvents.TypeInstantiated.create(this), callbackEvent);
 
         if (this.isInstantiated()) {
             try (var ignored = CausalityExport.overwriteCause(callbackEvent)) {

@@ -1858,6 +1858,8 @@ suite = {
                 "com.oracle.graal.pointsto.heap",
                 "com.oracle.graal.pointsto.heap.value",
                 "com.oracle.graal.pointsto.reports",
+                "com.oracle.graal.pointsto.reports.causality",
+                "com.oracle.graal.pointsto.reports.causality.events",
                 "com.oracle.graal.pointsto.constraints",
                 "com.oracle.graal.pointsto.util",
                 "com.oracle.graal.pointsto.meta",

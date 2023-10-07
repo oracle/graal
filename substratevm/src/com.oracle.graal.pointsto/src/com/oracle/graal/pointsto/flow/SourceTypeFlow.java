@@ -24,8 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
-import com.oracle.graal.pointsto.typestate.SingleTypeState;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 

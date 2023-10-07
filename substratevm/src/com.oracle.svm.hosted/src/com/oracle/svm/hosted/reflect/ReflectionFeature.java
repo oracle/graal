@@ -35,7 +35,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
@@ -140,7 +141,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
             throw VMError.shouldNotReachHere("New Method or Constructor found as reachable after static analysis: " + member);
         }
         return accessors.computeIfAbsent(member, m -> {
-            try (var ignored = CausalityExport.setCause(CausalityExport.ReflectionRegistration.create(m))) {
+            try (var ignored = CausalityExport.setCause(CausalityEvents.ReflectionRegistration.create(m))) {
                 return createAccessor(m);
             }
         });

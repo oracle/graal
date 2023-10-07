@@ -28,7 +28,7 @@ import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.FutureTask;
 
-import com.oracle.graal.pointsto.reports.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import org.graalvm.compiler.debug.GraalError;
 
 /** Extend FutureTask for custom error reporting. */
