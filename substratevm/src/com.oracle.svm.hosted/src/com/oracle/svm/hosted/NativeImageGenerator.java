@@ -685,7 +685,7 @@ public class NativeImageGenerator {
                                     ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory());
                     codeCache.layoutConstants();
                     codeCache.layoutMethods(debug, bb, compilationExecutor);
-                    codeCache.buildRuntimeMetadata(bb.getSnippetReflectionProvider(), compilationExecutor);
+                    codeCache.buildRuntimeMetadata(bb.getSnippetReflectionProvider(), compilationExecutor, loader.watchdog::recordActivity);
                 }
 
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), codeCache, heap, debug,
