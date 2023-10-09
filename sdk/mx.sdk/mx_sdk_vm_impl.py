@@ -2836,7 +2836,9 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
                     'path': None,
                 })
 
-            assert not self.is_jvm or not launcher_configs or all(type(lc) == mx_sdk.LauncherConfig for lc in launcher_configs), "JVM standalones do not yet support components with language launcher configs, only thin launchers and plain NI launchers. Found: '{}' with '{}'".format(name, [lc for lc in launcher_configs if type(lc) != mx_sdk.LauncherConfig])  # pylint: disable=unidiomatic-typecheck
+            if self.is_jvm and launcher_configs and any(type(lc) != mx_sdk.LauncherConfig for lc in launcher_configs):  # pylint: disable=unidiomatic-typecheck
+                mx.abort("JVM standalones do not yet support components with language launcher configs, only thin launchers and plain NI launchers. Found: '{}' with '{}'".format(name, [lc for lc in launcher_configs if type(lc) != mx_sdk.LauncherConfig]))  # pylint: disable=unidiomatic-typecheck
+
             for launcher_config in launcher_configs:
                 launcher_dest = path_prefix + launcher_config.destination
                 if launcher_config.destination not in excluded_paths:
