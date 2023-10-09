@@ -132,13 +132,9 @@ public class ClassEntry extends StructureTypeEntry {
         DebugInstanceTypeInfo debugInstanceTypeInfo = (DebugInstanceTypeInfo) debugTypeInfo;
         /* Add details of super and interface classes */
         ResolvedJavaType superType = debugInstanceTypeInfo.superClass();
-        String superName;
-        if (superType != null) {
-            superName = superType.toJavaName();
-        } else {
-            superName = "";
+        if (debugContext.isLogEnabled()) {
+            debugContext.log("typename %s adding super %s%n", typeName, superType != null ? superType.toJavaName() : "");
         }
-        debugContext.log("typename %s adding super %s%n", typeName, superName);
         if (superType != null) {
             this.superClass = debugInfoBase.lookupClassEntry(superType);
         }
@@ -250,8 +246,9 @@ public class ClassEntry extends StructureTypeEntry {
     }
 
     protected void processInterface(ResolvedJavaType interfaceType, DebugInfoBase debugInfoBase, DebugContext debugContext) {
-        String interfaceName = interfaceType.toJavaName();
-        debugContext.log("typename %s adding interface %s%n", typeName, interfaceName);
+        if (debugContext.isLogEnabled()) {
+            debugContext.log("typename %s adding interface %s%n", typeName, interfaceType.toJavaName());
+        }
         ClassEntry entry = debugInfoBase.lookupClassEntry(interfaceType);
         assert entry instanceof InterfaceClassEntry || (entry instanceof ForeignTypeEntry && this instanceof ForeignTypeEntry);
         InterfaceClassEntry interfaceClassEntry = (InterfaceClassEntry) entry;
@@ -263,13 +260,15 @@ public class ClassEntry extends StructureTypeEntry {
         String methodName = debugMethodInfo.name();
         int line = debugMethodInfo.line();
         ResolvedJavaType resultType = debugMethodInfo.valueType();
-        String resultTypeName = resultType.toJavaName();
         int modifiers = debugMethodInfo.modifiers();
         DebugLocalInfo[] paramInfos = debugMethodInfo.getParamInfo();
         DebugLocalInfo thisParam = debugMethodInfo.getThisParamInfo();
         int paramCount = paramInfos.length;
-        debugContext.log("typename %s adding %s method %s %s(%s)%n",
-                        typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
+        if (debugContext.isLogEnabled()) {
+            String resultTypeName = resultType.toJavaName();
+            debugContext.log("typename %s adding %s method %s %s(%s)%n",
+                            typeName, memberModifiers(modifiers), resultTypeName, methodName, formatParams(paramInfos));
+        }
         TypeEntry resultTypeEntry = debugInfoBase.lookupTypeEntry(resultType);
         TypeEntry[] typeEntries = new TypeEntry[paramCount];
         for (int i = 0; i < paramCount; i++) {
