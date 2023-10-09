@@ -87,10 +87,12 @@ public class ForeignTypeEntry extends ClassEntry {
         if (debugForeignTypeInfo.isSigned()) {
             flags |= FLAG_SIGNED;
         }
-        if (isPointer() && pointerTo != null) {
-            debugContext.log("foreign type %s flags 0x%x referent %s ", typeName, flags, pointerTo.getTypeName());
-        } else {
-            debugContext.log("foreign type %s flags 0x%x", typeName, flags);
+        if (debugContext.isLogEnabled()) {
+            if (isPointer() && pointerTo != null) {
+                debugContext.log("foreign type %s flags 0x%x referent %s ", typeName, flags, pointerTo.getTypeName());
+            } else {
+                debugContext.log("foreign type %s flags 0x%x", typeName, flags);
+            }
         }
     }
 

@@ -294,7 +294,9 @@ public abstract class DebugInfoBase {
             DebugTypeKind typeKind = debugTypeInfo.typeKind();
             int byteSize = debugTypeInfo.size();
 
-            debugContext.log(DebugContext.INFO_LEVEL, "Register %s type %s ", typeKind.toString(), typeName);
+            if (debugContext.isLogEnabled(DebugContext.INFO_LEVEL)) {
+                debugContext.log(DebugContext.INFO_LEVEL, "Register %s type %s ", typeKind.toString(), typeName);
+            }
             String fileName = debugTypeInfo.fileName();
             Path filePath = debugTypeInfo.filePath();
             addTypeEntry(idType, typeName, fileName, filePath, byteSize, typeKind);
@@ -307,7 +309,9 @@ public abstract class DebugInfoBase {
             String typeName = debugTypeInfo.typeName();
             DebugTypeKind typeKind = debugTypeInfo.typeKind();
 
-            debugContext.log(DebugContext.INFO_LEVEL, "Process %s type %s ", typeKind.toString(), typeName);
+            if (debugContext.isLogEnabled(DebugContext.INFO_LEVEL)) {
+                debugContext.log(DebugContext.INFO_LEVEL, "Process %s type %s ", typeKind.toString(), typeName);
+            }
             TypeEntry typeEntry = (idType != null ? lookupTypeEntry(idType) : lookupHeaderType());
             typeEntry.addDebugInfo(this, debugTypeInfo, debugContext);
         }));
@@ -329,7 +333,9 @@ public abstract class DebugInfoBase {
             ClassEntry classEntry = lookupClassEntry(ownerType);
             MethodEntry methodEntry = classEntry.ensureMethodEntryForDebugRangeInfo(debugCodeInfo, this, debugContext);
             PrimaryRange primaryRange = Range.createPrimary(methodEntry, lo, hi, primaryLine);
-            debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.toJavaName(), methodName, filePath, fileName, primaryLine, lo, hi);
+            if (debugContext.isLogEnabled(DebugContext.INFO_LEVEL)) {
+                debugContext.log(DebugContext.INFO_LEVEL, "PrimaryRange %s.%s %s %s:%d [0x%x, 0x%x]", ownerType.toJavaName(), methodName, filePath, fileName, primaryLine, lo, hi);
+            }
             addPrimaryRange(primaryRange, debugCodeInfo, classEntry);
             /*
              * Record all subranges even if they have no line or file so we at least get a symbol
@@ -517,13 +523,17 @@ public abstract class DebugInfoBase {
         SubRange subRange = Range.createSubrange(subRangeMethodEntry, lo, hi, line, primaryRange, caller, locationInfo.isLeaf());
         classEntry.indexSubRange(subRange);
         subRangeIndex.put(locationInfo, subRange);
-        debugContext.log(DebugContext.DETAILED_LEVEL, "SubRange %s.%s %d %s:%d [0x%x, 0x%x] (%d, %d)",
-                        ownerType.toJavaName(), methodName, subRange.getDepth(), fullPath, line, lo, hi, loOff, hiOff);
+        if (debugContext.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
+            debugContext.log(DebugContext.DETAILED_LEVEL, "SubRange %s.%s %d %s:%d [0x%x, 0x%x] (%d, %d)",
+                            ownerType.toJavaName(), methodName, subRange.getDepth(), fullPath, line, lo, hi, loOff, hiOff);
+        }
         assert (callerLocationInfo == null || (callerLocationInfo.addressLo() <= loOff && callerLocationInfo.addressHi() >= hiOff)) : "parent range should enclose subrange!";
         DebugLocalValueInfo[] localValueInfos = locationInfo.getLocalValueInfo();
         for (int i = 0; i < localValueInfos.length; i++) {
             DebugLocalValueInfo localValueInfo = localValueInfos[i];
-            debugContext.log(DebugContext.DETAILED_LEVEL, "  locals[%d] %s:%s = %s", localValueInfo.slot(), localValueInfo.name(), localValueInfo.typeName(), localValueInfo);
+            if (debugContext.isLogEnabled(DebugContext.DETAILED_LEVEL)) {
+                debugContext.log(DebugContext.DETAILED_LEVEL, "  locals[%d] %s:%s = %s", localValueInfo.slot(), localValueInfo.name(), localValueInfo.typeName(), localValueInfo);
+            }
         }
         subRange.setLocalValueInfo(localValueInfos);
         return subRange;
