@@ -92,6 +92,9 @@ public interface Invokable extends DeoptBciSupplier {
      */
     default void updateInliningLogAfterClone(Node other) {
         StructuredGraph graph = asFixedNodeOrNull().graph();
+        if (graph == null) {
+            return;
+        }
         InliningLog log = graph.getInliningLog();
         if (log != null) {
             // At this point, the invokable node was already added to the inlining log
