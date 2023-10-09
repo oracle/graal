@@ -40,7 +40,7 @@ import com.oracle.svm.core.annotate.TargetClass;
  * Documents that the class is based on a JDK class without {@linkplain TargetClass substituting}
  * it.
  */
-@Repeatable(BasedOnJDKClasses.class)
+@Repeatable(BasedOnJDKClass.List.class)
 @Retention(RetentionPolicy.RUNTIME)
 @Target(value = {ElementType.TYPE})
 @Platforms(Platform.HOSTED_ONLY.class)
@@ -67,5 +67,15 @@ public @interface BasedOnJDKClass {
     String[] innerClass() default {};
 
     interface NoClassNameProvider extends Function<BasedOnJDKClass, String> {
+    }
+
+    /**
+     * Support for making {@link BasedOnJDKClass} {@linkplain Repeatable repeatable}.
+     */
+    @Retention(RetentionPolicy.RUNTIME)
+    @Target(value = {ElementType.TYPE})
+    @Platforms(Platform.HOSTED_ONLY.class)
+    @interface List {
+        BasedOnJDKClass[] value();
     }
 }
