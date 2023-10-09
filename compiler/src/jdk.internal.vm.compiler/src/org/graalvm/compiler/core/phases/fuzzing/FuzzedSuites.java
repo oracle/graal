@@ -28,6 +28,8 @@ import java.util.Random;
 
 import org.graalvm.compiler.nodes.GraphState;
 import org.graalvm.compiler.nodes.GraphState.MandatoryStages;
+import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.tiers.Suites;
 
 /**
@@ -66,6 +68,23 @@ public final class FuzzedSuites extends Suites {
      */
     public void saveFuzzedSuites(String dumpPath) {
         fullFuzzedCompilationPlan.saveCompilationPlan(dumpPath);
+    }
+
+    /**
+     * Adjusts the {@code baseOptions} with extra compiler options to be used when running with a
+     * fuzzed phase plan. This can be used to relax some strict verification conditions that should
+     * always hold during normal compilations but are not strictly required for the correctness of
+     * fuzzed compilations.
+     *
+     * @return a new {@link OptionValues} instance containing extra compiler options
+     */
+    public static OptionValues fuzzingOptions(OptionValues baseOptions) {
+        return new OptionValues(baseOptions,
+                        /*
+                         * Allow GVN even in a graph state where we would no longer allow GVN in
+                         * normal compilations.
+                         */
+                        CanonicalizerPhase.Options.CanonicalizerVerifyGVNAllowed, false);
     }
 
     @Override

@@ -90,6 +90,7 @@ import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.test.ModuleSupport;
 import org.graalvm.compiler.bytecode.Bytecodes;
 import org.graalvm.compiler.core.phases.HighTier;
+import org.graalvm.compiler.core.phases.fuzzing.FuzzedSuites;
 import org.graalvm.compiler.core.test.ReflectionOptionDescriptors;
 import org.graalvm.compiler.debug.GlobalMetrics;
 import org.graalvm.compiler.debug.GraalError;
@@ -1510,7 +1511,11 @@ public final class CompileTheWorld {
         HotSpotGraalCompiler compiler = (HotSpotGraalCompiler) jvmciRuntime.getCompiler();
         HotSpotGraalRuntimeProvider graalRuntime = compiler.getGraalRuntime();
         OptionValues harnessOptions = loadHarnessOptions();
-        return new CompileTheWorld(jvmciRuntime, compiler, harnessOptions, graalRuntime.getOptions());
+        OptionValues compilerOptions = graalRuntime.getOptions();
+        if (Options.FuzzPhasePlan.getValue(harnessOptions)) {
+            compilerOptions = FuzzedSuites.fuzzingOptions(compilerOptions);
+        }
+        return new CompileTheWorld(jvmciRuntime, compiler, harnessOptions, compilerOptions);
     }
 
     public static void main(String[] args) throws Throwable {
