@@ -197,7 +197,7 @@ public abstract class NativeImageCodeCache {
             CompilationResult compilation = pair.getRight();
             for (DataSection.Data data : compilation.getDataSection()) {
                 if (data instanceof SubstrateDataBuilder.ObjectData) {
-                    VMConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
+                    JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
                     constantReasons.put(constant, compilation.getName());
                 }
             }
@@ -217,7 +217,7 @@ public abstract class NativeImageCodeCache {
     public void addConstantsToHeap() {
         for (DataSection.Data data : dataSection) {
             if (data instanceof SubstrateDataBuilder.ObjectData) {
-                VMConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
+                JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
                 addConstantToHeap(constant, NativeImageHeap.HeapInclusionReason.DataSection);
             }
         }
@@ -599,7 +599,7 @@ public abstract class NativeImageCodeCache {
     public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
         ByteBuffer bb = buffer.getByteBuffer();
         dataSection.buildDataSection(bb, (position, constant) -> {
-            writer.writeReference(buffer, position, constant, "VMConstant: " + constant);
+            writer.writeReference(buffer, position, (JavaConstant) constant, "VMConstant: " + constant);
         });
     }
 
