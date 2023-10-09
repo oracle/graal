@@ -260,10 +260,9 @@ public final class ResourcesFeature implements InternalFeature {
                 try {
                     String resourcePackage = jdk.internal.module.Resources.toPackageName(resourcePath);
                     if (!resourcePackage.isEmpty()) {
-                        if (!module.getPackages().contains(resourcePackage)) {
-                            return;
+                        if (module.getPackages().contains(resourcePackage)) {
+                            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, ResourcesFeature.class, module, resourcePackage);
                         }
-                        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ResourcesFeature.class, module, resourcePackage);
                     }
 
                     is = module.getResourceAsStream(resourcePath);
