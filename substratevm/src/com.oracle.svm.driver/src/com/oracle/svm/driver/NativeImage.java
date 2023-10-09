@@ -1582,12 +1582,23 @@ public class NativeImage {
 
         arguments.addAll(config.getGeneratorMainClass());
 
-        if (IS_AOT && OS.getCurrent().hasProcFS) {
+        boolean useContainer = useBundle() && bundleSupport.useContainer;
+
+        record WatchPID(Path procPath, Path containerPath) {
+            static WatchPID get() {
+                if (IS_AOT && OS.getCurrent().hasProcFS) {
+                    return new WatchPID(Path.of("/proc/" + ProcessProperties.getProcessID() + "/cmdline"), Path.of("/driver_cmdline"));
+                }
+                return null;
+            }
+        }
+        WatchPID watchPID = WatchPID.get();
+        if (watchPID != null) {
             /*
              * GR-8254: Ensure image-building VM shuts down even if native-image dies unexpected
              * (e.g. using CTRL-C in Gradle daemon mode)
              */
-            arguments.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, "" + ProcessProperties.getProcessID()));
+            arguments.addAll(Arrays.asList(SubstrateOptions.WATCHPID_PREFIX, (useContainer ? watchPID.containerPath : watchPID.procPath).toString()));
         }
 
         List<String> finalImageBuilderArgs = createImageBuilderArgs(finalImageArgs, finalImageClassPath, finalImageModulePath);
@@ -1597,7 +1608,7 @@ public class NativeImage {
         List<String> completeCommandList = new ArrayList<>();
 
         String javaExecutable;
-        if (useBundle() && bundleSupport.useContainer) {
+        if (useContainer) {
             ContainerSupport.replacePaths(arguments, config.getJavaHome(), bundleSupport.rootDir);
             ContainerSupport.replacePaths(finalImageBuilderArgs, config.getJavaHome(), bundleSupport.rootDir);
             Path binJava = Paths.get("bin", "java");
@@ -1609,7 +1620,7 @@ public class NativeImage {
         Path argFile = createVMInvocationArgumentFile(arguments);
         Path builderArgFile = createImageBuilderArgumentFile(finalImageBuilderArgs);
 
-        if (useBundle() && bundleSupport.useContainer) {
+        if (useContainer) {
             if (!Files.exists(bundleSupport.containerSupport.dockerfile)) {
                 bundleSupport.createDockerfile(bundleSupport.containerSupport.dockerfile);
             }
@@ -1635,6 +1646,9 @@ public class NativeImage {
             Map<Path, ContainerSupport.TargetPath> mountMapping = ContainerSupport.mountMappingFor(config.getJavaHome(), bundleSupport.inputDir, bundleSupport.outputDir);
             mountMapping.put(argFile, ContainerSupport.TargetPath.readonly(argFile));
             mountMapping.put(builderArgFile, ContainerSupport.TargetPath.readonly(builderArgFile));
+            if (watchPID != null) {
+                mountMapping.put(watchPID.procPath, ContainerSupport.TargetPath.readonly(watchPID.containerPath));
+            }
 
             List<String> containerCommand = bundleSupport.containerSupport.createCommand(imageBuilderEnvironment, mountMapping);
             command.addAll(containerCommand);
