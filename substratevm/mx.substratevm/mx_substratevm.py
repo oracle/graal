@@ -268,7 +268,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             raise mx.abort('The built GraalVM for config ' + str(config) + ' does not contain a native-image command')
 
     def _native_image(args, **kwargs):
-        mx.run([native_image_cmd] + _maybe_convert_to_args_file(args), **kwargs)
+        return mx.run([native_image_cmd] + _maybe_convert_to_args_file(args), **kwargs)
 
     def is_launcher(launcher_path):
         with open(launcher_path, 'rb') as fp:
@@ -282,12 +282,20 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
         verbose_image_build_option = ['--verbose'] if mx.get_opts().verbose else []
         _native_image(verbose_image_build_option + ['--macro:native-image-launcher'])
 
-    def query_native_image(all_args, option):
-
+    def query_native_image(all_args):
         stdoutdata = []
         def stdout_collector(x):
             stdoutdata.append(x.rstrip())
-        _native_image(['--dry-run', '--verbose'] + all_args, out=stdout_collector)
+        stderrdata = []
+        def stderr_collector(x):
+            stderrdata.append(x.rstrip())
+        exit_code = _native_image(['--dry-run', '--verbose'] + all_args, nonZeroIsFatal=False, out=stdout_collector, err=stderr_collector)
+        if exit_code != 0:
+            for line in stdoutdata:
+                print(line)
+            for line in stderrdata:
+                print(line)
+            mx.abort('Failed to query native-image.')
 
         def remove_quotes(val):
             if len(val) >= 2 and val.startswith("'") and val.endswith("'"):
@@ -295,19 +303,24 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             else:
                 return val
 
-        result = None
+        path_regex = re.compile(r'^-H:Path(@[^=]*)?=')
+        name_regex = re.compile(r'^-H:Name(@[^=]*)?=')
+        path = name = None
         for line in stdoutdata:
             arg = remove_quotes(line.rstrip('\\').strip())
-            m = re.match(option, arg)
-            if m:
-                result = arg[m.end():]
+            path_matcher = path_regex.match(arg)
+            if path_matcher:
+                path = arg[path_matcher.end():]
+            name_matcher = name_regex.match(arg)
+            if name_matcher:
+                name = arg[name_matcher.end():]
 
-        return result
+        assert path is not None and name is not None
+        return path, name
 
     def native_image_func(args, **kwargs):
         all_args = base_args + common_args + args
-        path = query_native_image(all_args, r'^-H:Path(@[^=]*)?=')
-        name = query_native_image(all_args, r'^-H:Name(@[^=]*)?=')
+        path, name = query_native_image(all_args)
         image = join(path, name)
         _native_image(all_args, **kwargs)
         return image
