@@ -31,7 +31,6 @@ import org.graalvm.compiler.hightiercodegen.variables.ResolvedVar;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeadEndNode;
 import org.graalvm.compiler.nodes.EndNode;
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.GuardPhiNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -270,8 +269,8 @@ public abstract class NodeLowerer {
             lower((ArrayEqualsNode) node);
         } else if (node instanceof NewMultiArrayNode) {
             lower((NewMultiArrayNode) node);
-        } else if (node instanceof ValueNode && node instanceof ObjectClone) {
-            lowerObjectClone((ValueNode & ObjectClone) node);
+        } else if (node instanceof ObjectClone) {
+            lower((ObjectClone) node);
         } else if (node instanceof LoadHubNode) {
             lower((LoadHubNode) node);
         } else if (node instanceof LoadArrayComponentHubNode) {
@@ -300,8 +299,8 @@ public abstract class NodeLowerer {
             lower((DynamicNewArrayNode) node);
         } else if (node instanceof ObjectIsArrayNode) {
             lower((ObjectIsArrayNode) node);
-        } else if (node instanceof ValueNode && node instanceof ForeignCall) {
-            lowerForeignCall((ValueNode & ForeignCall) node);
+        } else if (node instanceof ForeignCall) {
+            lower((ForeignCall) node);
         } else if (node instanceof IntegerDivRemNode) {
             lower((IntegerDivRemNode) node);
         } else if (node instanceof BinaryArithmeticNode) {
@@ -384,7 +383,7 @@ public abstract class NodeLowerer {
 
     protected abstract void lower(IntegerDivRemNode node);
 
-    protected abstract <T extends ValueNode & ForeignCall> void lowerForeignCall(T node);
+    protected abstract void lower(ForeignCall node);
 
     protected abstract void lower(ObjectIsArrayNode node);
 
@@ -414,7 +413,7 @@ public abstract class NodeLowerer {
 
     protected abstract void lower(LoadHubNode node);
 
-    protected abstract <T extends ValueNode & ObjectClone> void lowerObjectClone(T node);
+    protected abstract void lower(ObjectClone node);
 
     protected abstract void lower(NewMultiArrayNode node);
 
@@ -488,7 +487,7 @@ public abstract class NodeLowerer {
 
     protected abstract void lower(IsNullNode node);
 
-    protected abstract <T extends FixedNode & Invoke> void lower(T node);
+    protected abstract void lower(Invoke node);
 
     protected abstract void lower(UnwindNode node);
 
