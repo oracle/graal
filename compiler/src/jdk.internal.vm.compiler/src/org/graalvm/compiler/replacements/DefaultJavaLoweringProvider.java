@@ -320,7 +320,7 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
                 if (graph.getGuardsStage().areFrameStatesAtDeopts()) {
                     lowerComputeObjectAddressNode((ComputeObjectAddressNode) n);
                 }
-            } else if (n instanceof FloatingIntegerDivRemNode<?> && tool.getLoweringStage() == LoweringTool.StandardLoweringStage.MID_TIER) {
+            } else if (n instanceof FloatingIntegerDivRemNode<?> divRem && divRem.graph().isAfterStage(GraphState.StageFlag.FSA)) {
                 lowerFloatingIntegerDivRem((FloatingIntegerDivRemNode<?>) n, tool);
             } else if (!(n instanceof LIRLowerable)) {
                 // Assume that nodes that implement both Lowerable and LIRLowerable will be handled
@@ -346,6 +346,9 @@ public abstract class DefaultJavaLoweringProvider implements LoweringProvider {
         divRemFixed.setCanDeopt(false);
         divRem.replaceAtUsagesAndDelete(divRemFixed);
         graph.addAfterFixed(insertAfter, divRemFixed);
+        if (tool.getLoweringStage() == LoweringTool.StandardLoweringStage.LOW_TIER) {
+            divRemFixed.lower(tool);
+        }
     }
 
     private static void lowerComputeObjectAddressNode(ComputeObjectAddressNode n) {
