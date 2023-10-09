@@ -188,10 +188,10 @@ public final class CompilationAlarm implements AutoCloseable {
                 assertProgressNoTracking(opt, counter);
                 return;
             } else {
-                final double noProgressStartDetectionPriod = noProgressStartPeriod.get() * 1000;
+                final double noProgressStartDetectionPeriod = noProgressStartPeriod.get() * 1000;
                 final long currentTimeStamp = System.currentTimeMillis();
                 final long timeDiff = currentTimeStamp - lastUniqueStackTraceTimeStamp;
-                final boolean noProgressForPeriodStartDetection = timeDiff > noProgressStartDetectionPriod;
+                final boolean noProgressForPeriodStartDetection = timeDiff > noProgressStartDetectionPeriod;
                 if (!noProgressForPeriodStartDetection) {
                     /*
                      * Still not enough no-progress before we start doing something.
