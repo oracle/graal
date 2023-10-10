@@ -243,7 +243,7 @@ class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
         for (var e : originalInvokeReceivers.entrySet()) {
             PointsToAnalysisMethod targetMethod = e.getKey().getTargetMethod();
             TypeState receiverState = bb.getAllInstantiatedTypeFlow().getState();
-            if (e.getValue() != null)
+            if (e.getValue() != null && !e.getValue().isSaturated())
                 receiverState = e.getValue().filter(bb, receiverState);
 
             for (var implementationWithTypes : implementationsAndTheirTypes.get(targetMethod).entrySet()) {
