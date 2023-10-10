@@ -815,6 +815,13 @@ public final class LLVMContext {
                 return symbolFinalStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
                 exception.enter();
+                System.out.println("symbol is: " + symbol.getName());
+                System.out.println("id is: " + id);
+                System.out.println("index is: " + index);
+                System.out.println("library loaded: " + this.libraryLoaded);
+                System.out.println("library paths: " + this.libraryPaths);
+                System.out.println("truffle files: " + this.truffleFiles);
+                System.out.println("symbolFinalStorage is: " + symbolFinalStorage);
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         } else {
@@ -822,6 +829,13 @@ public final class LLVMContext {
                 return symbolDynamicStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
                 exception.enter();
+                System.out.println("symbol is: " + symbol.getName());
+                System.out.println("id is: " + id);
+                System.out.println("index is: " + index);
+                System.out.println("library loaded: " + this.libraryLoaded);
+                System.out.println("library paths: " + this.libraryPaths);
+                System.out.println("truffle files: " + this.truffleFiles);
+                System.out.println("symbolDynamicStorage is: " + symbolDynamicStorage);
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         }
