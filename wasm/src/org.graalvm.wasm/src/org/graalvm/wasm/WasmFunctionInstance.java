@@ -143,7 +143,7 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
             // At this point the multi-value stack has already been populated, therefore, we don't
             // have to check the size of the multi-value stack.
             if (result == WasmConstant.MULTI_VALUE) {
-                return multiValueStackAsArray();
+                return multiValueStackAsArray(WasmLanguage.get(self));
             }
             return result;
         } finally {
@@ -151,20 +151,21 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
         }
     }
 
-    private Object multiValueStackAsArray() {
-        final long[] multiValueStack = context().primitiveMultiValueStack();
-        final Object[] referenceMultiValueStack = context().referenceMultiValueStack();
+    private Object multiValueStackAsArray(WasmLanguage language) {
+        final var multiValueStack = language.multiValueStack();
+        final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
+        final Object[] referenceMultiValueStack = multiValueStack.referenceStack();
         final int resultCount = function.resultCount();
-        assert multiValueStack.length >= resultCount;
+        assert primitiveMultiValueStack.length >= resultCount;
         assert referenceMultiValueStack.length >= resultCount;
         final Object[] values = new Object[resultCount];
         for (int i = 0; i < resultCount; i++) {
             byte resultType = function.resultTypeAt(i);
             values[i] = switch (resultType) {
-                case WasmType.I32_TYPE -> (int) multiValueStack[i];
-                case WasmType.I64_TYPE -> multiValueStack[i];
-                case WasmType.F32_TYPE -> Float.intBitsToFloat((int) multiValueStack[i]);
-                case WasmType.F64_TYPE -> Double.longBitsToDouble(multiValueStack[i]);
+                case WasmType.I32_TYPE -> (int) primitiveMultiValueStack[i];
+                case WasmType.I64_TYPE -> primitiveMultiValueStack[i];
+                case WasmType.F32_TYPE -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
+                case WasmType.F64_TYPE -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
                 case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> referenceMultiValueStack[i];
                 default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
             };

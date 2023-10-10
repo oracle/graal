@@ -167,7 +167,7 @@ public class WasmRootNode extends RootNode {
         final int resultCount = functionNode.resultCount();
         CompilerAsserts.partialEvaluationConstant(resultCount);
         if (resultCount > 1) {
-            context.resizeMultiValueStack(resultCount);
+            WasmLanguage.get(this).multiValueStack().resize(resultCount);
         }
 
         try {
@@ -199,31 +199,32 @@ public class WasmRootNode extends RootNode {
                     throw WasmException.format(Failure.UNSPECIFIED_INTERNAL, this, "Unknown result type: %d", resultType);
             }
         } else {
-            moveResultValuesToMultiValueStack(frame, context, resultCount, localCount);
+            moveResultValuesToMultiValueStack(frame, resultCount, localCount);
             return WasmConstant.MULTI_VALUE;
         }
     }
 
     @ExplodeLoop
-    private void moveResultValuesToMultiValueStack(VirtualFrame frame, WasmContext context, int resultCount, int localCount) {
+    private void moveResultValuesToMultiValueStack(VirtualFrame frame, int resultCount, int localCount) {
         CompilerAsserts.partialEvaluationConstant(resultCount);
-        final long[] multiValueStack = context.primitiveMultiValueStack();
-        final Object[] referenceMultiValueStack = context.referenceMultiValueStack();
+        final var multiValueStack = WasmLanguage.get(this).multiValueStack();
+        final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
+        final Object[] referenceMultiValueStack = multiValueStack.referenceStack();
         for (int i = 0; i < resultCount; i++) {
             final int resultType = functionNode.resultType(i);
             CompilerAsserts.partialEvaluationConstant(resultType);
             switch (resultType) {
                 case WasmType.I32_TYPE:
-                    multiValueStack[i] = popInt(frame, localCount + i);
+                    primitiveMultiValueStack[i] = popInt(frame, localCount + i);
                     break;
                 case WasmType.I64_TYPE:
-                    multiValueStack[i] = popLong(frame, localCount + i);
+                    primitiveMultiValueStack[i] = popLong(frame, localCount + i);
                     break;
                 case WasmType.F32_TYPE:
-                    multiValueStack[i] = Float.floatToRawIntBits(popFloat(frame, localCount + i));
+                    primitiveMultiValueStack[i] = Float.floatToRawIntBits(popFloat(frame, localCount + i));
                     break;
                 case WasmType.F64_TYPE:
-                    multiValueStack[i] = Double.doubleToRawLongBits(popDouble(frame, localCount + i));
+                    primitiveMultiValueStack[i] = Double.doubleToRawLongBits(popDouble(frame, localCount + i));
                     break;
                 case WasmType.FUNCREF_TYPE:
                 case WasmType.EXTERNREF_TYPE:

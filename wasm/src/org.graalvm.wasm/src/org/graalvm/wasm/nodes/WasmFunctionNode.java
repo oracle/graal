@@ -70,6 +70,7 @@ import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmFunction;
 import org.graalvm.wasm.WasmFunctionInstance;
 import org.graalvm.wasm.WasmInstance;
+import org.graalvm.wasm.WasmLanguage;
 import org.graalvm.wasm.WasmMath;
 import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
@@ -546,7 +547,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         }
                         break;
                     } else {
-                        extractMultiValueResult(context, frame, stackPointer, result, resultCount, function.typeIndex());
+                        extractMultiValueResult(frame, stackPointer, result, resultCount, function.typeIndex());
                         stackPointer += resultCount;
                         break;
                     }
@@ -691,7 +692,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                         }
                         break;
                     } else {
-                        extractMultiValueResult(context, frame, stackPointer, result, resultCount, expectedFunctionTypeIndex);
+                        extractMultiValueResult(frame, stackPointer, result, resultCount, expectedFunctionTypeIndex);
                         stackPointer += resultCount;
                         break;
                     }
@@ -4085,26 +4086,27 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * @param functionTypeIndex The function type index of the called function.
      */
     @ExplodeLoop
-    private void extractMultiValueResult(WasmContext context, VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex) {
+    private void extractMultiValueResult(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex) {
         CompilerAsserts.partialEvaluationConstant(resultCount);
         if (result == WasmConstant.MULTI_VALUE) {
-            final long[] multiValueStack = context.primitiveMultiValueStack();
-            final Object[] referenceMultiValueStack = context.referenceMultiValueStack();
+            final var multiValueStack = WasmLanguage.get(this).multiValueStack();
+            final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
+            final Object[] referenceMultiValueStack = multiValueStack.referenceStack();
             for (int i = 0; i < resultCount; i++) {
                 final byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
                 CompilerAsserts.partialEvaluationConstant(resultType);
                 switch (resultType) {
                     case WasmType.I32_TYPE:
-                        pushInt(frame, stackPointer + i, (int) multiValueStack[i]);
+                        pushInt(frame, stackPointer + i, (int) primitiveMultiValueStack[i]);
                         break;
                     case WasmType.I64_TYPE:
-                        pushLong(frame, stackPointer + i, multiValueStack[i]);
+                        pushLong(frame, stackPointer + i, primitiveMultiValueStack[i]);
                         break;
                     case WasmType.F32_TYPE:
-                        pushFloat(frame, stackPointer + i, Float.intBitsToFloat((int) multiValueStack[i]));
+                        pushFloat(frame, stackPointer + i, Float.intBitsToFloat((int) primitiveMultiValueStack[i]));
                         break;
                     case WasmType.F64_TYPE:
-                        pushDouble(frame, stackPointer + i, Double.longBitsToDouble(multiValueStack[i]));
+                        pushDouble(frame, stackPointer + i, Double.longBitsToDouble(primitiveMultiValueStack[i]));
                         break;
                     case WasmType.FUNCREF_TYPE:
                     case WasmType.EXTERNREF_TYPE:

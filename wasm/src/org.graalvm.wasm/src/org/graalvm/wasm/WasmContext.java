@@ -222,29 +222,4 @@ public final class WasmContext {
     public static WasmContext get(Node node) {
         return REFERENCE.get(node);
     }
-
-    /**
-     * @return The current primitive multi-value stack or null if it has never been resized.
-     */
-    public long[] primitiveMultiValueStack() {
-        return language.multiValueStack().primitiveStack();
-    }
-
-    /**
-     * @return the current reference multi-value stack or null if it has never been resized.
-     */
-    public Object[] referenceMultiValueStack() {
-        return language.multiValueStack().referenceStack();
-    }
-
-    /**
-     * Updates the size of the multi-value stack if needed. In case of a resize, the values are not
-     * copied. Therefore, resizing should occur before any call to a function that uses the
-     * multi-value stack.
-     *
-     * @param expectedSize The minimum expected size.
-     */
-    public void resizeMultiValueStack(int expectedSize) {
-        language.multiValueStack().resize(expectedSize);
-    }
 }
