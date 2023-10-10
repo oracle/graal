@@ -53,6 +53,7 @@ import com.oracle.svm.core.graal.thread.StoreVMThreadLocalNode;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.hosted.NativeImageOptions;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
 import com.oracle.svm.hosted.substitute.ComputedValueField;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -61,8 +62,15 @@ import jdk.vm.ci.meta.JavaKind;
 
 public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
 
+    private final boolean addImplicitNullCheckFilters;
+
     public SVMMethodTypeFlowBuilder(PointsToAnalysis bb, PointsToAnalysisMethod method, MethodFlowsGraph flowsGraph, MethodFlowsGraph.GraphKind graphKind) {
         super(bb, method, flowsGraph, graphKind);
+        /*
+         * We only add these filters for runtime compiled methods, as other multi-method variants
+         * require explicit null checks.
+         */
+        addImplicitNullCheckFilters = SubstrateCompilationDirectives.isRuntimeCompiledMethod(method);
     }
 
     protected SVMHost getHostVM() {
@@ -216,5 +224,13 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
         PointsToAnalysisMethod targetMethod = (PointsToAnalysisMethod) node.getInvokeTarget();
         InvokeKind invokeKind = targetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
         processMethodInvocation(state, node, invokeKind, targetMethod, node.getArguments(), true, getInvokePosition(node), true);
+    }
+
+    @Override
+    protected void processImplicitNonNull(ValueNode node, ValueNode source, TypeFlowsOfNodes state) {
+        // GR-49362 - remove after improving non-runtime graphs
+        if (addImplicitNullCheckFilters) {
+            super.processImplicitNonNull(node, source, state);
+        }
     }
 }

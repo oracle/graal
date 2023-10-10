@@ -163,7 +163,6 @@ public class MethodTypeFlowBuilder {
     private final MethodFlowsGraph.GraphKind graphKind;
     private boolean processed = false;
     private final boolean newFlowsGraph;
-    private final boolean addImplicitNullChecks;
 
     protected final TypeFlowGraphBuilder typeFlowGraphBuilder;
     protected List<TypeFlow<?>> postInitFlows = List.of();
@@ -172,7 +171,6 @@ public class MethodTypeFlowBuilder {
         this.bb = bb;
         this.method = method;
         this.graphKind = graphKind;
-        addImplicitNullChecks = bb.getHostVM().addImplicitTypeflowNullChecks(method);
         if (flowsGraph == null) {
             this.flowsGraph = new MethodFlowsGraph(method, graphKind);
             newFlowsGraph = true;
@@ -1071,13 +1069,13 @@ public class MethodTypeFlowBuilder {
                     }
                     state.add(node, loadFieldBuilder);
                 }
-                if (addImplicitNullChecks && node.object() != null) {
+                if (node.object() != null) {
                     processImplicitNonNull(node.object(), state);
                 }
 
             } else if (n instanceof StoreFieldNode node) { // object.field = value
                 processStoreField(node, state);
-                if (addImplicitNullChecks && node.object() != null) {
+                if (node.object() != null) {
                     processImplicitNonNull(node.object(), state);
                 }
 
@@ -1099,15 +1097,11 @@ public class MethodTypeFlowBuilder {
                     loadIndexedBuilder.addObserverDependency(arrayBuilder);
                     state.add(node, loadIndexedBuilder);
                 }
-                if (addImplicitNullChecks) {
-                    processImplicitNonNull(node.array(), state);
-                }
+                processImplicitNonNull(node.array(), state);
 
             } else if (n instanceof StoreIndexedNode node) {
                 processStoreIndexed(node, state);
-                if (addImplicitNullChecks) {
-                    processImplicitNonNull(node.array(), state);
-                }
+                processImplicitNonNull(node.array(), state);
 
             } else if (n instanceof UnsafePartitionLoadNode) {
                 UnsafePartitionLoadNode node = (UnsafePartitionLoadNode) n;
@@ -1330,7 +1324,7 @@ public class MethodTypeFlowBuilder {
                     var arguments = target.arguments();
                     processMethodInvocation(state, invoke, target.invokeKind(), (PointsToAnalysisMethod) target.targetMethod(), arguments);
 
-                    if (addImplicitNullChecks && target.invokeKind().hasReceiver()) {
+                    if (target.invokeKind().hasReceiver()) {
                         processImplicitNonNull(arguments.get(0), invoke.asNode(), state);
                     }
                 }
@@ -1369,7 +1363,7 @@ public class MethodTypeFlowBuilder {
                  * above.
                  */
                 processMacroInvokable(state, node, true);
-                if (addImplicitNullChecks && node.getInvokeKind().hasReceiver()) {
+                if (node.getInvokeKind().hasReceiver()) {
                     processImplicitNonNull(node.getArgument(0), node.asNode(), state);
                 }
             }
@@ -1787,8 +1781,8 @@ public class MethodTypeFlowBuilder {
         processImplicitNonNull(node, node, state);
     }
 
-    private void processImplicitNonNull(ValueNode node, ValueNode source, TypeFlowsOfNodes state) {
-        assert addImplicitNullChecks && node.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
+    protected void processImplicitNonNull(ValueNode node, ValueNode source, TypeFlowsOfNodes state) {
+        assert node.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
         if (!StampTool.isPointerNonNull(node)) {
             TypeFlowBuilder<?> inputBuilder = state.lookup(node);
             TypeFlowBuilder<?> nullCheckBuilder = TypeFlowBuilder.create(bb, source, NullCheckTypeFlow.class, () -> {

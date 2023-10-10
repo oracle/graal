@@ -410,11 +410,6 @@ public abstract class HostVM {
         return method.isOriginalMethod();
     }
 
-    @SuppressWarnings("unused")
-    public boolean addImplicitTypeflowNullChecks(AnalysisMethod method) {
-        return false;
-    }
-
     public FieldValueComputer createFieldValueComputer(@SuppressWarnings("unused") AnalysisField field) {
         return null;
     }
