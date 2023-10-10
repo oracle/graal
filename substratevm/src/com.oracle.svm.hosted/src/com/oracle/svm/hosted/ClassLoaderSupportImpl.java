@@ -147,7 +147,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 String resName = entry.resourceName();
                 if (resName.endsWith("/")) {
                     if (ConfigurationCondition.isAlwaysTrue(condition)) {
-                        resourceCollector.addDirectoryResource(info.module, resName, "", false);
+                        resourceCollector.addDirectoryResource(info.module, resName);
                     } else {
                         resourceCollector.addResourceConditionally(info.module, resName, condition);
                     }
@@ -160,14 +160,11 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     resourceCollector.registerNegativeQuery(info.module, resName);
                     continue;
                 }
-                try (InputStream is = content.get()) {
-                    if (ConfigurationCondition.isAlwaysTrue(condition)) {
-                        resourceCollector.addResource(info.module, resName, is, false);
-                    } else {
-                        resourceCollector.addResourceConditionally(info.module, resName, condition);
-                    }
-                } catch (IOException resourceException) {
-                    resourceCollector.registerIOException(info.module, resName, resourceException, LinkAtBuildTimeSupport.singleton().moduleLinkAtBuildTime(info.module.getName()));
+
+                if (ConfigurationCondition.isAlwaysTrue(condition)) {
+                    resourceCollector.addResource(info.module, resName);
+                } else {
+                    resourceCollector.addResourceConditionally(info.module, resName, condition);
                 }
             }
 
@@ -231,14 +228,10 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 }
             } else {
                 for (ConfigurationCondition condition : conditions) {
-                    try (InputStream is = Files.newInputStream(entry)) {
-                        if (ConfigurationCondition.isAlwaysTrue(condition)) {
-                            collector.addResource(null, relativeFilePath, is, false);
-                        } else {
-                            collector.addResourceConditionally(null, relativeFilePath, condition);
-                        }
-                    } catch (IOException resourceException) {
-                        collector.registerIOException(null, relativeFilePath, resourceException, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(relativeFilePath));
+                    if (ConfigurationCondition.isAlwaysTrue(condition)) {
+                        collector.addResource(null, relativeFilePath);
+                    } else {
+                        collector.addResourceConditionally(null, relativeFilePath, condition);
                     }
                 }
             }
@@ -249,7 +242,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
             String dir = entry.resourceName();
             String contentName = makeDirContent(allEntries, dir);
             if (ConfigurationCondition.isAlwaysTrue(condition)) {
-                collector.addDirectoryResource(null, dir, contentName, false);
+                collector.addDirectoryResource(null, dir);
             } else {
                 collector.addDirectoryResourceConditionally(null, dir, condition, contentName, false);
             }
@@ -268,7 +261,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     for (ConfigurationCondition condition : conditions) {
                         // Register the directory with empty content to preserve Java behavior
                         if (ConfigurationCondition.isAlwaysTrue(condition)) {
-                            collector.addDirectoryResource(null, dirName, "", true);
+                            collector.addDirectoryResource(null, dirName);
                         } else {
                             collector.addDirectoryResourceConditionally(null, dirName, condition, "", true);
                         }
@@ -276,14 +269,10 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 } else {
                     List<ConfigurationCondition> conditions = shouldIncludeEntry(null, collector, entry.getName(), jarPath.toUri(), includeAll);
                     for (ConfigurationCondition condition : conditions) {
-                        try (InputStream is = jf.getInputStream(entry)) {
-                            if (ConfigurationCondition.isAlwaysTrue(condition)) {
-                                collector.addResource(null, entry.getName(), is, true);
-                            } else {
-                                collector.addResourceConditionally(null, entry.getName(), condition);
-                            }
-                        } catch (IOException resourceException) {
-                            collector.registerIOException(null, entry.getName(), resourceException, LinkAtBuildTimeSupport.singleton().packageOrClassAtBuildTime(entry.getName()));
+                        if (ConfigurationCondition.isAlwaysTrue(condition)) {
+                            collector.addResource(null, entry.getName());
+                        } else {
+                            collector.addResourceConditionally(null, entry.getName(), condition);
                         }
                     }
                 }

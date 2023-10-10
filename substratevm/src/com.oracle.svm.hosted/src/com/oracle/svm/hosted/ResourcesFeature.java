@@ -46,12 +46,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Enumeration;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.TreeSet;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -163,6 +163,7 @@ public final class ResourcesFeature implements InternalFeature {
 
     private class ResourcesRegistryImpl extends ConditionalConfigurationRegistry implements ResourcesRegistry {
         private final ConfigurationTypeResolver configurationTypeResolver;
+        private final Set<String> alreadyAddedResources = new HashSet<>();
 
         ResourcesRegistryImpl(ConfigurationTypeResolver configurationTypeResolver) {
             this.configurationTypeResolver = configurationTypeResolver;
@@ -181,81 +182,17 @@ public final class ResourcesFeature implements InternalFeature {
             }
         }
 
-        private String urlToJarPath(URL url) {
-            try {
-                return ((JarURLConnection) url.openConnection()).getJarFileURL().getFile();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
-
-        private boolean resourceIsDirectory(URL url, boolean fromJar, String resourcePath) throws IOException, URISyntaxException {
-            if (fromJar) {
-                try (JarFile jf = new JarFile(urlToJarPath(url))) {
-                    return jf.getEntry(resourcePath).isDirectory();
-                }
-            } else {
-                return Files.isDirectory(Path.of(url.toURI()));
-            }
-        }
-
-        private String getDirectoryContent(String path, boolean fromJar) throws IOException {
-            List<String> content = new ArrayList<>();
-            if (fromJar) {
-                try (JarFile jf = new JarFile(urlToJarPath(URI.create(path).toURL()))) {
-                    String pathSeparator = FileSystems.getDefault().getSeparator();
-                    String directoryPath = path.split("!")[1];
-
-                    // we are removing leading slash because jar entry names don't start with slash
-                    if (directoryPath.startsWith(pathSeparator)) {
-                        directoryPath = directoryPath.substring(1);
-                    }
-
-                    Enumeration<JarEntry> entries = jf.entries();
-                    while (entries.hasMoreElements()) {
-                        String entry = entries.nextElement().getName();
-                        if (entry.startsWith(directoryPath)) {
-                            String contentEntry = entry.substring(directoryPath.length());
-
-                            // remove the leading slash
-                            if (contentEntry.startsWith(pathSeparator)) {
-                                contentEntry = contentEntry.substring(1);
-                            }
-
-                            // prevent adding empty strings as a content
-                            if (!contentEntry.isEmpty()) {
-                                // get top level content only
-                                int firstSlash = contentEntry.indexOf(pathSeparator);
-                                if (firstSlash != -1) {
-                                    content.add(contentEntry.substring(0, firstSlash));
-                                } else {
-                                    content.add(contentEntry);
-                                }
-                            }
-                        }
-                    }
-
-                }
-            } else {
-                try (Stream<Path> contentStream = Files.list(Path.of(path))) {
-                    content = new ArrayList<>(contentStream
-                                    .map(Path::getFileName)
-                                    .map(Path::toString)
-                                    .toList());
-                }
-            }
-
-            content.sort(Comparator.naturalOrder());
-            return String.join(System.lineSeparator(), content);
-        }
-
+        /* Adds single resource defined with its module and name */
         @Override
         public void addResource(Module module, String resourcePath) {
+            if (!shouldRegisterResource(module, resourcePath)) {
+                return;
+            }
+
             InputStream is;
             boolean fromJar;
             boolean isDirectory;
             String content = "";
-
             if (module != null && module.isNamed()) {
                 try {
                     String resourcePackage = jdk.internal.module.Resources.toPackageName(resourcePath);
@@ -355,6 +292,88 @@ public final class ResourcesFeature implements InternalFeature {
                 return;
             }
             registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
+        }
+
+        public boolean shouldRegisterResource(Module module, String resourceName) {
+            // we only do this if we are on the classPath
+            if ((module == null || !module.isNamed())) {
+                if (!alreadyAddedResources.contains(resourceName)) {
+                    alreadyAddedResources.add(resourceName);
+                    return true;
+                } else {
+                    return false;
+                }
+            } else {
+                // we should always try to register module entries (checked later in addEntries)
+                return true;
+            }
+        }
+
+        private String urlToJarPath(URL url) {
+            try {
+                return ((JarURLConnection) url.openConnection()).getJarFileURL().getFile();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        private boolean resourceIsDirectory(URL url, boolean fromJar, String resourcePath) throws IOException, URISyntaxException {
+            if (fromJar) {
+                try (JarFile jf = new JarFile(urlToJarPath(url))) {
+                    return jf.getEntry(resourcePath).isDirectory();
+                }
+            } else {
+                return Files.isDirectory(Path.of(url.toURI()));
+            }
+        }
+
+        private String getDirectoryContent(String path, boolean fromJar) throws IOException {
+            Set<String> content = new TreeSet<>();
+            if (fromJar) {
+                try (JarFile jf = new JarFile(urlToJarPath(URI.create(path).toURL()))) {
+                    String pathSeparator = FileSystems.getDefault().getSeparator();
+                    String directoryPath = path.split("!")[1];
+
+                    // we are removing leading slash because jar entry names don't start with slash
+                    if (directoryPath.startsWith(pathSeparator)) {
+                        directoryPath = directoryPath.substring(1);
+                    }
+
+                    Enumeration<JarEntry> entries = jf.entries();
+                    while (entries.hasMoreElements()) {
+                        String entry = entries.nextElement().getName();
+                        if (entry.startsWith(directoryPath)) {
+                            String contentEntry = entry.substring(directoryPath.length());
+
+                            // remove the leading slash
+                            if (contentEntry.startsWith(pathSeparator)) {
+                                contentEntry = contentEntry.substring(1);
+                            }
+
+                            // prevent adding empty strings as a content
+                            if (!contentEntry.isEmpty()) {
+                                // get top level content only
+                                int firstSlash = contentEntry.indexOf(pathSeparator);
+                                if (firstSlash != -1) {
+                                    content.add(contentEntry.substring(0, firstSlash));
+                                } else {
+                                    content.add(contentEntry);
+                                }
+                            }
+                        }
+                    }
+
+                }
+            } else {
+                try (Stream<Path> contentStream = Files.list(Path.of(path))) {
+                    content = new TreeSet<>(contentStream
+                                    .map(Path::getFileName)
+                                    .map(Path::toString)
+                                    .toList());
+                }
+            }
+
+            return String.join(System.lineSeparator(), content);
         }
     }
 
@@ -493,40 +512,24 @@ public final class ResourcesFeature implements InternalFeature {
             return conditions;
         }
 
-        private final Set<String> alreadyAddedResources = new HashSet<>();
-
-        public void registerResourceIfNeeded(Module module, String resourceName) {
-            // we only do this if we are on the classPath
-            if ((module == null || !module.isNamed())) {
-                if (!alreadyAddedResources.contains(resourceName)) {
-                    ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourceName);
-                    alreadyAddedResources.add(resourceName);
-                }
-            } else {
-                // we should always try to register module entries (checked later in addEntries)
-                ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourceName);
-            }
-
-        }
-
         @Override
-        public void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar) {
-            registerResourceIfNeeded(module, resourceName);
+        public void addResource(Module module, String resourceName) {
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, resourceName);
         }
 
         @Override
         public void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition) {
-            access.registerReachabilityHandler(e -> registerResourceIfNeeded(module, resourceName), access.findClassByName(condition.getTypeName()));
+            access.registerReachabilityHandler(e -> addResource(module, resourceName), access.findClassByName(condition.getTypeName()));
         }
 
         @Override
-        public void addDirectoryResource(Module module, String dir, String content, boolean fromJar) {
-            registerResourceIfNeeded(module, dir);
+        public void addDirectoryResource(Module module, String dir) {
+            ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(module, dir);
         }
 
         @Override
         public void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition, String content, boolean fromJar) {
-            access.registerReachabilityHandler(e -> registerResourceIfNeeded(module, dir), access.findClassByName(condition.getTypeName()));
+            access.registerReachabilityHandler(e -> addDirectoryResource(module, dir), access.findClassByName(condition.getTypeName()));
         }
 
         @Override

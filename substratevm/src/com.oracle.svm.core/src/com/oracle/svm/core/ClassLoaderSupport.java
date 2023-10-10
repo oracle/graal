@@ -25,7 +25,6 @@
 package com.oracle.svm.core;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.URI;
 import java.util.List;
 import java.util.Locale;
@@ -56,11 +55,11 @@ public abstract class ClassLoaderSupport {
     public interface ResourceCollector {
         List<ConfigurationCondition> isIncluded(Module module, String resourceName, URI resourceURI);
 
-        void addResource(Module module, String resourceName, InputStream resourceStream, boolean fromJar);
+        void addResource(Module module, String resourceName);
 
         void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition);
 
-        void addDirectoryResource(Module module, String dir, String content, boolean fromJar);
+        void addDirectoryResource(Module module, String dir);
 
         void registerNegativeQuery(Module module, String resourceName);
 
