@@ -252,6 +252,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
 
         private final boolean dynamicLibC = SubstrateOptions.StaticExecutableWithDynamicLibC.getValue();
         private final boolean staticLibCpp = SubstrateOptions.StaticLibStdCpp.getValue();
+        private final boolean customStaticLibs = dynamicLibC || staticLibCpp;
 
         BinutilsCCLinkerInvocation(AbstractImage.NativeImageKind imageKind, NativeLibraries nativeLibs, List<ObjectFile.Symbol> symbols) {
             super(imageKind, nativeLibs, symbols);
@@ -306,7 +307,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                     cmd.add("-Wl,--export-dynamic");
                     break;
                 case STATIC_EXECUTABLE:
-                    if (!dynamicLibC && !staticLibCpp) {
+                    if (!customStaticLibs) {
                         cmd.add("-static");
                     }
                     break;
@@ -323,7 +324,7 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
         @Override
         protected List<String> getLibrariesCommand() {
             List<String> cmd = new ArrayList<>();
-            if (dynamicLibC || staticLibCpp) {
+            if (customStaticLibs) {
                 cmd.add("-Wl,--push-state");
             }
             for (String lib : libs) {
@@ -338,12 +339,12 @@ public abstract class CCLinkerInvocation implements LinkerInvocation {
                 }
                 cmd.add("-l" + lib);
             }
-            if (dynamicLibC || staticLibCpp) {
+            if (customStaticLibs) {
                 cmd.add("-Wl,--pop-state");
             }
 
             // Make sure libgcc gets statically linked
-            if (dynamicLibC || staticLibCpp) {
+            if (customStaticLibs) {
                 cmd.add("-static-libgcc");
             }
             return cmd;
