@@ -822,7 +822,6 @@ public final class LLVMContext {
                 System.out.println("library loaded: " + this.libraryLoaded);
                 System.out.println("library paths: " + this.libraryPaths);
                 System.out.println("truffle files: " + this.truffleFiles);
-                System.out.println("source cache: " + this.getSourceContext());
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         } else {
@@ -837,7 +836,6 @@ public final class LLVMContext {
                 System.out.println("library loaded: " + this.libraryLoaded);
                 System.out.println("library paths: " + this.libraryPaths);
                 System.out.println("truffle files: " + this.truffleFiles);
-                System.out.println("source cache: " + this.getSourceContext());
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         }
