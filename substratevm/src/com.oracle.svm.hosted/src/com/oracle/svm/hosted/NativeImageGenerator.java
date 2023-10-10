@@ -58,7 +58,6 @@ import java.util.function.BooleanSupplier;
 
 import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
 import com.oracle.graal.pointsto.reports.causality.CausalityExport;
-import com.oracle.graal.pointsto.reports.causality.CausalityExportActivation;
 import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
 import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.svm.hosted.analysis.ReachabilityTracePrinter;
@@ -886,9 +885,9 @@ public class NativeImageGenerator {
                 if (AnalysisReportsOptions.PrintCausalityGraph.getValue(options)) {
                     // This cannot be done in the "CausalityExporter"-Feature since Feature-registration should already
                     // be logged by CausalityExport...
-                    CausalityExportActivation.activate(AnalysisReportsOptions.CausalityGraphWithTypeflow.getValue(options)
-                            ? CausalityExportActivation.ENABLED
-                            : CausalityExportActivation.ENABLED_WITHOUT_TYPEFLOW
+                    CausalityExport.activate(AnalysisReportsOptions.CausalityGraphWithTypeflow.getValue(options)
+                            ? CausalityExport.ActivationLevel.ENABLED
+                            : CausalityExport.ActivationLevel.ENABLED_WITHOUT_TYPEFLOW
                     );
                 }
 

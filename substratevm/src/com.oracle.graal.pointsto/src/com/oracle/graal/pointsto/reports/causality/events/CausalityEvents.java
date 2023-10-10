@@ -3,7 +3,7 @@ package com.oracle.graal.pointsto.reports.causality.events;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.reports.causality.CausalityExportActivation;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Signature;
@@ -157,18 +157,18 @@ public final class CausalityEvents {
 
 
     private static <T> EventFactory<T> factory(Function<T, CausalityEvent> constructor) {
-        if (CausalityExportActivation.getActivationStatus() == CausalityExportActivation.DISABLED) {
-            return new DummyEventFactory<>();
-        } else {
+        if (CausalityExport.isEnabled()) {
             return new InterningEventFactory<>(constructor);
+        } else {
+            return new DummyEventFactory<>();
         }
     }
 
     private static <T1, T2> EventFactory2<T1, T2> factory(BiFunction<T1, T2, CausalityEvent> constructor) {
-        if (CausalityExportActivation.getActivationStatus() == CausalityExportActivation.DISABLED) {
-            return new DummyEventFactory2<>();
-        } else {
+        if (CausalityExport.isEnabled()) {
             return new InterningEventFactory2<>(constructor);
+        } else {
+            return new DummyEventFactory2<>();
         }
     }
 
@@ -195,10 +195,10 @@ public final class CausalityEvents {
     public static final EventFactory<Class<?>> HeapObjectDynamicHub = factory(com.oracle.graal.pointsto.reports.causality.events.HeapObjectDynamicHub::new);
     public static final EventFactory<Class<?>> HeapObjectClass = factory(com.oracle.graal.pointsto.reports.causality.events.HeapObjectClass::new);
     public static final EventFactory<org.graalvm.nativeimage.hosted.Feature> Feature = factory(com.oracle.graal.pointsto.reports.causality.events.Feature::new);
-    public static final CodeEventFactory InlinedMethodCode = CausalityExportActivation.getActivationStatus() == CausalityExportActivation.DISABLED ? new DummyCodeEventFactory() : new InterningCodeEventFactory();
+    public static final CodeEventFactory InlinedMethodCode = CausalityExport.isEnabled() ? new InterningCodeEventFactory() : new DummyCodeEventFactory();
     public static final EventFactory2<BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Executable>, AnalysisMethod> OverrideReachableNotificationCallbackInvocation = factory(com.oracle.graal.pointsto.reports.causality.events.OverrideReachableNotificationCallbackInvocation::new);
     public static final EventFactory2<BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Class<?>>, AnalysisType> SubtypeReachableNotificationCallbackInvocation = factory(com.oracle.graal.pointsto.reports.causality.events.SubtypeReachableNotificationCallbackInvocation::new);
-    public static final JniCallVariantWrapperEventFactory JniCallVariantWrapper = CausalityExportActivation.getActivationStatus() == CausalityExportActivation.DISABLED ? new DummyJniCallVariantWrapperEventFactory() : new InterningJniCallVariantWrapperEventFactory();
+    public static final JniCallVariantWrapperEventFactory JniCallVariantWrapper = CausalityExport.isEnabled() ? new InterningJniCallVariantWrapperEventFactory() : new DummyJniCallVariantWrapperEventFactory();
     public static final EventFactory<AnnotatedElement> JNIRegistration = factory(com.oracle.graal.pointsto.reports.causality.events.JNIRegistration::new);
     public static final EventFactory<AnnotatedElement> ReflectionRegistration = factory(com.oracle.graal.pointsto.reports.causality.events.ReflectionRegistration::new);
     public static final EventFactory<AnnotatedElement> ReflectionObjectInHeap = factory(com.oracle.graal.pointsto.reports.causality.events.ReflectionObjectInHeap::new);

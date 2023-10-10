@@ -31,7 +31,7 @@ import java.util.function.Supplier;
 import static com.oracle.graal.pointsto.reports.causality.events.CausalityEvents.*;
 import static com.oracle.graal.pointsto.reports.causality.CausalityExport.*;
 
-class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.AbstractImpl {
+class BasicImpl<TContext extends BasicImpl.ThreadContext> extends CausalityImplementation {
     private final ConcurrentHashMap<Graph.DirectEdge, Boolean> direct_edges = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Graph.HyperEdge, Boolean> hyper_edges = new ConcurrentHashMap<>();
     private final Map<Object, Object> originsOfReplacedObjects = Collections.synchronizedMap(new IdentityHashMap<>());
@@ -83,12 +83,12 @@ class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.Abstract
         }
     }
 
-    protected Impl(Supplier<TContext> contextSupplier) {
+    protected BasicImpl(Supplier<TContext> contextSupplier) {
         threadContexts = ThreadLocal.withInitial(contextSupplier);
     }
 
-    public static Impl<ThreadContext> create() {
-        return new Impl<>(ThreadContext::new);
+    public static BasicImpl<ThreadContext> create() {
+        return new BasicImpl<>(ThreadContext::new);
     }
 
     private static <T> T asObject(BigBang bb, Class<T> tClass, JavaConstant constant) {

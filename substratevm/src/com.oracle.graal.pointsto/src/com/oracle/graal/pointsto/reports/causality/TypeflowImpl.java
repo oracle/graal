@@ -31,7 +31,7 @@ import java.util.function.Function;
 
 import static com.oracle.graal.pointsto.reports.causality.CausalityExport.*;
 
-class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
+class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
     private final ConcurrentHashMap<Pair<TypeFlow<?>, TypeFlow<?>>, Boolean> interflows = new ConcurrentHashMap<>();
 
     /**
@@ -40,7 +40,7 @@ class TypeflowImpl extends Impl<TypeflowImpl.ThreadContext> {
     private final ConcurrentHashMap<AbstractVirtualInvokeTypeFlow, TypeFlow<?>> originalInvokeReceivers = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Pair<CausalityEvent, TypeFlow<?>>, HashSet<AnalysisType>> flowingFromHeap = new ConcurrentHashMap<>();
 
-    public static final class ThreadContext extends Impl.ThreadContext {
+    public static final class ThreadContext extends BasicImpl.ThreadContext {
         public int currentlySaturatingDepth; // Inhibits the registration of new typeflow edges
 
         public final class SaturationHappeningToken implements NonThrowingAutoCloseable {

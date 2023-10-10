@@ -9,12 +9,43 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.meta.JavaConstant;
 
 import java.util.zip.ZipOutputStream;
 
 public class CausalityExport {
-    protected CausalityExport() {
+    private CausalityExport() {}
+
+    public enum ActivationLevel {
+        DISABLED,
+        ENABLED_WITHOUT_TYPEFLOW,
+        ENABLED
+    }
+
+    private static ActivationLevel requestedLevel = ActivationLevel.DISABLED;
+
+    /**
+     * Must be called before usage of {@link CausalityExport}.
+     */
+    public static void activate(ActivationLevel level) {
+        requestedLevel = level;
+        if (level != InitializationOnDemandHolder.frozenLevel) {
+            throw AnalysisError.shouldNotReachHere("Causality Export must have been activated before the first usage of CausalityExport");
+        }
+    }
+
+    private static final class InitializationOnDemandHolder {
+        private static final ActivationLevel frozenLevel = requestedLevel;
+        private static final CausalityImplementation instance = switch(frozenLevel) {
+            case ENABLED -> TypeflowImpl.createWithTypeflowTracking();
+            case ENABLED_WITHOUT_TYPEFLOW -> BasicImpl.create();
+            case DISABLED -> new CausalityImplementation();
+        };
+    }
+
+    public static boolean isEnabled() {
+        return InitializationOnDemandHolder.frozenLevel != ActivationLevel.DISABLED;
     }
 
     public static synchronized void dump(PointsToAnalysis bb, ZipOutputStream zip, boolean exportTypeflowNames) throws java.io.IOException {
@@ -22,52 +53,8 @@ public class CausalityExport {
         g.export(bb, zip, exportTypeflowNames);
     }
 
-    private static AbstractImpl get() {
-        return CausalityExportActivation.get();
-    }
-
-    public static class AbstractImpl {
-        protected void addVirtualInvokeTypeFlow(AbstractVirtualInvokeTypeFlow invocation) {}
-
-        protected void registerVirtualInvocation(PointsToAnalysis bb, AbstractVirtualInvokeTypeFlow invocation, AnalysisMethod concreteTargetMethod, AnalysisType concreteTargetType) {}
-
-        protected void registerTypeFlowEdge(TypeFlow<?> from, TypeFlow<?> to) {}
-
-        protected NonThrowingAutoCloseable setSaturationHappening() {
-            return null;
-        }
-
-        protected void registerEdge(CausalityEvent cause, CausalityEvent consequence) {}
-
-        protected void registerConjunctiveEdge(CausalityEvent cause1, CausalityEvent cause2, CausalityEvent consequence) {}
-
-        protected void registerEdgeFromHeapObject(BigBang bb, JavaConstant heapObject, ObjectScanner.ScanReason reason, CausalityEvent consequence) {}
-
-        protected void registerEdgeFromHeapObject(Object heapObject, ObjectScanner.ScanReason reason, CausalityEvent consequence) {}
-
-        protected CausalityEvent getHeapFieldAssigner(BigBang analysis, JavaConstant receiver, AnalysisField field, JavaConstant value) {
-            return null;
-        }
-
-        protected CausalityEvent getHeapArrayAssigner(BigBang analysis, JavaConstant array, int elementIndex, JavaConstant value) {
-            return null;
-        }
-
-        protected void registerTypeEntering(PointsToAnalysis bb, CausalityEvent cause, TypeFlow<?> destination, AnalysisType type) {}
-
-        protected void registerObjectReplacement(Object source, Object destination) {}
-
-        protected NonThrowingAutoCloseable setCause(CausalityEvent event, CausalityExport.HeapTracing level, boolean overwriteSilently) {
-            return null;
-        }
-
-        protected CausalityEvent getCause() {
-            return null;
-        }
-
-        protected Graph createCausalityGraph(PointsToAnalysis bb) {
-            throw new UnsupportedOperationException();
-        }
+    private static CausalityImplementation get() {
+        return InitializationOnDemandHolder.instance;
     }
 
     public enum HeapTracing {
