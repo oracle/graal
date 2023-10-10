@@ -103,23 +103,23 @@ public class NativeImageGeneratorRunner {
         arguments = extractDriverArguments(arguments);
         final String[] classPath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_CLASSPATH_PREFIX);
         final String[] modulePath = extractImagePathEntries(arguments, SubstrateOptions.IMAGE_MODULEPATH_PREFIX);
-        String watchPID = extractWatchPID(arguments);
+        String keepAliveFile = extractKeepAliveFile(arguments);
         TimerTask timerTask = null;
-        if (watchPID != null) {
+        if (keepAliveFile != null) {
             timerTask = new TimerTask() {
-                Path cmdFile = Paths.get(watchPID);
-                int cmdlineHashCode = 0;
+                Path file = Paths.get(keepAliveFile);
+                int fileHashCode = 0;
 
                 @Override
                 public void run() {
                     try {
-                        int currentCmdlineHashCode = Arrays.hashCode(Files.readAllBytes(cmdFile));
-                        if (cmdlineHashCode == 0) {
-                            cmdlineHashCode = currentCmdlineHashCode;
-                        } else if (currentCmdlineHashCode != cmdlineHashCode) {
-                            System.exit(ExitStatus.WATCHDOG_EXIT.getValue());
+                        int currentFileHashCode = Arrays.hashCode(Files.readAllBytes(file));
+                        if (fileHashCode == 0) {
+                            fileHashCode = currentFileHashCode;
+                        } else if (currentFileHashCode != fileHashCode) {
+                            throw new RuntimeException();
                         }
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         System.exit(ExitStatus.WATCHDOG_EXIT.getValue());
                     }
                 }
@@ -329,11 +329,11 @@ public class NativeImageGeneratorRunner {
         }
     }
 
-    public static String extractWatchPID(List<String> arguments) {
-        int cpIndex = arguments.indexOf(SubstrateOptions.WATCHPID_PREFIX);
+    public static String extractKeepAliveFile(List<String> arguments) {
+        int cpIndex = arguments.indexOf(SubstrateOptions.KEEP_ALIVE_PREFIX);
         if (cpIndex >= 0) {
             if (cpIndex + 1 >= arguments.size()) {
-                throw UserError.abort("ProcessID must be provided after the '%s' argument", SubstrateOptions.WATCHPID_PREFIX);
+                throw UserError.abort("Path to keep-alive file must be provided after the '%s' argument", SubstrateOptions.KEEP_ALIVE_PREFIX);
             }
             arguments.remove(cpIndex);
             String pidStr = arguments.get(cpIndex);
