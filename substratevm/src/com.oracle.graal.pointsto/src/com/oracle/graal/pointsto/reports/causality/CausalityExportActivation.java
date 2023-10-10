@@ -19,7 +19,7 @@ public enum CausalityExportActivation {
     }
 
     /**
-     * Must be called before any usage of {@link #get()}
+     * Must be called before any usage of {@link CausalityExport}.
      */
     public static void activate(CausalityExportActivation level) {
         requestedLevel = level;

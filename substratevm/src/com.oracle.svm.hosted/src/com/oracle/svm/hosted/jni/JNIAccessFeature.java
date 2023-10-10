@@ -338,7 +338,6 @@ public class JNIAccessFeature implements Feature {
         newMethods.clear();
 
         newFields.forEach((field, writable) -> {
-            // Ignore writable for now... Causality-TODO
             try (var ignored = CausalityExport.setCause(CausalityEvents.JNIRegistration.create(field))) {
                 addField(field, writable, access);
             }

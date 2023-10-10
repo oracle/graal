@@ -217,7 +217,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     public void registerAsJNIAccessed(AnalysisField field, boolean writable) {
         // Same as addRootField() and addRootStaticField():
         // create type flows for any subtype of the field's declared type
-        // Causality-TODO: Account this flow edge to the ongoing JNI registration processing somehow
         TypeFlow<?> declaredTypeFlow = field.getType().getTypeFlow(this, true);
         if (field.isStatic()) {
             declaredTypeFlow.addUse(this, field.getStaticFieldFlow());

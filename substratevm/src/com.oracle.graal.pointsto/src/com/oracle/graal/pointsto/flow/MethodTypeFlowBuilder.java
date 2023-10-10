@@ -198,7 +198,6 @@ public class MethodTypeFlowBuilder {
             return false;
         }
 
-        // This is for capturing sideeffects e.g. by SubstrateGraphBuilderPlugin.interceptUpdaterInvoke(...) which adds reflection
         try (var ignored = CausalityExport.setCause(CausalityEvents.InlinedMethodCode.create(method))) {
             graph = InlineBeforeAnalysis.decodeGraph(bb, method, analysisParsedGraph);
         }
@@ -1581,7 +1580,6 @@ public class MethodTypeFlowBuilder {
                         invokeFlow = bb.analysisPolicy().createStaticInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                         break;
                     case Special:
-                        // Causality-TODO: This adds one kind of overapproximation: When the DefaultSpecialInvokeTypeFlow can prove that the receiver is null, it won't make the target reachable.
                         CausalityExport.registerEdge(logicalCallerEvent, CausalityEvents.MethodImplementationInvoked.create(targetMethod));
                         invokeFlow = bb.analysisPolicy().createSpecialInvokeTypeFlow(invokeLocation, receiverType, targetMethod, actualParameters, actualReturn, multiMethodKey);
                         break;

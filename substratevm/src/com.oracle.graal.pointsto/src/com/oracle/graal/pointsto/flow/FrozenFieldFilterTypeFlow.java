@@ -61,7 +61,6 @@ public class FrozenFieldFilterTypeFlow extends TypeFlow<AnalysisField> {
          */
         TypeState fieldState = this.source.getInstanceFieldFlow().getState();
         return TypeState.forIntersection(bb, update, fieldState);
-        // Christoph-TODO: model intersection of type flows
     }
 
     @Override

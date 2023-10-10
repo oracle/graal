@@ -22,7 +22,7 @@ public class CausalityExport {
         g.export(bb, zip, exportTypeflowNames);
     }
 
-    protected static AbstractImpl get() {
+    private static AbstractImpl get() {
         return CausalityExportActivation.get();
     }
 

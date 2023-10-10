@@ -454,7 +454,7 @@ public class ObjectScanner {
 
     public abstract static class ScanReason {
         final ScanReason previous;
-        public final JavaConstant constant;
+        final JavaConstant constant;
 
         protected ScanReason(ScanReason previous, JavaConstant constant) {
             this.previous = previous;
@@ -463,6 +463,10 @@ public class ObjectScanner {
 
         public ScanReason getPrevious() {
             return previous;
+        }
+
+        public JavaConstant getConstant() {
+            return constant;
         }
 
         @SuppressWarnings("unused")

@@ -265,14 +265,14 @@ public abstract class ImageHeapScanner {
             if (typeFromClassConstant != null) {
                 CausalityEvent cause = null;
                 if (reason instanceof FieldScan fs) {
-                    cause = CausalityExport.getHeapFieldAssigner(bb, fs.constant, fs.getField(), constant);
+                    cause = CausalityExport.getHeapFieldAssigner(bb, fs.getConstant(), fs.getField(), constant);
                 } else if (reason instanceof ArrayScan as) {
-                    cause = CausalityExport.getHeapArrayAssigner(bb, as.constant, 0 /* Best-effort */, constant);
+                    cause = CausalityExport.getHeapArrayAssigner(bb, as.getConstant(), 0 /* Best-effort */, constant);
                 }
 
                 if (cause == null || cause instanceof UnknownHeapObject) {
                     // Objects created by the analysis itself would add too many types as roots...
-                    cause = CausalityEvents.Ignored; // Causality-TODO!
+                    cause = CausalityEvents.Ignored;
                 }
 
                 CausalityEvent typeObjectInHeap =
