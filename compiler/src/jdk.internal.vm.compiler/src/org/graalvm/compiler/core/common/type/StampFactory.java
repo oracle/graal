@@ -161,6 +161,30 @@ public class StampFactory {
         return forUnsignedInteger(bits, unsignedLowerBound, unsignedUpperBound, 0, CodeUtil.mask(bits));
     }
 
+    /**
+     * Creates an IntegerStamp from the given unsigned bounds and bit masks. This method returns an
+     * empty stamp if the unsigned lower bound is larger than the unsigned upper bound. If the sign
+     * of lower and upper bound differs after sign extension to the specified length ({@code bits}),
+     * this method returns an unrestricted stamp with respect to the bounds. {@code mayBeSet} or
+     * {@code mustBeSet} can restrict the bounds nevertheless. Take the following example when
+     * inverting a zero extended 32bit stamp to the 8bit stamp before extension:
+     *
+     * </p>
+     * 32bit stamp [0, 192] 00...00 xxxxxxx0
+     * </p>
+     * When converting the bounds to 8bit, they have different signs, i.e.:
+     * </p>
+     * lowerUnsigned = 0000 0000 and upperUnsigned = 1100 0000
+     * </p>
+     * In order to respect the (unsigned) boundaries of the extended value, the signed input can be:
+     * </p>
+     * 0000 0000 - 0111 1111, i.e. 0 to 127 </br>
+     * or </br>
+     * 1000 0000 - 1100 0000, i.e. -128 to -64
+     * </p>
+     * The resulting interval [-128, -64]u[0, 127] cannot be represented by a single upper and lower
+     * bound. Thus, we have to return an unrestricted stamp, with respect to the bounds.
+     */
     public static IntegerStamp forUnsignedInteger(int bits, long unsignedLowerBound, long unsignedUpperBound, long mustBeSet, long mayBeSet) {
         if (Long.compareUnsigned(unsignedLowerBound, unsignedUpperBound) > 0) {
             return IntegerStamp.createEmptyStamp(bits);
