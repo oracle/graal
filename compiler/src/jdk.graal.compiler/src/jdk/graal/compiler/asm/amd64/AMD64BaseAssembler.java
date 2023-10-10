@@ -78,9 +78,9 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
      */
     public static boolean supportsFullAVX512(EnumSet<CPUFeature> features) {
         return features.contains(CPUFeature.AVX512F) &&
-                features.contains(CPUFeature.AVX512BW) &&
-                features.contains(CPUFeature.AVX512VL) &&
-                features.contains(CPUFeature.AVX512DQ);
+                        features.contains(CPUFeature.AVX512BW) &&
+                        features.contains(CPUFeature.AVX512VL) &&
+                        features.contains(CPUFeature.AVX512DQ);
     }
 
     /**
@@ -89,7 +89,6 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
     public boolean supportsFullAVX512() {
         return supportsFullAVX512(getFeatures());
     }
-
 
     /**
      * @see #getSimdEncoder()

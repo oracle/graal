@@ -58,12 +58,12 @@ public class AMD64VectorUnary {
     public static final class AVXUnaryOp extends AMD64VectorInstruction {
         public static final LIRInstructionClass<AVXUnaryOp> TYPE = LIRInstructionClass.create(AVXUnaryOp.class);
 
-        @Opcode private final VexRROp opcode;
+        @Opcode private final VexRMOp opcode;
 
         @Def({OperandFlag.REG}) protected AllocatableValue result;
         @Use({OperandFlag.REG, OperandFlag.STACK}) protected AllocatableValue input;
 
-        public AVXUnaryOp(VexRROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
+        public AVXUnaryOp(VexRMOp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
             super(TYPE, size);
             this.opcode = opcode;
             this.result = result;
@@ -75,12 +75,29 @@ public class AMD64VectorUnary {
             if (isRegister(input)) {
                 opcode.emit(masm, size, asRegister(result), asRegister(input));
             } else {
-                if (opcode instanceof VexRMOp opcodeRM) {
-                    opcodeRM.emit(masm, size, asRegister(result), (AMD64Address) crb.asAddress(input));
-                } else {
-                    GraalError.shouldNotReachHere("must not emit vector RM unary for non RM opcode");
-                }
+                opcode.emit(masm, size, asRegister(result), (AMD64Address) crb.asAddress(input));
             }
+        }
+    }
+
+    public static final class AVXOpMaskUnaryOp extends AMD64VectorInstruction {
+        public static final LIRInstructionClass<AVXOpMaskUnaryOp> TYPE = LIRInstructionClass.create(AVXOpMaskUnaryOp.class);
+
+        @Opcode private final VexRROp opcode;
+
+        @Def({REG}) protected AllocatableValue result;
+        @Use({REG}) protected AllocatableValue input;
+
+        public AVXOpMaskUnaryOp(VexRROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
+            super(TYPE, size);
+            this.opcode = opcode;
+            this.result = result;
+            this.input = input;
+        }
+
+        @Override
+        public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
+            opcode.emit(masm, size, asRegister(result), asRegister(input));
         }
     }
 
