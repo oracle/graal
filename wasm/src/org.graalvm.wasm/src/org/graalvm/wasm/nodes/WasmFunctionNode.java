@@ -88,6 +88,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleContext;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -211,6 +212,21 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     @Override
     public void setOSRMetadata(Object osrMetadata) {
         this.osrMetadata = osrMetadata;
+    }
+
+    /** Preserve the first argument, i.e. the {@link WasmInstance}. */
+    @Override
+    public Object[] storeParentFrameInArguments(VirtualFrame parentFrame) {
+        CompilerAsserts.neverPartOfCompilation();
+        WasmInstance instance = ((WasmRootNode) getRootNode()).instance(parentFrame);
+        Object[] osrFrameArgs = new Object[]{instance, parentFrame};
+        assert WasmArguments.isValid(osrFrameArgs);
+        return osrFrameArgs;
+    }
+
+    @Override
+    public Frame restoreParentFrameFromArguments(Object[] arguments) {
+        return (Frame) arguments[1];
     }
 
     // endregion OSR support
