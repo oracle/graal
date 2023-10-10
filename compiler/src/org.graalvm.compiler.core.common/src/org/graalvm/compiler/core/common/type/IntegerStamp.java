@@ -161,7 +161,11 @@ public final class IntegerStamp extends PrimitiveStamp {
 
     @Override
     public IntegerStamp empty() {
-        return new IntegerStamp(getBits(), CodeUtil.maxValue(getBits()), CodeUtil.minValue(getBits()), CodeUtil.mask(getBits()), 0);
+        return createEmptyStamp(getBits());
+    }
+
+    static IntegerStamp createEmptyStamp(int bits) {
+        return new IntegerStamp(bits, CodeUtil.maxValue(bits), CodeUtil.minValue(bits), CodeUtil.mask(bits), 0);
     }
 
     @Override
@@ -1554,11 +1558,15 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 return StampFactory.forInteger(inputBits).empty();
                             }
 
-                            long inputMask = CodeUtil.mask(inputBits);
-                            long inputUpperBound = maxValueForMasks(inputBits, stamp.downMask() & inputMask, stamp.upMask() & inputMask);
-                            long inputLowerBound = minValueForMasks(inputBits, stamp.downMask() & inputMask, stamp.upMask() & inputMask);
+                            /*
+                             * The output of a zero extend cannot be negative. Setting the lower
+                             * bound > 0 enables inverting stamps like [-8, 16] without having to
+                             * return an unrestricted stamp.
+                             */
+                            long lowerBound = Math.max(stamp.lowerBound(), 0);
+                            assert stamp.upperBound() >= 0 : "Cannot invert ZeroExtend for stamp with msb=1, which implies a negative value after ZeroExtend!";
 
-                            return StampFactory.forIntegerWithMask(inputBits, inputLowerBound, inputUpperBound, stamp.downMask() & inputMask, stamp.upMask() & inputMask);
+                            return StampFactory.forUnsignedInteger(inputBits, lowerBound, stamp.upperBound(), stamp.downMask(), stamp.upMask());
                         }
                     },
 
@@ -1648,10 +1656,6 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 return StampFactory.forInteger(inputBits).empty();
                             }
 
-                            /*
-                             * Calculate bounds and mayBeSet/mustBeSet bits for the input based on
-                             * bit width and potentially inferred msb.
-                             */
                             long inputMask = CodeUtil.mask(inputBits);
                             long inputMustBeSet = stamp.downMask() & inputMask;
                             long inputMayBeSet = stamp.upMask() & inputMask;
@@ -1668,7 +1672,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                  * @formatter:on
                                  */
                                 if (zeroInExtension) {
-                                    long msbZeroMask = inputMask ^ (1 << (inputBits - 1));
+                                    long msbZeroMask = ~(1 << (inputBits - 1));
                                     inputMustBeSet &= msbZeroMask;
                                     inputMayBeSet &= msbZeroMask;
                                 } else if (oneInExtension) {
@@ -1678,8 +1682,20 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 }
                             }
 
+                            // Calculate conservative bounds for the input.
                             long inputUpperBound = maxValueForMasks(inputBits, inputMustBeSet, inputMayBeSet);
                             long inputLowerBound = minValueForMasks(inputBits, inputMustBeSet, inputMayBeSet);
+
+                            /*
+                             * If the bounds calculated for the input stamp do not overlap with the
+                             * bounds for the stamp to invert, return an empty stamp. Otherwise,
+                             * refine the conservative stamp for the input.
+                             */
+                            if ((stamp.upperBound() < inputLowerBound) || (stamp.lowerBound() > inputUpperBound)) {
+                                return createEmptyStamp(inputBits);
+                            }
+                            inputUpperBound = Math.min(inputUpperBound, stamp.upperBound());
+                            inputLowerBound = Math.max(inputLowerBound, stamp.lowerBound());
 
                             return StampFactory.forIntegerWithMask(inputBits, inputLowerBound, inputUpperBound, inputMustBeSet, inputMayBeSet);
                         }
