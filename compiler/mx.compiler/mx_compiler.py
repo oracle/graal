@@ -617,6 +617,16 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     # run Renaissance benchmarks #
     ###############################
     renaissance_suite = mx_java_benchmarks.RenaissanceBenchmarkSuite()
+    renaissance_gate_iterations = {
+        k: default_iterations for k, v in renaissance_suite.renaissanceIterations().items() if v > 0
+    }
+
+    for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+        iterations = renaissance_gate_iterations.get(name, -1)
+        with Task(prefix + 'Renaissance:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
+            if t:
+                _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
+
     with mx_gate.Task('Renaissance benchmark daily workload', tasks, tags=['renaissance_daily'], report=task_report_component) as t:
         if t:
             for name in renaissance_suite.benchmarkList(bmSuiteArgs):
