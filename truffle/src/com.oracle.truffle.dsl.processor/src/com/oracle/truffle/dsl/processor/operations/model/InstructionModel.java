@@ -56,6 +56,7 @@ public class InstructionModel implements PrettyPrintable {
         BRANCH_BACKWARD,
         BRANCH_FALSE,
         POP,
+        DUP,
         INSTRUMENTATION_ENTER,
         INSTRUMENTATION_EXIT,
         INSTRUMENTATION_LEAVE,
@@ -214,8 +215,6 @@ public class InstructionModel implements PrettyPrintable {
     // Immediate values that get encoded in the bytecode.
     public final List<InstructionImmediate> immediates = new ArrayList<>();
 
-    public boolean continueWhen;
-
     public List<InstructionModel> subInstructions;
 
     public InstructionModel(int id, InstructionKind kind, String name) {
@@ -267,6 +266,16 @@ public class InstructionModel implements PrettyPrintable {
         switch (kind) {
             case CUSTOM:
             case CUSTOM_SHORT_CIRCUIT:
+            case CUSTOM_QUICKENED:
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public boolean hasNodeImmediate() {
+        switch (kind) {
+            case CUSTOM:
             case CUSTOM_QUICKENED:
                 return true;
             default:

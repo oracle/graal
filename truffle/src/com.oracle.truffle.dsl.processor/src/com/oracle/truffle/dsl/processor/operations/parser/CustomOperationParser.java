@@ -83,6 +83,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeTypeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 import com.oracle.truffle.dsl.processor.java.model.GeneratedPackageElement;
+import com.oracle.truffle.dsl.processor.model.NodeData;
 import com.oracle.truffle.dsl.processor.operations.model.CustomOperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel;
 import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Signature;
@@ -91,6 +92,7 @@ import com.oracle.truffle.dsl.processor.operations.model.InstructionModel.Instru
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
+import com.oracle.truffle.dsl.processor.operations.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
 
@@ -99,13 +101,13 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     private final ProcessorContext context;
     private final OperationsModel parent;
     private final DeclaredType annotationType;
-    private final boolean validationOnly;
+    private final boolean forProxyValidation;
 
-    private CustomOperationParser(ProcessorContext context, OperationsModel parent, DeclaredType annotationType, boolean validationOnly) {
+    private CustomOperationParser(ProcessorContext context, OperationsModel parent, DeclaredType annotationType, boolean forProxyValidation) {
         this.context = context;
         this.parent = parent;
         this.annotationType = annotationType;
-        this.validationOnly = validationOnly;
+        this.forProxyValidation = forProxyValidation;
     }
 
     public static CustomOperationParser forProxyValidation() {
@@ -158,31 +160,124 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     public CustomOperationModel parseCustomOperation(TypeElement typeElement, AnnotationMirror mirror) {
-        OperationKind kind = isShortCircuit() ? OperationKind.CUSTOM_SHORT_CIRCUIT : OperationKind.CUSTOM_SIMPLE;
+        if (isShortCircuit()) {
+            return parseCustomShortCircuitOperation(typeElement, mirror);
+        } else {
+            return parseCustomRegularOperation(typeElement, mirror);
+        }
+    }
+
+    public CustomOperationModel parseCustomRegularOperation(TypeElement typeElement, AnnotationMirror mirror) {
+        String name = getCustomOperationName(typeElement, mirror);
+        CustomOperationModel customOperation = parent.customRegularOperation(OperationKind.CUSTOM_SIMPLE, name, typeElement, mirror);
+        if (customOperation == null) {
+            return null;
+        }
+
+        validateCustomOperation(customOperation, typeElement, mirror, name);
+        if (customOperation.hasErrors()) {
+            return customOperation;
+        }
+
+        CodeTypeElement generatedNode = createNodeForCustomInstruction(typeElement);
+        Signature signature = determineSignature(customOperation, generatedNode);
+        if (customOperation.hasErrors()) {
+            return customOperation;
+        }
+        assert signature != null : "Signature could not be computed, but no error was reported";
+        populateCustomOperationFields(customOperation.operation, signature);
+
+        customOperation.operation.instruction = createCustomInstruction(customOperation, typeElement, generatedNode, signature, name);
+
+        return customOperation;
+    }
+
+    public CustomOperationModel parseCustomShortCircuitOperation(TypeElement typeElement, AnnotationMirror mirror) {
+        String name = getCustomOperationName(typeElement, mirror);
+        CustomOperationModel customOperation = parent.customShortCircuitOperation(OperationKind.CUSTOM_SHORT_CIRCUIT, name, mirror);
+        if (customOperation == null) {
+            return null;
+        }
+
+        // All short-circuit operations have the same signature.
+        OperationModel operation = customOperation.operation;
+        operation.numChildren = 1;
+        operation.isVariadic = true;
+        operation.isVoid = false;
+        operation.operationArgumentTypes = new TypeMirror[0];
+        operation.childrenMustBeValues = new boolean[]{true};
+
+        boolean continueWhen = (boolean) ElementUtils.getAnnotationValue(customOperation.getTemplateTypeAnnotation(), "continueWhen").getValue();
+        boolean returnConvertedValue = (boolean) ElementUtils.getAnnotationValue(customOperation.getTemplateTypeAnnotation(), "returnConvertedValue").getValue();
+        /*
+         * NB: This creates a new operation for the boolean converter (or reuses one if such an
+         * operation already exists).
+         */
+        InstructionModel booleanConverterInstruction = getOrCreateBooleanConverterInstruction(customOperation, typeElement, mirror);
+        ShortCircuitInstructionModel instruction = parent.shortCircuitInstruction("sc." + name, continueWhen, returnConvertedValue, booleanConverterInstruction);
+        operation.instruction = instruction;
+
+        instruction.addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
+
+        return customOperation;
+    }
+
+    private InstructionModel getOrCreateBooleanConverterInstruction(CustomOperationModel customOperation, TypeElement typeElement, AnnotationMirror mirror) {
+        CustomOperationModel result = parent.getCustomOperationForType(typeElement);
+        if (result == null) {
+            result = CustomOperationParser.forCodeGeneration(parent, types.Operation).parseCustomOperation(typeElement, mirror);
+        }
+        if (result == null || result.hasErrors()) {
+            parent.addError(mirror, ElementUtils.getAnnotationValue(mirror, "booleanConverter"),
+                            "Encountered errors using %s as a boolean converter. These errors must be resolved before the DSL can proceed.", getSimpleName(typeElement));
+            return null;
+        }
+
+        List<ExecutableElement> specializations = findSpecializations(typeElement);
+        assert specializations.size() != 0;
+
+        boolean returnsBoolean = true;
+        for (ExecutableElement spec : specializations) {
+            if (spec.getReturnType().getKind() != TypeKind.BOOLEAN) {
+                returnsBoolean = false;
+                break;
+            }
+        }
+
+        Signature sig = result.operation.instruction.signature;
+        if (!returnsBoolean || sig.valueCount != 1 || sig.isVariadic || sig.localSetterCount > 0 || sig.localSetterRangeCount > 0) {
+            parent.addError(mirror, ElementUtils.getAnnotationValue(mirror, "booleanConverter"),
+                            "Specializations for boolean converter %s must only take one value parameter and return boolean.", getSimpleName(typeElement));
+            return null;
+        }
+
+        return result.operation.instruction;
+    }
+
+    private String getCustomOperationName(TypeElement typeElement, AnnotationMirror mirror) {
+        if (mirror != null && (isProxy() || isShortCircuit())) {
+            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, "name", false);
+            if (nameValue != null) {
+                return (String) nameValue.getValue();
+            }
+        }
 
         String name = typeElement.getSimpleName().toString();
         if (name.endsWith("Node")) {
             name = name.substring(0, name.length() - 4);
         }
+        return name;
+    }
 
-        if (isProxy() || isShortCircuit()) {
-            AnnotationValue nameValue = ElementUtils.getAnnotationValue(mirror, "name", false);
-            if (nameValue != null) {
-                name = (String) nameValue.getValue();
-            }
-        }
-
-        CustomOperationModel customOperation = parent.customOperation(kind, name, typeElement, mirror);
-        if (customOperation == null) {
-            return null;
-        }
-
+    /**
+     * Validates the operation specification. Reports any errors on the {@link customOperation}.
+     */
+    private void validateCustomOperation(CustomOperationModel customOperation, TypeElement typeElement, AnnotationMirror mirror, String name) {
         if (name.contains("_")) {
             customOperation.addError("Operation class name cannot contain underscores.");
         }
 
         boolean isNode = isAssignable(typeElement.asType(), types.NodeInterface);
-
         if (isNode) {
             if (isProxy()) {
                 AnnotationMirror generateCached = NodeParser.findGenerateAnnotation(typeElement.asType(), types.GenerateCached);
@@ -190,24 +285,20 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                     customOperation.addError(
                                     "Class %s does not generate a cached node, so it cannot be used as an OperationProxy. Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.",
                                     typeElement.getQualifiedName());
-                    return customOperation;
+                    return;
                 }
             }
         } else {
             // operation specification
-
             if (!typeElement.getModifiers().contains(Modifier.FINAL)) {
                 customOperation.addError("Operation class must be declared final. Inheritance in operation specifications is not supported.");
             }
-
             if (typeElement.getEnclosingElement().getKind() != ElementKind.PACKAGE && !typeElement.getModifiers().contains(Modifier.STATIC)) {
                 customOperation.addError("Operation class must not be an inner class (non-static nested class). Declare the class as static.");
             }
-
             if (typeElement.getModifiers().contains(Modifier.PRIVATE)) {
                 customOperation.addError("Operation class must not be declared private. Remove the private modifier to make it visible.");
             }
-
             if (!ElementUtils.isObject(typeElement.getSuperclass()) || !typeElement.getInterfaces().isEmpty()) {
                 customOperation.addError("Operation class must not extend any classes or implement any interfaces. Inheritance in operation specifications is not supported.");
             }
@@ -254,16 +345,19 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
             if (specialization.getModifiers().contains(Modifier.PRIVATE)) {
                 customOperation.addError(specialization, "Operation specialization cannot be private.");
-            } else if (!validationOnly && !ElementUtils.isVisible(parent.getTemplateType(), specialization)) {
+            } else if (!forProxyValidation && !ElementUtils.isVisible(parent.getTemplateType(), specialization)) {
                 // We can only perform visibility checks during generation.
                 parent.addError(mirror, null, "Operation %s's specialization \"%s\" must be visible from this node.", typeElement.getSimpleName(), specialization.getSimpleName());
             }
         }
+    }
 
-        if (customOperation.hasErrors()) {
-            return customOperation;
-        }
-
+    /*
+     * Creates a placeholder Node from the type element that will be passed to FlatNodeGenFactory.
+     * We remove any members that are not needed for code generation.
+     */
+    private CodeTypeElement createNodeForCustomInstruction(TypeElement typeElement) {
+        boolean isNode = isAssignable(typeElement.asType(), types.NodeInterface);
         CodeTypeElement nodeType;
         if (isNode) {
             nodeType = cloneTypeHierarchy(typeElement, ct -> {
@@ -283,55 +377,54 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         nodeType.setEnclosingElement(null);
 
-        Signature signature = determineSignature(customOperation, nodeType);
-        if (customOperation.hasErrors()) {
-            return customOperation;
+        return nodeType;
+    }
+
+    /**
+     * Adds annotations, methods, etc. to the {@link generatedNode} so that the desired code will be
+     * generated by {@link FlatNodeGenFactory} during code generation.
+     */
+    private void addCustomInstructionNodeMembers(TypeElement originalTypeElement, CodeTypeElement generatedNode, Signature signature) {
+        if (shouldGenerateUncached(originalTypeElement)) {
+            generatedNode.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
         }
 
-        if (signature == null) {
-            throw new AssertionError();
-        }
+        generatedNode.addAll(createExecuteMethods(signature, originalTypeElement));
 
-        // Use @GenerateUncached so that FlatNodeGenFactory generates an uncached execute method.
-        // The uncached interpreter will call this method.
-        if (shouldGenerateUncached(typeElement)) {
-            nodeType.addAnnotationMirror(new CodeAnnotationMirror(types.GenerateUncached));
-        }
-
-        nodeType.addAll(createExecuteMethods(signature, typeElement));
-
-        // Add @NodeChildren to this node for each argument to the operation. These get used by
-        // FlatNodeGenFactory to synthesize specialization logic. We remove the fields afterwards.
+        /*
+         * Add @NodeChildren to this node for each argument to the operation. These get used by
+         * FlatNodeGenFactory to synthesize specialization logic. Since we directly execute the
+         * children, we remove the fields afterwards.
+         */
         CodeAnnotationMirror nodeChildrenAnnotation = new CodeAnnotationMirror(types.NodeChildren);
         nodeChildrenAnnotation.setElementValue("value", new CodeAnnotationValue(createNodeChildAnnotations(signature).stream().map(CodeAnnotationValue::new).collect(Collectors.toList())));
-        nodeType.addAnnotationMirror(nodeChildrenAnnotation);
+        generatedNode.addAnnotationMirror(nodeChildrenAnnotation);
 
         if (parent.enableTracing) {
-            nodeType.addAnnotationMirror(new CodeAnnotationMirror(types.Introspectable));
+            generatedNode.addAnnotationMirror(new CodeAnnotationMirror(types.Introspectable));
         }
+    }
 
-        OperationModel underlyingOperation = customOperation.operation;
+    /**
+     * Uses the custom operation's {@link signature} to set the underlying {@link operation}'s
+     * fields.
+     */
+    private void populateCustomOperationFields(OperationModel operation, Signature signature) {
+        operation.numChildren = signature.valueCount;
+        operation.isVariadic = signature.isVariadic || isShortCircuit();
+        operation.isVoid = signature.isVoid;
 
-        underlyingOperation.numChildren = signature.valueCount;
-        underlyingOperation.isVariadic = signature.isVariadic || isShortCircuit();
-        underlyingOperation.isVoid = signature.isVoid;
-
-        underlyingOperation.operationArgumentTypes = new TypeMirror[signature.localSetterCount + signature.localSetterRangeCount];
+        operation.operationArgumentTypes = new TypeMirror[signature.localSetterCount + signature.localSetterRangeCount];
         for (int i = 0; i < signature.localSetterCount; i++) {
-            underlyingOperation.operationArgumentTypes[i] = types.OperationLocal;
+            operation.operationArgumentTypes[i] = types.OperationLocal;
         }
         for (int i = 0; i < signature.localSetterRangeCount; i++) {
             // todo: we might want to migrate this to a special type that validates order
             // e.g. OperationLocalRange
-            underlyingOperation.operationArgumentTypes[signature.localSetterCount + i] = new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal);
+            operation.operationArgumentTypes[signature.localSetterCount + i] = new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal);
         }
-
-        underlyingOperation.childrenMustBeValues = new boolean[signature.valueCount];
-        Arrays.fill(underlyingOperation.childrenMustBeValues, true);
-
-        underlyingOperation.instruction = createCustomInstruction(customOperation, nodeType, signature, name);
-
-        return customOperation;
+        operation.childrenMustBeValues = new boolean[signature.valueCount];
+        Arrays.fill(operation.childrenMustBeValues, true);
     }
 
     private boolean isShortCircuit() {
@@ -435,77 +528,94 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return ex;
     }
 
-    private InstructionModel createCustomInstruction(CustomOperationModel customOperation, CodeTypeElement nodeType, Signature signature, String nameSuffix) {
-        InstructionKind kind = isShortCircuit() ? InstructionKind.CUSTOM_SHORT_CIRCUIT : InstructionKind.CUSTOM;
-        String namePrefix = isShortCircuit() ? "sc." : "c.";
-
-        InstructionModel instr = parent.instruction(kind, namePrefix + nameSuffix);
-        instr.nodeType = nodeType;
+    /**
+     * Creates and registers a new instruction for a custom operation.
+     *
+     * This method calls into the Truffle DSL's regular {@link NodeParser Node parsing} logic to
+     * generate a {@link NodeData node model} that will later be used by {@link FlatNodeGenFactory
+     * code generation} to generate code for the instruction.
+     */
+    private InstructionModel createCustomInstruction(CustomOperationModel customOperation, TypeElement originalTypeElement, CodeTypeElement generatedNode, Signature signature, String nameSuffix) {
+        InstructionModel instr = parent.instruction(InstructionKind.CUSTOM, "c." + nameSuffix);
+        instr.nodeType = generatedNode;
         instr.signature = signature;
+        instr.nodeData = parseGeneratedNode(customOperation, originalTypeElement, generatedNode, signature);
 
-        /*
-         * Here, we use the NodeParser to validate the node specification. A proxied node will
-         * already be validated during regular DSL processing, but we also need to ensure any
-         * cache/guard expressions are visible to the generated operation node.
-         *
-         * We skip this step during Proxyable validation since we don't have an operation node to
-         * check visibility against.
-         */
-        if (!validationOnly) {
-            try {
-                NodeParser parser = NodeParser.createOperationParser(parent.getTemplateType());
-                instr.nodeData = parser.parse(nodeType, false);
-            } catch (Throwable ex) {
-                StringWriter wr = new StringWriter();
-                ex.printStackTrace(new PrintWriter(wr));
-                customOperation.addError("Error generating instruction for Operation node %s: \n%s", parent.getName(), wr.toString());
-                return instr;
+        for (int i = 0; i < signature.valueCount; i++) {
+            if (signature.canBoxingEliminateValue(i)) {
+                instr.addImmediate(ImmediateKind.BYTECODE_INDEX, "child" + i + "_bci");
             }
-
-            if (instr.nodeData == null) {
-                customOperation.addError("Error generating instruction for Operation node %s. This is likely a bug in the Operation DSL.", parent.getName());
-                return instr;
-            }
-
-            if (instr.nodeData.getTypeSystem().isDefault()) {
-                instr.nodeData.setTypeSystem(parent.typeSystem);
-            }
-
-            instr.nodeData.redirectMessages(parent);
-            instr.nodeData.redirectMessagesOnGeneratedElements(parent);
         }
 
-        if (isShortCircuit()) {
-            instr.continueWhen = (boolean) ElementUtils.getAnnotationValue(customOperation.getTemplateTypeAnnotation(), "continueWhen").getValue();
-            instr.addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
-            instr.addImmediate(ImmediateKind.NODE, "node");
-        } else {
-            for (int i = 0; i < signature.valueCount; i++) {
-                if (signature.canBoxingEliminateValue(i)) {
-                    instr.addImmediate(ImmediateKind.BYTECODE_INDEX, "child" + i + "_bci");
-                }
-            }
-
-            for (int i = 0; i < signature.localSetterCount; i++) {
-                instr.addImmediate(ImmediateKind.LOCAL_SETTER, "local_setter" + i);
-            }
-
-            for (int i = 0; i < signature.localSetterRangeCount; i++) {
-                instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_START, "local_setter_range_start" + i);
-                instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_LENGTH, "local_setter_range_length" + i);
-            }
-            // NB: Node-to-bci lookups rely on the node being the last immediate.
-            instr.addImmediate(ImmediateKind.NODE, "node");
+        for (int i = 0; i < signature.localSetterCount; i++) {
+            instr.addImmediate(ImmediateKind.LOCAL_SETTER, "local_setter" + i);
         }
+
+        for (int i = 0; i < signature.localSetterRangeCount; i++) {
+            instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_START, "local_setter_range_start" + i);
+            instr.addImmediate(ImmediateKind.LOCAL_SETTER_RANGE_LENGTH, "local_setter_range_length" + i);
+        }
+        // NB: Node-to-bci lookups rely on the node being the last immediate.
+        instr.addImmediate(ImmediateKind.NODE, "node");
 
         return instr;
     }
 
-    private Signature determineSignature(CustomOperationModel customOperation, CodeTypeElement nodeType) {
-        List<ExecutableElement> specializations = findSpecializations(nodeType);
+    /**
+     * Use the {@link NodeParser} to parse the generated node specification.
+     */
+    private NodeData parseGeneratedNode(CustomOperationModel customOperation, TypeElement originalTypeElement, CodeTypeElement generatedNode, Signature signature) {
+        if (forProxyValidation) {
+            /*
+             * A proxied node, by virtue of being a {@link Node}, will already be parsed and
+             * validated during regular DSL processing. Re-parsing it here would lead to duplicate
+             * error messages on the node itself.
+             *
+             * NB: We cannot check whether a Proxyable node's cache/guard expressions are visible
+             * since it is not associated with a bytecode node during validation. This extra check
+             * will happen when a bytecode node using this proxied node is generated.
+             */
+            return null;
+        }
+
+        // Add members to the generated node so that the proper node specification is parsed.
+        addCustomInstructionNodeMembers(originalTypeElement, generatedNode, signature);
+
+        NodeData result;
+        try {
+            NodeParser parser = NodeParser.createOperationParser(parent.getTemplateType());
+            result = parser.parse(generatedNode, false);
+        } catch (Throwable ex) {
+            StringWriter wr = new StringWriter();
+            ex.printStackTrace(new PrintWriter(wr));
+            customOperation.addError("Error generating instruction for Operation node %s: \n%s", parent.getName(), wr.toString());
+            return null;
+        }
+
+        if (result == null) {
+            customOperation.addError("Error generating instruction for Operation node %s. This is likely a bug in the Operation DSL.", parent.getName());
+            return null;
+        }
+
+        if (result.getTypeSystem().isDefault()) {
+            result.setTypeSystem(parent.typeSystem);
+        }
+
+        result.redirectMessages(parent);
+        result.redirectMessagesOnGeneratedElements(parent);
+
+        return result;
+    }
+
+    /*
+     * Computes a {@link Signature} from the node's set of specializations. Returns {@code null} if
+     * there are no specializations or the specializations do not share a common signature.
+     */
+    private Signature determineSignature(CustomOperationModel customOperation, CodeTypeElement generatedNode) {
+        List<ExecutableElement> specializations = findSpecializations(generatedNode);
 
         if (specializations.size() == 0) {
-            customOperation.addError("Operation class %s contains no specializations.", nodeType.getSimpleName());
+            customOperation.addError("Operation class %s contains no specializations.", generatedNode.getSimpleName());
             return null;
         }
 
@@ -522,13 +632,6 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
                 isValid = false;
             } else {
                 isValid = mergeSignatures(customOperation, signature, other, spec) && isValid;
-            }
-
-            if (other != null && isShortCircuit()) {
-                if (spec.getReturnType().getKind() != TypeKind.BOOLEAN || other.valueCount != 1 || other.isVariadic || other.localSetterCount > 0 || other.localSetterRangeCount > 0) {
-                    customOperation.addError(spec, "Boolean converter operation specializations must only take one value parameter and return boolean.");
-                    isValid = false;
-                }
             }
         }
 
@@ -719,7 +822,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
     }
 
     private boolean shouldGenerateUncached(TypeElement typeElement) {
-        if (validationOnly) {
+        if (forProxyValidation) {
             /*
              * NB: When we're just validating a Proxyable node, we do not know whether it'll be used
              * in an uncached interpreter. However, a Proxyable can only be used in an uncached

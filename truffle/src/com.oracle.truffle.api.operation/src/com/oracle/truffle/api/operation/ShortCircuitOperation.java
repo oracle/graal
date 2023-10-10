@@ -46,13 +46,98 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+/**
+ * Declares a short-circuiting operation. The specification of a short-circuiting operation defines
+ * a short-circuiting bytecode instruction in the generated interpreter. Whereas regular operations
+ * evaluate all of their operands eagerly, short-circuiting operations evaluate them one at a time.
+ *
+ * Semantically, a short-circuiting operation produces the first operand that, when
+ * {@link #booleanConverter converted to a boolean}, does not match the {{@link #continueWhen}
+ * field. If all operands are evaluated, the last operand becomes the result.
+ *
+ * For example, the following code declares a short-circuiting "or" operation that continues to
+ * evaluate operands as long as they coerce to {@code false}:
+ *
+ * <pre>
+ * &#64;GenerateOperations(...)
+ * &#64;ShortCircuitOperation(name = "Or", continueWhen = false, booleanConverter = CoerceBoolean.class)
+ * public static final class MyBytecodeNode extends RootNode implements OperationRootNode {
+ *   &#64;Operation
+ *   public static final class CoerceBoolean {
+ *     &#64;Specialization
+ *     public static boolean fromInt(int x) { return x != 0; }
+ *     &#64;Specialization
+ *     public static boolean fromBool(boolean x) { return x; }
+ *     @Specialization
+ *     public static boolean fromObject(Object x) { return x != null; }
+ *   }
+ *
+ *   ...
+ * }
+ * </pre>
+ *
+ * In pseudocode, the {@code Or} operation declared above has the following semantics:
+ *
+ * <pre>
+ * value_1 = // compute operand_1
+ * if CoerceBoolean(value_1) != false
+ *   return value_1
+ *
+ * value_2 = // compute operand_2
+ * if CoerceBoolean(value_2) != false
+ *   return value_2
+ *
+ * ...
+ *
+ * value_n = // compute operand_n
+ * return value_n
+ * </pre>
+ *
+ * Since the operand value itself gets produced, short-circuit operations can be used to implement
+ * null-coalescing operations (e.g., {@code someArray or []} in Python).
+ * {{@link #returnConvertedValue} can be used to return the converted value if the boolean is
+ * desired instead.
+ */
 @Retention(RetentionPolicy.SOURCE)
 @Target(ElementType.TYPE)
 @Repeatable(ShortCircuitOperations.class)
 public @interface ShortCircuitOperation {
+    /**
+     * The name of this operation.
+     */
     String name();
 
+    /**
+     * The value to compare {@link #booleanConverter converted} operand values against. The operands
+     * will continue to be executed as long as their converted values match the value of
+     * {@link #continueWhen}.
+     *
+     * For example, when this field is {@code false}, each operand will be evaluated as long as its
+     * converted value is {@code false}. The first operand that gets converted to {@code true} will
+     * be returned by this operation (or, if they are all {@code false}, the last operand will be
+     * returned).
+     */
     boolean continueWhen();
 
+    /**
+     * A node or operation class. The short-circuit operation uses this class to convert each
+     * operand value to a {@code boolean} value that will be compared against {@link #continueWhen}.
+     *
+     * The class can be (but does not need to be) declared as an {@link Operation} or
+     * {@link OperationProxy}. If it is not declared as either, it will undergo the same validation
+     * as an {@link Operation} (see the Javadoc for the specific requirements). In addition, such a
+     * node/operation must:
+     * <ul>
+     * <li>Only have specializations returning {@code boolean}.
+     * <li>Only have specializations that take a single parameter.
+     * </ul>
+     */
     Class<?> booleanConverter() default void.class;
+
+    /**
+     * Whether to return the boolean value produced after {@link #booleanConverter conversion}. By
+     * default, the original (unconverted) value is returned. If only the boolean value is needed
+     * (e.g., to implement a condition), this field can be set to {@code true}.
+     */
+    boolean returnConvertedValue() default false;
 }

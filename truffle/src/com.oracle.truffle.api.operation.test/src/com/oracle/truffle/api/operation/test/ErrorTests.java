@@ -62,6 +62,7 @@ import com.oracle.truffle.api.operation.LocalSetterRange;
 import com.oracle.truffle.api.operation.Operation;
 import com.oracle.truffle.api.operation.OperationProxy;
 import com.oracle.truffle.api.operation.OperationRootNode;
+import com.oracle.truffle.api.operation.ShortCircuitOperation;
 import com.oracle.truffle.api.operation.Variadic;
 import com.oracle.truffle.api.operation.test.subpackage.NestedNodeOperationProxy;
 import com.oracle.truffle.api.operation.test.subpackage.NonPublicGuardExpressionOperationProxy;
@@ -574,6 +575,40 @@ public class ErrorTests {
     public abstract static class NoOperationsTest extends RootNode implements OperationRootNode {
         protected NoOperationsTest(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
+        }
+    }
+
+    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @ExpectError({
+                    "Specializations for boolean converter ToBooleanBadReturn must only take one value parameter and return boolean.",
+                    "Encountered errors using ToBooleanBadOperation as a boolean converter. These errors must be resolved before the DSL can proceed."
+    })
+    @ShortCircuitOperation(name = "Foo", continueWhen = true, booleanConverter = BadBooleanConverterTest.ToBooleanBadReturn.class)
+    @ShortCircuitOperation(name = "Bar", continueWhen = true, booleanConverter = BadBooleanConverterTest.ToBooleanBadOperation.class)
+    public abstract static class BadBooleanConverterTest extends RootNode implements OperationRootNode {
+        protected BadBooleanConverterTest(TruffleLanguage<?> language, FrameDescriptor builder) {
+            super(language, builder);
+        }
+
+        @Operation
+        public static final class ToBooleanBadReturn {
+            @Specialization
+            public static boolean fromInt(int x) {
+                return x != 0;
+            }
+
+            @Specialization
+            public static int badSpec(boolean x) {
+                return 42;
+            }
+        }
+
+        public static final class ToBooleanBadOperation {
+            @Specialization
+            @ExpectError("Operation specializations must be static. This method should be rewritten as a static specialization.")
+            public boolean fromInt(int x) {
+                return x != 0;
+            }
         }
     }
 
