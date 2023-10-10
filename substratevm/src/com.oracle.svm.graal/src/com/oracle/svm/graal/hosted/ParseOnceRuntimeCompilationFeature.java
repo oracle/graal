@@ -46,7 +46,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import jdk.compiler.graal.graph.NodeSourcePosition;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -108,6 +107,7 @@ import jdk.compiler.graal.debug.DebugContext;
 import jdk.compiler.graal.debug.DebugHandlersFactory;
 import jdk.compiler.graal.debug.Indent;
 import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.graph.NodeSourcePosition;
 import jdk.compiler.graal.java.BytecodeParser;
 import jdk.compiler.graal.java.GraphBuilderPhase;
 import jdk.compiler.graal.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -130,6 +130,7 @@ import jdk.compiler.graal.phases.OptimisticOptimizations;
 import jdk.compiler.graal.phases.Phase;
 import jdk.compiler.graal.phases.PhaseSuite;
 import jdk.compiler.graal.phases.common.CanonicalizerPhase;
+import jdk.compiler.graal.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.compiler.graal.phases.common.IterativeConditionalEliminationPhase;
 import jdk.compiler.graal.phases.tiers.HighTierContext;
 import jdk.compiler.graal.phases.util.Providers;
@@ -591,20 +592,19 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
          */
         aMethod.setAnalyzedGraph(null);
 
-        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-        IterativeConditionalEliminationPhase conditionalElimination = new IterativeConditionalEliminationPhase(canonicalizer, true);
-        ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuard = new ConvertDeoptimizeToGuardPhase(canonicalizer);
-
         try (DebugContext.Scope s = debug.scope("RuntimeOptimize", graph, method, this)) {
+            CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
             canonicalizer.apply(graph, runtimeCompilationProviders);
 
-            conditionalElimination.apply(graph, runtimeCompilationProviders);
+            new DominatorBasedGlobalValueNumberingPhase(canonicalizer).apply(graph, runtimeCompilationProviders);
+
+            new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, runtimeCompilationProviders);
 
             /*
              * ConvertDeoptimizeToGuardPhase was already executed after parsing, but optimizations
              * applied in between can provide new potential.
              */
-            convertDeoptimizeToGuard.apply(graph, runtimeCompilationProviders);
+            new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, runtimeCompilationProviders);
 
             /*
              * More optimizations can be added here.
