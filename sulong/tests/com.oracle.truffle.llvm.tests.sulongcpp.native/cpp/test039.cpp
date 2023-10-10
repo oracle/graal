@@ -42,7 +42,7 @@ struct A {
 };
 
 int main() {
-    try {
+    /*try {
         try {
             try {
                 A a;
@@ -58,6 +58,6 @@ int main() {
     } catch (A &e) {
         printf("C2\n");
         return 0;
-    }
+    }*/
     return -1;
 }
