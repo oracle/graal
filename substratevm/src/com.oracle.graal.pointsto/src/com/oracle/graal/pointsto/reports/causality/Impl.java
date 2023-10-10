@@ -17,6 +17,7 @@ import com.oracle.graal.pointsto.reports.causality.events.InlinedMethodCode;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.meta.JavaConstant;
 
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
@@ -33,7 +34,7 @@ import static com.oracle.graal.pointsto.reports.causality.CausalityExport.*;
 class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.AbstractImpl {
     private final ConcurrentHashMap<Graph.DirectEdge, Boolean> direct_edges = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Graph.HyperEdge, Boolean> hyper_edges = new ConcurrentHashMap<>();
-    private final Map<Object, Object> originsOfReplacedObjects = new IdentityHashMap<>();
+    private final Map<Object, Object> originsOfReplacedObjects = Collections.synchronizedMap(new IdentityHashMap<>());
 
     private final ThreadLocal<TContext> threadContexts;
 
@@ -235,9 +236,7 @@ class Impl<TContext extends Impl.ThreadContext> extends CausalityExport.Abstract
     @Override
     protected void registerObjectReplacement(Object source, Object destination) {
         if (destination != source) {
-            synchronized (originsOfReplacedObjects) {
-                originsOfReplacedObjects.put(destination, source);
-            }
+            originsOfReplacedObjects.put(destination, source);
         }
     }
 
