@@ -1998,11 +1998,15 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 return createEmptyStamp(inputBits);
                             }
 
-                            long inputMask = CodeUtil.mask(inputBits);
-                            long inputUpperBound = maxValueForMasks(inputBits, stamp.mustBeSet() & inputMask, stamp.mayBeSet() & inputMask);
-                            long inputLowerBound = minValueForMasks(inputBits, stamp.mustBeSet() & inputMask, stamp.mayBeSet() & inputMask);
+                            /*
+                             * The output of a zero extend cannot be negative. Setting the lower
+                             * bound > 0 enables inverting stamps like [-8, 16] without having to
+                             * return an unrestricted stamp.
+                             */
+                            long lowerBound = Math.max(stamp.lowerBound(), 0);
+                            assert stamp.upperBound() >= 0 : "Cannot invert ZeroExtend for stamp with msb=1, which implies a negative value after ZeroExtend!";
 
-                            return StampFactory.forIntegerWithMask(inputBits, inputLowerBound, inputUpperBound, stamp.mustBeSet() & inputMask, stamp.mayBeSet() & inputMask);
+                            return StampFactory.forUnsignedInteger(inputBits, lowerBound, stamp.upperBound(), stamp.mustBeSet(), stamp.mayBeSet());
                         }
                     },
 
@@ -2092,10 +2096,6 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 return createEmptyStamp(inputBits);
                             }
 
-                            /*
-                             * Calculate bounds and mayBeSet/mustBeSet bits for the input based on
-                             * bit width and potentially inferred msb.
-                             */
                             long inputMask = CodeUtil.mask(inputBits);
                             long inputMustBeSet = stamp.mustBeSet() & inputMask;
                             long inputMayBeSet = stamp.mayBeSet() & inputMask;
@@ -2112,7 +2112,7 @@ public final class IntegerStamp extends PrimitiveStamp {
                                  * @formatter:on
                                  */
                                 if (zeroInExtension) {
-                                    long msbZeroMask = inputMask ^ (1 << (inputBits - 1));
+                                    long msbZeroMask = ~(1 << (inputBits - 1));
                                     inputMustBeSet &= msbZeroMask;
                                     inputMayBeSet &= msbZeroMask;
                                 } else if (oneInExtension) {
@@ -2122,8 +2122,20 @@ public final class IntegerStamp extends PrimitiveStamp {
                                 }
                             }
 
+                            // Calculate conservative bounds for the input.
                             long inputUpperBound = maxValueForMasks(inputBits, inputMustBeSet, inputMayBeSet);
                             long inputLowerBound = minValueForMasks(inputBits, inputMustBeSet, inputMayBeSet);
+
+                            /*
+                             * If the bounds calculated for the input stamp do not overlap with the
+                             * bounds for the stamp to invert, return an empty stamp. Otherwise,
+                             * refine the conservative stamp for the input.
+                             */
+                            if ((stamp.upperBound() < inputLowerBound) || (stamp.lowerBound() > inputUpperBound)) {
+                                return createEmptyStamp(inputBits);
+                            }
+                            inputUpperBound = Math.min(inputUpperBound, stamp.upperBound());
+                            inputLowerBound = Math.max(inputLowerBound, stamp.lowerBound());
 
                             return StampFactory.forIntegerWithMask(inputBits, inputLowerBound, inputUpperBound, inputMustBeSet, inputMayBeSet);
                         }
