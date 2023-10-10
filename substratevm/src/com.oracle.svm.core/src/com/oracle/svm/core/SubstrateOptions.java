@@ -58,6 +58,7 @@ import com.oracle.svm.core.option.RuntimeOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.thread.VMOperationControl;
 import com.oracle.svm.core.util.UserError;
+import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
@@ -105,6 +106,16 @@ public class SubstrateOptions {
     @APIOption(name = "-o", valueSeparator = APIOption.WHITESPACE_SEPARATOR)//
     @Option(help = "Name of the output file to be generated", type = OptionType.User)//
     public static final HostedOptionKey<String> Name = new HostedOptionKey<>("");
+
+    /**
+     * Configures the number of threads of the common pool (see driver).
+     */
+    @APIOption(name = "parallelism")//
+    @Option(help = "The maximum number of threads to use concurrently during native image generation.")//
+    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.max(1, Math.min(Runtime.getRuntime().availableProcessors(), 32)), key -> {
+        int numberOfThreads = key.getValue();
+        VMError.guarantee(numberOfThreads >= 1, "Number of threads must be at least 1. Validation should have happened in driver.");
+    });
 
     @APIOption(name = "shared")//
     @Option(help = "Build shared library")//

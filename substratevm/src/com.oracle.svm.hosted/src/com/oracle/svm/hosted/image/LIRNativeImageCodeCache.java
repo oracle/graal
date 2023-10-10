@@ -30,7 +30,6 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
@@ -139,7 +138,7 @@ public class LIRNativeImageCodeCache extends NativeImageCodeCache {
 
     @SuppressWarnings("try")
     @Override
-    public void layoutMethods(DebugContext debug, BigBang bb, ForkJoinPool threadPool) {
+    public void layoutMethods(DebugContext debug, BigBang bb) {
 
         try (Indent indent = debug.logAndIndent("layout methods")) {
             // Assign initial location to all methods.

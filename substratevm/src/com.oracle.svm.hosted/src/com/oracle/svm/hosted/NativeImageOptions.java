@@ -40,7 +40,6 @@ import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.serviceprovider.GraalServices;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
-import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.option.APIOption;
 import com.oracle.svm.core.option.BundleMember;
@@ -49,7 +48,6 @@ import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationOptions;
 import com.oracle.svm.hosted.util.CPUType;
 import com.oracle.svm.util.StringUtil;
@@ -188,21 +186,7 @@ public class NativeImageOptions {
         }
     }
 
-    /**
-     * Configures the number of threads used by the {@link CompletionExecutor}.
-     */
-    @APIOption(name = "parallelism")//
-    @Option(help = "The maximum number of threads to use concurrently during native image generation.")//
-    public static final HostedOptionKey<Integer> NumberOfThreads = new HostedOptionKey<>(Math.max(2, Math.min(Runtime.getRuntime().availableProcessors(), 32)), key -> {
-        int numberOfThreads = key.getValue();
-        VMError.guarantee(numberOfThreads >= 2, "Number of threads must be at least 2. Validation should have happened in driver.");
-    });
-
-    /*
-     * Analysis scales well up to 12 cores and gives slight improvements until 18 cores. We set the
-     * default value to 16 to minimize wasted resources in large machines.
-     */
-    @Option(help = "The number of threads to use for analysis during native image generation. The number must be smaller than the NumberOfThreads.", deprecated = true, deprecationMessage = "Please use '--parallelism' instead.")//
+    @Option(help = "Deprecated, option no longer has any effect", deprecated = true, deprecationMessage = "Please use '--parallelism' instead.")//
     public static final HostedOptionKey<Integer> NumberOfAnalysisThreads = new HostedOptionKey<>(-1);
 
     @Option(help = "Return after analysis")//
@@ -214,13 +198,13 @@ public class NativeImageOptions {
     @Option(help = "Exit after writing relocatable file")//
     public static final HostedOptionKey<Boolean> ExitAfterRelocatableImageWrite = new HostedOptionKey<>(false);
 
-    @Option(help = "Throw unsafe operation offset errors.)")//
+    @Option(help = "Throw unsafe operation offset errors.")//
     public static final HostedOptionKey<Boolean> ThrowUnsafeOffsetErrors = new HostedOptionKey<>(true);
 
-    @Option(help = "Print unsafe operation offset warnings.)")//
+    @Option(help = "Print unsafe operation offset warnings.")//
     public static final HostedOptionKey<Boolean> ReportUnsafeOffsetWarnings = new HostedOptionKey<>(false);
 
-    @Option(help = "Print unsafe operation offset warnings.)")//
+    @Option(help = "Print unsafe operation offset warnings.")//
     public static final HostedOptionKey<Boolean> UnsafeOffsetWarningsAreFatal = new HostedOptionKey<>(false);
 
     /**
@@ -272,22 +256,4 @@ public class NativeImageOptions {
             }
         }
     };
-
-    public static int getNumberOfAnalysisThreads(int maxNumberOfThreads, OptionValues optionValues) {
-        int analysisThreads;
-        if (NumberOfAnalysisThreads.hasBeenSet(optionValues)) {
-            analysisThreads = NumberOfAnalysisThreads.getValue(optionValues);
-        } else {
-            analysisThreads = Math.min(maxNumberOfThreads, DEFAULT_MAX_ANALYSIS_SCALING);
-        }
-        if (analysisThreads < 2) {
-            throw UserError.abort("Number of analysis threads was set to " + analysisThreads + ". Please set the '-H:NumberOfAnalysisThreads' option to at least 2.");
-        }
-        if (analysisThreads > maxNumberOfThreads) {
-            throw UserError.abort(
-                            "NumberOfAnalysisThreads is not allowed to be larger than the number of threads set with the '--parallelism' option. Please set the '-H:NumberOfAnalysisThreads' option to a value between 1 and " +
-                                            (maxNumberOfThreads + 1) + ".");
-        }
-        return analysisThreads;
-    }
 }

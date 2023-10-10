@@ -27,7 +27,6 @@ package com.oracle.svm.hosted.analysis;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.util.concurrent.ForkJoinPool;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.options.OptionValues;
@@ -66,10 +65,9 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe,
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
-                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForkJoinPool executor, UnsupportedFeatures unsupportedFeatures,
+                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, UnsupportedFeatures unsupportedFeatures,
                     TimerCollection timerCollection) {
-        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executor, unsupportedFeatures, timerCollection,
-                        SubstrateOptions.parseOnce());
+        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, timerCollection, SubstrateOptions.parseOnce());
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         dynamicHubInitializer = new DynamicHubInitializer(this);

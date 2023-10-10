@@ -44,15 +44,6 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
-import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
-import jdk.graal.compiler.core.common.SuppressFBWarnings;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.Indent;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeList;
-import jdk.graal.compiler.options.OptionValues;
-import jdk.graal.compiler.word.WordTypes;
-
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
@@ -86,6 +77,13 @@ import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeList;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -111,9 +109,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
 
     @SuppressWarnings("this-escape")
     public PointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection,
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection,
                     boolean strengthenGraalGraphs) {
-        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, unsupportedFeatures, timerCollection);
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, timerCollection);
         this.typeFlowTimer = timerCollection.createTimer("(typeflow)");
 
         this.strengthenGraalGraphs = strengthenGraalGraphs;
@@ -535,16 +533,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         /* Initialize for the next iteration. */
         executor.init(timing);
         return didSomeWork;
-    }
-
-    @SuppressFBWarnings(value = "NP_NONNULL_PARAM_VIOLATION", justification = "ForkJoinPool does support null for the exception handler.")
-    public static ForkJoinPool createExecutor(DebugContext debug, int numberOfThreads) {
-        ForkJoinPool.ForkJoinWorkerThreadFactory factory = debugThreadFactory(debug.areScopesEnabled() || debug.areMetricsEnabled() ? debug : null);
-        return new ForkJoinPool(numberOfThreads, factory, null, false);
-    }
-
-    private static ForkJoinPool.ForkJoinWorkerThreadFactory debugThreadFactory(DebugContext debug) {
-        return pool -> new SubstrateWorkerThread(pool, debug);
     }
 
     @Override

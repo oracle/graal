@@ -42,7 +42,6 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.TimerTask;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -74,7 +73,6 @@ import com.oracle.svm.core.util.InterruptImageBuilding;
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.UserError.UserException;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;
 import com.oracle.svm.hosted.code.CEntryPointData;
 import com.oracle.svm.hosted.image.AbstractImage.NativeImageKind;
 import com.oracle.svm.hosted.option.HostedOptionParser;
@@ -375,9 +373,6 @@ public class NativeImageGeneratorRunner {
             return ExitStatus.OK.getValue();
         }
 
-        ForkJoinPool analysisExecutor = null;
-        ForkJoinPool compilationExecutor = null;
-
         ProgressReporter reporter = new ProgressReporter(parsedHostedOptions);
         Throwable vmError = null;
         boolean wasSuccessfulBuild = false;
@@ -524,21 +519,8 @@ public class NativeImageGeneratorRunner {
                     mainEntryPointData = createMainEntryPointData(imageKind, mainEntryPoint);
                 }
 
-                /*
-                 * Since the main thread helps to process analysis and compilation tasks (see use of
-                 * awaitQuiescence() in CompletionExecutor), subtract one to determine the number of
-                 * dedicated threads in ForkJoinPools.
-                 */
-                final int numberOfHelpingThreads = 1; // main thread
-                int numberOfThreads = NativeImageOptions.NumberOfThreads.getValue(parsedHostedOptions);
-                int numberOfAnalysisThreads = NativeImageOptions.getNumberOfAnalysisThreads(numberOfThreads, parsedHostedOptions) - numberOfHelpingThreads;
-                int numberOfCompilationThreads = numberOfThreads - numberOfHelpingThreads;
-                analysisExecutor = NativeImagePointsToAnalysis.createExecutor(debug, numberOfAnalysisThreads);
-                compilationExecutor = NativeImagePointsToAnalysis.createExecutor(debug, numberOfCompilationThreads);
-
                 generator = createImageGenerator(classLoader, optionParser, mainEntryPointData, reporter);
-                generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY,
-                                compilationExecutor, analysisExecutor, optionParser.getRuntimeOptionNames(), timerCollection);
+                generator.run(entryPoints, javaMainSupport, imageName, imageKind, SubstitutionProcessor.IDENTITY, optionParser.getRuntimeOptionNames(), timerCollection);
                 wasSuccessfulBuild = true;
             } finally {
                 if (!wasSuccessfulBuild) {
@@ -546,12 +528,6 @@ public class NativeImageGeneratorRunner {
                 }
             }
         } catch (InterruptImageBuilding e) {
-            if (analysisExecutor != null) {
-                analysisExecutor.shutdownNow();
-            }
-            if (compilationExecutor != null) {
-                compilationExecutor.shutdownNow();
-            }
             throw e;
         } catch (FallbackFeature.FallbackImageRequest e) {
             if (FallbackExecutor.class.getName().equals(SubstrateOptions.Class.getValue())) {

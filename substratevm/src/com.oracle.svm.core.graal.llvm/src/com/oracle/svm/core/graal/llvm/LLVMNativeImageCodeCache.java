@@ -42,10 +42,10 @@ import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import com.oracle.svm.core.SubstrateOptions;
 import org.graalvm.collections.Pair;
 import jdk.graal.compiler.code.CompilationResult;
 import jdk.graal.compiler.core.common.NumUtil;
@@ -117,9 +117,9 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
     @Override
     @SuppressWarnings({"unused", "try"})
-    public void layoutMethods(DebugContext debug, BigBang bb, ForkJoinPool threadPool) {
+    public void layoutMethods(DebugContext debug, BigBang bb) {
         try (Indent indent = debug.logAndIndent("layout methods")) {
-            BatchExecutor executor = new BatchExecutor(bb, threadPool);
+            BatchExecutor executor = new BatchExecutor(bb);
             try (StopTimer t = TimerCollection.createTimerAndStart("(bitcode)")) {
                 writeBitcode(executor);
             }
@@ -153,7 +153,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
 
     private int createBitcodeBatches(BatchExecutor executor, DebugContext debug) {
         batchSize = LLVMOptions.LLVMMaxFunctionsPerBatch.getValue();
-        int numThreads = executor.getExecutor().parallelism();
+        int numThreads = SubstrateOptions.NumberOfThreads.getValue();
         int idealSize = NumUtil.divideAndRoundUp(methodIndex.length, numThreads);
         if (idealSize < batchSize) {
             batchSize = idealSize;

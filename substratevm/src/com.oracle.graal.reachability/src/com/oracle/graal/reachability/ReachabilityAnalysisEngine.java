@@ -30,7 +30,6 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ForkJoinPool;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.core.common.type.TypedConstant;
@@ -80,9 +79,9 @@ public abstract class ReachabilityAnalysisEngine extends AbstractAnalysisEngine 
 
     @SuppressWarnings("this-escape")
     public ReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, ForkJoinPool executorService, UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection,
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, TimerCollection timerCollection,
                     ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
-        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, unsupportedFeatures, timerCollection);
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, timerCollection);
         this.executor.init(getTiming());
         this.reachabilityTimer = timerCollection.createTimer("(reachability)");
 

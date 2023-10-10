@@ -28,7 +28,6 @@ package com.oracle.graal.pointsto.standalone;
 
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ForkJoinPool;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.options.OptionValues;
@@ -48,12 +47,9 @@ import jdk.vm.ci.meta.ConstantReflectionProvider;
 public class StandalonePointsToAnalysis extends PointsToAnalysis {
     private final Set<AnalysisMethod> addedClinits = ConcurrentHashMap.newKeySet();
 
-    public StandalonePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM,
-                    AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
-                    ForkJoinPool executorService, TimerCollection timerCollection) {
-        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, new UnsupportedFeatures(), timerCollection,
-                        true);
+    public StandalonePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, TimerCollection timerCollection) {
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, new UnsupportedFeatures(), timerCollection, true);
     }
 
     @Override

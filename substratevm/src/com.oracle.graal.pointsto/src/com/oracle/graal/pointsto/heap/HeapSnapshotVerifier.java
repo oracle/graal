@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.heap;
 import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 
 import java.util.Objects;
-import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 
 import jdk.graal.compiler.options.Option;
@@ -74,8 +73,8 @@ public class HeapSnapshotVerifier {
         verbosity = Options.HeapVerifierVerbosity.getValue(bb.getOptions());
     }
 
-    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, ForkJoinPool threadPool, String stage) {
-        CompletionExecutor executor = new CompletionExecutor(bb, threadPool);
+    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, String stage) {
+        CompletionExecutor executor = new CompletionExecutor(bb);
         executor.init();
         return checkHeapSnapshot(metaAccess, executor, stage, false);
     }
