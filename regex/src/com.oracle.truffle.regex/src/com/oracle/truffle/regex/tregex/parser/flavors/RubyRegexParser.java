@@ -616,12 +616,6 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         }
     }
 
-    private void wrapCurTermInAtomicGroup() {
-        if (!silent) {
-            astBuilder.wrapCurTermInAtomicGroup();
-        }
-    }
-
     // Error reporting
 
     private RegexSyntaxException syntaxErrorAtEnd(String message) {
@@ -2014,10 +2008,7 @@ public final class RubyRegexParser implements RegexValidator, RegexParser {
         Quantifier quantifier = parseQuantifier(ch);
         if (quantifier != null) {
             if (canHaveQuantifier) {
-                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy));
-                if (quantifier.possessive) {
-                    wrapCurTermInAtomicGroup();
-                }
+                addQuantifier(Token.createQuantifier(quantifier.lower, quantifier.upper, quantifier.greedy, quantifier.possessive));
             } else {
                 throw syntaxErrorAt(RbErrorMessages.NOTHING_TO_REPEAT, start);
             }

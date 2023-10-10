@@ -211,6 +211,9 @@ public final class PythonRegexParser implements RegexParser {
                 case nonCaptureGroupBegin:
                     astBuilder.pushGroup(token);
                     break;
+                case atomicGroupBegin:
+                    astBuilder.pushAtomicGroup(token);
+                    break;
                 case lookAheadAssertionBegin:
                     astBuilder.pushLookAheadAssertion(token, ((Token.LookAheadAssertionBegin) token).isNegated());
                     break;

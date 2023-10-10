@@ -714,20 +714,32 @@ public final class RegexASTBuilder {
         } else {
             if (quantifier.getMin() == 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup ||
                             curTerm.isCharacterClass() && curTerm.asCharacterClass().getCharSet().matchesNothing())) {
+                // NB: If JavaScript ever gets possessive quantifiers, we might have to adjust this.
                 removeCurTerm();
                 return;
             }
         }
         if (quantifier.getMin() > 0 && (curTerm.isLookAroundAssertion() || curTermIsZeroWidthGroup)) {
-            // quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
-            // ignore.
+            // Quantifying LookAroundAssertions doesn't do anything if quantifier.getMin() > 0, so
+            // ignore. A possessive quantifier would still result in atomicity.
+            if (quantifier.isPossessive()) {
+                wrapCurTermInAtomicGroup();
+            }
             return;
         }
         if (quantifier.getMin() == 1 && quantifier.getMax() == 1) {
             // x{1,1} -> x
+            if (quantifier.isPossessive()) {
+                wrapCurTermInAtomicGroup();
+            }
             return;
         }
         curTerm = addQuantifier(curTerm, quantifier);
+        if (quantifier.isPossessive()) {
+            wrapCurTermInAtomicGroup();
+            // do not attempt to merge quantifiers when possessive quantifiers are present
+            return;
+        }
         // merge equal successive quantified terms
         if (curSequence.size() > 1) {
             Term prevTerm = curSequence.getTerms().get(curSequence.size() - 2);

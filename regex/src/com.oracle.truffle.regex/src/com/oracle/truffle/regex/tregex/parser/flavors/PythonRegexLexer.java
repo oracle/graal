@@ -330,6 +330,11 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
+    protected boolean featureEnabledPossessiveQuantifiers() {
+        return true;
+    }
+
+    @Override
     protected boolean featureEnabledCharClassFirstBracketIsLiteral() {
         return true;
     }
@@ -747,6 +752,8 @@ public final class PythonRegexLexer extends RegexLexer {
                         throw syntaxErrorAtRel(PyErrorMessages.unknownExtensionP(ch2), 3);
                 }
             }
+            case '>':
+                return Token.createAtomicGroupBegin();
             case '(':
                 return parseConditionalBackReference();
             case '-':
