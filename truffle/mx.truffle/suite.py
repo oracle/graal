@@ -1716,6 +1716,7 @@ suite = {
       "maven": {
           "tag": ["default", "public"],
       },
+      "noMavenJavadoc": True,
     },
 
     "TRUFFLE_TCK_TESTS_LANGUAGE" : {
@@ -1850,7 +1851,12 @@ suite = {
         "sdk:POLYGLOT_TCK",
         "TRUFFLE_SL",
       ],
-      "maven" : False
+      "description" : "Truffle TCK provider for SL language.",
+      "maven" : {
+        "artifactId": "sl-truffle-tck",
+        "tag": ["default", "public"],
+      },
+      "noMavenJavadoc": True,
     },
 
     "TRUFFLE_ST" : {
