@@ -256,6 +256,7 @@ import com.oracle.svm.hosted.substitute.DeletedFieldsPlugin;
 import com.oracle.svm.hosted.substitute.UnsafeAutomaticSubstitutionProcessor;
 import com.oracle.svm.hosted.util.CPUTypeAArch64;
 import com.oracle.svm.hosted.util.CPUTypeAMD64;
+import com.oracle.svm.hosted.util.CPUTypeRISCV64;
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.ImageBuildStatistics;
 import com.oracle.svm.util.ReflectionUtil;
@@ -486,8 +487,7 @@ public class NativeImageGenerator {
             int deoptScratchSpace = 2 * 8; // Space for two 64-bit registers: r0 and v0.
             return new SubstrateTargetDescription(architecture, true, 16, 0, deoptScratchSpace, runtimeCheckedFeatures);
         } else if (includedIn(platform, Platform.RISCV64.class)) {
-            // TODO: Implement CPUTypeRISCV64
-            EnumSet<RISCV64.CPUFeature> features = EnumSet.noneOf(RISCV64.CPUFeature.class);
+            EnumSet<RISCV64.CPUFeature> features = CPUTypeRISCV64.getSelectedFeatures();
             features.addAll(parseCSVtoEnum(RISCV64.CPUFeature.class, NativeImageOptions.CPUFeatures.getValue().values(), RISCV64.CPUFeature.values()));
             RISCV64 architecture = new RISCV64(features, RISCV64CPUFeatureAccess.enabledRISCV64Flags());
             // runtime checked features are the same as static features on RISCV64 for now
