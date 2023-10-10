@@ -488,6 +488,39 @@ public final class TruffleBaseFeature implements InternalFeature {
 
         Class<?> frameClass = config.findClassByName("com.oracle.truffle.api.impl.FrameWithoutBoxing");
         config.registerFieldValueTransformer(config.findField(frameClass, "ASSERTIONS_ENABLED"), new AssertionStatusFieldTransformer(frameClass));
+        registerInternalResourceFieldValueTransformers(config);
+    }
+
+    private static void registerInternalResourceFieldValueTransformers(BeforeAnalysisAccessImpl config) {
+        Class<?> internalResourceCacheClass = config.findClassByName("com.oracle.truffle.polyglot.InternalResourceCache");
+        Class<?> internalResourceRootsClass = config.findClassByName("com.oracle.truffle.polyglot.InternalResourceRoots");
+        Class<?> resetableCacheRootClass = config.findClassByName("com.oracle.truffle.polyglot.InternalResourceCache$ResettableCachedRoot");
+        Field cacheRootField = ReflectionUtil.lookupField(true, internalResourceCacheClass, "cacheRoot");
+        if (cacheRootField != null) {
+            // graalvm-23.1.0
+            assert internalResourceRootsClass == null;
+            config.registerFieldValueTransformer(cacheRootField, ResetFieldValueTransformer.INSTANCE);
+            config.registerFieldValueTransformer(ReflectionUtil.lookupField(false, resetableCacheRootClass, "resourceCacheRoot"), ResetFieldValueTransformer.INSTANCE);
+        } else {
+            // graalvm-24.0
+            assert resetableCacheRootClass == null;
+            config.registerFieldValueTransformer(ReflectionUtil.lookupField(false, internalResourceCacheClass, "owningRoot"), ResetFieldValueTransformer.INSTANCE);
+            config.registerFieldValueTransformer(ReflectionUtil.lookupField(false, internalResourceCacheClass, "path"), ResetFieldValueTransformer.INSTANCE);
+            config.registerFieldValueTransformer(ReflectionUtil.lookupField(false, internalResourceRootsClass, "roots"), ResetFieldValueTransformer.INSTANCE);
+        }
+    }
+
+    private static final class ResetFieldValueTransformer implements FieldValueTransformer {
+
+        private static final FieldValueTransformer INSTANCE = new ResetFieldValueTransformer();
+
+        private ResetFieldValueTransformer() {
+        }
+
+        @Override
+        public Object transform(Object receiver, Object originalValue) {
+            return null;
+        }
     }
 
     private static class AssertionStatusFieldTransformer implements FieldValueTransformer {
@@ -1371,14 +1404,6 @@ final class Target_com_oracle_truffle_polyglot_LanguageCache {
 @TargetClass(className = "com.oracle.truffle.polyglot.InternalResourceCache", onlyWith = TruffleBaseFeature.IsEnabled.class)
 final class Target_com_oracle_truffle_polyglot_InternalResourceCache {
 
-    /*
-     * The field cannot be reset from the #afterAnalysis(). The reset comes too late for the
-     * String-must-not-contain-the-home-directory verification in DisallowedImageHeapObjectFeature,
-     * so we do the implicit reset using a substitution.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    private static volatile Pair<Path, Boolean> cacheRoot;
-
     @Alias @RecomputeFieldValue(kind = Kind.Custom, declClass = UseInternalResourcesComputer.class, isFinal = true) //
     private static boolean useInternalResources;
 
@@ -1393,18 +1418,6 @@ final class Target_com_oracle_truffle_polyglot_InternalResourceCache {
             return TruffleBaseFeature.Options.CopyLanguageResources.getValue();
         }
     }
-}
-
-@TargetClass(className = "com.oracle.truffle.polyglot.InternalResourceCache$ResettableCachedRoot", onlyWith = TruffleBaseFeature.IsEnabled.class)
-final class Target_com_oracle_truffle_polyglot_InternalResourceCache_ResettableCachedRoot {
-
-    /*
-     * The field cannot be reset from the #afterAnalysis(). The reset comes too late for the
-     * String-must-not-contain-the-home-directory verification in DisallowedImageHeapObjectFeature,
-     * so we do the implicit reset using a substitution.
-     */
-    @Alias @RecomputeFieldValue(kind = Kind.Reset) //
-    private volatile Path resourceCacheRoot;
 }
 
 @TargetClass(className = "com.oracle.truffle.object.CoreLocations$DynamicObjectFieldLocation", onlyWith = TruffleBaseFeature.IsEnabled.class)

@@ -2612,10 +2612,10 @@ public class ContextPreInitializationTest {
             try {
                 TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
                 assertNotNull(root);
-                assertFalse(root.isAbsolute());
+                assertTrue(root.isAbsolute());
                 TruffleFile resource = root.resolve(ContextPreInitializationResource.FILE_NAME);
                 assertNotNull(resource);
-                assertFalse(resource.isAbsolute());
+                assertTrue(resource.isAbsolute());
                 assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(resource.readAllBytes(), StandardCharsets.UTF_8));
                 files.add(resource);
             } catch (IOException ioe) {
@@ -2628,16 +2628,16 @@ public class ContextPreInitializationTest {
         return (env) -> {
             try {
                 TruffleFile file1 = files.get(0);
-                assertFalse(file1.isAbsolute());
+                assertTrue(file1.isAbsolute());
                 assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(file1.readAllBytes(), StandardCharsets.UTF_8));
                 ContextPreInitializationResource.unpackCount = 0;
                 TruffleFile root = env.getInternalResource(ContextPreInitializationResource.class);
                 assertNotNull(root);
-                assertFalse(root.isAbsolute());
+                assertTrue(root.isAbsolute());
                 assertEquals(0, ContextPreInitializationResource.unpackCount);
                 TruffleFile file2 = root.resolve(ContextPreInitializationResource.FILE_NAME);
                 assertNotNull(file2);
-                assertFalse(file2.isAbsolute());
+                assertTrue(file2.isAbsolute());
                 assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(file2.readAllBytes(), StandardCharsets.UTF_8));
                 assertEquals(file1, file2);
                 assertEquals(file1.getAbsoluteFile(), file2.getAbsoluteFile());
@@ -2696,14 +2696,14 @@ public class ContextPreInitializationTest {
         Assume.assumeFalse("Cannot run as native unittest", ImageInfo.inImageRuntimeCode());
         setPatchable(FIRST);
         AtomicReference<TruffleFile> rootRef = new AtomicReference<>();
-        ContextPreInitializationFirstInstrument.actions = Collections.singletonMap("onCreate", (e) -> {
+        ContextPreInitializationFirstInstrument.actions = Collections.singletonMap("onContextCreated", (e) -> {
             try {
                 TruffleFile root = e.env.getInternalResource(ContextPreInitializationResource.class);
                 assertNotNull(root);
-                assertFalse(root.isAbsolute());
+                assertTrue(root.isAbsolute());
                 TruffleFile resource = root.resolve(ContextPreInitializationResource.FILE_NAME);
                 assertNotNull(resource);
-                assertFalse(resource.isAbsolute());
+                assertTrue(resource.isAbsolute());
                 assertEquals(ContextPreInitializationResource.FILE_CONTENT, new String(resource.readAllBytes(), StandardCharsets.UTF_8));
                 rootRef.set(root);
             } catch (IOException ioe) {
@@ -2739,7 +2739,7 @@ public class ContextPreInitializationTest {
         Path overriddenCacheRoot = Files.createTempDirectory(null).toRealPath();
         Engine.copyResources(overriddenCacheRoot, FIRST);
         System.setProperty("polyglot.engine.resourcePath", overriddenCacheRoot.toRealPath().toString());
-        TemporaryResourceCacheRoot.reset(false);
+        TemporaryResourceCacheRoot.reset(true);
         try {
             BaseLanguage.registerAction(ContextPreInitializationTestFirstLanguage.class, ActionKind.ON_PATCH_CONTEXT,
                             newResourceExecutionTimeVerifier(files, overriddenCacheRoot.toString()));

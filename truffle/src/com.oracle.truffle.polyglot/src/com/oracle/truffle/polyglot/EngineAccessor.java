@@ -715,8 +715,6 @@ final class EngineAccessor extends Accessor {
             if (polyglotObject instanceof PolyglotLanguageContext languageContext) {
                 PolyglotContextImpl polyglotContext = languageContext.context;
                 return polyglotContext.getEngine().inEnginePreInitialization && polyglotContext.parent == null;
-            } else if (polyglotObject instanceof PolyglotEngineImpl polyglotEngine) {
-                return polyglotEngine.inEnginePreInitialization;
             } else if (polyglotObject instanceof EmbedderFileSystemContext) {
                 return false;
             } else {
@@ -1006,7 +1004,7 @@ final class EngineAccessor extends Accessor {
                 fileSystemConfig = creatorConfig.fileSystemConfig;
             } else {
                 FileSystem publicFileSystem = FileSystems.newNoIOFileSystem();
-                FileSystem internalFileSystem = PolyglotEngineImpl.ALLOW_IO ? FileSystems.newLanguageHomeFileSystem() : publicFileSystem;
+                FileSystem internalFileSystem = PolyglotEngineImpl.ALLOW_IO ? FileSystems.newResourcesFileSystem() : publicFileSystem;
                 fileSystemConfig = new FileSystemConfig(api.getIOAccessNone(), publicFileSystem, internalFileSystem);
             }
 
@@ -1270,8 +1268,6 @@ final class EngineAccessor extends Accessor {
         public boolean isSocketIOAllowed(Object engineFileSystemContext) {
             if (engineFileSystemContext instanceof PolyglotLanguageContext languageContext) {
                 return languageContext.getImpl().getIO().hasHostSocketAccess(languageContext.context.config.fileSystemConfig.ioAccess);
-            } else if (engineFileSystemContext instanceof PolyglotEngineImpl) {
-                return false;
             } else if (engineFileSystemContext instanceof EmbedderFileSystemContext) {
                 return true;
             } else {
@@ -1532,25 +1528,8 @@ final class EngineAccessor extends Accessor {
         }
 
         @Override
-        public String getRelativePathInLanguageHome(TruffleFile truffleFile) {
-            return FileSystems.getRelativePathInLanguageHome(truffleFile);
-        }
-
-        @Override
-        public TruffleFile relativizeToInternalResourceCache(TruffleFile truffleFile) {
-            FileSystem fs = LANGUAGE.getFileSystem(truffleFile);
-            if (FileSystems.isInternalResourceFileSystem(fs)) {
-                if (truffleFile.isAbsolute()) {
-                    Path root = fs.parsePath(FileSystems.getInternalResourceFileSystemRoot(fs).get().toString());
-                    Path path = LANGUAGE.getPath(truffleFile);
-                    if (path.startsWith(root)) {
-                        return LANGUAGE.getTruffleFile(root.relativize(path), LANGUAGE.getFileSystemContext(truffleFile));
-                    }
-                } else {
-                    return truffleFile;
-                }
-            }
-            return null;
+        public String getRelativePathInResourceRoot(TruffleFile truffleFile) {
+            return FileSystems.getRelativePathInResourceRoot(truffleFile);
         }
 
         @Override
@@ -2077,28 +2056,22 @@ final class EngineAccessor extends Accessor {
         }
 
         private static TruffleFile getInternalResource(Object owner, String resourceId, boolean failIfMissing) throws IOException {
-            Map<String, TruffleFile> cachedRoots;
             InternalResourceCache resourceCache;
             String componentId;
             Supplier<Collection<String>> supportedResourceIds;
-            if (owner instanceof PolyglotLanguageContext languageContext) {
-                PolyglotLanguage polyglotLanguage = languageContext.language;
-                cachedRoots = polyglotLanguage.internalResources;
-                LanguageCache cache = polyglotLanguage.cache;
+            PolyglotLanguageContext languageContext;
+            if (owner instanceof PolyglotLanguageContext) {
+                languageContext = (PolyglotLanguageContext) owner;
+                LanguageCache cache = languageContext.language.cache;
                 resourceCache = cache.getResourceCache(resourceId);
                 componentId = cache.getId();
                 supportedResourceIds = cache::getResourceIds;
             } else if (owner instanceof PolyglotInstrument polyglotInstrument) {
-                cachedRoots = polyglotInstrument.internalResources;
                 InstrumentCache cache = polyglotInstrument.cache;
                 resourceCache = cache.getResourceCache(resourceId);
                 componentId = cache.getId();
                 supportedResourceIds = cache::getResourceIds;
-            } else if (owner instanceof PolyglotEngineImpl) {
-                cachedRoots = null;
-                resourceCache = InternalResourceCache.getEngineResource(resourceId);
-                componentId = PolyglotEngineImpl.ENGINE_ID;
-                supportedResourceIds = InternalResourceCache::getEngineResourceIds;
+                languageContext = getPolyglotContext(null).getHostContext();
             } else {
                 throw CompilerDirectives.shouldNotReachHere("Unsupported owner " + owner);
             }
@@ -2110,17 +2083,18 @@ final class EngineAccessor extends Accessor {
                     return null;
                 }
             }
-            TruffleFile root = cachedRoots != null ? cachedRoots.get(resourceId) : null;
-            if (root == null) {
-                PolyglotEngineImpl polyglotEngine = ((VMObject) owner).getEngine();
-                Object fsContext = EngineAccessor.LANGUAGE.createFileSystemContext(polyglotEngine, resourceCache.getResourceFileSystem(polyglotEngine));
-                root = EngineAccessor.LANGUAGE.getTruffleFile(".", fsContext);
-                if (cachedRoots != null) {
-                    var prevValue = cachedRoots.putIfAbsent(resourceId, root);
-                    root = prevValue != null ? prevValue : root;
-                }
+            Path rootPath = resourceCache.getPath(languageContext.getEngine());
+            return EngineAccessor.LANGUAGE.getTruffleFile(rootPath.toString(), languageContext.getInternalFileSystemContext());
+        }
+
+        @Override
+        public Path getEngineResource(Object polyglotEngine, String resourceId) throws IOException {
+            InternalResourceCache resourceCache = InternalResourceCache.getEngineResource(resourceId);
+            if (resourceCache != null) {
+                return resourceCache.getPath((PolyglotEngineImpl) polyglotEngine);
+            } else {
+                return null;
             }
-            return root;
         }
 
         @Override
