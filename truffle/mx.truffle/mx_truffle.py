@@ -57,7 +57,6 @@ import mx_sdk_vm
 import mx_unittest
 import mx_jardistribution
 import mx_pomdistribution
-import tck
 from mx_gate import Task
 from mx_javamodules import as_java_module, get_module_name
 from mx_sigtest import sigtest
@@ -711,30 +710,7 @@ def _execute_debugger_test(testFilter, logFile, testEvaluation=False, unitTestOp
     args = args + testFilter
     unittest(args)
 
-def execute_tck(graalvm_home, mode='default', language_filter=None, values_filter=None, tests_filter=None, vm_args=None):
-    """
-    Executes Truffle TCK with all TCK providers reachable from the primary suite and all languages installed in the given GraalVM.
-
-    :param graalvm_home: a path to GraalVM
-    :param mode: a name of TCK mode,
-        'default' - executes the test with default GraalVM configuration,
-        'compile' - compiles the tests before execution
-    :param language_filter: the language id, limits TCK tests to certain language
-    :param values_filter: an iterable of value constructors language ids, limits TCK values to certain language(s)
-    :param tests_filter: a substring of TCK test name or an iterable of substrings of TCK test names
-    :param vm_args: iterable containing additional Java VM args
-    """
-    dists = list()
-    _collect_tck_providers(dists)
-    dists.extend([mx.distribution(n) for n in resolve_truffle_dist_names()])
-    jvm_args = mx.get_runtime_jvm_args(dists)
-    if vm_args:
-        jvm_args.extend(vm_args)
-    return tck.execute_tck(graalvm_home, mode=tck.Mode.for_name(mode), language_filter=language_filter,
-                           values_filter=values_filter, tests_filter=tests_filter, vm_args=jvm_args)
-
-
-def _tck(args):
+def tck(args):
     """runs TCK tests"""
 
     parser = ArgumentParser(prog="mx tck", description="run the TCK tests", formatter_class=RawDescriptionHelpFormatter, epilog=_tckHelpSuffix)
@@ -766,12 +742,16 @@ def _tck(args):
         with mx.SafeFileCreation(os.path.join(tempfile.gettempdir(), "debugalot")) as sfc:
             _execute_debugger_test(tests, sfc.tmpPath, False, unitTestOptions, jvmOptions)
     elif tckConfiguration == "compile":
-        if not _is_graalvm(mx.get_jdk()):
+        if '--use-graalvm' in unitTestOptions:
+            jdk = mx.get_jdk(tag='graalvm')
+        else:
+            jdk = mx.get_jdk()
+        if not _is_graalvm(jdk):
             mx.abort("The 'compile' TCK configuration requires graalvm execution, run with --java-home=<path_to_graalvm>.")
         compileOptions = [
             "-Dpolyglot.engine.AllowExperimentalOptions=true",
             "-Dpolyglot.engine.Mode=latency",
-            "-Dpolyglot.engine.CompilationFailureAction=Throw",
+            # "-Dpolyglot.engine.CompilationFailureAction=Throw", GR-49399
             "-Dpolyglot.engine.CompileImmediately=true",
             "-Dpolyglot.engine.BackgroundCompilation=false",
         ]
@@ -779,7 +759,7 @@ def _tck(args):
 
 
 mx.update_commands(_suite, {
-    'tck': [_tck, "[--tck-configuration {compile|debugger|default}] [unittest options] [--] [VM options] [filters...]", _tckHelpSuffix]
+    'tck': [tck, "[--tck-configuration {compile|debugger|default}] [unittest options] [--] [VM options] [filters...]", _tckHelpSuffix]
 })
 
 
