@@ -170,10 +170,6 @@ final class EarlyClassInitializerAnalysis {
     private boolean canInitializeWithoutSideEffects(ResolvedJavaMethod clinit, Set<Class<?>> analyzedClasses, OptionValues options, DebugContext debug) {
         InvocationPlugins invocationPlugins = new InvocationPlugins();
         Plugins plugins = new Plugins(invocationPlugins);
-
-        // This has to be used here in order for the EarlyClassInitializerAnalysis to ignore custom tracing hooks
-        SubstrateGraphBuilderPlugins.registerHeapAssignmentTracingHooksIgnorationPlugin(invocationPlugins);
-
         plugins.appendInlineInvokePlugin(new AbortOnRecursiveInliningPlugin());
         AbortOnUnitializedClassPlugin classInitializationPlugin = new AbortOnUnitializedClassPlugin(analyzedClasses);
         plugins.setClassInitializationPlugin(classInitializationPlugin);

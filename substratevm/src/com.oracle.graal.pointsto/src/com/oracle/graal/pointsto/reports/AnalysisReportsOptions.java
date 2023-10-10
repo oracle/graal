@@ -74,15 +74,6 @@ public class AnalysisReportsOptions {
     @Option(help = "Suppress the expansion of specified types. See: StaticAnalysisReports.md.")//
     public static final OptionKey<String> ImageObjectTreeSuppressTypes = new OptionKey<>("");
 
-    @Option(help = "Whether a JVMTI agent should trace heap assignments in order to improve the Causality Graph")
-    public static final OptionKey<Boolean> HeapAssignmentTracingAgent = new OptionKey<>(null);
-
-    @Option(help = "Whether the JVMTI agent should utilize binary instrumentation")
-    public static final OptionKey<Boolean> HeapAssignmentTracingAgentUseInstrumentation = new OptionKey<>(true);
-
-    @Option(help = "Disable this if you want to debug while the JVMTI agent is active")
-    public static final OptionKey<Boolean> HeapAssignmentTracingAgentUseBreakpoints = new OptionKey<>(true);
-
     @Option(help = "Causality Graph for Offline-Analysis of reachability.")
     public static final OptionKey<Boolean> PrintCausalityGraph = new OptionKey<>(false);
 
