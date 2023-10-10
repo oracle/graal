@@ -46,6 +46,7 @@ import static com.oracle.truffle.dsl.processor.java.ElementUtils.typeEquals;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
@@ -86,7 +87,16 @@ public class OperationsModel extends Template implements PrettyPrintable {
     private int instructionId = 1;
 
     private final LinkedHashMap<String, OperationModel> operations = new LinkedHashMap<>();
-    private final List<CustomOperationModel> customOperations = new ArrayList<>();
+    /*
+     * All regular (not short-circuit) custom operations, indexed by the underlying TypeElement.
+     *
+     * This mapping is used to ensure we only instantiate an operation once for any given
+     * TypeElement. When we instantiate short-circuit operations, we create another operation for
+     * the booleanConverter class; if the same converter is used multiple times (or the converter is
+     * itself declared as an operation), we should create just a single operation for all usages.
+     */
+    private final HashMap<TypeElement, CustomOperationModel> customRegularOperations = new HashMap<>();
+    private final List<CustomOperationModel> customShortCircuitOperations = new ArrayList<>();
     private final LinkedHashMap<String, InstructionModel> instructions = new LinkedHashMap<>();
 
     public DeclaredType languageClass;
@@ -114,6 +124,7 @@ public class OperationsModel extends Template implements PrettyPrintable {
     public OperationModel rootOperation;
 
     public InstructionModel popInstruction;
+    public InstructionModel dupInstruction;
     public InstructionModel branchInstruction;
     public InstructionModel branchBackwardInstruction;
     public InstructionModel branchFalseInstruction;
@@ -137,6 +148,7 @@ public class OperationsModel extends Template implements PrettyPrintable {
 
     public void addDefault() {
         popInstruction = instruction(InstructionKind.POP, "pop");
+        dupInstruction = instruction(InstructionKind.DUP, "dup");
         branchInstruction = instruction(InstructionKind.BRANCH, "branch").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
         branchBackwardInstruction = instruction(InstructionKind.BRANCH_BACKWARD, "branch.backward").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
         branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false") //
@@ -282,14 +294,33 @@ public class OperationsModel extends Template implements PrettyPrintable {
         return op;
     }
 
-    public CustomOperationModel customOperation(OperationKind kind, String name, TypeElement typeElement, AnnotationMirror mirror) {
+    public CustomOperationModel customRegularOperation(OperationKind kind, String name, TypeElement typeElement, AnnotationMirror mirror) {
         OperationModel op = operation(kind, name);
         if (op == null) {
             return null;
         }
         CustomOperationModel customOp = new CustomOperationModel(context, typeElement, mirror, op);
-        customOperations.add(customOp);
+        if (customRegularOperations.containsKey(typeElement)) {
+            throw new AssertionError(String.format("Type element %s was used to instantiate more than one operation. This is a bug.", typeElement));
+        }
+        customRegularOperations.put(typeElement, customOp);
+
         return customOp;
+    }
+
+    public CustomOperationModel customShortCircuitOperation(OperationKind kind, String name, AnnotationMirror mirror) {
+        OperationModel op = operation(kind, name);
+        if (op == null) {
+            return null;
+        }
+        CustomOperationModel customOp = new CustomOperationModel(context, null, mirror, op);
+        customShortCircuitOperations.add(customOp);
+
+        return customOp;
+    }
+
+    public CustomOperationModel getCustomOperationForType(TypeElement typeElement) {
+        return customRegularOperations.get(typeElement);
     }
 
     public InstructionModel instruction(InstructionKind kind, String name) {
@@ -301,6 +332,15 @@ public class OperationsModel extends Template implements PrettyPrintable {
         return instr;
     }
 
+    public ShortCircuitInstructionModel shortCircuitInstruction(String name, boolean continueWhen, boolean returnConvertedValue, InstructionModel booleanConverterInstruction) {
+        if (instructions.containsKey(name)) {
+            throw new AssertionError(String.format("Multiple instructions declared with name %s. Instruction names must be distinct.", name));
+        }
+        ShortCircuitInstructionModel instr = new ShortCircuitInstructionModel(instructionId++, name, continueWhen, returnConvertedValue, booleanConverterInstruction);
+        instructions.put(name, instr);
+        return instr;
+    }
+
     @Override
     public Element getMessageElement() {
         return templateType;
@@ -308,7 +348,9 @@ public class OperationsModel extends Template implements PrettyPrintable {
 
     @Override
     protected List<MessageContainer> findChildContainers() {
-        return Collections.unmodifiableList(customOperations);
+        ArrayList<MessageContainer> result = new ArrayList<>(customRegularOperations.values());
+        result.addAll(customShortCircuitOperations);
+        return Collections.unmodifiableList(result);
     }
 
     public boolean isBoxingEliminated(TypeMirror mirror) {

@@ -45,10 +45,31 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.oracle.truffle.api.dsl.Fallback;
+
 /**
- * Declares a class to be an operation. The class should be a {@code static final class} nested
- * inside an {@link OperationRootNode}. An operation class can declare
- * {@code Specialization specializations} using the same DSL as regular Truffle AST nodes.
+ * Declares an operation. The specification of an operation defines a bytecode instruction in the
+ * generated interpreter.
+ *
+ * An operation class is declared the same way as a regular Truffle AST node, with a few
+ * differences:
+ * <ul>
+ * <li>The class should be nested inside the top-level {@link OperationRootNode} class.
+ * <li>The class should be declared {@code public static final}. It should not extend/implement any
+ * other class/interface.
+ * <li>The class should not contain instance members.
+ * <li>The class's specializations also have some differences:
+ * <ul>
+ * <li>Specializations must all have the same arity (with respect to non-special parameters). The
+ * parameters of any {@link Fallback} specialization must be of type {@link Object}.
+ * <li>Specializations should be {@code public static}. Any members referenced in DSL expressions
+ * (e.g., {@link Cached @Cached} parameters) should also be {@code static} and visible to the
+ * top-level bytecode class.
+ * <li>Specializations can declare additional special parameters (e.g., {@link LocalSetter}). They
+ * can also bind some special parameters (e.g., {@code @Bind("$root")}). Refer to the documentation
+ * for more details.
+ * </ul>
+ * </ul>
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})

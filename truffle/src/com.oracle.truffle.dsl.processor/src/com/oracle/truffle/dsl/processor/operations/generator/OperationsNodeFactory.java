@@ -115,6 +115,7 @@ import com.oracle.truffle.dsl.processor.operations.model.OperationModel;
 import com.oracle.truffle.dsl.processor.operations.model.OperationModel.OperationKind;
 
 import com.oracle.truffle.dsl.processor.operations.model.OperationsModel;
+import com.oracle.truffle.dsl.processor.operations.model.ShortCircuitInstructionModel;
 
 public class OperationsNodeFactory implements ElementHelpers {
     private static final Name Uncached_Name = CodeNames.of("Uncached");
@@ -547,9 +548,8 @@ public class OperationsNodeFactory implements ElementHelpers {
         instructionNames.add(0, new CodeAnnotationValue("NO_INSTRUCTION"));
         mir.setElementValue("instructionNames", new CodeAnnotationValue(instructionNames));
 
-        List<CodeAnnotationValue> specializationNames = model.getInstructions().stream().filter(instr -> instr.isCustomInstruction()).map(instr -> {
+        List<CodeAnnotationValue> specializationNames = model.getInstructions().stream().filter(InstructionModel::hasNodeImmediate).map(instr -> {
             CodeAnnotationMirror instructionSpecializationNames = new CodeAnnotationMirror(types.OperationTracingMetadata_SpecializationNames);
-
             instructionSpecializationNames.setElementValue("instruction", new CodeAnnotationValue(instr.name));
 
             List<CodeAnnotationValue> specializations = instr.nodeData.getSpecializations().stream().map(spec -> new CodeAnnotationValue(spec.getId())).collect(Collectors.toList());
@@ -1080,12 +1080,12 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.declaration(context.getType(int.class), "nodeIndex");
         b.startSwitch().string(readBc("bci")).end().startBlock();
 
-        Map<Boolean, List<InstructionModel>> instructionsGroupedByIsCustom = model.getInstructions().stream().collect(Collectors.partitioningBy(instr -> instr.isCustomInstruction()));
-        Map<Integer, List<InstructionModel>> builtinsGroupedByLength = instructionsGroupedByIsCustom.get(false).stream().collect(Collectors.groupingBy(instr -> instr.getInstructionLength()));
-        Map<Integer, List<InstructionModel>> customsGroupedByLength = instructionsGroupedByIsCustom.get(true).stream().collect(Collectors.groupingBy(instr -> instr.getInstructionLength()));
+        Map<Boolean, List<InstructionModel>> instructionsGroupedByHasNode = model.getInstructions().stream().collect(Collectors.partitioningBy(InstructionModel::hasNodeImmediate));
+        Map<Integer, List<InstructionModel>> nodelessGroupedByLength = instructionsGroupedByHasNode.get(false).stream().collect(Collectors.groupingBy(InstructionModel::getInstructionLength));
+        Map<Integer, List<InstructionModel>> nodedGroupedByLength = instructionsGroupedByHasNode.get(true).stream().collect(Collectors.groupingBy(InstructionModel::getInstructionLength));
 
-        // Skip the builtins. We group them by size to simplify the generated code.
-        for (Map.Entry<Integer, List<InstructionModel>> entry : builtinsGroupedByLength.entrySet()) {
+        // Skip the nodeless instructions. We group them by size to simplify the generated code.
+        for (Map.Entry<Integer, List<InstructionModel>> entry : nodelessGroupedByLength.entrySet()) {
             for (InstructionModel instr : entry.getValue()) {
                 b.startCase().tree(createInstructionConstant(instr)).end();
             }
@@ -1095,13 +1095,13 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
         }
 
-        // For each custom instruction, read its node index and continue after the switch.
+        // For each noded instruction, read its node index and continue after the switch.
         // We group them by size to simplify the generated code.
-        for (Map.Entry<Integer, List<InstructionModel>> entry : customsGroupedByLength.entrySet()) {
+        for (Map.Entry<Integer, List<InstructionModel>> entry : nodedGroupedByLength.entrySet()) {
             for (InstructionModel instr : entry.getValue()) {
                 b.startCase().tree(createInstructionConstant(instr)).end();
             }
-            // NB: this relies on the node being the last immediate in the instruction
+            // NB: this relies on all custom instructions encoding their node as the last immediate.
             InstructionModel representativeInstruction = entry.getValue().get(0);
             InstructionImmediate imm = representativeInstruction.getImmediate(ImmediateKind.NODE);
             b.startBlock();
@@ -1201,11 +1201,12 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.statement("Node node");
         b.startSwitch().string(readBc("bci")).end().startBlock();
 
-        Map<Boolean, List<InstructionModel>> instructionsGroupedByIsCustom = model.getInstructions().stream().collect(Collectors.partitioningBy(instr -> instr.isCustomInstruction()));
-        Map<Integer, List<InstructionModel>> builtinsGroupedByLength = instructionsGroupedByIsCustom.get(false).stream().collect(Collectors.groupingBy(instr -> instr.getInstructionLength()));
+        Map<Boolean, List<InstructionModel>> instructionsGroupedByHasNode = model.getInstructions().stream().collect(Collectors.partitioningBy(instr -> instr.hasNodeImmediate()));
+        Map<Integer, List<InstructionModel>> nodelessGroupedByLength = instructionsGroupedByHasNode.get(false).stream().collect(
+                        Collectors.groupingBy(instr -> instr.getInstructionLength()));
 
-        // Skip the builtins. We group them by size to simplify the generated code.
-        for (Map.Entry<Integer, List<InstructionModel>> entry : builtinsGroupedByLength.entrySet()) {
+        // Skip the instructions without nodes. Group by size to simplify the generated code.
+        for (Map.Entry<Integer, List<InstructionModel>> entry : nodelessGroupedByLength.entrySet()) {
             for (InstructionModel instr : entry.getValue()) {
                 b.startCase().tree(createInstructionConstant(instr)).end();
             }
@@ -1215,7 +1216,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end();
         }
 
-        for (InstructionModel instr : instructionsGroupedByIsCustom.get(true)) {
+        for (InstructionModel instr : instructionsGroupedByHasNode.get(true)) {
             b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
             InstructionImmediate imm = instr.getImmediate(ImmediateKind.NODE);
             b.statement("nodeIndex = " + readBc("bci + " + imm.offset));
@@ -2584,6 +2585,15 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             switch (operation.kind) {
                 case CUSTOM_SHORT_CIRCUIT:
+                    ShortCircuitInstructionModel shortCircuitInstruction = (ShortCircuitInstructionModel) operation.instruction;
+                    if (shortCircuitInstruction.returnConvertedValue) {
+                        /*
+                         * All operands except the last are automatically converted when testing the
+                         * short circuit condition. For the last operand we need to insert a
+                         * conversion.
+                         */
+                        buildEmitBooleanConverterInstruction(b, shortCircuitInstruction);
+                    }
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
                     }
@@ -3017,14 +3027,13 @@ public class OperationsNodeFactory implements ElementHelpers {
             assert operation.kind == OperationKind.CUSTOM_SHORT_CIRCUIT;
 
             b.statement("int branchTarget = " + UNINIT);
-            b.statement("int node = allocateNode()");
             b.lineComment("Add this location to a work list to be processed once the branch target is known.");
             b.statement("int[] sites = (int[]) ((Object[]) data)[0]");
             b.statement("sites = Arrays.copyOf(sites, sites.length + 1)");
             InstructionImmediate branchIndex = instruction.getImmediate(ImmediateKind.BYTECODE_INDEX);
             b.statement("sites[sites.length-1] = bci + " + branchIndex.offset);
             b.statement("((Object[]) data)[0] = sites");
-            return new String[]{"branchTarget", "node"};
+            return new String[]{"branchTarget"};
         }
 
         private CodeExecutableElement createBeforeChild() {
@@ -3038,33 +3047,85 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.startSwitch().string("operationStack[operationSp - 1].operation").end().startBlock();
 
-            for (OperationModel op : model.getOperations()) {
-                if (!op.hasChildren()) {
-                    continue;
-                }
-
-                b.startCase().tree(createOperationConstant(op)).end().startBlock();
-
+            Map<Integer, List<OperationModel>> groupedOperations = model.getOperations().stream().filter(OperationModel::hasChildren).collect(Collectors.groupingBy(op -> {
                 if (op.isTransparent && (op.isVariadic || op.numChildren > 1)) {
-                    b.startIf().string("(boolean) ((Object[]) data)[0]").end().startBlock();
-                    buildEmitInstruction(b, model.popInstruction, null);
-                    b.end();
+                    return 1; // needs to pop
+                } else if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
+                    return 2; // short circuit
+                } else {
+                    return 3; // do nothing
                 }
+            }));
+            List<OperationModel> popOperations = groupedOperations.get(1);
+            List<OperationModel> shortCircuitOperations = groupedOperations.get(2);
+            List<OperationModel> doNothingOperationModels = groupedOperations.get(3);
 
-                if (op.kind == OperationKind.CUSTOM_SHORT_CIRCUIT) {
-                    b.startIf().string("childIndex != 0").end().startBlock();
-                    String[] args = buildCustomShortCircuitInitializer(b, op, op.instruction);
-                    buildEmitInstruction(b, op.instruction, args);
-                    b.end();
+            if (popOperations != null) {
+                for (OperationModel op : popOperations) {
+                    b.startCase().tree(createOperationConstant(op)).end();
                 }
-
+                b.startBlock();
+                b.startIf().string("(boolean) ((Object[]) data)[0]").end().startBlock();
+                buildEmitInstruction(b, model.popInstruction, null);
+                b.end();
                 b.statement("break");
                 b.end();
             }
 
+            if (shortCircuitOperations != null) {
+                for (OperationModel op : shortCircuitOperations) {
+                    b.startCase().tree(createOperationConstant(op)).end().startBlock();
+
+                    b.startIf().string("childIndex != 0").end().startBlock();
+                    ShortCircuitInstructionModel shortCircuitInstruction = (ShortCircuitInstructionModel) op.instruction;
+                    if (!shortCircuitInstruction.returnConvertedValue) {
+                        // DUP so the boolean converter doesn't clobber the original value.
+                        buildEmitInstruction(b, model.dupInstruction, null);
+                    }
+                    buildEmitBooleanConverterInstruction(b, shortCircuitInstruction);
+                    String[] args = buildCustomShortCircuitInitializer(b, op, op.instruction);
+                    buildEmitInstruction(b, op.instruction, args);
+                    b.end();
+
+                    b.statement("break");
+                    b.end();
+                }
+            }
+
+            if (doNothingOperationModels != null) {
+                for (OperationModel op : doNothingOperationModels) {
+                    b.startCase().tree(createOperationConstant(op)).end();
+                }
+                b.startBlock();
+                b.statement("break");
+                b.end();
+            }
+
+            b.caseDefault();
+            b.startBlock();
+            buildThrow(b, AssertionError.class, "\"beforeChild should not be called on an operation with no children.\"");
             b.end();
 
+            b.end(); // switch
+
             return ex;
+        }
+
+        private void buildEmitBooleanConverterInstruction(CodeTreeBuilder b, ShortCircuitInstructionModel shortCircuitInstruction) {
+            InstructionModel booleanConverter = shortCircuitInstruction.booleanConverterInstruction;
+
+            List<InstructionImmediate> immediates = booleanConverter.getImmediates();
+            String[] args = new String[immediates.size()];
+            for (int i = 0; i < args.length; i++) {
+                InstructionImmediate immediate = immediates.get(i);
+                args[i] = switch (immediate.kind) {
+                    case BYTECODE_INDEX -> UNINIT; // TODO: retrieve child bytecode index from
+                                                   // operation stack
+                    case NODE -> "allocateNode()";
+                    default -> throw new AssertionError(String.format("Boolean converter instruction had unexpected encoding: %s", immediates));
+                };
+            }
+            buildEmitInstruction(b, booleanConverter, args);
         }
 
         private void createCheckRoot(CodeTreeBuilder b) {
@@ -3579,7 +3640,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case RETURN:
                     break;
                 case BRANCH_FALSE:
-                case CUSTOM_SHORT_CIRCUIT:
                 case POP:
                 case STORE_LOCAL:
                     b.statement("curStack -= 1");
@@ -3592,6 +3652,26 @@ public class OperationsNodeFactory implements ElementHelpers {
                         hasPositiveDelta = delta > 0;
                     }
                     break;
+                case CUSTOM_SHORT_CIRCUIT:
+                    /*
+                     * NB: This code is a little confusing, because the stack height actually
+                     * depends on whether the short circuit operation continues.
+                     *
+                     * What we track here is the stack height for the instruction immediately after
+                     * this one (the one executed when we "continue" the short circuit operation).
+                     * The code we generate carefully ensures that each path branching to the "end"
+                     * leaves a single value on the stack.
+                     */
+                    ShortCircuitInstructionModel shortCircuitInstruction = (ShortCircuitInstructionModel) instr;
+                    if (shortCircuitInstruction.returnConvertedValue) {
+                        // Stack: [..., convertedValue]
+                        b.statement("curStack -= 1");
+                    } else {
+                        // Stack: [..., value, convertedValue]
+                        b.statement("curStack -= 2");
+                    }
+                    break;
+                case DUP:
                 case LOAD_ARGUMENT:
                 case LOAD_CONSTANT:
                 case LOAD_LOCAL:
@@ -4066,9 +4146,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.end();
                         break;
                     case INSTRUMENTATION_ENTER:
-                        break;
                     case INSTRUMENTATION_EXIT:
-                        break;
                     case INSTRUMENTATION_LEAVE:
                         break;
                     case LOAD_ARGUMENT:
@@ -4093,6 +4171,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                     case POP:
                         b.statement(clearFrame("sp - 1"));
                         b.statement("sp -= 1");
+                        break;
+                    case DUP:
+                        b.statement(copyFrameSlot("sp - 1", "sp"));
+                        b.statement("sp += 1");
                         break;
                     case RETURN:
                         if (tier.isUncached) {
@@ -4157,18 +4239,41 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.statement(setFrameObject("sp - 1", "mergeVariadic((Object[]) " + getFrameObject("sp - 1") + ")"));
                         break;
                     case CUSTOM:
-                        results.add(buildCustomInstructionExecute(b, instr, false));
+                        results.add(buildCustomInstructionExecute(b, instr));
                         break;
                     case CUSTOM_SHORT_CIRCUIT:
-                        results.add(buildCustomInstructionExecute(b, instr, true));
+                        ShortCircuitInstructionModel shortCircuitInstruction = (ShortCircuitInstructionModel) instr;
+                        /*
+                         * NB: Short circuit operations can evaluate to an operand or to the boolean
+                         * conversion of an operand. The stack is different in either case.
+                         */
+                        b.declaration(context.getDeclaredType(Object.class), "booleanResult", getFrameObject("sp - 1"));
 
-                        b.startIf().string("result", instr.continueWhen ? " != " : " == ", "Boolean.TRUE").end().startBlock();
-                        // don't pop (the argument used in the SC op is the result)
+                        b.startIf().string("booleanResult", shortCircuitInstruction.continueWhen ? " != " : " == ", "Boolean.TRUE").end().startBlock();
+                        if (shortCircuitInstruction.returnConvertedValue) {
+                            // Stack: [..., convertedValue]
+                            // leave convertedValue on the top of stack
+                        } else {
+                            // Stack: [..., value, convertedValue]
+                            // pop convertedValue
+                            b.statement(clearFrame("sp - 1"));
+                            b.statement("sp -= 1");
+                        }
                         b.statement("bci = " + readBc("bci + 1"));
                         b.statement("continue loop");
                         b.end().startElseBlock();
-                        b.statement(clearFrame("sp - 1"));
-                        b.statement("sp -= 1");
+                        if (shortCircuitInstruction.returnConvertedValue) {
+                            // Stack: [..., convertedValue]
+                            // clear convertedValue
+                            b.statement(clearFrame("sp - 1"));
+                            b.statement("sp -= 1");
+                        } else {
+                            // Stack: [..., value, convertedValue]
+                            // clear convertedValue and value
+                            b.statement(clearFrame("sp - 1"));
+                            b.statement(clearFrame("sp - 2"));
+                            b.statement("sp -= 2");
+                        }
                         b.statement("bci += " + instr.getInstructionLength());
                         b.statement("continue loop");
                         b.end();
@@ -4301,12 +4406,11 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // Generate a helper method that implements the custom instruction. Also emits a call to the
         // helper inside continueAt.
-        private CodeExecutableElement buildCustomInstructionExecute(CodeTreeBuilder continueAtBuilder, InstructionModel instr, boolean isShortCircuit) {
+        private CodeExecutableElement buildCustomInstructionExecute(CodeTreeBuilder continueAtBuilder, InstructionModel instr) {
             // To reduce bytecode in the dispatch loop, extract each implementation into a helper.
             String helperName = customInstructionHelperName(instr);
 
-            TypeMirror returnType = isShortCircuit ? context.getType(Object.class) : context.getType(void.class);
-            CodeExecutableElement helper = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), returnType, helperName);
+            CodeExecutableElement helper = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(void.class), helperName);
 
             helper.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             if (model.enableYield) {
@@ -4381,9 +4485,6 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             if (isVoid) {
                 b.startStatement();
-            } else if (isShortCircuit) {
-                assert stackEffect == 0 : "Short circuit operation should push and pop a single value.";
-                b.startReturn();
             } else {
                 b.startAssign("Object result");
             }
@@ -4433,7 +4534,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end(2);
 
             // Update the stack.
-            if (!isVoid && !isShortCircuit) {
+            if (!isVoid) {
                 if (stackEffect == 1) {
                     b.statement(setFrameObject("sp", "result"));
                 } else {
@@ -4446,13 +4547,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             // In continueAt, call the helper and adjust sp.
-            if (isShortCircuit) {
-                // continueAt needs the boolean result to decide whether to branch.
-                continueAtBuilder.startAssign("Object result");
-            } else {
-                continueAtBuilder.startStatement();
-            }
-            continueAtBuilder.startCall(helperName);
+            continueAtBuilder.startStatement().startCall(helperName);
             continueAtBuilder.variables(helper.getParameters());
             continueAtBuilder.end(2);
 
@@ -4962,6 +5057,10 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private static String clearFrame(String index) {
         return String.format("ACCESS.clear(frame, %s)", index);
+    }
+
+    private static String copyFrameSlot(String src, String dst) {
+        return String.format("ACCESS.copy(frame, %s, %s)", src, dst);
     }
 
     private static String copyFrameTo(String srcFrame, String srcOffset, String dstFrame, String dstOffset, String length) {
