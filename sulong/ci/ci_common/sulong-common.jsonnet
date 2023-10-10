@@ -159,7 +159,7 @@ local sulong_deps = common.deps.sulong;
     gateTags:: std.split(tags, ","),
   },
 
-  style:: common.deps.eclipse + common.deps.jdt + $.gateTags("style,fullbuild") + {
+  style:: common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + $.gateTags("style,fullbuild") + {
     extra_gate_args+:: ["--strict-mode"],
   },
 
