@@ -814,28 +814,59 @@ public final class LLVMContext {
             try {
                 return symbolFinalStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
-                exception.enter();
+                //exception.enter();
                 System.out.println("symbol is: " + symbol.getName());
                 System.out.println("id is: " + id);
                 System.out.println("index is: " + index);
-                System.out.println("symbolFinalStorage is: " + symbolFinalStorage);
-                System.out.println("library loaded: " + this.libraryLoaded);
-                System.out.println("library paths: " + this.libraryPaths);
-                System.out.println("truffle files: " + this.truffleFiles);
+
+                System.out.println("symbolFinalStorage length is: " + symbolFinalStorage.length + ", when compared against id: " + id);
+                System.out.println("symbolFinalStorage is: ");
+                for (int i = 0; i < symbolFinalStorage.length; i++) {
+                    LLVMPointer[] pointers = symbolFinalStorage[i];
+                    if (id == i) {
+                        System.out.println("Length for " + i + " array : " + pointers.length + ", when compared against index: " + index);
+                    } else {
+                        System.out.println("Length for " + i + " array : " + pointers.length);
+                    }
+                    for (int j = 0; j < pointers.length; j++) {
+                        System.out.println("(" + i + ", " + j + ") : " + pointers[j]);
+                    }
+                }
+
+                System.out.println("library loaded:") ;
+                for (int i = 0; i < libraryLoaded.length; i++) {
+                    System.out.println(i + " : " + this.libraryLoaded[i]);
+                }
+
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         } else {
             try {
                 return symbolDynamicStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
-                exception.enter();
+                //exception.enter();
                 System.out.println("symbol is: " + symbol.getName());
                 System.out.println("id is: " + id);
                 System.out.println("index is: " + index);
-                System.out.println("symbolDynamicStorage is: " + symbolDynamicStorage);
-                System.out.println("library loaded: " + this.libraryLoaded);
-                System.out.println("library paths: " + this.libraryPaths);
-                System.out.println("truffle files: " + this.truffleFiles);
+                System.out.println("symbolFinalStorage length is: " + symbolDynamicStorage.length + ", when compared against id: " + id);
+                System.out.println("symbolFinalStorage is: ");
+                for (int i = 0; i < symbolDynamicStorage.length; i++) {
+                    LLVMPointer[] pointers = symbolDynamicStorage[i];
+                    if (id == i) {
+                        System.out.println("Length for " + i + " array : " + pointers.length + ", when compared against index: " + index);
+                    } else {
+                        System.out.println("Length for " + i + " array : " + pointers.length);
+                    }
+                    for (int j = 0; j < pointers.length; j++) {
+                        System.out.println("(" + i + ", " + j + ") : " + pointers[j]);
+                    }
+                }
+
+                System.out.println("library loaded:") ;
+                for (int i = 0; i < libraryLoaded.length; i++) {
+                    System.out.println(i + " : " + this.libraryLoaded[i]);
+                }
+
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
         }
