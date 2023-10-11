@@ -2389,7 +2389,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private void buildOperationBeginData(CodeTreeBuilder b, OperationModel operation) {
             if (operation.isTransparent) {
-                b.string("new Object[]{false /* value produced */, " + UNINIT + " /* child bci */}");
+                b.string("new Object[]{false /* value produced */, (int) " + UNINIT + " /* child bci */}");
                 return;
             }
             switch (operation.kind) {
