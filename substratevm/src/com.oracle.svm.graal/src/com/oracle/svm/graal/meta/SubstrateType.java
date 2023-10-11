@@ -421,12 +421,14 @@ public class SubstrateType implements SharedType {
 
     @Override
     public boolean isLinked() {
-        return true;  // types are always linked
+        return hub.isLinked();
     }
 
     @Override
     public void link() {
-        // do nothing
+        if (!isLinked()) {
+            throw new LinkageError(String.format("Cannot link new type at run time: %s", this));
+        }
     }
 
     @Override

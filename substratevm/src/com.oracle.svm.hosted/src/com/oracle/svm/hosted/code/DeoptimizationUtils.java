@@ -37,6 +37,8 @@ import java.util.function.Supplier;
 
 import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.iterators.NodePredicate;
+import org.graalvm.compiler.graph.iterators.NodePredicates;
 import org.graalvm.compiler.lir.RedundantMoveElimination;
 import org.graalvm.compiler.lir.alloc.RegisterAllocationPhase;
 import org.graalvm.compiler.lir.phases.LIRPhase;
@@ -71,6 +73,7 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.classinitialization.EnsureClassInitializedNode;
 import com.oracle.svm.core.code.FrameInfoEncoder;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.deopt.DeoptTest;
@@ -124,7 +127,7 @@ public class DeoptimizationUtils {
      *
      * Note this should only be called within CompileQueue#parseAheadOfTimeCompiledMethods
      */
-    public static boolean canDeoptForTesting(AnalysisMethod method, boolean deoptimizeAll, Supplier<Boolean> containsStackValueNodes) {
+    public static boolean canDeoptForTesting(AnalysisMethod method, boolean deoptimizeAll, Supplier<Boolean> graphInvalidator) {
         if (SubstrateCompilationDirectives.singleton().isRegisteredForDeoptTesting(method)) {
             return true;
         }
@@ -143,16 +146,7 @@ public class DeoptimizationUtils {
             return false;
         }
 
-        if (containsStackValueNodes.get()) {
-            /*
-             * Stack allocated memory is not seen by the deoptimization code, i.e., it is not copied
-             * in case of deoptimization. Also, pointers to it can be used for arbitrary address
-             * arithmetic, so we would not know how to update derived pointers into stack memory
-             * during deoptimization. Therefore, we cannot allow methods that allocate stack memory
-             * for runtime compilation. To remove this limitation, we would need to change how we
-             * handle stack allocated memory in Graal.
-             */
-
+        if (graphInvalidator.get()) {
             return false;
         }
 
@@ -297,7 +291,7 @@ public class DeoptimizationUtils {
         /*
          * No deopt targets can have a StackValueNode in the graph.
          */
-        assert graph.getNodes(StackValueNode.TYPE).isEmpty() : "No stack value nodes must be present in deopt target.";
+        assert !createGraphInvalidator(graph).get() : "Invalid nodes in deopt target: " + graph;
 
         for (Infopoint infopoint : result.getInfopoints()) {
             if (infopoint.debugInfo != null) {
@@ -485,5 +479,39 @@ public class DeoptimizationUtils {
         }
 
         return changedMethods;
+    }
+
+    /*
+     * Stack allocated memory is not seen by the deoptimization code, i.e., it is not copied in case
+     * of deoptimization. Also, pointers to it can be used for arbitrary address arithmetic, so we
+     * would not know how to update derived pointers into stack memory during deoptimization.
+     * Therefore, we cannot allow methods that allocate stack memory for runtime compilation. To
+     * remove this limitation, we would need to change how we handle stack allocated memory in
+     * Graal.
+     *
+     * We also do not allow class initialization at run time to ensure the partial evaluator does
+     * not constant fold uninitialized fields.
+     */
+    private static final NodePredicate invalidNodes = n -> NodePredicates.isA(StackValueNode.class).or(NodePredicates.isA(EnsureClassInitializedNode.class)).test(n);
+
+    /**
+     * @return Supplier which returns true if the graph contains invalid nodes.
+     */
+    public static Supplier<Boolean> createGraphInvalidator(StructuredGraph graph) {
+        return () -> {
+            if (!graph.method().getDeclaringClass().isInitialized()) {
+                /*
+                 * All types which are used at run time should build-time initialized. This ensures
+                 * the partial evaluator does not constant fold uninitialized fields.
+                 */
+                return true;
+            }
+
+            if (graph.getNodes().filter(invalidNodes).isNotEmpty()) {
+                return true;
+            }
+
+            return false;
+        };
     }
 }

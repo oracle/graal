@@ -76,7 +76,6 @@ import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.graal.stackvalue.StackValueNode;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
 import com.oracle.svm.graal.meta.SubstrateMethod;
@@ -281,25 +280,16 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                     builderPhase.apply(graph);
                 }
 
-                if (graph.getNodes(StackValueNode.TYPE).isNotEmpty()) {
-                    /*
-                     * Stack allocated memory is not seen by the deoptimization code, i.e., it is
-                     * not copied in case of deoptimization. Also, pointers to it can be used for
-                     * arbitrary address arithmetic, so we would not know how to update derived
-                     * pointers into stack memory during deoptimization. Therefore, we cannot allow
-                     * methods that allocate stack memory for runtime compilation. To remove this
-                     * limitation, we would need to change how we handle stack allocated memory in
-                     * Graal.
-                     */
-                    return;
-                }
-
                 CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
                 canonicalizer.apply(graph, hostedProviders);
                 if (deoptimizeOnExceptionPredicate != null) {
                     new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
                 }
                 new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, hostedProviders);
+
+                if (DeoptimizationUtils.createGraphInvalidator(graph).get()) {
+                    return;
+                }
 
                 graphEncoder.prepare(graph);
                 node.graph = graph;

@@ -418,9 +418,10 @@ public class SVMHost extends HostVM {
         boolean isSealed = javaClass.isSealed();
         boolean isVMInternal = type.isAnnotationPresent(InternalVMMethod.class);
         boolean isLambdaFormHidden = type.isAnnotationPresent(LambdaFormHiddenMethod.class);
+        boolean isLinked = type.isLinked();
 
         return new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
-                        isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, simpleBinaryName,
+                        isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, isLinked, simpleBinaryName,
                         getDeclaringClass(javaClass));
     }
 

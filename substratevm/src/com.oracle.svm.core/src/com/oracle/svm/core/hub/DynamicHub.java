@@ -245,6 +245,11 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * circumstances.
      */
     private static final int IS_LAMBDA_FORM_HIDDEN_BIT = 9;
+    /**
+     * Indicates this Class was linked during build time. Accessing an unlinked class during run
+     * time will throw an error.
+     */
+    private static final int IS_LINKED_BIT = 10;
 
     /** Similar to {@link #flags}, but non-final because {@link #setData} sets the value. */
     @UnknownPrimitiveField(availability = AfterHostedUniverse.class)//
@@ -385,7 +390,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
-                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, String simpleBinaryName, Object declaringClass) {
+                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, boolean isLinked, String simpleBinaryName, Object declaringClass) {
         this.hostedJavaClass = hostedJavaClass;
         this.module = hostedJavaClass.getModule();
         this.name = name;
@@ -408,7 +413,8 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
                         makeFlag(DECLARES_DEFAULT_METHODS_FLAG_BIT, declaresDefaultMethods) |
                         makeFlag(IS_SEALED_FLAG_BIT, isSealed) |
                         makeFlag(IS_VM_INTERNAL_FLAG_BIT, isVMInternal) |
-                        makeFlag(IS_LAMBDA_FORM_HIDDEN_BIT, isLambdaFormHidden));
+                        makeFlag(IS_LAMBDA_FORM_HIDDEN_BIT, isLambdaFormHidden) |
+                        makeFlag(IS_LINKED_BIT, isLinked));
 
         this.companion = new DynamicHubCompanion(hostedJavaClass, classLoader);
     }
@@ -885,6 +891,10 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     public boolean isLambdaFormHidden() {
         return isFlagSet(flags, IS_LAMBDA_FORM_HIDDEN_BIT);
+    }
+
+    public boolean isLinked() {
+        return isFlagSet(flags, IS_LINKED_BIT);
     }
 
     public boolean isRegisteredForSerialization() {
