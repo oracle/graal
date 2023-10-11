@@ -106,7 +106,7 @@ public final class Resources {
      * specified in the configuration, but we do not want to throw directly (for example when we try
      * to check all the modules for a resource).
      */
-    public static final ResourceStorageEntryBase MISSING_METADATA_MARKER = new ResourceStorageEntryBase();
+    private static final ResourceStorageEntryBase MISSING_METADATA_MARKER = new ResourceStorageEntryBase();
 
     /**
      * Embedding a resource into an image is counted as a modification. Since all resources are

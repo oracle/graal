@@ -59,14 +59,9 @@ public abstract class ClassLoaderSupport {
 
         void addResourceConditionally(Module module, String resourceName, ConfigurationCondition condition);
 
-        void addDirectoryResource(Module module, String dir);
-
         void registerNegativeQuery(Module module, String resourceName);
 
         void registerIOException(Module module, String resourceName, IOException e, boolean linkAtBuildTime);
-
-        void addDirectoryResourceConditionally(Module module, String dir, ConfigurationCondition condition, String content, boolean fromJar);
-
     }
 
     public abstract void collectResources(ResourceCollector resourceCollector);
