@@ -385,8 +385,8 @@ public class OperationsModel extends Template implements PrettyPrintable {
 
     @Override
     public void pp(PrettyPrinter printer) {
-        printer.field("operations", operations);
-        printer.field("instructions", instructions);
+        printer.field("operations", operations.values());
+        printer.field("instructions", instructions.values());
     }
 
     @Override

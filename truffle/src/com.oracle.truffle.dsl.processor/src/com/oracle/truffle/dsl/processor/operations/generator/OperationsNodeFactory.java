@@ -351,9 +351,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createGetBranchProfiles());
         operationNodeGen.add(createInitializeBranchProfiles());
 
-        // TODO: this method is here for debugging and should probably be omitted before we release
-        operationNodeGen.add(createDumpBytecode());
-
         return operationNodeGen;
     }
 
@@ -1318,58 +1315,6 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.startAssign("result").startStaticCall(types.OperationSupport, "allocateBranchProfiles").string("numConditionalBranches").end(2);
         b.startAssign("this.branchProfiles").string("result").end();
         b.startReturn().string("result").end();
-
-        return ex;
-    }
-
-    private CodeExecutableElement createDumpBytecode() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "dumpBytecode");
-        CodeTreeBuilder b = ex.createBuilder();
-
-        b.statement("int bci = 0");
-        b.startWhile().string("bci < bc.length").end().startBlock();
-        b.startSwitch().string(readBc("bci")).end().startBlock();
-        for (InstructionModel instr : model.getInstructions()) {
-            b.startCase().tree(createInstructionConstant(instr)).end().startBlock();
-
-            // print code
-            b.statement("String result = bci + \"\\t\" + \"" + instr.name + "\"");
-
-            for (InstructionImmediate imm : instr.getImmediates()) {
-                b.statement("result += \" " + imm.name + "=\"");
-                switch (imm.kind) {
-                    case BYTECODE_INDEX:
-                    case INTEGER:
-                    case LOCAL_SETTER:
-                    case LOCAL_SETTER_RANGE_LENGTH:
-                    case LOCAL_SETTER_RANGE_START:
-                        b.statement("result += " + readBc("bci + " + imm.offset));
-                        break;
-                    case CONSTANT:
-                        b.statement("result += " + readConst(readBc("bci + " + imm.offset)));
-                        break;
-                    case NODE:
-                        b.statement("result += (cachedNodes == null) ? null : " + readNode(types.Node, readBc("bci + " + imm.offset)));
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            b.statement("System.out.println(result)");
-
-            b.statement("bci += " + instr.getInstructionLength());
-            b.statement("break");
-            b.end();
-        }
-
-        b.caseDefault().startBlock();
-        b.statement("break");
-        b.end();
-
-        b.end(); // } switch
-        b.end(); // } while
-        b.startAssert().string("bci == bc.length").end();
 
         return ex;
     }
