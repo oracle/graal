@@ -615,24 +615,18 @@ public final class NodeParser extends AbstractParser<NodeData> {
                     } else {
                         usesExclusiveInlineNodes = true;
                     }
-                    if (!usesSpecializationClass || (usesSharedInlineNodes && usesExclusiveInlineNodes)) {
-                        break;
-                    }
                 }
             }
 
             if (usesInlinedNodes) {
                 if (usesSpecializationClass && usesSharedInlineNodes && usesExclusiveInlineNodes) {
-                    specialization.addSuppressableWarning(TruffleSuppressedWarnings.SLOW_RESOLVE,
+                    specialization.addSuppressableWarning(TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE,
                                     "It is discouraged that specializations with specialization data class combine " + //
                                                     "shared and exclusive @Cached inline nodes or profiles arguments. Truffle inlining support code then must " + //
                                                     "traverse the parent pointer in order to resolve the inline data of the shared nodes or profiles, " + //
                                                     "which incurs performance hit in the interpreter. To resolve this: make all the arguments @Exclusive, " + //
                                                     "or merge specializations to avoid @Shared arguments, or if the footprint benefit outweighs the " + //
-                                                    "performance degradation, then suppress the warning. Note that the specialization data class is " + //
-                                                    "instantiated lazily upon the specialization activation and therefore @Shared @Cached nodes or profiles " + //
-                                                    "reduce footprint compared to exclusive @Cached nodes or profiles only if at least two specializations " + //
-                                                    "using them are activated at runtime.");
+                                                    "performance degradation, then suppress the warning.");
                 }
 
                 boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
