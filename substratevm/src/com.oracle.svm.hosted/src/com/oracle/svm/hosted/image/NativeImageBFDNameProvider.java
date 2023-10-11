@@ -35,13 +35,13 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import jdk.vm.ci.meta.Signature;
 import jdk.vm.ci.meta.UnresolvedJavaType;
+import org.graalvm.collections.EconomicMap;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Executable;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Parameter;
-import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -470,7 +470,14 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
         // the list index can be used to identify the relevant short symbol. If it is not found
         // then inserting the name serves to allocate the short name associated with the inserted
         // element's result index.
-        List<LookupName> bindings;
+        /**
+         * A map relating lookup names to the index for the corresponding short name with which it
+         * can be substituted. A prospective name for an element that is about to be encoded can be
+         * looked up in this list. If a match is found the list index can be used to identify the
+         * relevant short symbol. If it is not found then it can be inserted to allocate the next
+         * short name, using the current size of the map to identify the next available index.
+         */
+        EconomicMap<LookupName, Integer> bindings;
 
         /**
          * A lookup name is used as a key to record and subsequently lookup a short symbol that can
@@ -488,10 +495,10 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
          * lookup name (if, say, we needed to encode type Foo**). In practice, that case should not
          * arise with Java method signatures.
          */
-        private interface LookupName {
+        private sealed interface LookupName permits SimpleLookupName, CompositeLookupName {
         }
 
-        private interface CompositeLookupName extends LookupName {
+        private sealed interface CompositeLookupName extends LookupName permits NamespaceLookupName, PointerLookupName {
         }
 
         private record SimpleLookupName(String value) implements LookupName {
@@ -518,7 +525,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
         BFDMangler(NativeImageBFDNameProvider provider) {
             nameProvider = provider;
             sb = new StringBuilder("_Z");
-            bindings = new ArrayList<>();
+            bindings = EconomicMap.create();
         }
 
         public String mangle(String loaderName, ResolvedJavaType declaringClass, String memberName, Signature methodSignature, boolean isConstructor) {
@@ -619,15 +626,15 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             assert sb.charAt(sb.length() - 1) == 'N';
             // we can substitute the composed prefix followed by the name
             // or we can substitute all three individual symbols
-            LookupName lookup2 = new SimpleLookupName(prefix2);
-            LookupName lookup = new NamespaceLookupName(prefix1, lookup2);
+            LookupName simpleLookupName = new SimpleLookupName(prefix2);
+            LookupName namespaceLookupName = new NamespaceLookupName(prefix1, simpleLookupName);
             // try substituting the combined prefix
-            if (!substituteName(lookup)) {
+            if (!substituteName(namespaceLookupName)) {
                 // we may still be able to establish a binding for the first prefix
                 mangleWriteSubstitutableNameRecord(prefix1);
                 // we cannot establish a binding for the trailing prefix
                 mangleWriteSubstitutableNameNoRecord(prefix2);
-                recordName(lookup);
+                recordName(namespaceLookupName);
             }
             // see comment in previous method as to why we call mangleWriteSimpleName
             // instead of mangleWriteSubstitutableNameNoRecord(name)
@@ -635,9 +642,9 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
         }
 
         private boolean substituteName(LookupName name) {
-            int index = bindings.indexOf(name);
-            if (index >= 0) {
-                writeSubstitution(index);
+            Integer index = bindings.get(name);
+            if (index != null) {
+                writeSubstitution(index.intValue());
                 return true;
             }
             return false;
@@ -808,7 +815,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
             mangleClassPointer(loaderName, makeArrayName(baseName, dims));
         }
 
-        private String makeArrayName(String baseName, int dims) {
+        private static String makeArrayName(String baseName, int dims) {
             StringBuilder sb1 = new StringBuilder();
             sb1.append(baseName);
             for (int i = 0; i < dims; i++) {
@@ -887,7 +894,7 @@ class NativeImageBFDNameProvider implements UniqueShortNameProvider {
         }
 
         private void recordName(LookupName name) {
-            bindings.add(name);
+            bindings.put(name, bindings.size());
         }
     }
 
