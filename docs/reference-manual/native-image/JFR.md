@@ -11,23 +11,20 @@ redirect_from: /reference-manual/native-image/JFR/
 JDK Flight Recorder (JFR) is an event recorder for capturing information about a JVM, and an application running on the JVM. 
 GraalVM Native Image supports building a native executable with JFR events, and users can use [`jdk.jfr.Event` API](https://docs.oracle.com/en/java/javase/20/docs/api/jdk.jfr/jdk/jfr/Event.html) with a similar experience to using JFR in the Java HotSpot VM.
 
-To record JFR events when running a native executable, JFR support and JFR recording must be enabled. 
 
-## Add JFR Support and Record Events at Run Time
-
-To build a native executable with the JFR events support, you first need to include JFR at build time, then enable the system, start a recording, and configure logging at native executable run time.
+## Include JFR Support at Build Time and Record Events at Run Time
+To record JFR events when running a native executable, JFR support must be added to the image at build time and a recording must be started at runtime.
 
 To build a native executable with JFR, use the `--enable-monitoring=jfr` flag:
 ```shell
 native-image --enable-monitoring=jfr JavaApplication
 ```
-To enable the system, start a recording, and configure logging at run time, the following options are supported:
+To start a recording, and configure logging at run time, the following options are supported:
 
-* `-XX:+FlightRecorder`: use to enable JFR
 * `-XX:StartFlightRecording`: use to start a recording on application's startup
 * `-XX:FlightRecorderLogging`: use to configure the log output for the JFR system
 
-To enable JFR and start a recording, simply use `-XX:StartFlightRecording`. 
+To start a JFR recording upon launching your application, simply use `-XX:StartFlightRecording`. 
 For example:
 ```shell
 ./javaapplication -XX:StartFlightRecording="filename=recording.jfr"
@@ -36,7 +33,7 @@ For example:
 ### Run a Demo
 
 Transform this very simple demo application into a native image and see how to use JFR events from it.
-Save the following code to the _Example.java_ file.
+Save the following code to the _Example.java_ file. This demo make use of the JFR Event API to create and emit custom events.
 
 ```java
 import jdk.jfr.Event;
@@ -60,11 +57,9 @@ public class Example {
 }
 ```
 
-You can further configure the JFR recording or enable logging.
-
 ## Configure JFR Recording
 
-You can configure the JFR recording by passing a comma-separated list of key-value pairs to the `-XX:StartFlightRecording` option.
+Similar to normal Java applications, you can configure the JFR recording by passing a comma-separated list of key-value pairs to the `-XX:StartFlightRecording` option.
 For example:
 ```shell
 -XX:StartFlightRecording="filename=recording.jfr,dumponexit=true,duration=10s"
@@ -115,16 +110,48 @@ Otherwise, this option expects a comma separated list of tag combinations, each 
 
 - [Debugging and Diagnostics](DebuggingAndDiagnostics.md)
 
+
+## Features and Limitations
+Work is ongoing to achieve feature parity with JFR in Java HotSpot VM. This section outlines the major JFR features that are supported in Native Image.
+
+### Method Profiling and Stack Traces
+Method profiling is implemented by handling the SIGPROF signal to periodically collect method samples. 
+The event `jdk.ExecutionSample` is supported and its flamegraphs can be viewed in applications such as JDK Mission Control and VisualVM to diagnose hot methods.
+In addition, other JFR events that support stacktraces in Java HotSpot VM also support stacktraces in Native Image. This means you can do interesting things like view flamegraphs of `jdk.ObjectAllocationInNewTLAB` to diagnose where object allocations are frequently happening. 
+
+
+### Event Streaming
+Event streaming is supported in Native Image. Event Streaming lets you register callbacks for specific events at the application level. This introduces more flexibility and control over how recordings are managed. For example, you may dynamically increase the duration threshold of an event if it is found in the stream beyond a certain number times. Event streaming also allows the application to get continuous periodic JFR updates that are useful for monitoring purposes. 
+
+Currently, stacktraces are not supported on streamed events. This means you cannot access the stacktrace of an event inside its callback method. However, this limitation does not affect stacktraces in the JFR snapshot (.jfr) file, those will still work as usual.   
+
+### Interaction with FlightRecorderMXBean via Remote JMX
+You can now interact with Native Image JFR from out of process via remote JMX connection to `FlightRecorderMXBean`.  This can be done in using applications such as JDK Mission Control or VisualVM. Over JMX you can start, stop, and dump JFR recordings using the `FlightRecorderMXBean` API as an interface. [This blog post](https://developers.redhat.com/articles/2023/06/13/improvements-native-image-jfr-support-graalvm-jdk-20?source=sso#new_supported_features) provides a step-by-step walk-through of how to start using JFR over remote JMX in JDK Mission Control.
+Find more general information on how to use JMX with Native Image in [this guide](guides/build-and-run-native-executable-with-remote-jmx.md).
+
+> Note: Remote JMX support in Native Image is experimental and may be changed in the future. 
+
+### VM-Level Built-In Events
+Many of the VM-level built-in events found in Hotspot are available in Native Image. These include thread, monitor, garbage collection,
+and allocation events. Some Java-level events are also supported, such as container and virtual thread events. 
+Notably, Java-level events implemented by bytecode instrumentation in the Java HotSpot VM are not yet supported in Native Image. 
+Such events include file IO, exception, and network IO built-in events. Support for them is in progress. 
+For a full list of events supported in each GraalVM Native Image version, see [this GitHub issue](https://github.com/oracle/graal/issues/5410).
+
 ## Current Limitations
 
-JFR support is currently incomplete: for example, few VM-internal events are present. 
-However, JFR currently includes the following features: custom and system events, disk-based recordings, and stack traces. 
+JFR support in Native Image is currently not on par with Java HotSpot VM. The following is a list of unsupported features that are currently a work in progress:
+- Many built-in events found in Java HotSpot VM are still not supported 
+- Old object leak profiling 
+- Support for `-XX:FlightRecorderOptions`
+- Event throttling
+
 To see an exhaustive list of JFR events and features supported by Native Image, see [this GitHub issue](https://github.com/oracle/graal/issues/5410).
 
 > Note: the GraalVM distribution for Windows does not include JFR event recording.
 
 ### Further Reading
 
-- [Practice how to enable JFR support with Native Image and record events at run time using a demo application](/guides/build-and-run-native-executable-with-jfr.md).
+- [Practice how to enable JFR support with Native Image and record events at run time using a demo application](guides/build-and-run-native-executable-with-jfr.md).
 
 - [Create and record your first event with Java](https://docs.oracle.com/en/java/javase/17/jfapi/creating-and-recording-your-first-event.html).

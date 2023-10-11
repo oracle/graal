@@ -68,7 +68,7 @@ Follow the steps below to practice building a native executable with JFR support
 
 4. Run the executable and start recording:
     ```shell
-    ./jfrdemo -XX:StartFlightRecording="filename=recording.jfr"
+    ./jfrdemo -XX:StartFlightRecording=filename=recording.jfr
     ```
     This command runs the application as a native executable. 
     The `-XX:StartFlightRecording` option enables the built-in Flight Recorder and starts recording to a specified binary file, _recording.jfr_.
