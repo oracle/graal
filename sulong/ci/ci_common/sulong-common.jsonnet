@@ -107,10 +107,6 @@ local sulong_deps = common.deps.sulong;
     mx:: ["mx"] + self.extra_mx_args
   },
 
-  mxStripJarsMixin:: {
-    extra_mx_args+: ["--strip-jars"],
-  },
-
   mxStrictMixin:: {
     extra_mx_args+: ["--strict-compliance"],
   },
