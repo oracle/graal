@@ -50,9 +50,9 @@ import java.util.function.Function;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.operation.OperationConfig;
-import com.oracle.truffle.api.operation.OperationNodes;
-import com.oracle.truffle.api.operation.OperationParser;
+import com.oracle.truffle.api.bytecode.OperationConfig;
+import com.oracle.truffle.api.bytecode.OperationNodes;
+import com.oracle.truffle.api.bytecode.OperationParser;
 
 @Registration(id = "bm", name = "bm")
 class BenchmarkLanguage extends TruffleLanguage<Object> {

@@ -49,10 +49,10 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.operation.OperationConfig;
-import com.oracle.truffle.api.operation.OperationNodes;
-import com.oracle.truffle.api.operation.OperationParser;
-import com.oracle.truffle.api.operation.serialization.SerializationUtils;
+import com.oracle.truffle.api.bytecode.OperationConfig;
+import com.oracle.truffle.api.bytecode.OperationNodes;
+import com.oracle.truffle.api.bytecode.OperationParser;
+import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;

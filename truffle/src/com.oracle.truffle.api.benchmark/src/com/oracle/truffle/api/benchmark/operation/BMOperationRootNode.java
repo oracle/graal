@@ -41,14 +41,14 @@
 package com.oracle.truffle.api.benchmark.operation;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.GenerateOperations;
+import com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants;
+import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants.Variant;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.operation.GenerateOperations;
-import com.oracle.truffle.api.operation.GenerateOperationsTestVariants;
-import com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant;
-import com.oracle.truffle.api.operation.Operation;
-import com.oracle.truffle.api.operation.OperationRootNode;
 
 @GenerateOperationsTestVariants({
                 @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class)),

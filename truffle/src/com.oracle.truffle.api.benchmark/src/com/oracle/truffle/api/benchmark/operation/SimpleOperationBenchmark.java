@@ -65,10 +65,10 @@ import org.openjdk.jmh.annotations.Warmup;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.operation.OperationLocal;
 import com.oracle.truffle.api.benchmark.TruffleBenchmark;
 import com.oracle.truffle.api.benchmark.operation.ManualUnsafeNodedInterpreter.AddNode;
 import com.oracle.truffle.api.benchmark.operation.ManualUnsafeNodedInterpreter.ModNode;
+import com.oracle.truffle.api.bytecode.OperationLocal;
 
 @State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 1)
