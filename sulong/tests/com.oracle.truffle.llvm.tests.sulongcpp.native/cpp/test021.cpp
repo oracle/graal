@@ -40,9 +40,9 @@ class fooexception : public exception {
 
 int main() {
     try {
-        //throw exc;
+        throw exc;
     } catch (exception &e) {
-        //printf("%s\n", e.what());
+        printf("%s\n", e.what());
         return 0;
     }
     return 1;

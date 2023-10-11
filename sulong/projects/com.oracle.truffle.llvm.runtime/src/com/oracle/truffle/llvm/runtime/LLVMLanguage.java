@@ -767,7 +767,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             synchronized (libraryCacheLock) {
                 CallTarget cached = getCachedLibrary(source);
                 if (cached == null) {
-                    BitcodeID id = idGenerater.generateID();
+                    BitcodeID id = idGenerater.generateID(source.getName());
                     cached = getCapability(Loader.class).load(getContext(), source, id);
                     LibraryCacheEntry entry = new LibraryCacheEntry(this, source, cached, id);
                     if (entry.isCachable()) {
@@ -779,7 +779,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             }
         } else {
             // just get the id here and give it to the parserDriver
-            return getCapability(Loader.class).load(getContext(), source, idGenerater.generateID());
+            return getCapability(Loader.class).load(getContext(), source, idGenerater.generateID(source.getName()));
         }
     }
 

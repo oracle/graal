@@ -36,8 +36,7 @@ void foo() throw(int) {
 
 int main() {
     try {
-        //foo();
-        return 0;
+        foo();
     } catch (...) {
         printf("Caught int exception\n");
     }

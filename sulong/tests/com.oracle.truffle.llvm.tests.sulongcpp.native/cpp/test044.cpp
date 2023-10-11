@@ -50,8 +50,8 @@ void foo() {
 
 int main() {
     try {
-        //foo();
-        return 0;
+        foo();
+        return 1;
     } catch (...) {
         printf("CATCH\n");
         return 0;

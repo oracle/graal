@@ -814,34 +814,35 @@ public final class LLVMContext {
             try {
                 return symbolFinalStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
-                //exception.enter();
+                //exception.enter();)
                 System.out.println("symbol is: " + symbol.getName());
                 System.out.println("id is: " + id);
+                System.out.println("id name is: " + bitcodeID.getName());
                 System.out.println("index is: " + index);
 
                 System.out.println("symbolFinalStorage length is: " + symbolFinalStorage.length + ", when compared against id: " + id);
                 System.out.println("symbolFinalStorage is: ");
                 for (int i = 0; i < symbolFinalStorage.length; i++) {
-                    LLVMPointer[] pointers = symbolFinalStorage[i];
-                    if (pointers != null) {
-                        if (id == i) {
+                    if (id == i) {
+                        LLVMPointer[] pointers = symbolFinalStorage[i];
+                        if (pointers != null) {
                             System.out.println("Length for " + i + " array : " + pointers.length + ", when compared against index: " + index);
+                            for (int j = 0; j < pointers.length; j++) {
+                                System.out.println("(" + i + ", " + j + ") : " + pointers[j]);
+                            }
                         } else {
-                            System.out.println("Length for " + i + " array : " + pointers.length);
+                            System.out.println("Length for " + i + " array : 0");
                         }
-                        for (int j = 0; j < pointers.length; j++) {
-                            System.out.println("(" + i + ", " + j + ") : " + pointers[j]);
-                        }
-                        System.out.println();
-                    } else {
-                        System.out.println("Length for " + i + " array : 0");
                     }
                 }
 
-                System.out.println("library loaded:") ;
+                System.out.println("library loaded:");
                 for (int i = 0; i < libraryLoaded.length; i++) {
                     System.out.println(i + " : " + this.libraryLoaded[i]);
                 }
+
+                System.out.println("stack trace:");
+                e.printStackTrace();
 
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
@@ -852,30 +853,31 @@ public final class LLVMContext {
                 //exception.enter();
                 System.out.println("symbol is: " + symbol.getName());
                 System.out.println("id is: " + id);
+                System.out.println("id name is: " + bitcodeID.getName());
                 System.out.println("index is: " + index);
                 System.out.println("symbolFinalStorage length is: " + symbolDynamicStorage.length + ", when compared against id: " + id);
                 System.out.println("symbolFinalStorage is: ");
                 for (int i = 0; i < symbolDynamicStorage.length; i++) {
-                    LLVMPointer[] pointers = symbolDynamicStorage[i];
-                    if (pointers != null) {
-                        if (id == i) {
+                    if (id == i) {
+                        LLVMPointer[] pointers = symbolDynamicStorage[i];
+                        if (pointers != null) {
                             System.out.println("Length for " + i + " array : " + pointers.length + ", when compared against index: " + index);
+                            for (int j = 0; j < pointers.length; j++) {
+                                System.out.println("(" + i + ", " + j + ") : " + pointers[j]);
+                            }
                         } else {
-                            System.out.println("Length for " + i + " array : " + pointers.length);
+                            System.out.println("Length for " + i + " array : 0");
                         }
-                        for (int j = 0; j < pointers.length; j++) {
-                            System.out.print("(" + i + ", " + j + ") : " + pointers[j] + ", ");
-                        }
-                        System.out.println();
-                    } else {
-                        System.out.println("Length for " + i + " array : 0");
                     }
                 }
 
-                System.out.println("library loaded:") ;
+                System.out.println("library loaded:");
                 for (int i = 0; i < libraryLoaded.length; i++) {
                     System.out.println(i + " : " + this.libraryLoaded[i]);
                 }
+
+                System.out.println("stack trace:");
+                e.printStackTrace();
 
                 throw new LLVMIllegalSymbolIndexException("cannot find symbol");
             }
