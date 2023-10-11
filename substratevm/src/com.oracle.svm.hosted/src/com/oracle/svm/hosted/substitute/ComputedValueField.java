@@ -183,11 +183,6 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
     }
 
     @Override
-    public boolean isValueAvailableBeforeAnalysis() {
-        return isValueAvailableBeforeAnalysis;
-    }
-
-    @Override
     public boolean isValueAvailable() {
         /*
          * Note that we use isHostedUniverseBuild on purpose to define "available after analysis":
@@ -196,7 +191,7 @@ public class ComputedValueField implements ReadableJavaField, OriginalFieldProvi
          * value available when strengthening graphs after analysis, i.e., when applying analysis
          * results back into the IR.
          */
-        return constantValue != null || isValueAvailableBeforeAnalysis() ||
+        return constantValue != null || isValueAvailableBeforeAnalysis ||
                         (isValueAvailableOnlyAfterAnalysis && BuildPhaseProvider.isHostedUniverseBuilt()) ||
                         (isValueAvailableOnlyAfterCompilation && BuildPhaseProvider.isCompilationFinished());
     }

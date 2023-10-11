@@ -58,7 +58,7 @@ public abstract class CustomTypeFieldHandler {
          */
         assert field.isAccessed();
         if (field.wrapped instanceof ComputedValueField computedField) {
-            if (!computedField.isValueAvailableBeforeAnalysis() && field.getStorageKind().isObject()) {
+            if (!computedField.isValueAvailable() && field.getJavaKind().isObject()) {
                 injectFieldTypes(field, field.getType());
             } else if (bb.trackPrimitiveValues() && field.getStorageKind().isPrimitive() && field instanceof PointsToAnalysisField ptaField) {
                 ptaField.saturatePrimitiveField();

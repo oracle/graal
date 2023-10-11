@@ -55,7 +55,7 @@ public class SubstitutionField implements ReadableJavaField, OriginalFieldProvid
     }
 
     @Override
-    public boolean isValueAvailableBeforeAnalysis() {
+    public boolean isValueAvailable() {
         return true;
     }
 
