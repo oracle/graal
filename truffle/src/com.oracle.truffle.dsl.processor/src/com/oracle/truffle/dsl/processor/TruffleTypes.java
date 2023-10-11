@@ -72,7 +72,7 @@ public class TruffleTypes {
     public static final String EXPECT_WARNING_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectWarning";
     public static final String EXPECT_ERROR_CLASS_NAME1 = "com.oracle.truffle.api.dsl.test.ExpectError";
     public static final String EXPECT_ERROR_CLASS_NAME2 = "com.oracle.truffle.api.test.ExpectError";
-    public static final String EXPECT_ERROR_CLASS_NAME3 = "com.oracle.truffle.api.operation.test.ExpectError";
+    public static final String EXPECT_ERROR_CLASS_NAME3 = "com.oracle.truffle.api.bytecode.test.ExpectError";
     public static final List<String> TEST_PACKAGES = List.of("com.oracle.truffle.api.test", "com.oracle.truffle.api.instrumentation.test");
 
     public static final String SlowPathListener_Name = "com.oracle.truffle.api.dsl.test.SlowPathListener";
@@ -108,6 +108,7 @@ public class TruffleTypes {
     public final DeclaredType SandboxPolicy = c.getDeclaredType(SandboxPolicy_Name);
 
     // Truffle API
+    public static final String AbstractTruffleException_Name = "com.oracle.truffle.api.exception.AbstractTruffleException";
     public static final String Assumption_Name = "com.oracle.truffle.api.Assumption";
     public static final String BytecodeOSRNode_Name = "com.oracle.truffle.api.nodes.BytecodeOSRNode";
     public static final String ContextThreadLocal_Name = "com.oracle.truffle.api.ContextThreadLocal";
@@ -162,6 +163,7 @@ public class TruffleTypes {
     public static final String VirtualFrame_Name = "com.oracle.truffle.api.frame.VirtualFrame";
     public static final String HostLanguage_Name = "com.oracle.truffle.polyglot.HostLanguage";
 
+    public final DeclaredType AbstractTruffleException = c.getDeclaredTypeOptional(AbstractTruffleException_Name);
     public final DeclaredType Assumption = c.getDeclaredType(Assumption_Name);
     public final DeclaredType BytecodeOSRNode = c.getDeclaredType(BytecodeOSRNode_Name);
     public final DeclaredType ContextThreadLocal = c.getDeclaredType(ContextThreadLocal_Name);
@@ -336,42 +338,43 @@ public class TruffleTypes {
     public final DeclaredType TypeSystemReference = c.getDeclaredType(TypeSystemReference_Name);
     public final DeclaredType UnsupportedSpecializationException = c.getDeclaredType(UnsupportedSpecializationException_Name);
 
-    // Operation DSL API
-    public static final String ContinuationLocation_Name = "com.oracle.truffle.api.operation.ContinuationLocation";
-    public static final String ContinuationResult_Name = "com.oracle.truffle.api.operation.ContinuationResult";
-    public static final String ContinuationRootNode_Name = "com.oracle.truffle.api.operation.ContinuationRootNode";
-    public static final String GenerateOperations_Name = "com.oracle.truffle.api.operation.GenerateOperations";
-    public static final String LocalSetter_Name = "com.oracle.truffle.api.operation.LocalSetter";
-    public static final String LocalSetterRange_Name = "com.oracle.truffle.api.operation.LocalSetterRange";
-    public static final String Operation_Name = "com.oracle.truffle.api.operation.Operation";
-    public static final String OperationConfig_Name = "com.oracle.truffle.api.operation.OperationConfig";
-    public static final String OperationParser_Name = "com.oracle.truffle.api.operation.OperationParser";
-    public static final String OperationIntrospection_Name = "com.oracle.truffle.api.operation.introspection.OperationIntrospection";
-    public static final String OperationIntrospection_Provider_Name = "com.oracle.truffle.api.operation.introspection.OperationIntrospection.Provider";
-    public static final String OperationLabel_Name = "com.oracle.truffle.api.operation.OperationLabel";
-    public static final String OperationLocal_Name = "com.oracle.truffle.api.operation.OperationLocal";
-    public static final String OperationRootNode_Name = "com.oracle.truffle.api.operation.OperationRootNode";
-    public static final String OperationNodes_Name = "com.oracle.truffle.api.operation.OperationNodes";
-    public static final String OperationProxy_Name = "com.oracle.truffle.api.operation.OperationProxy";
-    public static final String OperationProxy_Proxyable_Name = "com.oracle.truffle.api.operation.OperationProxy.Proxyable";
-    public static final String OperationBuilder_Name = "com.oracle.truffle.api.operation.OperationBuilder";
-    public static final String OperationSerializer_Name = "com.oracle.truffle.api.operation.serialization.OperationSerializer";
-    public static final String OperationSerializer_SerializerContext_Name = "com.oracle.truffle.api.operation.serialization.OperationSerializer.SerializerContext";
-    public static final String OperationDeserializer_Name = "com.oracle.truffle.api.operation.serialization.OperationDeserializer";
-    public static final String OperationDeserializer_DeserializerContext_Name = "com.oracle.truffle.api.operation.serialization.OperationDeserializer.DeserializerContext";
-    public static final String OperationsConstantPool_Name = "com.oracle.truffle.api.operation.OperationsConstantPool";
-    public static final String OperationsInstrumentTreeNode_Name = "com.oracle.truffle.api.operation.OperationsInstrumentTreeNode";
-    public static final String Variadic_Name = "com.oracle.truffle.api.operation.Variadic";
-    public static final String ShortCircuitOperation_Name = "com.oracle.truffle.api.operation.ShortCircuitOperation";
-    public static final String InstrumentRootNode_Name = "com.oracle.truffle.api.operation.instrumentation.InstrumentRootNode";
-    public static final String InstrumentTreeNode_Name = "com.oracle.truffle.api.operation.instrumentation.InstrumentTreeNode";
-    public static final String ExecutionTracer_Name = "com.oracle.truffle.api.operation.tracing.ExecutionTracer";
-    public static final String OperationTracingMetadata_Name = "com.oracle.truffle.api.operation.tracing.TracingMetadata";
-    public static final String OperationTracingMetadata_SpecializationNames_Name = "com.oracle.truffle.api.operation.tracing.TracingMetadata.SpecializationNames";
-    public static final String GenerateOperationsTestVariants_Name = "com.oracle.truffle.api.operation.GenerateOperationsTestVariants";
-    public static final String GenerateOperationsTestVariants_Variant_Name = "com.oracle.truffle.api.operation.GenerateOperationsTestVariants.Variant";
+    // Bytecode DSL API
+    public static final String ContinuationLocation_Name = "com.oracle.truffle.api.bytecode.ContinuationLocation";
+    public static final String ContinuationResult_Name = "com.oracle.truffle.api.bytecode.ContinuationResult";
+    public static final String ContinuationRootNode_Name = "com.oracle.truffle.api.bytecode.ContinuationRootNode";
+    public static final String GenerateOperations_Name = "com.oracle.truffle.api.bytecode.GenerateOperations";
+    public static final String LocalSetter_Name = "com.oracle.truffle.api.bytecode.LocalSetter";
+    public static final String LocalSetterRange_Name = "com.oracle.truffle.api.bytecode.LocalSetterRange";
+    public static final String Operation_Name = "com.oracle.truffle.api.bytecode.Operation";
+    public static final String OperationConfig_Name = "com.oracle.truffle.api.bytecode.OperationConfig";
+    public static final String OperationParser_Name = "com.oracle.truffle.api.bytecode.OperationParser";
+    public static final String OperationIntrospection_Name = "com.oracle.truffle.api.bytecode.introspection.OperationIntrospection";
+    public static final String OperationIntrospection_Provider_Name = "com.oracle.truffle.api.bytecode.introspection.OperationIntrospection.Provider";
+    public static final String Argument_ArgumentKind_Name = "com.oracle.truffle.api.bytecode.introspection.Argument.ArgumentKind";
+    public static final String OperationLabel_Name = "com.oracle.truffle.api.bytecode.OperationLabel";
+    public static final String OperationLocal_Name = "com.oracle.truffle.api.bytecode.OperationLocal";
+    public static final String OperationRootNode_Name = "com.oracle.truffle.api.bytecode.OperationRootNode";
+    public static final String OperationNodes_Name = "com.oracle.truffle.api.bytecode.OperationNodes";
+    public static final String OperationProxy_Name = "com.oracle.truffle.api.bytecode.OperationProxy";
+    public static final String OperationProxy_Proxyable_Name = "com.oracle.truffle.api.bytecode.OperationProxy.Proxyable";
+    public static final String OperationBuilder_Name = "com.oracle.truffle.api.bytecode.OperationBuilder";
+    public static final String OperationSerializer_Name = "com.oracle.truffle.api.bytecode.serialization.OperationSerializer";
+    public static final String OperationSerializer_SerializerContext_Name = "com.oracle.truffle.api.bytecode.serialization.OperationSerializer.SerializerContext";
+    public static final String OperationDeserializer_Name = "com.oracle.truffle.api.bytecode.serialization.OperationDeserializer";
+    public static final String OperationDeserializer_DeserializerContext_Name = "com.oracle.truffle.api.bytecode.serialization.OperationDeserializer.DeserializerContext";
+    public static final String OperationsConstantPool_Name = "com.oracle.truffle.api.bytecode.OperationsConstantPool";
+    public static final String OperationsInstrumentTreeNode_Name = "com.oracle.truffle.api.bytecode.OperationsInstrumentTreeNode";
+    public static final String Variadic_Name = "com.oracle.truffle.api.bytecode.Variadic";
+    public static final String ShortCircuitOperation_Name = "com.oracle.truffle.api.bytecode.ShortCircuitOperation";
+    public static final String InstrumentRootNode_Name = "com.oracle.truffle.api.bytecode.instrumentation.InstrumentRootNode";
+    public static final String InstrumentTreeNode_Name = "com.oracle.truffle.api.bytecode.instrumentation.InstrumentTreeNode";
+    public static final String ExecutionTracer_Name = "com.oracle.truffle.api.bytecode.tracing.ExecutionTracer";
+    public static final String OperationTracingMetadata_Name = "com.oracle.truffle.api.bytecode.tracing.TracingMetadata";
+    public static final String OperationTracingMetadata_SpecializationNames_Name = "com.oracle.truffle.api.bytecode.tracing.TracingMetadata.SpecializationNames";
+    public static final String GenerateOperationsTestVariants_Name = "com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants";
+    public static final String GenerateOperationsTestVariants_Variant_Name = "com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants.Variant";
     public static final String FastAccess_Name = "com.oracle.truffle.api.impl.FastAccess";
-    public static final String OperationSupport_Name = "com.oracle.truffle.api.operation.OperationSupport";
+    public static final String OperationSupport_Name = "com.oracle.truffle.api.bytecode.OperationSupport";
 
     public final DeclaredType ContinuationLocation = c.getDeclaredTypeOptional(ContinuationLocation_Name);
     public final DeclaredType ContinuationResult = c.getDeclaredTypeOptional(ContinuationResult_Name);
@@ -384,6 +387,7 @@ public class TruffleTypes {
     public final DeclaredType OperationParser = c.getDeclaredTypeOptional(OperationParser_Name);
     public final DeclaredType OperationIntrospection = c.getDeclaredTypeOptional(OperationIntrospection_Name);
     public final DeclaredType OperationIntrospection_Provider = c.getDeclaredTypeOptional(OperationIntrospection_Provider_Name);
+    public final DeclaredType Argument_ArgumentKind = c.getDeclaredTypeOptional(Argument_ArgumentKind_Name);
     public final DeclaredType OperationLabel = c.getDeclaredTypeOptional(OperationLabel_Name);
     public final DeclaredType OperationLocal = c.getDeclaredTypeOptional(OperationLocal_Name);
     public final DeclaredType OperationRootNode = c.getDeclaredTypeOptional(OperationRootNode_Name);

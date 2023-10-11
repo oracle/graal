@@ -53,13 +53,13 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.bytecode.OperationConfig;
+import com.oracle.truffle.api.bytecode.OperationLabel;
+import com.oracle.truffle.api.bytecode.OperationLocal;
+import com.oracle.truffle.api.bytecode.OperationNodes;
+import com.oracle.truffle.api.bytecode.OperationParser;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
-import com.oracle.truffle.api.operation.OperationConfig;
-import com.oracle.truffle.api.operation.OperationLabel;
-import com.oracle.truffle.api.operation.OperationLocal;
-import com.oracle.truffle.api.operation.OperationNodes;
-import com.oracle.truffle.api.operation.OperationParser;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;

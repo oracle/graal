@@ -960,10 +960,8 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private void buildIntrospectionArgument(CodeTreeBuilder b, String kind, String content) {
-        DeclaredType argumentKindType = context.getDeclaredType("com.oracle.truffle.api.operation.introspection.Argument.ArgumentKind");
-
         b.startNewArray(arrayOf(context.getType(Object.class)), null);
-        b.staticReference(argumentKindType, kind);
+        b.staticReference(types.Argument_ArgumentKind, kind);
         b.string(content);
         b.end();
 
@@ -4260,7 +4258,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.end(); // try
 
-            DeclaredType abstractTruffleException = context.getDeclaredType("com.oracle.truffle.api.exception.AbstractTruffleException");
+            DeclaredType abstractTruffleException = types.AbstractTruffleException;
             b.startCatchBlock(context.getDeclaredType("java.lang.Throwable"), "throwable");
 
             storeBciInFrameIfNecessary(b);
