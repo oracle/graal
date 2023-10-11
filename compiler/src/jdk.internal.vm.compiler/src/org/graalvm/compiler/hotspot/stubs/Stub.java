@@ -39,6 +39,7 @@ import org.graalvm.compiler.code.CompilationResult;
 import org.graalvm.compiler.core.CompilationPrinter;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.common.GraalOptions;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.target.Backend;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
@@ -207,6 +208,7 @@ public abstract class Stub {
                     CodeCacheProvider codeCache = providers.getCodeCache();
                     CompilationResult compResult = buildCompilationResult(debug, backend, graph, compilationId);
                     try (DebugContext.Scope s = debug.scope("CodeInstall", compResult);
+                                    CompilationAlarm alarm = CompilationAlarm.disable();
                                     DebugContext.Activation a = debug.activate()) {
                         assert destroyedCallerRegisters != null;
                         HotSpotCompiledCode compiledCode = HotSpotCompiledCodeBuilder.createCompiledCode(codeCache, null, null, compResult, options);

@@ -65,6 +65,7 @@ import org.graalvm.compiler.core.common.type.Stamp;
 import org.graalvm.compiler.core.common.type.StampFactory;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.core.common.type.TypeReference;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
@@ -519,6 +520,15 @@ public class SnippetTemplate {
             this.receiver = receiver;
         }
 
+        public boolean isPrivateLocation(LocationIdentity identity) {
+            for (LocationIdentity i : privateLocations) {
+                if (i.equals(identity)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         public ResolvedJavaMethod getMethod() {
             return method;
         }
@@ -945,7 +955,8 @@ public class SnippetTemplate {
                 try (DebugContext debug = context.getReplacements().openSnippetDebugContext("SnippetTemplate_", args.cacheKey.method, outer, options)) {
                     try (DebugCloseable a = SnippetTemplateCreationTime.start(outer);
                                     DebugCloseable a2 = args.info.creationTimer.start(outer);
-                                    DebugContext.Scope s = debug.scope("SnippetSpecialization", args.info.method)) {
+                                    DebugContext.Scope s = debug.scope("SnippetSpecialization", args.info.method);
+                                    CompilationAlarm alarm = CompilationAlarm.disable()) {
                         SnippetTemplates.increment(outer);
                         args.info.creationCounter.increment(outer);
                         OptionValues snippetOptions = new OptionValues(options, GraalOptions.TraceInlining, GraalOptions.TraceInliningForStubsAndSnippets.getValue(options),
@@ -1024,7 +1035,7 @@ public class SnippetTemplate {
                     SnippetReflectionProvider snippetReflection,
                     Arguments args,
                     boolean trackNodeSourcePosition,
-                    Node replacee,
+                    ValueNode replacee,
                     PhaseSuite<CoreProviders> midTierPreLoweringPhases,
                     PhaseSuite<CoreProviders> midTierPostLoweringPhases) {
         this.snippetReflection = snippetReflection;
@@ -1197,10 +1208,9 @@ public class SnippetTemplate {
             boolean needsCE = false;
             LoweringTool.LoweringStage loweringStage = args.cacheKey.loweringStage;
             for (Node n : snippetCopy.getNodes()) {
-                if (n instanceof AbstractNewObjectNode || n instanceof AbstractBoxingNode) {
+                if (!needsPEA && (n instanceof AbstractNewObjectNode || n instanceof AbstractBoxingNode)) {
                     needsPEA = true;
-                    break;
-                } else if (n instanceof LogicNode) {
+                } else if (!needsCE && n instanceof LogicNode) {
                     needsCE = true;
                 }
             }
@@ -1280,10 +1290,17 @@ public class SnippetTemplate {
 
                 if (node instanceof StateSplit) {
                     StateSplit stateSplit = (StateSplit) node;
-                    FrameState frameState = stateSplit.stateAfter();
-                    if (stateSplit.hasSideEffect()) {
+
+                    // The normal side effect check doesn't understand private locations, so
+                    // explicitly filter those accesses from the side effects.
+                    boolean hasSideEffect = stateSplit.hasSideEffect();
+                    if (hasSideEffect && stateSplit instanceof MemoryAccess && MemoryKill.isSingleMemoryKill(stateSplit.asNode())) {
+                        hasSideEffect = !info.isPrivateLocation(((SingleMemoryKill) stateSplit).getKilledLocationIdentity());
+                    }
+                    if (hasSideEffect) {
                         curSideEffectNodes.add((StateSplit) node);
                     }
+                    FrameState frameState = stateSplit.stateAfter();
                     if (frameState != null) {
                         stateSplit.setStateAfter(null);
                     }
@@ -1440,6 +1457,10 @@ public class SnippetTemplate {
                 if (node != entryPointNode && node != entryPointNode.stateAfter()) {
                     nodes.add(node);
                 }
+            }
+
+            if (!curSideEffectNodes.isEmpty()) {
+                checkSideEffects(replacee);
             }
 
             debug.dump(DebugContext.INFO_LEVEL, snippet, "SnippetTemplate final state");
@@ -2045,21 +2066,7 @@ public class SnippetTemplate {
             FixedNode firstCFGNodeDuplicate = (FixedNode) duplicates.get(firstCFGNode);
             replacee.replaceAtPredecessor(firstCFGNodeDuplicate);
 
-            if (replacee.graph().getGuardsStage().areFrameStatesAtSideEffects()) {
-                boolean replaceeHasSideEffect = replacee instanceof StateSplit && ((StateSplit) replacee).hasSideEffect();
-                boolean replacementHasSideEffect = !sideEffectNodes.isEmpty();
-
-                /*
-                 * Following cases are allowed: Either the replacee and replacement don't have
-                 * side-effects or the replacee has and the replacement hasn't (lowered to something
-                 * without a side-effect which is fine regarding correctness) or both have
-                 * side-effects, under which conditions also merges should have states.
-                 */
-
-                if (replacementHasSideEffect) {
-                    GraalError.guarantee(replaceeHasSideEffect, "Lowering node %s without side-effect to snippet %s with sideeffects=%s", replacee, info, this.sideEffectNodes);
-                }
-            }
+            checkSideEffects(replacee);
 
             updateStamps(replacee, duplicates);
 
@@ -2189,6 +2196,22 @@ public class SnippetTemplate {
 
             debug.dump(DebugContext.DETAILED_LEVEL, replaceeGraph, "After lowering %s with %s", replacee, this);
             return duplicates;
+        }
+    }
+
+    /**
+     * Check that either the replacee and replacement don't have side effects or the replacee does
+     * and the replacement doesn't (lowered to something without a side effect which is fine
+     * regarding correctness) or both have side effects, under which conditions also merges should
+     * have states.
+     */
+    private void checkSideEffects(ValueNode replacee) {
+        if (replacee.graph().getGuardsStage().areFrameStatesAtSideEffects()) {
+            boolean replaceeHasSideEffect = replacee instanceof StateSplit && ((StateSplit) replacee).hasSideEffect();
+            boolean replacementHasSideEffect = !sideEffectNodes.isEmpty();
+            if (replacementHasSideEffect) {
+                GraalError.guarantee(replaceeHasSideEffect, "Lowering node %s without side effect to snippet %s with side effects=%s", replacee, info, this.sideEffectNodes);
+            }
         }
     }
 
