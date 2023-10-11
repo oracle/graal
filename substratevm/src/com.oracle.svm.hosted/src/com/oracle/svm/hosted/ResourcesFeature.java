@@ -211,44 +211,69 @@ public final class ResourcesFeature implements InternalFeature {
                     // we should ignore if user failed to provide resource
                     return;
                 }
-            } else {
-                URL url = imageClassLoader.getClassLoader().getResource(resourcePath);
-                if (url == null) {
-                    // we should ignore if user failed to provide resource
+
+                if (is == null) {
                     return;
+                }
+
+                if (isDirectory) {
+                    Resources.singleton().registerDirectoryResource(module, resourcePath, content, fromJar);
+                } else {
+                    Resources.singleton().registerResource(module, resourcePath, is, fromJar);
                 }
 
                 try {
-                    is = url.openStream();
-                    fromJar = url.getProtocol().equalsIgnoreCase("jar");
-                    isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
-                    // if directory is from jar content should remain empty (same as in scanJar
-                    // function from ClassLoaderSupportImpl)
-                    if (isDirectory) {
-                        content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
-                    }
+                    is.close();
                 } catch (IOException e) {
-                    // we should ignore if user failed to provide resource
-                    return;
-                } catch (URISyntaxException e) {
                     throw new RuntimeException(e);
                 }
-            }
 
-            if (is == null) {
-                return;
-            }
-
-            if (isDirectory) {
-                Resources.singleton().registerDirectoryResource(module, resourcePath, content, fromJar);
             } else {
-                Resources.singleton().registerResource(module, resourcePath, is, fromJar);
-            }
+                Enumeration<URL> urls;
+                try {
+                    urls = imageClassLoader.getClassLoader().getResources(resourcePath);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
+                if (!urls.hasMoreElements()) {
+                    // we should ignore if user failed to provide resource
+                    return;
+                }
 
-            try {
-                is.close();
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+                while (urls.hasMoreElements()) {
+                    URL url = urls.nextElement();
+                    try {
+                        is = url.openStream();
+                        fromJar = url.getProtocol().equalsIgnoreCase("jar");
+                        isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
+                        // if directory is from jar content should remain empty (same as in scanJar
+                        // function from ClassLoaderSupportImpl)
+                        if (isDirectory) {
+                            content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
+                        }
+                    } catch (IOException e) {
+                        // we should ignore if user failed to provide resource
+                        return;
+                    } catch (URISyntaxException e) {
+                        throw new RuntimeException(e);
+                    }
+
+                    if (is == null) {
+                        return;
+                    }
+
+                    if (isDirectory) {
+                        Resources.singleton().registerDirectoryResource(module, resourcePath, content, fromJar);
+                    } else {
+                        Resources.singleton().registerResource(module, resourcePath, is, fromJar);
+                    }
+
+                    try {
+                        is.close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
             }
         }
 
