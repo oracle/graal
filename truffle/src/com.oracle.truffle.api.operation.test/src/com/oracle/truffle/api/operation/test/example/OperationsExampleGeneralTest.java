@@ -810,6 +810,26 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
     }
 
     @Test
+    public void testEmptyBlock() {
+        RootCallTarget root = parse("emptyBlock", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginBlock();
+                b.beginBlock();
+                b.endBlock();
+
+                b.beginReturn();
+                b.emitLoadConstant(42L);
+                b.endReturn();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        assertEquals(42L, root.call());
+    }
+
+    @Test
     public void testIntrospectionData() {
         OperationsExample node = parseNode(interpreterClass, "introspectionData", b -> {
             b.beginRoot(LANGUAGE);
