@@ -85,6 +85,13 @@ public class OperationModel implements PrettyPrintable {
     public final OperationKind kind;
     public final String name;
 
+    /**
+     * Transparent operations do not have their own logic; any value produced by their children is
+     * simply forwarded to the parent operation.
+     *
+     * e.g., blocks do not have their own logic, but are useful to support operation sequencing.
+     * Source position-related operations are also transparent.
+     */
     public boolean isTransparent;
     public boolean isVoid;
     public boolean isVariadic;
@@ -110,6 +117,10 @@ public class OperationModel implements PrettyPrintable {
     public OperationModel setTransparent(boolean isTransparent) {
         this.isTransparent = isTransparent;
         return this;
+    }
+
+    public boolean isTransparent() {
+        return isTransparent;
     }
 
     public OperationModel setVoid(boolean isVoid) {

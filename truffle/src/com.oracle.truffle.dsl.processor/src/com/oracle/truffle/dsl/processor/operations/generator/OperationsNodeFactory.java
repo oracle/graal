@@ -2443,13 +2443,11 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private void buildOperationBeginData(CodeTreeBuilder b, OperationModel operation) {
+            if (operation.isTransparent) {
+                b.string("new Object[]{false /* value produced */, " + UNINIT + " /* child bci */}");
+                return;
+            }
             switch (operation.kind) {
-                case BLOCK:
-                case INSTRUMENT_TAG:
-                case SOURCE:
-                case SOURCE_SECTION:
-                    b.string("new Object[]{false}");
-                    break;
                 case IF_THEN:
                     b.string("new int[]{" + UNINIT + " /* false branch fix-up index */}");
                     break;
@@ -2478,6 +2476,10 @@ public class OperationsNodeFactory implements ElementHelpers {
                 case CUSTOM_SHORT_CIRCUIT:
                     b.startNewArray(arrayOf(context.getType(Object.class)), null);
                     b.string("new int[0] /* branch fix-up indices */");
+                    ShortCircuitInstructionModel shortCircuitInstruction = (ShortCircuitInstructionModel) operation.instruction;
+                    if (shortCircuitInstruction.booleanConverterInstruction.signature.canBoxingEliminateValue(0)) {
+                        b.string(UNINIT + " /* child bci (for boolean converter) */");
+                    }
                     b.end();
                     break;
                 case TRY_CATCH:
@@ -2592,7 +2594,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                          * short circuit condition. For the last operand we need to insert a
                          * conversion.
                          */
-                        buildEmitBooleanConverterInstruction(b, shortCircuitInstruction);
+                        buildEmitBooleanConverterInstruction(b, shortCircuitInstruction, "operationStack[operationSp].data");
                     }
                     if (model.enableTracing) {
                         b.statement("basicBlockBoundary[bci] = true");
@@ -2670,13 +2672,14 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startStatement().startCall("afterChild");
             if (operation.isTransparent) {
                 b.string("(boolean) ((Object[]) operationStack[operationSp].data)[0]");
+                b.string("(int) ((Object[]) operationStack[operationSp].data)[1]");
             } else {
-                b.string("" + !operation.isVoid);
-            }
-            if (operation.instruction != null) {
-                b.string("bci - " + operation.instruction.getInstructionLength());
-            } else {
-                b.string("-1");
+                b.string(Boolean.toString(!operation.isVoid));
+                if (operation.instruction != null) {
+                    b.string("bci - " + operation.instruction.getInstructionLength());
+                } else {
+                    b.string("-1");
+                }
             }
             b.end(2);
 
@@ -3082,7 +3085,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         // DUP so the boolean converter doesn't clobber the original value.
                         buildEmitInstruction(b, model.dupInstruction, null);
                     }
-                    buildEmitBooleanConverterInstruction(b, shortCircuitInstruction);
+                    buildEmitBooleanConverterInstruction(b, shortCircuitInstruction, "data");
                     String[] args = buildCustomShortCircuitInitializer(b, op, op.instruction);
                     buildEmitInstruction(b, op.instruction, args);
                     b.end();
@@ -3111,7 +3114,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             return ex;
         }
 
-        private void buildEmitBooleanConverterInstruction(CodeTreeBuilder b, ShortCircuitInstructionModel shortCircuitInstruction) {
+        private void buildEmitBooleanConverterInstruction(CodeTreeBuilder b, ShortCircuitInstructionModel shortCircuitInstruction, String operationData) {
             InstructionModel booleanConverter = shortCircuitInstruction.booleanConverterInstruction;
 
             List<InstructionImmediate> immediates = booleanConverter.getImmediates();
@@ -3119,8 +3122,13 @@ public class OperationsNodeFactory implements ElementHelpers {
             for (int i = 0; i < args.length; i++) {
                 InstructionImmediate immediate = immediates.get(i);
                 args[i] = switch (immediate.kind) {
-                    case BYTECODE_INDEX -> UNINIT; // TODO: retrieve child bytecode index from
-                                                   // operation stack
+                    case BYTECODE_INDEX -> {
+                        b.statement("int childBci = (int) ((Object[]) " + operationData + ")[1]");
+                        b.startAssert();
+                        b.string("childBci != " + UNINIT);
+                        b.end();
+                        yield "childBci";
+                    }
                     case NODE -> "allocateNode()";
                     default -> throw new AssertionError(String.format("Boolean converter instruction had unexpected encoding: %s", immediates));
                 };
@@ -3147,18 +3155,28 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             b.startSwitch().string("operationStack[operationSp - 1].operation").end().startBlock();
 
-            for (OperationModel op : model.getOperations()) {
-                if (!op.hasChildren()) {
-                    continue;
-                }
+            Map<Boolean, List<OperationModel>> operationsByTransparency = model.getOperations().stream() //
+                            .filter(OperationModel::hasChildren).collect(Collectors.partitioningBy(OperationModel::isTransparent));
 
+            // First, do transparent operations (grouped).
+            assert !operationsByTransparency.get(true).isEmpty();
+            for (OperationModel op : operationsByTransparency.get(true)) {
+                b.startCase().tree(createOperationConstant(op)).end();
+            }
+            b.startBlock();
+            b.statement("((Object[]) data)[0] = producedValue");
+            b.statement("((Object[]) data)[1] = childBci");
+            b.statement("break");
+            b.end();
+
+            // Then, do non-transparent operations (separately).
+            for (OperationModel op : operationsByTransparency.get(false)) {
                 b.startCase().tree(createOperationConstant(op)).end().startBlock();
-
                 /**
                  * Ensure the stack balances. If a value was expected, assert that the child
                  * produced a value. If a value was not expected but the child produced one, pop it.
                  */
-                if (op.childrenMustBeValues != null && !op.isTransparent) {
+                if (op.childrenMustBeValues != null) {
                     List<Integer> valueChildren = new ArrayList<>();
                     List<Integer> nonValueChildren = new ArrayList<>();
 
@@ -3216,10 +3234,6 @@ public class OperationsNodeFactory implements ElementHelpers {
                         buildEmitInstruction(b, model.popInstruction, null);
                         b.end();
                     }
-                }
-
-                if (op.isTransparent) {
-                    b.statement("((Object[]) data)[0] = producedValue");
                 }
 
                 switch (op.kind) {
@@ -3341,6 +3355,12 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 b.statement("((Object[]) data)[" + immediateIndex++ + "] = childBci");
                                 b.end();
                             }
+                        }
+                        break;
+                    case CUSTOM_SHORT_CIRCUIT:
+                        ShortCircuitInstructionModel shortCircuitInstruction = (ShortCircuitInstructionModel) op.instruction;
+                        if (shortCircuitInstruction.booleanConverterInstruction.signature.canBoxingEliminateValue(0)) {
+                            b.statement("((Object[]) data)[1] = childBci");
                         }
                         break;
                 }
