@@ -637,7 +637,7 @@ public abstract class VMThreads {
             /*
              * Iterating the threads or accessing thread locals of other threads is unsafe if we are
              * outside a VM operation because the IsolateThread data structure could be freed at any
-             * time (we can't use any locking).
+             * time (we can't use any locking to prevent races).
              */
             return false;
         }

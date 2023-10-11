@@ -647,7 +647,7 @@ public final class HeapImpl extends Heap {
         if (printLocationInfo(log, ptr, allowJavaHeapAccess, allowUnsafeOperations)) {
             if (allowJavaHeapAccess && objectHeaderImpl.pointsToObjectHeader(ptr)) {
                 log.indent(true);
-                SubstrateDiagnostics.printObjectInfo(log, ptr);
+                SubstrateDiagnostics.printObjectInfo(log, ptr.toObject());
                 log.redent(false);
             }
             return true;

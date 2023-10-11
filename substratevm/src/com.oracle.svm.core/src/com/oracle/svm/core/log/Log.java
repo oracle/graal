@@ -136,9 +136,16 @@ public abstract class Log implements AutoCloseable {
     public abstract Log string(String value);
 
     /**
-     * Prints all characters in the string, filling with spaces before or after.
+     * Prints all characters in the string, filling with spaces before or after. Does not do any
+     * platform- or charset-depending conversions.
      */
     public abstract Log string(String str, int fill, int align);
+
+    /**
+     * Prints the string characters, up to the given maximum length. Does not do any platform- or
+     * charset-depending conversions.
+     */
+    public abstract Log string(String value, int maxLen);
 
     /**
      * Prints all characters in the array, without any platform- or charset-depending conversions.
@@ -146,12 +153,13 @@ public abstract class Log implements AutoCloseable {
     public abstract Log string(char[] value);
 
     /**
-     * Prints all bytes in the array, without any conversion.
+     * Prints all bytes in the array, without any platform- or charset-depending conversions.
      */
     public abstract Log string(byte[] value);
 
     /**
-     * Prints the provided range of bytes in the array, without any conversion.
+     * Prints the provided range of bytes in the array, without any platform- or charset-depending
+     * conversions.
      */
     public abstract Log string(byte[] value, int offset, int length);
 
@@ -413,6 +421,11 @@ public abstract class Log implements AutoCloseable {
 
         @Override
         public Log string(String str, int fill, int align) {
+            return this;
+        }
+
+        @Override
+        public Log string(String value, int maxLen) {
             return this;
         }
 

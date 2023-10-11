@@ -78,7 +78,7 @@ public class VMThreadLocalInfos {
                     log.string("(Object) ").zhex(Word.objectToUntrackedPointer(value));
                     if (value != null) {
                         log.indent(true);
-                        SubstrateDiagnostics.printObjectInfo(log, Word.objectToUntrackedPointer(value));
+                        SubstrateDiagnostics.printObjectInfo(log, value);
                         log.redent(false);
                     }
                 } else {

@@ -24,12 +24,16 @@
  */
 package com.oracle.svm.core;
 
+import com.oracle.svm.core.util.VMError;
+
 public class Processor {
-    private static int cachedActiveProcessorCount = -1;
+    private static int lastQueriedActiveProcessorCount = -1;
 
     public static int getActiveProcessorCount() {
+        VMError.guarantee(!SubstrateUtil.HOSTED, "must not be executed during the image build");
+
         int result = getActiveProcessorCount0();
-        cachedActiveProcessorCount = result;
+        lastQueriedActiveProcessorCount = result;
         return result;
     }
 
@@ -46,7 +50,7 @@ public class Processor {
         }
     }
 
-    public static int getCachedActiveProcessorCount() {
-        return cachedActiveProcessorCount;
+    public static int getLastQueriedActiveProcessorCount() {
+        return lastQueriedActiveProcessorCount;
     }
 }

@@ -34,9 +34,11 @@ import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.nodes.PauseNode;
+import org.graalvm.compiler.nodes.java.ArrayLengthNode;
 import org.graalvm.compiler.options.Option;
 import org.graalvm.compiler.options.OptionKey;
 import org.graalvm.compiler.options.OptionType;
+import org.graalvm.compiler.word.ObjectAccess;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -74,6 +76,7 @@ import com.oracle.svm.core.heap.RestrictHeapAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jdk.Jvm;
+import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.AtomicWord;
 import com.oracle.svm.core.locks.VMLockSupport;
 import com.oracle.svm.core.log.Log;
@@ -151,26 +154,59 @@ public class SubstrateDiagnostics {
         }
     }
 
-    @Uninterruptible(reason = "Called with a raw object pointer.", calleeMustBe = false)
-    public static void printObjectInfo(Log log, Pointer ptr) {
-        DynamicHub objHub = Heap.getHeap().getObjectHeader().readDynamicHubFromPointer(ptr);
-        if (objHub == DynamicHub.fromClass(DynamicHub.class)) {
-            // The pointer is already a hub, so print some information about the hub.
-            DynamicHub hub = (DynamicHub) ptr.toObject();
+    public static void printObjectInfo(Log log, Object obj) {
+        if (obj instanceof DynamicHub hub) {
+            // The object itself is a dynamic hub, so print some information about the hub.
             log.string("is the hub of ").string(hub.getName());
-        } else {
-            // The pointer is an object, so at least print some information about the object's hub.
-            log.string("is an object of type ");
+            return;
+        }
 
-            if (Throwable.class.isAssignableFrom(DynamicHub.toClass(objHub))) {
-                log.exception((Throwable) ptr.toObject(), 2);
+        // Print some information about the object.
+        log.string("is an object of type ");
+
+        if (obj instanceof Throwable e) {
+            log.exception(e, 2);
+        } else {
+            log.string(obj.getClass().getName());
+
+            if (obj instanceof String s) {
+                log.string(": ").string(s, 60);
             } else {
-                log.string(objHub.getName());
-                if (LayoutEncoding.isArrayLike(objHub.getLayoutEncoding())) {
-                    int length = ptr.readInt(ConfigurationValues.getObjectLayout().getArrayLengthOffset());
-                    log.string(" with length ").signed(length);
+                int layoutEncoding = DynamicHub.fromClass(obj.getClass()).getLayoutEncoding();
+
+                if (LayoutEncoding.isArrayLike(layoutEncoding)) {
+                    int length = ArrayLengthNode.arrayLength(obj);
+                    log.string(" with length ").signed(length).string(": ");
+
+                    printSomeArrayData(log, obj, length, layoutEncoding);
                 }
             }
+        }
+    }
+
+    private static void printSomeArrayData(Log log, Object obj, int length, int layoutEncoding) {
+        int elementSize = LayoutEncoding.getArrayIndexScale(layoutEncoding);
+        int arrayBaseOffset = LayoutEncoding.getArrayBaseOffsetAsInt(layoutEncoding);
+
+        int maxPrintedBytes = elementSize == 1 ? 8 : 16;
+        int printedElements = UninterruptibleUtils.Math.min(length, maxPrintedBytes / elementSize);
+
+        UnsignedWord curOffset = WordFactory.unsigned(arrayBaseOffset);
+        UnsignedWord endOffset = curOffset.add(WordFactory.unsigned(printedElements).multiply(elementSize));
+        while (curOffset.belowThan(endOffset)) {
+            switch (elementSize) {
+                case 1 -> log.zhex(ObjectAccess.readByte(obj, curOffset));
+                case 2 -> log.zhex(ObjectAccess.readShort(obj, curOffset));
+                case 4 -> log.zhex(ObjectAccess.readInt(obj, curOffset));
+                case 8 -> log.zhex(ObjectAccess.readLong(obj, curOffset));
+                default -> throw VMError.shouldNotReachHereAtRuntime();
+            }
+            log.spaces(1);
+            curOffset = curOffset.add(elementSize);
+        }
+
+        if (printedElements < length) {
+            log.string("...");
         }
     }
 
@@ -851,13 +887,19 @@ public class SubstrateDiagnostics {
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             log.string("Runtime information:").indent(true);
 
-            int activeProcessorCount = Processor.getCachedActiveProcessorCount();
+            int activeProcessorCount = Processor.getLastQueriedActiveProcessorCount();
+            log.string("CPU cores (container): ");
             if (activeProcessorCount > 0) {
-                log.string("CPU cores: ").signed(activeProcessorCount).newline();
-            } else if (SubstrateOptions.JNI.getValue()) {
-                log.string("CPU cores (ignoring container support): ").signed(Jvm.JVM_ActiveProcessorCount()).newline();
+                log.signed(activeProcessorCount).newline();
             } else {
-                log.string("CPU cores: unknown").newline();
+                log.string("unknown").newline();
+            }
+
+            log.string("CPU cores (OS): ");
+            if (SubstrateOptions.JNI.getValue()) {
+                log.signed(Jvm.JVM_ActiveProcessorCount()).newline();
+            } else {
+                log.string("unknown").newline();
             }
 
             log.string("Memory: ");

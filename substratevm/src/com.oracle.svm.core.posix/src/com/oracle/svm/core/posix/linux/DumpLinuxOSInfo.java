@@ -76,16 +76,15 @@ class DumpLinuxOSInfo extends SubstrateDiagnostics.DiagnosticThunk {
         RawFileOperationSupport.RawFileDescriptor fd = fs.open(filename, RawFileOperationSupport.FileAccessMode.READ);
         if (!fs.isValid(fd)) {
             log.string("unknown");
+            return;
         }
 
         try {
-            int bufferSize = 32;
+            int bufferSize = 64;
             CCharPointer buffer = StackValue.get(bufferSize);
-            long readBytes;
-            while ((readBytes = fs.read(fd, (Pointer) buffer, WordFactory.unsigned(bufferSize))) > 0) {
-                int length = countLineBytes(buffer, NumUtil.safeToInt(readBytes));
-                log.string(buffer, length);
-            }
+            long readBytes = fs.read(fd, (Pointer) buffer, WordFactory.unsigned(bufferSize));
+            int length = countLineBytes(buffer, NumUtil.safeToInt(readBytes));
+            log.string(buffer, length);
         } finally {
             fs.close(fd);
         }
