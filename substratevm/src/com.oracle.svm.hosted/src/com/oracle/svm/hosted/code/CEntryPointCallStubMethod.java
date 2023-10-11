@@ -28,24 +28,6 @@ import java.lang.annotation.Annotation;
 import java.util.Arrays;
 import java.util.Iterator;
 
-import jdk.graal.compiler.core.common.calc.FloatConvert;
-import jdk.graal.compiler.core.common.type.StampFactory;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.graph.NodeSourcePosition;
-import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
-import jdk.graal.compiler.nodes.ConstantNode;
-import jdk.graal.compiler.nodes.DeadEndNode;
-import jdk.graal.compiler.nodes.FrameState;
-import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
-import jdk.graal.compiler.nodes.ParameterNode;
-import jdk.graal.compiler.nodes.StructuredGraph;
-import jdk.graal.compiler.nodes.ValueNode;
-import jdk.graal.compiler.nodes.calc.FloatConvertNode;
-import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
-import jdk.graal.compiler.nodes.calc.SignExtendNode;
-import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
-import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
-import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import org.graalvm.nativeimage.Isolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.constant.CEnum;
@@ -58,6 +40,7 @@ import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaMethod;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
@@ -81,6 +64,24 @@ import com.oracle.svm.hosted.c.info.EnumLookupInfo;
 import com.oracle.svm.hosted.phases.CInterfaceEnumTool;
 import com.oracle.svm.hosted.phases.HostedGraphKit;
 
+import jdk.graal.compiler.core.common.calc.FloatConvert;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.DeadEndNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.calc.FloatConvertNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.calc.SignExtendNode;
+import jdk.graal.compiler.nodes.calc.ZeroExtendNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaKind;
@@ -88,25 +89,52 @@ import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import jdk.vm.ci.meta.Signature;
 
 public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
     static CEntryPointCallStubMethod create(AnalysisMethod targetMethod, CEntryPointData entryPointData, AnalysisMetaAccess metaAccess) {
-        ResolvedJavaMethod unwrappedMethod = targetMethod.getWrapped();
         MetaAccessProvider unwrappedMetaAccess = metaAccess.getWrapped();
         ResolvedJavaType declaringClass = unwrappedMetaAccess.lookupJavaType(IsolateEnterStub.class);
         ConstantPool constantPool = IsolateEnterStub.getConstantPool(unwrappedMetaAccess);
-        return new CEntryPointCallStubMethod(entryPointData, unwrappedMethod, declaringClass, constantPool);
+        return new CEntryPointCallStubMethod(entryPointData, targetMethod, declaringClass, constantPool, metaAccess.getUniverse().getWordKind(), unwrappedMetaAccess);
     }
 
     private static final JavaKind cEnumParameterKind = JavaKind.Int;
 
     private final CEntryPointData entryPointData;
     private final ResolvedJavaMethod targetMethod;
+    private final Signature targetSignature;
 
-    private CEntryPointCallStubMethod(CEntryPointData entryPointData, ResolvedJavaMethod targetMethod, ResolvedJavaType holderClass, ConstantPool holderConstantPool) {
-        super(SubstrateUtil.uniqueStubName(targetMethod), holderClass, targetMethod.getSignature(), holderConstantPool);
+    private CEntryPointCallStubMethod(CEntryPointData entryPointData, AnalysisMethod targetMethod, ResolvedJavaType holderClass, ConstantPool holderConstantPool, JavaKind wordKind,
+                    MetaAccessProvider metaAccess) {
+        super(SubstrateUtil.uniqueStubName(targetMethod.getWrapped()), holderClass, createSignature(targetMethod, wordKind, metaAccess), holderConstantPool);
         this.entryPointData = entryPointData;
-        this.targetMethod = targetMethod;
+        this.targetMethod = targetMethod.getWrapped();
+        this.targetSignature = targetMethod.getSignature();
+    }
+
+    /**
+     * This method creates a new signature for the stub in which all @CEnum values are converted
+     * into their corresponding primitive type. In correspondence to how the @CEnum values are
+     * actually handled, parameters are transformed to the type specified by cEnumParameterKind and
+     * return type is transformed into the word type.
+     *
+     * @see CEnum
+     * @see CEntryPointCallStubMethod#adaptParameterTypes(HostedProviders, NativeLibraries,
+     *      HostedGraphKit, JavaType[], JavaType[])
+     * @see CEntryPointCallStubMethod#adaptReturnValue(ResolvedJavaMethod, HostedProviders, Purpose,
+     *      HostedGraphKit, ValueNode)
+     */
+    private static SimpleSignature createSignature(AnalysisMethod targetMethod, JavaKind wordKind, MetaAccessProvider metaAccess) {
+        JavaType[] paramTypes = Arrays.stream(targetMethod.toParameterTypes())
+                        .map(it -> ((AnalysisType) it))
+                        .map(type -> type.getAnnotation(CEnum.class) != null ? metaAccess.lookupJavaType(cEnumParameterKind.toJavaClass()) : type.getWrapped())
+                        .toArray(JavaType[]::new);
+        ResolvedJavaType returnType = ((AnalysisType) targetMethod.getSignature().getReturnType(null)).getWrapped();
+        if (returnType.getAnnotation(CEnum.class) != null) {
+            returnType = metaAccess.lookupJavaType(wordKind.toJavaClass());
+        }
+        return new SimpleSignature(paramTypes, returnType);
     }
 
     @Override
@@ -145,7 +173,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
         HostedGraphKit kit = new HostedGraphKit(debug, providers, method, purpose);
 
-        JavaType[] parameterTypes = method.toParameterTypes();
+        JavaType[] parameterTypes = targetSignature.toParameterTypes(null);
         JavaType[] parameterLoadTypes = Arrays.copyOf(parameterTypes, parameterTypes.length);
         EnumInfo[] parameterEnumInfos;
 
@@ -336,8 +364,8 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
                     assert !matchingNodes.hasNext() && parameterNode.usages().filter(n -> n != initialState).isEmpty();
                     parameterNode.setStamp(StampFactory.forKind(cEnumParameterKind));
                 } else {
-                    throw UserError.abort("Entry point method parameter types are restricted to primitive types, word types and enumerations (@%s): %s",
-                                    CEnum.class.getSimpleName(), targetMethod);
+                    throw UserError.abort("Entry point method parameter types are restricted to primitive types, word types and enumerations (@%s): %s, given type was %s",
+                                    CEnum.class.getSimpleName(), targetMethod, parameterTypes[i]);
                 }
             }
         }
@@ -550,7 +578,7 @@ public final class CEntryPointCallStubMethod extends EntryPointCallStubMethod {
         if (returnValue.getStackKind().isPrimitive()) {
             return returnValue;
         }
-        JavaType returnType = method.getSignature().getReturnType(null);
+        JavaType returnType = targetSignature.getReturnType(null);
         NativeLibraries nativeLibraries = CEntryPointCallStubSupport.singleton().getNativeLibraries();
         ElementInfo typeInfo = nativeLibraries.findElementInfo((ResolvedJavaType) returnType);
         if (typeInfo instanceof EnumInfo) {
