@@ -823,13 +823,18 @@ public final class LLVMContext {
                 System.out.println("symbolFinalStorage is: ");
                 for (int i = 0; i < symbolFinalStorage.length; i++) {
                     LLVMPointer[] pointers = symbolFinalStorage[i];
-                    if (id == i) {
-                        System.out.println("Length for " + i + " array : " + pointers.length + ", when compared against index: " + index);
+                    if (pointers != null) {
+                        if (id == i) {
+                            System.out.println("Length for " + i + " array : " + pointers.length + ", when compared against index: " + index);
+                        } else {
+                            System.out.println("Length for " + i + " array : " + pointers.length);
+                        }
+                        for (int j = 0; j < pointers.length; j++) {
+                            System.out.println("(" + i + ", " + j + ") : " + pointers[j]);
+                        }
+                        System.out.println();
                     } else {
-                        System.out.println("Length for " + i + " array : " + pointers.length);
-                    }
-                    for (int j = 0; j < pointers.length; j++) {
-                        System.out.println("(" + i + ", " + j + ") : " + pointers[j]);
+                        System.out.println("Length for " + i + " array : 0");
                     }
                 }
 
@@ -852,13 +857,18 @@ public final class LLVMContext {
                 System.out.println("symbolFinalStorage is: ");
                 for (int i = 0; i < symbolDynamicStorage.length; i++) {
                     LLVMPointer[] pointers = symbolDynamicStorage[i];
-                    if (id == i) {
-                        System.out.println("Length for " + i + " array : " + pointers.length + ", when compared against index: " + index);
+                    if (pointers != null) {
+                        if (id == i) {
+                            System.out.println("Length for " + i + " array : " + pointers.length + ", when compared against index: " + index);
+                        } else {
+                            System.out.println("Length for " + i + " array : " + pointers.length);
+                        }
+                        for (int j = 0; j < pointers.length; j++) {
+                            System.out.print("(" + i + ", " + j + ") : " + pointers[j] + ", ");
+                        }
+                        System.out.println();
                     } else {
-                        System.out.println("Length for " + i + " array : " + pointers.length);
-                    }
-                    for (int j = 0; j < pointers.length; j++) {
-                        System.out.println("(" + i + ", " + j + ") : " + pointers[j]);
+                        System.out.println("Length for " + i + " array : 0");
                     }
                 }
 
