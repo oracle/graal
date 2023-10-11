@@ -439,4 +439,34 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
             linearizeGraph(true);
         }
     }
+
+    /**
+     * Saturates all the formal parameters of the graph. This is expected to be used by layered base
+     * image analysis.
+     */
+    public void saturateAllParameters(PointsToAnalysis bb) {
+        AnalysisError.guarantee(bb.isBaseLayerAnalysisEnabled());
+        for (TypeFlow<?> parameter : getParameters()) {
+            if (parameter != null && parameter.canSaturate()) {
+                parameter.onSaturated(bb);
+            }
+        }
+
+        /*
+         * Even if saturating only parameters already ensures that all code from the base layer is
+         * reached, it is still necessary to saturate flows from miscEntryFlows, as the extension
+         * image can introduce new types and methods. For example, an ActualReturnTypeFlow returning
+         * from an AbstractVirtualInvokeTypeFlow would not be saturated only by saturating
+         * parameters, as there is no direct use/observer link between the two flows. While all the
+         * types returned by the implementations from the base image will be in the TypeState, a
+         * different type might be returned by an implementation introduced by the extension image.
+         */
+        if (miscEntryFlows != null) {
+            for (TypeFlow<?> miscEntryFlow : miscEntryFlows) {
+                if (miscEntryFlow != null && miscEntryFlow.canSaturate()) {
+                    miscEntryFlow.onSaturated(bb);
+                }
+            }
+        }
+    }
 }

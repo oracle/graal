@@ -28,6 +28,7 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
+import com.oracle.graal.pointsto.ClassInclusionPolicy;
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
@@ -66,8 +67,9 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor, UnsupportedFeatures unsupportedFeatures,
-                    DebugContext debugContext, TimerCollection timerCollection) {
-        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection);
+                    DebugContext debugContext, TimerCollection timerCollection, ClassInclusionPolicy classInclusionPolicy) {
+        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, unsupportedFeatures, debugContext, timerCollection,
+                        classInclusionPolicy);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 
         dynamicHubInitializer = new DynamicHubInitializer(this);
