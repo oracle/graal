@@ -388,6 +388,8 @@ static void initialize_cpuinfo(CpuidInfo *_cpuid_info)
 }
 
 // ported from from vm_version_x86.cpp::feature_flags
+// NO_INLINE is necessary to avoid an unexpected behavior if compiling on Darwin
+// with Apple clang version 15.0.0 (included in Xcode 15.0).
 NO_INLINE static void set_cpufeatures(CPUFeatures *features, CpuidInfo *_cpuid_info)
 {
   if (_cpuid_info->std_cpuid1_edx.bits.cmpxchg8 != 0)
