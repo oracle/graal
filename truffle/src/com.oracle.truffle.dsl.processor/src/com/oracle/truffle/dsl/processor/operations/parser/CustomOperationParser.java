@@ -213,7 +213,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
          * NB: This creates a new operation for the boolean converter (or reuses one if such an
          * operation already exists).
          */
-        InstructionModel booleanConverterInstruction = getOrCreateBooleanConverterInstruction(customOperation, typeElement, mirror);
+        InstructionModel booleanConverterInstruction = getOrCreateBooleanConverterInstruction(typeElement, mirror);
         ShortCircuitInstructionModel instruction = parent.shortCircuitInstruction("sc." + name, continueWhen, returnConvertedValue, booleanConverterInstruction);
         operation.instruction = instruction;
 
@@ -222,7 +222,7 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
         return customOperation;
     }
 
-    private InstructionModel getOrCreateBooleanConverterInstruction(CustomOperationModel customOperation, TypeElement typeElement, AnnotationMirror mirror) {
+    private InstructionModel getOrCreateBooleanConverterInstruction(TypeElement typeElement, AnnotationMirror mirror) {
         CustomOperationModel result = parent.getCustomOperationForType(typeElement);
         if (result == null) {
             result = CustomOperationParser.forCodeGeneration(parent, types.Operation).parseCustomOperation(typeElement, mirror);
