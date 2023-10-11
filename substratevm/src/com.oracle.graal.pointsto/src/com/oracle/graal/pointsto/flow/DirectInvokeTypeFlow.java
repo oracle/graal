@@ -90,7 +90,7 @@ public abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
              */
             Collection<AnalysisMethod> result = LightImmutableCollection.toCollection(this, CALLEES_ACCESSOR);
             if (!allComputed) {
-                assert result.stream().filter(m -> m.isOriginalMethod()).allMatch(AnalysisMethod::isImplementationInvoked);
+                assert result.stream().filter(m -> m.isOriginalMethod()).allMatch(AnalysisMethod::isImplementationInvoked) : result;
             }
             return result;
         }

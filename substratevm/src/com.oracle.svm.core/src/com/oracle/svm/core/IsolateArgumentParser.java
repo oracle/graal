@@ -206,7 +206,7 @@ public class IsolateArgumentParser {
         Class<?> optionValueType = OPTIONS[index].getDescriptor().getOptionValueType();
         long value = PARSED_OPTION_VALUES[index];
         if (optionValueType == Boolean.class) {
-            assert value == 0 || value == 1;
+            assert value == 0 || value == 1 : value;
             return value == 1;
         } else if (optionValueType == Integer.class) {
             return (int) value;

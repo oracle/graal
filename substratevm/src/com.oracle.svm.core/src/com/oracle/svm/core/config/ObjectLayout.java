@@ -58,10 +58,10 @@ public final class ObjectLayout {
 
     public ObjectLayout(SubstrateTargetDescription target, int referenceSize, int objectAlignment, int hubOffset,
                     int firstFieldOffset, int arrayLengthOffset, int arrayBaseOffset, int fixedIdentityHashOffset) {
-        assert CodeUtil.isPowerOf2(referenceSize);
-        assert CodeUtil.isPowerOf2(objectAlignment);
-        assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset;
-        assert fixedIdentityHashOffset == -1 || (fixedIdentityHashOffset > 0 && fixedIdentityHashOffset < arrayLengthOffset);
+        assert CodeUtil.isPowerOf2(referenceSize) : referenceSize;
+        assert CodeUtil.isPowerOf2(objectAlignment) : objectAlignment;
+        assert hubOffset < firstFieldOffset && hubOffset < arrayLengthOffset : hubOffset;
+        assert fixedIdentityHashOffset == -1 || (fixedIdentityHashOffset > 0 && fixedIdentityHashOffset < arrayLengthOffset) : fixedIdentityHashOffset;
 
         this.target = target;
         this.referenceSize = referenceSize;
@@ -183,7 +183,7 @@ public final class ObjectLayout {
     }
 
     private long getArrayUnalignedSize(JavaKind kind, int length) {
-        assert length >= 0;
+        assert length >= 0 : length;
         return getArrayBaseOffset(kind) + ((long) length << getArrayIndexShift(kind));
     }
 

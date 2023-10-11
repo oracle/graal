@@ -277,7 +277,6 @@ public class HeapSnapshotVerifier {
             } else if (task instanceof ImageHeapConstant) {
                 return (ImageHeapConstant) task;
             } else {
-                assert task instanceof AnalysisFuture;
                 AnalysisFuture<ImageHeapConstant> future = ((AnalysisFuture<ImageHeapConstant>) task);
                 if (future.isDone()) {
                     return future.guardedGet();
@@ -360,7 +359,6 @@ public class HeapSnapshotVerifier {
             } else if (task instanceof ImageHeapConstant snapshot) {
                 verifyTypeConstant(maybeUnwrapSnapshot(snapshot, typeConstant instanceof ImageHeapConstant), typeConstant, reason);
             } else {
-                assert task instanceof AnalysisFuture;
                 AnalysisFuture<ImageHeapConstant> future = ((AnalysisFuture<ImageHeapConstant>) task);
                 if (future.isDone()) {
                     JavaConstant snapshot = maybeUnwrapSnapshot(future.guardedGet(), typeConstant instanceof ImageHeapConstant);

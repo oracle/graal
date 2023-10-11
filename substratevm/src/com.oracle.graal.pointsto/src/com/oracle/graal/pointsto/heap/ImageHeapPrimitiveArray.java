@@ -56,7 +56,7 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
 
     private ImageHeapPrimitiveArray(ResolvedJavaType type, JavaConstant hostedObject, Object array, int identityHashCode, boolean compressed, int length) {
         super(type, hostedObject, identityHashCode, compressed);
-        assert type.isArray() && type.getComponentType().isPrimitive();
+        assert type.isArray() && type.getComponentType().isPrimitive() : type;
         this.array = array;
         this.length = length;
     }
@@ -108,13 +108,13 @@ public final class ImageHeapPrimitiveArray extends ImageHeapArray {
 
     @Override
     public JavaConstant compress() {
-        assert !compressed;
+        assert !compressed : this;
         return new ImageHeapPrimitiveArray(type, hostedObject, array, identityHashCode, true, length);
     }
 
     @Override
     public JavaConstant uncompress() {
-        assert compressed;
+        assert compressed : this;
         return new ImageHeapPrimitiveArray(type, hostedObject, array, identityHashCode, false, length);
     }
 

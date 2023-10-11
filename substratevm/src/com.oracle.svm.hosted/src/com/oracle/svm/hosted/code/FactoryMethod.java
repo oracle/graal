@@ -58,8 +58,8 @@ public final class FactoryMethod extends NonBytecodeMethod {
         this.targetConstructor = targetConstructor;
         this.throwAllocatedObject = throwAllocatedObject;
 
-        assert targetConstructor.isConstructor();
-        assert !(targetConstructor instanceof AnalysisMethod) && !(targetConstructor instanceof HostedMethod);
+        assert targetConstructor.isConstructor() : targetConstructor;
+        assert !(targetConstructor instanceof AnalysisMethod) && !(targetConstructor instanceof HostedMethod) : targetConstructor;
     }
 
     /**

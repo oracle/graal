@@ -34,7 +34,7 @@ final class DefaultInvokeTypeFlowUtil {
     static Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(InvokeTypeFlow typeFlow) {
         if (typeFlow.linksOnlyOriginalCallees()) {
             var callees = typeFlow.getAllCallees().stream().map(method -> (PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow()).getMethodFlowsGraph()).toList();
-            assert callees.stream().noneMatch(MethodFlowsGraph::isStub);
+            assert callees.stream().noneMatch(MethodFlowsGraph::isStub) : callees;
             return callees;
 
         } else {

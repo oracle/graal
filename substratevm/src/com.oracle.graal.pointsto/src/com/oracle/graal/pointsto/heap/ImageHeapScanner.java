@@ -113,7 +113,7 @@ public abstract class ImageHeapScanner {
     }
 
     public void onFieldRead(AnalysisField field) {
-        assert field.isRead();
+        assert field.isRead() : field;
         /* Check if the value is available before accessing it. */
         FieldScan reason = new FieldScan(field);
         AnalysisType declaringClass = field.getDeclaringClass();
@@ -186,7 +186,7 @@ public abstract class ImageHeapScanner {
     }
 
     public ImageHeapConstant toImageHeapObject(JavaConstant constant, ScanReason reason) {
-        assert constant != null && isNonNullObjectConstant(constant);
+        assert constant != null && isNonNullObjectConstant(constant) : constant;
         return markReachable(getOrCreateImageHeapConstant(constant, reason), reason, null);
     }
 
@@ -214,7 +214,7 @@ public abstract class ImageHeapScanner {
      * and install a future that can process them.
      */
     protected ImageHeapConstant createImageHeapObject(JavaConstant constant, ScanReason reason) {
-        assert constant.getJavaKind() == JavaKind.Object && !constant.isNull();
+        assert constant.getJavaKind() == JavaKind.Object && !constant.isNull() : constant;
 
         Optional<JavaConstant> replaced = maybeReplace(constant, reason);
         if (replaced.isPresent()) {
@@ -535,7 +535,7 @@ public abstract class ImageHeapScanner {
             AnalysisType type = metaAccess.lookupJavaType(reflectionField.getDeclaringClass());
             if (type.isReachable()) {
                 AnalysisField field = metaAccess.lookupJavaField(reflectionField);
-                assert !field.isStatic();
+                assert !field.isStatic() : field;
                 JavaConstant receiverConstant = asConstant(receiver);
                 Optional<JavaConstant> replaced = maybeReplace(receiverConstant, OtherReason.RESCAN);
                 if (replaced.isPresent()) {

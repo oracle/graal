@@ -186,7 +186,7 @@ public final class RuntimeCPUFeatureCheckImpl {
                 enumToBitIndexMap.add(ordinal, NumUtil.safeToByte(index));
                 index++;
             }
-            assert index == supportedFeatures.size();
+            assert index == supportedFeatures.size() : index;
             // copy to plain byte[]
             this.enumToBitIndex = new byte[enumToBitIndexMap.size()];
             for (int i = 0; i < enumToBitIndexMap.size(); i++) {

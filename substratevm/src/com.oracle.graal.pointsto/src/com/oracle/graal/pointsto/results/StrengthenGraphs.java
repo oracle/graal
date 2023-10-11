@@ -585,7 +585,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                     return;
                 }
             }
-            assert returnedParameterIndex != -1;
+            assert returnedParameterIndex != -1 : callees;
 
             ValueNode returnedActualParameter = arguments.get(returnedParameterIndex);
             tool.addToWorkList(invoke.usages());
@@ -632,7 +632,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 invoke.callTarget().replaceFirstInput(invoke.getReceiver(), piReceiver);
             }
 
-            assert invoke.getInvokeKind().isIndirect();
+            assert invoke.getInvokeKind().isIndirect() : invoke;
             invoke.callTarget().setInvokeKind(CallTargetNode.InvokeKind.Special);
             invoke.callTarget().setTargetMethod(singleCallee);
         }
@@ -684,7 +684,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             if (newStampOrConstant instanceof JavaConstant) {
                 JavaConstant constant = (JavaConstant) newStampOrConstant;
                 if (input.isConstant()) {
-                    assert bb.getConstantReflectionProvider().constantEquals(input.asConstant(), constant);
+                    assert bb.getConstantReflectionProvider().constantEquals(input.asConstant(), constant) : input.asConstant() + ", " + constant;
                     return null;
                 }
                 return ConstantNode.forConstant(constant, bb.getMetaAccess(), graph);
@@ -767,7 +767,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 AnalysisType exactType = typeStateTypes.get(0);
                 assert getSingleImplementorType(exactType) == null || exactType.equals(getSingleImplementorType(exactType)) : "exactType=" + exactType + ", singleImplementor=" +
                                 getSingleImplementorType(exactType);
-                assert exactType.equals(getStrengthenStampType(exactType));
+                assert exactType.equals(getStrengthenStampType(exactType)) : exactType;
 
                 if (!oldStamp.isExactType() || !exactType.equals(oldType)) {
                     ResolvedJavaType targetType = toTargetFunction.apply(exactType);
@@ -778,7 +778,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
                 }
 
             } else if (!oldStamp.isExactType()) {
-                assert typeStateTypes.size() > 1;
+                assert typeStateTypes.size() > 1 : typeStateTypes;
                 AnalysisType baseType = typeStateTypes.get(0);
                 for (int i = 1; i < typeStateTypes.size(); i++) {
                     if (baseType.isJavaLangObject()) {
@@ -805,7 +805,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
 
                 AnalysisType newType = getStrengthenStampType(baseType);
 
-                assert typeStateTypes.stream().map(typeStateType -> newType.isAssignableFrom(typeStateType)).reduce(Boolean::logicalAnd).get();
+                assert typeStateTypes.stream().map(typeStateType -> newType.isAssignableFrom(typeStateType)).reduce(Boolean::logicalAnd).get() : typeStateTypes;
 
                 if (!newType.equals(oldType) && (oldType != null || !newType.isJavaLangObject())) {
                     ResolvedJavaType targetType = toTargetFunction.apply(newType);
@@ -817,7 +817,7 @@ public abstract class StrengthenGraphs extends AbstractAnalysisResultsBuilder {
             }
 
             if (nonNull != oldStamp.nonNull()) {
-                assert nonNull;
+                assert nonNull : oldStamp;
                 return oldStamp.asNonNull();
             }
             /* Nothing to strengthen. */

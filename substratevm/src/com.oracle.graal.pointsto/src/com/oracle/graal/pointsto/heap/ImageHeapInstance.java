@@ -112,13 +112,13 @@ public final class ImageHeapInstance extends ImageHeapConstant {
 
     @Override
     public JavaConstant compress() {
-        assert !compressed;
+        assert !compressed : this;
         return new ImageHeapInstance(type, hostedObject, fieldValues, identityHashCode, true);
     }
 
     @Override
     public JavaConstant uncompress() {
-        assert compressed;
+        assert compressed : this;
         return new ImageHeapInstance(type, hostedObject, fieldValues, identityHashCode, false);
     }
 

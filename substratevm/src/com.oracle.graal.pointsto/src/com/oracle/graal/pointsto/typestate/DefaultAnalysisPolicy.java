@@ -155,13 +155,13 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public FieldTypeStore createFieldTypeStore(PointsToAnalysis bb, AnalysisObject object, AnalysisField field, AnalysisUniverse universe) {
-        assert object.isContextInsensitiveObject();
+        assert object.isContextInsensitiveObject() : object;
         return new UnifiedFieldTypeStore(field, object, new FieldTypeFlow(field, field.getType(), object));
     }
 
     @Override
     public ArrayElementsTypeStore createArrayElementsTypeStore(AnalysisObject object, AnalysisUniverse universe) {
-        assert object.isContextInsensitiveObject();
+        assert object.isContextInsensitiveObject() : object;
         if (object.type().isArray()) {
             if (aliasArrayTypeFlows) {
                 /* Alias all array type flows using the elements type flow model of Object type. */
@@ -296,7 +296,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             if (cs1.equals(cs2)) {
                 return cs1;
             } else if (Objects.equals(cs1.getConstant(), cs2.getConstant())) {
-                assert cs1.exactType().equals(cs2.exactType());
+                assert cs1.exactType().equals(cs2.exactType()) : state1 + ", " + state2;
                 boolean resultCanBeNull = state1.canBeNull() || state2.canBeNull();
                 return cs1.canBeNull() == resultCanBeNull ? cs1 : cs2;
             }
@@ -319,7 +319,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
              * types, just construct the types bit set.
              */
             BitSet typesBitSet = TypeStateUtils.newBitSet(s1.exactType().getId(), s2.exactType().getId());
-            assert typesBitSet.cardinality() == 2;
+            assert typesBitSet.cardinality() == 2 : typesBitSet;
             TypeState result = new MultiTypeState(bb, resultCanBeNull, typesBitSet, 2);
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
@@ -339,7 +339,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         } else {
             BitSet typesBitSet = TypeStateUtils.set(s1.typesBitSet(), s2.exactType().getId());
             int typesCount = s1.typesCount() + 1;
-            assert typesCount == typesBitSet.cardinality();
+            assert typesCount == typesBitSet.cardinality() : typesBitSet;
             MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, typesBitSet, typesCount);
             PointsToStats.registerUnionOperation(bb, s1, s2, result);
             return result;
@@ -348,7 +348,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
 
     @Override
     public TypeState doUnion(PointsToAnalysis bb, MultiTypeState s1, MultiTypeState s2) {
-        assert s1.typesCount() >= s2.typesCount();
+        assert s1.typesCount() >= s2.typesCount() : s1 + ", " + s2;
 
         boolean resultCanBeNull = s1.canBeNull() || s2.canBeNull();
 
@@ -369,7 +369,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
         BitSet resultTypesBitSet = TypeStateUtils.or(s1.typesBitSet(), s2.typesBitSet());
 
         MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet, resultTypesBitSet.cardinality());
-        assert !result.equals(s1) && !result.equals(s2);
+        assert !result.equals(s1) && !result.equals(s2) : result;
         PointsToStats.registerUnionOperation(bb, s1, s2, result);
         return result;
     }
@@ -420,7 +420,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             return new SingleTypeState(bb, resultCanBeNull, type);
         } else {
             MultiTypeState result = new MultiTypeState(bb, resultCanBeNull, resultTypesBitSet, typesCount);
-            assert !result.equals(s1);
+            assert !result.equals(s1) : result;
             return result;
         }
     }
@@ -433,7 +433,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
             /* s2 is contained in s1, so remove s2's type from s1. */
             BitSet resultTypesBitSet = TypeStateUtils.clear(s1.typesBitSet(), s2.exactType().getId());
             int typesCount = resultTypesBitSet.cardinality();
-            assert typesCount > 0;
+            assert typesCount > 0 : typesCount;
             if (typesCount == 1) {
                 AnalysisType type = bb.getUniverse().getType(resultTypesBitSet.nextSetBit(0));
                 return new SingleTypeState(bb, resultCanBeNull, type);
@@ -484,7 +484,7 @@ public class DefaultAnalysisPolicy extends AnalysisPolicy {
     @Override
     public void processArrayCopyStates(PointsToAnalysis bb, TypeState srcArrayState, TypeState dstArrayState) {
         /* In the default configuration, when array aliasing is enabled, this method is not used. */
-        assert !bb.analysisPolicy().aliasArrayTypeFlows();
+        assert !bb.analysisPolicy().aliasArrayTypeFlows() : "policy mismatch";
 
         /*
          * The source and destination array can have reference types which, although must be

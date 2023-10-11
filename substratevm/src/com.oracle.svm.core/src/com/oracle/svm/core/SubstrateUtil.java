@@ -421,7 +421,7 @@ public class SubstrateUtil {
             }
         }
         String mangled = out.toString();
-        assert mangled.matches("[a-zA-Z\\._][a-zA-Z0-9_]*");
+        assert mangled.matches("[a-zA-Z\\._][a-zA-Z0-9_]*") : mangled;
         /*-
          * To demangle, the following pipeline works for me (assuming no multi-byte characters):
          *

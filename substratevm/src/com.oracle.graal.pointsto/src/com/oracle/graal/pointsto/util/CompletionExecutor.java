@@ -202,7 +202,7 @@ public class CompletionExecutor {
     }
 
     public void start() {
-        assert state.get() == State.BEFORE_START;
+        assert state.get() == State.BEFORE_START : state.get();
 
         setState(State.STARTED);
         postedBeforeStart.forEach(this::execute);
@@ -218,7 +218,7 @@ public class CompletionExecutor {
         if (isSequential()) {
             long completed = completedOperations.sum();
             long posted = postedOperations.sum();
-            assert completed == posted;
+            assert completed == posted : completed + ", " + posted;
             return posted;
         }
 
@@ -230,7 +230,7 @@ public class CompletionExecutor {
         }
 
         while (true) {
-            assert state.get() == State.STARTED;
+            assert state.get() == State.STARTED : state.get();
 
             boolean quiescent;
             if (executorService instanceof ForkJoinPool) {
@@ -248,7 +248,7 @@ public class CompletionExecutor {
 
             long completed = completedOperations.sum();
             long posted = postedOperations.sum();
-            assert completed <= posted;
+            assert completed <= posted : completed + ", " + posted;
             if (completed == posted && exceptions.isEmpty()) {
                 if (timing != null) {
                     timing.print();
@@ -283,6 +283,10 @@ public class CompletionExecutor {
 
     public boolean isStarted() {
         return state.get() == State.STARTED;
+    }
+
+    public State getState() {
+        return state.get();
     }
 
     public int parallelism() {
