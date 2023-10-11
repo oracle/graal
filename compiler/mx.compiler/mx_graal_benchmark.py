@@ -533,7 +533,7 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
-                 '--add-exports=jdk.internal.vm.compiler/jdk.compiler.graal.graph=ALL-UNNAMED',
+                 '--add-exports=jdk.compiler.graal/jdk.compiler.graal.graph=ALL-UNNAMED',
                  '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.benchmark=ALL-UNNAMED',
                  '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.debug=ALL-UNNAMED',
                  '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.library=ALL-UNNAMED',

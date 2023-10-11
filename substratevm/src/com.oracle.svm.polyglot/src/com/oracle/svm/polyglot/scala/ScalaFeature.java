@@ -67,7 +67,7 @@ public class ScalaFeature implements InternalFeature {
         RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.LambdaDeserialize");
         RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.StructuralCallSite");
         RuntimeClassInitialization.initializeAtBuildTime("scala.runtime.EmptyMethodCache");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ScalaFeature.class, false, "jdk.internal.vm.compiler", "jdk.compiler.graal.nodes");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, ScalaFeature.class, false, "jdk.compiler.graal", "jdk.compiler.graal.nodes");
     }
 
     @Override

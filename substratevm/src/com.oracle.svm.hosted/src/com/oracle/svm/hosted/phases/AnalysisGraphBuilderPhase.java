@@ -101,7 +101,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
              * access.
              */
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.compiler", "jdk.compiler.graal.nodes");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.compiler.graal", "jdk.compiler.graal.nodes");
             return super.applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin);
         }
 

@@ -1343,9 +1343,9 @@ suite = {
         ],
         "exports" : [
           # Qualified exports
-          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.internal.vm.compiler, org.graalvm.nativeimage.builder, com.oracle.truffle.enterprise, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
-          "com.oracle.truffle.compiler.hotspot to org.graalvm.truffle.runtime, jdk.internal.vm.compiler",
-          "com.oracle.truffle.compiler.hotspot.libgraal to org.graalvm.truffle.runtime, jdk.internal.vm.compiler"
+          "com.oracle.truffle.compiler to org.graalvm.truffle.runtime, jdk.compiler.graal, org.graalvm.nativeimage.builder, com.oracle.truffle.enterprise, com.oracle.graal.graal_enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
+          "com.oracle.truffle.compiler.hotspot to org.graalvm.truffle.runtime, jdk.compiler.graal",
+          "com.oracle.truffle.compiler.hotspot.libgraal to org.graalvm.truffle.runtime, jdk.compiler.graal"
         ],
         "uses" : [
         ],
@@ -1384,7 +1384,7 @@ suite = {
           # Qualified exports
           "* to org.graalvm.truffle, com.oracle.truffle.enterprise, org.graalvm.truffle.runtime.svm, com.oracle.truffle.enterprise.svm",
           # necessary to instantiate access truffle compiler from the runtime during host compilation
-          "com.oracle.truffle.runtime.hotspot to jdk.internal.vm.compiler",
+          "com.oracle.truffle.runtime.hotspot to jdk.compiler.graal",
         ],
         "uses" : [
           "com.oracle.truffle.api.impl.TruffleLocator",
@@ -1992,7 +1992,7 @@ suite = {
       "moduleInfo" : {
         "name" : "org.graalvm.locator",
         "exports" : [
-          "com.oracle.graalvm.locator to jdk.internal.vm.compiler.management",
+          "com.oracle.graalvm.locator to jdk.compiler.graal.management",
         ],
       },
       "dependencies": ["com.oracle.graalvm.locator"],

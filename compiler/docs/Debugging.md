@@ -54,9 +54,9 @@ try (Scope s = debug.scope("CodeInstall", method)) {
 
 The `debug.log` statement will send output to the console if `CodeInstall` is matched by the
 `-Dgraal.Log` option. The matching logic for this option is implemented in
-[DebugFilter](../src/jdk.internal.vm.compiler/src/jdk/compiler/graal/debug/DebugFilter.java)
+[DebugFilter](../src/jdk.compiler.graal/src/jdk/compiler/graal/debug/DebugFilter.java)
 and documented in the
-[Dump help message](../src/jdk.internal.vm.compiler/src/jdk/compiler/graal/debug/doc-files/DumpHelp.txt). As
+[Dump help message](../src/jdk.compiler.graal/src/jdk/compiler/graal/debug/doc-files/DumpHelp.txt). As
 mentioned in the javadoc, the same matching logic also applies to the `-Dgraal.Dump`,
 `-Dgraal.Time`, `-Dgraal.Count` and `-Dgraal.TrackMemUse` options.
 
@@ -194,9 +194,9 @@ Specifying one of the debug scope options (i.e., `-Dgraal.Log`, `-Dgraal.Dump`, 
 interesting in compiler output related to a single or few methods. In this case, use the
 `-Dgraal.MethodFilter` option to specify a method filter. The matching logic for this option is
 described in
-[MethodFilter](../src/jdk.internal.vm.compiler/src/jdk/compiler/graal/debug/MethodFilter.java#L33-L92)
+[MethodFilter](../src/jdk.compiler.graal/src/jdk/compiler/graal/debug/MethodFilter.java#L33-L92)
 and documented in the
-[MethodFilter help message](../src/jdk.internal.vm.compiler/src/jdk/compiler/graal/debug/doc-files/MethodFilterHelp.txt).
+[MethodFilter help message](../src/jdk.compiler.graal/src/jdk/compiler/graal/debug/doc-files/MethodFilterHelp.txt).
 
 ## Metric filtering
 
@@ -214,7 +214,7 @@ In addition to logging, there is support for generating (or dumping) more detail
 visualizations of certain compiler data structures. Currently, there is support for dumping:
 
 * HIR graphs (i.e., instances of
-  [Graph](../src/jdk.internal.vm.compiler/src/jdk/compiler/graal/graph/Graph.java)) to the
+  [Graph](../src/jdk.compiler.graal/src/jdk/compiler/graal/graph/Graph.java)) to the
   [Ideal Graph Visualizer (IGV)](../../docs/tools/ideal-graph-visualizer.md), and
 * LIR register allocation and generated code to the [C1Visualizer](https://github.com/zakkak/c1visualizer)
 

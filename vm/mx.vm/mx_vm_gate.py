@@ -87,7 +87,7 @@ def _unittest_config_participant(config):
 mx_unittest.add_config_participant(_unittest_config_participant)
 
 def _get_CountUppercase_vmargs():
-    cp = mx.project("jdk.internal.vm.compiler.test").classpath_repr()
+    cp = mx.project("jdk.compiler.graal.test").classpath_repr()
     return ['-cp', cp, 'jdk.compiler.graal.test.CountUppercase']
 
 def _check_compiler_log(compiler_log_file, expectations, extra_check=None, extra_log_files=None):

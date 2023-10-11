@@ -621,7 +621,7 @@ final class APIOptionFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, APIOptionFeature.class, true,
-                        "jdk.internal.vm.compiler", "jdk.compiler.graal.options");
+                        "jdk.compiler.graal", "jdk.compiler.graal.options");
     }
 
     @Override

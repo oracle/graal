@@ -100,7 +100,7 @@ import org.junit.Test;
  *         at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
  *         ... 13 more
  * Caused by: jdk.compiler.graal.debug.GraalError: should not reach here: Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable. java.lang.Object[]
- *         at jdk.internal.vm.compiler/jdk.compiler.graal.debug.GraalError.shouldNotReachHere(GraalError.java:57)
+ *         at jdk.compiler.graal/jdk.compiler.graal.debug.GraalError.shouldNotReachHere(GraalError.java:57)
  *         at com.oracle.graal.pointsto.heap.ImageHeapScanner.maybeReplace(ImageHeapScanner.java:307)
  *         at com.oracle.graal.pointsto.heap.ImageHeapScanner.createImageHeapObject(ImageHeapScanner.java:225)
  *         at com.oracle.graal.pointsto.heap.ImageHeapScanner.lambda$getOrCreateImageHeapConstant$2(ImageHeapScanner.java:205)

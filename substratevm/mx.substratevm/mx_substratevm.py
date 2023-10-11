@@ -68,7 +68,7 @@ def graal_compiler_flags():
     def adjusted_exports(line):
         """
         Turns e.g.
-        --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder
+        --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.compiler.graal,org.graalvm.nativeimage.builder
         into:
         --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=ALL-UNNAMED
         """
@@ -1279,10 +1279,10 @@ libgraal_jar_distributions = [
 
 libgraal_build_args = [
     ## Pass via JVM args opening up of packages needed for image builder early on
-    '-J--add-exports=jdk.internal.vm.compiler/jdk.compiler.graal.hotspot=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/jdk.compiler.graal.options=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/jdk.compiler.graal.truffle=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/jdk.compiler.graal.truffle.hotspot=ALL-UNNAMED',
+    '-J--add-exports=jdk.compiler.graal/jdk.compiler.graal.hotspot=ALL-UNNAMED',
+    '-J--add-exports=jdk.compiler.graal/jdk.compiler.graal.options=ALL-UNNAMED',
+    '-J--add-exports=jdk.compiler.graal/jdk.compiler.graal.truffle=ALL-UNNAMED',
+    '-J--add-exports=jdk.compiler.graal/jdk.compiler.graal.truffle.hotspot=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.jniutils/org.graalvm.jniutils=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot.libgraal=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot=ALL-UNNAMED',
@@ -1369,7 +1369,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
 mx_sdk_vm.register_graalvm_component(libgraal)
 
 def _native_image_configure_extra_jvm_args():
-    packages = ['jdk.internal.vm.compiler/jdk.compiler.graal.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.internal.vm.compiler/jdk.compiler.graal.core.common.util']
+    packages = ['jdk.compiler.graal/jdk.compiler.graal.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.compiler.graal/jdk.compiler.graal.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])

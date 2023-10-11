@@ -537,7 +537,7 @@ public class NativeImage {
                 if (!modulePathBuild && line.startsWith("--add-exports=")) {
                     /*-
                      * Turns e.g.
-                     * --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder
+                     * --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.compiler.graal,org.graalvm.nativeimage.builder
                      * into:
                      * --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=ALL-UNNAMED
                      */

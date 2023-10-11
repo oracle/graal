@@ -75,7 +75,7 @@ public class SourceCache {
          */
         private static final String[] specialRootModules = {
                         "jdk.internal.vm.ci",
-                        "jdk.internal.vm.compiler",
+                        "jdk.compiler.graal",
         };
 
         /**

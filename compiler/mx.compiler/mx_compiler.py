@@ -47,8 +47,6 @@ import mx_unittest
 from mx_unittest import unittest, parse_split_args
 
 from mx_javamodules import as_java_module
-from mx_updategraalinopenjdk import updategraalinopenjdk
-from mx_renamegraalpackages import renamegraalpackages
 import mx_sdk_vm_impl
 
 import mx_benchmark
@@ -108,7 +106,7 @@ class JavaLangRuntimeVersion(mx.Comparable):
         cached = JavaLangRuntimeVersion._cmp_cache.get(key, None)
         if cached is not None:
             return cached
-        source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'org', 'graalvm', 'compiler',
+        source_path = join(_suite.dir, 'src', 'jdk.compiler.graal', 'src', 'org', 'graalvm', 'compiler',
                            'hotspot',
                            'JVMCIVersionCompare.java')
         out = mx.OutputCapture()
@@ -157,7 +155,7 @@ def _check_jvmci_version(jdk):
 
 @mx.command(_suite.name, 'jvmci-version-check')
 def _run_jvmci_version_check(args=None, jdk=jdk, **kwargs):
-    source_path = join(_suite.dir, 'src', 'jdk.internal.vm.compiler', 'src', 'jdk', 'compiler', 'graal', 'hotspot',
+    source_path = join(_suite.dir, 'src', 'jdk.compiler.graal', 'src', 'jdk', 'compiler', 'graal', 'hotspot',
                        'JVMCIVersionCheck.java')
     return mx.run([jdk.java, '-Xlog:disable', source_path] + (args or []), **kwargs)
 
@@ -469,7 +467,7 @@ def _check_forbidden_imports(projects, package_substrings, exceptions=None):
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     with Task('CheckForbiddenImports:Compiler', tasks, tags=['style']) as t:
         # Ensure HotSpot-independent compiler classes do not import HotSpot-specific classes
-        if t: _check_forbidden_imports([mx.project('jdk.internal.vm.compiler')], ('hotspot', 'libgraal'))
+        if t: _check_forbidden_imports([mx.project('jdk.compiler.graal')], ('hotspot', 'libgraal'))
 
     with Task('JDK_java_base_test', tasks, tags=['javabasetest'], report=True) as t:
         if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
@@ -785,7 +783,7 @@ def _unittest_config_participant(config):
         # for the junit harness which uses reflection to find @Test methods. In addition, the
         # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
         # ALL-UNNAMED.
-        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.internal.vm.compiler,ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.compiler.graal,ALL-UNNAMED'])
 
         limited_modules = None
         for arg in vmArgs:
@@ -1526,8 +1524,6 @@ mx.update_commands(_suite, {
     'collate-metrics': [collate_metrics, 'filename'],
     'ctw': [ctw, '[-vmoptions|noinline|nocomplex|full]'],
     'java_base_unittest' : [java_base_unittest, 'Runs unittest on JDK java.base "only" module(s)'],
-    'updategraalinopenjdk' : [updategraalinopenjdk, '[options]'],
-    'renamegraalpackages' : [renamegraalpackages, '[options]'],
     'javadoc': [javadoc, ''],
     'makegraaljdk': [makegraaljdk_cli, '[options]'],
     'graaljdk-home': [print_graaljdk_home, '[options]'],

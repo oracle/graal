@@ -757,7 +757,7 @@ suite = {
         "requires" : [],
         "exports" : [
             "org.graalvm.word",
-            "org.graalvm.word.impl to jdk.internal.vm.compiler",
+            "org.graalvm.word.impl to jdk.compiler.graal",
         ],
         "uses" : [],
         "opens" : [],

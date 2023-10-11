@@ -820,7 +820,7 @@ def _get_image_vm_options(jdk, use_upgrade_module_path, modules, synthetic_modul
 
         if jdk_supports_enablejvmciproduct(jdk):
             non_synthetic_modules = [m.name for m in modules if m not in synthetic_modules]
-            if default_to_jvmci or 'jdk.internal.vm.compiler' in non_synthetic_modules:
+            if default_to_jvmci or 'jdk.compiler.graal' in non_synthetic_modules:
                 threads = get_JVMCIThreadsPerNativeLibraryRuntime(jdk)
                 vm_options.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCIProduct'])
                 if threads is not None and threads != 1:

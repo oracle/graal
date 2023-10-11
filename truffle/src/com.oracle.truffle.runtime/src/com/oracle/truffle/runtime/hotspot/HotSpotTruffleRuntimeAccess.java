@@ -102,7 +102,8 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
          * We also need to do this for LibGraal as the truffle.compiler module may be installed as
          * part of the JDK if the JDK supports running with jar graal as well.
          */
-        Module truffleCompilerModule = HotSpotTruffleRuntimeAccess.class.getModule().getLayer().findModule("org.graalvm.truffle.compiler").orElse(null);
+        ModuleLayer layer = HotSpotTruffleRuntimeAccess.class.getModule().getLayer();
+        Module truffleCompilerModule = layer.findModule("org.graalvm.truffle.compiler").orElse(null);
         if (truffleCompilerModule == null) {
             return new DefaultTruffleRuntime("Truffle compiler module is missing. This is likely an installation error.");
         }
@@ -116,7 +117,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         } else {
             // try jar graal
             try {
-                Module compilerModule = HotSpotTruffleRuntimeAccess.class.getModule().getLayer().findModule("jdk.internal.vm.compiler").orElse(null);
+                Module compilerModule = layer.findModule("jdk.compiler.graal").or(() -> layer.findModule("jdk.internal.vm.compiler")).orElse(null);
                 if (compilerModule == null) {
                     // jargraal compiler module not found -> fallback to default runtime
                     return new DefaultTruffleRuntime(
