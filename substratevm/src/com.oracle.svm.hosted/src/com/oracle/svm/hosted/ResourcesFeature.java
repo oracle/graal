@@ -188,92 +188,10 @@ public final class ResourcesFeature implements InternalFeature {
                 return;
             }
 
-            InputStream is;
-            boolean fromJar;
-            boolean isDirectory;
-            String content = "";
             if (module != null && module.isNamed()) {
-                try {
-                    String resourcePackage = jdk.internal.module.Resources.toPackageName(resourcePath);
-                    if (!resourcePackage.isEmpty()) {
-                        if (module.getPackages().contains(resourcePackage)) {
-                            ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, ResourcesFeature.class, module, resourcePackage);
-                        }
-                    }
-
-                    is = module.getResourceAsStream(resourcePath);
-                    fromJar = false;
-                    isDirectory = new File(resourcePath).isDirectory();
-                    if (isDirectory) {
-                        content = getDirectoryContent(resourcePath, false);
-                    }
-                } catch (IOException e) {
-                    // we should ignore if user failed to provide resource
-                    return;
-                }
-
-                if (is == null) {
-                    return;
-                }
-
-                if (isDirectory) {
-                    Resources.singleton().registerDirectoryResource(module, resourcePath, content, fromJar);
-                } else {
-                    Resources.singleton().registerResource(module, resourcePath, is, fromJar);
-                }
-
-                try {
-                    is.close();
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-
+                processResourceFromModule(module, resourcePath);
             } else {
-                Enumeration<URL> urls;
-                try {
-                    urls = imageClassLoader.getClassLoader().getResources(resourcePath);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-                if (!urls.hasMoreElements()) {
-                    // we should ignore if user failed to provide resource
-                    return;
-                }
-
-                while (urls.hasMoreElements()) {
-                    URL url = urls.nextElement();
-                    try {
-                        is = url.openStream();
-                        fromJar = url.getProtocol().equalsIgnoreCase("jar");
-                        isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
-                        // if directory is from jar content should remain empty (same as in scanJar
-                        // function from ClassLoaderSupportImpl)
-                        if (isDirectory) {
-                            content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
-                        }
-                    } catch (IOException e) {
-                        // we should ignore if user failed to provide resource
-                        return;
-                    } catch (URISyntaxException e) {
-                        throw new RuntimeException(e);
-                    }
-
-                    if (is == null) {
-                        return;
-                    }
-
-                    if (isDirectory) {
-                        Resources.singleton().registerDirectoryResource(module, resourcePath, content, fromJar);
-                    } else {
-                        Resources.singleton().registerResource(module, resourcePath, is, fromJar);
-                    }
-
-                    try {
-                        is.close();
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                }
+                processResourceFromClasspath(module, resourcePath);
             }
         }
 
@@ -319,8 +237,8 @@ public final class ResourcesFeature implements InternalFeature {
         }
 
         public boolean shouldRegisterResource(Module module, String resourceName) {
-            // we only do this if we are on the classPath
             if ((module == null || !module.isNamed())) {
+                // we only do this if we are on the classPath
                 if (!alreadyAddedResources.contains(resourceName)) {
                     alreadyAddedResources.add(resourceName);
                     return true;
@@ -328,11 +246,87 @@ public final class ResourcesFeature implements InternalFeature {
                     return false;
                 }
             } else {
-                // we should always try to register module entries (checked later in addEntries)
+                // always try to register module entries (duplicates checked later in addEntries)
                 return true;
             }
         }
 
+        private void processResourceFromModule(Module module, String resourcePath) {
+            try {
+                String resourcePackage = jdk.internal.module.Resources.toPackageName(resourcePath);
+                if (!resourcePackage.isEmpty()) {
+                    // if processing resource package, make sure that module exports that package
+                    if (module.getPackages().contains(resourcePackage)) {
+                        ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, ResourcesFeature.class, module, resourcePackage);
+                    }
+                }
+
+                InputStream is = module.getResourceAsStream(resourcePath);
+                boolean isDirectory = new File(resourcePath).isDirectory();
+                String content = "";
+                if (isDirectory) {
+                    content = getDirectoryContent(resourcePath, false);
+                }
+
+                registerResource(module, resourcePath, isDirectory, false, is, content);
+            } catch (IOException e) {
+                // we should ignore if user failed to provide resource
+            }
+        }
+
+        private void processResourceFromClasspath(Module module, String resourcePath) {
+            Enumeration<URL> urls;
+            try {
+                /*
+                 * There is an edge case where same resource name can be present in multiple jars
+                 * (different resources), so we are collecting all resources with given name in all
+                 * jars on classpath
+                 */
+                urls = imageClassLoader.getClassLoader().getResources(resourcePath);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            while (urls.hasMoreElements()) {
+                URL url = urls.nextElement();
+                try {
+                    InputStream is = url.openStream();
+                    boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
+                    boolean isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
+                    String content = "";
+                    if (isDirectory) {
+                        content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
+                    }
+
+                    registerResource(module, resourcePath, isDirectory, fromJar, is, content);
+                } catch (IOException e) {
+                    // we should ignore if user failed to provide resource
+                    return;
+                } catch (URISyntaxException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        }
+
+        private void registerResource(Module module, String resourcePath, boolean isDirectory, boolean fromJar, InputStream is, String content) {
+            if (is == null) {
+                return;
+            }
+
+            if (isDirectory) {
+                Resources.singleton().registerDirectoryResource(module, resourcePath, content, fromJar);
+            } else {
+                Resources.singleton().registerResource(module, resourcePath, is, fromJar);
+            }
+
+            try {
+                is.close();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        /* Util functions for resource attributes calculations */
         private String urlToJarPath(URL url) {
             try {
                 return ((JarURLConnection) url.openConnection()).getJarFileURL().getFile();
