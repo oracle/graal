@@ -57,9 +57,9 @@ The installation steps may differ per Oracle Linux version or package manager.
    ```
    Confirm that the installed package size is correct by entering `yes` at the prompt.
 
-### Oracle Linux 8 and 9
+### Oracle Linux 8
 
-On Oracle Linux 8 and 9 with the `yum` package manager, run these commands one by one:
+On Oracle Linux 8 with the `yum` package manager, run these commands one by one:
 ```shell
 sudo yum update -y oraclelinux-release-el8
 ```
@@ -71,12 +71,37 @@ sudo yum install graalvm-21-native-image
 ```
 Confirm that the installed package size is correct by entering `yes` at the prompt.
 
-On Oracle Linux 8 and 9 with `dnf` or `microdnf` default package managers, run these commands one by one:
+On Oracle Linux 8 with `dnf` or `microdnf` default package managers, run these commands one by one:
 ```shell
 sudo dnf update -y oraclelinux-release-el8
 ```
 ```shell
 sudo dnf config-manager --set-enabled ol8_codeready_builder
+```
+```shell
+sudo dnf install graalvm-21-native-image
+```
+
+### Oracle Linux 9
+
+On Oracle Linux 9 with the `yum` package manager, run these commands one by one:
+```shell
+sudo yum update -y oraclelinux-release-el9
+```
+```shell
+sudo yum config-manager --set-enabled ol9_codeready_builder
+```
+```shell
+sudo yum install graalvm-21-native-image
+```
+Confirm that the installed package size is correct by entering `yes` at the prompt.
+
+On Oracle Linux 9 with `dnf` or `microdnf` default package managers, run these commands one by one:
+```shell
+sudo dnf update -y oraclelinux-release-el9
+```
+```shell
+sudo dnf config-manager --set-enabled ol9_codeready_builder
 ```
 ```shell
 sudo dnf install graalvm-21-native-image
