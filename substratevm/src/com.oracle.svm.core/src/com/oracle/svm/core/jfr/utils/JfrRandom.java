@@ -64,7 +64,7 @@ public class JfrRandom {
             }
             long next = (prngMult * random + prngAdd) & modMask;
             random = next;
-            com.oracle.svm.core.util.VMError.guarantee(random > 0);
+            assert random > 0;
             return next;
         } finally {
             mutex.unlock();
@@ -80,6 +80,7 @@ public class JfrRandom {
         }
     }
 
+    /** This logic is essentially copied from JfrPRNG in Hotspot. */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public double nextUniform() {
         long next = nextRandom();

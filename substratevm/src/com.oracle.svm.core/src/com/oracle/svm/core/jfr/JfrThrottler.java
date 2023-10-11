@@ -78,7 +78,7 @@ public class JfrThrottler {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void normalize(long samplesPerPeriod, double periodMs) {
-        assert rwlock.isWriteOwner();
+        assert rwlock.isCurrentThreadWriteOwner();
         // Do we want more than 10samples/s ? If so convert to samples/s
         double periodsPerSecond = 1000.0 / periodMs;
         double samplesPerSecond = samplesPerPeriod * periodsPerSecond;
@@ -157,20 +157,20 @@ public class JfrThrottler {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void rotateWindow() {
-        assert rwlock.isWriteOwner();
+        assert rwlock.isCurrentThreadWriteOwner();
         configure();
         installNextWindow();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void installNextWindow() {
-        assert rwlock.isWriteOwner();
+        assert rwlock.isCurrentThreadWriteOwner();
         activeWindow = getNextWindow();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private JfrThrottlerWindow getNextWindow() {
-        assert rwlock.isWriteOwner();
+        assert rwlock.isCurrentThreadWriteOwner();
         if (window0 == activeWindow) {
             return window1;
         }
@@ -179,7 +179,7 @@ public class JfrThrottler {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private long computeAccumulatedDebtCarryLimit(long windowDurationNs) {
-        assert rwlock.isWriteOwner();
+        assert rwlock.isCurrentThreadWriteOwner();
         if (periodNs == 0 || windowDurationNs >= TimeUtils.nanosPerSecond) {
             return 1;
         }
@@ -188,7 +188,7 @@ public class JfrThrottler {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private long amortizeDebt(JfrThrottlerWindow lastWindow) {
-        assert rwlock.isWriteOwner();
+        assert rwlock.isCurrentThreadWriteOwner();
         if (accumulatedDebtCarryCount == accumulatedDebtCarryLimit) {
             accumulatedDebtCarryCount = 1;
             return 0; // reset because new settings have been applied
@@ -203,7 +203,7 @@ public class JfrThrottler {
      */
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void setSamplePointsAndWindowDuration() {
-        assert rwlock.isWriteOwner();
+        assert rwlock.isCurrentThreadWriteOwner();
         assert reconfigure;
         JfrThrottlerWindow next = getNextWindow();
         long samplesPerWindow = eventSampleSize / WINDOW_DIVISOR;
@@ -224,7 +224,7 @@ public class JfrThrottler {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private void configure() {
-        assert rwlock.isWriteOwner();
+        assert rwlock.isCurrentThreadWriteOwner();
         JfrThrottlerWindow next = getNextWindow();
 
         // Store updated parameters to both windows.
@@ -257,7 +257,7 @@ public class JfrThrottler {
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private double projectPopulationSize(long lastWindowMeasuredPop) {
-        assert rwlock.isWriteOwner();
+        assert rwlock.isCurrentThreadWriteOwner();
         avgPopulationSize = exponentiallyWeightedMovingAverage(lastWindowMeasuredPop, ewmaPopulationSizeAlpha, avgPopulationSize);
         return avgPopulationSize;
     }

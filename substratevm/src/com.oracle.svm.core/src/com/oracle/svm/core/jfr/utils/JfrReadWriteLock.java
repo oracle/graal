@@ -37,7 +37,8 @@ public class JfrReadWriteLock {
     private static final long CURRENTLY_WRITING = Long.MAX_VALUE;
     private final UninterruptibleUtils.AtomicLong ownerCount;
     private final UninterruptibleUtils.AtomicLong waitingWriters;
-    private volatile long writeOwnerTid;
+    private volatile long writeOwnerTid; // If this is set, then a writer owns the lock. Otherwise
+                                         // -1.
 
     public JfrReadWriteLock() {
         ownerCount = new UninterruptibleUtils.AtomicLong(0);
@@ -65,12 +66,12 @@ public class JfrReadWriteLock {
         int yields = 0;
         for (int i = 0; i < retries; i++) {
             long readers = ownerCount.get();
-            // Only attempt to enter the critical section if no writers are waiting or writes
-            // in-progress.
+            // Only begin the attempt to enter the critical section if no writers are waiting or
+            // writes are in-progress.
             if (waitingWriters.get() > 0 || readers == CURRENTLY_WRITING) {
                 yields = maybeYield(i, yields);
             } else {
-                // Attempt to take the lock
+                // Attempt to take the lock.
                 if (ownerCount.compareAndSet(readers, readers + 1)) {
                     return;
                 }
@@ -78,26 +79,29 @@ public class JfrReadWriteLock {
         }
     }
 
-    @Uninterruptible(reason = "This method does not do a transition, so the whole critical section must be uninterruptible.", callerMustBe = true)
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void writeTryLock(int retries) {
-        int yields = 0;
-        // Increment the writer to count to signal intent.
+        // Increment the writer count to signal our intent to acquire the lock.
         waitingWriters.incrementAndGet();
-        for (int i = 0; i < retries; i++) {
-            long readers = ownerCount.get();
-            // Only enter the critical section if all in-progress readers have finished.
-            if (readers != 0) {
-                yields = maybeYield(i, yields);
-            } else {
-                // Attempt to take the lock
-                if (ownerCount.compareAndSet(0, CURRENTLY_WRITING)) {
-                    // Success. Signal no longer waiting.
-                    long waiters = waitingWriters.decrementAndGet();
-                    assert waiters >= 0;
-                    writeOwnerTid = SubstrateJVM.getCurrentThreadId();
-                    return;
+        try {
+            int yields = 0;
+            for (int i = 0; i < retries; i++) {
+                long readers = ownerCount.get();
+                // Only enter the critical section if all in-progress readers have finished.
+                if (readers != 0) {
+                    yields = maybeYield(i, yields);
+                } else {
+                    // Attempt to acquire the lock.
+                    if (ownerCount.compareAndSet(0, CURRENTLY_WRITING)) {
+                        writeOwnerTid = SubstrateJVM.getCurrentThreadId();
+                        return;
+                    }
                 }
             }
+        } finally {
+            // Regardless of whether we eventually acquired the lock, signal we are done waiting.
+            long waiters = waitingWriters.decrementAndGet();
+            assert waiters >= 0;
         }
     }
 
@@ -122,12 +126,20 @@ public class JfrReadWriteLock {
 
     @Uninterruptible(reason = "Used in locking without transition, so the whole critical section must be uninterruptible.", callerMustBe = true)
     public void unlock() {
+        if (writeOwnerTid < 0) {
+            // Readers own the lock.
+            long readerCount = ownerCount.decrementAndGet();
+            assert readerCount >= 0;
+            return;
+        }
+        // A writer owns the lock.
+        assert isCurrentThreadWriteOwner();
         writeOwnerTid = -1;
         ownerCount.set(0);
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
-    public boolean isWriteOwner() {
+    public boolean isCurrentThreadWriteOwner() {
         return writeOwnerTid == SubstrateJVM.getCurrentThreadId();
     }
 }
