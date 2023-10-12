@@ -29,6 +29,8 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -43,6 +45,7 @@ import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.spi.internal.LLVMResourceProvider;
+import org.graalvm.polyglot.io.ByteSequence;
 
 /**
  * Locates internal libraries.
@@ -136,11 +139,15 @@ public abstract class InternalLibraryLocator extends LibraryLocator implements L
 
         @Override
         protected SourceBuilder locateLibrary(LLVMContext context, String lib, Object reason) {
-            URL url = resourceLocation.getResource(basePath + lib);
-            if (url == null) {
+            InputStream is = resourceLocation.getResourceAsStream(basePath + lib);
+            if (is == null) {
                 return null;
             }
-            return Source.newBuilder("llvm", url).internal(true);
+            try {
+                return Source.newBuilder("llvm", ByteSequence.create(is.readAllBytes()), lib).internal(true);
+            } catch (IOException e) {
+                return null;
+            }
         }
 
         @Override

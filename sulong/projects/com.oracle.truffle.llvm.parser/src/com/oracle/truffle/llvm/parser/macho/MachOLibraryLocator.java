@@ -69,7 +69,8 @@ public final class MachOLibraryLocator extends LibraryLocator {
 
         if (lib.startsWith(RPATH_PATTERN)) {
             String subLib = lib.substring(RPATH_PATTERN.length());
-            if (!rPaths.isEmpty()) {
+            // TODO - we need a fix that handles this properly. For restricted IO we currently hits a fatal SecurityException from below file.exist()
+            if (false && !rPaths.isEmpty()) {
                 // search file local paths
                 traceSearchPath(context, rPaths, reason);
                 for (String p : rPaths) {
