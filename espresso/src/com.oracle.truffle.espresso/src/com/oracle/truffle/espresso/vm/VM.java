@@ -1873,6 +1873,9 @@ public final class VM extends NativeEnv {
     @VmImpl(isJni = true)
     @TruffleBoundary
     public @JavaType(String.class) StaticObject JVM_GetExtendedNPEMessage(@SuppressWarnings("unused") @JavaType(Throwable.class) StaticObject throwable) {
+        if (!getContext().getEnv().getOptions().get(EspressoOptions.ShowCodeDetailsInExceptionMessages)) {
+            return StaticObject.NULL;
+        }
         return getMeta().toGuestString(ExtendedNPEMessage.getNPEMessage(throwable));
     }
 
