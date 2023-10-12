@@ -439,8 +439,7 @@ public final class ResourcesFeature implements InternalFeature {
                                 });
             }
             ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
-            DebugContext debugContext = beforeAnalysisAccess.getDebugContext();
-            ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns);
+            ResourceCollectorImpl collector = new ResourceCollectorImpl(includePatterns, excludePatterns);
             try {
                 collector.prepareProgressReporter();
                 ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
@@ -459,7 +458,6 @@ public final class ResourcesFeature implements InternalFeature {
     private static final class ResourceCollectorImpl implements ResourceCollector {
         private final Set<CompiledConditionalPattern> includePatterns;
         private final ResourcePattern[] excludePatterns;
-
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
         private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
         private static final int WATCHDOG_WARNING_AFTER_EVERY_N_SECONDS = 20;
@@ -468,7 +466,7 @@ public final class ResourcesFeature implements InternalFeature {
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
 
-        private ResourceCollectorImpl(DebugContext debugContext, Set<CompiledConditionalPattern> includePatterns, ResourcePattern[] excludePatterns) {
+        private ResourceCollectorImpl(Set<CompiledConditionalPattern> includePatterns, ResourcePattern[] excludePatterns) {
             this.includePatterns = includePatterns;
             this.excludePatterns = excludePatterns;
 
