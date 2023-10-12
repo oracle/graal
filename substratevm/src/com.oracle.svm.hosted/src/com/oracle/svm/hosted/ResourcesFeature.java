@@ -236,6 +236,13 @@ public final class ResourcesFeature implements InternalFeature {
             registerConditionalConfiguration(condition, () -> ImageSingletons.lookup(LocalizationFeature.class).prepareBundle(basename, locales));
         }
 
+        /*
+         * It is possible that one resource can be registered under different conditions
+         * (typeReachable). In some cases, few conditions will be satisfied, and we will try to
+         * register same resource for each satisfied condition. This function will check if the
+         * resource is already registered and prevent multiple registrations of same resource under
+         * different conditions
+         */
         public boolean shouldRegisterResource(Module module, String resourceName) {
             if ((module == null || !module.isNamed())) {
                 // addResources can be called from multiple threads so this should be synchronized
