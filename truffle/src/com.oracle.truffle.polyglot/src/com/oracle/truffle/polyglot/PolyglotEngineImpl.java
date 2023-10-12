@@ -222,7 +222,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
     private volatile int asynchronousStackDepth = 0;
 
     final SpecializationStatistics specializationStatistics;
-    final BytecodeStatistics operationStatistics;
+    final BytecodeStatistics bytecodeStatistics;
     Function<String, TruffleLogger> engineLoggerSupplier;   // effectively final
     @CompilationFinal private TruffleLogger engineLogger;   // effectively final
 
@@ -351,10 +351,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             this.specializationStatistics = null;
         }
 
-        if (engineOptionValues.hasBeenSet(PolyglotEngineOptions.OperationsTracingState)) {
-            this.operationStatistics = BytecodeStatistics.create(engineOptionValues.get(PolyglotEngineOptions.OperationsTracingState));
+        if (engineOptionValues.hasBeenSet(PolyglotEngineOptions.BytecodeTracingState)) {
+            this.bytecodeStatistics = BytecodeStatistics.create(engineOptionValues.get(PolyglotEngineOptions.BytecodeTracingState));
         } else {
-            this.operationStatistics = null;
+            this.bytecodeStatistics = null;
         }
 
         this.runtimeData = RUNTIME.createRuntimeData(this, engineOptions, engineLoggerSupplier, sandboxPolicy);
@@ -598,10 +598,10 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             this.specializationStatistics = null;
         }
 
-        if (this.engineOptionValues.hasBeenSet(PolyglotEngineOptions.OperationsTracingState)) {
-            this.operationStatistics = BytecodeStatistics.create(this.engineOptionValues.get(PolyglotEngineOptions.OperationsTracingState));
+        if (this.engineOptionValues.hasBeenSet(PolyglotEngineOptions.BytecodeTracingState)) {
+            this.bytecodeStatistics = BytecodeStatistics.create(this.engineOptionValues.get(PolyglotEngineOptions.BytecodeTracingState));
         } else {
-            this.operationStatistics = null;
+            this.bytecodeStatistics = null;
         }
 
         Collection<PolyglotInstrument> instrumentsToCreate = new ArrayList<>();
@@ -1299,13 +1299,13 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                     }
                 }
 
-                if (operationStatistics != null) {
-                    boolean dumpStatistics = engineOptionValues.get(PolyglotEngineOptions.OperationsDumpDecisions);
+                if (bytecodeStatistics != null) {
+                    boolean dumpStatistics = engineOptionValues.get(PolyglotEngineOptions.BytecodeDumpDecisions);
 
                     StringWriter stringDumpWriter = dumpStatistics ? new StringWriter() : null;
                     PrintWriter dumpWriter = dumpStatistics ? new PrintWriter(stringDumpWriter) : null;
 
-                    operationStatistics.write(dumpWriter);
+                    bytecodeStatistics.write(dumpWriter);
 
                     if (dumpStatistics) {
                         getEngineLogger().log(Level.INFO, stringDumpWriter.toString());

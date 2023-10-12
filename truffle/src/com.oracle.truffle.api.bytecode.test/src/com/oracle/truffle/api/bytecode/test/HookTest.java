@@ -15,7 +15,7 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.test.OperationNodeWithHooks.MyException;
 import com.oracle.truffle.api.bytecode.test.OperationNodeWithHooks.ThrowStackOverflow;
-import com.oracle.truffle.api.bytecode.test.example.OperationsExampleLanguage;
+import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -190,7 +190,7 @@ public class HookTest {
     }
 }
 
-@GenerateBytecode(languageClass = OperationsExampleLanguage.class)
+@GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)
 abstract class OperationNodeWithHooks extends RootNode implements BytecodeRootNode {
     // Used to validate whether hooks get called.
     private Object[] refs;

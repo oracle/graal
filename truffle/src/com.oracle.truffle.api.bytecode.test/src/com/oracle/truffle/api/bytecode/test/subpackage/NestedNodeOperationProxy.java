@@ -14,7 +14,7 @@ public abstract class NestedNodeOperationProxy extends Node {
     public abstract static class NestedNode extends Node {
         public abstract Object execute(VirtualFrame frame, Object obj);
 
-        // Though "obj" is not visible to the OperationRootNode, this should pass without an error
+        // Though "obj" is not visible to the root node, this should pass without an error
         // because the node is nested. The NodeParser should ignore nested nodes when parsing in
         // Operation mode.
         @Specialization(guards = "obj != null")
