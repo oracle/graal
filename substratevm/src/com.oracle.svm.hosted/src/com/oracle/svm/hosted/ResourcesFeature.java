@@ -571,14 +571,7 @@ public final class ResourcesFeature implements InternalFeature {
         }
     }
 
-    private static final class ResourcePattern {
-        final String moduleName;
-        final Pattern pattern;
-
-        private ResourcePattern(String moduleName, Pattern pattern) {
-            this.moduleName = moduleName;
-            this.pattern = pattern;
-        }
+    private record ResourcePattern(String moduleName, Pattern pattern) {
 
         boolean moduleNameMatches(String resourceContainerModuleName) {
             if (moduleName == null) {
