@@ -18,6 +18,7 @@ import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 import org.graalvm.collections.Pair;
 
 import java.util.Arrays;
@@ -184,31 +185,31 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         }
     }
 
-    private static void addSubtypeImplementations(PointsToAnalysis bb, Map<AnalysisType, AnalysisMethod> implementationsByDeclaringClass, AnalysisType type, AnalysisMethod method, Map<AnalysisMethod, TypeState> result) {
-        AnalysisMethod override = implementationsByDeclaringClass.get(type);
-        if (override != null)
-            method = override;
+    private static void addSubtypeImplementations(PointsToAnalysis bb, Map<AnalysisMethod, TypeState> result, AnalysisMethod base, AnalysisType type) {
+        AnalysisMethod override = type.resolveConcreteMethod(base);
 
-        result.compute(method, (m, existingTypes) -> {
-            if (existingTypes == null)
-                existingTypes = TypeState.forEmpty();
-            return TypeState.forUnion(bb, existingTypes, TypeState.forExactType(bb, type, false));
-        });
+        if (override != null && override.isImplementationInvoked()) {
+            result.compute(override, (m, existingTypes) -> {
+                if (existingTypes == null)
+                    existingTypes = TypeState.forEmpty();
+                return TypeState.forUnion(bb, existingTypes, TypeState.forExactType(bb, type, false));
+            });
+        }
+
         for (AnalysisType subType : type.getSubTypes()) {
             if (subType == type)
                 continue;
-            addSubtypeImplementations(bb, implementationsByDeclaringClass, subType, method, result);
+            addSubtypeImplementations(bb, result, base, subType);
         }
     }
 
+    /**
+     * In order to save calls to {@link AnalysisType#resolveConcreteMethod(ResolvedJavaMethod)}, we precompute the mapping
+     * Type -> Implementation.
+     */
     private static Map<AnalysisMethod, TypeState> collectImplementationWithTypes(PointsToAnalysis bb, AnalysisMethod baseMethod) {
-        var implementations = baseMethod.getImplementations();
-        HashMap<AnalysisType, AnalysisMethod> implementationsByDeclaringClass = new HashMap<>(implementations.length);
-        for (AnalysisMethod impl : implementations) {
-            implementationsByDeclaringClass.put(impl.getDeclaringClass(), impl);
-        }
         Map<AnalysisMethod, TypeState> result = new HashMap<>();
-        addSubtypeImplementations(bb, implementationsByDeclaringClass, baseMethod.getDeclaringClass(), baseMethod, result);
+        addSubtypeImplementations(bb, result, baseMethod, baseMethod.getDeclaringClass());
         return result;
     }
 
