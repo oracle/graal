@@ -49,5 +49,5 @@ package com.oracle.truffle.api.bytecode;
  * methods. Parser code should reference the builder class directly (e.g.,
  * {@code MyOperationRootNodeGen.Builder}).
  */
-public abstract class OperationBuilder {
+public abstract class BytecodeBuilder {
 }

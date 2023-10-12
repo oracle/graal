@@ -38,7 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode;
+package com.oracle.truffle.api.bytecode.serialization;
 
-public abstract class OperationLabel {
+import java.io.DataOutput;
+import java.io.IOException;
+
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+
+@FunctionalInterface
+public interface BytecodeSerializer {
+
+    interface SerializerContext {
+        void writeBytecodeNode(DataOutput buffer, BytecodeRootNode node) throws IOException;
+    }
+
+    /**
+     * Must not be dependent on any side-effects of the language.
+     */
+    void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException;
 }

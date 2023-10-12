@@ -49,9 +49,9 @@ import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.util.function.Supplier;
 
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationNodes;
-import com.oracle.truffle.api.bytecode.OperationParser;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -73,11 +73,11 @@ public final class SLOperationSerialization {
         // no instances
     }
 
-    public static byte[] serializeNodes(OperationParser<SLOperationRootNodeGen.Builder> parser) throws IOException {
+    public static byte[] serializeNodes(BytecodeParser<SLOperationRootNodeGen.Builder> parser) throws IOException {
         ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         DataOutputStream outputStream = new DataOutputStream(byteArrayOutputStream);
 
-        SLOperationRootNodeGen.serialize(OperationConfig.COMPLETE, outputStream, (context, buffer, object) -> {
+        SLOperationRootNodeGen.serialize(BytecodeConfig.COMPLETE, outputStream, (context, buffer, object) -> {
             if (object instanceof SLNull) {
                 buffer.writeByte(CODE_SL_NULL);
             } else if (object instanceof TruffleString) {
@@ -121,9 +121,9 @@ public final class SLOperationSerialization {
         buffer.write(data);
     }
 
-    public static OperationNodes<SLOperationRootNode> deserializeNodes(SLLanguage language, byte[] inputData) throws IOException {
+    public static BytecodeNodes<SLOperationRootNode> deserializeNodes(SLLanguage language, byte[] inputData) throws IOException {
         Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(inputData));
-        return SLOperationRootNodeGen.deserialize(language, OperationConfig.DEFAULT, input, (context, buffer) -> {
+        return SLOperationRootNodeGen.deserialize(language, BytecodeConfig.DEFAULT, input, (context, buffer) -> {
             byte tag;
             switch (tag = buffer.readByte()) {
                 case CODE_SL_NULL:

@@ -24,17 +24,17 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
-import com.oracle.truffle.api.bytecode.GenerateOperations;
-import com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationLocal;
-import com.oracle.truffle.api.bytecode.OperationNodes;
-import com.oracle.truffle.api.bytecode.OperationParser;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.OperationProxy;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.Variadic;
-import com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants.Variant;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.bytecode.test.example.OperationsExampleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -57,19 +57,19 @@ public class GetLocalsTest {
 
     @Parameter(0) public Class<? extends OperationNodeWithLocalIntrospection> interpreterClass;
 
-    public static OperationLocal makeLocal(List<String> names, OperationNodeWithLocalIntrospectionBuilder b, String name) {
+    public static BytecodeLocal makeLocal(List<String> names, OperationNodeWithLocalIntrospectionBuilder b, String name) {
         names.add(name);
         return b.createLocal();
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends OperationNodeWithLocalIntrospectionBuilder> OperationNodes<OperationNodeWithLocalIntrospection> createNodes(
+    public static <T extends OperationNodeWithLocalIntrospectionBuilder> BytecodeNodes<OperationNodeWithLocalIntrospection> createNodes(
                     Class<? extends OperationNodeWithLocalIntrospection> interpreterClass,
-                    OperationConfig config,
-                    OperationParser<T> builder) {
+                    BytecodeConfig config,
+                    BytecodeParser<T> builder) {
         try {
-            Method create = interpreterClass.getMethod("create", OperationConfig.class, OperationParser.class);
-            return (OperationNodes<OperationNodeWithLocalIntrospection>) create.invoke(null, config, builder);
+            Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
+            return (BytecodeNodes<OperationNodeWithLocalIntrospection>) create.invoke(null, config, builder);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.
@@ -81,12 +81,12 @@ public class GetLocalsTest {
     }
 
     public static <T extends OperationNodeWithLocalIntrospectionBuilder> OperationNodeWithLocalIntrospection parseNode(Class<? extends OperationNodeWithLocalIntrospection> interpreterClass,
-                    OperationParser<T> builder) {
-        OperationNodes<OperationNodeWithLocalIntrospection> nodes = createNodes(interpreterClass, OperationConfig.DEFAULT, builder);
+                    BytecodeParser<T> builder) {
+        BytecodeNodes<OperationNodeWithLocalIntrospection> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
         return nodes.getNodes().get(nodes.getNodes().size() - 1);
     }
 
-    public <T extends OperationNodeWithLocalIntrospectionBuilder> OperationNodeWithLocalIntrospection parseNode(OperationParser<T> builder) {
+    public <T extends OperationNodeWithLocalIntrospectionBuilder> OperationNodeWithLocalIntrospection parseNode(BytecodeParser<T> builder) {
         return parseNode(interpreterClass, builder);
     }
 
@@ -106,8 +106,8 @@ public class GetLocalsTest {
             b.beginRoot(null);
 
             b.beginBlock();
-            OperationLocal foo = makeLocal(names, b, "foo");
-            OperationLocal bar = makeLocal(names, b, "bar");
+            BytecodeLocal foo = makeLocal(names, b, "foo");
+            BytecodeLocal bar = makeLocal(names, b, "bar");
 
             b.beginStoreLocal(foo);
             b.emitLoadConstant(42);
@@ -157,8 +157,8 @@ public class GetLocalsTest {
             b.beginRoot(null);
 
             b.beginBlock();
-            OperationLocal foo = makeLocal(names, b, "foo");
-            OperationLocal bar = makeLocal(names, b, "bar");
+            BytecodeLocal foo = makeLocal(names, b, "foo");
+            BytecodeLocal bar = makeLocal(names, b, "bar");
 
             b.beginStoreLocal(foo);
             b.emitLoadConstant(42);
@@ -171,8 +171,8 @@ public class GetLocalsTest {
             List<String> nestedNames = new ArrayList<>();
             b.beginRoot(null);
             b.beginBlock();
-            OperationLocal baz = makeLocal(nestedNames, b, "baz");
-            OperationLocal qux = makeLocal(nestedNames, b, "qux");
+            BytecodeLocal baz = makeLocal(nestedNames, b, "baz");
+            BytecodeLocal qux = makeLocal(nestedNames, b, "qux");
 
             b.beginStoreLocal(baz);
             b.emitLoadConstant(1337);
@@ -243,8 +243,8 @@ public class GetLocalsTest {
         OperationNodeWithLocalIntrospection bar = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
-            OperationLocal x = makeLocal(names, b, "x");
-            OperationLocal y = makeLocal(names, b, "y");
+            BytecodeLocal x = makeLocal(names, b, "x");
+            BytecodeLocal y = makeLocal(names, b, "y");
 
             b.beginStoreLocal(y);
             b.beginYield();
@@ -278,7 +278,7 @@ public class GetLocalsTest {
         OperationNodeWithLocalIntrospection foo = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
-            OperationLocal c = b.createLocal();
+            BytecodeLocal c = b.createLocal();
 
             b.beginStoreLocal(c);
             b.beginInvoke();
@@ -333,7 +333,7 @@ public class GetLocalsTest {
             b.beginRoot(null);
 
             b.beginBlock();
-            OperationLocal y = makeLocal(barNames, b, "y");
+            BytecodeLocal y = makeLocal(barNames, b, "y");
 
             b.beginStoreLocal(y);
             b.emitLoadConstant(42);
@@ -356,7 +356,7 @@ public class GetLocalsTest {
             b.beginRoot(null);
 
             b.beginBlock();
-            OperationLocal x = makeLocal(fooNames, b, "x");
+            BytecodeLocal x = makeLocal(fooNames, b, "x");
 
             b.beginStoreLocal(x);
             b.emitLoadConstant(123);
@@ -382,14 +382,14 @@ public class GetLocalsTest {
         assertEquals(3, frames.size());
 
         // <anon>
-        assertNull(OperationRootNode.getLocals(frames.get(0)));
+        assertNull(BytecodeRootNode.getLocals(frames.get(0)));
 
         // bar
-        Object[] barLocals = OperationRootNode.getLocals(frames.get(1));
+        Object[] barLocals = BytecodeRootNode.getLocals(frames.get(1));
         assertArrayEquals(new Object[]{42}, barLocals);
 
         // foo
-        Object[] fooLocals = OperationRootNode.getLocals(frames.get(2));
+        Object[] fooLocals = BytecodeRootNode.getLocals(frames.get(2));
         assertArrayEquals(new Object[]{123}, fooLocals);
     }
 
@@ -426,7 +426,7 @@ public class GetLocalsTest {
             b.beginRoot(null);
 
             b.beginBlock();
-            OperationLocal y = makeLocal(barNames, b, "y");
+            BytecodeLocal y = makeLocal(barNames, b, "y");
 
             b.beginStoreLocal(y);
             b.beginYield();
@@ -451,7 +451,7 @@ public class GetLocalsTest {
             b.beginRoot(null);
 
             b.beginBlock();
-            OperationLocal x = makeLocal(fooNames, b, "x");
+            BytecodeLocal x = makeLocal(fooNames, b, "x");
 
             b.beginStoreLocal(x);
             b.emitLoadConstant(123);
@@ -483,24 +483,24 @@ public class GetLocalsTest {
         assertEquals(3, frames.size());
 
         // <anon>
-        assertNull(OperationRootNode.getLocals(frames.get(0)));
+        assertNull(BytecodeRootNode.getLocals(frames.get(0)));
 
         // bar
-        Object[] barLocals = OperationRootNode.getLocals(frames.get(1));
+        Object[] barLocals = BytecodeRootNode.getLocals(frames.get(1));
         assertArrayEquals(new Object[]{42}, barLocals);
 
         // foo
-        Object[] fooLocals = OperationRootNode.getLocals(frames.get(2));
+        Object[] fooLocals = BytecodeRootNode.getLocals(frames.get(2));
         assertArrayEquals(new Object[]{123}, fooLocals);
     }
 }
 
-@GenerateOperationsTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true)),
-                @Variant(suffix = "WithUncached", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableUncachedInterpreter = true))
+@GenerateBytecodeTestVariants({
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class, enableYield = true)),
+                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class, enableYield = true, enableUncachedInterpreter = true))
 })
 @OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
-abstract class OperationNodeWithLocalIntrospection extends RootNode implements OperationRootNode {
+abstract class OperationNodeWithLocalIntrospection extends RootNode implements BytecodeRootNode {
     @CompilationFinal(dimensions = 1) String[] localNames;
 
     protected OperationNodeWithLocalIntrospection(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

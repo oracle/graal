@@ -52,7 +52,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.bytecode.tracing.OperationsStatistics;
+import com.oracle.truffle.api.bytecode.tracing.BytecodeStatistics;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.SpecializationStatistics;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
@@ -422,10 +422,10 @@ final class PolyglotThreadInfo {
     }
 
     private static final class OperationsStatisticsEntry {
-        final OperationsStatistics statistics;
+        final BytecodeStatistics statistics;
         final OperationsStatisticsEntry next;
 
-        OperationsStatisticsEntry(OperationsStatistics statistics, OperationsStatisticsEntry next) {
+        OperationsStatisticsEntry(BytecodeStatistics statistics, OperationsStatisticsEntry next) {
             this.statistics = statistics;
             this.next = next;
         }

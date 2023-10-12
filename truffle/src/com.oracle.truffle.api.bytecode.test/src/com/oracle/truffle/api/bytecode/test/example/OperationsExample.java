@@ -44,18 +44,18 @@ import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.bytecode.AbstractOperationsTruffleException;
+import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
-import com.oracle.truffle.api.bytecode.GenerateOperations;
-import com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.LocalSetterRange;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.Variadic;
-import com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants.Variant;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -73,22 +73,22 @@ import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@GenerateOperationsTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true)),
-                @Variant(suffix = "Unsafe", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true)),
-                @Variant(suffix = "WithUncached", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true)),
-                @Variant(suffix = "WithBE", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, boxingEliminationTypes = {
+@GenerateBytecodeTestVariants({
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true)),
+                @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true)),
+                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, enableUncachedInterpreter = true)),
+                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, boxingEliminationTypes = {
                                 long.class})),
-                @Variant(suffix = "WithOptimizations", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, decisionsFile = "operations_example_decisions.json")),
+                @Variant(suffix = "WithOptimizations", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, decisionsFile = "operations_example_decisions.json")),
                 // A typical "production" configuration with all of the bells and whistles.
-                @Variant(suffix = "Production", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true, enableUncachedInterpreter = true, //
+                @Variant(suffix = "Production", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class, enableYield = true, enableSerialization = true, allowUnsafe = true, enableUncachedInterpreter = true, //
                                 boxingEliminationTypes = {long.class}, decisionsFile = "operations_example_decisions.json"))
 })
 @GenerateAOT
 @ShortCircuitOperation(booleanConverter = OperationsExample.ToBoolean.class, name = "ScAnd", continueWhen = true)
 @ShortCircuitOperation(booleanConverter = OperationsExample.ToBoolean.class, name = "ScOr", continueWhen = false)
 @OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
-public abstract class OperationsExample extends RootNode implements OperationRootNode {
+public abstract class OperationsExample extends RootNode implements BytecodeRootNode {
 
     protected OperationsExample(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
@@ -115,7 +115,7 @@ public abstract class OperationsExample extends RootNode implements OperationRoo
         return (OperationsExample) cloneUninitialized();
     }
 
-    protected static class TestException extends AbstractOperationsTruffleException {
+    protected static class TestException extends AbstractBytecodeTruffleException {
         private static final long serialVersionUID = -9143719084054578413L;
 
         public final long value;

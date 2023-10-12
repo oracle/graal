@@ -47,13 +47,13 @@ import org.junit.Test;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.GenerateOperations;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationLocal;
-import com.oracle.truffle.api.bytecode.OperationNodes;
-import com.oracle.truffle.api.bytecode.OperationParser;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.test.BoxingOperations.ObjectProducer;
 import com.oracle.truffle.api.dsl.ImplicitCast;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -71,8 +71,8 @@ public class BoxingOperationsTest {
 
     private static final int NUM_ITERATIONS = 10_000;
 
-    private static BoxingOperations parse(OperationParser<BoxingOperationsGen.Builder> parser) {
-        OperationNodes<BoxingOperations> nodes = BoxingOperationsGen.create(OperationConfig.DEFAULT, parser);
+    private static BoxingOperations parse(BytecodeParser<BoxingOperationsGen.Builder> parser) {
+        BytecodeNodes<BoxingOperations> nodes = BoxingOperationsGen.create(BytecodeConfig.DEFAULT, parser);
         BoxingOperations node = nodes.getNodes().get(0);
         // System.out.println(node.dump());
         return node;
@@ -319,7 +319,7 @@ public class BoxingOperationsTest {
         BoxingOperations root = parse(b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLocal local = b.createLocal();
+            BytecodeLocal local = b.createLocal();
 
             b.beginStoreLocal(local);
             b.emitLoadConstant(1L);
@@ -396,12 +396,12 @@ class BoxingTypeSystem {
 // }
 }
 
-@GenerateOperations(//
+@GenerateBytecode(//
                 languageClass = BoxingLanguage.class, //
                 boxingEliminationTypes = {boolean.class, int.class, long.class})
 @TypeSystemReference(BoxingTypeSystem.class)
 @SuppressWarnings("unused")
-abstract class BoxingOperations extends RootNode implements OperationRootNode {
+abstract class BoxingOperations extends RootNode implements BytecodeRootNode {
 
     private static final boolean LOG = false;
     int totalInvalidations = 0;

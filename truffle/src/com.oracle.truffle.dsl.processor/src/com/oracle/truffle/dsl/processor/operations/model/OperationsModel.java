@@ -185,13 +185,13 @@ public class OperationsModel extends Template implements PrettyPrintable {
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
-                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentTypes(types.BytecodeLocal) //
                         .setOperationArgumentNames("exceptionLocal");
         operation(OperationKind.FINALLY_TRY, "FinallyTry") //
                         .setVoid(true) //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(false, false) //
-                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentTypes(types.BytecodeLocal) //
                         .setOperationArgumentNames("exceptionLocal");
         operation(OperationKind.FINALLY_TRY_NO_EXCEPT, "FinallyTryNoExcept") //
                         .setVoid(true) //
@@ -200,12 +200,12 @@ public class OperationsModel extends Template implements PrettyPrintable {
         operation(OperationKind.LABEL, "Label") //
                         .setVoid(true) //
                         .setNumChildren(0) //
-                        .setOperationArgumentTypes(types.OperationLabel) //
+                        .setOperationArgumentTypes(types.BytecodeLabel) //
                         .setOperationArgumentNames("label");
         operation(OperationKind.BRANCH, "Branch") //
                         .setVoid(true) //
                         .setNumChildren(0) //
-                        .setOperationArgumentTypes(types.OperationLabel) //
+                        .setOperationArgumentTypes(types.BytecodeLabel) //
                         .setOperationArgumentNames("label") //
                         .setInstruction(branchInstruction);
         operation(OperationKind.LOAD_CONSTANT, "LoadConstant") //
@@ -220,27 +220,27 @@ public class OperationsModel extends Template implements PrettyPrintable {
                         .setInstruction(instruction(InstructionKind.LOAD_ARGUMENT, "load.argument").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.LOAD_LOCAL, "LoadLocal") //
                         .setNumChildren(0) //
-                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentTypes(types.BytecodeLocal) //
                         .setOperationArgumentNames("local") //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL, "load.local").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.LOAD_LOCAL_MATERIALIZED, "LoadLocalMaterialized") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
-                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentTypes(types.BytecodeLocal) //
                         .setOperationArgumentNames("local") //
                         .setInstruction(instruction(InstructionKind.LOAD_LOCAL_MATERIALIZED, "load.local.mat").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.STORE_LOCAL, "StoreLocal") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
                         .setVoid(true) //
-                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentTypes(types.BytecodeLocal) //
                         .setOperationArgumentNames("local") //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL, "store.local").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.STORE_LOCAL_MATERIALIZED, "StoreLocalMaterialized") //
                         .setNumChildren(2) //
                         .setChildrenMustBeValues(true, true) //
                         .setVoid(true) //
-                        .setOperationArgumentTypes(types.OperationLocal) //
+                        .setOperationArgumentTypes(types.BytecodeLocal) //
                         .setOperationArgumentNames("local") //
                         .setInstruction(instruction(InstructionKind.STORE_LOCAL_MATERIALIZED, "store.local.mat").addImmediate(ImmediateKind.INTEGER, "index"));
         operation(OperationKind.RETURN, "Return") //

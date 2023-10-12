@@ -68,7 +68,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.benchmark.TruffleBenchmark;
 import com.oracle.truffle.api.benchmark.operation.ManualUnsafeNodedInterpreter.AddNode;
 import com.oracle.truffle.api.benchmark.operation.ManualUnsafeNodedInterpreter.ModNode;
-import com.oracle.truffle.api.bytecode.OperationLocal;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
 
 @State(Scope.Benchmark)
 @Warmup(iterations = 5, time = 1)
@@ -416,10 +416,10 @@ public class SimpleOperationBenchmark extends TruffleBenchmark {
     private static BMOperationRootNode createSimpleLoop(BenchmarkLanguage lang, BMOperationRootNodeBuilder b) {
         b.beginRoot(lang);
 
-        OperationLocal iLoc = b.createLocal();
-        OperationLocal sumLoc = b.createLocal();
-        OperationLocal jLoc = b.createLocal();
-        OperationLocal tempLoc = b.createLocal();
+        BytecodeLocal iLoc = b.createLocal();
+        BytecodeLocal sumLoc = b.createLocal();
+        BytecodeLocal jLoc = b.createLocal();
+        BytecodeLocal tempLoc = b.createLocal();
 
         // int i = 0;
         b.beginStoreLocal(iLoc);

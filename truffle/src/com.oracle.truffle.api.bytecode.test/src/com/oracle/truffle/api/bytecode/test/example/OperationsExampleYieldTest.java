@@ -8,7 +8,7 @@ import org.junit.Test;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
 import com.oracle.truffle.api.bytecode.ContinuationRootNode;
-import com.oracle.truffle.api.bytecode.OperationLocal;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
 
 public class OperationsExampleYieldTest extends AbstractOperationsExampleTest {
 
@@ -54,7 +54,7 @@ public class OperationsExampleYieldTest extends AbstractOperationsExampleTest {
 
         RootCallTarget root = parse("yieldLocal", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLocal local = b.createLocal();
+            BytecodeLocal local = b.createLocal();
 
             b.beginStoreLocal(local);
             b.emitLoadConstant(0L);
@@ -110,7 +110,7 @@ public class OperationsExampleYieldTest extends AbstractOperationsExampleTest {
 
         RootCallTarget root = parse("yieldTee", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLocal local = b.createLocal();
+            BytecodeLocal local = b.createLocal();
 
             b.beginYield();
             b.beginTeeLocal(local);

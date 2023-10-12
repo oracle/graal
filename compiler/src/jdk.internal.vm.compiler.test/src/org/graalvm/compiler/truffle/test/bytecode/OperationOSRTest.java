@@ -12,12 +12,12 @@ import org.junit.rules.TestRule;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.GenerateOperations;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationNodes;
-import com.oracle.truffle.api.bytecode.OperationParser;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -26,8 +26,8 @@ import com.oracle.truffle.runtime.BytecodeOSRMetadata;
 public class OperationOSRTest extends TestWithSynchronousCompiling {
     private static final OperationOSRTestLanguage LANGUAGE = null;
 
-    private static OperationOSRTestRootNode parseNode(OperationParser<OperationOSRTestRootNodeGen.Builder> builder) {
-        OperationNodes<OperationOSRTestRootNode> nodes = OperationOSRTestRootNodeGen.create(OperationConfig.DEFAULT, builder);
+    private static OperationOSRTestRootNode parseNode(BytecodeParser<OperationOSRTestRootNodeGen.Builder> builder) {
+        BytecodeNodes<OperationOSRTestRootNode> nodes = OperationOSRTestRootNodeGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNodes().get(nodes.getNodes().size() - 1);
     }
 
@@ -76,8 +76,8 @@ class OperationOSRTestLanguage extends TruffleLanguage<Object> {
     }
 }
 
-@GenerateOperations(languageClass = OperationOSRTestLanguage.class)
-abstract class OperationOSRTestRootNode extends RootNode implements OperationRootNode {
+@GenerateBytecode(languageClass = OperationOSRTestLanguage.class)
+abstract class OperationOSRTestRootNode extends RootNode implements BytecodeRootNode {
 
     protected OperationOSRTestRootNode(TruffleLanguage<?> language, FrameDescriptor fd) {
         super(language, fd);

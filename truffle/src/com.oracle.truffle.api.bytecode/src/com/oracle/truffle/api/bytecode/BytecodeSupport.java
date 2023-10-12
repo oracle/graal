@@ -8,10 +8,10 @@ import com.oracle.truffle.api.CompilerDirectives;
  *
  * @since XXX
  */
-public class OperationSupport {
+public class BytecodeSupport {
     private static final int MAX_PROFILE_COUNT = 0x3fffffff;
 
-    private OperationSupport() {
+    private BytecodeSupport() {
         // no instances
     }
 

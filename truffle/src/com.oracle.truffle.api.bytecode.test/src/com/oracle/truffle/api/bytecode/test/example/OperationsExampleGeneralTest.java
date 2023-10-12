@@ -51,10 +51,10 @@ import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.bytecode.OperationLabel;
-import com.oracle.truffle.api.bytecode.OperationLocal;
+import com.oracle.truffle.api.bytecode.BytecodeLabel;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
-import com.oracle.truffle.api.bytecode.introspection.OperationIntrospection;
+import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
 
 @RunWith(Parameterized.class)
 public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest {
@@ -199,8 +199,8 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
 
         RootCallTarget root = parse("sumLoop", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLocal locI = b.createLocal();
-            OperationLocal locJ = b.createLocal();
+            BytecodeLocal locI = b.createLocal();
+            BytecodeLocal locJ = b.createLocal();
 
             b.beginStoreLocal(locI);
             b.emitLoadConstant(0L);
@@ -255,7 +255,7 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
         RootCallTarget root = parse("tryCatch", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLocal local = b.createLocal();
+            BytecodeLocal local = b.createLocal();
             b.beginTryCatch(local);
 
             b.beginIfThen();
@@ -303,8 +303,8 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
         RootCallTarget root = parse("variableBoxingElim", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLocal local0 = b.createLocal();
-            OperationLocal local1 = b.createLocal();
+            BytecodeLocal local0 = b.createLocal();
+            BytecodeLocal local1 = b.createLocal();
 
             b.beginStoreLocal(local0);
             b.emitLoadConstant(0L);
@@ -361,7 +361,7 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
         thrown.expectMessage("Operation Root ended without emitting one or more declared labels. This likely indicates a bug in the parser.");
         parse("undeclaredLabel", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLabel lbl = b.createLabel();
+            BytecodeLabel lbl = b.createLabel();
             b.emitBranch(lbl);
             b.endRoot();
         });
@@ -374,7 +374,7 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
 
         RootCallTarget root = parse("unusedLabel", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLabel lbl = b.createLabel();
+            BytecodeLabel lbl = b.createLabel();
             b.emitLabel(lbl);
             emitReturn(b, 42);
             b.endRoot();
@@ -391,7 +391,7 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
         RootCallTarget root = parse("teeLocal", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLocal local = b.createLocal();
+            BytecodeLocal local = b.createLocal();
 
             b.beginTeeLocal(local);
             b.emitLoadConstant(1L);
@@ -415,10 +415,10 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
         RootCallTarget root = parse("teeLocalRange", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLocal local1 = b.createLocal();
-            OperationLocal local2 = b.createLocal();
+            BytecodeLocal local1 = b.createLocal();
+            BytecodeLocal local2 = b.createLocal();
 
-            b.beginTeeLocalRange(new OperationLocal[] {local1, local2});
+            b.beginTeeLocalRange(new BytecodeLocal[] {local1, local2});
             b.emitLoadConstant(new long[] {1L, 2L});
             b.endTeeLocalRange();
 
@@ -475,7 +475,7 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
             // return (lambda: x)()
             b.beginRoot(LANGUAGE);
 
-            OperationLocal xLoc = b.createLocal();
+            BytecodeLocal xLoc = b.createLocal();
 
             b.beginStoreLocal(xLoc);
             b.emitLoadConstant(1L);
@@ -515,7 +515,7 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
         RootCallTarget root = parse("localsNonlocalWrite", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLocal xLoc = b.createLocal();
+            BytecodeLocal xLoc = b.createLocal();
 
             b.beginStoreLocal(xLoc);
             b.emitLoadConstant(1L);
@@ -844,7 +844,7 @@ public class OperationsExampleGeneralTest extends AbstractOperationsExampleTest 
             b.endRoot();
         });
 
-        OperationIntrospection data = node.getIntrospectionData();
+        BytecodeIntrospection data = node.getIntrospectionData();
 
         assertEquals(5, data.getInstructions().size());
         assertInstructionEquals(data.getInstructions().get(0), 0, "load.argument");

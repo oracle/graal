@@ -49,19 +49,19 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 
-public abstract class OperationNodes<T extends RootNode & OperationRootNode> {
-    private final OperationParser<? extends OperationBuilder> parse;
+public abstract class BytecodeNodes<T extends RootNode & BytecodeRootNode> {
+    private final BytecodeParser<? extends BytecodeBuilder> parse;
     @CompilationFinal(dimensions = 1) protected T[] nodes;
     @CompilationFinal(dimensions = 1) protected volatile Source[] sources;
     @CompilationFinal private boolean hasInstrumentation;
 
-    protected OperationNodes(OperationParser<? extends OperationBuilder> parse) {
+    protected BytecodeNodes(BytecodeParser<? extends BytecodeBuilder> parse) {
         this.parse = parse;
     }
 
     @Override
     public String toString() {
-        return String.format("OperationNodes %s", Arrays.toString(nodes));
+        return String.format("BytecodeNodes %s", Arrays.toString(nodes));
     }
 
     @SuppressWarnings({"unchecked", "cast", "rawtypes"})
@@ -77,11 +77,11 @@ public abstract class OperationNodes<T extends RootNode & OperationRootNode> {
         return hasInstrumentation;
     }
 
-    public OperationParser<? extends OperationBuilder> getParser() {
+    public BytecodeParser<? extends BytecodeBuilder> getParser() {
         return parse;
     }
 
-    private boolean checkNeedsWork(OperationConfig config) {
+    private boolean checkNeedsWork(BytecodeConfig config) {
         if (config.isWithSource() && !hasSources()) {
             return true;
         }
@@ -91,7 +91,7 @@ public abstract class OperationNodes<T extends RootNode & OperationRootNode> {
         return false;
     }
 
-    public boolean updateConfiguration(OperationConfig config) {
+    public boolean updateConfiguration(BytecodeConfig config) {
         if (!checkNeedsWork(config)) {
             return false;
         }
@@ -102,9 +102,9 @@ public abstract class OperationNodes<T extends RootNode & OperationRootNode> {
     }
 
     @SuppressWarnings("hiding")
-    protected abstract void reparseImpl(OperationConfig config, OperationParser<? extends OperationBuilder> parse, T[] nodes);
+    protected abstract void reparseImpl(BytecodeConfig config, BytecodeParser<? extends BytecodeBuilder> parse, T[] nodes);
 
-    void reparse(OperationConfig config) {
+    void reparse(BytecodeConfig config) {
         CompilerAsserts.neverPartOfCompilation("parsing should never be compiled");
         reparseImpl(config, parse, nodes);
     }
@@ -115,14 +115,14 @@ public abstract class OperationNodes<T extends RootNode & OperationRootNode> {
     public final void ensureSources() {
         if (sources == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            reparse(OperationConfig.WITH_SOURCE);
+            reparse(BytecodeConfig.WITH_SOURCE);
         }
     }
 
     public final void ensureInstrumentation() {
         if (!hasInstrumentation) {
             CompilerDirectives.transferToInterpreter();
-            reparse(OperationConfig.COMPLETE);
+            reparse(BytecodeConfig.COMPLETE);
         }
     }
 }

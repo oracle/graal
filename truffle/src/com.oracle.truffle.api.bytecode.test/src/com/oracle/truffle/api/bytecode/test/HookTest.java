@@ -7,12 +7,12 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.GenerateOperations;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationNodes;
-import com.oracle.truffle.api.bytecode.OperationParser;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.test.OperationNodeWithHooks.MyException;
 import com.oracle.truffle.api.bytecode.test.OperationNodeWithHooks.ThrowStackOverflow;
 import com.oracle.truffle.api.bytecode.test.example.OperationsExampleLanguage;
@@ -24,8 +24,8 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class HookTest {
 
-    public static OperationNodeWithHooks parseNode(OperationParser<OperationNodeWithHooksGen.Builder> builder) {
-        OperationNodes<OperationNodeWithHooks> nodes = OperationNodeWithHooksGen.create(OperationConfig.DEFAULT, builder);
+    public static OperationNodeWithHooks parseNode(BytecodeParser<OperationNodeWithHooksGen.Builder> builder) {
+        BytecodeNodes<OperationNodeWithHooks> nodes = OperationNodeWithHooksGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNodes().get(0);
     }
 
@@ -190,8 +190,8 @@ public class HookTest {
     }
 }
 
-@GenerateOperations(languageClass = OperationsExampleLanguage.class)
-abstract class OperationNodeWithHooks extends RootNode implements OperationRootNode {
+@GenerateBytecode(languageClass = OperationsExampleLanguage.class)
+abstract class OperationNodeWithHooks extends RootNode implements BytecodeRootNode {
     // Used to validate whether hooks get called.
     private Object[] refs;
 

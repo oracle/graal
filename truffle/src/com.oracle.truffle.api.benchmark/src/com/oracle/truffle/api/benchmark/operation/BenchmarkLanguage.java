@@ -50,9 +50,9 @@ import java.util.function.Function;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Registration;
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationNodes;
-import com.oracle.truffle.api.bytecode.OperationParser;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 
 @Registration(id = "bm", name = "bm")
 class BenchmarkLanguage extends TruffleLanguage<Object> {
@@ -66,16 +66,16 @@ class BenchmarkLanguage extends TruffleLanguage<Object> {
 
     public static void registerName(String name, Class<? extends BMOperationRootNode> cls, BiConsumer<BenchmarkLanguage, BMOperationRootNodeBuilder> parser) {
         registerName(name, l -> {
-            OperationNodes<BMOperationRootNode> nodes = createNodes(cls, b -> parser.accept(l, b));
+            BytecodeNodes<BMOperationRootNode> nodes = createNodes(cls, b -> parser.accept(l, b));
             return nodes.getNodes().get(nodes.getNodes().size() - 1).getCallTarget();
         });
     }
 
     @SuppressWarnings("unchecked")
-    private static <T extends BMOperationRootNodeBuilder> OperationNodes<BMOperationRootNode> createNodes(Class<? extends BMOperationRootNode> interpreterClass, OperationParser<T> builder) {
+    private static <T extends BMOperationRootNodeBuilder> BytecodeNodes<BMOperationRootNode> createNodes(Class<? extends BMOperationRootNode> interpreterClass, BytecodeParser<T> builder) {
         try {
-            Method create = interpreterClass.getMethod("create", OperationConfig.class, OperationParser.class);
-            return (OperationNodes<BMOperationRootNode>) create.invoke(null, OperationConfig.DEFAULT, builder);
+            Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
+            return (BytecodeNodes<BMOperationRootNode>) create.invoke(null, BytecodeConfig.DEFAULT, builder);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.

@@ -5,10 +5,10 @@ import java.lang.reflect.Method;
 import java.util.List;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationNodes;
-import com.oracle.truffle.api.bytecode.OperationParser;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
 public class OperationsExampleCommon {
@@ -21,11 +21,11 @@ public class OperationsExampleCommon {
      * reflection.
      */
     @SuppressWarnings("unchecked")
-    public static <T extends OperationsExampleBuilder> OperationNodes<OperationsExample> createNodes(Class<? extends OperationsExample> interpreterClass, OperationConfig config,
-                    OperationParser<T> builder) {
+    public static <T extends OperationsExampleBuilder> BytecodeNodes<OperationsExample> createNodes(Class<? extends OperationsExample> interpreterClass, BytecodeConfig config,
+                    BytecodeParser<T> builder) {
         try {
-            Method create = interpreterClass.getMethod("create", OperationConfig.class, OperationParser.class);
-            return (OperationNodes<OperationsExample>) create.invoke(null, config, builder);
+            Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
+            return (BytecodeNodes<OperationsExample>) create.invoke(null, config, builder);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.
@@ -36,20 +36,20 @@ public class OperationsExampleCommon {
         }
     }
 
-    public static <T extends OperationsExampleBuilder> RootCallTarget parse(Class<? extends OperationsExample> interpreterClass, String rootName, OperationParser<T> builder) {
-        OperationRootNode operationsNode = parseNode(interpreterClass, rootName, builder);
+    public static <T extends OperationsExampleBuilder> RootCallTarget parse(Class<? extends OperationsExample> interpreterClass, String rootName, BytecodeParser<T> builder) {
+        BytecodeRootNode operationsNode = parseNode(interpreterClass, rootName, builder);
         return ((RootNode) operationsNode).getCallTarget();
     }
 
-    public static <T extends OperationsExampleBuilder> OperationsExample parseNode(Class<? extends OperationsExample> interpreterClass, String rootName, OperationParser<T> builder) {
-        OperationNodes<OperationsExample> nodes = OperationsExampleCommon.createNodes(interpreterClass, OperationConfig.DEFAULT, builder);
+    public static <T extends OperationsExampleBuilder> OperationsExample parseNode(Class<? extends OperationsExample> interpreterClass, String rootName, BytecodeParser<T> builder) {
+        BytecodeNodes<OperationsExample> nodes = OperationsExampleCommon.createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
         OperationsExample op = nodes.getNodes().get(nodes.getNodes().size() - 1);
         op.setName(rootName);
         return op;
     }
 
-    public static <T extends OperationsExampleBuilder> OperationsExample parseNodeWithSource(Class<? extends OperationsExample> interpreterClass, String rootName, OperationParser<T> builder) {
-        OperationNodes<OperationsExample> nodes = OperationsExampleCommon.createNodes(interpreterClass, OperationConfig.WITH_SOURCE, builder);
+    public static <T extends OperationsExampleBuilder> OperationsExample parseNodeWithSource(Class<? extends OperationsExample> interpreterClass, String rootName, BytecodeParser<T> builder) {
+        BytecodeNodes<OperationsExample> nodes = OperationsExampleCommon.createNodes(interpreterClass, BytecodeConfig.WITH_SOURCE, builder);
         OperationsExample op = nodes.getNodes().get(nodes.getNodes().size() - 1);
         op.setName(rootName);
         return op;

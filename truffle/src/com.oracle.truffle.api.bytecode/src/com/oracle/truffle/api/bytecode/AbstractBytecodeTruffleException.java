@@ -40,67 +40,61 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.source.SourceSection;
+
 /**
- * The configuration to use while generating bytecode. To reduce interpreter footprint, source
- * sections and instrumentation information can be lazily re-parsed when it is needed.
+ * Subclass of {@link AbstractTruffleException} that can be used for operations interpreters.
+ *
+ * Operations interpreters do not necessarily have {@link Node nodes} to use as source location
+ * markers. Instead, when possible, this class uses the {@code bci} to {@link getSourceSection
+ * compute source sections}.
+ *
+ * @since 24.0
  */
-public final class OperationConfig {
+public abstract class AbstractBytecodeTruffleException extends AbstractTruffleException {
 
-    /**
-     * Retain no sources or instrumentation information.
-     */
-    public static final OperationConfig DEFAULT = new OperationConfig(false, false);
-    /**
-     * Retain source information.
-     */
-    public static final OperationConfig WITH_SOURCE = new OperationConfig(true, false);
-    /**
-     * Retain source and instrumentation information.
-     */
-    public static final OperationConfig COMPLETE = new OperationConfig(true, true);
+    private static final long serialVersionUID = -534184847100559365L;
+    private static final int INVALID_BCI = -1;
 
-    private final boolean withSource;
-    private final boolean withInstrumentation;
+    private final int bci;
 
-    private OperationConfig(boolean withSource, boolean withInstrumentation) {
-        this.withSource = withSource;
-        this.withInstrumentation = withInstrumentation;
+    public AbstractBytecodeTruffleException() {
+        super();
+        bci = INVALID_BCI;
     }
 
-    public static Builder newBuilder() {
-        return new Builder();
+    public AbstractBytecodeTruffleException(String message) {
+        super(message);
+        this.bci = INVALID_BCI;
     }
 
-    public boolean isWithSource() {
-        return withSource;
+    public AbstractBytecodeTruffleException(AbstractBytecodeTruffleException prototype) {
+        super(prototype);
+        this.bci = prototype.bci;
     }
 
-    public boolean isWithInstrumentation() {
-        return withInstrumentation;
+    public AbstractBytecodeTruffleException(Node location, int bci) {
+        super(location);
+        this.bci = bci;
     }
 
-    /**
-     * Builder to generate a {@link OperationConfig} programmatically.
-     */
-    public static class Builder {
-        private boolean withSource;
-        private boolean withInstrumentation;
+    public AbstractBytecodeTruffleException(String message, Node location, int bci) {
+        super(message, location);
+        this.bci = bci;
+    }
 
-        Builder() {
-        }
+    public AbstractBytecodeTruffleException(String message, Throwable cause, int stackTraceElementLimit, Node location, int bci) {
+        super(message, cause, stackTraceElementLimit, location);
+        this.bci = bci;
+    }
 
-        public Builder withSource(boolean value) {
-            this.withSource = value;
-            return this;
+    @Override
+    public SourceSection getSourceSection() {
+        if (bci == INVALID_BCI || !(getLocation() instanceof BytecodeRootNode operationRootNode)) {
+            return super.getSourceSection();
         }
-
-        public Builder withInstrumentation(boolean value) {
-            this.withInstrumentation = value;
-            return this;
-        }
-
-        public OperationConfig build() {
-            return new OperationConfig(withSource, withInstrumentation);
-        }
+        return operationRootNode.getSourceSectionAtBci(bci);
     }
 }

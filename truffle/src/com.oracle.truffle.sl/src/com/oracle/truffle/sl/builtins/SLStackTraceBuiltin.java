@@ -42,7 +42,7 @@ package com.oracle.truffle.sl.builtins;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -102,7 +102,7 @@ public abstract class SLStackTraceBuiltin extends SLBuiltinNode {
                 }
                 str.appendStringUncached(FRAME);
                 str.appendStringUncached(getRootNodeName(rn));
-                boolean isOperation = rn instanceof OperationRootNode;
+                boolean isOperation = rn instanceof BytecodeRootNode;
                 FrameDescriptor frameDescriptor = frame.getFrameDescriptor();
                 int count = frameDescriptor.getNumberOfSlots();
                 for (int i = 0; i < count; i++) {

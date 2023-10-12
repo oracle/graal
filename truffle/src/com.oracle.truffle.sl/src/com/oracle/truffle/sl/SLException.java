@@ -43,7 +43,7 @@ package com.oracle.truffle.sl;
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.bytecode.AbstractOperationsTruffleException;
+import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.Node;
@@ -56,7 +56,7 @@ import com.oracle.truffle.sl.runtime.SLLanguageView;
  * conditions just abort execution. This exception class is used when we abort from within the SL
  * implementation.
  */
-public class SLException extends AbstractOperationsTruffleException {
+public class SLException extends AbstractBytecodeTruffleException {
 
     private static final long serialVersionUID = -6799734410727348507L;
     private static final InteropLibrary UNCACHED_LIB = InteropLibrary.getFactory().getUncached();

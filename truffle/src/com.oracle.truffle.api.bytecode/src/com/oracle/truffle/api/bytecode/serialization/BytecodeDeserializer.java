@@ -38,31 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode;
+package com.oracle.truffle.api.bytecode.serialization;
 
-/**
- * Functional interface containing a method to parse one or more nodes using a {@code builder}.
- *
- * Implementations are commonly written as anonymous functions that perform a traversal over a given
- * tree representation. For example:
- *
- * <pre>
- * MyTree myTree = ...;
- * MyOperationRootNodeGen.create(OperationConfig.DEFAULT, b -> {
- *     myTree.accept(new MyTreeVisitor(b));
- * })
- * </pre>
- *
- * In the above example, the visitor uses the builder {@code b} to emit bytecode.
- *
- * Note that a parser can be invoked multiple times in order to {@link OperationNodes#reparse} nodes
- * (e.g., to add source information). This means that the parser may retain references to any input
- * data (e.g., trees), preventing it from being garbage-collected. Thus, it may be desirable for the
- * parse method to construct the input data itself (e.g., by reading it from disk).
- *
- * @param <T> the builder class of the operation node
- */
+import java.io.DataInput;
+import java.io.IOException;
+
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+
 @FunctionalInterface
-public interface OperationParser<T extends OperationBuilder> {
-    void parse(T builder);
+public interface BytecodeDeserializer {
+
+    interface DeserializerContext {
+        BytecodeRootNode readBytecodeNode(DataInput buffer) throws IOException;
+    }
+
+    /**
+     * Must not be dependent on any side-effects of the language.
+     */
+    Object deserialize(DeserializerContext context, DataInput buffer) throws IOException;
 }
