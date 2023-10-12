@@ -200,9 +200,9 @@ espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
         '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
         '--features=com.oracle.truffle.espresso.ref.FinalizationFeature',
+        '--enable-monitoring=threaddump',
     ] + mx_sdk_vm_impl.svm_experimental_options([
         '-H:-JNIExportSymbols',
-        '-H:+DumpThreadStacksOnSignal',
     ]),
 )
 
