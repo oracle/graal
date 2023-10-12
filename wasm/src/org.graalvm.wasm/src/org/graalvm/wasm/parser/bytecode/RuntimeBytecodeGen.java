@@ -297,6 +297,7 @@ public class RuntimeBytecodeGen extends BytecodeGen {
             add1(Bytecode.LABEL_U8);
             add1(stackSize);
         } else if (resultCount == 1 && stackSize <= 63) {
+            assert commonResultType != BytecodeBitEncoding.LABEL_RESULT_TYPE_MIX : "Single result value must either have number or reference type.";
             add1(Bytecode.SKIP_LABEL_U8);
             location = location();
             add1(Bytecode.LABEL_U8);
@@ -304,8 +305,6 @@ public class RuntimeBytecodeGen extends BytecodeGen {
                 add1(BytecodeBitEncoding.LABEL_U8_RESULT_NUM | stackSize);
             } else if (commonResultType == BytecodeBitEncoding.LABEL_RESULT_TYPE_REF) {
                 add1(BytecodeBitEncoding.LABEL_U8_RESULT_REF | stackSize);
-            } else {
-                throw CompilerDirectives.shouldNotReachHere("Single result value must either have number or reference type.");
             }
         } else if (resultCount <= 63 && fitsIntoUnsignedByte(stackSize)) {
             add1(Bytecode.SKIP_LABEL_U16);
