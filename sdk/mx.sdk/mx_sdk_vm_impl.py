@@ -2774,10 +2774,10 @@ class GraalVmStandaloneComponent(LayoutSuper):  # pylint: disable=R0901
         default_jvm_libs_dir = base_dir + 'jvmlibs/'
         layout = {}
 
-        # JVM standalones do not include the native libraries of LanguageLibraryConfig ('thin launchers') of:
+        # JVM standalones do not include LibraryConfigs (including the native libraries of LanguageLibraryConfig ('thin launchers')) of:
         # - the main component
         # - every other component that defines a language library that overrides (i.e., has the same destination) one of the main component
-        main_libraries_destinations = [base_dir + library_config.destination for library_config in main_component.library_configs if isinstance(library_config, mx_sdk.LanguageLibraryConfig)]
+        main_libraries_destinations = [base_dir + library_config.destination for library_config in main_component.library_configs if isinstance(library_config, mx_sdk.LibraryConfig)]
 
         assert require_svm(self.involved_components), "The '{}' standalone does not require SVM. This has not been tested in a while and might not work as intended. Involved components: '{}'".format(name, [c.name for c in self.involved_components])
 
