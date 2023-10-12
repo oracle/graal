@@ -87,7 +87,6 @@ javac -cp apps/greeter/classes \
     --source-path apps/hello/src \
     -d apps/hello/classes org/my/hello/Hello.java
 native-image -g \
-    -H:-SpawnIsolates \
     -H:DebugInfoSourceSearchPath=apps/hello/src \
     -H:DebugInfoSourceSearchPath=apps/greeter/src \
     -cp apps/hello/classes:apps/greeter/classes org.my.hello.Hello
@@ -113,7 +112,6 @@ As an example, the following variant of the previous command specifies an absolu
 ```shell
 SOURCE_CACHE_ROOT=/tmp/$$/sources
 native-image -g \
-    -H:-SpawnIsolates \
     -H:DebugInfoSourceCacheRoot=$SOURCE_CACHE_ROOT \
     -H:DebugInfoSourceSearchPath=apps/hello/target/hello-sources.jar,apps/greeter/target/greeter-sources.jar \
     -cp apps/target/hello.jar:apps/target/greeter.jar \
@@ -702,20 +700,20 @@ Windows support is still under development.
 
 ## Debugging with Isolates
 
-Enabling the use of [isolates](https://medium.com/graalvm/isolates-and-compressed-references-more-flexible-and-efficient-memory-management-for-graalvm-a044cc50b67e), by passing command line option `-H:-SpawnIsolates` to the `native-image` builder, affects the way ordinary object pointers (oops) are encoded.
+The use of [isolates](https://medium.com/graalvm/isolates-and-compressed-references-more-flexible-and-efficient-memory-management-for-graalvm-a044cc50b67e) in native image affects the way ordinary object pointers (oops) are encoded.
 In turn, that means the debug info generator has to provide `gdb` with information about how to translate an encoded oop to the address in memory, where the object data is stored.
 This sometimes requires care when asking `gdb` to process encoded oops vs decoded raw addresses.
 
-When isolates are disabled, oops are essentially raw addresses pointing directly at the object contents.
+If isolates were disabled, oops would essentially be raw addresses pointing directly at the object contents.
 This is generally the same whether the oop is embedded in a static/instance field or is referenced from a local or parameter variable located in a register or saved to the stack.
 It is not quite that simple because the bottom 3 bits of some oops may be used to hold "tags" that record certain transient properties of an object.
 However, the debug info provided to `gdb` means that it will remove these tag bits before dereferencing the oop as an address.
 
-By contrast, when isolates are enabled, oops references stored in static or instance fields are actually relative addresses, offsets from a dedicated heap base register (r14 on x86_64, r29 on AArch64), rather than direct addresses (in a few special cases the offset may also have some low tag bits set).
+With the use of isolates, oops references stored in static or instance fields are actually relative addresses, offsets from a dedicated heap base register (r14 on x86_64, r29 on AArch64), rather than direct addresses (in a few special cases the offset may also have some low tag bits set).
 When an "indirect" oop of this kind gets loaded during execution, it is almost always immediately converted to a "raw" address by adding the offset to the heap base register value.
 So, oops which occur as the value of local or parameter vars are actually raw addresses.
 
-> Note that on some operating systems enabling isolates causes problems with printing of objects when using a `gdb` release version 10 or earlier. It is currently recommended to disable use of isolates, by passing command line option `-H:-SpawnIsolates`, when generating debug info if your operating system includes one of these earlier releases. Alternatively, you may be able to upgrade your debugger to a later version.
+> Note that on some operating systems enabling isolates causes problems with printing of objects when using a `gdb` release version 10 or earlier. It is strongly recommended to upgrade your debugger to a later version.
 
 The DWARF info encoded into the image, when isolates are enabled, tells `gdb` to rebase indirect oops whenever it tries to dereference them to access underlying object data.
 This is normally automatic and transparent, but it is visible in the underlying type model that `gdb` displays when you ask for the type of objects.
