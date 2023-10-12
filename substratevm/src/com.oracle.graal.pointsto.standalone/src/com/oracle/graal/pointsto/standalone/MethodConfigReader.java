@@ -28,10 +28,12 @@ package com.oracle.graal.pointsto.standalone;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.standalone.util.StandaloneAnalysisException;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
+import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugOptions;
 import org.graalvm.compiler.debug.MethodFilter;
@@ -41,14 +43,20 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+
+import static com.oracle.graal.pointsto.standalone.StandaloneOptions.AnalysisTargetAppCP;
 
 /**
  * This class reads the configuration file that complies to the following rules:
@@ -61,6 +69,20 @@ import java.util.stream.Collectors;
 public class MethodConfigReader {
 
     private static final String READ_ENTRY_POINTS = "ReadEntryPoints";
+
+    private static class Entry {
+        private String declaringClassName;
+        private String methodName;
+        private String url;
+        private ClassLoader classLoader;
+
+        Entry(String declaringClassName, String methodName, String url, ClassLoader classLoader) {
+            this.declaringClassName = declaringClassName;
+            this.methodName = methodName;
+            this.url = url;
+            this.classLoader = classLoader;
+        }
+    }
 
     /**
      * Read methods from the specified file. For each parsed method, execute the specified action.
@@ -96,48 +118,159 @@ public class MethodConfigReader {
 
     @SuppressWarnings("try")
     public static int forMethodList(DebugContext debug, List<String> methods, BigBang bigbang, ClassLoader classLoader, Consumer<AnalysisMethod> actionForEachMethod) {
-        AtomicInteger validMethodsNum = new AtomicInteger(0);
         try (DebugContext.Scope s = debug.scope(READ_ENTRY_POINTS)) {
-            methods.stream().forEach(method -> {
-                if (!method.isBlank()) {
+            Set<Entry> workingList = methods.stream().filter(e -> !e.isBlank()).map(e -> {
+                // We use : to separate method and its declaring class location
+                String[] contents = e.split(":");
+                return new Entry(parseClassName(contents[0]), contents[0], contents.length == 2 ? contents[1] : null, classLoader);
+            }).collect(Collectors.toSet());
+
+            boolean lastRound = false;
+            int validMethodsNum = 0;
+            Set<Entry> exceptionEntries = new HashSet<>();
+            int oldHash;
+            List<Pair<Entry, Throwable>> maybeIgnoredExceptions = new ArrayList<>();
+            List<Pair<Entry, Throwable>> unKnownReasonExceptions = new ArrayList<>();
+            List<Pair<Entry, Throwable>> reallyNotExistList = new ArrayList<>();
+            while (!workingList.isEmpty()) {
+                oldHash = exceptionEntries.hashCode();
+                exceptionEntries.clear();
+                for (Entry entry : workingList) {
                     try {
-                        workWithMethod(method, bigbang, classLoader, actionForEachMethod);
-                        validMethodsNum.incrementAndGet();
+                        workWithMethod(entry, bigbang, actionForEachMethod);
+                        validMethodsNum++;
+                    } catch (NoSuchMethodError e) {
+                        /**
+                         * When there are multiple versions of the same name class in the analysis
+                         * class path, firstly loaded version shadows the others. There are two
+                         * possible reasons when a NoSuchMethodError is reported: 1) the method
+                         * really doesn't exist: confirmed in the last round and report 2) the
+                         * method exists in the shadowed classes: using new classloader to load the
+                         * shadowed classes in the next round.
+                         */
+                        if (lastRound) {
+                            reallyNotExistList.add(Pair.create(entry, e));
+                        } else {
+                            exceptionEntries.add(entry);
+                        }
+                    } catch (StandaloneAnalysisException e) {
+                        maybeIgnoredExceptions.add(Pair.create(entry, e));
                     } catch (Throwable t) {
-                        // Checkstyle: Allow raw info or warning printing - begin
-                        debug.log(DebugContext.VERBOSE_LEVEL, "Warning: Can't add method " + method + " as analysis root method. Reason: " + t.getMessage());
-                        // Checkstyle: Allow raw info or warning printing - end
+                        unKnownReasonExceptions.add(Pair.create(entry, t));
                     }
                 }
-            });
+                if (!exceptionEntries.isEmpty()) {
+                    /*
+                     * Only request one more iteration when the state of exceptionEntries is
+                     * changed. In case the requested method or class is really not existed. It can
+                     * be repeatedly added into exceptionEntries, but the hashcode won't change.
+                     */
+                    if (oldHash != exceptionEntries.hashCode()) {
+                        URL[] urls = StandaloneAnalysisClassLoader.pathToUrl(exceptionEntries.stream().map(e -> e.url).filter(url -> url != null).distinct().collect(Collectors.toList()));
+                        ClassLoader analysisTimeClassLoader = new StandaloneAnalysisClassLoader(urls, null);
+                        for (Entry entry : exceptionEntries) {
+                            entry.classLoader = analysisTimeClassLoader;
+                        }
+                    } else {
+                        /*
+                         * When the state of exceptionEntries is stable, check each item with a
+                         * separate classloader
+                         */
+                        for (Entry exceptionEntry : exceptionEntries) {
+                            exceptionEntry.classLoader = new StandaloneAnalysisClassLoader(StandaloneAnalysisClassLoader.pathToUrl(List.of(exceptionEntry.url)), null);
+                        }
+                        lastRound = true;
+                    }
+                }
+
+                workingList.clear();
+                workingList.addAll(exceptionEntries);
+            }
+
+            handleExceptions(debug, maybeIgnoredExceptions, new StringBuilder("The following methods cannot be set as analysis entry points, " +
+                            "because of the dependency issues. In general, they can be safely ignored, but please review the details to ensure:\n"));
+            handleExceptions(debug, unKnownReasonExceptions, new StringBuilder("The following methods cannot be set as analysis entry points, " +
+                            "because of unknown issues. Please review the details:\n"));
+            handleExceptions(debug, reallyNotExistList, new StringBuilder("The following methods cannot be set as analysis entry points, " +
+                            "because the requested methods do not exist. Please review the details:\n"));
+            return validMethodsNum;
         }
-        return validMethodsNum.get();
     }
 
-    private static void workWithMethod(String method, BigBang bigbang, ClassLoader classLoader, Consumer<AnalysisMethod> actionForEachMethod) throws ClassNotFoundException {
-        int pos = method.indexOf('(');
+    private static void handleExceptions(DebugContext debug, List<Pair<Entry, Throwable>> list, StringBuilder messageBuilder) {
+        if (list.isEmpty()) {
+            return;
+        }
+        AtomicInteger num = new AtomicInteger(0);
+        list.stream().sorted(Comparator.comparing(p -> p.getRight().getClass().getName())).forEach(
+                        pair -> {
+                            Entry entry = pair.getLeft();
+                            Throwable e = pair.getRight();
+                            messageBuilder.append(num.incrementAndGet()).append(".").append(entry.methodName).append("@").append(entry.url).append(" due to ").append(e.toString()).append("\n");
+                        });
+        // Checkstyle: Allow raw info or warning printing - begin
+        debug.log(DebugContext.VERBOSE_LEVEL, messageBuilder.toString());
+        // Checkstyle: Allow raw info or warning printing - end
+    }
+
+    private static void workWithMethod(Entry entry, BigBang bigbang, Consumer<AnalysisMethod> actionForEachMethod) throws Throwable {
+        String className = entry.declaringClassName;
+        List<ResolvedJavaMethod> methodCandidates;
+        Class<?> c;
+        try {
+            c = Class.forName(className, false, entry.classLoader);
+            // MethodFilter.matches requires ResolvedJavaMethod as input
+            MetaAccessProvider originalMetaAccess = bigbang.getUniverse().getOriginalMetaAccess();
+            methodCandidates = Arrays.stream(c.getDeclaredMethods()).map(m -> originalMetaAccess.lookupJavaMethod(m)).filter(m -> !m.isNative()).collect(Collectors.toList());
+            methodCandidates.addAll(Arrays.stream(c.getDeclaredConstructors()).map(m -> originalMetaAccess.lookupJavaMethod(m)).collect(Collectors.toList()));
+            ResolvedJavaType t = originalMetaAccess.lookupJavaType(c);
+            if (t.getClassInitializer() != null) {
+                methodCandidates.add(t.getClassInitializer());
+            }
+        } catch (NoClassDefFoundError e) {
+            /*
+             * Some dependencies can't find in the classpath when getDeclaredMethods or
+             * getDeclaredConstructors
+             */
+            throw StandaloneAnalysisException.notFoundDependency(e,
+                            "the dependency class of the requested class cannot be found in classpath, " +
+                                            "which suggests it may not be actually required at runtime any more or its classpath is missing in -H:" + AnalysisTargetAppCP.getName());
+        } catch (IncompatibleClassChangeError e) {
+            /*
+             * Incompatible changes in class definition. E.g., class C is implemented interface I
+             * which has multiple versions including non-interface ones. If the interface version I
+             * is shadowed by the non-interface version in current classloader,
+             * IncompatibleClassChangeError is reported at loading C time.
+             */
+            throw StandaloneAnalysisException.notFoundDependency(e, "the dependency in class definition has been changed, " +
+                            "which suggests there may be multiple versions of same name dependency class set in -H:" + AnalysisTargetAppCP.getName());
+        }
+
+        MethodFilter filter = MethodFilter.parse(entry.methodName);
+        ClassLoader cl = c.getClassLoader();
+        ResolvedJavaMethod found = methodCandidates.stream().filter(filter::matches).findFirst().orElseThrow(
+                        () -> {
+                            Error error = new NoSuchMethodError(entry.methodName);
+                            if (cl == null || cl.equals(ClassLoader.getSystemClassLoader())) {
+                                return StandaloneAnalysisException.hideJDK(error, "the class hides the same name JDK class where the requested method is not defined.");
+                            } else {
+                                return error;
+                            }
+                        });
+        actionForEachMethod.accept(bigbang.getUniverse().lookup(found));
+    }
+
+    private static String parseClassName(String fullQualifiedMethodName) {
+        int pos = fullQualifiedMethodName.indexOf('(');
         int dotAfterClassNamePos;
         if (pos == -1) {
-            dotAfterClassNamePos = method.lastIndexOf('.');
+            dotAfterClassNamePos = fullQualifiedMethodName.lastIndexOf('.');
         } else {
-            dotAfterClassNamePos = method.lastIndexOf('.', pos);
+            dotAfterClassNamePos = fullQualifiedMethodName.lastIndexOf('.', pos);
         }
         if (dotAfterClassNamePos == -1) {
-            AnalysisError.shouldNotReachHere("The the given method's name " + method + " doesn't contain the declaring class name.");
+            AnalysisError.shouldNotReachHere("The the given fullQualifiedMethodName's name " + fullQualifiedMethodName + " doesn't contain the declaring class name.");
         }
-        String className = method.substring(0, dotAfterClassNamePos);
-        Class<?> c = Class.forName(className, false, classLoader);
-        // MethodFilter.parse requires ResolvedJavaMethod as input
-        MetaAccessProvider originalMetaAccess = bigbang.getUniverse().getOriginalMetaAccess();
-        List<ResolvedJavaMethod> methodCandidates = Arrays.stream(c.getDeclaredMethods()).map(m -> originalMetaAccess.lookupJavaMethod(m)).filter(m -> !m.isNative()).collect(Collectors.toList());
-        methodCandidates.addAll(Arrays.stream(c.getDeclaredConstructors()).map(m -> originalMetaAccess.lookupJavaMethod(m)).collect(Collectors.toList()));
-        ResolvedJavaType t = originalMetaAccess.lookupJavaType(c);
-        if (t.getClassInitializer() != null) {
-            methodCandidates.add(t.getClassInitializer());
-        }
-        MethodFilter filter = MethodFilter.parse(method);
-        ResolvedJavaMethod found = methodCandidates.stream().filter(filter::matches).findFirst().orElseThrow(
-                        () -> new NoSuchMethodError(method));
-        actionForEachMethod.accept(bigbang.getUniverse().lookup(found));
+        return fullQualifiedMethodName.substring(0, dotAfterClassNamePos);
     }
 }

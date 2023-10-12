@@ -35,6 +35,7 @@ import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
+import com.oracle.graal.pointsto.standalone.StandaloneAnalysisClassLoader;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
 import jdk.vm.ci.code.BytecodePosition;
@@ -101,8 +102,8 @@ public class StandaloneImageHeapScanner extends ImageHeapScanner {
      * We only allow scanning analysis target classes which are loaded by platformClassloader(e.g.
      * the JDK classes) or the classloader dedicated for analysis targets.
      */
-    private boolean isClassLoaderAllowed(ClassLoader cl) {
-        return ClassLoader.getPlatformClassLoader().equals(cl) || this.classLoader.equals(cl);
+    private static boolean isClassLoaderAllowed(ClassLoader cl) {
+        return ClassLoader.getPlatformClassLoader().equals(cl) || cl instanceof StandaloneAnalysisClassLoader;
     }
 
     public Predicate<JavaConstant> getShouldScanConstant() {

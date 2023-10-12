@@ -979,6 +979,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
         'substratevm:OBJECTFILE',
         'substratevm:POINTSTO',
         'substratevm:NATIVE_IMAGE_BASE',
+        'substratevm:COMMON_CONFIGURE',
     ],
     support_distributions=['substratevm:SVM_GRAALVM_SUPPORT'],
     stability="earlyadopter",
@@ -1087,13 +1088,13 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             destination="<lib:native-image-agent>",
             jvm_library=True,
             jar_distributions=[
-                'substratevm:SVM_CONFIGURE',
                 'substratevm:JVMTI_AGENT_BASE',
                 'substratevm:SVM_AGENT',
             ],
             build_args=driver_build_args + [
                 '--features=com.oracle.svm.agent.NativeImageAgent$RegistrationFeature',
                 '--enable-url-protocols=jar',
+                '--add-exports=org.graalvm.nativeimage.base/com.oracle.svm.util=ALL-UNNAMED',
             ],
             headers=False,
             home_finder=False,
@@ -1392,7 +1393,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             main_module='org.graalvm.nativeimage.configure',
             destination='bin/<exe:native-image-configure>',
             jar_distributions=['substratevm:SVM_CONFIGURE'],
-            main_class='com.oracle.svm.configure.ConfigurationTool',
+            main_class='com.oracle.svm.configure.tool.ConfigurationTool',
             build_args=svm_experimental_options([
                 '-H:-ParseRuntimeOptions',
             ]),

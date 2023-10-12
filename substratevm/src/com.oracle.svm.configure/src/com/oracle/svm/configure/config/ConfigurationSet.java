@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -30,12 +30,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
 
+import org.graalvm.compiler.debug.GraalError;
+import com.oracle.svm.common.util.json.JsonWriter;
 import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.ConfigurationFile;
 import com.oracle.svm.configure.config.conditional.ConditionalConfigurationPredicate;
-import com.oracle.svm.core.util.json.JsonPrintable;
-import com.oracle.svm.core.util.json.JsonWriter;
-import com.oracle.svm.core.configure.ConfigurationFile;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.common.util.json.JsonPrintable;
 
 public class ConfigurationSet {
     @FunctionalInterface
@@ -142,7 +142,7 @@ public class ConfigurationSet {
             case PREDEFINED_CLASSES_NAME:
                 return (T) predefinedClassesConfiguration;
             default:
-                throw VMError.shouldNotReachHere("Unsupported configuration in configuration container: " + configurationFile);
+                throw GraalError.shouldNotReachHere("Unsupported configuration in configuration container: " + configurationFile);
         }
     }
 

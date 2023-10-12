@@ -39,6 +39,9 @@ public class StandaloneOptions {
     @Option(help = "File system splitor separated classpath for the analysis target application.")//
     public static final OptionKey<String> AnalysisTargetAppCP = new OptionKey<>(null);
 
+    @Option(help = "File system splitor separated module path for the analysis target application.")//
+    public static final OptionKey<String> AnalysisTargetAppModulePath = new OptionKey<>(null);
+
     @Option(help = "file:doc-files/AnalysisEntryPointsFileHelp.txt")//
     public static final OptionKey<String> AnalysisEntryPointsFile = new OptionKey<>(null);
 
@@ -48,4 +51,13 @@ public class StandaloneOptions {
     public static Path reportsPath(OptionValues options, String relativePath) {
         return Paths.get(Paths.get(ReportsPath.getValue(options)).toString(), relativePath).normalize().toAbsolutePath();
     }
+
+    @Option(help = "Print the unresolved class warnings, disabled by default.")//
+    public static final OptionKey<Boolean> PrintUnresolvedElementWarning = new OptionKey<>(false);
+
+    @Option(help = "Enable eager class initialization analysis.")//
+    public static final OptionKey<Boolean> EnableClassInitializationAnalyze = new OptionKey<>(false);
+
+    @Option(help = "Directory for temporary files generated during native image generation. If this option is specified, the temporary files are not deleted so that you can inspect them after native image generation")//
+    public static final OptionKey<String> AnalysisTempDirectory = new OptionKey<>("");
 }

@@ -30,8 +30,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import com.oracle.svm.common.util.json.JsonWriter;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
 
 public class ProgressReporterJsonHelper {
     protected static final long UNAVAILABLE_METRIC = -1;

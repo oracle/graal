@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -32,14 +32,14 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.oracle.svm.core.configure.ConfigurationParser;
-import com.oracle.svm.core.configure.ReflectionConfigurationParser;
+import com.oracle.svm.configure.ConfigurationBase;
+import com.oracle.svm.configure.ConfigurationParser;
+import com.oracle.svm.configure.ReflectionConfigurationParser;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 
-import com.oracle.svm.configure.ConfigurationBase;
-import com.oracle.svm.core.util.json.JsonWriter;
-import com.oracle.svm.core.configure.ConditionalElement;
-import com.oracle.svm.core.util.VMError;
+import com.oracle.svm.configure.ConditionalElement;
+import com.oracle.svm.common.util.json.JsonWriter;
 
 public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration, TypeConfiguration.Predicate> {
 
@@ -100,7 +100,7 @@ public final class TypeConfiguration extends ConfigurationBase<TypeConfiguration
     public void add(ConfigurationType type) {
         ConfigurationType previous = types.putIfAbsent(new ConditionalElement<>(type.getCondition(), type.getQualifiedJavaName()), type);
         if (previous != null && previous != type) {
-            VMError.shouldNotReachHere("Cannot replace existing type " + previous + " with " + type);
+            GraalError.shouldNotReachHere("Cannot replace existing type " + previous + " with " + type);
         }
     }
 

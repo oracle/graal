@@ -49,6 +49,8 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.common.util.CommonUtils;
+import com.oracle.svm.common.util.CommonUtils.PhaseChecker;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
@@ -76,6 +78,15 @@ public class SubstrateUtil {
          * field value to false at run time.
          */
         HOSTED = true;
+        /* Transfer HOSTED property to common by updating hostedChecker. */
+        CommonUtils.phaseChecker = new SVMPhaseChecker();
+    }
+
+    static class SVMPhaseChecker extends PhaseChecker {
+        @Override
+        public boolean checkIsHosted() {
+            return HOSTED;
+        }
     }
 
     public static String getArchitectureName() {

@@ -258,7 +258,7 @@ suite = {
                 "headers",
             ],
             "dependencies": [
-                "com.oracle.svm.common",
+                "com.oracle.svm.configure",
             ],
             "requires" : [
                 "java.compiler",
@@ -529,10 +529,13 @@ suite = {
             "sourceDirs": ["src"],
             "dependencies": [
                 "com.oracle.graal.pointsto",
+                "com.oracle.svm.configure",
+                "sdk:GRAAL_SDK",
             ],
             "requiresConcealed" : {
                 "java.base" : [
-                    "jdk.internal.misc"
+                    "jdk.internal.misc",
+                    "jdk.internal.org.objectweb.asm",
                 ],
                 "jdk.internal.vm.ci" : [
                     "jdk.vm.ci.code",
@@ -942,6 +945,7 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "sdk:NATIVEIMAGE",
                 "com.oracle.svm.configure",
+                "com.oracle.svm.core",
             ],
             "checkstyle": "com.oracle.svm.test",
             "workingSets": "SVM",
@@ -1247,12 +1251,31 @@ suite = {
 
         "com.oracle.svm.configure": {
             "subDir": "src",
+            "sourceDirs": ["src"],
+            "dependencies": [
+                "com.oracle.svm.common",
+            ],
+            "requiresConcealed": {
+                "jdk.internal.vm.ci": [
+                    "jdk.vm.ci.meta",
+                ]
+            },
+            "checkstyle": "com.oracle.svm.hosted",
+            "workingSets": "SVM",
+            "annotationProcessors": [
+            ],
+            "javaCompliance": "21+",
+            "spotbugs": "false",
+        },
+
+        "com.oracle.svm.configure.tool": {
+            "subDir": "src",
             "sourceDirs": [
                 "src",
                 "resources",
             ],
             "dependencies": [
-                "com.oracle.svm.core",
+                "com.oracle.svm.configure",
             ],
             "requiresConcealed": {
                 "jdk.internal.vm.ci": [
@@ -1295,7 +1318,6 @@ suite = {
             ],
             "dependencies": [
                 "JVMTI_AGENT_BASE",
-                "com.oracle.svm.configure",
                 "com.oracle.svm.driver",
             ],
             "requiresConcealed" : {
@@ -1407,7 +1429,6 @@ suite = {
                     """* to org.graalvm.nativeimage.base,
                             jdk.internal.vm.compiler,
                             org.graalvm.nativeimage.driver,
-                            org.graalvm.nativeimage.configure,
                             org.graalvm.nativeimage.librarysupport,
                             org.graalvm.nativeimage.junitsupport,
                             org.graalvm.nativeimage.llvm,
@@ -1747,6 +1768,7 @@ suite = {
               ],
               "requires" : [
                 "org.graalvm.nativeimage.builder",
+                "org.graalvm.nativeimage.base",
                 "java.management",
                 "jdk.management",
               ],
@@ -1759,13 +1781,11 @@ suite = {
             "description" : "SubstrateVM native-image-agent library",
             "dependencies": [
                 "com.oracle.svm.agent",
-                "com.oracle.svm.configure",
             ],
             "distDependencies": [
                 "JVMTI_AGENT_BASE",
                 "LIBRARY_SUPPORT",
                 "SVM_DRIVER",
-                "SVM_CONFIGURE"
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.agent.tracing",
@@ -1801,22 +1821,42 @@ suite = {
             "maven": False,
         },
 
-        "SVM_CONFIGURE": {
+        "COMMON_CONFIGURE": {
             "subDir": "src",
             "description" : "SubstrateVM native-image configuration tool",
-            "mainClass": "com.oracle.svm.configure.ConfigurationTool",
             "dependencies": [
                 "com.oracle.svm.configure",
             ],
             "distDependencies": [
-                "LIBRARY_SUPPORT",
+                "NATIVE_IMAGE_BASE",
+            ],
+            "moduleInfo" : {
+                "name" : "org.graalvm.nativeimage.common.configure",
+                "exports" : [
+                    "com.oracle.svm.configure",
+                    "com.oracle.svm.configure.config",
+                    "com.oracle.svm.configure.config.conditional",
+                    "com.oracle.svm.configure.filters",
+                    "com.oracle.svm.configure.trace",
+                ],
+            },
+            "maven": False,
+        },
+
+        "SVM_CONFIGURE": {
+            "subDir": "src",
+            "description" : "SubstrateVM native-image configuration tool",
+            "mainClass": "com.oracle.svm.configure.tool.ConfigurationTool",
+            "dependencies": [
+                "com.oracle.svm.configure.tool",
+            ],
+            "distDependencies": [
+                "COMMON_CONFIGURE",
             ],
             "moduleInfo" : {
                 "name" : "org.graalvm.nativeimage.configure",
                 "exports" : [
-                    "* to org.graalvm.nativeimage.agent.tracing",
-                    "com.oracle.svm.configure",
-                    "com.oracle.svm.configure.command",
+                    "com.oracle.svm.configure.tool.command",
                 ],
             },
             "maven": False,
@@ -1839,9 +1879,14 @@ suite = {
                 "name" : "org.graalvm.nativeimage.base",
                 "requires" : ["java.sql", "java.xml"],# workaround for GR-47773 on the module-path which requires java.sql (like truffle) or java.xml
                 "exports" : [
-                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
+                    "com.oracle.svm.util                   to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.librarysupport,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.llvm,org.graalvm.nativeimage.agent.jvmtibase,org.graalvm.nativeimage.agent.tracing,org.graalvm.nativeimage.agent.diagnostics,org.graalvm.nativeimage.junitsupport,com.oracle.svm.svm_enterprise,com.oracle.svm_enterprise.ml_dataset,org.graalvm.extraimage.builder,com.oracle.svm.extraimage_enterprise,org.graalvm.extraimage.librarysupport,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm,org.graalvm.nativeimage.common.configure",
+                    "com.oracle.svm.common                 to org.graalvm.nativeimage.builder,jdk.internal.vm.compiler,org.graalvm.nativeimage.pointsto",
                     "com.oracle.svm.common.meta            to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.llvm,org.graalvm.extraimage.builder,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                     "com.oracle.svm.common.option          to org.graalvm.nativeimage.pointsto,org.graalvm.nativeimage.builder,org.graalvm.nativeimage.driver,org.graalvm.nativeimage.foreign,org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
+                    "com.oracle.svm.common.phases",
+                    "com.oracle.svm.common.type",
+                    "com.oracle.svm.common.util",
+                    "com.oracle.svm.common.util.json",
                 ],
             },
             "noMavenJavadoc": True,
@@ -1860,6 +1905,7 @@ suite = {
             "distDependencies": [
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
+                "COMMON_CONFIGURE",
             ],
             "exclude": [
             ],
@@ -1868,6 +1914,7 @@ suite = {
               "exports" : [
                 "com.oracle.graal.pointsto",
                 "com.oracle.graal.pointsto.api",
+                "com.oracle.graal.pointsto.classinitialization",
                 "com.oracle.graal.pointsto.heap",
                 "com.oracle.graal.pointsto.heap.value",
                 "com.oracle.graal.pointsto.reports",
@@ -1915,7 +1962,9 @@ suite = {
             "distDependencies": [
                 "compiler:GRAAL",
                 "NATIVE_IMAGE_BASE",
-                "POINTSTO"
+                "POINTSTO",
+                "sdk:POLYGLOT",
+                "sdk:GRAAL_SDK"
             ],
             "exclude": [
             ],
@@ -1959,6 +2008,7 @@ suite = {
                 "mx:JUNIT_TOOL",
                 "sdk:NATIVEIMAGE",
                 "STANDALONE_POINTSTO",
+                "SVM"
             ],
             "testDistribution" : True,
         },

@@ -1,0 +1,3 @@
+com.oracle.graal.pointsto.standalone.test.AbstractEntryCase.bar
+com.oracle.graal.pointsto.standalone.test.AbstractEntryCase.abc
+com.oracle.graal.pointsto.standalone.test.InterfaceEntry.foo

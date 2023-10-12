@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2007, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -44,6 +44,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.SignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.common.util.CommonUtils;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;
@@ -191,8 +192,8 @@ class URLProtocolsSupport {
 /** Dummy class to have a class with the file's name. */
 public final class JavaNetSubstitutions {
 
-    public static final String FILE_PROTOCOL = "file";
-    public static final String RESOURCE_PROTOCOL = "resource";
+    public static final String FILE_PROTOCOL = CommonUtils.FILE_PROTOCOL;
+    public static final String RESOURCE_PROTOCOL = CommonUtils.RESOURCE_PROTOCOL;
     public static final String HTTP_PROTOCOL = "http";
     public static final String HTTPS_PROTOCOL = "https";
 

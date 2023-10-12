@@ -1,5 +1,6 @@
 /*
- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2022, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,30 +25,19 @@
  */
 package com.oracle.svm.core.graal.phases;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.core.common.type.StampPair;
-import org.graalvm.compiler.core.common.type.TypeReference;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderTool;
-import org.graalvm.compiler.nodes.graphbuilderconf.TypePlugin;
-
+import com.oracle.svm.common.phases.AbstractTrustedInterfaceTypePlugin;
 import com.oracle.svm.core.meta.SharedType;
-
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 
-public final class TrustedInterfaceTypePlugin implements TypePlugin {
+public final class TrustedInterfaceTypePlugin extends AbstractTrustedInterfaceTypePlugin {
 
     @Override
-    public StampPair interceptType(GraphBuilderTool b, JavaType declaredType, boolean nonNull) {
+    protected SharedType castType(JavaType declaredType) {
         if (declaredType.getJavaKind() == JavaKind.Object && declaredType instanceof SharedType) {
-            /*
-             * We have the static analysis to check interface types, e.g.., if a parameter of field
-             * has a declared interface type and is assigned something that does not implement the
-             * interface, the static analysis reports an error.
-             */
-            TypeReference trusted = TypeReference.createTrustedWithoutAssumptions((SharedType) declaredType);
-            return StampPair.createSingle(StampFactory.object(trusted, nonNull));
+            return (SharedType) declaredType;
+        } else {
+            return null;
         }
-        return null;
     }
 }

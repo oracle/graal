@@ -24,21 +24,15 @@
  */
 package com.oracle.svm.hosted;
 
-import java.io.IOException;
-import java.nio.file.FileVisitResult;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.SimpleFileVisitor;
-import java.nio.file.attribute.BasicFileAttributes;
-import java.util.Optional;
-
-import com.oracle.svm.core.c.libc.TemporaryBuildDirectoryProvider;
+import com.oracle.svm.common.CommonTemporaryDirectoryProviderImpl;
 import com.oracle.svm.core.util.VMError;
 
-public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirectoryProvider, AutoCloseable {
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Optional;
 
-    private Path tempDirectory;
-    private boolean deleteTempDirectory;
+public class TemporaryBuildDirectoryProviderImpl extends CommonTemporaryDirectoryProviderImpl {
 
     @Override
     public synchronized Path getTemporaryBuildDirectory() {
@@ -61,32 +55,14 @@ public class TemporaryBuildDirectoryProviderImpl implements TemporaryBuildDirect
     }
 
     @Override
-    public void close() {
-        if (deleteTempDirectory) {
-            deleteAll(getTemporaryBuildDirectory());
-        }
-    }
-
-    private static void deleteAll(Path path) {
-        try {
-            Files.walkFileTree(path, new SimpleFileVisitor<Path>() {
-                @Override
-                public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
-                    Files.delete(file);
-                    return FileVisitResult.CONTINUE;
-                }
-
-                @Override
-                public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
-                    Files.delete(dir);
-                    return FileVisitResult.CONTINUE;
-                }
-            });
-        } catch (IOException ex) {
-            throw VMError.shouldNotReachHere(
+    public RuntimeException throwException(Path path, Exception cause) {
+        if (path == null) {
+            return VMError.shouldNotReachHere(cause);
+        } else {
+            return VMError.shouldNotReachHere(
                             String.format("Unable to remove the temporary build directory at '%s'. If you are using the '%s' option, you may want to delete the temporary directory manually.",
                                             path, NativeImageOptions.TempDirectory.getName()),
-                            ex);
+                            cause);
         }
     }
 }

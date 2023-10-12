@@ -30,19 +30,30 @@ import java.lang.reflect.AnnotatedElement;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 
+import com.oracle.svm.common.ClassInitializationNode;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.StructuredGraph;
+import org.graalvm.compiler.nodes.extended.UnsafeAccessNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import org.graalvm.compiler.nodes.java.AccessFieldNode;
+import org.graalvm.compiler.nodes.java.AccessMonitorNode;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -76,6 +87,8 @@ public abstract class HostVM {
     protected final List<BiConsumer<AnalysisMethod, StructuredGraph>> methodAfterParsingListeners;
     private final List<BiConsumer<DuringAnalysisAccess, Class<?>>> classReachabilityListeners;
     private HostedProviders providers;
+    protected final ConcurrentMap<AnalysisMethod, Boolean> classInitializerSideEffect = new ConcurrentHashMap<>();
+    private final ConcurrentMap<AnalysisMethod, Set<AnalysisType>> initializedClasses = new ConcurrentHashMap<>();
 
     protected HostVM(OptionValues options, ClassLoader classLoader) {
         this.options = options;
@@ -211,8 +224,7 @@ public abstract class HostVM {
      * @param method the newly created method
      * @param graph the method graph
      */
-    public void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph) {
-    }
+    public abstract void methodBeforeTypeFlowCreationHook(BigBang bb, AnalysisMethod method, StructuredGraph graph);
 
     /**
      * Check if the method can be inlined.
@@ -406,5 +418,65 @@ public abstract class HostVM {
 
     public FieldValueComputer createFieldValueComputer(@SuppressWarnings("unused") AnalysisField field) {
         return null;
+    }
+
+    /**
+     * Classes are only safe for automatic initialization if the class initializer has no side
+     * effect on other classes and cannot be influenced by other classes. Otherwise there would be
+     * observable side effects. For example, if a class initializer of class A writes a static field
+     * B.f in class B, then someone could rely on reading the old value of B.f before triggering
+     * initialization of A. Similarly, if a class initializer of class A reads a static field B.f,
+     * then an early automatic initialization of class A could read a non-yet-set value of B.f.
+     *
+     * Note that it is not necessary to disallow instance field accesses: Objects allocated by the
+     * class initializer itself can always be accessed because they are independent from other
+     * initializers; all other objects must be loaded transitively from a static field.
+     *
+     * Currently, we are conservative and mark all methods that access static fields as unsafe for
+     * automatic class initialization (unless the class initializer itself accesses a static field
+     * of its own class - the common way of initializing static fields). The check could be relaxed
+     * by tracking the call chain, i.e., allowing static field accesses when the root method of the
+     * call chain is the class initializer. But this does not fit well into the current approach
+     * where each method has a `Safety` flag.
+     */
+    protected void checkClassInitializerSideEffect(AnalysisMethod method, Node n) {
+        if (n instanceof AccessFieldNode) {
+            ResolvedJavaField field = ((AccessFieldNode) n).field();
+            if (isUnsafeFieldAccessing(method, field)) {
+                classInitializerSideEffect.put(method, true);
+            }
+        } else if (n instanceof UnsafeAccessNode) {
+            /*
+             * Unsafe memory access nodes are rare, so it does not pay off to check what kind of
+             * field they are accessing.
+             */
+            classInitializerSideEffect.put(method, true);
+        } else if (n instanceof ClassInitializationNode) {
+            ResolvedJavaType type = ((ClassInitializationNode) n).constantTypeOrNull(getProviders(method.getMultiMethodKey()).getConstantReflection());
+            if (type != null) {
+                initializedClasses.computeIfAbsent(method, k -> new HashSet<>()).add((AnalysisType) type);
+            } else {
+                classInitializerSideEffect.put(method, true);
+            }
+        } else if (n instanceof AccessMonitorNode) {
+            classInitializerSideEffect.put(method, true);
+        }
+    }
+
+    protected boolean isUnsafeFieldAccessing(AnalysisMethod method, ResolvedJavaField field) {
+        return field.isStatic() && (!method.isClassInitializer() || !field.getDeclaringClass().equals(method.getDeclaringClass()));
+    }
+
+    public boolean hasClassInitializerSideEffect(AnalysisMethod method) {
+        return classInitializerSideEffect.containsKey(method);
+    }
+
+    public Set<AnalysisType> getInitializedClasses(AnalysisMethod method) {
+        Set<AnalysisType> result = initializedClasses.get(method);
+        if (result != null) {
+            return result;
+        } else {
+            return Collections.emptySet();
+        }
     }
 }

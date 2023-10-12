@@ -1,8 +1,15 @@
 Use a file to specify the analysis entry point methods. These methods will be added as root methods for analysis besides
 the main entry method (if set). At least one of this option and the main entry method must be set.
-Each line of the file represents an entry point method. See MethodFilter option for method format details.
-To specify a class initialization method, using <clinit> as the method name. E.g. C.<clinit> matches Class C's initialization
-method.
-Notice:
-Although this option allows to specify any method, only direct methods can work as expected. Virtual call need allocation
-information to bound to the actual implementations. But the allocation may be missed when the virtual call is the entry point.
+Each line of the file represents an entry point method, and can optionally specify where the method is located. The line
+format is:
+  method[:location]
+The method should follow the MethodFilter's format, please refer the help for -H:MethodFilter option for details.
+The location is where the method's declaring class is located in the analysis target class path. It should be a path of
+directory or jar file specified for -H:AnalysisTargetAppCP option. In other words, the location must have been set for
+-H:AnalysisTargetAppCP. This location is used to find the method's declaring class from file system when necessary.
+
+Special Cases:
+Class initialization method: Use <clinit> as the method name to set class initializer as entry point.
+E.g. C.<clinit> matches Class C's initialization method.
+Methods in fatjar: Use ! to separate the fatjar itself and the jar inside in the location. For example. C.foo:/home/a.jar!/lib/b.jar.
+Methods in abstract classes: entry point method can be a non-abstract method in abstract class and default method in interface.

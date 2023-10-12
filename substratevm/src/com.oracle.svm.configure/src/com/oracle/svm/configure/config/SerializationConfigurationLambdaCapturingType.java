@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -28,11 +28,10 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.Objects;
 
-import com.oracle.svm.core.util.json.JsonPrintable;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-
-import com.oracle.svm.core.util.json.JsonWriter;
-import com.oracle.svm.core.configure.SerializationConfigurationParser;
+import com.oracle.svm.common.util.json.JsonPrintable;
+import com.oracle.svm.common.util.json.JsonWriter;
+import com.oracle.svm.configure.SerializationConfigurationParser;
 
 public class SerializationConfigurationLambdaCapturingType implements JsonPrintable {
     private final ConfigurationCondition condition;

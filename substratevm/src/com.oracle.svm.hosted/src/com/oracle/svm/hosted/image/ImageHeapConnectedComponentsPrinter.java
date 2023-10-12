@@ -44,7 +44,7 @@ import com.oracle.graal.pointsto.BigBang;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.jdk.resources.ResourceStorageEntryBase;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.util.json.JsonWriter;
+import com.oracle.svm.common.util.json.JsonWriter;
 import com.oracle.svm.hosted.ByteFormattingUtil;
 import com.oracle.svm.hosted.image.NativeImageHeap.HeapInclusionReason;
 import com.oracle.svm.hosted.image.NativeImageHeap.ObjectInfo;

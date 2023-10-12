@@ -31,8 +31,8 @@ import java.util.List;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeReflectionSupport;
 
-import com.oracle.svm.core.TypeResult;
-import com.oracle.svm.core.configure.ConditionalElement;
+import com.oracle.svm.configure.ConditionalElement;
+import com.oracle.svm.common.type.TypeResult;
 import com.oracle.svm.hosted.ImageClassLoader;
 
 public class ReflectionRegistryAdapter extends RegistryAdapter {

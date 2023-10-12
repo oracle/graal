@@ -1,6 +1,6 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
- * Copyright (c) 2021, 2021, Alibaba Group Holding Limited. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Alibaba Group Holding Limited. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -25,8 +25,6 @@
  */
 package com.oracle.svm.core.hub;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.security.ProtectionDomain;
 import java.util.HashSet;
 import java.util.Set;
@@ -39,7 +37,7 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
-import com.oracle.svm.core.SubstrateUtil;
+import com.oracle.svm.common.util.ClassUtils;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.SubstrateOptionsParser;
 import com.oracle.svm.core.util.ImageHeapMap;
@@ -81,16 +79,6 @@ public final class PredefinedClassesSupport {
         return ImageSingletons.lookup(PredefinedClassesSupport.class);
     }
 
-    public static String hash(byte[] classData, int offset, int length) {
-        try { // Only for lookups, cryptographic properties are irrelevant
-            MessageDigest md = MessageDigest.getInstance("SHA-256");
-            md.update(classData, offset, length);
-            return SubstrateUtil.toHex(md.digest());
-        } catch (NoSuchAlgorithmException e) {
-            throw VMError.shouldNotReachHere(e);
-        }
-    }
-
     @Platforms(Platform.HOSTED_ONLY.class) //
     private final Set<Class<?>> predefinedClasses = new HashSet<>();
 
@@ -129,7 +117,7 @@ public final class PredefinedClassesSupport {
         if (!hasBytecodeClasses()) {
             throw throwNoBytecodeClasses();
         }
-        String hash = hash(data, offset, length);
+        String hash = ClassUtils.hashClassData(data, offset, length);
         Class<?> clazz = singleton().predefinedClassesByHash.get(hash);
         if (clazz == null) {
             String name = (expectedName != null) ? expectedName : "(name not specified)";
