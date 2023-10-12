@@ -84,9 +84,15 @@ import com.oracle.truffle.espresso.descriptors.Symbol.Signature;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
 import com.oracle.truffle.espresso.impl.Method;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.MetaUtil;
 
 final class MessageBuildHelper {
+
+    private MessageBuildHelper() {
+        // Disallow instantiation.
+    }
+
     static final int MAX_DETAIL = 5;
 
     static final int INVALID_BYTECODE = -1;
@@ -108,10 +114,7 @@ final class MessageBuildHelper {
         // performed because of the null reference.
         appendFailedAction(analysis, sb, bci);
         // Print a description of what is null.
-        if (!appendCause(analysis, sb, bci, slot)) {
-            // Nothing was printed. End the sentence without the 'because'
-            // subordinate sentence.
-        }
+        appendCause(analysis, sb, bci, slot);
         return sb.toString();
     }
 
@@ -120,6 +123,8 @@ final class MessageBuildHelper {
             sb.append("\" is null");
             return true;
         }
+        // Nothing was printed. End the sentence without the 'because'
+        // subordinate sentence.
         return false;
     }
 
@@ -297,6 +302,7 @@ final class MessageBuildHelper {
     private static void appendClassName(StringBuilder sb, String className) {
         String n = className;
         // Trims some well known classes.
+        // Also handles array types (eg: j.l.Object[][] -> Object[][])
         if (n.startsWith("java.lang.Object") || n.startsWith("java.lang.String")) {
             n = n.substring("java.lang.".length());
         }
@@ -484,6 +490,8 @@ final class MessageBuildHelper {
                 appendMethodCall(analysis, sb, bci);
                 sb.append("\"");
                 break;
+            default:
+                throw EspressoError.shouldNotReachHere("Invalid bytecode for NPE encountered: " + Bytecodes.nameOf(opcode));
         }
     }
 }

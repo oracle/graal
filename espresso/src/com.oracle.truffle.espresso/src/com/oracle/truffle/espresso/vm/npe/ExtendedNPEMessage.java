@@ -42,7 +42,7 @@ public final class ExtendedNPEMessage {
             return null;
         }
         // Ensure the top frame is the actual java frame where the NPE happened.
-        if (!frames.isTopFrameVisible()) {
+        if (frames.isSkippedFramesHidden()) {
             return null;
         }
         VM.StackElement top = frames.top();

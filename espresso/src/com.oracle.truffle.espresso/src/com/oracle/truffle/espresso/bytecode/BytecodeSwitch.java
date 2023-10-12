@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.bytecode;
 
+import com.oracle.truffle.espresso.meta.EspressoError;
+
 /**
  * An abstract class that provides the state and methods common to {@link Bytecodes#LOOKUPSWITCH}
  * and {@link Bytecodes#TABLESWITCH} instructions.
@@ -39,7 +41,7 @@ public abstract class BytecodeSwitch {
         if (opcode == Bytecodes.LOOKUPSWITCH) {
             return BytecodeLookupSwitch.INSTANCE;
         }
-        return null;
+        throw EspressoError.shouldNotReachHere("Invalid switch bytecode: " + Bytecodes.nameOf(opcode));
     }
 
     /**

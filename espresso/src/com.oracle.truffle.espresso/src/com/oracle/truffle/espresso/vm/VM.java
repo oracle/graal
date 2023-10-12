@@ -1852,8 +1852,8 @@ public final class VM extends NativeEnv {
             return null;
         }
 
-        public boolean isTopFrameVisible() {
-            return !hiddenTop;
+        public boolean isSkippedFramesHidden() {
+            return hiddenTop;
         }
 
         void add(StackElement e) {

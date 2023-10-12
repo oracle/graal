@@ -140,6 +140,7 @@ import com.oracle.truffle.espresso.classfile.ConstantPool;
 import com.oracle.truffle.espresso.descriptors.Symbol;
 import com.oracle.truffle.espresso.descriptors.Symbol.Type;
 import com.oracle.truffle.espresso.descriptors.Types;
+import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 
 enum StackType {
@@ -192,8 +193,9 @@ enum StackType {
                 return OBJECT;
             case Void:
                 return VOID;
+            default:
+                throw EspressoError.shouldNotReachHere("Invalid JavaKind: " + javaKind);
         }
-        return null;
     }
 
     static StackType forTag(ConstantPool.Tag tag) {
@@ -212,8 +214,9 @@ enum StackType {
             case METHODTYPE:
             case DYNAMIC:
                 return OBJECT;
+            default:
+                throw EspressoError.shouldNotReachHere("Invalid tag for LDC: " + tag);
         }
-        return null;
     }
 
     /**

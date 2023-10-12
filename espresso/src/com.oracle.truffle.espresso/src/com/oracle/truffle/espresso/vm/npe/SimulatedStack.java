@@ -66,6 +66,7 @@ final class SimulatedStack {
         }
         SimulatedStack merge = new SimulatedStack(s1.size());
         // Verifier guarantees same stack size.
+        assert s1.size() == s2.size() : "Verifier guarantee failed for stack sizes: " + s1.size() + " != " + s2.size();
         for (int i = 0; i < s1.size(); i++) {
             merge.put(i, StackObject.merge(s1.get(i), s2.get(i)));
         }

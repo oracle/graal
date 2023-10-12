@@ -655,12 +655,6 @@ final class Analysis implements LanguageAccess {
         return m.getConstantPool().fieldAt(cpi).getType(m.getConstantPool());
     }
 
-    Symbol<Name> getInvokeHolder(int bci, int opcode) {
-        assert Bytecodes.isInvoke(opcode);
-        int cpi = bs.readCPI(bci);
-        return m.getConstantPool().methodAt(cpi).getHolderKlassName(m.getConstantPool());
-    }
-
     Symbol<Name> getInvokeName(int bci, int opcode) {
         assert Bytecodes.isInvoke(opcode);
         int cpi = bs.readCPI(bci);
