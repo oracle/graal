@@ -17,8 +17,8 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
-import com.oracle.truffle.api.bytecode.OperationLocal;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -70,7 +70,7 @@ public class OperationsExampleFindBciTest {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     Truffle.getRuntime().iterateFrames(f -> {
-                        bytecodeIndices.add(OperationRootNode.findBci(f));
+                        bytecodeIndices.add(BytecodeRootNode.findBci(f));
                         return null;
                     });
                     return null;
@@ -192,7 +192,7 @@ public class OperationsExampleFindBciTest {
             public Object execute(VirtualFrame frame) {
                 List<Integer> bytecodeIndices = new ArrayList<>();
                 Truffle.getRuntime().iterateFrames(f -> {
-                    bytecodeIndices.add(OperationRootNode.findBci(f));
+                    bytecodeIndices.add(BytecodeRootNode.findBci(f));
                     return null;
                 });
                 return bytecodeIndices;
@@ -236,7 +236,7 @@ public class OperationsExampleFindBciTest {
             b.beginRoot(LANGUAGE);
             b.beginSource(barSource);
             b.beginBlock();
-            OperationLocal x = b.createLocal();
+            BytecodeLocal x = b.createLocal();
 
             b.beginStoreLocal(x);
             b.beginYield();
@@ -264,7 +264,7 @@ public class OperationsExampleFindBciTest {
             b.beginSource(fooSource);
             b.beginBlock();
 
-            OperationLocal c = b.createLocal();
+            BytecodeLocal c = b.createLocal();
 
             b.beginStoreLocal(c);
             b.beginInvoke();

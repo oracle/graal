@@ -57,11 +57,11 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationNodes;
-import com.oracle.truffle.api.bytecode.OperationParser;
-import com.oracle.truffle.api.bytecode.serialization.OperationDeserializer;
-import com.oracle.truffle.api.bytecode.serialization.OperationSerializer;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
 
 @RunWith(Parameterized.class)
@@ -83,19 +83,19 @@ public class OperationsExampleSerializationTest {
     }
 
     @SuppressWarnings("unchecked")
-    private <T extends OperationsExample> OperationNodes<T> invokeDeserialize(TruffleLanguage<?> language, OperationConfig config, Supplier<DataInput> input, OperationDeserializer callback) {
+    private <T extends OperationsExample> BytecodeNodes<T> invokeDeserialize(TruffleLanguage<?> language, BytecodeConfig config, Supplier<DataInput> input, BytecodeDeserializer callback) {
         try {
-            Method deserialize = interpreterClass.getMethod("deserialize", TruffleLanguage.class, OperationConfig.class, Supplier.class, OperationDeserializer.class);
-            return (OperationNodes<T>) deserialize.invoke(null, language, config, input, callback);
+            Method deserialize = interpreterClass.getMethod("deserialize", TruffleLanguage.class, BytecodeConfig.class, Supplier.class, BytecodeDeserializer.class);
+            return (BytecodeNodes<T>) deserialize.invoke(null, language, config, input, callback);
         } catch (Exception e) {
             throw new AssertionError(e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void invokeSerialize(OperationConfig config, DataOutput buffer, OperationSerializer callback, OperationParser<OperationsExampleBuilder> parser) {
+    private void invokeSerialize(BytecodeConfig config, DataOutput buffer, BytecodeSerializer callback, BytecodeParser<OperationsExampleBuilder> parser) {
         try {
-            Method serialize = interpreterClass.getMethod("serialize", OperationConfig.class, DataOutput.class, OperationSerializer.class, OperationParser.class);
+            Method serialize = interpreterClass.getMethod("serialize", BytecodeConfig.class, DataOutput.class, BytecodeSerializer.class, BytecodeParser.class);
             serialize.invoke(null, config, buffer, callback, parser);
         } catch (Exception e) {
             throw new AssertionError(e);
@@ -104,7 +104,7 @@ public class OperationsExampleSerializationTest {
 
     private OperationsExample deserialize(byte[] byteArray) {
         Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(byteArray));
-        OperationNodes<OperationsExample> nodes = invokeDeserialize(null, OperationConfig.DEFAULT, input,
+        BytecodeNodes<OperationsExample> nodes = invokeDeserialize(null, BytecodeConfig.DEFAULT, input,
                         (context, buffer) -> {
                             switch (buffer.readByte()) {
                                 case 0:
@@ -126,7 +126,7 @@ public class OperationsExampleSerializationTest {
         boolean[] haveConsts = new boolean[2];
 
         ByteArrayOutputStream output = new ByteArrayOutputStream();
-        invokeSerialize(OperationConfig.DEFAULT, new DataOutputStream(output),
+        invokeSerialize(BytecodeConfig.DEFAULT, new DataOutputStream(output),
                         (context, buffer, object) -> {
                             if (object instanceof Long) {
                                 buffer.writeByte(0);

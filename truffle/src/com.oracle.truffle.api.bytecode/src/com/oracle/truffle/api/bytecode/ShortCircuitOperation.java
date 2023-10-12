@@ -47,7 +47,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 /**
- * Declares a short-circuiting operation. The specification of a short-circuiting operation defines
+ * Declares a short-circuiting operation. A short-circuiting operation serves as a specification for
  * a short-circuiting bytecode instruction in the generated interpreter. Whereas regular operations
  * evaluate all of their operands eagerly, short-circuiting operations evaluate them one at a time.
  *
@@ -59,7 +59,7 @@ import java.lang.annotation.Target;
  * evaluate operands as long as they coerce to {@code false}:
  *
  * <pre>
- * &#64;GenerateOperations(...)
+ * &#64;GenerateBytecode(...)
  * &#64;ShortCircuitOperation(name = "Or", continueWhen = false, booleanConverter = CoerceBoolean.class)
  * public static final class MyBytecodeNode extends RootNode implements OperationRootNode {
  *   &#64;Operation

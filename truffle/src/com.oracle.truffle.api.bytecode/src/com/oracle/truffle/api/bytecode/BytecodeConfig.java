@@ -38,23 +38,69 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.serialization;
+package com.oracle.truffle.api.bytecode;
 
-import java.io.DataOutput;
-import java.io.IOException;
+/**
+ * The configuration to use while generating bytecode. To reduce interpreter footprint, source
+ * sections and instrumentation information can be lazily re-parsed when it is needed.
+ */
+public final class BytecodeConfig {
 
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+    /**
+     * Retain no sources or instrumentation information.
+     */
+    public static final BytecodeConfig DEFAULT = new BytecodeConfig(false, false);
+    /**
+     * Retain source information.
+     */
+    public static final BytecodeConfig WITH_SOURCE = new BytecodeConfig(true, false);
+    /**
+     * Retain source and instrumentation information.
+     */
+    public static final BytecodeConfig COMPLETE = new BytecodeConfig(true, true);
 
-@FunctionalInterface
-public interface OperationSerializer {
-    interface SerializerContext {
+    private final boolean withSource;
+    private final boolean withInstrumentation;
 
-        void writeOperationNode(DataOutput buffer, OperationRootNode node) throws IOException;
+    private BytecodeConfig(boolean withSource, boolean withInstrumentation) {
+        this.withSource = withSource;
+        this.withInstrumentation = withInstrumentation;
+    }
 
+    public static Builder newBuilder() {
+        return new Builder();
+    }
+
+    public boolean isWithSource() {
+        return withSource;
+    }
+
+    public boolean isWithInstrumentation() {
+        return withInstrumentation;
     }
 
     /**
-     * Must not be dependent on any side-effects of the language.
+     * Builder to generate a {@link BytecodeConfig} programmatically.
      */
-    void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException;
+    public static class Builder {
+        private boolean withSource;
+        private boolean withInstrumentation;
+
+        Builder() {
+        }
+
+        public Builder withSource(boolean value) {
+            this.withSource = value;
+            return this;
+        }
+
+        public Builder withInstrumentation(boolean value) {
+            this.withInstrumentation = value;
+            return this;
+        }
+
+        public BytecodeConfig build() {
+            return new BytecodeConfig(withSource, withInstrumentation);
+        }
+    }
 }

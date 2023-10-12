@@ -133,19 +133,19 @@ public class OperationsNodeFactory implements ElementHelpers {
     // After initialization, the code for each class must still be generated; this is done by the
     // XYZFactory classes.
 
-    // The top-level class that subclasses the node annotated with @GenerateOperations.
+    // The top-level class that subclasses the node annotated with @GenerateBytecode.
     // All of the definitions that follow are nested inside of this class.
     private final CodeTypeElement operationNodeGen;
 
     // The builder class invoked by the language parser to generate the bytecode.
     private final CodeTypeElement builder = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
     private final DeclaredType operationBuilderType = new GeneratedTypeMirror("", builder.getSimpleName().toString(), builder.asType());
-    private final TypeMirror parserType = generic(types.OperationParser, operationBuilderType);
+    private final TypeMirror parserType = generic(types.BytecodeParser, operationBuilderType);
 
     // Implementations of public classes that Truffle interpreters interact with.
-    private final CodeTypeElement operationNodesImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationNodesImpl");
-    private final CodeTypeElement operationLocalImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLocalImpl");
-    private final CodeTypeElement operationLabelImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "OperationLabelImpl");
+    private final CodeTypeElement bytecodeNodesImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeNodesImpl");
+    private final CodeTypeElement bytecodeLocalImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeLocalImpl");
+    private final CodeTypeElement bytecodeLabelImpl = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "BytecodeLabelImpl");
 
     // Helper classes that map instructions/operations to constant integral values.
     private final CodeTypeElement instructionsElement = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, "Instructions");
@@ -209,9 +209,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(new BuilderFactory().create());
 
         // Define implementations for the public classes that Truffle interpreters interact with.
-        operationNodeGen.add(new OperationNodesImplFactory().create());
-        operationNodeGen.add(new OperationLocalImplFactory().create());
-        operationNodeGen.add(new OperationLabelImplFactory().create());
+        operationNodeGen.add(new BytecodeNodesImplFactory().create());
+        operationNodeGen.add(new BytecodeLocalImplFactory().create());
+        operationNodeGen.add(new BytecodeLabelImplFactory().create());
 
         // Define helper classes containing the constants for instructions and operations.
         operationNodeGen.add(new InstructionConstantsFactory().create());
@@ -290,7 +290,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         operationNodeGen.add(createCloneUninitialized());
 
         // Define internal state of the root node.
-        operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), operationNodesImpl.asType(), "nodes")));
+        operationNodeGen.add(compFinal(new CodeVariableElement(Set.of(PRIVATE), bytecodeNodesImpl.asType(), "nodes")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), context.getType(Object[].class), "constants")));
         operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), arrayOf(types.Node), "cachedNodes")));
@@ -403,7 +403,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createGetSourceSectionAtBci() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationRootNode, "getSourceSectionAtBci");
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "getSourceSectionAtBci");
         ex.renameArguments("bci");
         CodeTreeBuilder b = ex.createBuilder();
 
@@ -469,7 +469,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createUncachedInterpreterThreshold() {
-        CodeExecutableElement ex = GeneratorUtils.override(types.OperationRootNode, "setUncachedInterpreterThreshold");
+        CodeExecutableElement ex = GeneratorUtils.override(types.BytecodeRootNode, "setUncachedInterpreterThreshold");
 
         CodeTreeBuilder b = ex.createBuilder();
         b.startAssign("uncachedExecuteCount").string("invocationCount").end();
@@ -536,7 +536,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private CodeAnnotationMirror createTracingMetadata() {
-        CodeAnnotationMirror mir = new CodeAnnotationMirror(types.OperationTracingMetadata);
+        CodeAnnotationMirror mir = new CodeAnnotationMirror(types.BytecodeTracingMetadata);
 
         mir.setElementValue("decisionsFile", new CodeAnnotationValue(model.decisionsFilePath));
 
@@ -546,7 +546,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         mir.setElementValue("instructionNames", new CodeAnnotationValue(instructionNames));
 
         List<CodeAnnotationValue> specializationNames = model.getInstructions().stream().filter(InstructionModel::hasNodeImmediate).map(instr -> {
-            CodeAnnotationMirror instructionSpecializationNames = new CodeAnnotationMirror(types.OperationTracingMetadata_SpecializationNames);
+            CodeAnnotationMirror instructionSpecializationNames = new CodeAnnotationMirror(types.BytecodeTracingMetadata_SpecializationNames);
             instructionSpecializationNames.setElementValue("instruction", new CodeAnnotationValue(instr.name));
 
             List<CodeAnnotationValue> specializations = instr.nodeData.getSpecializations().stream().map(spec -> new CodeAnnotationValue(spec.getId())).collect(Collectors.toList());
@@ -582,7 +582,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "setInterpreterState");
         List<CodeVariableElement> params = new ArrayList<>();
         params.addAll(List.of(
-                        new CodeVariableElement(operationNodesImpl.asType(), "nodes"),
+                        new CodeVariableElement(bytecodeNodesImpl.asType(), "nodes"),
                         new CodeVariableElement(context.getType(short[].class), "bc"),
                         new CodeVariableElement(context.getType(Object[].class), "constants"),
                         new CodeVariableElement(context.getType(int[].class), "handlers"),
@@ -627,7 +627,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
         if (model.enableYield) {
             /**
-             * When an OperationRootNode is suspended, its frame gets materialized. Resuming
+             * When an {@link BytecodeRootNode} is suspended, its frame gets materialized. Resuming
              * execution with this materialized frame would provide unsatisfactory performance.
              *
              * Instead, on entry, we copy stack state from the materialized frame into the new frame
@@ -749,13 +749,13 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createCreate() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.OperationNodes, model.templateType.asType()), "create");
-        ex.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
-        ex.addParameter(new CodeVariableElement(generic(types.OperationParser, builder.asType()), "generator"));
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeNodes, model.templateType.asType()), "create");
+        ex.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+        ex.addParameter(new CodeVariableElement(generic(types.BytecodeParser, builder.asType()), "generator"));
 
         CodeTreeBuilder b = ex.getBuilder();
 
-        b.declaration("OperationNodesImpl", "nodes", "new OperationNodesImpl(generator)");
+        b.declaration("BytecodeNodesImpl", "nodes", "new BytecodeNodesImpl(generator)");
         b.startAssign("Builder builder").startNew(builder.getSimpleName().toString());
         b.string("nodes");
         b.string("false");
@@ -829,16 +829,16 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private CodeExecutableElement createSerialize() {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), context.getType(void.class), "serialize");
-        method.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
+        method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         method.addParameter(new CodeVariableElement(context.getType(DataOutput.class), "buffer"));
-        method.addParameter(new CodeVariableElement(types.OperationSerializer, "callback"));
+        method.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
         method.addParameter(new CodeVariableElement(parserType, "parser"));
         method.addThrownType(context.getType(IOException.class));
 
         CodeTreeBuilder init = CodeTreeBuilder.createBuilder();
         init.startNew(operationBuilderType);
         init.startGroup();
-        init.cast(operationNodesImpl.asType());
+        init.cast(bytecodeNodesImpl.asType());
         init.string("create(config, parser)");
         init.end();
         init.string("false");
@@ -864,12 +864,12 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     private CodeExecutableElement createDeserialize() {
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
-                        generic(types.OperationNodes, model.getTemplateType().asType()), "deserialize");
+                        generic(types.BytecodeNodes, model.getTemplateType().asType()), "deserialize");
 
         method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
-        method.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
+        method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
         method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));
-        method.addParameter(new CodeVariableElement(types.OperationDeserializer, "callback"));
+        method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
         method.addThrownType(context.getType(IOException.class));
         CodeTreeBuilder b = method.createBuilder();
 
@@ -884,7 +884,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createGetIntrospectionData() {
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.OperationIntrospection, "getIntrospectionData");
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeIntrospection, "getIntrospectionData");
         CodeTreeBuilder b = ex.createBuilder();
 
         b.declaration(generic(context.getDeclaredType(List.class), context.getDeclaredType(Object.class)), "instructions", "new ArrayList<>()");
@@ -952,7 +952,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         // todo: source info
 
-        b.startReturn().startStaticCall(types.OperationIntrospection_Provider, "create");
+        b.startReturn().startStaticCall(types.BytecodeIntrospection_Provider, "create");
         b.string("new Object[]{0, instructions.toArray(), exHandlersInfo, null}");
         b.end(2);
 
@@ -1022,7 +1022,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createGetLocals() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationRootNode, "getLocals");
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "getLocals");
         ex.addAnnotationMirror(createExplodeLoopAnnotation(null));
 
         CodeTreeBuilder b = ex.createBuilder();
@@ -1038,7 +1038,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private List<CodeExecutableElement> createCopyLocals() {
-        CodeExecutableElement copyAllLocals = GeneratorUtils.overrideImplement(types.OperationRootNode, "copyLocals", 2);
+        CodeExecutableElement copyAllLocals = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "copyLocals", 2);
         CodeTreeBuilder copyAllLocalsBuilder = copyAllLocals.createBuilder();
         copyAllLocalsBuilder.startStatement().startCall("copyLocals");
         copyAllLocalsBuilder.string("source");
@@ -1046,7 +1046,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         copyAllLocalsBuilder.string("numLocals - USER_LOCALS_START_IDX");
         copyAllLocalsBuilder.end(2);
 
-        CodeExecutableElement copyLocals = GeneratorUtils.overrideImplement(types.OperationRootNode, "copyLocals", 3);
+        CodeExecutableElement copyLocals = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "copyLocals", 3);
         CodeTreeBuilder copyLocalsBuilder = copyLocals.createBuilder();
         copyLocalsBuilder.startStatement().startCall("ACCESS.copyTo");
         copyLocalsBuilder.string("source");
@@ -1060,7 +1060,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createFindBciOfOperationNode() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationRootNode, "findBciOfOperationNode");
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "findBciOfOperationNode");
 
         CodeTreeBuilder b = ex.createBuilder();
         b.tree(createNeverPartOfCompilation());
@@ -1128,7 +1128,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createReadBciFromFrame() {
-        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationRootNode, "readBciFromFrame");
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "readBciFromFrame");
 
         CodeTreeBuilder b = ex.createBuilder();
         if (model.needsBciSlot()) {
@@ -1310,7 +1310,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         b.startReturn().string("result").end();
         b.end();
 
-        b.startAssign("result").startStaticCall(types.OperationSupport, "allocateBranchProfiles").string("numConditionalBranches").end(2);
+        b.startAssign("result").startStaticCall(types.BytecodeSupport, "allocateBranchProfiles").string("numConditionalBranches").end(2);
         b.startAssign("this.branchProfiles").string("result").end();
         b.startReturn().string("result").end();
 
@@ -1328,7 +1328,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         final CodeVariableElement builtNodes = addField(serializationState, Set.of(PRIVATE, FINAL), generic(ArrayList.class, operationNodeGen.asType()), "builtNodes");
         final CodeVariableElement buffer = addField(serializationState, Set.of(PRIVATE, FINAL), DataOutput.class, "buffer");
-        final CodeVariableElement callback = addField(serializationState, Set.of(PRIVATE, FINAL), types.OperationSerializer, "callback");
+        final CodeVariableElement callback = addField(serializationState, Set.of(PRIVATE, FINAL), types.BytecodeSerializer, "callback");
         final CodeExecutableElement constructor = serializationState.add(createConstructorUsingFields(Set.of(), serializationState, null));
         final CodeVariableElement language = addField(serializationState, Set.of(PRIVATE), types.TruffleLanguage, "language");
 
@@ -1340,7 +1340,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         final CodeVariableElement[] codeEnd;
 
         SerializationStateElements() {
-            serializationState.getImplements().add(types.OperationSerializer_SerializerContext);
+            serializationState.getImplements().add(types.BytecodeSerializer_SerializerContext);
 
             objects.createInitBuilder().startNew("HashMap<>").end();
 
@@ -1360,12 +1360,12 @@ public class OperationsNodeFactory implements ElementHelpers {
             }
 
             serializationState.add(createSerializeObject());
-            serializationState.add(createWriteOperationNode());
+            serializationState.add(createWriteBytecodeNode());
 
         }
 
-        private CodeExecutableElement createWriteOperationNode() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationSerializer_SerializerContext, "writeOperationNode");
+        private CodeExecutableElement createWriteBytecodeNode() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeSerializer_SerializerContext, "writeBytecodeNode");
             mergeSuppressWarnings(ex, "hiding");
             ex.renameArguments("buffer", "node");
             CodeTreeBuilder b = ex.createBuilder();
@@ -1441,7 +1441,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         CodeTypeElement constantPool = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "ConstantPool");
         CodeTypeElement bytecodeLocation = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "BytecodeLocation");
 
-        TypeMirror unresolvedLabelsType = generic(HashMap.class, types.OperationLabel, generic(context.getDeclaredType(ArrayList.class), bytecodeLocation.asType()));
+        TypeMirror unresolvedLabelsType = generic(HashMap.class, types.BytecodeLabel, generic(context.getDeclaredType(ArrayList.class), bytecodeLocation.asType()));
         TypeMirror localNamesType = generic(ArrayList.class, context.getDeclaredType(Object.class));
 
         // When we enter a FinallyTry, these fields get stored on the FinallyTryContext.
@@ -1506,7 +1506,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(Set.of(PRIVATE), context.getType(Object.class), "data"),
                                 new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "sequenceNumber"),
                                 new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "childCount"),
-                                new CodeVariableElement(Set.of(PRIVATE), generic(context.getDeclaredType(ArrayList.class), types.OperationLabel), "declaredLabels"));
+                                new CodeVariableElement(Set.of(PRIVATE), generic(context.getDeclaredType(ArrayList.class), types.BytecodeLabel), "declaredLabels"));
 
                 operationStackEntry.addAll(fields);
 
@@ -1518,7 +1518,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             private CodeExecutableElement createAddDeclaredLabel() {
                 CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "addDeclaredLabel");
-                ex.addParameter(new CodeVariableElement(types.OperationLabel, "label"));
+                ex.addParameter(new CodeVariableElement(types.BytecodeLabel, "label"));
 
                 CodeTreeBuilder b = ex.createBuilder();
 
@@ -1547,7 +1547,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                                 new CodeVariableElement(context.getType(int.class), "handlerMaxStack"),
                                 new CodeVariableElement(context.getType(int[].class), "handlerSourceInfo"),
                                 new CodeVariableElement(context.getType(int[].class), "handlerExHandlers"),
-                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel), "handlerUnresolvedBranchLabels"),
+                                new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel), "handlerUnresolvedBranchLabels"),
                                 new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), context.getDeclaredType(Integer.class)),
                                                 "handlerUnresolvedBranchStackHeights")));
                 if (model.enableTracing) {
@@ -1669,18 +1669,18 @@ public class OperationsNodeFactory implements ElementHelpers {
         class DeserializerContextImplFactory {
             private CodeTypeElement create() {
                 deserializerContextImpl.setEnclosingElement(operationNodeGen);
-                deserializerContextImpl.getImplements().add(types.OperationDeserializer_DeserializerContext);
+                deserializerContextImpl.getImplements().add(types.BytecodeDeserializer_DeserializerContext);
 
                 deserializerContextImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, operationNodeGen.asType()), "builtNodes"));
                 deserializerContextImpl.add(createConstructorUsingFields(Set.of(PRIVATE), deserializerContextImpl));
 
-                deserializerContextImpl.add(createDeserializeOperationNode());
+                deserializerContextImpl.add(createReadBytecodeNode());
 
                 return deserializerContextImpl;
             }
 
-            private CodeExecutableElement createDeserializeOperationNode() {
-                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationDeserializer_DeserializerContext, "readOperationNode");
+            private CodeExecutableElement createReadBytecodeNode() {
+                CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeDeserializer_DeserializerContext, "readBytecodeNode");
                 ex.renameArguments("buffer");
                 CodeTreeBuilder b = ex.createBuilder();
                 b.statement("return this.builtNodes.get(buffer.readChar())");
@@ -1692,7 +1692,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         private CodeVariableElement serialization;
 
         private CodeTypeElement create() {
-            builder.setSuperClass(types.OperationBuilder);
+            builder.setSuperClass(types.BytecodeBuilder);
             builder.setEnclosingElement(operationNodeGen);
 
             builder.add(uninitialized);
@@ -1706,7 +1706,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             builder.add(createOperationNames());
 
-            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), operationNodesImpl.asType(), "nodes"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), bytecodeNodesImpl.asType(), "nodes"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean.class), "isReparse"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withSource"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withInstrumentation"));
@@ -1772,7 +1772,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE),
                             context.getType(void.class), "serialize");
             method.addParameter(new CodeVariableElement(type(DataOutput.class), "buffer"));
-            method.addParameter(new CodeVariableElement(types.OperationSerializer, "callback"));
+            method.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
             method.addThrownType(context.getType(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
 
@@ -1828,20 +1828,20 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
             method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "bufferSupplier"));
-            method.addParameter(new CodeVariableElement(types.OperationDeserializer, "callback"));
+            method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
 
             CodeTreeBuilder b = method.createBuilder();
 
             b.startTryBlock();
 
             b.statement("ArrayList<Object> consts = new ArrayList<>()");
-            b.statement("ArrayList<OperationLocal> locals = new ArrayList<>()");
-            b.statement("ArrayList<OperationLabel> labels = new ArrayList<>()");
+            b.statement("ArrayList<BytecodeLocal> locals = new ArrayList<>()");
+            b.statement("ArrayList<BytecodeLabel> labels = new ArrayList<>()");
             b.declaration(type(DataInput.class), "buffer", "bufferSupplier.get()");
             b.declaration(generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()), "builtNodes", "new ArrayList<>()");
 
             b.startStatement();
-            b.type(types.OperationDeserializer_DeserializerContext);
+            b.type(types.BytecodeDeserializer_DeserializerContext);
             b.string(" context = ").startNew(deserializerContextImpl.getSimpleName().toString()).string("builtNodes").end();
             b.end();
 
@@ -1907,16 +1907,16 @@ public class OperationsNodeFactory implements ElementHelpers {
                     String argumentName = operation.getOperationArgumentName(i);
                     if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
                         continue; // language is already available as a parameter
-                    } else if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
-                        b.statement("OperationLocal ", argumentName, " = locals.get(buffer.readShort())");
-                    } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
-                        b.statement("OperationLocal[] ", argumentName, " = new OperationLocal[buffer.readShort()]");
+                    } else if (ElementUtils.typeEquals(argType, types.BytecodeLocal)) {
+                        b.statement("BytecodeLocal ", argumentName, " = locals.get(buffer.readShort())");
+                    } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.BytecodeLocal))) {
+                        b.statement("BytecodeLocal[] ", argumentName, " = new BytecodeLocal[buffer.readShort()]");
                         b.startFor().string("int i = 0; i < ", argumentName, ".length; i++").end().startBlock();
                         // this can be optimized since they are consecutive
                         b.statement(argumentName, "[i] = locals.get(buffer.readShort());");
                         b.end();
-                    } else if (ElementUtils.typeEquals(argType, types.OperationLabel)) {
-                        b.statement("OperationLabel ", argumentName, " = labels.get(buffer.readShort())");
+                    } else if (ElementUtils.typeEquals(argType, types.BytecodeLabel)) {
+                        b.statement("BytecodeLabel ", argumentName, " = labels.get(buffer.readShort())");
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
                         b.statement("int ", argumentName, " = buffer.readInt()");
                     } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
@@ -2009,7 +2009,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createCreateLocal() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.OperationLocal, "createLocal");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLocal, "createLocal");
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startReturn().startCall("createLocal").string("null").end(2);
@@ -2018,7 +2018,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createCreateLocalWithName() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.OperationLocal, "createLocal");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLocal, "createLocal");
             ex.addParameter(new CodeVariableElement(context.getDeclaredType(Object.class), "name"));
             CodeTreeBuilder b = ex.createBuilder();
 
@@ -2031,13 +2031,13 @@ public class OperationsNodeFactory implements ElementHelpers {
                 b.end();
             }
             b.statement("localNames.add(name)");
-            b.startReturn().startNew(operationLocalImpl.asType()).string("numLocals++").end(2);
+            b.startReturn().startNew(bytecodeLocalImpl.asType()).string("numLocals++").end(2);
 
             return ex;
         }
 
         private CodeExecutableElement createCreateLabel() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.OperationLabel, "createLabel");
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLabel, "createLabel");
             CodeTreeBuilder b = ex.createBuilder();
 
             if (model.enableSerialization) {
@@ -2046,7 +2046,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     serializationElements.writeShort(b, serializationElements.codeCreateLabel);
                 });
 
-                b.startReturn().startNew(operationLabelImpl.asType());
+                b.startReturn().startNew(bytecodeLabelImpl.asType());
                 b.string("numLabels++");
                 b.string(UNINIT);
                 b.string(serialization.getName(), ".", serializationElements.labelCount.getName(), "++");
@@ -2062,7 +2062,7 @@ public class OperationsNodeFactory implements ElementHelpers {
             buildThrowIllegalStateException(b, "\"Labels must be created inside either Block or Root operations.\"");
             b.end();
 
-            b.startAssign("OperationLabel result").startNew(operationLabelImpl.asType());
+            b.startAssign("BytecodeLabel result").startNew(bytecodeLabelImpl.asType());
             b.string("numLabels++");
             b.string(UNINIT);
             b.string("operationStack[operationSp - 1].sequenceNumber");
@@ -2078,7 +2078,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createRegisterUnresolvedLabel() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "registerUnresolvedLabel");
-            ex.addParameter(new CodeVariableElement(types.OperationLabel, "label"));
+            ex.addParameter(new CodeVariableElement(types.BytecodeLabel, "label"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "immediateBci"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "stackHeight"));
 
@@ -2091,19 +2091,19 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createResolveUnresolvedLabel() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), context.getType(void.class), "resolveUnresolvedLabel");
-            ex.addParameter(new CodeVariableElement(types.OperationLabel, "label"));
+            ex.addParameter(new CodeVariableElement(types.BytecodeLabel, "label"));
             ex.addParameter(new CodeVariableElement(context.getType(int.class), "stackHeight"));
 
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.statement("OperationLabelImpl impl = (OperationLabelImpl) label");
+            b.statement("BytecodeLabelImpl impl = (BytecodeLabelImpl) label");
             b.statement("assert impl.isDefined()");
             b.declaration(generic(List.class, bytecodeLocation.asType()), "sites", "unresolvedLabels.remove(impl)");
             b.startIf().string("sites != null").end().startBlock();
             b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : sites").end(2).startBlock();
 
             b.startIf().string("stackHeight != site.sp").end().startBlock();
-            buildThrowIllegalStateException(b, "\"OperationLabel was emitted at a position with a different stack height than a branch instruction that targets it. Branches must be balanced.\"");
+            buildThrowIllegalStateException(b, "\"BytecodeLabel was emitted at a position with a different stack height than a branch instruction that targets it. Branches must be balanced.\"");
             b.end();
             b.statement(writeBc("site.bci", "(short) impl.bci"));
             b.end(2);
@@ -2112,13 +2112,13 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createCreateBranchLabelMapping() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel),
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC), generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel),
                             "createBranchLabelMapping");
             ex.addParameter(new CodeVariableElement(unresolvedLabelsType, "unresolvedLabels"));
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.statement("HashMap<Integer, OperationLabel> result = new HashMap<>()");
-            b.startFor().string("OperationLabel lbl : unresolvedLabels.keySet()").end().startBlock();
+            b.statement("HashMap<Integer, BytecodeLabel> result = new HashMap<>()");
+            b.startFor().string("BytecodeLabel lbl : unresolvedLabels.keySet()").end().startBlock();
             b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
             b.statement("assert !result.containsKey(site.bci)");
             b.statement("result.put(site.bci, lbl)");
@@ -2135,7 +2135,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
             CodeTreeBuilder b = ex.createBuilder();
             b.statement("HashMap<Integer, Integer> result = new HashMap<>()");
-            b.startFor().string("OperationLabel lbl : unresolvedLabels.keySet()").end().startBlock();
+            b.startFor().string("BytecodeLabel lbl : unresolvedLabels.keySet()").end().startBlock();
             b.startFor().startGroup().type(bytecodeLocation.asType()).string(" site : unresolvedLabels.get(lbl)").end(2).startBlock();
             b.statement("assert !result.containsKey(site.bci)");
             b.statement("result.put(site.bci, site.sp)");
@@ -2358,15 +2358,15 @@ public class OperationsNodeFactory implements ElementHelpers {
                     String argumentName = operation.getOperationArgumentName(i);
                     if (ElementUtils.typeEquals(argType, types.TruffleLanguage)) {
                         b.statement("serialization.language = language");
-                    } else if (ElementUtils.typeEquals(argType, types.OperationLocal)) {
-                        serializationElements.writeShort(after, "(short) ((OperationLocalImpl) " + argumentName + ").index");
-                    } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.OperationLocal))) {
+                    } else if (ElementUtils.typeEquals(argType, types.BytecodeLocal)) {
+                        serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + ").index");
+                    } else if (ElementUtils.typeEquals(argType, new ArrayCodeTypeMirror(types.BytecodeLocal))) {
                         serializationElements.writeShort(after, "(short) " + argumentName + ".length");
                         after.startFor().string("int i = 0; i < arg" + i + ".length; i++").end().startBlock();
-                        serializationElements.writeShort(after, "(short) ((OperationLocalImpl) " + argumentName + "[i]).index");
+                        serializationElements.writeShort(after, "(short) ((BytecodeLocalImpl) " + argumentName + "[i]).index");
                         after.end();
-                    } else if (ElementUtils.typeEquals(argType, types.OperationLabel)) {
-                        serializationElements.writeShort(after, "(short) ((OperationLabelImpl) " + argumentName + ").declaringOp");
+                    } else if (ElementUtils.typeEquals(argType, types.BytecodeLabel)) {
+                        serializationElements.writeShort(after, "(short) ((BytecodeLabelImpl) " + argumentName + ").declaringOp");
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
                         serializationElements.writeInt(after, argumentName);
                     } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
@@ -2432,7 +2432,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                                     UNINIT + " /* catch start */, " +
                                     UNINIT + " /* branch past catch fix-up index */, " +
                                     "curStack /* entry stack height */, " +
-                                    "((OperationLocalImpl) " + operation.getOperationArgumentName(0) + ").index /* exception local index */}");
+                                    "((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").index /* exception local index */}");
                     break;
                 case FINALLY_TRY:
                     b.string("new Object[]{ " + operation.getOperationArgumentName(0) + " /* exception local */, null /* finallyTryContext */}");
@@ -2467,8 +2467,8 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.end(); // }
 
             b.startIf().string("entry.declaredLabels != null").end().startBlock();
-            b.startFor().string("OperationLabel label : entry.declaredLabels").end().startBlock();
-            b.statement("OperationLabelImpl impl = (OperationLabelImpl) label");
+            b.startFor().string("BytecodeLabel label : entry.declaredLabels").end().startBlock();
+            b.statement("BytecodeLabelImpl impl = (BytecodeLabelImpl) label");
             b.startIf().string("!impl.isDefined()").end().startBlock();
             b.startThrow().startNew(context.getType(IllegalStateException.class));
             b.string("\"Operation \" + OPERATION_NAMES[id] + \" ended without emitting one or more declared labels. This likely indicates a bug in the parser.\"").end();
@@ -2576,7 +2576,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                     break;
                 case FINALLY_TRY:
                     b.statement("Object[] finallyTryData = (Object[]) operationStack[operationSp].data");
-                    b.statement("OperationLocalImpl exceptionLocal = (OperationLocalImpl) finallyTryData[0]");
+                    b.statement("BytecodeLocalImpl exceptionLocal = (BytecodeLocalImpl) finallyTryData[0]");
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) finallyTryData[1]");
                     b.statement("short exceptionIndex = (short) exceptionLocal.index");
                     b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, curStack, exceptionIndex)");
@@ -2751,13 +2751,13 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private void buildEmitOperationInstruction(CodeTreeBuilder b, OperationModel operation) {
             String[] args = switch (operation.kind) {
-                case LOAD_LOCAL -> new String[]{"((OperationLocalImpl) " + operation.getOperationArgumentName(0) + ").index"};
-                case STORE_LOCAL, LOAD_LOCAL_MATERIALIZED, STORE_LOCAL_MATERIALIZED -> new String[]{"((OperationLocalImpl) operationStack[operationSp].data).index"};
+                case LOAD_LOCAL -> new String[]{"((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").index"};
+                case STORE_LOCAL, LOAD_LOCAL_MATERIALIZED, STORE_LOCAL_MATERIALIZED -> new String[]{"((BytecodeLocalImpl) operationStack[operationSp].data).index"};
                 case RETURN -> new String[]{};
                 case LOAD_ARGUMENT -> new String[]{operation.getOperationArgumentName(0)};
                 case LOAD_CONSTANT -> new String[]{"constantPool.addConstant(" + operation.getOperationArgumentName(0) + ")"};
                 case BRANCH -> {
-                    b.startAssign("OperationLabelImpl labelImpl").string("(OperationLabelImpl) " + operation.getOperationArgumentName(0)).end();
+                    b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationArgumentName(0)).end();
 
                     b.statement("boolean isFound = false");
                     b.startFor().string("int i = 0; i < operationSp; i++").end().startBlock();
@@ -2846,14 +2846,14 @@ public class OperationsNodeFactory implements ElementHelpers {
             b.startStatement().startCall("emitOperationBegin").end(2);
 
             if (operation.kind == OperationKind.LABEL) {
-                b.startAssign("OperationLabelImpl labelImpl").string("(OperationLabelImpl) " + operation.getOperationArgumentName(0)).end();
+                b.startAssign("BytecodeLabelImpl labelImpl").string("(BytecodeLabelImpl) " + operation.getOperationArgumentName(0)).end();
 
                 b.startIf().string("labelImpl.isDefined()").end().startBlock();
-                buildThrowIllegalStateException(b, "\"OperationLabel already emitted. Each label must be emitted exactly once.\"");
+                buildThrowIllegalStateException(b, "\"BytecodeLabel already emitted. Each label must be emitted exactly once.\"");
                 b.end();
 
                 b.startIf().string("labelImpl.declaringOp != operationStack[operationSp - 1].sequenceNumber").end().startBlock();
-                buildThrowIllegalStateException(b, "\"OperationLabel must be emitted inside the same operation it was created in.\"");
+                buildThrowIllegalStateException(b, "\"BytecodeLabel must be emitted inside the same operation it was created in.\"");
                 b.end();
 
                 b.statement("labelImpl.bci = bci");
@@ -2907,9 +2907,9 @@ public class OperationsNodeFactory implements ElementHelpers {
                         String arg = "localSetter" + currentSetterIndex;
                         b.startAssign("int " + arg);
                         if (inEmit) {
-                            b.string("((OperationLocalImpl) " + operation.getOperationArgumentName(currentSetterIndex) + ").index");
+                            b.string("((BytecodeLocalImpl) " + operation.getOperationArgumentName(currentSetterIndex) + ").index");
                         } else {
-                            b.string("((OperationLocalImpl)((Object[]) operationStack[operationSp].data)[" + i + "]).index");
+                            b.string("((BytecodeLocalImpl)((Object[]) operationStack[operationSp].data)[" + i + "]).index");
                         }
                         b.end();
                         b.startStatement();
@@ -2925,11 +2925,11 @@ public class OperationsNodeFactory implements ElementHelpers {
                         String range = "range" + localSetterRangeIndex;
 
                         // Get array of locals (from named argument/operation Stack).
-                        b.startAssign("OperationLocal[] " + locals);
+                        b.startAssign("BytecodeLocal[] " + locals);
                         if (inEmit) {
                             b.string(operation.getOperationArgumentName(localSetterIndex + localSetterRangeIndex));
                         } else {
-                            b.string("(OperationLocal[]) ((Object[]) operationStack[operationSp].data)[" + (localSetterIndex + localSetterRangeIndex + i) + "]");
+                            b.string("(BytecodeLocal[]) ((Object[]) operationStack[operationSp].data)[" + (localSetterIndex + localSetterRangeIndex + i) + "]");
                         }
                         b.end();
 
@@ -2938,7 +2938,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         b.string("new int[" + locals + ".length]");
                         b.end();
                         b.startFor().string("int i = 0; i < " + indices + ".length; i++").end().startBlock();
-                        b.startAssign(indices + "[i]").string("((OperationLocalImpl) " + locals + "[i]).index").end();
+                        b.startAssign(indices + "[i]").string("((BytecodeLocalImpl) " + locals + "[i]).index").end();
                         b.end();
 
                         // Create range from indices (create method validates that locals are
@@ -3261,7 +3261,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                          * instruction.
                          */
                         b.declaration(
-                                        generic(HashMap.class, context.getDeclaredType(Integer.class), types.OperationLabel),
+                                        generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel),
                                         "unresolvedBranchLabels",
                                         CodeTreeBuilder.createBuilder().startStaticCall(operationBuilderType, "createBranchLabelMapping").string("unresolvedLabels").end());
                         b.declaration(
@@ -3402,7 +3402,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                             // Mark branch target as unresolved, if necessary.
                             b.startIf().string("branchTarget == " + UNINIT).end().startBlock();
                             b.lineComment("This branch is to a not-yet-emitted label defined by an outer operation.");
-                            b.statement("OperationLabelImpl lbl = (OperationLabelImpl) context.handlerUnresolvedBranchLabels.get(branchIdx)");
+                            b.statement("BytecodeLabelImpl lbl = (BytecodeLabelImpl) context.handlerUnresolvedBranchLabels.get(branchIdx)");
                             b.statement("int sp = context.handlerUnresolvedBranchStackHeights.get(branchIdx)");
                             b.statement("assert !lbl.isDefined()");
                             b.startStatement().startCall("registerUnresolvedLabel");
@@ -3832,9 +3832,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createConstructor() {
             CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, "Builder");
-            ctor.addParameter(new CodeVariableElement(operationNodesImpl.asType(), "nodes"));
+            ctor.addParameter(new CodeVariableElement(bytecodeNodesImpl.asType(), "nodes"));
             ctor.addParameter(new CodeVariableElement(context.getType(boolean.class), "isReparse"));
-            ctor.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
+            ctor.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
 
             CodeTreeBuilder b = ctor.createBuilder();
 
@@ -3869,22 +3869,22 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
     }
 
-    class OperationNodesImplFactory {
+    class BytecodeNodesImplFactory {
         private CodeTypeElement create() {
-            operationNodesImpl.setSuperClass(generic(types.OperationNodes, model.templateType.asType()));
-            operationNodesImpl.setEnclosingElement(operationNodeGen);
+            bytecodeNodesImpl.setSuperClass(generic(types.BytecodeNodes, model.templateType.asType()));
+            bytecodeNodesImpl.setEnclosingElement(operationNodeGen);
 
-            operationNodesImpl.add(createConstructor());
-            operationNodesImpl.add(createReparseImpl());
-            operationNodesImpl.add(createSetNodes());
-            operationNodesImpl.add(createSetSources());
-            operationNodesImpl.add(createGetSources());
+            bytecodeNodesImpl.add(createConstructor());
+            bytecodeNodesImpl.add(createReparseImpl());
+            bytecodeNodesImpl.add(createSetNodes());
+            bytecodeNodesImpl.add(createSetSources());
+            bytecodeNodesImpl.add(createGetSources());
 
-            return operationNodesImpl;
+            return bytecodeNodesImpl;
         }
 
         private CodeExecutableElement createConstructor() {
-            CodeExecutableElement ctor = new CodeExecutableElement(null, "OperationNodesImpl");
+            CodeExecutableElement ctor = new CodeExecutableElement(null, "BytecodeNodesImpl");
             ctor.addParameter(new CodeVariableElement(parserType, "generator"));
 
             ctor.createBuilder().statement("super(generator)");
@@ -3892,7 +3892,7 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createReparseImpl() {
-            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.OperationNodes, "reparseImpl");
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeNodes, "reparseImpl");
             addOverride(ex);
             mergeSuppressWarnings(ex, "hiding");
             ex.renameArguments("config", "parse", "nodes");
@@ -4092,7 +4092,7 @@ public class OperationsNodeFactory implements ElementHelpers {
                         if (tier.isUncached) {
                             b.string(booleanValue);
                         } else {
-                            b.startStaticCall(types.OperationSupport, "profileBranch");
+                            b.startStaticCall(types.BytecodeSupport, "profileBranch");
                             b.string("branchProfiles");
                             b.string(readBc("bci + 2"));
                             b.string(booleanValue);
@@ -4624,35 +4624,35 @@ public class OperationsNodeFactory implements ElementHelpers {
 
     }
 
-    class OperationLocalImplFactory {
+    class BytecodeLocalImplFactory {
         private CodeTypeElement create() {
-            operationLocalImpl.setSuperClass(generic(types.OperationLocal, model.templateType.asType()));
-            operationLocalImpl.setEnclosingElement(operationNodeGen);
+            bytecodeLocalImpl.setSuperClass(generic(types.BytecodeLocal, model.templateType.asType()));
+            bytecodeLocalImpl.setEnclosingElement(operationNodeGen);
 
-            operationLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "index"));
+            bytecodeLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "index"));
 
-            operationLocalImpl.add(createConstructorUsingFields(Set.of(), operationLocalImpl, null));
+            bytecodeLocalImpl.add(createConstructorUsingFields(Set.of(), bytecodeLocalImpl, null));
 
-            return operationLocalImpl;
+            return bytecodeLocalImpl;
         }
     }
 
-    class OperationLabelImplFactory {
+    class BytecodeLabelImplFactory {
         private CodeTypeElement create() {
-            operationLabelImpl.setSuperClass(generic(types.OperationLabel, model.templateType.asType()));
-            operationLabelImpl.setEnclosingElement(operationNodeGen);
+            bytecodeLabelImpl.setSuperClass(generic(types.BytecodeLabel, model.templateType.asType()));
+            bytecodeLabelImpl.setEnclosingElement(operationNodeGen);
 
-            operationLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "id"));
-            operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "bci"));
-            operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "declaringOp"));
-            operationLabelImpl.add(new CodeVariableElement(context.getType(int.class), "finallyTryOp"));
+            bytecodeLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "id"));
+            bytecodeLabelImpl.add(new CodeVariableElement(context.getType(int.class), "bci"));
+            bytecodeLabelImpl.add(new CodeVariableElement(context.getType(int.class), "declaringOp"));
+            bytecodeLabelImpl.add(new CodeVariableElement(context.getType(int.class), "finallyTryOp"));
 
-            operationLabelImpl.add(createConstructorUsingFields(Set.of(), operationLabelImpl, null));
-            operationLabelImpl.add(createIsDefined());
-            operationLabelImpl.add(createEquals());
-            operationLabelImpl.add(createHashCode());
+            bytecodeLabelImpl.add(createConstructorUsingFields(Set.of(), bytecodeLabelImpl, null));
+            bytecodeLabelImpl.add(createIsDefined());
+            bytecodeLabelImpl.add(createEquals());
+            bytecodeLabelImpl.add(createHashCode());
 
-            return operationLabelImpl;
+            return bytecodeLabelImpl;
         }
 
         private CodeExecutableElement createIsDefined() {
@@ -4667,11 +4667,11 @@ public class OperationsNodeFactory implements ElementHelpers {
             ex.addParameter(new CodeVariableElement(context.getType(Object.class), "other"));
 
             CodeTreeBuilder b = ex.createBuilder();
-            b.startIf().string("!(other instanceof OperationLabelImpl)").end().startBlock();
+            b.startIf().string("!(other instanceof BytecodeLabelImpl)").end().startBlock();
             b.returnFalse();
             b.end();
 
-            b.startReturn().string("this.id == ((OperationLabelImpl) other).id").end();
+            b.startReturn().string("this.id == ((BytecodeLabelImpl) other).id").end();
             return ex;
         }
 
@@ -4959,7 +4959,7 @@ public class OperationsNodeFactory implements ElementHelpers {
     private CodeTree castParser(CodeExecutableElement ex, String parser) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startParantheses();
-        b.cast(generic(types.OperationParser, builder.asType()));
+        b.cast(generic(types.BytecodeParser, builder.asType()));
         b.string(parser);
         b.end();
         mergeSuppressWarnings(ex, "unchecked");
@@ -5052,7 +5052,7 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private final CodeTypeElement builder = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
         private final DeclaredType operationBuilderType = new GeneratedTypeMirror("", builder.getSimpleName().toString(), builder.asType());
-        private final TypeMirror parserType = generic(types.OperationParser, operationBuilderType);
+        private final TypeMirror parserType = generic(types.BytecodeParser, operationBuilderType);
 
         public ErrorFactory(OperationsModel model) {
             assert model.hasErrors();
@@ -5098,9 +5098,9 @@ public class OperationsNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createCreate() {
-            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.OperationNodes, model.templateType.asType()), "create");
-            ex.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
-            ex.addParameter(new CodeVariableElement(generic(types.OperationParser, builder.asType()), "generator"));
+            CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeNodes, model.templateType.asType()), "create");
+            ex.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
+            ex.addParameter(new CodeVariableElement(generic(types.BytecodeParser, builder.asType()), "generator"));
             CodeTreeBuilder b = ex.getBuilder();
             emitThrowNotImplemented(b);
             return ex;
@@ -5108,9 +5108,9 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createSerialize() {
             CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC), context.getType(void.class), "serialize");
-            method.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
+            method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
             method.addParameter(new CodeVariableElement(context.getType(DataOutput.class), "buffer"));
-            method.addParameter(new CodeVariableElement(types.OperationSerializer, "callback"));
+            method.addParameter(new CodeVariableElement(types.BytecodeSerializer, "callback"));
             method.addParameter(new CodeVariableElement(parserType, "parser"));
             method.addThrownType(context.getType(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
@@ -5120,11 +5120,11 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createDeserialize() {
             CodeExecutableElement method = new CodeExecutableElement(Set.of(PUBLIC, STATIC),
-                            generic(types.OperationNodes, model.getTemplateType().asType()), "deserialize");
+                            generic(types.BytecodeNodes, model.getTemplateType().asType()), "deserialize");
             method.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
-            method.addParameter(new CodeVariableElement(types.OperationConfig, "config"));
+            method.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
             method.addParameter(new CodeVariableElement(generic(Supplier.class, DataInput.class), "input"));
-            method.addParameter(new CodeVariableElement(types.OperationDeserializer, "callback"));
+            method.addParameter(new CodeVariableElement(types.BytecodeDeserializer, "callback"));
             method.addThrownType(context.getType(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
             emitThrowNotImplemented(b);
@@ -5139,12 +5139,12 @@ public class OperationsNodeFactory implements ElementHelpers {
 
         private final class BuilderFactory {
             private CodeTypeElement create() {
-                builder.setSuperClass(types.OperationBuilder);
+                builder.setSuperClass(types.BytecodeBuilder);
                 builder.setEnclosingElement(operationNodeGen);
                 mergeSuppressWarnings(builder, "all");
 
-                builder.add(createMethodStub(new CodeExecutableElement(Set.of(PUBLIC), types.OperationLocal, "createLocal")));
-                builder.add(createMethodStub(new CodeExecutableElement(Set.of(PUBLIC), types.OperationLabel, "createLabel")));
+                builder.add(createMethodStub(new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLocal, "createLocal")));
+                builder.add(createMethodStub(new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLabel, "createLabel")));
 
                 for (OperationModel operation : model.getOperations()) {
                     if (operation.hasChildren()) {

@@ -69,29 +69,29 @@ import org.graalvm.shadowed.org.json.JSONTokener;
  * out to the state file on exit. If the state file already has data, new data obtained during
  * tracing will be combined with existing data.
  */
-public class OperationsStatistics {
-    static final ThreadLocal<OperationsStatistics> STATISTICS = new ThreadLocal<>();
-    private final Map<Class<?>, OperationRootNodeStatistics> rootNodeStatistics = new HashMap<>();
+public class BytecodeStatistics {
+    static final ThreadLocal<BytecodeStatistics> STATISTICS = new ThreadLocal<>();
+    private final Map<Class<?>, BytecodeRootNodeStatistics> rootNodeStatistics = new HashMap<>();
     private Path statePath;
     private FileChannel stateFile;
     private FileLock fileLock;
 
-    OperationsStatistics(String statePath) {
+    BytecodeStatistics(String statePath) {
         this.statePath = Path.of(statePath);
         read();
     }
 
-    public static OperationsStatistics create(String statePath) {
-        return new OperationsStatistics(statePath);
+    public static BytecodeStatistics create(String statePath) {
+        return new BytecodeStatistics(statePath);
     }
 
-    public OperationsStatistics enter() {
-        OperationsStatistics prev = STATISTICS.get();
+    public BytecodeStatistics enter() {
+        BytecodeStatistics prev = STATISTICS.get();
         STATISTICS.set(this);
         return prev;
     }
 
-    public void exit(OperationsStatistics prev) {
+    public void exit(BytecodeStatistics prev) {
         STATISTICS.set(prev);
     }
 
@@ -109,8 +109,8 @@ public class OperationsStatistics {
 
             for (int i = 0; i < o.length(); i++) {
                 JSONObject data = o.getJSONObject(i);
-                OperationRootNodeStatistics value = OperationRootNodeStatistics.deserialize(this, data);
-                this.rootNodeStatistics.put(value.operationClass, value);
+                BytecodeRootNodeStatistics value = BytecodeRootNodeStatistics.deserialize(this, data);
+                this.rootNodeStatistics.put(value.bytecodeClass, value);
             }
 
         } catch (IOException | ClassNotFoundException e) {
@@ -147,34 +147,34 @@ public class OperationsStatistics {
         });
     }
 
-    synchronized OperationRootNodeStatistics getStatistics(Class<?> operationsClass) {
-        return rootNodeStatistics.computeIfAbsent(operationsClass, (c) -> OperationRootNodeStatistics.createFromClass(operationsClass));
+    synchronized BytecodeRootNodeStatistics getStatistics(Class<?> bytecodeClass) {
+        return rootNodeStatistics.computeIfAbsent(bytecodeClass, (c) -> BytecodeRootNodeStatistics.createFromClass(bytecodeClass));
     }
 
     /**
      * Manages the tracing state for a particular root node.
      */
-    static final class OperationRootNodeStatistics {
+    static final class BytecodeRootNodeStatistics {
         private final ThreadLocal<EnabledExecutionTracer> currentTracer = new ThreadLocal<>();
         private final List<EnabledExecutionTracer> allTracers = new ArrayList<>();
 
-        final Class<?> operationClass;
+        final Class<?> bytecodeClass;
         final String decisionsFile;
         final String[] instructionNames;
         final String[][] specializationNames;
 
-        OperationRootNodeStatistics(Class<?> operationsClass, String decisionsFile, String[] instructionNames, String[][] specializationNames) {
-            this.operationClass = operationsClass;
+        BytecodeRootNodeStatistics(Class<?> bytecodeClass, String decisionsFile, String[] instructionNames, String[][] specializationNames) {
+            this.bytecodeClass = bytecodeClass;
             this.decisionsFile = decisionsFile;
             this.instructionNames = instructionNames;
             this.specializationNames = specializationNames;
         }
 
-        private static OperationRootNodeStatistics createFromClass(Class<?> operationsClass) {
-            if (!operationsClass.isAnnotationPresent(TracingMetadata.class)) {
-                throw new AssertionError(String.format("Operations class %s does not contain the @%s annotation.", operationsClass.getName(), TracingMetadata.class.getName()));
+        private static BytecodeRootNodeStatistics createFromClass(Class<?> bytecodeClass) {
+            if (!bytecodeClass.isAnnotationPresent(TracingMetadata.class)) {
+                throw new AssertionError(String.format("Bytecode class %s does not contain the @%s annotation.", bytecodeClass.getName(), TracingMetadata.class.getName()));
             }
-            TracingMetadata metadata = operationsClass.getAnnotation(TracingMetadata.class);
+            TracingMetadata metadata = bytecodeClass.getAnnotation(TracingMetadata.class);
 
             String[] instructionNames = metadata.instructionNames();
 
@@ -191,7 +191,7 @@ public class OperationsStatistics {
                 specializationNames[instructionId] = entry.specializations();
             }
 
-            return new OperationRootNodeStatistics(operationsClass, metadata.decisionsFile(), instructionNames, specializationNames);
+            return new BytecodeRootNodeStatistics(bytecodeClass, metadata.decisionsFile(), instructionNames, specializationNames);
         }
 
         public void writeDecisions(PrintWriter dumpWriter) throws IOException {
@@ -203,9 +203,9 @@ public class OperationsStatistics {
             }
         }
 
-        private static OperationRootNodeStatistics deserialize(OperationsStatistics parent, JSONObject data) throws ClassNotFoundException {
+        private static BytecodeRootNodeStatistics deserialize(BytecodeStatistics parent, JSONObject data) throws ClassNotFoundException {
             Class<?> key = Class.forName(data.getString("rootNode"));
-            OperationRootNodeStatistics result = parent.getStatistics(key);
+            BytecodeRootNodeStatistics result = parent.getStatistics(key);
             result.allTracers.add(EnabledExecutionTracer.deserialize(result, data));
             return result;
         }
@@ -221,7 +221,7 @@ public class OperationsStatistics {
 
         private JSONObject serialize() {
             JSONObject result = collect().serialize();
-            result.put("rootNode", operationClass.getName());
+            result.put("rootNode", bytecodeClass.getName());
             return result;
         }
 
@@ -273,7 +273,7 @@ public class OperationsStatistics {
 
     private static final class EnabledExecutionTracer extends ExecutionTracer {
 
-        private final OperationRootNodeStatistics stats;
+        private final BytecodeRootNodeStatistics stats;
 
         private static class PseudoInstruction {
             private String name;
@@ -315,7 +315,7 @@ public class OperationsStatistics {
         private static class RegularInstruction extends PseudoInstruction {
             private final int instruction;
 
-            RegularInstruction(OperationRootNodeStatistics stats, int instruction) {
+            RegularInstruction(BytecodeRootNodeStatistics stats, int instruction) {
                 super(stats.instructionNames[instruction], true);
                 this.instruction = instruction;
             }
@@ -326,7 +326,7 @@ public class OperationsStatistics {
             @CompilationFinal(dimensions = 1) final boolean[] activeSpecializations;
             int countActive = -1; // lazily computed
 
-            SpecializationState(OperationRootNodeStatistics stats, int instructionId, boolean[] activeSpecializations) {
+            SpecializationState(BytecodeRootNodeStatistics stats, int instructionId, boolean[] activeSpecializations) {
                 super(makeName(stats, instructionId, activeSpecializations), false);
                 this.instructionId = instructionId;
                 this.activeSpecializations = activeSpecializations;
@@ -399,7 +399,7 @@ public class OperationsStatistics {
                 return result;
             }
 
-            private static SpecializationState deserialize(OperationRootNodeStatistics stats, JSONObject obj) {
+            private static SpecializationState deserialize(BytecodeRootNodeStatistics stats, JSONObject obj) {
                 int id = obj.getInt("id");
                 int count = obj.getInt("count");
                 boolean[] activeSpecializations = new boolean[count];
@@ -416,7 +416,7 @@ public class OperationsStatistics {
                 return "SpecializationState [" + instructionId + ", " + Arrays.toString(activeSpecializations) + "]";
             }
 
-            private static String makeName(OperationRootNodeStatistics stats, int instructionId, boolean[] activeSpecializations) {
+            private static String makeName(BytecodeRootNodeStatistics stats, int instructionId, boolean[] activeSpecializations) {
                 String s = stats.instructionNames[instructionId] + ".q";
 
                 for (int i = 0; i < activeSpecializations.length; i++) {
@@ -432,7 +432,7 @@ public class OperationsStatistics {
         private static class InstructionSequence extends PseudoInstruction {
             final int[] instructions;
 
-            InstructionSequence(OperationRootNodeStatistics stats, int[] instructions) {
+            InstructionSequence(BytecodeRootNodeStatistics stats, int[] instructions) {
                 super(makeName(stats, instructions), false);
                 this.instructions = instructions;
             }
@@ -456,12 +456,12 @@ public class OperationsStatistics {
                 return String.join(",", Arrays.stream(instructions).mapToObj(Integer::toString).toArray(String[]::new));
             }
 
-            public static InstructionSequence fromKey(OperationRootNodeStatistics stats, String key) {
+            public static InstructionSequence fromKey(BytecodeRootNodeStatistics stats, String key) {
                 int[] instructions = Arrays.stream(key.split(",")).mapToInt(Integer::parseInt).toArray();
                 return new InstructionSequence(stats, instructions);
             }
 
-            static String makeName(OperationRootNodeStatistics stats, int[] instructions) {
+            static String makeName(BytecodeRootNodeStatistics stats, int[] instructions) {
                 String s = "si";
 
                 for (int i = 0; i < instructions.length; i++) {
@@ -514,7 +514,7 @@ public class OperationsStatistics {
         private int[] instrHistory = null;
         private int instrHistoryLen = 0;
 
-        private EnabledExecutionTracer(OperationRootNodeStatistics stats) {
+        private EnabledExecutionTracer(BytecodeRootNodeStatistics stats) {
             this.stats = stats;
         }
 
@@ -681,7 +681,7 @@ public class OperationsStatistics {
             return result;
         }
 
-        private static EnabledExecutionTracer deserialize(OperationRootNodeStatistics stats, JSONObject obj) {
+        private static EnabledExecutionTracer deserialize(BytecodeRootNodeStatistics stats, JSONObject obj) {
             EnabledExecutionTracer inst = new EnabledExecutionTracer(stats);
             JSONArray activeSpecializationsData = obj.getJSONArray("activeSpecializations");
 
@@ -705,7 +705,7 @@ public class OperationsStatistics {
             return inst;
         }
 
-        private static void orderDecisions(List<Decision> output, List<Decision> input, int expectedCount, OperationRootNodeStatistics stats) {
+        private static void orderDecisions(List<Decision> output, List<Decision> input, int expectedCount, BytecodeRootNodeStatistics stats) {
             int outputCount = input.size() < expectedCount ? input.size() : expectedCount;
 
             for (int i = 0; i < outputCount; i++) {
@@ -721,9 +721,9 @@ public class OperationsStatistics {
 
         private static final int NUM_DECISIONS = 30;
 
-        public JSONArray serializeDecisions(OperationRootNodeStatistics stats, PrintWriter dumpWriter) {
+        public JSONArray serializeDecisions(BytecodeRootNodeStatistics stats, PrintWriter dumpWriter) {
             JSONArray result = new JSONArray();
-            result.put("This file is autogenerated by the Operations DSL.");
+            result.put("This file is autogenerated by the Bytecode DSL.");
             result.put("Do not modify, as it will be overwritten when running with tracing support.");
             result.put("Use the overrides file to alter the optimisation decisions.");
 
@@ -757,8 +757,8 @@ public class OperationsStatistics {
             }).filter(x -> x.value() > 0).sorted(Decision.COMPARATOR).limit(64).forEach(acceptedDecisions::add);
 
             if (dumpWriter != null) {
-                dumpWriter.println("======================== OPERATION DSL TRACING DECISIONS ======================== ");
-                dumpWriter.println("# For " + stats.operationClass.getSimpleName());
+                dumpWriter.println("======================== BYTECODE DSL TRACING DECISIONS ======================== ");
+                dumpWriter.println("# For " + stats.bytecodeClass.getSimpleName());
                 dumpWriter.println();
             }
 

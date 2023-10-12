@@ -42,7 +42,7 @@ package com.oracle.truffle.api.bytecode.instrumentation;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.ProbeNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -76,7 +76,7 @@ public class InstrumentRootNode extends Node implements InstrumentableNode {
     }
 
     public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
-        return ((OperationRootNode) getParent()).materializeInstrumentTree(materializedTags);
+        return ((BytecodeRootNode) getParent()).materializeInstrumentTree(materializedTags);
     }
 
     static final class Wrapper extends InstrumentRootNode implements WrapperNode {

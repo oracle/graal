@@ -44,7 +44,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
-import com.oracle.truffle.api.bytecode.OperationSupport;
+import com.oracle.truffle.api.bytecode.BytecodeSupport;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.GeneratedBy;
@@ -123,7 +123,7 @@ public class ManualBytecodeInterpreter extends BaseBytecodeNode {
                     int profileIdx = localBc[bci + 2];
                     frame.clear(sp - 1);
                     sp -= 1;
-                    if (OperationSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
+                    if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
                         bci = localBc[bci + 1];
                         continue loop;
                     } else {
@@ -233,7 +233,7 @@ class ManualUnsafeBytecodeInterpreter extends BaseBytecodeNode {
                     int profileIdx = UFA.shortArrayRead(localBc, bci + 2);
                     UFA.clear(frame, sp - 1);
                     sp -= 1;
-                    if (OperationSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
+                    if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
                         bci = UFA.shortArrayRead(localBc, bci + 1);
                         continue loop;
                     } else {
@@ -285,7 +285,7 @@ abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
          * interpreter will allocate just enough space for the branches, but for small programs this
          * overhead should be insignificant.
          */
-        this.branchProfiles = OperationSupport.allocateBranchProfiles(SimpleOperationBenchmark.NUM_BYTECODE_PROFILES);
+        this.branchProfiles = BytecodeSupport.allocateBranchProfiles(SimpleOperationBenchmark.NUM_BYTECODE_PROFILES);
     }
 
     @CompilationFinal(dimensions = 1) protected short[] bc;
@@ -412,7 +412,7 @@ class ManualBytecodeInterpreterWithoutBE extends BaseBytecodeNode {
                     int profileIdx = localBc[bci + 2];
                     frame.clear(sp - 1);
                     sp -= 1;
-                    if (OperationSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
+                    if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
                         bci = localBc[bci + 1];
                         continue loop;
                     } else {
@@ -560,7 +560,7 @@ class ManualUnsafeNodedInterpreter extends BaseBytecodeNode {
                     int profileIdx = UFA.shortArrayRead(bc, bci + 2);
                     UFA.clear(frame, sp - 1);
                     sp -= 1;
-                    if (OperationSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
+                    if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
                         bci = UFA.shortArrayRead(localBc, bci + 1);
                         continue loop;
                     } else {
@@ -680,7 +680,7 @@ class ManualUnsafeNodedInterpreterWithoutBE extends BaseBytecodeNode {
                     int profileIdx = UFA.shortArrayRead(localBc, bci + 2);
                     UFA.clear(frame, sp - 1);
                     sp -= 1;
-                    if (OperationSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
+                    if (BytecodeSupport.profileBranch(localBranchProfiles, profileIdx, !cond)) {
                         bci = UFA.shortArrayRead(localBc, bci + 1);
                         continue loop;
                     } else {

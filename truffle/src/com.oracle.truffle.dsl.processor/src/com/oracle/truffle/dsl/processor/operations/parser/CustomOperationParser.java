@@ -416,12 +416,12 @@ public final class CustomOperationParser extends AbstractParser<CustomOperationM
 
         operation.operationArgumentTypes = new TypeMirror[signature.localSetterCount + signature.localSetterRangeCount];
         for (int i = 0; i < signature.localSetterCount; i++) {
-            operation.operationArgumentTypes[i] = types.OperationLocal;
+            operation.operationArgumentTypes[i] = types.BytecodeLocal;
         }
         for (int i = 0; i < signature.localSetterRangeCount; i++) {
             // todo: we might want to migrate this to a special type that validates order
-            // e.g. OperationLocalRange
-            operation.operationArgumentTypes[signature.localSetterCount + i] = new CodeTypeMirror.ArrayCodeTypeMirror(types.OperationLocal);
+            // e.g. BytecodeLocalRange
+            operation.operationArgumentTypes[signature.localSetterCount + i] = new CodeTypeMirror.ArrayCodeTypeMirror(types.BytecodeLocal);
         }
         operation.childrenMustBeValues = new boolean[signature.valueCount];
         Arrays.fill(operation.childrenMustBeValues, true);

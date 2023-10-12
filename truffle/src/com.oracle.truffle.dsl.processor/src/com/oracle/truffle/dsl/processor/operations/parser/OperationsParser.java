@@ -99,22 +99,22 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
     protected OperationsModelList parse(Element element, List<AnnotationMirror> mirror) {
         TypeElement typeElement = (TypeElement) element;
         /*
-         * In regular usage, a language annotates a RootNode with {@link GenerateOperations} and the
+         * In regular usage, a language annotates a RootNode with {@link GenerateBytecode} and the
          * DSL generates a single bytecode interpreter. However, for internal testing purposes, we
-         * may use {@link GenerateOperationsTestVariants} to generate multiple interpreters. In the
+         * may use {@link GenerateBytecodeTestVariants} to generate multiple interpreters. In the
          * latter case, we need to parse multiple configurations and ensure they agree.
          */
-        AnnotationMirror generateOperationsTestVariantsMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), types.GenerateOperationsTestVariants);
+        AnnotationMirror generateBytecodeTestVariantsMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), types.GenerateBytecodeTestVariants);
         List<OperationsModel> models;
         AnnotationMirror topLevelAnnotationMirror;
-        if (generateOperationsTestVariantsMirror != null) {
-            topLevelAnnotationMirror = generateOperationsTestVariantsMirror;
-            models = parseGenerateOperationsTestVariants(typeElement, generateOperationsTestVariantsMirror);
+        if (generateBytecodeTestVariantsMirror != null) {
+            topLevelAnnotationMirror = generateBytecodeTestVariantsMirror;
+            models = parseGenerateBytecodeTestVariants(typeElement, generateBytecodeTestVariantsMirror);
         } else {
-            AnnotationMirror generateOperationsMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), types.GenerateOperations);
-            assert generateOperationsMirror != null;
-            topLevelAnnotationMirror = generateOperationsMirror;
-            models = List.of(new OperationsModel(context, typeElement, generateOperationsMirror, "Gen"));
+            AnnotationMirror generateBytecodeMirror = ElementUtils.findAnnotationMirror(element.getAnnotationMirrors(), types.GenerateBytecode);
+            assert generateBytecodeMirror != null;
+            topLevelAnnotationMirror = generateBytecodeMirror;
+            models = List.of(new OperationsModel(context, typeElement, generateBytecodeMirror, "Gen"));
         }
 
         OperationsModelList modelList = new OperationsModelList(context, typeElement, topLevelAnnotationMirror, models);
@@ -134,7 +134,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
 
     }
 
-    private List<OperationsModel> parseGenerateOperationsTestVariants(TypeElement typeElement, AnnotationMirror mirror) {
+    private List<OperationsModel> parseGenerateBytecodeTestVariants(TypeElement typeElement, AnnotationMirror mirror) {
         List<AnnotationMirror> variants = ElementUtils.getAnnotationValueList(AnnotationMirror.class, mirror, "value");
 
         boolean first = true;
@@ -148,31 +148,31 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
             AnnotationValue suffixValue = ElementUtils.getAnnotationValue(variant, "suffix");
             String suffix = ElementUtils.resolveAnnotationValue(String.class, suffixValue);
 
-            AnnotationValue generateOperationsMirrorValue = ElementUtils.getAnnotationValue(variant, "configuration");
-            AnnotationMirror generateOperationsMirror = ElementUtils.resolveAnnotationValue(AnnotationMirror.class, generateOperationsMirrorValue);
+            AnnotationValue generateBytecodeMirrorValue = ElementUtils.getAnnotationValue(variant, "configuration");
+            AnnotationMirror generateBytecodeMirror = ElementUtils.resolveAnnotationValue(AnnotationMirror.class, generateBytecodeMirrorValue);
 
-            OperationsModel model = new OperationsModel(context, typeElement, generateOperationsMirror, suffix);
+            OperationsModel model = new OperationsModel(context, typeElement, generateBytecodeMirror, suffix);
 
             if (!first && suffixes.contains(suffix)) {
                 model.addError(variant, suffixValue, "A variant with suffix \"%s\" already exists. Each variant must have a unique suffix.", suffix);
             }
             suffixes.add(suffix);
 
-            AnnotationValue variantLanguageClassValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass");
+            AnnotationValue variantLanguageClassValue = ElementUtils.getAnnotationValue(generateBytecodeMirror, "languageClass");
             TypeMirror variantLanguageClass = ElementUtils.resolveAnnotationValue(TypeMirror.class, variantLanguageClassValue);
             if (first) {
                 languageClass = variantLanguageClass;
             } else if (!languageClass.equals(variantLanguageClass)) {
-                model.addError(generateOperationsMirror, variantLanguageClassValue, "Incompatible variant: all variants must use the same language class.");
+                model.addError(generateBytecodeMirror, variantLanguageClassValue, "Incompatible variant: all variants must use the same language class.");
             }
 
-            AnnotationValue variantEnableYieldValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "enableYield");
+            AnnotationValue variantEnableYieldValue = ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableYield");
             boolean variantEnableYield = ElementUtils.resolveAnnotationValue(Boolean.class,
                             variantEnableYieldValue);
             if (first) {
                 enableYield = variantEnableYield;
             } else if (variantEnableYield != enableYield) {
-                model.addError(generateOperationsMirror, variantEnableYieldValue, "Incompatible variant: all variants must have the same value for enableYield.");
+                model.addError(generateBytecodeMirror, variantEnableYieldValue, "Incompatible variant: all variants must have the same value for enableYield.");
             }
 
             first = false;
@@ -183,13 +183,13 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
     }
 
     @SuppressWarnings("unchecked")
-    private void parseOperationsModel(TypeElement typeElement, OperationsModel model, AnnotationMirror generateOperationsMirror) {
-        model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateOperationsMirror, "languageClass").getValue();
-        model.enableUncachedInterpreter = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableUncachedInterpreter", true).getValue();
-        model.enableSerialization = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableSerialization", true).getValue();
-        model.allowUnsafe = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "allowUnsafe", true).getValue();
-        model.enableYield = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "enableYield", true).getValue();
-        model.storeBciInFrame = (boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "storeBciInFrame", true).getValue();
+    private void parseOperationsModel(TypeElement typeElement, OperationsModel model, AnnotationMirror generateBytecodeMirror) {
+        model.languageClass = (DeclaredType) ElementUtils.getAnnotationValue(generateBytecodeMirror, "languageClass").getValue();
+        model.enableUncachedInterpreter = (boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableUncachedInterpreter", true).getValue();
+        model.enableSerialization = (boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableSerialization", true).getValue();
+        model.allowUnsafe = (boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "allowUnsafe", true).getValue();
+        model.enableYield = (boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "enableYield", true).getValue();
+        model.storeBciInFrame = (boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "storeBciInFrame", true).getValue();
         model.addDefault();
 
         // check basic declaration properties
@@ -201,8 +201,8 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
             model.addError(typeElement, "Operations class must directly or indirectly subclass %s.", getSimpleName(types.RootNode));
         }
 
-        if (!ElementUtils.isAssignable(typeElement.asType(), types.OperationRootNode)) {
-            model.addError(typeElement, "Operations class must directly or indirectly implement %s.", getSimpleName(types.OperationRootNode));
+        if (!ElementUtils.isAssignable(typeElement.asType(), types.BytecodeRootNode)) {
+            model.addError(typeElement, "Operations class must directly or indirectly implement %s.", getSimpleName(types.BytecodeRootNode));
         }
 
         // Find the appropriate constructor.
@@ -269,14 +269,14 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
                         ElementUtils.findMethod(types.BytecodeOSRNode, "setOSRMetadata"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "storeParentFrameInArguments"),
                         ElementUtils.findMethod(types.BytecodeOSRNode, "restoreParentFrameFromArguments"),
-                        ElementUtils.findMethod(types.OperationRootNode, "setUncachedInterpreterThreshold"),
-                        ElementUtils.findMethod(types.OperationRootNode, "materializeInstrumentTree"),
-                        ElementUtils.findMethod(types.OperationRootNode, "getSourceSectionAtBci"),
-                        ElementUtils.findMethod(types.OperationRootNode, "findBciOfOperationNode"),
-                        ElementUtils.findMethod(types.OperationRootNode, "readBciFromFrame"),
-                        ElementUtils.findMethod(types.OperationRootNode, "getLocals"),
-                        ElementUtils.findMethod(types.OperationRootNode, "copyLocals", 2),
-                        ElementUtils.findMethod(types.OperationRootNode, "copyLocals", 3));
+                        ElementUtils.findMethod(types.BytecodeRootNode, "setUncachedInterpreterThreshold"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "materializeInstrumentTree"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "getSourceSectionAtBci"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "findBciOfOperationNode"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "readBciFromFrame"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "getLocals"),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "copyLocals", 2),
+                        ElementUtils.findMethod(types.BytecodeRootNode, "copyLocals", 3));
 
         for (ExecutableElement override : overrides) {
             ExecutableElement declared = ElementUtils.findMethod(typeElement, override.getSimpleName().toString());
@@ -326,7 +326,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
         // find and bind boxing elimination types
         Set<TypeMirror> beTypes = new HashSet<>();
 
-        List<AnnotationValue> boxingEliminatedTypes = (List<AnnotationValue>) ElementUtils.getAnnotationValue(generateOperationsMirror, "boxingEliminationTypes").getValue();
+        List<AnnotationValue> boxingEliminatedTypes = (List<AnnotationValue>) ElementUtils.getAnnotationValue(generateBytecodeMirror, "boxingEliminationTypes").getValue();
         for (AnnotationValue value : boxingEliminatedTypes) {
 
             TypeMirror mir = getTypeMirror(value);
@@ -341,8 +341,8 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
         model.boxingEliminatedTypes = beTypes;
 
         // optimization decisions & tracing
-        AnnotationValue decisionsFileValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsFile", false);
-        AnnotationValue decisionsOverrideFilesValue = ElementUtils.getAnnotationValue(generateOperationsMirror, "decisionsOverrideFiles", false);
+        AnnotationValue decisionsFileValue = ElementUtils.getAnnotationValue(generateBytecodeMirror, "decisionsFile", false);
+        AnnotationValue decisionsOverrideFilesValue = ElementUtils.getAnnotationValue(generateBytecodeMirror, "decisionsOverrideFiles", false);
         String[] decisionsOverrideFilesPath = new String[0];
 
         if (decisionsFileValue != null) {
@@ -350,7 +350,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
 
             if (TruffleProcessorOptions.operationsEnableTracing(processingEnv)) {
                 model.enableTracing = true;
-            } else if ((boolean) ElementUtils.getAnnotationValue(generateOperationsMirror, "forceTracing", true).getValue()) {
+            } else if ((boolean) ElementUtils.getAnnotationValue(generateBytecodeMirror, "forceTracing", true).getValue()) {
                 model.addWarning("Operation DSL execution tracing is forced on. Use this only during development.");
                 model.enableTracing = true;
             }
@@ -485,7 +485,7 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
     }
 
     private String errorPrefix() {
-        return String.format("Failed to generate code for @%s: ", getSimpleName(types.GenerateOperations));
+        return String.format("Failed to generate code for @%s: ", getSimpleName(types.GenerateBytecode));
     }
 
     private String resolveElementRelativePath(Element element, String relativePath) {
@@ -574,16 +574,16 @@ public class OperationsParser extends AbstractParser<OperationsModelList> {
 
     @Override
     public DeclaredType getAnnotationType() {
-        return types.GenerateOperations;
+        return types.GenerateBytecode;
     }
 
     @Override
     public DeclaredType getRepeatAnnotationType() {
         /**
-         * This annotation is not technically a Repeatable container for @GenerateOperations, but it
-         * is a convenient way to get the processor framework to forward a node with this annotation
-         * to the OperationsParser.
+         * This annotation is not technically a Repeatable container for {@link @GenerateBytecode},
+         * but it is a convenient way to get the processor framework to forward a node with this
+         * annotation to the OperationsParser.
          */
-        return types.GenerateOperationsTestVariants;
+        return types.GenerateBytecodeTestVariants;
     }
 }

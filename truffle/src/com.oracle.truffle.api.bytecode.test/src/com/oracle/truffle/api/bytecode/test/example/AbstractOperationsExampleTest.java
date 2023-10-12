@@ -10,7 +10,7 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.bytecode.OperationParser;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 
 @RunWith(Parameterized.class)
 public abstract class AbstractOperationsExampleTest {
@@ -25,7 +25,7 @@ public abstract class AbstractOperationsExampleTest {
 
     @Parameter(0) public Class<? extends OperationsExample> interpreterClass;
 
-    public <T extends OperationsExampleBuilder> RootCallTarget parse(String rootName, OperationParser<T> builder) {
+    public <T extends OperationsExampleBuilder> RootCallTarget parse(String rootName, BytecodeParser<T> builder) {
         return OperationsExampleCommon.parse(interpreterClass, rootName, builder);
     }
 

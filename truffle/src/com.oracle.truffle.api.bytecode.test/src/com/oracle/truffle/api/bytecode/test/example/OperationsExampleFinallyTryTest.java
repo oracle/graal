@@ -8,8 +8,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.bytecode.OperationLabel;
-import com.oracle.truffle.api.bytecode.OperationLocal;
+import com.oracle.truffle.api.bytecode.BytecodeLabel;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 
 public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTest {
@@ -139,7 +139,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
 
         RootCallTarget root = parse("finallyTryBindBasic", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLocal ex = b.createLocal();
+            BytecodeLocal ex = b.createLocal();
             b.beginFinallyTry(ex);
             b.beginIfThenElse();
             b.beginNonNull();
@@ -172,7 +172,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
 
         RootCallTarget root = parse("finallyTryBindException", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLocal ex = b.createLocal();
+            BytecodeLocal ex = b.createLocal();
             b.beginFinallyTry(ex);
                 b.beginIfThenElse();
                 b.beginNonNull();
@@ -209,7 +209,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
 
         RootCallTarget root = parse("finallyTryBindReturn", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLocal ex = b.createLocal();
+            BytecodeLocal ex = b.createLocal();
             b.beginFinallyTry(ex);
                 b.beginIfThenElse();
                 b.beginNonNull();
@@ -249,7 +249,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
 
         RootCallTarget root = parse("finallyTryBranchOut", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLabel lbl = b.createLabel();
+            BytecodeLabel lbl = b.createLabel();
 
             b.beginFinallyTry(b.createLocal());
                 emitAppend(b, 3);
@@ -289,7 +289,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
         thrown.expectMessage("Branches inside finally handlers can only target labels defined in the same handler.");
         parse("finallyTryBranchForwardOutOfHandler", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLabel lbl = b.createLabel();
+            BytecodeLabel lbl = b.createLabel();
 
             b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
@@ -335,8 +335,8 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
         thrown.expectMessage("Backward branches are unsupported. Use a While operation to model backward control flow.");
         parse("finallyTryBranchBackwardOutOfHandler", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLabel lbl = b.createLabel();
-            OperationLocal local = b.createLocal();
+            BytecodeLabel lbl = b.createLabel();
+            BytecodeLocal local = b.createLocal();
 
             b.beginTeeLocal(local);
             b.emitLoadConstant(0L);
@@ -404,7 +404,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
 
             b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
-                    OperationLabel lbl = b.createLabel();
+                    BytecodeLabel lbl = b.createLabel();
                     emitAppend(b, 3);
                     b.emitBranch(lbl);
                     emitAppend(b, 4);
@@ -609,7 +609,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
         RootCallTarget root = parse("finallyTryLoopWithinHandler", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLocal local = b.createLocal();
+            BytecodeLocal local = b.createLocal();
 
             b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
@@ -851,7 +851,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
 
             b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
-                    OperationLabel lbl = b.createLabel();
+                    BytecodeLabel lbl = b.createLabel();
 
                     b.emitBranch(lbl);
 
@@ -884,7 +884,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
 
             b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
-                    OperationLabel lbl = b.createLabel();
+                    BytecodeLabel lbl = b.createLabel();
 
                     b.emitBranch(lbl);
 
@@ -919,7 +919,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
 
             b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
-                    OperationLabel lbl = b.createLabel();
+                    BytecodeLabel lbl = b.createLabel();
                     b.emitLabel(lbl);
                     emitReturn(b, 0);
                 b.endBlock();
@@ -963,7 +963,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
 
             b.beginFinallyTry(b.createLocal());
                 b.beginBlock();
-                    OperationLabel lbl = b.createLabel();
+                    BytecodeLabel lbl = b.createLabel();
 
                     b.beginFinallyTry(b.createLocal());
                         b.beginBlock();
@@ -1035,7 +1035,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
                 b.beginBlock();
                     b.beginFinallyTry(b.createLocal()); // b
                         b.beginBlock();
-                            OperationLabel lbl = b.createLabel();
+                            BytecodeLabel lbl = b.createLabel();
 
                             emitAppend(b, 5);
                             b.beginFinallyTry(b.createLocal()); // c
@@ -1111,7 +1111,7 @@ public class OperationsExampleFinallyTryTest extends AbstractOperationsExampleTe
                         emitAppend(b, 7);
 
                         b.beginBlock();
-                            OperationLabel lbl = b.createLabel();
+                            BytecodeLabel lbl = b.createLabel();
                             emitAppend(b, 4);
                             b.emitBranch(lbl);
                             emitAppend(b, 5);

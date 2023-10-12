@@ -48,7 +48,7 @@ import java.util.stream.Collectors;
 import org.graalvm.shadowed.org.json.JSONArray;
 import org.graalvm.shadowed.org.json.JSONObject;
 
-import com.oracle.truffle.api.bytecode.tracing.OperationsStatistics.OperationRootNodeStatistics;
+import com.oracle.truffle.api.bytecode.tracing.BytecodeStatistics.BytecodeRootNodeStatistics;
 
 abstract class Decision {
     static final Comparator<Decision> COMPARATOR = (o1, o2) -> -Double.compare(o1.value(), o2.value());
@@ -62,20 +62,20 @@ abstract class Decision {
 
     abstract double value();
 
-    abstract String id(OperationRootNodeStatistics stats);
+    abstract String id(BytecodeRootNodeStatistics stats);
 
-    protected abstract String prettyPrint(OperationRootNodeStatistics stats, double normalizationValue);
+    protected abstract String prettyPrint(BytecodeRootNodeStatistics stats, double normalizationValue);
 
-    protected String createsInstruction(@SuppressWarnings("unused") OperationRootNodeStatistics stats) {
+    protected String createsInstruction(@SuppressWarnings("unused") BytecodeRootNodeStatistics stats) {
         return null;
     }
 
     @SuppressWarnings("unused")
-    boolean acceptedBefore(Decision decision, OperationRootNodeStatistics stats) {
+    boolean acceptedBefore(Decision decision, BytecodeRootNodeStatistics stats) {
         return false;
     }
 
-    JSONObject serialize(OperationRootNodeStatistics stats, double normalizationValue) {
+    JSONObject serialize(BytecodeRootNodeStatistics stats, double normalizationValue) {
         JSONObject obj = new JSONObject();
         obj.put("_comment", "value: " + value() / normalizationValue);
         obj.put("type", type);
@@ -101,13 +101,13 @@ abstract class Decision {
         }
 
         @Override
-        String id(OperationRootNodeStatistics stats) {
+        String id(BytecodeRootNodeStatistics stats) {
             String s = Arrays.stream(specializations).mapToObj(x -> stats.specializationNames[instruction][x]).collect(Collectors.joining(","));
             return String.format("quicken:%s:%s", stats.instructionNames[instruction], s);
         }
 
         @Override
-        JSONObject serialize(OperationRootNodeStatistics stats, double norm) {
+        JSONObject serialize(BytecodeRootNodeStatistics stats, double norm) {
             JSONObject result = super.serialize(stats, norm);
             String instrName = stats.instructionNames[instruction];
             String shortName;
@@ -129,7 +129,7 @@ abstract class Decision {
         }
 
         @Override
-        protected String prettyPrint(OperationRootNodeStatistics stats, double normalizationValue) {
+        protected String prettyPrint(BytecodeRootNodeStatistics stats, double normalizationValue) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("Quicken ").append(id(stats)).append('\n');
@@ -144,7 +144,7 @@ abstract class Decision {
         }
 
         @Override
-        protected String createsInstruction(OperationRootNodeStatistics stats) {
+        protected String createsInstruction(BytecodeRootNodeStatistics stats) {
             String s = stats.instructionNames[instruction] + ".q";
 
             List<String> specs = Arrays.stream(specializations).mapToObj(x -> stats.specializationNames[instruction][x]).collect(Collectors.toList());
@@ -174,12 +174,12 @@ abstract class Decision {
         }
 
         @Override
-        String id(OperationRootNodeStatistics stats) {
+        String id(BytecodeRootNodeStatistics stats) {
             return String.format("si:%s", Arrays.stream(instructions).mapToObj(x -> stats.instructionNames[x]).collect(Collectors.joining(",")));
         }
 
         @Override
-        boolean acceptedBefore(Decision decision, OperationRootNodeStatistics stats) {
+        boolean acceptedBefore(Decision decision, BytecodeRootNodeStatistics stats) {
             boolean changed = false;
             if (decision instanceof SuperInstruction) {
                 SuperInstruction si = (SuperInstruction) decision;
@@ -200,7 +200,7 @@ abstract class Decision {
         }
 
         @Override
-        JSONObject serialize(OperationRootNodeStatistics stats, double norm) {
+        JSONObject serialize(BytecodeRootNodeStatistics stats, double norm) {
             JSONObject result = super.serialize(stats, norm);
 
             JSONArray instrNames = new JSONArray();
@@ -213,7 +213,7 @@ abstract class Decision {
         }
 
         @Override
-        protected String prettyPrint(OperationRootNodeStatistics stats, double normalizationValue) {
+        protected String prettyPrint(BytecodeRootNodeStatistics stats, double normalizationValue) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("SuperInstruction ").append(id(stats)).append('\n');
@@ -227,7 +227,7 @@ abstract class Decision {
         }
 
         @Override
-        protected String createsInstruction(OperationRootNodeStatistics stats) {
+        protected String createsInstruction(BytecodeRootNodeStatistics stats) {
             String s = "si";
 
             for (int i = 0; i < instructions.length; i++) {
@@ -260,7 +260,7 @@ abstract class Decision {
         }
 
         @Override
-        boolean acceptedBefore(Decision decision, OperationRootNodeStatistics stats) {
+        boolean acceptedBefore(Decision decision, BytecodeRootNodeStatistics stats) {
             if (instruction.equals(decision.createsInstruction(stats))) {
                 doCount = true;
                 return true;
@@ -270,19 +270,19 @@ abstract class Decision {
         }
 
         @Override
-        JSONObject serialize(OperationRootNodeStatistics stats, double norm) {
+        JSONObject serialize(BytecodeRootNodeStatistics stats, double norm) {
             JSONObject result = super.serialize(stats, 1.0);
             result.put("instruction", instruction);
             return result;
         }
 
         @Override
-        String id(OperationRootNodeStatistics stats) {
+        String id(BytecodeRootNodeStatistics stats) {
             return "c:" + instruction;
         }
 
         @Override
-        protected String prettyPrint(OperationRootNodeStatistics stats, double normalizationValue) {
+        protected String prettyPrint(BytecodeRootNodeStatistics stats, double normalizationValue) {
             StringBuilder sb = new StringBuilder();
 
             sb.append("Common ").append(id(stats)).append('\n');

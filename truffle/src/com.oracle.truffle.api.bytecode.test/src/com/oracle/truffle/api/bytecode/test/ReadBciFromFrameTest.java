@@ -10,12 +10,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.ContinuationResult;
-import com.oracle.truffle.api.bytecode.GenerateOperations;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationLocal;
-import com.oracle.truffle.api.bytecode.OperationParser;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.test.OperationNodeWithStoredBci.MyException;
 import com.oracle.truffle.api.bytecode.test.OperationNodeWithStoredBci.RootAndFrame;
 import com.oracle.truffle.api.bytecode.test.example.OperationsExampleLanguage;
@@ -38,8 +38,8 @@ public class ReadBciFromFrameTest {
      * walk. @Bind variables are also included in this criteria, because the operation
      * could @Bind("$root") and then invoke {@link OperationRootNode#readBciFromFrame} on $root.
      */
-    public OperationNodeWithStoredBci parseNode(OperationParser<OperationNodeWithStoredBciGen.Builder> builder) {
-        return OperationNodeWithStoredBciGen.create(OperationConfig.WITH_SOURCE, builder).getNodes().get(0);
+    public OperationNodeWithStoredBci parseNode(BytecodeParser<OperationNodeWithStoredBciGen.Builder> builder) {
+        return OperationNodeWithStoredBciGen.create(BytecodeConfig.WITH_SOURCE, builder).getNodes().get(0);
     }
 
     @Test
@@ -51,7 +51,7 @@ public class ReadBciFromFrameTest {
             b.beginSourceSection(0, 16);
             b.beginBlock();
 
-            OperationLocal rootAndFrame = b.createLocal();
+            BytecodeLocal rootAndFrame = b.createLocal();
             b.beginStoreLocal(rootAndFrame);
             b.emitMakeRootAndFrame();
             b.endStoreLocal();
@@ -98,7 +98,7 @@ public class ReadBciFromFrameTest {
             b.beginSource(source);
             b.beginBlock();
 
-            OperationLocal rootAndFrame = b.createLocal();
+            BytecodeLocal rootAndFrame = b.createLocal();
             b.beginStoreLocal(rootAndFrame);
             b.emitMakeRootAndFrame();
             b.endStoreLocal();
@@ -131,7 +131,7 @@ public class ReadBciFromFrameTest {
             b.beginSource(source);
             b.beginBlock();
 
-            OperationLocal rootAndFrame = b.createLocal();
+            BytecodeLocal rootAndFrame = b.createLocal();
             b.beginStoreLocal(rootAndFrame);
             b.emitMakeRootAndFrame();
             b.endStoreLocal();
@@ -169,7 +169,7 @@ public class ReadBciFromFrameTest {
             b.beginSource(source);
             b.beginBlock();
 
-            OperationLocal rootAndFrame = b.createLocal();
+            BytecodeLocal rootAndFrame = b.createLocal();
             b.beginStoreLocal(rootAndFrame);
             b.emitMakeRootAndFrame();
             b.endStoreLocal();
@@ -205,8 +205,8 @@ public class ReadBciFromFrameTest {
     }
 }
 
-@GenerateOperations(languageClass = OperationsExampleLanguage.class, storeBciInFrame = true, enableYield = true)
-abstract class OperationNodeWithStoredBci extends RootNode implements OperationRootNode {
+@GenerateBytecode(languageClass = OperationsExampleLanguage.class, storeBciInFrame = true, enableYield = true)
+abstract class OperationNodeWithStoredBci extends RootNode implements BytecodeRootNode {
 
     protected OperationNodeWithStoredBci(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);

@@ -38,52 +38,64 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.introspection;
+package com.oracle.truffle.api.bytecode;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.stream.Collectors;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.TruffleObject;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.ExportLibrary;
+import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.SourceSection;
 
-public final class OperationIntrospection {
+@ExportLibrary(InteropLibrary.class)
+final class BytecodeStackTraceElement implements TruffleObject {
 
-    public interface Provider {
-        default OperationIntrospection getIntrospectionData() {
-            throw new UnsupportedOperationException();
-        }
+    private final SourceSection sourceSection;
+    private final RootNode rootNode;
 
-        static OperationIntrospection create(Object... data) {
-            return new OperationIntrospection(data);
+    BytecodeStackTraceElement(RootNode rootNode, SourceSection sourceSection) {
+        this.rootNode = rootNode;
+        this.sourceSection = sourceSection;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    @SuppressWarnings("static-method")
+    boolean hasExecutableName() {
+        return rootNode.getName() != null;
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    Object getExecutableName() {
+        return rootNode.getName();
+    }
+
+    @ExportMessage
+    boolean hasSourceLocation() {
+        return sourceSection != null;
+    }
+
+    @ExportMessage
+    SourceSection getSourceLocation() throws UnsupportedMessageException {
+        if (sourceSection == null) {
+            throw UnsupportedMessageException.create();
+        } else {
+            return sourceSection;
         }
     }
 
-    private final Object[] data;
-
-    // format: [int 0, Object[] instructions, Object[] exHandlers, Object[] sourceInfo or null]
-    // instruction: [int index, String name, short[] bytes, Object[] argumentValues]
-    // argumentValue: [ArgumentKind kind, Object value]
-    // exHandler: [int startIndex, int endIndex, int handlerIndex, int exVariable]
-    // sourceInfo: [int startIndex, int endIndex, SourceSection ss]
-
-    private OperationIntrospection(Object[] data) {
-        if (data.length == 0 || (int) data[0] != 0) {
-            throw new UnsupportedOperationException("Illegal operation introspection version");
-        }
-
-        this.data = data;
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    boolean hasDeclaringMetaObject() {
+        return false;
     }
 
-    public List<Instruction> getInstructions() {
-        return Arrays.stream((Object[]) data[1]).map(x -> new Instruction((Object[]) x)).collect(Collectors.toUnmodifiableList());
-    }
-
-    public List<ExceptionHandler> getExceptionHandlers() {
-        return Arrays.stream((Object[]) data[2]).map(x -> new ExceptionHandler((Object[]) x)).collect(Collectors.toUnmodifiableList());
-    }
-
-    public List<SourceInformation> getSourceInformation() {
-        if (data[3] == null) {
-            return null;
-        }
-        return Arrays.stream((Object[]) data[3]).map(x -> new SourceInformation((Object[]) x)).collect(Collectors.toUnmodifiableList());
+    @ExportMessage
+    @SuppressWarnings("static-method")
+    Object getDeclaringMetaObject() throws UnsupportedMessageException {
+        throw UnsupportedMessageException.create();
     }
 }

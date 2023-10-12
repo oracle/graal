@@ -48,13 +48,13 @@ import java.lang.annotation.Target;
 import com.oracle.truffle.api.dsl.Fallback;
 
 /**
- * Declares an operation. The specification of an operation defines a bytecode instruction in the
+ * Declares an operation. An operation serves as a specification for a bytecode instruction in the
  * generated interpreter.
  *
  * An operation class is declared the same way as a regular Truffle AST node, with a few
  * differences:
  * <ul>
- * <li>The class should be nested inside the top-level {@link OperationRootNode} class.
+ * <li>The class should be nested inside the top-level {@link BytecodeRootNode} class.
  * <li>The class should be declared {@code public static final}. It should not extend/implement any
  * other class/interface.
  * <li>The class should not contain instance members.

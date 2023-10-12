@@ -12,8 +12,8 @@ import org.junit.runners.Parameterized;
 import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
-import com.oracle.truffle.api.bytecode.OperationLocal;
-import com.oracle.truffle.api.bytecode.OperationParser;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.test.example.OperationsExampleBuilder;
 import com.oracle.truffle.api.bytecode.test.example.OperationsExample;
 import com.oracle.truffle.api.bytecode.test.example.OperationsExampleCommon;
@@ -36,7 +36,7 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
         return () -> result;
     }
 
-    private static <T extends OperationsExampleBuilder> OperationsExample parseNodeForPE(Class<? extends OperationsExample> interpreterClass, String rootName, OperationParser<T> builder) {
+    private static <T extends OperationsExampleBuilder> OperationsExample parseNodeForPE(Class<? extends OperationsExample> interpreterClass, String rootName, BytecodeParser<T> builder) {
         OperationsExample result = parseNode(interpreterClass, rootName, builder);
         result.setUncachedInterpreterThreshold(0); // force interpreter to skip tier 0
         return result;
@@ -104,8 +104,8 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
         OperationsExample root = parseNodeForPE(interpreterClass, "sum", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLocal i = b.createLocal();
-            OperationLocal sum = b.createLocal();
+            BytecodeLocal i = b.createLocal();
+            BytecodeLocal sum = b.createLocal();
 
             b.beginStoreLocal(i);
             b.emitLoadConstant(0L);
@@ -163,7 +163,7 @@ public class OperationPartialEvaluationTest extends PartialEvaluationTest {
         OperationsExample root = parseNodeForPE(interpreterClass, "sum", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLocal ex = b.createLocal();
+            BytecodeLocal ex = b.createLocal();
 
             b.beginTryCatch(ex);
 

@@ -14,16 +14,16 @@ import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.GenerateOperations;
-import com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationNodes;
-import com.oracle.truffle.api.bytecode.OperationParser;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.OperationProxy;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
-import com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants.Variant;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.bytecode.test.example.OperationsExampleLanguage;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.Node;
@@ -39,13 +39,13 @@ public class ShortCircuitTest {
     @Parameter(0) public Class<? extends BytecodeNodeWithShortCircuit> interpreterClass;
 
     @SuppressWarnings("unchecked")
-    public static <T extends BytecodeNodeWithShortCircuitBuilder> OperationNodes<BytecodeNodeWithShortCircuit> createNodes(
+    public static <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodes<BytecodeNodeWithShortCircuit> createNodes(
                     Class<? extends BytecodeNodeWithShortCircuit> interpreterClass,
-                    OperationConfig config,
-                    OperationParser<T> builder) {
+                    BytecodeConfig config,
+                    BytecodeParser<T> builder) {
         try {
-            Method create = interpreterClass.getMethod("create", OperationConfig.class, OperationParser.class);
-            return (OperationNodes<BytecodeNodeWithShortCircuit>) create.invoke(null, config, builder);
+            Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
+            return (BytecodeNodes<BytecodeNodeWithShortCircuit>) create.invoke(null, config, builder);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.
@@ -57,12 +57,12 @@ public class ShortCircuitTest {
     }
 
     public static <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodeWithShortCircuit parseNode(Class<? extends BytecodeNodeWithShortCircuit> interpreterClass,
-                    OperationParser<T> builder) {
-        OperationNodes<BytecodeNodeWithShortCircuit> nodes = createNodes(interpreterClass, OperationConfig.DEFAULT, builder);
+                    BytecodeParser<T> builder) {
+        BytecodeNodes<BytecodeNodeWithShortCircuit> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
         return nodes.getNodes().get(nodes.getNodes().size() - 1);
     }
 
-    public <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodeWithShortCircuit parseNode(OperationParser<T> builder) {
+    public <T extends BytecodeNodeWithShortCircuitBuilder> BytecodeNodeWithShortCircuit parseNode(BytecodeParser<T> builder) {
         return parseNode(interpreterClass, builder);
     }
 
@@ -296,9 +296,9 @@ public class ShortCircuitTest {
 
 }
 
-@GenerateOperationsTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class)),
-                @Variant(suffix = "WithBE", configuration = @GenerateOperations(languageClass = OperationsExampleLanguage.class, boxingEliminationTypes = {boolean.class, int.class}))
+@GenerateBytecodeTestVariants({
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class)),
+                @Variant(suffix = "WithBE", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class, boxingEliminationTypes = {boolean.class, int.class}))
 })
 @OperationProxy(value = BooleanConverterOperationProxy.class)
 /**
@@ -311,7 +311,7 @@ public class ShortCircuitTest {
 @ShortCircuitOperation(name = "ObjectOr", continueWhen = false, booleanConverter = BooleanConverterOperationProxy.class)
 @ShortCircuitOperation(name = "BoolAnd", continueWhen = true, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class, returnConvertedValue = true)
 @ShortCircuitOperation(name = "BoolOr", continueWhen = false, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class, returnConvertedValue = true)
-abstract class BytecodeNodeWithShortCircuit extends RootNode implements OperationRootNode {
+abstract class BytecodeNodeWithShortCircuit extends RootNode implements BytecodeRootNode {
     protected BytecodeNodeWithShortCircuit(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }

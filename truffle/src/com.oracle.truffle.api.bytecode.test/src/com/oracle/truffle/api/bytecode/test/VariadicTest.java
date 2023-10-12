@@ -48,11 +48,11 @@ import org.junit.Test;
 
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.Env;
-import com.oracle.truffle.api.bytecode.GenerateOperations;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationParser;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.dsl.GenerateAOT;
 import com.oracle.truffle.api.dsl.GenerateUncached;
@@ -128,8 +128,8 @@ public class VariadicTest {
         }
     }
 
-    VariadicOperationsNode parse(OperationParser<VariadicOperationsNodeGen.Builder> builder) {
-        VariadicOperationsNode root = VariadicOperationsNodeGen.create(OperationConfig.COMPLETE, builder).getNodes().get(0);
+    VariadicOperationsNode parse(BytecodeParser<VariadicOperationsNodeGen.Builder> builder) {
+        VariadicOperationsNode root = VariadicOperationsNodeGen.create(BytecodeConfig.COMPLETE, builder).getNodes().get(0);
         if (TRACE) {
             System.out.println(root.dump());
             System.out.println(ROOT_OVERHEAD);
@@ -146,10 +146,10 @@ public class VariadicTest {
         }
     }
 
-    @GenerateOperations(boxingEliminationTypes = {long.class}, languageClass = TestLanguage.class, enableYield = true, enableSerialization = true)
+    @GenerateBytecode(boxingEliminationTypes = {long.class}, languageClass = TestLanguage.class, enableYield = true, enableSerialization = true)
     @GenerateAOT
     @GenerateUncached
-    public abstract static class VariadicOperationsNode extends RootNode implements OperationRootNode {
+    public abstract static class VariadicOperationsNode extends RootNode implements BytecodeRootNode {
 
         protected VariadicOperationsNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);

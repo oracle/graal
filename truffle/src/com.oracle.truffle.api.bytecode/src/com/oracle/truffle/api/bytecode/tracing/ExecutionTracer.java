@@ -40,17 +40,17 @@
  */
 package com.oracle.truffle.api.bytecode.tracing;
 
-import com.oracle.truffle.api.bytecode.tracing.OperationsStatistics.DisabledExecutionTracer;
+import com.oracle.truffle.api.bytecode.tracing.BytecodeStatistics.DisabledExecutionTracer;
 import com.oracle.truffle.api.nodes.RootNode;
 
 // per-context per-ops per-thread
 public abstract class ExecutionTracer {
-    public static ExecutionTracer get(Class<?> operationsClass) {
-        OperationsStatistics stats = OperationsStatistics.STATISTICS.get();
+    public static ExecutionTracer get(Class<?> bytecodeClass) {
+        BytecodeStatistics stats = BytecodeStatistics.STATISTICS.get();
         if (stats == null) {
             return DisabledExecutionTracer.INSTANCE;
         } else {
-            return stats.getStatistics(operationsClass).getTracer();
+            return stats.getStatistics(bytecodeClass).getTracer();
         }
     }
 

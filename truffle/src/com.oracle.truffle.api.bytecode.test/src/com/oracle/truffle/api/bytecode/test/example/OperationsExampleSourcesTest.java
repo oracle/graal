@@ -10,8 +10,8 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationNodes;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -286,7 +286,7 @@ public class OperationsExampleSourcesTest extends AbstractOperationsExampleTest 
     public void testSourceReparse() {
         // Test input taken from testSource above.
         Source source = Source.newBuilder("test", "return 1", "test.test").build();
-        OperationNodes<OperationsExample> nodes = OperationsExampleCommon.createNodes(interpreterClass, OperationConfig.DEFAULT, b -> {
+        BytecodeNodes<OperationsExample> nodes = OperationsExampleCommon.createNodes(interpreterClass, BytecodeConfig.DEFAULT, b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(source);
             b.beginSourceSection(0, 8);
@@ -305,7 +305,7 @@ public class OperationsExampleSourcesTest extends AbstractOperationsExampleTest 
         });
 
         assertFalse(nodes.hasSources());
-        nodes.updateConfiguration(OperationConfig.WITH_SOURCE);
+        nodes.updateConfiguration(BytecodeConfig.WITH_SOURCE);
         assertTrue(nodes.hasSources());
 
         OperationsExample node = nodes.getNodes().get(0);

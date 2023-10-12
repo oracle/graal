@@ -185,7 +185,7 @@ public final class TruffleProcessor extends AbstractProcessor {
         annotations.add(TruffleTypes.ExportLibrary_Name);
         annotations.add(TruffleTypes.ExportMessage_Name);
         annotations.add(TruffleTypes.ExportLibrary_Repeat_Name);
-        annotations.add(TruffleTypes.GenerateOperations_Name);
+        annotations.add(TruffleTypes.GenerateBytecode_Name);
         annotations.add(TruffleTypes.OperationProxy_Proxyable_Name);
         return annotations;
     }

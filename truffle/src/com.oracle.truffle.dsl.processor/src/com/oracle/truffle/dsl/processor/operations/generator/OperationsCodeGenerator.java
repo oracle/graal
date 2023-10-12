@@ -86,7 +86,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsMo
             return results;
         }
 
-        // For testing: when using {@link GenerateOperationsTestVariants}, we want to have a single
+        // For testing: when using {@link GenerateBytecodeTestVariants}, we want to have a single
         // shared Builder interface that can be used in tests.
         List<CodeTypeElement> builders = results.stream().map(result -> (CodeTypeElement) ElementUtils.findTypeElement(result, "Builder")).toList();
 
@@ -138,7 +138,7 @@ public class OperationsCodeGenerator extends CodeTypeElementFactory<OperationsMo
         TypeElement templateType = modelList.getTemplateType();
         String builderName = templateType.getSimpleName() + "Builder";
         CodeTypeElement abstractBuilderClass = new CodeTypeElement(Set.of(Modifier.PUBLIC, Modifier.ABSTRACT), ElementKind.CLASS, ElementUtils.findPackageElement(templateType), builderName);
-        abstractBuilderClass.setSuperClass(types.OperationBuilder);
+        abstractBuilderClass.setSuperClass(types.BytecodeBuilder);
         for (ExecutableElement method : expectedPublicInterface) {
             Set<Modifier> modifiers = new HashSet<>(method.getModifiers());
             modifiers.add(Modifier.ABSTRACT);

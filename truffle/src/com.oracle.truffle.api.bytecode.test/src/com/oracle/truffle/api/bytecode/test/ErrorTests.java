@@ -43,12 +43,12 @@ package com.oracle.truffle.api.bytecode.test;
 import java.util.Set;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.GenerateOperations;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.LocalSetter;
 import com.oracle.truffle.api.bytecode.LocalSetterRange;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.test.subpackage.NonPublicGuardExpressionOperationProxy;
@@ -72,8 +72,8 @@ import com.oracle.truffle.api.source.SourceSection;
 @SuppressWarnings({"unused", "static-method", "truffle"})
 public class ErrorTests {
     @ExpectError("Operations class must be declared abstract.")
-    @GenerateOperations(languageClass = ErrorLanguage.class)
-    public class MustBeDeclaredAbstract extends RootNode implements OperationRootNode {
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public class MustBeDeclaredAbstract extends RootNode implements BytecodeRootNode {
         protected MustBeDeclaredAbstract(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
@@ -97,31 +97,31 @@ public class ErrorTests {
     }
 
     @ExpectError("Operations class must directly or indirectly subclass RootNode.")
-    @GenerateOperations(languageClass = ErrorLanguage.class)
-    public abstract class MustBeSubclassOfRootNode implements OperationRootNode {
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract class MustBeSubclassOfRootNode implements BytecodeRootNode {
         protected MustBeSubclassOfRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         }
     }
 
-    @ExpectError("Operations class must directly or indirectly implement OperationRootNode.")
-    @GenerateOperations(languageClass = ErrorLanguage.class)
-    public abstract class MustImplementOperationRootNode extends RootNode {
-        protected MustImplementOperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    @ExpectError("Operations class must directly or indirectly implement BytecodeRootNode.")
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract class MustImplementBytecodeRootNode extends RootNode {
+        protected MustImplementBytecodeRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
     }
 
     @ExpectError("Operations class should declare a constructor that has signature (TruffleLanguage<C>, FrameDescriptor) or (TruffleLanguage<C>, FrameDescriptor.Builder). The constructor should be visible to subclasses.")
-    @GenerateOperations(languageClass = ErrorLanguage.class)
-    public abstract class HiddenConstructor extends RootNode implements OperationRootNode {
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract class HiddenConstructor extends RootNode implements BytecodeRootNode {
         private HiddenConstructor(TruffleLanguage<?> language, FrameDescriptor descriptor) {
             super(language, descriptor);
         }
     }
 
     @ExpectError("Operations class should declare a constructor that has signature (TruffleLanguage<C>, FrameDescriptor) or (TruffleLanguage<C>, FrameDescriptor.Builder). The constructor should be visible to subclasses.")
-    @GenerateOperations(languageClass = ErrorLanguage.class)
-    public abstract class InvalidConstructor extends RootNode implements OperationRootNode {
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract class InvalidConstructor extends RootNode implements BytecodeRootNode {
         protected InvalidConstructor() {
             super(null);
         }
@@ -147,8 +147,8 @@ public class ErrorTests {
         }
     }
 
-    @GenerateOperations(languageClass = ErrorLanguage.class)
-    public abstract class BadOverrides extends RootNode implements OperationRootNode {
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
+    public abstract class BadOverrides extends RootNode implements BytecodeRootNode {
         protected BadOverrides(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
         }
@@ -191,35 +191,35 @@ public class ErrorTests {
     }
 
     @ExpectError("The used type system 'com.oracle.truffle.api.bytecode.test.ErrorTests.ErroredTypeSystem' is invalid. Fix errors in the type system first.")
-    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
     @TypeSystemReference(ErroredTypeSystem.class)
-    public abstract class BadTypeSystem extends RootNode implements OperationRootNode {
+    public abstract class BadTypeSystem extends RootNode implements BytecodeRootNode {
         protected BadTypeSystem(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
     }
 
     @ExpectError("Cannot perform boxing elimination on java.lang.String. Remove this type from the boxing eliminated types list. Only primitive types boolean, byte, int, float, long, and double are supported.")
-    @GenerateOperations(languageClass = ErrorLanguage.class, boxingEliminationTypes = {String.class})
-    public abstract class BadBoxingElimination extends RootNode implements OperationRootNode {
+    @GenerateBytecode(languageClass = ErrorLanguage.class, boxingEliminationTypes = {String.class})
+    public abstract class BadBoxingElimination extends RootNode implements BytecodeRootNode {
         protected BadBoxingElimination(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
     }
 
     @ExpectError("Could not proxy operation: the proxied type must be a class, not int.")
-    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
     @OperationProxy(int.class)
-    public abstract class PrimitiveProxyType extends RootNode implements OperationRootNode {
+    public abstract class PrimitiveProxyType extends RootNode implements BytecodeRootNode {
         protected PrimitiveProxyType(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
     }
 
-    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError("Encountered errors using com.oracle.truffle.api.bytecode.test.ErrorTests.NoCachedProxyType.NodeWithNoCache as an OperationProxy. These errors must be resolved before the DSL can proceed.")
     @OperationProxy(NoCachedProxyType.NodeWithNoCache.class)
-    public abstract class NoCachedProxyType extends RootNode implements OperationRootNode {
+    public abstract class NoCachedProxyType extends RootNode implements BytecodeRootNode {
         protected NoCachedProxyType(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
@@ -236,7 +236,7 @@ public class ErrorTests {
         }
     }
 
-    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError({
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.ErrorTests.NonFinalOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
                     "Encountered errors using com.oracle.truffle.api.bytecode.test.ErrorTests.NonStaticInnerOperationProxy as an OperationProxy. These errors must be resolved before the DSL can proceed.",
@@ -255,7 +255,7 @@ public class ErrorTests {
     @OperationProxy(BadSignatureOperationProxy.class)
     @OperationProxy(Underscored_Operation_Proxy.class)
     @OperationProxy(UnproxyableOperationProxy.class)
-    public abstract static class OperationErrorTests extends RootNode implements OperationRootNode {
+    public abstract static class OperationErrorTests extends RootNode implements BytecodeRootNode {
         protected OperationErrorTests(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
@@ -355,7 +355,7 @@ public class ErrorTests {
         }
     }
 
-    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError({
                     "Operation NonPublicSpecializationOperationProxy's specialization \"add\" must be visible from this node.",
                     "Operation NonPublicSpecializationOperationProxy's specialization \"fallback\" must be visible from this node.",
@@ -366,7 +366,7 @@ public class ErrorTests {
     @OperationProxy(NonPublicSpecializationOperationProxy.class)
     @OperationProxy(NonPublicGuardExpressionOperationProxy.class)
     @OperationProxy(NestedNodeOperationProxy.class)
-    public abstract static class BadSpecializationOrDSLTests extends RootNode implements OperationRootNode {
+    public abstract static class BadSpecializationOrDSLTests extends RootNode implements BytecodeRootNode {
 
         protected BadSpecializationOrDSLTests(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
             super(language, frameDescriptor);
@@ -517,11 +517,11 @@ public class ErrorTests {
         }
     }
 
-    @GenerateOperations(languageClass = ErrorLanguage.class, enableUncachedInterpreter = true)
+    @GenerateBytecode(languageClass = ErrorLanguage.class, enableUncachedInterpreter = true)
     @ExpectError({"Could not use com.oracle.truffle.api.bytecode.test.ErrorTests.NoUncachedOperationProxy as an operation proxy: the class must be annotated with @GenerateUncached when an uncached interpreter is requested."})
     @OperationProxy(UncachedOperationProxy.class)
     @OperationProxy(NoUncachedOperationProxy.class)
-    public abstract static class OperationErrorUncachedTests extends RootNode implements OperationRootNode {
+    public abstract static class OperationErrorUncachedTests extends RootNode implements BytecodeRootNode {
         protected OperationErrorUncachedTests(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
@@ -544,11 +544,11 @@ public class ErrorTests {
         }
     }
 
-    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError({"Multiple operations declared with name MyOperation. Operation names must be distinct."})
     @OperationProxy(value = AddOperation.class, name = "MyOperation")
     @OperationProxy(value = SubOperation.class, name = "MyOperation")
-    public abstract static class DuplicateOperationNameTest extends RootNode implements OperationRootNode {
+    public abstract static class DuplicateOperationNameTest extends RootNode implements BytecodeRootNode {
         protected DuplicateOperationNameTest(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
@@ -570,22 +570,22 @@ public class ErrorTests {
         }
     }
 
-    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError({"At least one operation must be declared using @Operation, @OperationProxy, or @ShortCircuitOperation."})
-    public abstract static class NoOperationsTest extends RootNode implements OperationRootNode {
+    public abstract static class NoOperationsTest extends RootNode implements BytecodeRootNode {
         protected NoOperationsTest(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
     }
 
-    @GenerateOperations(languageClass = ErrorLanguage.class)
+    @GenerateBytecode(languageClass = ErrorLanguage.class)
     @ExpectError({
                     "Specializations for boolean converter ToBooleanBadReturn must only take one value parameter and return boolean.",
                     "Encountered errors using ToBooleanBadOperation as a boolean converter. These errors must be resolved before the DSL can proceed."
     })
     @ShortCircuitOperation(name = "Foo", continueWhen = true, booleanConverter = BadBooleanConverterTest.ToBooleanBadReturn.class)
     @ShortCircuitOperation(name = "Bar", continueWhen = true, booleanConverter = BadBooleanConverterTest.ToBooleanBadOperation.class)
-    public abstract static class BadBooleanConverterTest extends RootNode implements OperationRootNode {
+    public abstract static class BadBooleanConverterTest extends RootNode implements BytecodeRootNode {
         protected BadBooleanConverterTest(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }
@@ -617,8 +617,8 @@ public class ErrorTests {
                     "Unknown optimization decision type: 'MadeUpType'.",
                     "Error reading optimization decisions: Super-instruction 'si.made.up.instruction' defines a sub-instruction 'made.up.instruction' which does not exist.",
     })
-    @GenerateOperations(languageClass = ErrorLanguage.class, decisionsFile = "bad_decisions.json")
-    public abstract static class OperationDecisionErrorTests extends RootNode implements OperationRootNode {
+    @GenerateBytecode(languageClass = ErrorLanguage.class, decisionsFile = "bad_decisions.json")
+    public abstract static class OperationDecisionErrorTests extends RootNode implements BytecodeRootNode {
         protected OperationDecisionErrorTests(TruffleLanguage<?> language, FrameDescriptor builder) {
             super(language, builder);
         }

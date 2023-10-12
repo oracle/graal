@@ -41,25 +41,25 @@
 package com.oracle.truffle.api.benchmark.operation;
 
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.GenerateOperations;
-import com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants;
 import com.oracle.truffle.api.bytecode.Operation;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
-import com.oracle.truffle.api.bytecode.GenerateOperationsTestVariants.Variant;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
 
-@GenerateOperationsTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class)),
-                @Variant(suffix = "WithUncached", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, enableUncachedInterpreter = true)),
-                @Variant(suffix = "Unsafe", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, allowUnsafe = true)),
-                @Variant(suffix = "BoxingEliminated", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, boxingEliminationTypes = {int.class, boolean.class})),
-                @Variant(suffix = "Quickened", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, decisionsFile = "decisions.json")),
-                @Variant(suffix = "All", configuration = @GenerateOperations(languageClass = BenchmarkLanguage.class, enableUncachedInterpreter = true, allowUnsafe = true, boxingEliminationTypes = {
+@GenerateBytecodeTestVariants({
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class)),
+                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableUncachedInterpreter = true)),
+                @Variant(suffix = "Unsafe", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, allowUnsafe = true)),
+                @Variant(suffix = "BoxingEliminated", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, boxingEliminationTypes = {int.class, boolean.class})),
+                @Variant(suffix = "Quickened", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, decisionsFile = "decisions.json")),
+                @Variant(suffix = "All", configuration = @GenerateBytecode(languageClass = BenchmarkLanguage.class, enableUncachedInterpreter = true, allowUnsafe = true, boxingEliminationTypes = {
                                 int.class, boolean.class}, decisionsFile = "decisions.json"))
 })
-abstract class BMOperationRootNode extends RootNode implements OperationRootNode {
+abstract class BMOperationRootNode extends RootNode implements BytecodeRootNode {
 
     protected BMOperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);

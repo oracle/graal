@@ -38,22 +38,59 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode.serialization;
+package com.oracle.truffle.api.bytecode;
 
-import java.io.DataInput;
-import java.io.IOException;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
+import com.oracle.truffle.api.instrumentation.ProbeNode;
+import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+public class BytecodeInstrumentTreeNode extends Node implements InstrumentableNode {
 
-public interface OperationDeserializer {
+    private static class Wrapper extends BytecodeInstrumentTreeNode implements WrapperNode {
+        private final Node delegateNode;
+        private final ProbeNode probeNode;
 
-    interface DeserializerContext {
+        Wrapper(BytecodeInstrumentTreeNode delegateNode, ProbeNode probeNode) {
+            super(delegateNode.tag);
+            this.delegateNode = delegateNode;
+            this.probeNode = probeNode;
+        }
 
-        OperationRootNode readOperationNode(DataInput buffer) throws IOException;
+        public Node getDelegateNode() {
+            return delegateNode;
+        }
+
+        public ProbeNode getProbeNode() {
+            return probeNode;
+        }
+
+        @Override
+        public ProbeNode getTreeProbeNode() {
+            return probeNode;
+        }
     }
 
-    /**
-     * Must not be dependent on any side-effects of the language.
-     */
-    Object deserialize(DeserializerContext context, DataInput buffer) throws IOException;
+    private final Class<? extends Tag> tag;
+
+    public BytecodeInstrumentTreeNode(Class<? extends Tag> tag) {
+        this.tag = tag;
+    }
+
+    public boolean isInstrumentable() {
+        return true;
+    }
+
+    public WrapperNode createWrapper(ProbeNode probe) {
+        return new Wrapper(this, probe);
+    }
+
+    public ProbeNode getTreeProbeNode() {
+        return null;
+    }
+
+    public boolean hasTag(Class<? extends Tag> other) {
+        return tag == other;
+    }
+
 }

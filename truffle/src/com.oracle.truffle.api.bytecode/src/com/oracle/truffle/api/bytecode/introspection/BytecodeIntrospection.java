@@ -38,63 +38,52 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode;
+package com.oracle.truffle.api.bytecode.introspection;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
+import java.util.Arrays;
+import java.util.List;
+import java.util.stream.Collectors;
 
-/**
- * Subclass of {@link AbstractTruffleException} that can be used for operations interpreters.
- *
- * Operations interpreters do not necessarily have {@link Node nodes} to use as source location
- * markers. Instead, when possible, this class uses the {@code bci} to {@link getSourceSection
- * compute source sections}.
- *
- * @since 24.0
- */
-public abstract class AbstractOperationsTruffleException extends AbstractTruffleException {
+public final class BytecodeIntrospection {
 
-    private static final long serialVersionUID = -534184847100559365L;
-    private static final int INVALID_BCI = -1;
-
-    private final int bci;
-
-    public AbstractOperationsTruffleException() {
-        super();
-        bci = INVALID_BCI;
-    }
-
-    public AbstractOperationsTruffleException(String message) {
-        super(message);
-        this.bci = INVALID_BCI;
-    }
-
-    public AbstractOperationsTruffleException(AbstractOperationsTruffleException prototype) {
-        super(prototype);
-        this.bci = prototype.bci;
-    }
-
-    public AbstractOperationsTruffleException(Node location, int bci) {
-        super(location);
-        this.bci = bci;
-    }
-
-    public AbstractOperationsTruffleException(String message, Node location, int bci) {
-        super(message, location);
-        this.bci = bci;
-    }
-
-    public AbstractOperationsTruffleException(String message, Throwable cause, int stackTraceElementLimit, Node location, int bci) {
-        super(message, cause, stackTraceElementLimit, location);
-        this.bci = bci;
-    }
-
-    @Override
-    public SourceSection getSourceSection() {
-        if (bci == INVALID_BCI || !(getLocation() instanceof OperationRootNode operationRootNode)) {
-            return super.getSourceSection();
+    public interface Provider {
+        default BytecodeIntrospection getIntrospectionData() {
+            throw new UnsupportedOperationException();
         }
-        return operationRootNode.getSourceSectionAtBci(bci);
+
+        static BytecodeIntrospection create(Object... data) {
+            return new BytecodeIntrospection(data);
+        }
+    }
+
+    private final Object[] data;
+
+    // format: [int 0, Object[] instructions, Object[] exHandlers, Object[] sourceInfo or null]
+    // instruction: [int index, String name, short[] bytes, Object[] argumentValues]
+    // argumentValue: [ArgumentKind kind, Object value]
+    // exHandler: [int startIndex, int endIndex, int handlerIndex, int exVariable]
+    // sourceInfo: [int startIndex, int endIndex, SourceSection ss]
+
+    private BytecodeIntrospection(Object[] data) {
+        if (data.length == 0 || (int) data[0] != 0) {
+            throw new UnsupportedOperationException("Illegal operation introspection version");
+        }
+
+        this.data = data;
+    }
+
+    public List<Instruction> getInstructions() {
+        return Arrays.stream((Object[]) data[1]).map(x -> new Instruction((Object[]) x)).collect(Collectors.toUnmodifiableList());
+    }
+
+    public List<ExceptionHandler> getExceptionHandlers() {
+        return Arrays.stream((Object[]) data[2]).map(x -> new ExceptionHandler((Object[]) x)).collect(Collectors.toUnmodifiableList());
+    }
+
+    public List<SourceInformation> getSourceInformation() {
+        if (data[3] == null) {
+            return null;
+        }
+        return Arrays.stream((Object[]) data[3]).map(x -> new SourceInformation((Object[]) x)).collect(Collectors.toUnmodifiableList());
     }
 }

@@ -53,11 +53,11 @@ import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.bytecode.OperationConfig;
-import com.oracle.truffle.api.bytecode.OperationLabel;
-import com.oracle.truffle.api.bytecode.OperationLocal;
-import com.oracle.truffle.api.bytecode.OperationNodes;
-import com.oracle.truffle.api.bytecode.OperationParser;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLabel;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
+import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.debug.DebuggerTags;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
@@ -100,12 +100,12 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
     private static final boolean FORCE_SERIALIZE = false;
 
     public static void parseSL(SLLanguage language, Source source, Map<TruffleString, RootCallTarget> functions) {
-        OperationParser<SLOperationRootNodeGen.Builder> slParser = (b) -> {
+        BytecodeParser<SLOperationRootNodeGen.Builder> slParser = (b) -> {
             SLOperationsVisitor visitor = new SLOperationsVisitor(language, source, b);
             parseSLImpl(source, visitor);
         };
 
-        OperationNodes<SLOperationRootNode> nodes;
+        BytecodeNodes<SLOperationRootNode> nodes;
         if (FORCE_SERIALIZE) {
             try {
                 byte[] serializedData = SLOperationSerialization.serializeNodes(slParser);
@@ -114,7 +114,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
                 throw new RuntimeException(ex);
             }
         } else {
-            nodes = SLOperationRootNodeGen.create(OperationConfig.DEFAULT, slParser);
+            nodes = SLOperationRootNodeGen.create(BytecodeConfig.DEFAULT, slParser);
         }
 
         for (SLOperationRootNode node : nodes.getNodes()) {
@@ -149,10 +149,10 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
 
     private final SLOperationRootNodeGen.Builder b;
 
-    private OperationLabel breakLabel;
-    private OperationLabel continueLabel;
+    private BytecodeLabel breakLabel;
+    private BytecodeLabel continueLabel;
 
-    private final ArrayList<OperationLocal> locals = new ArrayList<>();
+    private final ArrayList<BytecodeLocal> locals = new ArrayList<>();
 
     @Override
     public Void visit(ParseTree tree) {
@@ -192,7 +192,7 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
             Token paramToken = ctx.IDENTIFIER(i + 1).getSymbol();
 
             TruffleString paramName = asTruffleString(paramToken, false);
-            OperationLocal argLocal = b.createLocal(paramName);
+            BytecodeLocal argLocal = b.createLocal(paramName);
             locals.add(argLocal);
 
             b.beginStoreLocal(argLocal);
@@ -280,8 +280,8 @@ public final class SLOperationsVisitor extends SLBaseVisitor {
 
     @Override
     public Void visitWhile_statement(While_statementContext ctx) {
-        OperationLabel oldBreak = breakLabel;
-        OperationLabel oldContinue = continueLabel;
+        BytecodeLabel oldBreak = breakLabel;
+        BytecodeLabel oldContinue = continueLabel;
 
         b.beginTag(StandardTags.StatementTag.class);
         b.beginBlock();

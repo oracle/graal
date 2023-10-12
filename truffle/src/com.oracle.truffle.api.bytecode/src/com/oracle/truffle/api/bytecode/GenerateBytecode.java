@@ -53,7 +53,7 @@ import com.oracle.truffle.api.TruffleLanguage;
  * is an example of an operation interpreter with a single {@code Add} operation.
  *
  * <pre>
- * &#64;GenerateOperations(languageClass = MyLanguage.class)
+ * &#64;GenerateBytecode(languageClass = MyLanguage.class)
  * public abstract class MyOperationRootNode extends RootNode implements OperationRootNode {
  *     &#64;Operation
  *     public static final class Add {
@@ -86,7 +86,7 @@ import com.oracle.truffle.api.TruffleLanguage;
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
-public @interface GenerateOperations {
+public @interface GenerateBytecode {
     /**
      * The {@link TruffleLanguage} class associated with this node.
      */
@@ -98,7 +98,7 @@ public @interface GenerateOperations {
      * rather than specializing nodes.
      *
      * The node will transition to a specializing interpreter after enough invocations/back-edges
-     * (as determined by the {@link OperationRootNode#setUncachedInterpreterThreshold uncached
+     * (as determined by the {@link BytecodeRootNode#setUncachedInterpreterThreshold uncached
      * interpreter threshold}).
      */
     boolean enableUncachedInterpreter() default false;
@@ -122,16 +122,16 @@ public @interface GenerateOperations {
     /**
      * Whether the generated interpreter should always store the bytecode index (bci) in the frame.
      *
-     * When this flag is set, the language can use {@link OperationRootNode#readBciFromFrame} to
+     * When this flag is set, the language can use {@link BytecodeRootNode#readBciFromFrame} to
      * read the bci from the frame. The interpreter does not always store the bci, so it is
-     * undefined behaviour to invoke {@link OperationRootNode#readBciFromFrame} when this flag is
+     * undefined behaviour to invoke {@link BytecodeRootNode#readBciFromFrame} when this flag is
      * {@code false}.
      *
      * Note that this flag can slow down interpreter performance, so it should only be set if the
      * language needs fast-path access to the bci outside of the current operation (e.g., for
      * closures or frame introspection). Within the current operation, you can bind the bci as a
      * parameter {@code @Bind("$bci")} on the fast path; if you only need access to the bci on the
-     * slow path, it can be computed from a stack walk using {@link OperationRootNode#findBci}.
+     * slow path, it can be computed from a stack walk using {@link BytecodeRootNode#findBci}.
      */
     boolean storeBciInFrame() default false;
 

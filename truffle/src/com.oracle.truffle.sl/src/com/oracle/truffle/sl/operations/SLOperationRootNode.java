@@ -43,10 +43,10 @@ package com.oracle.truffle.sl.operations;
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.TruffleLanguage;
-import com.oracle.truffle.api.bytecode.GenerateOperations;
+import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
 import com.oracle.truffle.api.bytecode.OperationProxy;
-import com.oracle.truffle.api.bytecode.OperationRootNode;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.ShortCircuitOperation;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.dsl.Bind;
@@ -84,7 +84,7 @@ import com.oracle.truffle.sl.nodes.util.SLUnboxNode;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 
-@GenerateOperations(//
+@GenerateBytecode(//
                 languageClass = SLLanguage.class, //
                 decisionsFile = "decisions.json", //
                 boxingEliminationTypes = {long.class, boolean.class}, //
@@ -105,7 +105,7 @@ import com.oracle.truffle.sl.runtime.SLUndefinedNameException;
 @OperationProxy(SLToBooleanNode.class)
 @ShortCircuitOperation(name = "SLAnd", booleanConverter = SLToBooleanNode.class, continueWhen = true)
 @ShortCircuitOperation(name = "SLOr", booleanConverter = SLToBooleanNode.class, continueWhen = false)
-public abstract class SLOperationRootNode extends SLRootNode implements OperationRootNode {
+public abstract class SLOperationRootNode extends SLRootNode implements BytecodeRootNode {
 
     protected SLOperationRootNode(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super((SLLanguage) language, frameDescriptor);

@@ -5,8 +5,8 @@ import static org.junit.Assert.assertEquals;
 import org.junit.Test;
 
 import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.bytecode.OperationLabel;
-import com.oracle.truffle.api.bytecode.OperationLocal;
+import com.oracle.truffle.api.bytecode.BytecodeLabel;
+import com.oracle.truffle.api.bytecode.BytecodeLocal;
 
 public class OperationsExampleBranchTest extends AbstractOperationsExampleTest {
     // @formatter:off
@@ -21,7 +21,7 @@ public class OperationsExampleBranchTest extends AbstractOperationsExampleTest {
         RootCallTarget root = parse("branchForward", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLabel lbl = b.createLabel();
+            BytecodeLabel lbl = b.createLabel();
 
             b.emitBranch(lbl);
             emitReturn(b, 0);
@@ -46,8 +46,8 @@ public class OperationsExampleBranchTest extends AbstractOperationsExampleTest {
         parse("branchBackward", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLabel lbl = b.createLabel();
-            OperationLocal loc = b.createLocal();
+            BytecodeLabel lbl = b.createLabel();
+            BytecodeLocal loc = b.createLocal();
 
             b.beginStoreLocal(loc);
             b.emitLoadConstant(0L);
@@ -93,7 +93,7 @@ public class OperationsExampleBranchTest extends AbstractOperationsExampleTest {
         RootCallTarget root = parse("branchOutwardValid", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLabel lbl = b.createLabel();
+            BytecodeLabel lbl = b.createLabel();
 
             b.beginBlock();
               b.beginIfThen();
@@ -128,11 +128,11 @@ public class OperationsExampleBranchTest extends AbstractOperationsExampleTest {
         // return 0;
 
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("OperationLabel was emitted at a position with a different stack height than a branch instruction that targets it. Branches must be balanced.");
+        thrown.expectMessage("BytecodeLabel was emitted at a position with a different stack height than a branch instruction that targets it. Branches must be balanced.");
         parse("branchOutwardInvalid", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLabel lbl = b.createLabel();
+            BytecodeLabel lbl = b.createLabel();
 
             b.beginReturn();
             b.beginAddOperation();
@@ -159,11 +159,11 @@ public class OperationsExampleBranchTest extends AbstractOperationsExampleTest {
         // return 1 + { lbl: 2 }
 
         thrown.expect(IllegalStateException.class);
-        thrown.expectMessage("OperationLabel must be emitted inside the same operation it was created in.");
+        thrown.expectMessage("BytecodeLabel must be emitted inside the same operation it was created in.");
         parse("branchInward", b -> {
             b.beginRoot(LANGUAGE);
 
-            OperationLabel lbl = b.createLabel();
+            BytecodeLabel lbl = b.createLabel();
             b.emitBranch(lbl);
 
             b.beginReturn();
@@ -201,9 +201,9 @@ public class OperationsExampleBranchTest extends AbstractOperationsExampleTest {
                 b.emitLoadConstant(40L);
 
                 b.beginBlock();
-                    OperationLocal result = b.createLocal();
-                    OperationLabel x = b.createLabel();
-                    OperationLabel y = b.createLabel();
+                    BytecodeLocal result = b.createLocal();
+                    BytecodeLabel x = b.createLabel();
+                    BytecodeLabel y = b.createLabel();
                     b.beginIfThen();
                         b.beginLessThanOperation();
                             b.emitLoadArgument(0);
@@ -250,7 +250,7 @@ public class OperationsExampleBranchTest extends AbstractOperationsExampleTest {
             b.beginRoot(LANGUAGE);
 
             b.beginBlock();
-                OperationLabel lbl = b.createLabel();
+                BytecodeLabel lbl = b.createLabel();
                 b.emitLabel(lbl);
                 emitReturn(b, 0);
             b.endBlock();
@@ -276,10 +276,10 @@ public class OperationsExampleBranchTest extends AbstractOperationsExampleTest {
 
         RootCallTarget root = parse("branchForward", b -> {
             b.beginRoot(LANGUAGE);
-            OperationLocal x = b.createLocal();
+            BytecodeLocal x = b.createLocal();
 
             b.beginBlock();
-            OperationLabel lbl = b.createLabel();
+            BytecodeLabel lbl = b.createLabel();
 
             b.beginStoreLocal(x);
             b.emitLoadConstant(42L);
