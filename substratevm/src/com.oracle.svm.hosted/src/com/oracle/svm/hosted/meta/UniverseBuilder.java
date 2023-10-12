@@ -1017,7 +1017,7 @@ public class UniverseBuilder {
 
         ObjectLayout ol = ConfigurationValues.getObjectLayout();
         for (HostedType type : hUniverse.getTypes()) {
-            hUniverse.bb.getHeartbeatCallback().run();
+            hUniverse.hostVM().recordActivity();
 
             int layoutHelper;
             boolean canInstantiateAsInstance = false;

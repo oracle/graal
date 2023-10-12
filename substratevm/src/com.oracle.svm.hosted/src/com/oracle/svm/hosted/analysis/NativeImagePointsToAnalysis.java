@@ -66,9 +66,9 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     public NativeImagePointsToAnalysis(OptionValues options, AnalysisUniverse universe,
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
-                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForkJoinPool executor, Runnable heartbeatCallback, UnsupportedFeatures unsupportedFeatures,
+                    AnnotationSubstitutionProcessor annotationSubstitutionProcessor, ForkJoinPool executor, UnsupportedFeatures unsupportedFeatures,
                     TimerCollection timerCollection) {
-        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executor, heartbeatCallback, unsupportedFeatures, timerCollection,
+        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executor, unsupportedFeatures, timerCollection,
                         SubstrateOptions.parseOnce());
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
 

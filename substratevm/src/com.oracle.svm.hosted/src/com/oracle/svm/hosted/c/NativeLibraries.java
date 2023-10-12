@@ -550,13 +550,13 @@ public final class NativeLibraries {
         }
     }
 
-    public void finish(ImageClassLoader loader) {
+    public void finish() {
         libraryPaths.addAll(SubstrateOptions.CLibraryPath.getValue().values().stream().map(Path::toString).collect(Collectors.toList()));
         for (NativeCodeContext context : compilationUnitToContext.values()) {
             if (context.isInConfiguration()) {
                 libraries.addAll(context.getDirectives().getLibraries());
                 libraryPaths.addAll(context.getDirectives().getLibraryPaths());
-                new CAnnotationProcessor(this, context).process(cache, loader);
+                new CAnnotationProcessor(this, context).process(cache);
             }
         }
     }

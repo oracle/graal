@@ -171,7 +171,7 @@ public class LLVMToolchainUtils {
         private CompletionExecutor executor;
 
         public BatchExecutor(BigBang bb, ForkJoinPool threadPool) {
-            this.executor = new CompletionExecutor(bb, threadPool, bb.getHeartbeatCallback());
+            this.executor = new CompletionExecutor(bb, threadPool);
             executor.init();
         }
 

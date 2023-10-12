@@ -543,6 +543,7 @@ public class NativeImageGenerator {
             ImageSingletonsSupportImpl.HostedManagement.install(new ImageSingletonsSupportImpl.HostedManagement());
 
             ImageSingletons.add(ProgressReporter.class, reporter);
+            ImageSingletons.add(DeadlockWatchdog.class, loader.watchdog);
             ImageSingletons.add(TimerCollection.class, timerCollection);
             ImageSingletons.add(ImageBuildStatistics.TimerCollectionPrinter.class, timerCollection);
             ImageSingletons.add(AnnotationExtractor.class, loader.classLoaderSupport.annotationExtractor);
@@ -603,7 +604,7 @@ public class NativeImageGenerator {
             HostedMetaAccess hMetaAccess;
             RuntimeConfiguration runtimeConfiguration;
             try (ReporterClosable c = reporter.printUniverse()) {
-                bb.getHeartbeatCallback().run();
+                loader.watchdog.recordActivity();
 
                 hUniverse = new HostedUniverse(bb);
                 hMetaAccess = new HostedMetaAccess(hUniverse, bb.getMetaAccess());
@@ -685,7 +686,7 @@ public class NativeImageGenerator {
                                     ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory());
                     codeCache.layoutConstants();
                     codeCache.layoutMethods(debug, bb, compilationExecutor);
-                    codeCache.buildRuntimeMetadata(bb.getSnippetReflectionProvider(), compilationExecutor, loader.watchdog::recordActivity);
+                    codeCache.buildRuntimeMetadata(bb.getSnippetReflectionProvider(), compilationExecutor);
                 }
 
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), codeCache, heap, debug,
@@ -702,7 +703,7 @@ public class NativeImageGenerator {
             try (Indent indent = debug.logAndIndent("create native image")) {
                 try (DebugContext.Scope buildScope = debug.scope("CreateImage", codeCacheProvider)) {
                     try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.IMAGE)) {
-                        bb.getHeartbeatCallback().run();
+                        loader.watchdog.recordActivity();
 
                         BeforeHeapLayoutAccessImpl beforeLayoutConfig = new BeforeHeapLayoutAccessImpl(featureHandler, loader, aUniverse, hUniverse, heap, debug, runtimeConfiguration,
                                         nativeLibraries);
@@ -743,7 +744,7 @@ public class NativeImageGenerator {
             int numCompilations = codeCache.getOrderedCompilations().size();
 
             try (StopTimer t = TimerCollection.createTimerAndStart(TimerCollection.Registry.WRITE)) {
-                bb.getHeartbeatCallback().run();
+                loader.watchdog.recordActivity();
                 BeforeImageWriteAccessImpl beforeConfig = new BeforeImageWriteAccessImpl(featureHandler, loader, imageName, image,
                                 runtimeConfiguration, aUniverse, hUniverse, optionProvider, hMetaAccess, debug);
                 featureHandler.forEachFeature(feature -> feature.beforeImageWrite(beforeConfig));
@@ -934,8 +935,7 @@ public class NativeImageGenerator {
 
                 ImageSingletons.add(SimulateClassInitializerSupport.class, ((SVMHost) aUniverse.hostVM()).createSimulateClassInitializerSupport(aMetaAccess));
 
-                bb = createBigBang(options, aUniverse, aMetaAccess, aProviders, analysisExecutor, loader.watchdog::recordActivity,
-                                annotationSubstitutions);
+                bb = createBigBang(options, aUniverse, aMetaAccess, aProviders, analysisExecutor, annotationSubstitutions);
                 aUniverse.setBigBang(bb);
 
                 /* Create the HeapScanner and install it into the universe. */
@@ -1212,7 +1212,6 @@ public class NativeImageGenerator {
     }
 
     private static Inflation createBigBang(OptionValues options, AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedProviders aProviders, ForkJoinPool analysisExecutor,
-                    Runnable heartbeatCallback,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {
         SnippetReflectionProvider snippetReflectionProvider = aProviders.getSnippetReflection();
         ConstantReflectionProvider constantReflectionProvider = aProviders.getConstantReflection();
@@ -1227,12 +1226,10 @@ public class NativeImageGenerator {
                 reachabilityMethodProcessingHandler = new DirectMethodProcessingHandler();
             }
             return new NativeImageReachabilityAnalysisEngine(options, aUniverse, aMetaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, annotationSubstitutionProcessor,
-                            analysisExecutor, heartbeatCallback,
-                            ImageSingletons.lookup(TimerCollection.class), reachabilityMethodProcessingHandler);
+                            analysisExecutor, ImageSingletons.lookup(TimerCollection.class), reachabilityMethodProcessingHandler);
         }
         return new NativeImagePointsToAnalysis(options, aUniverse, aMetaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, annotationSubstitutionProcessor, analysisExecutor,
-                        heartbeatCallback, new SubstrateUnsupportedFeatures(),
-                        ImageSingletons.lookup(TimerCollection.class));
+                        new SubstrateUnsupportedFeatures(), ImageSingletons.lookup(TimerCollection.class));
     }
 
     @SuppressWarnings("try")
@@ -1811,7 +1808,7 @@ public class NativeImageGenerator {
         }
         nativeLibs.processCLibraryAnnotations(loader);
 
-        nativeLibs.finish(loader);
+        nativeLibs.finish();
         nativeLibs.reportErrors();
     }
 
