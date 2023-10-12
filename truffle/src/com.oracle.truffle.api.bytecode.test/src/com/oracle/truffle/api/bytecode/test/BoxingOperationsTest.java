@@ -64,6 +64,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameDescriptor.Builder;
 import com.oracle.truffle.api.nodes.RootNode;
 
+// TODO: this test should be rewritten once we have something working for boxing elimination.
 @Ignore
 public class BoxingOperationsTest {
 

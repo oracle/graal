@@ -13,8 +13,8 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.test.OperationNodeWithHooks.MyException;
-import com.oracle.truffle.api.bytecode.test.OperationNodeWithHooks.ThrowStackOverflow;
+import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.MyException;
+import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithHooks.ThrowStackOverflow;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
@@ -24,14 +24,14 @@ import com.oracle.truffle.api.nodes.RootNode;
 
 public class HookTest {
 
-    public static OperationNodeWithHooks parseNode(BytecodeParser<OperationNodeWithHooksGen.Builder> builder) {
-        BytecodeNodes<OperationNodeWithHooks> nodes = OperationNodeWithHooksGen.create(BytecodeConfig.DEFAULT, builder);
+    public static BytecodeNodeWithHooks parseNode(BytecodeParser<BytecodeNodeWithHooksGen.Builder> builder) {
+        BytecodeNodes<BytecodeNodeWithHooks> nodes = BytecodeNodeWithHooksGen.create(BytecodeConfig.DEFAULT, builder);
         return nodes.getNodes().get(0);
     }
 
     @Test
     public void testSimplePrologEpilog() {
-        OperationNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeWithHooks root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
             b.emitReadArgument();
@@ -48,7 +48,7 @@ public class HookTest {
 
     @Test
     public void testThrowPrologEpilog() {
-        OperationNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeWithHooks root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
             b.beginThrow();
@@ -73,7 +73,7 @@ public class HookTest {
 
     @Test
     public void testInterceptStackOverflow() {
-        OperationNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeWithHooks root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
             b.emitThrowStackOverflow();
@@ -96,7 +96,7 @@ public class HookTest {
 
     @Test
     public void testInterceptTruffleExceptionSimple() {
-        OperationNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeWithHooks root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
             b.beginThrow();
@@ -119,7 +119,7 @@ public class HookTest {
     public void testInterceptTruffleExceptionFromInternal() {
         // The stack overflow should be intercepted as an internal error and then the converted
         // exception should be intercepted as a Truffle exception.
-        OperationNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeWithHooks root = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
             b.emitThrowStackOverflow();
@@ -139,7 +139,7 @@ public class HookTest {
     @Test
     public void testInterceptTruffleExceptionPropagated() {
         // The bci should be overridden when it propagates to the root from child.
-        OperationNodeWithHooks child = parseNode(b -> {
+        BytecodeNodeWithHooks child = parseNode(b -> {
             b.beginRoot(null);
             b.beginReturn();
             b.beginThrow();
@@ -150,7 +150,7 @@ public class HookTest {
         });
         child.setRefs(new Object[2]);
 
-        OperationNodeWithHooks root = parseNode(b -> {
+        BytecodeNodeWithHooks root = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
             // insert dummy instructions so the throwing bci is different from the child's.
@@ -191,11 +191,11 @@ public class HookTest {
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class)
-abstract class OperationNodeWithHooks extends RootNode implements BytecodeRootNode {
+abstract class BytecodeNodeWithHooks extends RootNode implements BytecodeRootNode {
     // Used to validate whether hooks get called.
     private Object[] refs;
 
-    protected OperationNodeWithHooks(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BytecodeNodeWithHooks(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -273,7 +273,7 @@ abstract class OperationNodeWithHooks extends RootNode implements BytecodeRootNo
     @Operation
     public static final class Invoke {
         @Specialization
-        public static Object perform(VirtualFrame frame, OperationNodeWithHooks callee) {
+        public static Object perform(VirtualFrame frame, BytecodeNodeWithHooks callee) {
             return callee.getCallTarget().call(frame.getArguments());
         }
     }

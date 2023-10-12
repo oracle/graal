@@ -55,24 +55,24 @@ import org.antlr.v4.runtime.Token;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.BlockContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.FunctionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.MemberAssignContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.NameAccessContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.BlockContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.FunctionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberAssignContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.NameAccessContext;
 import com.oracle.truffle.sl.runtime.SLStrings;
 
 /**
  * Base AST visitor class, that handles common SL behaviour such as error reporting, scoping and
  * literal parsing.
  */
-public abstract class SLBaseVisitor extends SimpleLanguageOperationsBaseVisitor<Void> {
+public abstract class SLBaseVisitor extends SimpleLanguageBytecodeBaseVisitor<Void> {
 
     /**
      * Base implementation of parsing, which handles lexer and parser setup, and error reporting.
      */
     protected static void parseSLImpl(Source source, SLBaseVisitor visitor) {
-        SimpleLanguageOperationsLexer lexer = new SimpleLanguageOperationsLexer(CharStreams.fromString(source.getCharacters().toString()));
-        SimpleLanguageOperationsParser parser = new SimpleLanguageOperationsParser(new CommonTokenStream(lexer));
+        SimpleLanguageBytecodeLexer lexer = new SimpleLanguageBytecodeLexer(CharStreams.fromString(source.getCharacters().toString()));
+        SimpleLanguageBytecodeParser parser = new SimpleLanguageBytecodeParser(new CommonTokenStream(lexer));
         lexer.removeErrorListeners();
         parser.removeErrorListeners();
         BailoutErrorListener listener = new BailoutErrorListener(source);
@@ -131,7 +131,7 @@ public abstract class SLBaseVisitor extends SimpleLanguageOperationsBaseVisitor<
 
     // ------------------------------- locals handling --------------------------
 
-    private static class FindLocalsVisitor extends SimpleLanguageOperationsBaseVisitor<Void> {
+    private static class FindLocalsVisitor extends SimpleLanguageBytecodeBaseVisitor<Void> {
         boolean entered = false;
         List<Token> results = new ArrayList<>();
 

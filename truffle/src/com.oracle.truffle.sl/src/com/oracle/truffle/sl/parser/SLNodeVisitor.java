@@ -92,30 +92,30 @@ import com.oracle.truffle.sl.nodes.local.SLReadArgumentNode;
 import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNodeGen;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNodeGen;
 import com.oracle.truffle.sl.nodes.util.SLUnboxNodeGen;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.ArithmeticContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.BlockContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.Break_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.Continue_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.Debugger_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.ExpressionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.Expression_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.FunctionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.If_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.Logic_factorContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.Logic_termContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.MemberAssignContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.MemberCallContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.MemberFieldContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.MemberIndexContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.Member_expressionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.NameAccessContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.NumericLiteralContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.ParenExpressionContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.Return_statementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.StatementContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.StringLiteralContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.TermContext;
-import com.oracle.truffle.sl.parser.SimpleLanguageOperationsParser.While_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.ArithmeticContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.BlockContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Break_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Continue_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Debugger_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.ExpressionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Expression_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.FunctionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.If_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Logic_factorContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Logic_termContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberAssignContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberCallContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberFieldContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.MemberIndexContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Member_expressionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.NameAccessContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.NumericLiteralContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.ParenExpressionContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.Return_statementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.StatementContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.StringLiteralContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.TermContext;
+import com.oracle.truffle.sl.parser.SimpleLanguageBytecodeParser.While_statementContext;
 
 public class SLNodeVisitor extends SLBaseVisitor {
 
@@ -189,7 +189,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
         return node;
     }
 
-    private class SLStatementVisitor extends SimpleLanguageOperationsBaseVisitor<SLStatementNode> {
+    private class SLStatementVisitor extends SimpleLanguageBytecodeBaseVisitor<SLStatementNode> {
         @Override
         public SLStatementNode visitBlock(BlockContext ctx) {
             List<TruffleString> newLocals = enterBlock(ctx);
@@ -323,7 +323,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
         }
     }
 
-    private class SLExpressionVisitor extends SimpleLanguageOperationsBaseVisitor<SLExpressionNode> {
+    private class SLExpressionVisitor extends SimpleLanguageBytecodeBaseVisitor<SLExpressionNode> {
         @Override
         public SLExpressionNode visitExpression(ExpressionContext ctx) {
             return createBinary(ctx.logic_term(), ctx.OP_OR());
@@ -481,7 +481,7 @@ public class SLNodeVisitor extends SLBaseVisitor {
 
     }
 
-    private class MemberExpressionVisitor extends SimpleLanguageOperationsBaseVisitor<SLExpressionNode> {
+    private class MemberExpressionVisitor extends SimpleLanguageBytecodeBaseVisitor<SLExpressionNode> {
         SLExpressionNode receiver;
         private SLExpressionNode assignmentReceiver;
         private SLExpressionNode assignmentName;
