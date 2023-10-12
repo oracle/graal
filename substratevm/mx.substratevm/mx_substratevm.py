@@ -221,6 +221,27 @@ def vm_executable_path(executable, config=None):
     return join(_vm_home(config), 'bin', executable)
 
 
+def _escape_for_args_file(arg):
+    if not (arg.startswith('\\Q') and arg.endswith('\\E')):
+        arg = arg.replace('\\', '\\\\')
+        if ' ' in arg:
+            arg = '\"' + arg + '\"'
+    return arg
+
+
+def _maybe_convert_to_args_file(args):
+    total_command_line_args_length = sum([len(arg) for arg in args])
+    if total_command_line_args_length < 80:
+        # Do not use argument file when total command line length is reasonable,
+        # so that both code paths are exercised on all platforms
+        return args
+    else:
+        # Use argument file to avoid exceeding the command line length limit on Windows
+        with tempfile.NamedTemporaryFile(delete=False, mode='w', prefix='ni_args_', suffix='.args') as args_file:
+            args_file.write('\n'.join([_escape_for_args_file(a) for a in args]))
+        return ['@' + args_file.name]
+
+
 @contextmanager
 def native_image_context(common_args=None, hosted_assertions=True, native_image_cmd='', config=None, build_if_missing=False):
     common_args = [] if common_args is None else common_args
@@ -251,7 +272,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             raise mx.abort('The built GraalVM for config ' + str(config) + ' does not contain a native-image command')
 
     def _native_image(args, **kwargs):
-        mx.run([native_image_cmd] + args, **kwargs)
+        mx.run([native_image_cmd] + _maybe_convert_to_args_file(args), **kwargs)
 
     def is_launcher(launcher_path):
         with open(launcher_path, 'rb') as fp:
