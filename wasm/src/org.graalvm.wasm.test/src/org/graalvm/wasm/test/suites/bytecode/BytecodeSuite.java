@@ -78,7 +78,7 @@ public class BytecodeSuite {
     // Test common result type encoding
     @Test
     public void testLabelU8ResultNum() {
-        test(b -> b.addLabel(1, 0, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0xA0});
+        test(b -> b.addLabel(1, 0, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x80});
     }
 
     @Test
@@ -88,7 +88,7 @@ public class BytecodeSuite {
 
     @Test
     public void testLabelU8ResultMix() {
-        test(b -> b.addLabel(1, 0, WasmType.MIX_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0xE0});
+        testAssertion(b -> b.addLabel(1, 0, WasmType.MIX_COMMON_TYPE), "Single result value must either have number or reference type.");
     }
 
     @Test
@@ -123,12 +123,12 @@ public class BytecodeSuite {
 
     @Test
     public void testLabelU8MaxStackSize() {
-        test(b -> b.addLabel(0, 31, 0), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, 0x1F});
+        test(b -> b.addLabel(0, 63, 0), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, 0x3F});
     }
 
     @Test
     public void testLabelU16MinStackSize() {
-        test(b -> b.addLabel(0, 32, 0), new byte[]{Bytecode.SKIP_LABEL_U16, Bytecode.LABEL_U16, 0x00, 0x20});
+        test(b -> b.addLabel(0, 64, 0), new byte[]{Bytecode.SKIP_LABEL_U16, Bytecode.LABEL_U16, 0x00, 0x40});
     }
 
     @Test
@@ -148,7 +148,7 @@ public class BytecodeSuite {
 
     @Test
     public void testAddLoopLabel() {
-        test(b -> b.addLoopLabel(1, 20, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0xB4, Bytecode.LOOP});
+        test(b -> b.addLoopLabel(1, 20, WasmType.NUM_COMMON_TYPE), new byte[]{Bytecode.SKIP_LABEL_U8, Bytecode.LABEL_U8, (byte) 0x94, Bytecode.LOOP});
     }
 
     @Test
