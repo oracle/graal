@@ -89,7 +89,7 @@ public final class LoadDependencyNode extends LLVMNode {
             }
             return createNativeLibraryCallTarget(nativeFile);
         } else {
-            CallTarget cached = getLanguage().getCachedLibrary(source.getPath());
+            CallTarget cached = getLanguage().getCachedLibrary(source);
             if (cached != null) {
                 return cached;
             }

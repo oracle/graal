@@ -159,17 +159,17 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     public final ContextThreadLocal<LLVMThreadLocalValue> contextThreadLocal = locals.createContextThreadLocal(LLVMThreadLocalValue::new);
 
     static final class LibraryCacheEntry extends WeakReference<CallTarget> {
-        final String path;
+        final Source key;
         final WeakReference<BitcodeID> id;
 
-        LibraryCacheEntry(LLVMLanguage language, String path, CallTarget callTarget, BitcodeID id) {
+        LibraryCacheEntry(LLVMLanguage language, Source key, CallTarget callTarget, BitcodeID id) {
             super(callTarget, language.libraryCacheQueue);
-            this.path = path;
+            this.key = key;
             this.id = new WeakReference<>(id);
         }
     }
 
-    private final EconomicMap<String, LibraryCacheEntry> libraryCache = EconomicMap.create();
+    private final EconomicMap<Source, LibraryCacheEntry> libraryCache = EconomicMap.create();
     private final ReferenceQueue<CallTarget> libraryCacheQueue = new ReferenceQueue<>();
     private final Object libraryCacheLock = new Object();
     private final IDGenerater idGenerater = new IDGenerater();
@@ -447,15 +447,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
     }
 
     public void setDefaultInternalLibraryCache(Source library) {
-        defaultInternalLibraryCache.put(library.getPath(), library);
-    }
-
-    public Source getDefaultInternalLibraryCache(String path) {
-        return defaultInternalLibraryCache.get(path);
-    }
-
-    public boolean isDefaultInternalLibrary(String path) {
-        return defaultInternalLibraryCache.containsKey(path);
+        defaultInternalLibraryCache.put(library.getName(), library);
     }
 
     @Override
@@ -721,16 +713,15 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             throw new UnsupportedOperationException("Parsing not supported during context pre-initialization");
         }
         Source source = request.getSource();
-        String path = source.getPath();
         if (source.isCached()) {
             synchronized (libraryCacheLock) {
-                CallTarget cached = getCachedLibrary(path);
+                CallTarget cached = getCachedLibrary(source);
                 if (cached == null) {
-                    assert !libraryCache.containsKey(path) : "racy insertion despite lock?";
+                    assert !libraryCache.containsKey(source) : "racy insertion despite lock?";
                     BitcodeID id = idGenerater.generateID();
                     cached = getCapability(Loader.class).load(getContext(), source, id);
-                    LibraryCacheEntry entry = new LibraryCacheEntry(this, path, cached, id);
-                    libraryCache.put(path, entry);
+                    LibraryCacheEntry entry = new LibraryCacheEntry(this, source, cached, id);
+                    libraryCache.put(source, entry);
                 }
                 return cached;
             }
@@ -740,7 +731,7 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
         }
     }
 
-    public MapCursor<String, LibraryCacheEntry> getLibraryCache() {
+    public MapCursor<Source, LibraryCacheEntry> getLibraryCache() {
         return libraryCache.getEntries();
     }
 
@@ -752,24 +743,24 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
          */
         LibraryCacheEntry ref = (LibraryCacheEntry) libraryCacheQueue.poll();
         if (ref != null) {
-            libraryCache.removeKey(ref.path);
+            libraryCache.removeKey(ref.key);
         }
     }
 
     @TruffleBoundary
-    public CallTarget getCachedLibrary(String path) {
+    public CallTarget getCachedLibrary(Source key) {
         synchronized (libraryCacheLock) {
             lazyCacheCleanup();
-            LibraryCacheEntry entry = libraryCache.get(path);
+            LibraryCacheEntry entry = libraryCache.get(key);
             if (entry == null) {
                 return null;
             }
 
-            assert entry.path.equals(path);
+            assert entry.key.equals(key);
             CallTarget ret = entry.get();
             if (ret == null) {
                 // clean up the map after an entry has been cleared by the GC
-                libraryCache.removeKey(entry.path);
+                libraryCache.removeKey(entry.key);
             }
             return ret;
         }
