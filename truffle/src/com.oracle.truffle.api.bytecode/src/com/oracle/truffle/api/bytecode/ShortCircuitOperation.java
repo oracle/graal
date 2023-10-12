@@ -61,7 +61,7 @@ import java.lang.annotation.Target;
  * <pre>
  * &#64;GenerateBytecode(...)
  * &#64;ShortCircuitOperation(name = "Or", continueWhen = false, booleanConverter = CoerceBoolean.class)
- * public static final class MyBytecodeNode extends RootNode implements OperationRootNode {
+ * public static final class MyBytecodeNode extends RootNode implements BytecodeRootNode {
  *   &#64;Operation
  *   public static final class CoerceBoolean {
  *     &#64;Specialization

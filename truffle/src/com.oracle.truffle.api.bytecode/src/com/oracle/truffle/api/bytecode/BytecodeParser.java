@@ -48,7 +48,7 @@ package com.oracle.truffle.api.bytecode;
  *
  * <pre>
  * MyTree myTree = ...;
- * MyOperationRootNodeGen.create(OperationConfig.DEFAULT, b -> {
+ * MyBytecodeRootNodeGen.create(BytecodeConfig.DEFAULT, b -> {
  *     myTree.accept(new MyTreeVisitor(b));
  * })
  * </pre>
@@ -60,7 +60,7 @@ package com.oracle.truffle.api.bytecode;
  * data (e.g., trees), preventing it from being garbage-collected. Thus, it may be desirable for the
  * parse method to construct the input data itself (e.g., by reading it from disk).
  *
- * @param <T> the builder class of the operation node
+ * @param <T> the builder class of the bytecode node
  */
 @FunctionalInterface
 public interface BytecodeParser<T extends BytecodeBuilder> {

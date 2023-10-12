@@ -48,13 +48,13 @@ import java.lang.annotation.Target;
 import com.oracle.truffle.api.TruffleLanguage;
 
 /**
- * Generates a bytecode interpreter using the Operation DSL. The Operation DSL automatically
- * produces an optimizing bytecode interpreter from a set of Node-like "operations". The following
- * is an example of an operation interpreter with a single {@code Add} operation.
+ * Generates a bytecode interpreter using the Bytecode DSL. The Bytecode DSL automatically produces
+ * an optimizing bytecode interpreter from a set of Node-like "operations". The following is an
+ * example of an Bytecode DSL interpreter with a single {@code Add} operation.
  *
  * <pre>
  * &#64;GenerateBytecode(languageClass = MyLanguage.class)
- * public abstract class MyOperationRootNode extends RootNode implements OperationRootNode {
+ * public abstract class MyBytecodeRootNode extends RootNode implements BytecodeRootNode {
  *     &#64;Operation
  *     public static final class Add {
  *         &#64;Specialization
@@ -71,7 +71,7 @@ import com.oracle.truffle.api.TruffleLanguage;
  * }
  * </pre>
  *
- * The DSL generates a node suffixed with {@code Gen} (e.g., {@code MyOperationRootNodeGen} that
+ * The DSL generates a node suffixed with {@code Gen} (e.g., {@code MyBytecodeRootNodeGen} that
  * contains (among other things) a full bytecode encoding, an optimizing interpreter, and a
  * {@code Builder} class to generate and validate bytecode automatically.
  *
@@ -79,10 +79,10 @@ import com.oracle.truffle.api.TruffleLanguage;
  * deserialization, coroutines, and support for quickened instructions and superinstructions. This
  * annotation controls which features are included in the generated code.
  *
- * For information about using the Operation DSL, please consult the
- * <a href="https://github.com/oracle/graal/blob/master/truffle/docs/OperationDSL.md">tutorial</a>
+ * For information about using the Bytecode DSL, please consult the
+ * <a href="https://github.com/oracle/graal/blob/master/truffle/docs/BytecodeDSL.md">tutorial</a>
  * and the <a href=
- * "https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/operation/package-summary.html">Javadoc</a>.
+ * "https://www.graalvm.org/truffle/javadoc/com/oracle/truffle/api/bytecode/package-summary.html">Javadoc</a>.
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE})
@@ -122,9 +122,9 @@ public @interface GenerateBytecode {
     /**
      * Whether the generated interpreter should always store the bytecode index (bci) in the frame.
      *
-     * When this flag is set, the language can use {@link BytecodeRootNode#readBciFromFrame} to
-     * read the bci from the frame. The interpreter does not always store the bci, so it is
-     * undefined behaviour to invoke {@link BytecodeRootNode#readBciFromFrame} when this flag is
+     * When this flag is set, the language can use {@link BytecodeRootNode#readBciFromFrame} to read
+     * the bci from the frame. The interpreter does not always store the bci, so it is undefined
+     * behaviour to invoke {@link BytecodeRootNode#readBciFromFrame} when this flag is
      * {@code false}.
      *
      * Note that this flag can slow down interpreter performance, so it should only be set if the

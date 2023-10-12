@@ -18,7 +18,7 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.test.OperationNodeWithStoredBci.MyException;
 import com.oracle.truffle.api.bytecode.test.OperationNodeWithStoredBci.RootAndFrame;
-import com.oracle.truffle.api.bytecode.test.example.OperationsExampleLanguage;
+import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -36,7 +36,7 @@ public class ReadBciFromFrameTest {
      * a custom operation that has a specialization with a cached parameter. An example of this
      * latter case is a @Cached parameter that calls another root node, which then performs a stack
      * walk. @Bind variables are also included in this criteria, because the operation
-     * could @Bind("$root") and then invoke {@link OperationRootNode#readBciFromFrame} on $root.
+     * could @Bind("$root") and then invoke {@link BytecodeRootNode#readBciFromFrame} on $root.
      */
     public OperationNodeWithStoredBci parseNode(BytecodeParser<OperationNodeWithStoredBciGen.Builder> builder) {
         return OperationNodeWithStoredBciGen.create(BytecodeConfig.WITH_SOURCE, builder).getNodes().get(0);
@@ -205,7 +205,7 @@ public class ReadBciFromFrameTest {
     }
 }
 
-@GenerateBytecode(languageClass = OperationsExampleLanguage.class, storeBciInFrame = true, enableYield = true)
+@GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, storeBciInFrame = true, enableYield = true)
 abstract class OperationNodeWithStoredBci extends RootNode implements BytecodeRootNode {
 
     protected OperationNodeWithStoredBci(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {

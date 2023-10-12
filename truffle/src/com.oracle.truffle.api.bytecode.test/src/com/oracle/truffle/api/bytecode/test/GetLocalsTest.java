@@ -35,7 +35,7 @@ import com.oracle.truffle.api.bytecode.OperationProxy;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
 import com.oracle.truffle.api.bytecode.Variadic;
 import com.oracle.truffle.api.bytecode.GenerateBytecodeTestVariants.Variant;
-import com.oracle.truffle.api.bytecode.test.example.OperationsExampleLanguage;
+import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -51,25 +51,25 @@ import com.oracle.truffle.api.nodes.RootNode;
 @RunWith(Parameterized.class)
 public class GetLocalsTest {
     @Parameters(name = "{0}")
-    public static List<Class<? extends OperationNodeWithLocalIntrospection>> getInterpreterClasses() {
-        return List.of(OperationNodeWithLocalIntrospectionBase.class, OperationNodeWithLocalIntrospectionWithUncached.class);
+    public static List<Class<? extends BytecodeNodeWithLocalIntrospection>> getInterpreterClasses() {
+        return List.of(BytecodeNodeWithLocalIntrospectionBase.class, BytecodeNodeWithLocalIntrospectionWithUncached.class);
     }
 
-    @Parameter(0) public Class<? extends OperationNodeWithLocalIntrospection> interpreterClass;
+    @Parameter(0) public Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass;
 
-    public static BytecodeLocal makeLocal(List<String> names, OperationNodeWithLocalIntrospectionBuilder b, String name) {
+    public static BytecodeLocal makeLocal(List<String> names, BytecodeNodeWithLocalIntrospectionBuilder b, String name) {
         names.add(name);
         return b.createLocal();
     }
 
     @SuppressWarnings("unchecked")
-    public static <T extends OperationNodeWithLocalIntrospectionBuilder> BytecodeNodes<OperationNodeWithLocalIntrospection> createNodes(
-                    Class<? extends OperationNodeWithLocalIntrospection> interpreterClass,
+    public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodes<BytecodeNodeWithLocalIntrospection> createNodes(
+                    Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass,
                     BytecodeConfig config,
                     BytecodeParser<T> builder) {
         try {
             Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
-            return (BytecodeNodes<OperationNodeWithLocalIntrospection>) create.invoke(null, config, builder);
+            return (BytecodeNodes<BytecodeNodeWithLocalIntrospection>) create.invoke(null, config, builder);
         } catch (InvocationTargetException e) {
             // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
             // get caught by the test harness.
@@ -80,13 +80,13 @@ public class GetLocalsTest {
         }
     }
 
-    public static <T extends OperationNodeWithLocalIntrospectionBuilder> OperationNodeWithLocalIntrospection parseNode(Class<? extends OperationNodeWithLocalIntrospection> interpreterClass,
+    public static <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass,
                     BytecodeParser<T> builder) {
-        BytecodeNodes<OperationNodeWithLocalIntrospection> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
+        BytecodeNodes<BytecodeNodeWithLocalIntrospection> nodes = createNodes(interpreterClass, BytecodeConfig.DEFAULT, builder);
         return nodes.getNodes().get(nodes.getNodes().size() - 1);
     }
 
-    public <T extends OperationNodeWithLocalIntrospectionBuilder> OperationNodeWithLocalIntrospection parseNode(BytecodeParser<T> builder) {
+    public <T extends BytecodeNodeWithLocalIntrospectionBuilder> BytecodeNodeWithLocalIntrospection parseNode(BytecodeParser<T> builder) {
         return parseNode(interpreterClass, builder);
     }
 
@@ -102,7 +102,7 @@ public class GetLocalsTest {
          */
         List<String> names = new ArrayList<>();
 
-        OperationNodeWithLocalIntrospection root = parseNode(b -> {
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
@@ -153,7 +153,7 @@ public class GetLocalsTest {
          */
         List<String> names = new ArrayList<>();
 
-        OperationNodeWithLocalIntrospection root = parseNode(b -> {
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
@@ -187,7 +187,7 @@ public class GetLocalsTest {
             b.endReturn();
 
             b.endBlock();
-            OperationNodeWithLocalIntrospection nested = b.endRoot();
+            BytecodeNodeWithLocalIntrospection nested = b.endRoot();
             nested.setLocalNames(nestedNames.toArray(String[]::new));
 
             b.beginIfThenElse();
@@ -240,7 +240,7 @@ public class GetLocalsTest {
          */
         List<String> names = new ArrayList<>();
 
-        OperationNodeWithLocalIntrospection bar = parseNode(b -> {
+        BytecodeNodeWithLocalIntrospection bar = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
             BytecodeLocal x = makeLocal(names, b, "x");
@@ -275,7 +275,7 @@ public class GetLocalsTest {
         });
         bar.setLocalNames(names.toArray(String[]::new));
 
-        OperationNodeWithLocalIntrospection foo = parseNode(b -> {
+        BytecodeNodeWithLocalIntrospection foo = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
             BytecodeLocal c = b.createLocal();
@@ -329,7 +329,7 @@ public class GetLocalsTest {
         }.getCallTarget();
 
         List<String> barNames = new ArrayList<>();
-        OperationNodeWithLocalIntrospection bar = parseNode(b -> {
+        BytecodeNodeWithLocalIntrospection bar = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
@@ -352,7 +352,7 @@ public class GetLocalsTest {
         bar.setLocalNames(barNames.toArray(String[]::new));
 
         List<String> fooNames = new ArrayList<>();
-        OperationNodeWithLocalIntrospection foo = parseNode(b -> {
+        BytecodeNodeWithLocalIntrospection foo = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
@@ -422,7 +422,7 @@ public class GetLocalsTest {
         }.getCallTarget();
 
         List<String> barNames = new ArrayList<>();
-        OperationNodeWithLocalIntrospection bar = parseNode(b -> {
+        BytecodeNodeWithLocalIntrospection bar = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
@@ -447,7 +447,7 @@ public class GetLocalsTest {
         bar.setLocalNames(barNames.toArray(String[]::new));
 
         List<String> fooNames = new ArrayList<>();
-        OperationNodeWithLocalIntrospection foo = parseNode(b -> {
+        BytecodeNodeWithLocalIntrospection foo = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
@@ -496,14 +496,14 @@ public class GetLocalsTest {
 }
 
 @GenerateBytecodeTestVariants({
-                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class, enableYield = true)),
-                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = OperationsExampleLanguage.class, enableYield = true, enableUncachedInterpreter = true))
+                @Variant(suffix = "Base", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true)),
+                @Variant(suffix = "WithUncached", configuration = @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, enableYield = true, enableUncachedInterpreter = true))
 })
 @OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
-abstract class OperationNodeWithLocalIntrospection extends RootNode implements BytecodeRootNode {
+abstract class BytecodeNodeWithLocalIntrospection extends RootNode implements BytecodeRootNode {
     @CompilationFinal(dimensions = 1) String[] localNames;
 
-    protected OperationNodeWithLocalIntrospection(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BytecodeNodeWithLocalIntrospection(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -515,9 +515,9 @@ abstract class OperationNodeWithLocalIntrospection extends RootNode implements B
     @Operation
     public static final class GetLocals {
         @Specialization
-        public static Map<String, Object> getLocals(VirtualFrame frame, @Bind("$root") OperationNodeWithLocalIntrospection operationRootNode) {
-            Object[] locals = operationRootNode.getLocals(frame);
-            return makeMap(operationRootNode.localNames, locals);
+        public static Map<String, Object> getLocals(VirtualFrame frame, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
+            Object[] locals = bytecodeRootNode.getLocals(frame);
+            return makeMap(bytecodeRootNode.localNames, locals);
         }
 
         @TruffleBoundary
@@ -534,13 +534,13 @@ abstract class OperationNodeWithLocalIntrospection extends RootNode implements B
     @Operation
     public static final class Invoke {
         @Specialization(guards = {"callTargetMatches(root.getCallTarget(), callNode.getCallTarget())"}, limit = "1")
-        public static Object doCached(@SuppressWarnings("unused") OperationNodeWithLocalIntrospection root, @Variadic Object[] args,
+        public static Object doCached(@SuppressWarnings("unused") BytecodeNodeWithLocalIntrospection root, @Variadic Object[] args,
                         @Cached("create(root.getCallTarget())") DirectCallNode callNode) {
             return callNode.call(args);
         }
 
         @Specialization(replaces = {"doCached"})
-        public static Object doUncached(OperationNodeWithLocalIntrospection root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
+        public static Object doUncached(BytecodeNodeWithLocalIntrospection root, @Variadic Object[] args, @Cached IndirectCallNode callNode) {
             return callNode.call(root.getCallTarget(), args);
         }
 

@@ -112,7 +112,7 @@ import com.oracle.truffle.sl.nodes.local.SLReadLocalVariableNode;
 import com.oracle.truffle.sl.nodes.local.SLWriteLocalVariableNode;
 import com.oracle.truffle.sl.runtime.SLBigInteger;
 import com.oracle.truffle.sl.parser.SLNodeVisitor;
-import com.oracle.truffle.sl.parser.SLOperationsVisitor;
+import com.oracle.truffle.sl.parser.SLBytecodeVisitor;
 import com.oracle.truffle.sl.runtime.SLContext;
 import com.oracle.truffle.sl.runtime.SLFunction;
 import com.oracle.truffle.sl.runtime.SLFunctionRegistry;
@@ -352,7 +352,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
         Map<TruffleString, RootCallTarget> targets;
         if (useOperations) {
-            targets = SLOperationsVisitor.parseSL(this, source);
+            targets = SLBytecodeVisitor.parseSL(this, source);
         } else {
             targets = SLNodeVisitor.parseSL(this, source);
         }

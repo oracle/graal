@@ -38,63 +38,39 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.api.bytecode;
+package com.oracle.truffle.dsl.processor.bytecode.model;
 
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.source.SourceSection;
+import java.util.ArrayList;
+import java.util.List;
 
-/**
- * Subclass of {@link AbstractTruffleException} that can be used for operations interpreters.
- *
- * Operations interpreters do not necessarily have {@link Node nodes} to use as source location
- * markers. Instead, when possible, this class uses the {@code bci} to {@link getSourceSection
- * compute source sections}.
- *
- * @since 24.0
- */
-public abstract class AbstractBytecodeTruffleException extends AbstractTruffleException {
+public class OptimizationDecisionsModel implements PrettyPrintable {
 
-    private static final long serialVersionUID = -534184847100559365L;
-    private static final int INVALID_BCI = -1;
-
-    private final int bci;
-
-    public AbstractBytecodeTruffleException() {
-        super();
-        bci = INVALID_BCI;
+    public static class QuickenDecision {
+        public String id;
+        public String operation;
+        public String[] specializations;
     }
 
-    public AbstractBytecodeTruffleException(String message) {
-        super(message);
-        this.bci = INVALID_BCI;
+    public static class SuperInstructionDecision {
+        public String id;
+        public String[] instructions;
     }
 
-    public AbstractBytecodeTruffleException(AbstractBytecodeTruffleException prototype) {
-        super(prototype);
-        this.bci = prototype.bci;
+    public static class CommonInstructionDecision {
+        public String id;
+        public String instruction;
     }
 
-    public AbstractBytecodeTruffleException(Node location, int bci) {
-        super(location);
-        this.bci = bci;
-    }
-
-    public AbstractBytecodeTruffleException(String message, Node location, int bci) {
-        super(message, location);
-        this.bci = bci;
-    }
-
-    public AbstractBytecodeTruffleException(String message, Throwable cause, int stackTraceElementLimit, Node location, int bci) {
-        super(message, cause, stackTraceElementLimit, location);
-        this.bci = bci;
-    }
+    public String decisionsFilePath;
+    public String[] decisionsOverrideFilePaths;
+    public List<QuickenDecision> quickenDecisions = new ArrayList<>();
+    public List<SuperInstructionDecision> superInstructionDecisions = new ArrayList<>();
+    public List<CommonInstructionDecision> commonInstructionDecisions = new ArrayList<>();
 
     @Override
-    public SourceSection getSourceSection() {
-        if (bci == INVALID_BCI || !(getLocation() instanceof BytecodeRootNode bytecodeRootNode)) {
-            return super.getSourceSection();
-        }
-        return bytecodeRootNode.getSourceSectionAtBci(bci);
+    public void pp(PrettyPrinter printer) {
+        printer.field("quickens", quickenDecisions);
+        printer.field("superInstructions", superInstructionDecisions);
+        printer.field("commonInstructions", commonInstructionDecisions);
     }
 }

@@ -58,6 +58,10 @@ import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.DeclaredType;
 import javax.tools.Diagnostic.Kind;
 
+import com.oracle.truffle.dsl.processor.bytecode.generator.BytecodeDSLCodeGenerator;
+import com.oracle.truffle.dsl.processor.bytecode.model.CustomOperationModel;
+import com.oracle.truffle.dsl.processor.bytecode.parser.BytecodeDSLParser;
+import com.oracle.truffle.dsl.processor.bytecode.parser.CustomOperationParser;
 import com.oracle.truffle.dsl.processor.generator.CodeTypeElementFactory;
 import com.oracle.truffle.dsl.processor.generator.NodeCodeGenerator;
 import com.oracle.truffle.dsl.processor.generator.StaticConstants;
@@ -68,10 +72,6 @@ import com.oracle.truffle.dsl.processor.library.ExportsGenerator;
 import com.oracle.truffle.dsl.processor.library.ExportsParser;
 import com.oracle.truffle.dsl.processor.library.LibraryGenerator;
 import com.oracle.truffle.dsl.processor.library.LibraryParser;
-import com.oracle.truffle.dsl.processor.operations.generator.OperationsCodeGenerator;
-import com.oracle.truffle.dsl.processor.operations.model.CustomOperationModel;
-import com.oracle.truffle.dsl.processor.operations.parser.CustomOperationParser;
-import com.oracle.truffle.dsl.processor.operations.parser.OperationsParser;
 import com.oracle.truffle.dsl.processor.parser.AbstractParser;
 import com.oracle.truffle.dsl.processor.parser.NodeParser;
 import com.oracle.truffle.dsl.processor.parser.TypeSystemParser;
@@ -203,7 +203,7 @@ public final class TruffleProcessor extends AbstractProcessor {
                 return null;
             }
         }));
-        generators.add(new AnnotationProcessor<>(new OperationsParser(), new OperationsCodeGenerator()));
+        generators.add(new AnnotationProcessor<>(new BytecodeDSLParser(), new BytecodeDSLCodeGenerator()));
         return generators;
     }
 

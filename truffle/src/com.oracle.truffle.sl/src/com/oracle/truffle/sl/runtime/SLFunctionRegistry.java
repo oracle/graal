@@ -54,7 +54,7 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.sl.SLLanguage;
 import com.oracle.truffle.sl.parser.SLNodeVisitor;
-import com.oracle.truffle.sl.parser.SLOperationsVisitor;
+import com.oracle.truffle.sl.parser.SLBytecodeVisitor;
 
 /**
  * Manages the mapping from function names to {@link SLFunction function objects}.
@@ -117,7 +117,7 @@ public final class SLFunctionRegistry {
 
     public void register(Source newFunctions) {
         if (language.isUseOperations()) {
-            register(SLOperationsVisitor.parseSL(language, newFunctions));
+            register(SLBytecodeVisitor.parseSL(language, newFunctions));
         } else {
             register(SLNodeVisitor.parseSL(language, newFunctions));
         }
