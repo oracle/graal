@@ -527,7 +527,7 @@ public class JfrManager {
         RepositoryPath("repositorypath"),
         StackDepth("stackdepth"),
         ThreadBufferSize("thread_buffer_size"),
-        PreserveRepository("preserveRepository");
+        PreserveRepository("preserve-repository");
 
         private final String cmdLineKey;
 

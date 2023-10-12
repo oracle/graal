@@ -1,0 +1,46 @@
+Usage: -XX:FlightRecorderOptions=[option[=value][,...]]
+
+This option expects a comma separated list of key-value pairs. None of the options are mandatory. Possible option keys are as follows:
+
+globalbuffercount   (Optional) Number of global buffers. This option is a legacy
+                    option: change the memorysize parameter to alter the number of
+                    global buffers. This value cannot be changed once JFR has been"
+                    initialized. (LONG, default determined by the value for
+                    memorysize)
+
+globalbuffersize    (Optional) Size of the global buffers, in bytes. This option is a
+                    legacy option: change the memorysize parameter to alter the size
+                    of the global buffers. This value cannot be changed once JFR has
+                    been initialized. (STRING, default determined by the value for
+                    memorysize)
+
+maxchunksize        (Optional) Maximum size of an individual data chunk in bytes if
+                    one of the following suffixes is not used: 'm' or 'M' for
+                    megabytes OR 'g' or 'G' for gigabytes. This value cannot be
+                    changed once JFR has been initialized. (STRING, 12M)
+
+memorysize          (Optional) Overall memory size, in bytes if one of the following
+                    suffixes is not used: 'm' or 'M' for megabytes OR 'g' or 'G' for
+                    gigabytes. This value cannot be changed once JFR has been
+                    initialized. (STRING, 10M)
+
+repositorypath      (Optional) Path to the location where recordings are stored until
+                    they are written to a permanent file. (STRING, The default
+                    location is the temporary directory for the operating system. On
+                    Linux operating systems, the temporary directory is /tmp. On
+                    Windows, the temporary directory is specified by the TMP
+                    environment variable)
+
+stackdepth          (Optional) Stack depth for stack traces. Setting this value
+                    greater than the default of 64 may cause a performance
+                    degradation. This value cannot be changed once JFR has been
+                    initialized. (LONG, 64)
+
+thread_buffer_size  (Optional) Local buffer size for each thread in bytes if one of
+                    the following suffixes is not used: 'k' or 'K' for kilobytes or
+                    'm' or 'M' for megabytes. Overriding this parameter could reduce
+                    performance and is not recommended. This value cannot be changed
+                    once JFR has been initialized. (STRING, 8k)
+
+preserve-repository (Optional) Preserve files stored in the disk repository after the
+                    Java Virtual Machine has exited. (BOOLEAN, false)
