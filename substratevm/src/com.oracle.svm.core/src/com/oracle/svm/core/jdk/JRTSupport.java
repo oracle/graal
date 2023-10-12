@@ -28,6 +28,7 @@ package com.oracle.svm.core.jdk;
 import java.io.IOException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -115,7 +116,7 @@ final class Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnable
     static volatile Target_jdk_internal_jimage_ImageReader_JRTEnabled READER;
 
     @Substitute
-    static Object reader() {
+    static Target_jdk_internal_jimage_ImageReader_JRTEnabled reader() {
         Target_jdk_internal_jimage_ImageReader_JRTEnabled localRef = READER;
         if (localRef == null) {
             synchronized (Target_jdk_internal_module_SystemModuleFinders_SystemImage_JRTEnabled.class) {
@@ -178,3 +179,22 @@ final class Target_jdk_internal_jrtfs_JrtFileSystemProvider_JRTDisabled {
 }
 
 // endregion Disable jimage/jrtfs
+
+@TargetClass(className = "jdk.internal.jimage.BasicImageReader")
+final class Target_jdk_internal_jimage_BasicImageReader {
+    /* Ensure NativeImageBuffer never gets used as part of using BasicImageReader */
+    @Alias //
+    @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.FromAlias, isFinal = true) //
+    // Checkstyle: stop
+    static boolean USE_JVM_MAP = false;
+    // Checkstyle: resume
+}
+
+@TargetClass(className = "jdk.internal.jimage.NativeImageBuffer")
+@Substitute
+final class Target_jdk_internal_jimage_NativeImageBuffer {
+    @Substitute
+    static ByteBuffer getNativeMap(String imagePath) {
+        throw VMError.unsupportedFeature("Using jdk.internal.jimage.NativeImageBuffer is not supported");
+    }
+}

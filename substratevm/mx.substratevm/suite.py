@@ -853,6 +853,11 @@ suite = {
             "requires" : [
                 "jdk.management",
             ],
+            "requiresConcealed" : {
+                "java.base" : [
+                    "jdk.internal.jimage",
+                ],
+            },
             "checkstyle": "com.oracle.svm.hosted",
             "workingSets": "SVM",
             "annotationProcessors": [
