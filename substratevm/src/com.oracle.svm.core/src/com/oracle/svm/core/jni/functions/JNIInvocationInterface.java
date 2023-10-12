@@ -123,6 +123,7 @@ public final class JNIInvocationInterface {
 
                 boolean hasSpecialVmOptions = false;
                 CEntryPointCreateIsolateParameters params = WordFactory.nullPointer();
+                CCharPointerPointer errorstr = WordFactory.nullPointer();
                 if (vmArgs.isNonNull()) {
                     int vmArgc = vmArgs.getNOptions();
                     if (vmArgc > 0) {
@@ -145,7 +146,9 @@ public final class JNIInvocationInterface {
                             if (optionString.isNonNull()) {
                                 // Filter all special VM options as those must be parsed differently
                                 // after the isolate creation.
-                                if (Support.isSpecialVMOption(optionString)) {
+                                if (LibC.strcmp(optionString, Support.CREATEVM_ERRORSTR_OPTION.get()) == 0) {
+                                    errorstr = (CCharPointerPointer) option.getExtraInfo();
+                                } else if (Support.isSpecialVMOption(optionString)) {
                                     hasSpecialVmOptions = true;
                                 } else {
                                     argv.addressOf(argc).write(optionString);
@@ -174,6 +177,11 @@ public final class JNIInvocationInterface {
                     // The isolate was created successfully, so we can finish the initialization.
                     return Support.finishInitialization(vmBuf, penv, vmArgs, hasSpecialVmOptions);
                 }
+                if (errorstr.isNonNull()) {
+                    CCharPointer msg = CEntryPointErrors.getDescriptionAsCString(code);
+                    CCharPointer msgCopy = msg.isNonNull() ? LibC.strdup(msg) : WordFactory.nullPointer();
+                    errorstr.write(msgCopy);
+                }
                 return JNIFunctions.Support.convertCEntryPointErrorToJNIError(code, true);
             }
         }
@@ -182,23 +190,28 @@ public final class JNIInvocationInterface {
          * This method supports the non-standard option strings detailed in the table below.
          *
          * <pre>
-         | optionString  |                         meaning                                                   |
-         |===============|===================================================================================|
-         | _log          | extraInfo is a pointer to a "void(const char *buf, size_t count)" function.       |
-         |               | Formatted low level log messages are sent to this function.                       |
-         |               | If present, then _flush_log is also required to be present.                       |
-         |---------------|-----------------------------------------------------------------------------------|
-         | _fatal_log    | extraInfo is a pointer to a "void(const char *buf, size_t count)" function.       |
-         |               | Formatted low level log messages are sent to this function.                       |
-         |               | This log function is used for logging fatal crash data.                           |
-         |---------------|-----------------------------------------------------------------------------------|
-         | _flush_log    | extraInfo is a pointer to a "void()" function.                                    |
-         |               | This function is called when the low level log stream should be flushed.          |
-         |               | If present, then _log is also required to be present.                             |
-         |---------------|-----------------------------------------------------------------------------------|
-         | _fatal        | extraInfo is a pointer to a "void()" function.                                    |
-         |               | This function is called when a non-recoverable, fatal error occurs.               |
-         |---------------|-----------------------------------------------------------------------------------|
+         | optionString       |                         meaning                                                   |
+         |====================|===================================================================================|
+         | _log               | extraInfo is a pointer to a "void(const char *buf, size_t count)" function.       |
+         |                    | Formatted low level log messages are sent to this function.                       |
+         |                    | If present, then _flush_log is also required to be present.                       |
+         |--------------------|-----------------------------------------------------------------------------------|
+         | _fatal_log         | extraInfo is a pointer to a "void(const char *buf, size_t count)" function.       |
+         |                    | Formatted low level log messages are sent to this function.                       |
+         |                    | This log function is used for logging fatal crash data.                           |
+         |--------------------|-----------------------------------------------------------------------------------|
+         | _flush_log         | extraInfo is a pointer to a "void()" function.                                    |
+         |                    | This function is called when the low level log stream should be flushed.          |
+         |                    | If present, then _log is also required to be present.                             |
+         |--------------------|-----------------------------------------------------------------------------------|
+         | _fatal             | extraInfo is a pointer to a "void()" function.                                    |
+         |                    | This function is called when a non-recoverable, fatal error occurs.               |
+         |--------------------|-----------------------------------------------------------------------------------|
+         | _createvm_errorstr | extraInfo is a "const char**" value.                                              |
+         |                    | If CreateJavaVM returns non-zero, then extraInfo is assigned a newly malloc'ed    |
+         |                    | 0-terminated C string describing the error if a description is available,         |
+         |                    | otherwise extraInfo is set to null.                                               |
+         |--------------------|-----------------------------------------------------------------------------------|
          * </pre>
          *
          * @see LogHandler
@@ -297,7 +310,9 @@ public final class JNIInvocationInterface {
      * methods must match JNI invocation API functions.
      */
     static class Support {
+
         private static final CGlobalData<CCharPointer> JAVA_VM_ID_OPTION = CGlobalDataFactory.createCString("_javavm_id");
+        private static final CGlobalData<CCharPointer> CREATEVM_ERRORSTR_OPTION = CGlobalDataFactory.createCString("_createvm_errorstr");
 
         static class JNIGetEnvPrologue implements CEntryPointOptions.Prologue {
             @Uninterruptible(reason = "prologue")
