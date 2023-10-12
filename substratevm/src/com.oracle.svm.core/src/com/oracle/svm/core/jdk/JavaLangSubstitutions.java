@@ -398,7 +398,7 @@ final class Target_java_lang_Runtime {
     @Substitute
     @Platforms(InternalPlatform.PLATFORM_JNI.class)
     private int availableProcessors() {
-        return Processor.getActiveProcessorCount();
+        return Processor.singleton().getActiveProcessorCount();
     }
 }
 

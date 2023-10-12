@@ -24,12 +24,22 @@
  */
 package com.oracle.svm.core;
 
+import org.graalvm.compiler.api.replacements.Fold;
+import org.graalvm.nativeimage.ImageSingletons;
+
+import com.oracle.svm.core.feature.AutomaticallyRegisteredImageSingleton;
 import com.oracle.svm.core.util.VMError;
 
+@AutomaticallyRegisteredImageSingleton
 public class Processor {
-    private static int lastQueriedActiveProcessorCount = -1;
+    private int lastQueriedActiveProcessorCount = -1;
 
-    public static int getActiveProcessorCount() {
+    @Fold
+    public static Processor singleton() {
+        return ImageSingletons.lookup(Processor.class);
+    }
+
+    public int getActiveProcessorCount() {
         VMError.guarantee(!SubstrateUtil.HOSTED, "must not be executed during the image build");
 
         int result = getActiveProcessorCount0();
@@ -50,7 +60,7 @@ public class Processor {
         }
     }
 
-    public static int getLastQueriedActiveProcessorCount() {
+    public int getLastQueriedActiveProcessorCount() {
         return lastQueriedActiveProcessorCount;
     }
 }

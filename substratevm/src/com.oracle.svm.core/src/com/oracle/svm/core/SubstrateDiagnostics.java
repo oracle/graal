@@ -887,7 +887,7 @@ public class SubstrateDiagnostics {
         public void printDiagnostics(Log log, ErrorContext context, int maxDiagnosticLevel, int invocationCount) {
             log.string("Runtime information:").indent(true);
 
-            int activeProcessorCount = Processor.getLastQueriedActiveProcessorCount();
+            int activeProcessorCount = Processor.singleton().getLastQueriedActiveProcessorCount();
             log.string("CPU cores (container): ");
             if (activeProcessorCount > 0) {
                 log.signed(activeProcessorCount).newline();

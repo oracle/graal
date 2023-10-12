@@ -169,7 +169,7 @@ public abstract class Log implements AutoCloseable {
     public abstract Log string(CCharPointer value);
 
     /**
-     * Prints the C string.
+     * Prints {@code length} characters of the C string.
      */
     public abstract Log string(CCharPointer value, int length);
 
