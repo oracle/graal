@@ -54,7 +54,7 @@ import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.misc.*;
 
 @SuppressWarnings({"all", "this-escape"})
-public class SimpleLanguageOperationsLexer extends Lexer {
+public class SimpleLanguageBytecodeLexer extends Lexer {
 	static { RuntimeMetaData.checkVersion("4.12.0", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
@@ -136,13 +136,13 @@ public class SimpleLanguageOperationsLexer extends Lexer {
 	}
 
 
-	public SimpleLanguageOperationsLexer(CharStream input) {
+	public SimpleLanguageBytecodeLexer(CharStream input) {
 		super(input);
 		_interp = new LexerATNSimulator(this,_ATN,_decisionToDFA,_sharedContextCache);
 	}
 
 	@Override
-	public String getGrammarFileName() { return "SimpleLanguageOperations.g4"; }
+	public String getGrammarFileName() { return "SimpleLanguageBytecode.g4"; }
 
 	@Override
 	public String[] getRuleNames() { return ruleNames; }

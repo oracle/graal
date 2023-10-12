@@ -222,10 +222,10 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     private final Shape rootShape;
 
-    @Option(help = "Use the SL interpreter implemented using the Truffle Operations DSL", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
-    public static final OptionKey<Boolean> UseOperations = new OptionKey<>(false);
+    @Option(help = "Use the SL interpreter implemented using the Truffle Bytecode DSL", category = OptionCategory.EXPERT, stability = OptionStability.EXPERIMENTAL) //
+    public static final OptionKey<Boolean> UseBytecode = new OptionKey<>(false);
 
-    private boolean useOperations;
+    private boolean useBytecode;
 
     public SLLanguage() {
         counter++;
@@ -234,7 +234,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
 
     @Override
     protected SLContext createContext(Env env) {
-        useOperations = UseOperations.getValue(env.getOptions());
+        useBytecode = UseBytecode.getValue(env.getOptions());
         return new SLContext(this, env, new ArrayList<>(EXTERNAL_BUILTINS));
     }
 
@@ -249,13 +249,13 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         return new SLLanguageOptionDescriptors();
     }
 
-    public boolean isUseOperations() {
-        return useOperations;
+    public boolean isUseBytecode() {
+        return useBytecode;
     }
 
     @Override
     protected boolean areOptionsCompatible(OptionValues firstOptions, OptionValues newOptions) {
-        return UseOperations.getValue(firstOptions).equals(UseOperations.getValue(newOptions));
+        return UseBytecode.getValue(firstOptions).equals(UseBytecode.getValue(newOptions));
     }
 
     public RootCallTarget getOrCreateUndefinedFunction(TruffleString name) {
@@ -351,7 +351,7 @@ public final class SLLanguage extends TruffleLanguage<SLContext> {
         }
 
         Map<TruffleString, RootCallTarget> targets;
-        if (useOperations) {
+        if (useBytecode) {
             targets = SLBytecodeVisitor.parseSL(this, source);
         } else {
             targets = SLNodeVisitor.parseSL(this, source);

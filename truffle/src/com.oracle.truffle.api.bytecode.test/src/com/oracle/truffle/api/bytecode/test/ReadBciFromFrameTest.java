@@ -16,8 +16,8 @@ import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.bytecode.test.OperationNodeWithStoredBci.MyException;
-import com.oracle.truffle.api.bytecode.test.OperationNodeWithStoredBci.RootAndFrame;
+import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithStoredBci.MyException;
+import com.oracle.truffle.api.bytecode.test.BytecodeNodeWithStoredBci.RootAndFrame;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -38,14 +38,14 @@ public class ReadBciFromFrameTest {
      * walk. @Bind variables are also included in this criteria, because the operation
      * could @Bind("$root") and then invoke {@link BytecodeRootNode#readBciFromFrame} on $root.
      */
-    public OperationNodeWithStoredBci parseNode(BytecodeParser<OperationNodeWithStoredBciGen.Builder> builder) {
-        return OperationNodeWithStoredBciGen.create(BytecodeConfig.WITH_SOURCE, builder).getNodes().get(0);
+    public BytecodeNodeWithStoredBci parseNode(BytecodeParser<BytecodeNodeWithStoredBciGen.Builder> builder) {
+        return BytecodeNodeWithStoredBciGen.create(BytecodeConfig.WITH_SOURCE, builder).getNodes().get(0);
     }
 
     @Test
     public void testSimple() {
         Source source = Source.newBuilder("test", "arg0 ? foo : bar", "testSimple").build();
-        OperationNodeWithStoredBci root = parseNode(b -> {
+        BytecodeNodeWithStoredBci root = parseNode(b -> {
             b.beginRoot(null);
             b.beginSource(source);
             b.beginSourceSection(0, 16);
@@ -93,7 +93,7 @@ public class ReadBciFromFrameTest {
         // The bci should be updated to the return bci, thus causing the matched source section to
         // be the outer one.
         Source source = Source.newBuilder("test", "return foo", "testSimple").build();
-        OperationNodeWithStoredBci root = parseNode(b -> {
+        BytecodeNodeWithStoredBci root = parseNode(b -> {
             b.beginRoot(null);
             b.beginSource(source);
             b.beginBlock();
@@ -126,7 +126,7 @@ public class ReadBciFromFrameTest {
     public void testStoreOnThrow() {
         // The bci should be updated when an exception is thrown.
         Source source = Source.newBuilder("test", "throw foo", "testSimple").build();
-        OperationNodeWithStoredBci root = parseNode(b -> {
+        BytecodeNodeWithStoredBci root = parseNode(b -> {
             b.beginRoot(null);
             b.beginSource(source);
             b.beginBlock();
@@ -164,7 +164,7 @@ public class ReadBciFromFrameTest {
     public void testStoreOnYield() {
         // The bci should be updated when a coroutine yields.
         Source source = Source.newBuilder("test", "yield foo; return bar", "testSimple").build();
-        OperationNodeWithStoredBci root = parseNode(b -> {
+        BytecodeNodeWithStoredBci root = parseNode(b -> {
             b.beginRoot(null);
             b.beginSource(source);
             b.beginBlock();
@@ -206,9 +206,9 @@ public class ReadBciFromFrameTest {
 }
 
 @GenerateBytecode(languageClass = BytecodeDSLExampleLanguage.class, storeBciInFrame = true, enableYield = true)
-abstract class OperationNodeWithStoredBci extends RootNode implements BytecodeRootNode {
+abstract class BytecodeNodeWithStoredBci extends RootNode implements BytecodeRootNode {
 
-    protected OperationNodeWithStoredBci(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
+    protected BytecodeNodeWithStoredBci(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
     }
 
@@ -224,10 +224,10 @@ abstract class OperationNodeWithStoredBci extends RootNode implements BytecodeRo
     }
 
     public static final class RootAndFrame {
-        final OperationNodeWithStoredBci root;
+        final BytecodeNodeWithStoredBci root;
         final Frame frame;
 
-        public RootAndFrame(OperationNodeWithStoredBci root, Frame frame) {
+        public RootAndFrame(BytecodeNodeWithStoredBci root, Frame frame) {
             this.root = root;
             this.frame = frame.materialize();
         }
@@ -242,7 +242,7 @@ abstract class OperationNodeWithStoredBci extends RootNode implements BytecodeRo
     @Operation
     public static final class MakeRootAndFrame {
         @Specialization
-        public static RootAndFrame perform(VirtualFrame frame, @Bind("$root") OperationNodeWithStoredBci rootNode) {
+        public static RootAndFrame perform(VirtualFrame frame, @Bind("$root") BytecodeNodeWithStoredBci rootNode) {
             return new RootAndFrame(rootNode, frame);
         }
     }

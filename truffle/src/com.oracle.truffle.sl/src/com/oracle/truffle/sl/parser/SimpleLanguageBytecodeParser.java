@@ -54,7 +54,7 @@ import java.util.Iterator;
 import java.util.ArrayList;
 
 @SuppressWarnings({"all", "this-escape"})
-public class SimpleLanguageOperationsParser extends Parser {
+public class SimpleLanguageBytecodeParser extends Parser {
 	static { RuntimeMetaData.checkVersion("4.12.0", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
@@ -133,7 +133,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 	}
 
 	@Override
-	public String getGrammarFileName() { return "SimpleLanguageOperations.g4"; }
+	public String getGrammarFileName() { return "SimpleLanguageBytecode.g4"; }
 
 	@Override
 	public String[] getRuleNames() { return ruleNames; }
@@ -144,7 +144,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 	@Override
 	public ATN getATN() { return _ATN; }
 
-	public SimpleLanguageOperationsParser(TokenStream input) {
+	public SimpleLanguageBytecodeParser(TokenStream input) {
 		super(input);
 		_interp = new ParserATNSimulator(this,_ATN,_decisionToDFA,_sharedContextCache);
 	}
@@ -157,14 +157,14 @@ public class SimpleLanguageOperationsParser extends Parser {
 		public FunctionContext function(int i) {
 			return getRuleContext(FunctionContext.class,i);
 		}
-		public TerminalNode EOF() { return getToken(SimpleLanguageOperationsParser.EOF, 0); }
+		public TerminalNode EOF() { return getToken(SimpleLanguageBytecodeParser.EOF, 0); }
 		public SimplelanguageContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_simplelanguage; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitSimplelanguage(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitSimplelanguage(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -211,9 +211,9 @@ public class SimpleLanguageOperationsParser extends Parser {
 	public static class FunctionContext extends ParserRuleContext {
 		public Token s;
 		public BlockContext body;
-		public List<TerminalNode> IDENTIFIER() { return getTokens(SimpleLanguageOperationsParser.IDENTIFIER); }
+		public List<TerminalNode> IDENTIFIER() { return getTokens(SimpleLanguageBytecodeParser.IDENTIFIER); }
 		public TerminalNode IDENTIFIER(int i) {
-			return getToken(SimpleLanguageOperationsParser.IDENTIFIER, i);
+			return getToken(SimpleLanguageBytecodeParser.IDENTIFIER, i);
 		}
 		public BlockContext block() {
 			return getRuleContext(BlockContext.class,0);
@@ -224,7 +224,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_function; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitFunction(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitFunction(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -301,7 +301,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_block; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitBlock(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitBlock(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -373,7 +373,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_statement; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitStatement(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitStatement(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -461,7 +461,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_break_statement; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitBreak_statement(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitBreak_statement(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -498,7 +498,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_continue_statement; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitContinue_statement(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitContinue_statement(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -537,7 +537,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_expression_statement; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitExpression_statement(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitExpression_statement(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -574,7 +574,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_debugger_statement; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitDebugger_statement(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitDebugger_statement(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -619,7 +619,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_while_statement; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitWhile_statement(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitWhile_statement(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -674,7 +674,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_if_statement; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitIf_statement(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitIf_statement(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -733,7 +733,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_return_statement; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitReturn_statement(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitReturn_statement(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -780,9 +780,9 @@ public class SimpleLanguageOperationsParser extends Parser {
 		public Logic_termContext logic_term(int i) {
 			return getRuleContext(Logic_termContext.class,i);
 		}
-		public List<TerminalNode> OP_OR() { return getTokens(SimpleLanguageOperationsParser.OP_OR); }
+		public List<TerminalNode> OP_OR() { return getTokens(SimpleLanguageBytecodeParser.OP_OR); }
 		public TerminalNode OP_OR(int i) {
-			return getToken(SimpleLanguageOperationsParser.OP_OR, i);
+			return getToken(SimpleLanguageBytecodeParser.OP_OR, i);
 		}
 		public ExpressionContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -790,7 +790,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_expression; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitExpression(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitExpression(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -843,9 +843,9 @@ public class SimpleLanguageOperationsParser extends Parser {
 		public Logic_factorContext logic_factor(int i) {
 			return getRuleContext(Logic_factorContext.class,i);
 		}
-		public List<TerminalNode> OP_AND() { return getTokens(SimpleLanguageOperationsParser.OP_AND); }
+		public List<TerminalNode> OP_AND() { return getTokens(SimpleLanguageBytecodeParser.OP_AND); }
 		public TerminalNode OP_AND(int i) {
-			return getToken(SimpleLanguageOperationsParser.OP_AND, i);
+			return getToken(SimpleLanguageBytecodeParser.OP_AND, i);
 		}
 		public Logic_termContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -853,7 +853,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_logic_term; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitLogic_term(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitLogic_term(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -906,14 +906,14 @@ public class SimpleLanguageOperationsParser extends Parser {
 		public ArithmeticContext arithmetic(int i) {
 			return getRuleContext(ArithmeticContext.class,i);
 		}
-		public TerminalNode OP_COMPARE() { return getToken(SimpleLanguageOperationsParser.OP_COMPARE, 0); }
+		public TerminalNode OP_COMPARE() { return getToken(SimpleLanguageBytecodeParser.OP_COMPARE, 0); }
 		public Logic_factorContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
 		}
 		@Override public int getRuleIndex() { return RULE_logic_factor; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitLogic_factor(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitLogic_factor(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -959,9 +959,9 @@ public class SimpleLanguageOperationsParser extends Parser {
 		public TermContext term(int i) {
 			return getRuleContext(TermContext.class,i);
 		}
-		public List<TerminalNode> OP_ADD() { return getTokens(SimpleLanguageOperationsParser.OP_ADD); }
+		public List<TerminalNode> OP_ADD() { return getTokens(SimpleLanguageBytecodeParser.OP_ADD); }
 		public TerminalNode OP_ADD(int i) {
-			return getToken(SimpleLanguageOperationsParser.OP_ADD, i);
+			return getToken(SimpleLanguageBytecodeParser.OP_ADD, i);
 		}
 		public ArithmeticContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -969,7 +969,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_arithmetic; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitArithmetic(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitArithmetic(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -1022,9 +1022,9 @@ public class SimpleLanguageOperationsParser extends Parser {
 		public FactorContext factor(int i) {
 			return getRuleContext(FactorContext.class,i);
 		}
-		public List<TerminalNode> OP_MUL() { return getTokens(SimpleLanguageOperationsParser.OP_MUL); }
+		public List<TerminalNode> OP_MUL() { return getTokens(SimpleLanguageBytecodeParser.OP_MUL); }
 		public TerminalNode OP_MUL(int i) {
-			return getToken(SimpleLanguageOperationsParser.OP_MUL, i);
+			return getToken(SimpleLanguageBytecodeParser.OP_MUL, i);
 		}
 		public TermContext(ParserRuleContext parent, int invokingState) {
 			super(parent, invokingState);
@@ -1032,7 +1032,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_term; }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitTerm(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitTerm(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -1091,21 +1091,21 @@ public class SimpleLanguageOperationsParser extends Parser {
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class StringLiteralContext extends FactorContext {
-		public TerminalNode STRING_LITERAL() { return getToken(SimpleLanguageOperationsParser.STRING_LITERAL, 0); }
+		public TerminalNode STRING_LITERAL() { return getToken(SimpleLanguageBytecodeParser.STRING_LITERAL, 0); }
 		public StringLiteralContext(FactorContext ctx) { copyFrom(ctx); }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitStringLiteral(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitStringLiteral(this);
 			else return visitor.visitChildren(this);
 		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class NumericLiteralContext extends FactorContext {
-		public TerminalNode NUMERIC_LITERAL() { return getToken(SimpleLanguageOperationsParser.NUMERIC_LITERAL, 0); }
+		public TerminalNode NUMERIC_LITERAL() { return getToken(SimpleLanguageBytecodeParser.NUMERIC_LITERAL, 0); }
 		public NumericLiteralContext(FactorContext ctx) { copyFrom(ctx); }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitNumericLiteral(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitNumericLiteral(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -1117,13 +1117,13 @@ public class SimpleLanguageOperationsParser extends Parser {
 		public ParenExpressionContext(FactorContext ctx) { copyFrom(ctx); }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitParenExpression(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitParenExpression(this);
 			else return visitor.visitChildren(this);
 		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class NameAccessContext extends FactorContext {
-		public TerminalNode IDENTIFIER() { return getToken(SimpleLanguageOperationsParser.IDENTIFIER, 0); }
+		public TerminalNode IDENTIFIER() { return getToken(SimpleLanguageBytecodeParser.IDENTIFIER, 0); }
 		public List<Member_expressionContext> member_expression() {
 			return getRuleContexts(Member_expressionContext.class);
 		}
@@ -1133,7 +1133,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		public NameAccessContext(FactorContext ctx) { copyFrom(ctx); }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitNameAccess(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitNameAccess(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -1236,17 +1236,17 @@ public class SimpleLanguageOperationsParser extends Parser {
 		public MemberCallContext(Member_expressionContext ctx) { copyFrom(ctx); }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitMemberCall(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitMemberCall(this);
 			else return visitor.visitChildren(this);
 		}
 	}
 	@SuppressWarnings("CheckReturnValue")
 	public static class MemberFieldContext extends Member_expressionContext {
-		public TerminalNode IDENTIFIER() { return getToken(SimpleLanguageOperationsParser.IDENTIFIER, 0); }
+		public TerminalNode IDENTIFIER() { return getToken(SimpleLanguageBytecodeParser.IDENTIFIER, 0); }
 		public MemberFieldContext(Member_expressionContext ctx) { copyFrom(ctx); }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitMemberField(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitMemberField(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -1258,7 +1258,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		public MemberIndexContext(Member_expressionContext ctx) { copyFrom(ctx); }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitMemberIndex(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitMemberIndex(this);
 			else return visitor.visitChildren(this);
 		}
 	}
@@ -1270,7 +1270,7 @@ public class SimpleLanguageOperationsParser extends Parser {
 		public MemberAssignContext(Member_expressionContext ctx) { copyFrom(ctx); }
 		@Override
 		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof SimpleLanguageOperationsVisitor ) return ((SimpleLanguageOperationsVisitor<? extends T>)visitor).visitMemberAssign(this);
+			if ( visitor instanceof SimpleLanguageBytecodeVisitor ) return ((SimpleLanguageBytecodeVisitor<? extends T>)visitor).visitMemberAssign(this);
 			else return visitor.visitChildren(this);
 		}
 	}

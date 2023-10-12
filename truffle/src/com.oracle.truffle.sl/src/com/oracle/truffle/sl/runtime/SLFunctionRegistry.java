@@ -116,7 +116,7 @@ public final class SLFunctionRegistry {
     }
 
     public void register(Source newFunctions) {
-        if (language.isUseOperations()) {
+        if (language.isUseBytecode()) {
             register(SLBytecodeVisitor.parseSL(language, newFunctions));
         } else {
             register(SLNodeVisitor.parseSL(language, newFunctions));

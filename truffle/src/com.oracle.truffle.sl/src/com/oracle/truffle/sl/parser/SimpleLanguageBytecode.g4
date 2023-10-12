@@ -43,7 +43,7 @@
  * The parser and lexer need to be generated using "mx create-sl-parser".
  */
 
-grammar SimpleLanguageOperations;
+grammar SimpleLanguageBytecode;
 
 @parser::header
 {
