@@ -194,7 +194,6 @@ public class ProcessUtil {
                             System.out.println("***************************************");
                             System.out.println("Print out.getStdOut(): ");
                             System.out.println(out.getStdOut());
-
                         }
                     }
                 }
@@ -217,7 +216,17 @@ public class ProcessUtil {
 
         @Override
         public ProcessResult run(File bitcodeFile, String[] args, Map<String, String> options, boolean evalSourceOnly) throws IOException {
-            return manager.startTask(bitcodeFile.getAbsolutePath()).get();
+            ProcessResult pr = null;
+            try {
+                pr = manager.startTask(bitcodeFile.getAbsolutePath()).get();
+            } catch (Exception e) {
+                System.out.println("Print pr.getStdErr(): ");
+                System.out.println(pr.getStdErr());
+                System.out.println("***************************************");
+                System.out.println("Print pr.getStdOut(): ");
+                System.out.println(pr.getStdOutput());
+            }
+            return pr;
         }
 
         @Override
@@ -262,16 +271,18 @@ public class ProcessUtil {
         return optList;
     }
 
-    public static ProcessResult executeNativeCommand(List<String> command) {
+    public static ProcessResult executeNativeCommand(List<String> command) throws IOException {
         if (command == null) {
             throw new IllegalArgumentException("command is null!");
         }
         ProcessBuilder processBuilder = new ProcessBuilder(command);
         Process process = null;
+        StreamReader readError = null;
+        StreamReader readOutput = null;
         try {
             process = processBuilder.start();
-            StreamReader readError = StreamReader.read(process.getErrorStream());
-            StreamReader readOutput = StreamReader.read(process.getInputStream());
+            readError = StreamReader.read(process.getErrorStream());
+            readOutput = StreamReader.read(process.getInputStream());
             boolean success = process.waitFor(PROCESS_WAIT_TIMEOUT, TimeUnit.MILLISECONDS);
             if (!success) {
                 throw new TimeoutError(command.toString());
@@ -279,6 +290,12 @@ public class ProcessUtil {
             int llvmResult = process.exitValue();
             return new ProcessResult(command.toString(), llvmResult, readError.getResult(), readOutput.getResult());
         } catch (Exception e) {
+            System.out.println("Print readOutput.getResult(): ");
+            assert readOutput != null;
+            System.out.println(readOutput.getResult());
+            System.out.println("***************************************");
+            System.out.println("Print readError.getResult(): ");
+            System.out.println(readError.getResult());
             throw new RuntimeException(command + " ", e);
         } finally {
             if (process != null) {

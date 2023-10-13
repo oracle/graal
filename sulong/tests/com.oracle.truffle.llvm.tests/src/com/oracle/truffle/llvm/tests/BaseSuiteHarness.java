@@ -35,7 +35,6 @@ import com.oracle.truffle.llvm.tests.services.TestEngineConfig;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.ProcessResult;
 import com.oracle.truffle.llvm.tests.util.ProcessUtil.TestEngineMode;
-
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
 import org.junit.AfterClass;
@@ -227,6 +226,8 @@ public abstract class BaseSuiteHarness {
                 if (retries++ >= MAX_RETRIES) {
                     throw e;
                 }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
             }
         }
     }
