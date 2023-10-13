@@ -28,7 +28,7 @@ import java.util.ArrayList;
 
 import jdk.compiler.graal.core.test.GraalCompilerTest;
 import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.compiler.graal.truffle.compiler.substitutions.TruffleInvocationPlugins;
+import jdk.compiler.graal.truffle.substitutions.TruffleInvocationPlugins;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;

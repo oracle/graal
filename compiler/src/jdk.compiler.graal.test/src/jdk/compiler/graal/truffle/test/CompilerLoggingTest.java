@@ -36,7 +36,7 @@ import java.util.logging.LogRecord;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import jdk.compiler.graal.debug.TTY;
-import jdk.compiler.graal.truffle.compiler.TruffleCompilerImpl;
+import jdk.compiler.graal.truffle.TruffleCompilerImpl;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;
 import org.junit.Assume;

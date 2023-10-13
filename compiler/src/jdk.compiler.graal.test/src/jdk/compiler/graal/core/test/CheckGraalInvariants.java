@@ -203,7 +203,7 @@ public class CheckGraalInvariants extends GraalCompilerTest {
          */
         public boolean shouldCheckUsage(OptionDescriptor option) {
             Class<?> declaringClass = option.getDeclaringClass();
-            if (declaringClass.getName().equals("jdk.compiler.graal.truffle.compiler.TruffleCompilerOptions")) {
+            if (declaringClass.getName().equals("jdk.compiler.graal.truffle.TruffleCompilerOptions")) {
                 /*
                  * These options are deprecated and will be removed in GraalVM 20.2.0. The
                  * TruffleIntrinsifyFrameAccess option has no replacement and is unused.

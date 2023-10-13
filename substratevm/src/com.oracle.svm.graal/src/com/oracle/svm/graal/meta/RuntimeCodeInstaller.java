@@ -35,7 +35,7 @@ import jdk.compiler.graal.core.common.NumUtil;
 import jdk.compiler.graal.core.common.type.CompressibleConstant;
 import jdk.compiler.graal.debug.DebugContext;
 import jdk.compiler.graal.debug.Indent;
-import jdk.compiler.graal.truffle.compiler.TruffleCompilerImpl;
+import jdk.compiler.graal.truffle.TruffleCompilerImpl;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
 import org.graalvm.word.Pointer;

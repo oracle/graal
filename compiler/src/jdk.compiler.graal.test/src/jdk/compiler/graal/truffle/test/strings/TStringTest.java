@@ -37,7 +37,7 @@ import jdk.compiler.graal.nodes.StructuredGraph;
 import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.compiler.graal.replacements.ConstantBindingParameterPlugin;
-import jdk.compiler.graal.truffle.compiler.substitutions.TruffleInvocationPlugins;
+import jdk.compiler.graal.truffle.substitutions.TruffleInvocationPlugins;
 
 import jdk.vm.ci.aarch64.AArch64;
 import jdk.vm.ci.amd64.AMD64;

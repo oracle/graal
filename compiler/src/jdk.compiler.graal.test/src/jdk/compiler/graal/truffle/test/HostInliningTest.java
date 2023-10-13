@@ -55,7 +55,7 @@ import jdk.compiler.graal.options.OptionKey;
 import jdk.compiler.graal.options.OptionValues;
 import jdk.compiler.graal.phases.common.CanonicalizerPhase;
 import jdk.compiler.graal.phases.tiers.HighTierContext;
-import jdk.compiler.graal.truffle.compiler.host.HostInliningPhase;
+import jdk.compiler.graal.truffle.host.HostInliningPhase;
 import jdk.compiler.graal.truffle.test.HostInliningTestFactory.IfNodeGen;
 import org.graalvm.polyglot.Context;
 import org.junit.Assert;

@@ -26,8 +26,8 @@ package jdk.compiler.graal.truffle.test;
 
 import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.compiler.graal.serviceprovider.GraalServices;
-import jdk.compiler.graal.truffle.compiler.substitutions.GraphBuilderInvocationPluginProvider;
-import jdk.compiler.graal.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
+import jdk.compiler.graal.truffle.substitutions.GraphBuilderInvocationPluginProvider;
+import jdk.compiler.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
 import org.junit.Test;
 
 import com.oracle.truffle.api.CompilerDirectives;

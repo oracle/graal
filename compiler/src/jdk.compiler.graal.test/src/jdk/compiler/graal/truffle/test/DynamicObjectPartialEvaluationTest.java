@@ -35,7 +35,7 @@ import jdk.compiler.graal.nodes.extended.RawStoreNode;
 import jdk.compiler.graal.nodes.extended.UnsafeAccessNode;
 import jdk.compiler.graal.nodes.java.LoadFieldNode;
 import jdk.compiler.graal.nodes.java.StoreFieldNode;
-import jdk.compiler.graal.truffle.compiler.nodes.ObjectLocationIdentity;
+import jdk.compiler.graal.truffle.nodes.ObjectLocationIdentity;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;

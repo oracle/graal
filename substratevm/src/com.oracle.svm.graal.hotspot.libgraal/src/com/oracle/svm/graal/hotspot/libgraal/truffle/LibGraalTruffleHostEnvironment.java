@@ -25,10 +25,10 @@
 package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
 import jdk.compiler.graal.core.common.util.MethodKey;
-import jdk.compiler.graal.truffle.compiler.TruffleCompilerImpl;
-import jdk.compiler.graal.truffle.compiler.TruffleElementCache;
-import jdk.compiler.graal.truffle.compiler.host.TruffleHostEnvironment;
-import jdk.compiler.graal.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
+import jdk.compiler.graal.truffle.TruffleCompilerImpl;
+import jdk.compiler.graal.truffle.TruffleElementCache;
+import jdk.compiler.graal.truffle.host.TruffleHostEnvironment;
+import jdk.compiler.graal.truffle.hotspot.HotSpotTruffleCompilerImpl;
 
 import com.oracle.truffle.compiler.HostMethodInfo;
 import com.oracle.truffle.compiler.TruffleCompilable;

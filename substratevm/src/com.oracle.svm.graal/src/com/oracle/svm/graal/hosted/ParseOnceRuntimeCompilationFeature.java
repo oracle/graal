@@ -128,7 +128,7 @@ import jdk.compiler.graal.phases.common.IterativeConditionalEliminationPhase;
 import jdk.compiler.graal.phases.tiers.HighTierContext;
 import jdk.compiler.graal.phases.util.Providers;
 import jdk.compiler.graal.printer.GraalDebugHandlersFactory;
-import jdk.compiler.graal.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
+import jdk.compiler.graal.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.compiler.graal.word.WordTypes;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;

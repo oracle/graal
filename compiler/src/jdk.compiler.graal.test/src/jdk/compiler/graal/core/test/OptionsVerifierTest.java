@@ -56,7 +56,7 @@ import org.objectweb.asm.Type;
 public class OptionsVerifierTest {
 
     private static Set<String> ALLOWLIST = new TreeSet<>(Arrays.asList(//
-                    "jdk.compiler.graal.truffle.compiler.TruffleCompilerOptions"));
+                    "jdk.compiler.graal.truffle.TruffleCompilerOptions"));
 
     @Test
     public void verifyOptions() throws IOException {

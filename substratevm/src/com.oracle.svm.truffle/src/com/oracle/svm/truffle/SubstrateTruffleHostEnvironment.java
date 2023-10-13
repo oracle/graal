@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.truffle;
 
-import jdk.compiler.graal.truffle.compiler.TruffleCompilerImpl;
-import jdk.compiler.graal.truffle.compiler.TruffleElementCache;
-import jdk.compiler.graal.truffle.compiler.host.TruffleHostEnvironment;
+import jdk.compiler.graal.truffle.TruffleCompilerImpl;
+import jdk.compiler.graal.truffle.TruffleElementCache;
+import jdk.compiler.graal.truffle.host.TruffleHostEnvironment;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

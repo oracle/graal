@@ -63,7 +63,7 @@ import jdk.compiler.graal.phases.common.CanonicalizerPhase;
 import jdk.compiler.graal.phases.common.IterativeConditionalEliminationPhase;
 import jdk.compiler.graal.phases.common.inlining.InliningUtil;
 import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.truffle.compiler.phases.DeoptimizeOnExceptionPhase;
+import jdk.compiler.graal.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.compiler.graal.word.WordTypes;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;

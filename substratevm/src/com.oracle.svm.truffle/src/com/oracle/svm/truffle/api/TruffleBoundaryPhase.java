@@ -32,7 +32,7 @@ import jdk.compiler.graal.nodes.StructuredGraph;
 import jdk.compiler.graal.nodes.java.ExceptionObjectNode;
 import jdk.compiler.graal.nodes.util.GraphUtil;
 import jdk.compiler.graal.phases.Phase;
-import jdk.compiler.graal.truffle.compiler.PartialEvaluator;
+import jdk.compiler.graal.truffle.PartialEvaluator;
 
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase.SubstrateBytecodeParser;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;

@@ -26,11 +26,11 @@ package jdk.compiler.graal.truffle.test;
 
 import jdk.compiler.graal.core.common.CompilationIdentifier;
 import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.truffle.compiler.PartialEvaluator;
-import jdk.compiler.graal.truffle.compiler.PostPartialEvaluationSuite;
-import jdk.compiler.graal.truffle.compiler.TruffleCompilerImpl;
-import jdk.compiler.graal.truffle.compiler.TruffleTierContext;
-import jdk.compiler.graal.truffle.compiler.phases.inlining.AgnosticInliningPhase;
+import jdk.compiler.graal.truffle.PartialEvaluator;
+import jdk.compiler.graal.truffle.PostPartialEvaluationSuite;
+import jdk.compiler.graal.truffle.TruffleCompilerImpl;
+import jdk.compiler.graal.truffle.TruffleTierContext;
+import jdk.compiler.graal.truffle.phases.inlining.AgnosticInliningPhase;
 import org.graalvm.polyglot.Context;
 import org.junit.Before;
 

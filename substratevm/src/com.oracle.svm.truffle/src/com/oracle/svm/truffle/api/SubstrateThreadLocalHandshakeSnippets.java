@@ -45,7 +45,7 @@ import jdk.compiler.graal.replacements.SnippetTemplate;
 import jdk.compiler.graal.replacements.SnippetTemplate.Arguments;
 import jdk.compiler.graal.replacements.SnippetTemplate.SnippetInfo;
 import jdk.compiler.graal.replacements.Snippets;
-import jdk.compiler.graal.truffle.compiler.nodes.TruffleSafepointNode;
+import jdk.compiler.graal.truffle.nodes.TruffleSafepointNode;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;

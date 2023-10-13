@@ -54,8 +54,8 @@ import jdk.compiler.graal.phases.common.ConditionalEliminationPhase;
 import jdk.compiler.graal.phases.common.FloatingReadPhase;
 import jdk.compiler.graal.phases.common.HighTierLoweringPhase;
 import jdk.compiler.graal.phases.common.LoweringPhase;
-import jdk.compiler.graal.truffle.compiler.nodes.ObjectLocationIdentity;
-import jdk.compiler.graal.truffle.compiler.substitutions.TruffleGraphBuilderPlugins;
+import jdk.compiler.graal.truffle.nodes.ObjectLocationIdentity;
+import jdk.compiler.graal.truffle.substitutions.TruffleGraphBuilderPlugins;
 import org.junit.Test;
 
 import jdk.vm.ci.meta.JavaKind;

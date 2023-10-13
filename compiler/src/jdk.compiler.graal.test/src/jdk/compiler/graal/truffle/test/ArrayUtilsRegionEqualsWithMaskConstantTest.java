@@ -33,7 +33,7 @@ import jdk.compiler.graal.nodes.ValueNode;
 import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
 import jdk.compiler.graal.options.OptionValues;
 import jdk.compiler.graal.replacements.nodes.ArrayRegionEqualsNode;
-import jdk.compiler.graal.truffle.compiler.substitutions.TruffleInvocationPlugins;
+import jdk.compiler.graal.truffle.substitutions.TruffleInvocationPlugins;
 import org.junit.Assert;
 import org.junit.Assume;
 import org.junit.Test;

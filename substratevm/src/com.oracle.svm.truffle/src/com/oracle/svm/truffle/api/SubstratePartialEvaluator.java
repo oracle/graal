@@ -40,10 +40,10 @@ import jdk.compiler.graal.nodes.graphbuilderconf.ParameterPlugin;
 import jdk.compiler.graal.phases.util.Providers;
 import jdk.compiler.graal.replacements.PEGraphDecoder;
 import jdk.compiler.graal.replacements.PEGraphDecoder.SpecialCallTargetCacheKey;
-import jdk.compiler.graal.truffle.compiler.PartialEvaluator;
-import jdk.compiler.graal.truffle.compiler.PartialEvaluatorConfiguration;
-import jdk.compiler.graal.truffle.compiler.TruffleCompilerConfiguration;
-import jdk.compiler.graal.truffle.compiler.TruffleTierContext;
+import jdk.compiler.graal.truffle.PartialEvaluator;
+import jdk.compiler.graal.truffle.PartialEvaluatorConfiguration;
+import jdk.compiler.graal.truffle.TruffleCompilerConfiguration;
+import jdk.compiler.graal.truffle.TruffleTierContext;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

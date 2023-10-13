@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
 import jdk.compiler.graal.core.CompilationWrapper;
 import jdk.compiler.graal.core.GraalCompilerOptions;
 import jdk.compiler.graal.test.SubprocessUtil;
-import jdk.compiler.graal.truffle.compiler.TruffleCompilerImpl;
+import jdk.compiler.graal.truffle.TruffleCompilerImpl;
 import jdk.compiler.graal.truffle.test.TestWithPolyglotOptions;
 import org.junit.Test;
 
