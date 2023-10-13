@@ -120,20 +120,27 @@ public final class NativeLibrarySupport {
             usrPaths = tokens;
         }
         String libname = System.mapLibraryName(name);
-        if (sysPath != null && loadLibrary0(new File(sysPath, libname), false)) {
+        if (sysPath != null && loadLibraryFromPath(sysPath, libname)) {
             return;
         }
         for (String path : usrPaths) {
-            File libpath = new File(path, libname);
-            if (loadLibrary0(libpath, false)) {
-                return;
-            }
-            File altpath = Target_jdk_internal_loader_ClassLoaderHelper.mapAlternativeName(libpath);
-            if (altpath != null && loadLibrary0(altpath, false)) {
+            if (loadLibraryFromPath(path, libname)) {
                 return;
             }
         }
         throw new UnsatisfiedLinkError("No " + name + " in java.library.path");
+    }
+
+    private boolean loadLibraryFromPath(String path, String libname) {
+        File libpath = new File(path, libname);
+        if (loadLibrary0(libpath, false)) {
+            return true;
+        }
+        File altpath = Target_jdk_internal_loader_ClassLoaderHelper.mapAlternativeName(libpath);
+        if (altpath != null && loadLibrary0(altpath, false)) {
+            return true;
+        }
+        return false;
     }
 
     /** Returns the directory containing the native image, or {@code null}. */
