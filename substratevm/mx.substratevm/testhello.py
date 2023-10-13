@@ -480,7 +480,7 @@ def test():
             r"%sprivate:"%spaces_pattern,
             r"%sstatic void noInlineFoo\(void\);"%spaces_pattern,
             r"%sstatic void noInlineHere\(int\);"%spaces_pattern,
-            r"%sstatic void noInlineManyArgs\(int, int, int, int, boolean, int, int, long, int, long, float, float, float, float, double, float, float, float, float, double, boolean, float\);"%spaces_pattern,
+            r"%sstatic void noInlineManyArgs\(int, byte, short, char, boolean, int, int, long, int, long, float, float, float, float, double, float, float, float, float, double, boolean, float\);"%spaces_pattern,
             r"%sstatic void noInlinePassConstants\(void\);"%spaces_pattern,
             r"%sstatic void noInlineTest\(void\);"%spaces_pattern,
             r"%sstatic void noInlineThis\(void\);"%spaces_pattern,
@@ -675,9 +675,9 @@ def test():
     execute("continue")
     exec_string = execute("info args")
     rexp =[r"i0 = 0",
-           r"i1 = 1",
-           r"i2 = 2",
-           r"i3 = 3",
+           r"b1 = 1 '\\001'",
+           r"s2 = 2",
+           r"c3 = 51",
            r"b4 = true",
            r"i5 = 5",
            r"i6 = 6",
@@ -727,9 +727,9 @@ def test():
 
     exec_string = execute("info args")
     rexp =[r"i0 = 0",
-           r"i1 = 1",
-           r"i2 = 2",
-           r"i3 = 3",
+           r"b1 = 1 '\\001'",
+           r"s2 = 2",
+           r"c3 = 51",
            r"b4 = true",
            r"i5 = 5",
            r"i6 = 6",
