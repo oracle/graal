@@ -105,15 +105,7 @@ public class SubstrateUtil {
         return Services.IS_IN_NATIVE_IMAGE;
     }
 
-    private static final Method IS_TERMINAL_METHOD = getIsTerminalMethod();
-
-    private static Method getIsTerminalMethod() {
-        try {
-            return Console.class.getMethod("isTerminal");
-        } catch (NoSuchMethodException e) {
-            return null;
-        }
-    }
+    private static final Method IS_TERMINAL_METHOD = ReflectionUtil.lookupMethod(true, Console.class, "isTerminal");
 
     private static boolean isTTY() {
         Console console = System.console();
