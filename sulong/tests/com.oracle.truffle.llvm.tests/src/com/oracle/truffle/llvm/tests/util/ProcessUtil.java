@@ -36,6 +36,7 @@ import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Context.Builder;
 import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Value;
+import org.junit.Assert;
 
 import java.io.ByteArrayOutputStream;
 import java.io.Closeable;
@@ -49,8 +50,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
-
-import org.junit.Assert;
 
 public class ProcessUtil {
 
@@ -187,7 +186,16 @@ public class ProcessUtil {
                         Assert.fail("No main function found.");
                     }
                     if (!evalSourceOnly) {
-                        result = main.execute().asInt();
+                        try {
+                            result = main.execute().asInt();
+                        } catch (Exception e) {
+                            System.out.println("Print out.getStdErr(): ");
+                            System.out.println(out.getStdErr());
+                            System.out.println("***************************************");
+                            System.out.println("Print out.getStdOut(): ");
+                            System.out.println(out.getStdOut());
+
+                        }
                     }
                 }
                 return new ProcessResult(bitcodeFile.getName(), result, out.getStdErr(), out.getStdOut());
