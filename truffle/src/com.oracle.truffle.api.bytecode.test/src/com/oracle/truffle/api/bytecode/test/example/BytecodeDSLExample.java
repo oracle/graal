@@ -326,16 +326,16 @@ public abstract class BytecodeDSLExample extends RootNode implements BytecodeRoo
     @Operation
     public static final class CopyLocalsToFrame {
         @Specialization
-        public static Frame doSomeLocals(VirtualFrame frame, int length, @Bind("$root") Node rootNode) {
+        public static Frame doSomeLocals(VirtualFrame frame, int length, @Bind("$root") BytecodeDSLExample rootNode) {
             Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
-            ((BytecodeDSLExample) rootNode).copyLocals(frame, newFrame, length);
+            rootNode.copyLocals(frame, newFrame, length);
             return newFrame;
         }
 
         @Specialization(guards = {"length == null"})
-        public static Frame doAllLocals(VirtualFrame frame, @SuppressWarnings("unused") Object length, @Bind("$root") Node rootNode) {
+        public static Frame doAllLocals(VirtualFrame frame, @SuppressWarnings("unused") Object length, @Bind("$root") BytecodeDSLExample rootNode) {
             Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
-            ((BytecodeDSLExample) rootNode).copyLocals(frame, newFrame);
+            rootNode.copyLocals(frame, newFrame);
             return newFrame;
         }
     }

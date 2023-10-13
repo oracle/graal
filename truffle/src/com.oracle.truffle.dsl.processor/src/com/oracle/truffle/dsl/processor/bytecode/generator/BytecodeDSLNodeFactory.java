@@ -311,8 +311,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         operationNodeGen.add(createReadVariadic());
         operationNodeGen.add(createMergeVariadic());
 
-        // Define helpers for local reading/copying.
+        // Define helpers for locals.
         operationNodeGen.add(createGetLocals());
+        operationNodeGen.add(createGetLocalNames());
+        operationNodeGen.add(createGetLocalInfos());
         operationNodeGen.addAll(createCopyLocals());
 
         // Define helpers for bci lookups.
@@ -1036,6 +1038,40 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return ex;
     }
 
+    private CodeExecutableElement createGetLocalNames() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "getLocalNames");
+        ex.addAnnotationMirror(createExplodeLoopAnnotation(null));
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.declaration(types.FrameDescriptor, "frameDescriptor", "getFrameDescriptor()");
+        b.declaration(context.getType(Object[].class), "result", "new Object[numLocals - " + USER_LOCALS_START_IDX + "]");
+        b.startFor().string("int i = 0; i < numLocals - " + USER_LOCALS_START_IDX + "; i++").end().startBlock();
+        b.statement("result[i] = frameDescriptor.getSlotName(i + " + USER_LOCALS_START_IDX + ")");
+        b.end();
+
+        b.startReturn().string("result").end();
+
+        return ex;
+    }
+
+    private CodeExecutableElement createGetLocalInfos() {
+        CodeExecutableElement ex = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "getLocalInfos");
+        ex.addAnnotationMirror(createExplodeLoopAnnotation(null));
+
+        CodeTreeBuilder b = ex.createBuilder();
+
+        b.declaration(types.FrameDescriptor, "frameDescriptor", "getFrameDescriptor()");
+        b.declaration(context.getType(Object[].class), "result", "new Object[numLocals - " + USER_LOCALS_START_IDX + "]");
+        b.startFor().string("int i = 0; i < numLocals - " + USER_LOCALS_START_IDX + "; i++").end().startBlock();
+        b.statement("result[i] = frameDescriptor.getSlotInfo(i + " + USER_LOCALS_START_IDX + ")");
+        b.end();
+
+        b.startReturn().string("result").end();
+
+        return ex;
+    }
+
     private List<CodeExecutableElement> createCopyLocals() {
         CodeExecutableElement copyAllLocals = GeneratorUtils.overrideImplement(types.BytecodeRootNode, "copyLocals", 2);
         CodeTreeBuilder copyAllLocalsBuilder = copyAllLocals.createBuilder();
@@ -1441,15 +1477,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         CodeTypeElement bytecodeLocation = new CodeTypeElement(Set.of(PRIVATE, STATIC), ElementKind.CLASS, null, "BytecodeLocation");
 
         TypeMirror unresolvedLabelsType = generic(HashMap.class, types.BytecodeLabel, generic(context.getDeclaredType(ArrayList.class), bytecodeLocation.asType()));
-        TypeMirror localNamesType = generic(ArrayList.class, context.getDeclaredType(Object.class));
 
         // When we enter a FinallyTry, these fields get stored on the FinallyTryContext.
         // On exit, they are restored.
         List<CodeVariableElement> builderContextSensitiveState = new ArrayList<>(List.of(
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(short[].class), "bc"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "bci"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "curStack"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "maxStack"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "currentStackHeight"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "maxStackHeight"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceInfo"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceInfoIndex"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "exHandlers"),
@@ -1459,6 +1494,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         // This state is shared across all contexts for a given root node. It does not get
         // saved/restored when entering/leaving a FinallyTry.
         List<CodeVariableElement> builderContextInsensitiveState = new ArrayList<>(List.of(
+                        new CodeVariableElement(Set.of(PRIVATE), types.FrameDescriptor_Builder, "frameDescriptorBuilder"),
+                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "operationSequenceNumber"),
                         new CodeVariableElement(Set.of(PRIVATE), new ArrayCodeTypeMirror(operationStackEntry.asType()), "operationStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "operationSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "numLocals"),
@@ -1469,10 +1506,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceIndexSp"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int[].class), "sourceLocationStack"),
                         new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "sourceLocationSp"),
-                        new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "opSeqNum"),
                         new CodeVariableElement(Set.of(PRIVATE), finallyTryContext.asType(), "finallyTryContext"),
                         new CodeVariableElement(Set.of(PRIVATE), constantPool.asType(), "constantPool"),
-                        new CodeVariableElement(Set.of(PRIVATE), localNamesType, "localNames"),
                         // must be last
                         new CodeVariableElement(Set.of(PRIVATE), savedState.asType(), "savedState")));
 
@@ -1543,7 +1578,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                 List<CodeVariableElement> handlerFields = new ArrayList<>(List.of(
                                 new CodeVariableElement(context.getType(short[].class), "handlerBc"),
-                                new CodeVariableElement(context.getType(int.class), "handlerMaxStack"),
+                                new CodeVariableElement(context.getType(int.class), "handlermaxStackHeight"),
                                 new CodeVariableElement(context.getType(int[].class), "handlerSourceInfo"),
                                 new CodeVariableElement(context.getType(int[].class), "handlerExHandlers"),
                                 new CodeVariableElement(generic(HashMap.class, context.getDeclaredType(Integer.class), types.BytecodeLabel), "handlerUnresolvedBranchLabels"),
@@ -1727,7 +1762,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.addAll(builderState);
 
             builder.add(createCreateLocal());
-            builder.add(createCreateLocalWithName());
+            builder.add(createCreateLocalAllParameters());
             builder.add(createCreateLabel());
             builder.add(createRegisterUnresolvedLabel());
             builder.add(createResolveUnresolvedLabel());
@@ -2011,25 +2046,37 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLocal, "createLocal");
             CodeTreeBuilder b = ex.createBuilder();
 
-            b.startReturn().startCall("createLocal").string("null").end(2);
+            b.startReturn().startCall("createLocal");
+            b.staticReference(types.FrameSlotKind, "Illegal");
+            b.string("null"); // name
+            b.string("null"); // info
+            b.end(2);
 
             return ex;
         }
 
-        private CodeExecutableElement createCreateLocalWithName() {
+        private CodeExecutableElement createCreateLocalAllParameters() {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLocal, "createLocal");
+            ex.addParameter(new CodeVariableElement(types.FrameSlotKind, "slotKind"));
             ex.addParameter(new CodeVariableElement(context.getDeclaredType(Object.class), "name"));
+            ex.addParameter(new CodeVariableElement(context.getDeclaredType(Object.class), "info"));
             CodeTreeBuilder b = ex.createBuilder();
 
             if (model.enableSerialization) {
                 b.startIf().string("serialization != null").end().startBlock();
                 serializationWrapException(b, () -> {
                     serializationElements.writeShort(b, serializationElements.codeCreateLocal);
-                    // TODO: serialize the name
+                    // TODO: serialize slot, name, info
                 });
                 b.end();
             }
-            b.statement("localNames.add(name)");
+
+            b.startStatement().startCall("frameDescriptorBuilder.addSlot");
+            b.string("slotKind");
+            b.string("name");
+            b.string("info");
+            b.end(2);
+
             b.startReturn().startNew(bytecodeLocalImpl.asType()).string("numLocals++").end(2);
 
             return ex;
@@ -2185,7 +2232,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startAssign("operationStack[operationSp++]").startNew(operationStackEntry.asType());
             b.string("id");
             b.string("data");
-            b.string("opSeqNum++");
+            b.string("operationSequenceNumber++");
             b.string("0");
             b.string("null");
             b.end(2);
@@ -2282,7 +2329,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     for (CodeVariableElement field : builderContextSensitiveState) {
                         b.string(field.getName());
                     }
-                    b.string("opSeqNum - 1");
+                    b.string("operationSequenceNumber - 1");
                     b.string("new HashSet<>()");
                     b.string("finallyTryContext");
                     b.end(2);
@@ -2321,15 +2368,23 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
              * We initialize the fields declared on builderState here when beginRoot is called.
              */
             buildContextSensitiveFieldInitializer(b);
+            b.startAssign("frameDescriptorBuilder").tree(CodeTreeBuilder.createBuilder().startStaticCall(types.FrameDescriptor, "newBuilder").end().build()).end();
+            if (userLocalsStartIndex > 0) {
+                // Allocate reserved slots
+                b.startStatement().startCall("frameDescriptorBuilder.addSlots");
+                b.string(USER_LOCALS_START_IDX);
+                b.staticReference(types.FrameSlotKind, "Illegal");
+                b.end(2);
+            }
+
             b.statement("operationStack = new OperationStackEntry[8]");
-            b.statement("opSeqNum = 0");
+            b.statement("operationSequenceNumber = 0");
             b.statement("operationSp = 0");
 
             b.statement("numLocals = " + USER_LOCALS_START_IDX);
             b.statement("numLabels = 0");
             b.statement("numNodes = 0");
             b.statement("constantPool = new ConstantPool()");
-            b.statement("localNames = new ArrayList<>()");
 
             b.startIf().string("withSource").end().startBlock();
             b.statement("sourceIndexStack = new int[1]");
@@ -2430,7 +2485,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                     UNINIT + " /* try end */, " +
                                     UNINIT + " /* catch start */, " +
                                     UNINIT + " /* branch past catch fix-up index */, " +
-                                    "curStack /* entry stack height */, " +
+                                    "currentStackHeight /* entry stack height */, " +
                                     "((BytecodeLocalImpl) " + operation.getOperationArgumentName(0) + ").index /* exception local index */}");
                     break;
                 case FINALLY_TRY:
@@ -2578,7 +2633,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.statement("BytecodeLocalImpl exceptionLocal = (BytecodeLocalImpl) finallyTryData[0]");
                     b.statement("FinallyTryContext ctx = (FinallyTryContext) finallyTryData[1]");
                     b.statement("short exceptionIndex = (short) exceptionLocal.index");
-                    b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, curStack, exceptionIndex)");
+                    b.statement("int exHandlerIndex = doCreateExceptionHandler(ctx.bci, bci, " + UNINIT + " /* handler start */, currentStackHeight, exceptionIndex)");
                     b.lineComment("emit handler for normal completion case");
                     b.statement("doEmitFinallyHandler(ctx)");
                     b.statement("int endBranchIndex = bci + 1");
@@ -2665,36 +2720,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.cast(types.TruffleLanguage).string("rootData[1]");
             b.end();
 
-            // Construct the frame descriptor.
-            CodeTree newBuilderCall = CodeTreeBuilder.createBuilder().startStaticCall(types.FrameDescriptor, "newBuilder").string("numLocals + maxStack").end().build();
-            b.declaration(types.FrameDescriptor_Builder, "fdb", newBuilderCall);
-
-            if (userLocalsStartIndex > 0) {
-                // Allocate reserved slots
-                b.startStatement().startCall("fdb.addSlots");
-                b.string(USER_LOCALS_START_IDX);
-                b.staticReference(types.FrameSlotKind, "Illegal");
-                b.end(2);
-            }
-
-            // Allocate user locals
-            b.startFor().string("Object name : localNames").end().startBlock();
-            b.startStatement().startCall("fdb.addSlot");
-            b.staticReference(types.FrameSlotKind, "Illegal");
-            b.string("name");
-            b.string("null"); // description
-            b.end(2);
-            b.end();
-
-            // Allocate stack
-            b.startStatement().startCall("fdb.addSlots");
-            b.string("maxStack");
+            // Allocate stack space in the frame descriptor.
+            b.startStatement().startCall("frameDescriptorBuilder.addSlots");
+            b.string("maxStackHeight");
             b.staticReference(types.FrameSlotKind, "Illegal");
             b.end(2);
 
             b.startAssign("result").startNew(operationNodeGen.asType());
             b.string("language");
-            b.string("fdb");
+            b.string("frameDescriptorBuilder");
             b.end(2);
 
             b.startStatement().startCall("result", "setInterpreterState");
@@ -2734,7 +2768,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.end();
 
             b.startIf().string("savedState == null").end().startBlock(); // {
-            b.lineComment("this signifies that there is no root node currently being built");
+            b.lineComment("invariant: bc is null when no root node is being built");
             b.statement("bc = null");
             b.end().startElseBlock(); // } {
             for (CodeVariableElement state : builderState) {
@@ -2780,7 +2814,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     b.startStatement().startCall("registerUnresolvedLabel");
                     b.string("labelImpl");
                     b.string("bci + 1");
-                    b.string("curStack");
+                    b.string("currentStackHeight");
                     b.end(2);
                     b.newLine();
 
@@ -2800,7 +2834,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     yield new String[]{UNINIT};
                 }
                 case YIELD -> {
-                    b.statement("ContinuationLocation continuation = new ContinuationLocationImpl(numYields++, bci + 2, curStack)");
+                    b.statement("ContinuationLocation continuation = new ContinuationLocationImpl(numYields++, bci + 2, currentStackHeight)");
                     b.statement("continuationLocations.add(continuation)");
                     yield new String[]{"constantPool.addConstant(continuation)"};
                 }
@@ -2858,7 +2892,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.statement("labelImpl.bci = bci");
                 b.startStatement().startCall("resolveUnresolvedLabel");
                 b.string("labelImpl");
-                b.string("curStack");
+                b.string("currentStackHeight");
                 b.end(2);
             } else {
                 assert operation.instruction != null;
@@ -3204,7 +3238,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         buildEmitInstruction(b, model.branchInstruction, new String[]{UNINIT});
                         if (op.kind == OperationKind.CONDITIONAL) {
                             // we have to adjust the stack for the third child
-                            b.statement("curStack -= 1");
+                            b.statement("currentStackHeight -= 1");
                         }
                         b.statement("int toUpdate = ((int[]) data)[0]");
                         b.statement(writeBc("toUpdate", "(short) bci"));
@@ -3270,7 +3304,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
                         b.startStatement().startCall("finallyTryContext", "setHandler");
                         b.string("Arrays.copyOf(bc, bci)");
-                        b.string("maxStack");
+                        b.string("maxStackHeight");
                         b.string("withSource ? Arrays.copyOf(sourceInfo, sourceInfoIndex) : null");
                         b.string("Arrays.copyOf(exHandlers, exHandlerCount)");
                         b.string("unresolvedBranchLabels");
@@ -3407,7 +3441,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                             b.startStatement().startCall("registerUnresolvedLabel");
                             b.string("lbl");
                             b.string("offsetBci + branchIdx");
-                            b.string("curStack + sp");
+                            b.string("currentStackHeight + sp");
                             b.end(3);
                         }
 
@@ -3430,7 +3464,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("ContinuationLocationImpl cl = (ContinuationLocationImpl) constantPool.getConstant(" + readHandlerBc("locationBci") + ")");
                         // The continuation should resume after this yield instruction
                         b.statement("assert cl.bci == locationBci + 1");
-                        b.statement("ContinuationLocationImpl newContinuation = new ContinuationLocationImpl(numYields++, offsetBci + cl.bci, curStack + cl.sp)");
+                        b.statement("ContinuationLocationImpl newContinuation = new ContinuationLocationImpl(numYields++, offsetBci + cl.bci, currentStackHeight + cl.sp)");
                         b.statement(writeBc("offsetBci + locationBci", "(short) constantPool.addConstant(newContinuation)"));
                         b.statement("continuationLocations.add(newContinuation)");
                         break;
@@ -3484,8 +3518,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.statement("bci += handlerBc.length");
 
-            b.startIf().string("curStack + context.handlerMaxStack > maxStack").end().startBlock();
-            b.statement("maxStack = curStack + context.handlerMaxStack");
+            b.startIf().string("currentStackHeight + context.handlermaxStackHeight > maxStackHeight").end().startBlock();
+            b.statement("maxStackHeight = currentStackHeight + context.handlermaxStackHeight");
             b.end();
 
             b.startIf().string("withSource").end().startBlock();
@@ -3502,7 +3536,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("exHandlers[exHandlerCount + idx] = context.handlerExHandlers[idx] + offsetBci");
             b.statement("exHandlers[exHandlerCount + idx + 1] = context.handlerExHandlers[idx + 1] + offsetBci");
             b.statement("exHandlers[exHandlerCount + idx + 2] = context.handlerExHandlers[idx + 2] + offsetBci");
-            b.statement("exHandlers[exHandlerCount + idx + 3] = context.handlerExHandlers[idx + 3] + curStack");
+            b.statement("exHandlers[exHandlerCount + idx + 3] = context.handlerExHandlers[idx + 3] + currentStackHeight");
             b.statement("exHandlers[exHandlerCount + idx + 4] = context.handlerExHandlers[idx + 4]");
             b.end();
 
@@ -3562,8 +3596,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startStatement().string("doEmitInstruction(").tree(createInstructionConstant(model.popVariadicInstruction[0])).string(" + count)").end();
             b.end().startElseBlock();
 
-            b.startIf().string("curStack + 1 > maxStack").end().startBlock();
-            b.statement("maxStack = curStack + 1");
+            b.startIf().string("currentStackHeight + 1 > maxStackHeight").end().startBlock();
+            b.statement("maxStackHeight = currentStackHeight + 1");
             b.end();
             b.statement("int elementCount = count + 1");
             b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.storeNullInstruction)).end(2);
@@ -3579,9 +3613,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startStatement().startCall("doEmitInstruction").tree(createInstructionConstant(model.mergeVariadicInstruction)).end(2);
             b.end();
 
-            b.statement("curStack -= count - 1");
-            b.startIf().string("count == 0 && curStack > maxStack").end().startBlock();
-            b.statement("maxStack = curStack");
+            b.statement("currentStackHeight -= count - 1");
+            b.startIf().string("count == 0 && currentStackHeight > maxStackHeight").end().startBlock();
+            b.statement("maxStackHeight = currentStackHeight");
             b.end();
 
             return ex;
@@ -3604,13 +3638,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case BRANCH_FALSE:
                 case POP:
                 case STORE_LOCAL:
-                    b.statement("curStack -= 1");
+                    b.statement("currentStackHeight -= 1");
                     break;
                 case CUSTOM:
                 case CUSTOM_QUICKENED:
                     int delta = (instr.signature.isVoid ? 0 : 1) - instr.signature.valueCount;
                     if (delta != 0) {
-                        b.statement("curStack += " + delta);
+                        b.statement("currentStackHeight += " + delta);
                         hasPositiveDelta = delta > 0;
                     }
                     break;
@@ -3627,10 +3661,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     ShortCircuitInstructionModel shortCircuitInstruction = (ShortCircuitInstructionModel) instr;
                     if (shortCircuitInstruction.returnConvertedValue) {
                         // Stack: [..., convertedValue]
-                        b.statement("curStack -= 1");
+                        b.statement("currentStackHeight -= 1");
                     } else {
                         // Stack: [..., value, convertedValue]
-                        b.statement("curStack -= 2");
+                        b.statement("currentStackHeight -= 2");
                     }
                     break;
                 case DUP:
@@ -3638,18 +3672,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case LOAD_CONSTANT:
                 case LOAD_LOCAL:
                     hasPositiveDelta = true;
-                    b.statement("curStack += 1");
+                    b.statement("currentStackHeight += 1");
                     break;
                 case STORE_LOCAL_MATERIALIZED:
-                    b.statement("curStack -= 2");
+                    b.statement("currentStackHeight -= 2");
                     break;
                 default:
                     throw new UnsupportedOperationException();
             }
 
             if (hasPositiveDelta) {
-                b.startIf().string("curStack > maxStack").end().startBlock();
-                b.statement("maxStack = curStack");
+                b.startIf().string("currentStackHeight > maxStackHeight").end().startBlock();
+                b.statement("maxStackHeight = currentStackHeight");
                 b.end();
             }
 
@@ -3850,8 +3884,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private void buildContextSensitiveFieldInitializer(CodeTreeBuilder b) {
             b.statement("bc = new short[32]");
             b.statement("bci = 0");
-            b.statement("curStack = 0");
-            b.statement("maxStack = 0");
+            b.statement("currentStackHeight = 0");
+            b.statement("maxStackHeight = 0");
             b.startIf().string("withSource").end().startBlock();
             b.statement("sourceInfo = new int[15]");
             b.statement("sourceInfoIndex = 0");

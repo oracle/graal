@@ -59,8 +59,6 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -82,13 +80,14 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameInstance;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Parameterized.class)
-public class GetLocalsTest {
+public class LocalHelpersTest {
     @Parameters(name = "{0}")
     public static List<Class<? extends BytecodeNodeWithLocalIntrospection>> getInterpreterClasses() {
         return List.of(BytecodeNodeWithLocalIntrospectionBase.class, BytecodeNodeWithLocalIntrospectionWithUncached.class);
@@ -96,9 +95,8 @@ public class GetLocalsTest {
 
     @Parameter(0) public Class<? extends BytecodeNodeWithLocalIntrospection> interpreterClass;
 
-    public static BytecodeLocal makeLocal(List<String> names, BytecodeNodeWithLocalIntrospectionBuilder b, String name) {
-        names.add(name);
-        return b.createLocal();
+    public static BytecodeLocal makeLocal(BytecodeNodeWithLocalIntrospectionBuilder b, String name) {
+        return b.createLocal(FrameSlotKind.Illegal, name, null);
     }
 
     @SuppressWarnings("unchecked")
@@ -130,7 +128,7 @@ public class GetLocalsTest {
     }
 
     @Test
-    public void testSimple() {
+    public void testGetLocalsSimple() {
         /* @formatter:off
          *
          * foo = 42
@@ -139,14 +137,12 @@ public class GetLocalsTest {
          *
          * @formatter:on
          */
-        List<String> names = new ArrayList<>();
-
         BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
-            BytecodeLocal foo = makeLocal(names, b, "foo");
-            BytecodeLocal bar = makeLocal(names, b, "bar");
+            BytecodeLocal foo = makeLocal(b, "foo");
+            BytecodeLocal bar = makeLocal(b, "bar");
 
             b.beginStoreLocal(foo);
             b.emitLoadConstant(42);
@@ -164,13 +160,12 @@ public class GetLocalsTest {
 
             b.endRoot();
         });
-        root.setLocalNames(names.toArray(String[]::new));
 
         assertEquals(Map.of("foo", 42, "bar", 123), root.getCallTarget().call(123));
     }
 
     @Test
-    public void testNestedRootNode() {
+    public void testGetLocalsNestedRootNode() {
         /* @formatter:off
          *
          * foo = 42
@@ -190,14 +185,12 @@ public class GetLocalsTest {
          *
          * @formatter:on
          */
-        List<String> names = new ArrayList<>();
-
         BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
-            BytecodeLocal foo = makeLocal(names, b, "foo");
-            BytecodeLocal bar = makeLocal(names, b, "bar");
+            BytecodeLocal foo = makeLocal(b, "foo");
+            BytecodeLocal bar = makeLocal(b, "bar");
 
             b.beginStoreLocal(foo);
             b.emitLoadConstant(42);
@@ -207,11 +200,10 @@ public class GetLocalsTest {
             b.emitLoadConstant(123);
             b.endStoreLocal();
 
-            List<String> nestedNames = new ArrayList<>();
             b.beginRoot(null);
             b.beginBlock();
-            BytecodeLocal baz = makeLocal(nestedNames, b, "baz");
-            BytecodeLocal qux = makeLocal(nestedNames, b, "qux");
+            BytecodeLocal baz = makeLocal(b, "baz");
+            BytecodeLocal qux = makeLocal(b, "qux");
 
             b.beginStoreLocal(baz);
             b.emitLoadConstant(1337);
@@ -227,7 +219,6 @@ public class GetLocalsTest {
 
             b.endBlock();
             BytecodeNodeWithLocalIntrospection nested = b.endRoot();
-            nested.setLocalNames(nestedNames.toArray(String[]::new));
 
             b.beginIfThenElse();
 
@@ -250,14 +241,13 @@ public class GetLocalsTest {
 
             b.endRoot();
         });
-        root.setLocalNames(names.toArray(String[]::new));
 
         assertEquals(Map.of("foo", 42, "bar", 123), root.getCallTarget().call(true));
         assertEquals(Map.of("baz", 1337, "qux", 4321), root.getCallTarget().call(false));
     }
 
     @Test
-    public void testContinuation() {
+    public void testGetLocalsContinuation() {
         /* @formatter:off
          *
          * def bar() {
@@ -277,13 +267,11 @@ public class GetLocalsTest {
          *
          * @formatter:on
          */
-        List<String> names = new ArrayList<>();
-
         BytecodeNodeWithLocalIntrospection bar = parseNode(b -> {
             b.beginRoot(null);
             b.beginBlock();
-            BytecodeLocal x = makeLocal(names, b, "x");
-            BytecodeLocal y = makeLocal(names, b, "y");
+            BytecodeLocal x = makeLocal(b, "x");
+            BytecodeLocal y = makeLocal(b, "y");
 
             b.beginStoreLocal(y);
             b.beginYield();
@@ -312,7 +300,6 @@ public class GetLocalsTest {
             b.endBlock();
             b.endRoot();
         });
-        bar.setLocalNames(names.toArray(String[]::new));
 
         BytecodeNodeWithLocalIntrospection foo = parseNode(b -> {
             b.beginRoot(null);
@@ -341,7 +328,7 @@ public class GetLocalsTest {
     }
 
     @Test
-    public void testSimpleStacktrace() {
+    public void testGetLocalsSimpleStacktrace() {
         /* @formatter:off
          *
          * def bar() {
@@ -367,12 +354,11 @@ public class GetLocalsTest {
             }
         }.getCallTarget();
 
-        List<String> barNames = new ArrayList<>();
         BytecodeNodeWithLocalIntrospection bar = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
-            BytecodeLocal y = makeLocal(barNames, b, "y");
+            BytecodeLocal y = makeLocal(b, "y");
 
             b.beginStoreLocal(y);
             b.emitLoadConstant(42);
@@ -388,14 +374,12 @@ public class GetLocalsTest {
 
             b.endRoot();
         });
-        bar.setLocalNames(barNames.toArray(String[]::new));
 
-        List<String> fooNames = new ArrayList<>();
         BytecodeNodeWithLocalIntrospection foo = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
-            BytecodeLocal x = makeLocal(fooNames, b, "x");
+            BytecodeLocal x = makeLocal(b, "x");
 
             b.beginStoreLocal(x);
             b.emitLoadConstant(123);
@@ -411,7 +395,6 @@ public class GetLocalsTest {
 
             b.endRoot();
         });
-        foo.setLocalNames(fooNames.toArray(String[]::new));
 
         Object result = foo.getCallTarget().call();
         assertTrue(result instanceof List<?>);
@@ -433,7 +416,7 @@ public class GetLocalsTest {
     }
 
     @Test
-    public void testContinuationStacktrace() {
+    public void testGetLocalsContinuationStacktrace() {
         /* @formatter:off
          *
          * def bar() {
@@ -460,12 +443,11 @@ public class GetLocalsTest {
             }
         }.getCallTarget();
 
-        List<String> barNames = new ArrayList<>();
         BytecodeNodeWithLocalIntrospection bar = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
-            BytecodeLocal y = makeLocal(barNames, b, "y");
+            BytecodeLocal y = makeLocal(b, "y");
 
             b.beginStoreLocal(y);
             b.beginYield();
@@ -483,14 +465,12 @@ public class GetLocalsTest {
 
             b.endRoot();
         });
-        bar.setLocalNames(barNames.toArray(String[]::new));
 
-        List<String> fooNames = new ArrayList<>();
         BytecodeNodeWithLocalIntrospection foo = parseNode(b -> {
             b.beginRoot(null);
 
             b.beginBlock();
-            BytecodeLocal x = makeLocal(fooNames, b, "x");
+            BytecodeLocal x = makeLocal(b, "x");
 
             b.beginStoreLocal(x);
             b.emitLoadConstant(123);
@@ -512,7 +492,6 @@ public class GetLocalsTest {
 
             b.endRoot();
         });
-        foo.setLocalNames(fooNames.toArray(String[]::new));
 
         Object result = foo.getCallTarget().call();
         assertTrue(result instanceof List<?>);
@@ -532,6 +511,32 @@ public class GetLocalsTest {
         Object[] fooLocals = BytecodeRootNode.getLocals(frames.get(2));
         assertArrayEquals(new Object[]{123}, fooLocals);
     }
+
+    @Test
+    public void testGetLocalNamesAndInfos() {
+        Object fooInfo = new Object();
+        Object bazInfo = new Object();
+        BytecodeNodeWithLocalIntrospection root = parseNode(b -> {
+            b.beginRoot(null);
+
+            b.beginBlock();
+
+            b.createLocal(FrameSlotKind.Illegal, "foo", fooInfo);
+            b.createLocal(FrameSlotKind.Illegal, "bar", null);
+            b.createLocal(FrameSlotKind.Illegal, null, bazInfo);
+
+            b.beginReturn();
+            b.emitLoadConstant(42);
+            b.endReturn();
+
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        assertArrayEquals(new Object[]{"foo", "bar", null}, root.getLocalNames());
+        assertArrayEquals(new Object[]{fooInfo, null, bazInfo}, root.getLocalInfos());
+    }
 }
 
 @GenerateBytecodeTestVariants({
@@ -540,15 +545,8 @@ public class GetLocalsTest {
 })
 @OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
 abstract class BytecodeNodeWithLocalIntrospection extends RootNode implements BytecodeRootNode {
-    @CompilationFinal(dimensions = 1) String[] localNames;
-
     protected BytecodeNodeWithLocalIntrospection(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);
-    }
-
-    public void setLocalNames(String[] localNames) {
-        CompilerDirectives.transferToInterpreterAndInvalidate();
-        this.localNames = localNames;
     }
 
     @Operation
@@ -556,15 +554,15 @@ abstract class BytecodeNodeWithLocalIntrospection extends RootNode implements By
         @Specialization
         public static Map<String, Object> getLocals(VirtualFrame frame, @Bind("$root") BytecodeNodeWithLocalIntrospection bytecodeRootNode) {
             Object[] locals = bytecodeRootNode.getLocals(frame);
-            return makeMap(bytecodeRootNode.localNames, locals);
+            return makeMap(bytecodeRootNode.getLocalNames(), locals);
         }
 
         @TruffleBoundary
-        private static Map<String, Object> makeMap(String[] names, Object[] values) {
+        private static Map<String, Object> makeMap(Object[] names, Object[] values) {
             assert names.length == values.length;
             Map<String, Object> result = new HashMap<>();
             for (int i = 0; i < names.length; i++) {
-                result.put(names[i], values[i]);
+                result.put((String) names[i], values[i]);
             }
             return result;
         }
