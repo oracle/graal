@@ -292,7 +292,6 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
 
     private void ensureDMHStaticAccessorFieldsInitialized() {
         if (dmhStaticAccessorOffsetField == null) {
-            assert dmhStaticAccessorBaseField == null && dmhStaticAccessorOffsetAnalysisField == null && dmhStaticAccessorBaseAnalysisField == null;
             Class<?> staticAccessorClass = ReflectionUtil.lookupClass(false, "java.lang.invoke.DirectMethodHandle$StaticAccessor");
             dmhStaticAccessorOffsetField = ReflectionUtil.lookupField(staticAccessorClass, "staticOffset");
             dmhStaticAccessorBaseField = ReflectionUtil.lookupField(staticAccessorClass, "staticBase");
@@ -403,8 +402,8 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
             invokeData.invokePredecessor.setNext(invokeData.invoke.asFixedNode());
 
             if (inlineScope.exceptionPlaceholderNode != null) {
-                assert invokeData.invoke instanceof InvokeWithExceptionNode;
-                assert lookupNode(callerLoopScope, invokeData.exceptionOrderId) == inlineScope.exceptionPlaceholderNode;
+                assert invokeData.invoke instanceof InvokeWithExceptionNode : invokeData.invoke;
+                assert lookupNode(callerLoopScope, invokeData.exceptionOrderId) == inlineScope.exceptionPlaceholderNode : inlineScope;
                 registerNode(callerLoopScope, invokeData.exceptionOrderId, null, true, true);
                 ValueNode exceptionReplacement = makeStubNode(callerScope, callerLoopScope, invokeData.exceptionOrderId);
                 inlineScope.exceptionPlaceholderNode.replaceAtUsagesAndDelete(exceptionReplacement);
@@ -444,8 +443,8 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         Deque<Node> workList = null;
         Node cur = start;
         while (true) {
-            assert !cur.isDeleted();
-            assert graph.isNew(inlineScope.methodStartMark, cur);
+            assert !cur.isDeleted() : cur;
+            assert graph.isNew(inlineScope.methodStartMark, cur) : cur;
 
             Node next = null;
             if (cur instanceof FixedWithNextNode) {

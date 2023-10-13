@@ -45,7 +45,7 @@ public class ProxyTypeFlow extends TypeFlow<BytecodePosition> {
 
     public ProxyTypeFlow(BytecodePosition source, TypeFlow<?> input) {
         super(source, null);
-        assert input instanceof AllInstantiatedTypeFlow;
+        assert input instanceof AllInstantiatedTypeFlow : input;
         this.input = input;
     }
 

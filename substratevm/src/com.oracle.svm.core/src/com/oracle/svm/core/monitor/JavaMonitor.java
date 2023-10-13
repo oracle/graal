@@ -30,6 +30,8 @@ import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
 
+import java.util.concurrent.locks.ReentrantLock;
+
 import org.graalvm.nativeimage.IsolateThread;
 
 import com.oracle.svm.core.Uninterruptible;
@@ -37,6 +39,7 @@ import com.oracle.svm.core.jfr.JfrTicks;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.events.JavaMonitorEnterEvent;
 import com.oracle.svm.core.thread.JavaThreads;
+import com.oracle.svm.core.util.BasedOnJDKClass;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -55,6 +58,8 @@ import jdk.internal.misc.Unsafe;
  * to store the number of lock acquisitions, enabling various optimizations.</li>
  * </ul>
  */
+@BasedOnJDKClass(ReentrantLock.class)
+@BasedOnJDKClass(value = ReentrantLock.class, innerClass = "Sync")
 public class JavaMonitor extends JavaMonitorQueuedSynchronizer {
     protected long latestJfrTid;
 

@@ -1,7 +1,5 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
-# Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -24,7 +22,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
 
 import sys
 import re
@@ -544,11 +541,11 @@ class BaseQuarkusRegistryBenchmark(BaseQuarkusBenchmarkSuite, mx_sdk_benchmark.B
                 '-J--add-exports=org.graalvm.nativeimage/org.graalvm.nativeimage.impl=ALL-UNNAMED',
                 '-J--add-exports=org.graalvm.nativeimage.builder/com.oracle.svm.core.jdk=ALL-UNNAMED',
                 '--exclude-config' ,
-                'io\.netty\.netty-codec',
-                '/META-INF/native-image/io\.netty/netty-codec/generated/handlers/reflect-config\.json',
+                'io\\.netty\\.netty-codec',
+                '/META-INF/native-image/io\\.netty/netty-codec/generated/handlers/reflect-config\\.json',
                 '--exclude-config',
-                'io\.netty\.netty-handler',
-                '/META-INF/native-image/io\.netty/netty-handler/generated/handlers/reflect-config\.json',
+                'io\\.netty\\.netty-handler',
+                '/META-INF/native-image/io\\.netty/netty-handler/generated/handlers/reflect-config\\.json',
                 '-H:-AddAllCharsets',
                 '-H:+ReportExceptionStackTraces',
             ] + mx_sdk_vm_impl.svm_experimental_options([

@@ -387,7 +387,7 @@ public final class CompilationResultFrameTree {
         }
 
         private <N extends FrameNode> N addChild(N newNode) {
-            assert newNode.parent == this;
+            assert newNode.parent == this : this;
             /* Add the new node at the end */
 
             /* Simple case, add as first child */

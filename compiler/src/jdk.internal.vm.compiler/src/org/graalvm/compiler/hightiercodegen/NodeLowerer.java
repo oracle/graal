@@ -31,7 +31,6 @@ import org.graalvm.compiler.hightiercodegen.variables.ResolvedVar;
 import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.DeadEndNode;
 import org.graalvm.compiler.nodes.EndNode;
-import org.graalvm.compiler.nodes.FixedNode;
 import org.graalvm.compiler.nodes.GuardPhiNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.InvokeNode;
@@ -67,7 +66,7 @@ import org.graalvm.compiler.nodes.calc.ZeroExtendNode;
 import org.graalvm.compiler.nodes.debug.BlackholeNode;
 import org.graalvm.compiler.nodes.extended.BoxNode;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
+import org.graalvm.compiler.nodes.extended.ForeignCall;
 import org.graalvm.compiler.nodes.extended.GetClassNode;
 import org.graalvm.compiler.nodes.extended.JavaReadNode;
 import org.graalvm.compiler.nodes.extended.JavaWriteNode;
@@ -104,9 +103,9 @@ import org.graalvm.compiler.nodes.virtual.CommitAllocationNode;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.replacements.nodes.ArrayEqualsNode;
 import org.graalvm.compiler.replacements.nodes.BasicArrayCopyNode;
-import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
 import org.graalvm.compiler.replacements.nodes.IdentityHashCodeNode;
+import org.graalvm.compiler.replacements.nodes.ObjectClone;
 import org.graalvm.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.compiler.word.WordCastNode;
 
@@ -270,8 +269,8 @@ public abstract class NodeLowerer {
             lower((ArrayEqualsNode) node);
         } else if (node instanceof NewMultiArrayNode) {
             lower((NewMultiArrayNode) node);
-        } else if (node instanceof BasicObjectCloneNode) {
-            lower((BasicObjectCloneNode) node);
+        } else if (node instanceof ObjectClone) {
+            lower((ObjectClone) node);
         } else if (node instanceof LoadHubNode) {
             lower((LoadHubNode) node);
         } else if (node instanceof LoadArrayComponentHubNode) {
@@ -300,8 +299,8 @@ public abstract class NodeLowerer {
             lower((DynamicNewArrayNode) node);
         } else if (node instanceof ObjectIsArrayNode) {
             lower((ObjectIsArrayNode) node);
-        } else if (node instanceof ForeignCallNode) {
-            lower((ForeignCallNode) node);
+        } else if (node instanceof ForeignCall) {
+            lower((ForeignCall) node);
         } else if (node instanceof IntegerDivRemNode) {
             lower((IntegerDivRemNode) node);
         } else if (node instanceof BinaryArithmeticNode) {
@@ -384,7 +383,7 @@ public abstract class NodeLowerer {
 
     protected abstract void lower(IntegerDivRemNode node);
 
-    protected abstract void lower(ForeignCallNode node);
+    protected abstract void lower(ForeignCall node);
 
     protected abstract void lower(ObjectIsArrayNode node);
 
@@ -414,7 +413,7 @@ public abstract class NodeLowerer {
 
     protected abstract void lower(LoadHubNode node);
 
-    protected abstract void lower(BasicObjectCloneNode node);
+    protected abstract void lower(ObjectClone node);
 
     protected abstract void lower(NewMultiArrayNode node);
 
@@ -488,7 +487,7 @@ public abstract class NodeLowerer {
 
     protected abstract void lower(IsNullNode node);
 
-    protected abstract <T extends FixedNode & Invoke> void lower(T node);
+    protected abstract void lower(Invoke node);
 
     protected abstract void lower(UnwindNode node);
 

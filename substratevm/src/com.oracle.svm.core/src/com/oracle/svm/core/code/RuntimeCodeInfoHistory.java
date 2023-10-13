@@ -73,7 +73,7 @@ public class RuntimeCodeInfoHistory {
     }
 
     private void logOperation(String kind, CodeInfo info) {
-        assert VMOperation.isInProgressAtSafepoint();
+        assert VMOperation.isInProgressAtSafepoint() : kind;
 
         traceCodeCache(kind, info, true);
         logOperation0(kind, info, CodeInfoAccess.getName(info));
@@ -86,7 +86,7 @@ public class RuntimeCodeInfoHistory {
     }
 
     public void logFree(CodeInfo info) {
-        assert VMOperation.isInProgressAtSafepoint() || VMThreads.isTearingDown();
+        assert VMOperation.isInProgressAtSafepoint() || VMThreads.isTearingDown() : "invalid state";
 
         traceCodeCache("Freed", info, false);
         logOperation0("Freed", info, null);

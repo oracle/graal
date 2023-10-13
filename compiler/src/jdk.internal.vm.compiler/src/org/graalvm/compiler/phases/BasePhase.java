@@ -33,6 +33,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.CounterKey;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -458,6 +459,13 @@ public abstract class BasePhase<C> implements PhaseSizeContract {
                 debug.verify(graph, "%s", getName());
             }
             assert graph.verify();
+            /*
+             * Reset the progress-based compilation alarm to ensure that progress tracking happens
+             * for each phase in isolation. This prevents false alarms where the same progress state
+             * is seen in subsequent phases, e.g., during graph verification a the end of each
+             * phase.
+             */
+            CompilationAlarm.resetProgressDetection();
         } catch (Throwable t) {
             throw debug.handle(t);
         }

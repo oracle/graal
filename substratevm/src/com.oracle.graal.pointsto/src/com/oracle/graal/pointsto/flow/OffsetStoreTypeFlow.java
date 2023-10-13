@@ -194,7 +194,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
 
         @Override
         public void initFlow(PointsToAnalysis bb) {
-            assert !bb.analysisPolicy().isContextSensitiveAnalysis() || this.isClone();
+            assert !bb.analysisPolicy().isContextSensitiveAnalysis() || this.isClone() : this;
             /*
              * Register the unsafe store. It will be force-updated when new unsafe fields are
              * registered.
@@ -347,7 +347,7 @@ public abstract class OffsetStoreTypeFlow extends TypeFlow<BytecodePosition> {
             /* Iterate over the receiver objects. */
             for (AnalysisObject object : objectState.objects(bb)) {
                 AnalysisType type = object.type();
-                assert !type.isArray();
+                assert !type.isArray() : type;
 
                 handleUnsafeAccessedFields(bb, type.unsafeAccessedFields(partitionKind), object);
             }

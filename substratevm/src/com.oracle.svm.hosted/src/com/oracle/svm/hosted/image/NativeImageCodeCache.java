@@ -49,7 +49,6 @@ import java.util.Set;
 import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
-import com.oracle.svm.core.meta.MethodPointer;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.code.CompilationResult;
@@ -84,6 +83,7 @@ import com.oracle.svm.core.code.ImageCodeInfo.HostedImageCodeInfo;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.deopt.DeoptEntryInfopoint;
 import com.oracle.svm.core.graal.code.SubstrateDataBuilder;
+import com.oracle.svm.core.meta.MethodPointer;
 import com.oracle.svm.core.meta.SubstrateMethodPointerConstant;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.HostedOptionValues;
@@ -197,7 +197,7 @@ public abstract class NativeImageCodeCache {
             CompilationResult compilation = pair.getRight();
             for (DataSection.Data data : compilation.getDataSection()) {
                 if (data instanceof SubstrateDataBuilder.ObjectData) {
-                    VMConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
+                    JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
                     constantReasons.put(constant, compilation.getName());
                 }
             }
@@ -217,7 +217,7 @@ public abstract class NativeImageCodeCache {
     public void addConstantsToHeap() {
         for (DataSection.Data data : dataSection) {
             if (data instanceof SubstrateDataBuilder.ObjectData) {
-                VMConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
+                JavaConstant constant = ((SubstrateDataBuilder.ObjectData) data).getConstant();
                 addConstantToHeap(constant, NativeImageHeap.HeapInclusionReason.DataSection);
             }
         }
@@ -262,17 +262,18 @@ public abstract class NativeImageCodeCache {
         return ConfigurationValues.getObjectLayout().alignUp(getConstantsSize());
     }
 
-    public void buildRuntimeMetadata(SnippetReflectionProvider snippetReflectionProvider, ForkJoinPool threadPool) {
-        buildRuntimeMetadata(snippetReflectionProvider, threadPool, new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(getCodeAreaSize()));
+    public void buildRuntimeMetadata(SnippetReflectionProvider snippetReflectionProvider, ForkJoinPool threadPool, Runnable heartbeatCallback) {
+        buildRuntimeMetadata(snippetReflectionProvider, threadPool, heartbeatCallback, new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(getCodeAreaSize()));
     }
 
-    protected void buildRuntimeMetadata(SnippetReflectionProvider snippetReflection, ForkJoinPool threadPool, CFunctionPointer firstMethod, UnsignedWord codeSize) {
+    protected void buildRuntimeMetadata(SnippetReflectionProvider snippetReflection, ForkJoinPool threadPool, Runnable heartbeatCallback, CFunctionPointer firstMethod, UnsignedWord codeSize) {
         // Build run-time metadata.
         HostedFrameInfoCustomization frameInfoCustomization = new HostedFrameInfoCustomization();
         CodeInfoEncoder.Encoders encoders = new CodeInfoEncoder.Encoders();
         CodeInfoEncoder codeInfoEncoder = new CodeInfoEncoder(frameInfoCustomization, encoders);
         for (Pair<HostedMethod, CompilationResult> pair : getOrderedCompilations()) {
             encodeMethod(codeInfoEncoder, pair);
+            heartbeatCallback.run();
         }
 
         HostedUniverse hUniverse = imageHeap.hUniverse;
@@ -599,7 +600,7 @@ public abstract class NativeImageCodeCache {
     public void writeConstants(NativeImageHeapWriter writer, RelocatableBuffer buffer) {
         ByteBuffer bb = buffer.getByteBuffer();
         dataSection.buildDataSection(bb, (position, constant) -> {
-            writer.writeReference(buffer, position, constant, "VMConstant: " + constant);
+            writer.writeReference(buffer, position, (JavaConstant) constant, "VMConstant: " + constant);
         });
     }
 

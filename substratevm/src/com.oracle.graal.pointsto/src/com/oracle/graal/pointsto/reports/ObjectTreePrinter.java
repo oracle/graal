@@ -168,7 +168,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
         }
 
         void addField(AnalysisField field, ObjectNodeBase typeNode) {
-            assert !fields.containsKey(field);
+            assert !fields.containsKey(field) : field;
             fields.put(field, new FieldNode(field, typeNode));
         }
     }
@@ -200,7 +200,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
         }
 
         void addElement(Integer index, ObjectNodeBase object) {
-            assert !elements.containsKey(index);
+            assert !elements.containsKey(index) : elements;
             elements.put(index, new ElementNode(index, object));
         }
     }
@@ -323,7 +323,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
                 return false;
             }
 
-            assert constantToNode.containsKey(receiver);
+            assert constantToNode.containsKey(receiver) : receiver;
 
             ObjectNode receiverNode = (ObjectNode) constantToNode.get(receiver);
             receiverNode.addField(field, ObjectNodeBase.forNull());
@@ -348,7 +348,7 @@ public final class ObjectTreePrinter extends ObjectScanner {
 
         @Override
         public boolean forNullArrayElement(JavaConstant array, AnalysisType arrayType, int index, ScanReason reason) {
-            assert constantToNode.containsKey(array);
+            assert constantToNode.containsKey(array) : array;
 
             ArrayObjectNode arrayNode = (ArrayObjectNode) constantToNode.get(array);
             arrayNode.addElement(index, ObjectNodeBase.forNull());

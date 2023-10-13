@@ -131,7 +131,6 @@ public class SubstrateOptions {
 
         @Override
         public String getValue(OptionValues values) {
-            assert checkDescriptorExists();
             return getValueOrDefault(values.getMap());
         }
     };
@@ -154,13 +153,10 @@ public class SubstrateOptions {
     };
 
     @Option(help = "Builds a statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
-    public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            StaticExecutable.update(values, true);
-            super.onValueUpdate(values, oldValue, newValue);
-        }
-    };
+    public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<>(false);
+
+    @Option(help = "Builds image with libstdc++ statically linked into the image (if needed)", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<Boolean> StaticLibStdCpp = new HostedOptionKey<>(false);
 
     public static final int ForceFallback = 10;
     public static final int Automatic = 5;
@@ -930,7 +926,7 @@ public class SubstrateOptions {
         if (value == 0) {
             return Unsafe.getUnsafe().pageSize();
         }
-        assert value > 0;
+        assert value > 0 : value;
         return value;
     }
 

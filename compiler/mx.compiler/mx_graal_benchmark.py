@@ -1,6 +1,4 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
 # Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -24,7 +22,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
 
 import re
 import os
@@ -526,7 +523,7 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
     def filter_distribution(self, dist):
         return super(JMHDistWhiteboxBenchmarkSuite, self).filter_distribution(dist) and \
                any(JMHDistWhiteboxBenchmarkSuite.whitebox_dependency(dist)) and \
-               not any(dep.name.startswith('com.oracle.truffle.enterprise.dispatch.jmh') for dep in dist.deps)
+               not any(dep.name.startswith('com.oracle.truffle.enterprise.jmh') for dep in dist.deps)
 
 
     def extraVmArgs(self):

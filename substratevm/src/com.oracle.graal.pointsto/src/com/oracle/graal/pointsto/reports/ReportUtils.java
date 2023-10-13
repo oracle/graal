@@ -261,7 +261,7 @@ public class ReportUtils {
             StackTraceElement e = parsingContext[i];
             if (isStackTraceTruncationSentinel(e)) {
                 msg.append(String.format("%n%s", e.getClassName()));
-                assert i == parsingContext.length - 1;
+                assert i == parsingContext.length - 1 : parsingContext;
             } else {
                 msg.append(String.format("%n%sat %s", indent, e));
             }

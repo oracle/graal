@@ -290,13 +290,11 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     public void setParameter(int index, FormalParamTypeFlow parameter) {
-        assert index >= 0 && index < this.parameters.length;
         parameters[index] = parameter;
     }
 
     @Override
     public FormalParamTypeFlow getParameter(int idx) {
-        assert idx >= 0 && idx < this.parameters.length;
         return parameters[idx];
     }
 
@@ -313,7 +311,7 @@ public class MethodFlowsGraph implements MethodFlowsGraphInfo {
     }
 
     public void addNodeFlow(EncodedNodeReference key, TypeFlow<?> flow) {
-        assert flow != null && !(flow instanceof AllInstantiatedTypeFlow);
+        assert flow != null && !(flow instanceof AllInstantiatedTypeFlow) : flow;
         if (nodeFlows == null) {
             nodeFlows = EconomicMap.create();
         }

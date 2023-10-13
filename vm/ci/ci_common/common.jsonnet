@@ -352,6 +352,10 @@ local devkits = graal_common.devkits;
     targets+: ['daily'],
   },
 
+  daily_vm_darwin_aarch64: self.vm_darwin_aarch64 + {
+    targets+: ['daily'],
+  },
+
   daily_vm_windows: self.vm_windows + {
     targets+: ['daily'],
   },
@@ -485,6 +489,9 @@ local devkits = graal_common.devkits;
       local java_deps(edition) = {
         downloads+: {
           JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+        } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
+            LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21-llvm'],
+        } else {
         }
       };
 

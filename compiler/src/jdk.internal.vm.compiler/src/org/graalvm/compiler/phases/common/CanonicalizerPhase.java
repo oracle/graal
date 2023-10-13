@@ -156,6 +156,10 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         this.features = features;
     }
 
+    public EnumSet<CanonicalizerFeature> getFeatures() {
+        return features;
+    }
+
     public CanonicalizerPhase copyWithCustomSimplification(CustomSimplification newSimplification) {
         return new CanonicalizerPhase(newSimplification, features);
     }
@@ -508,7 +512,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         return false;
     }
 
-    public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
+    public static boolean gvn(Node node, NodeClass<?> nodeClass) {
         if (nodeClass.valueNumberable()) {
             Node newNode = node.graph().findDuplicate(node);
             if (newNode != null) {
@@ -520,6 +524,13 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
         }
         return false;
+    }
+
+    public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
+        assert ((StructuredGraph) node.graph()).getGraphState().isBeforeStage(StageFlag.PARTIAL_REDUNDANCY_SCHEDULE) : "GVN must not occur after expanding partially redundant nodes, trying to gvn " +
+                        node +
+                        " for graph " + node.graph();
+        return gvn(node, nodeClass);
     }
 
     private static AutoCloseable getCanonicalizeableContractAssertion(Node node) {

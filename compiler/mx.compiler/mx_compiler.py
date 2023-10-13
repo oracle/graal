@@ -1,6 +1,4 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
 # Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -24,7 +22,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
 
 from __future__ import print_function
 import os
@@ -413,7 +410,7 @@ def _gate_scala_dacapo(name, iterations, extraVMarguments=None):
 def _gate_renaissance(name, iterations, extraVMarguments=None):
     if iterations == -1:
         return
-    vmargs = ['-Xms2g', '-XX:+UseSerialGC', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
+    vmargs = ['-Xms2g', '-XX:-UseCompressedOops'] + _compiler_error_options() + _remove_empty_entries(extraVMarguments)
     args = ['-r', str(iterations)]
     return _run_benchmark('renaissance', name, args, vmargs)
 
@@ -620,6 +617,16 @@ def compiler_gate_benchmark_runner(tasks, extraVMarguments=None, prefix='', task
     # run Renaissance benchmarks #
     ###############################
     renaissance_suite = mx_java_benchmarks.RenaissanceBenchmarkSuite()
+    renaissance_gate_iterations = {
+        k: default_iterations for k, v in renaissance_suite.renaissanceIterations().items() if v > 0
+    }
+
+    for name in renaissance_suite.benchmarkList(bmSuiteArgs):
+        iterations = renaissance_gate_iterations.get(name, -1)
+        with Task(prefix + 'Renaissance:' + name, tasks, tags=GraalTags.benchmarktest, report=task_report_component) as t:
+            if t:
+                _gate_renaissance(name, iterations, benchVmArgs + ['-Dgraal.TrackNodeSourcePosition=true'] + enable_assertions)
+
     with mx_gate.Task('Renaissance benchmark daily workload', tasks, tags=['renaissance_daily'], report=task_report_component) as t:
         if t:
             for name in renaissance_suite.benchmarkList(bmSuiteArgs):

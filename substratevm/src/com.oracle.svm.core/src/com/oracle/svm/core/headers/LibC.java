@@ -108,6 +108,11 @@ public class LibC {
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    public static CCharPointer strdup(CCharPointer str) {
+        return libc().strdup(str);
+    }
+
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static int strcmp(CCharPointer s1, CCharPointer s2) {
         return libc().strcmp(s1, s2);
     }

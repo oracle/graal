@@ -328,7 +328,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             };
             triggerStaticMethodFlow.accept(originalPTAMethod);
             for (MultiMethod.MultiMethodKey key : otherRoots) {
-                assert key != MultiMethod.ORIGINAL_METHOD;
+                assert key != MultiMethod.ORIGINAL_METHOD : key;
                 PointsToAnalysisMethod ptaMethod = assertPointsToAnalysisMethod(originalPTAMethod.getMultiMethod(key));
                 triggerStaticMethodFlow.accept(ptaMethod);
             }
@@ -515,7 +515,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         try (Indent indent = debug.logAndIndent("starting analysis in BigBang.finish")) {
             universe.setAnalysisDataValid(false);
             boolean didSomeWork = doTypeflow();
-            assert executor.getPostedOperations() == 0;
+            assert executor.getPostedOperations() == 0 : executor.getPostedOperations();
             universe.setAnalysisDataValid(true);
             return didSomeWork;
         }
@@ -549,7 +549,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
     public void onTypeInstantiated(AnalysisType type, AnalysisType.UsageKind usageKind) {
         /* Register the type as instantiated with all its super types. */
 
-        assert type.isAllocated() || type.isInHeap();
+        assert type.isAllocated() || type.isInHeap() : type;
         AnalysisError.guarantee(type.isArray() || (type.isInstanceClass() && !type.isAbstract()));
         universe.hostVM().checkForbidden(type, usageKind);
 

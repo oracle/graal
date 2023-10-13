@@ -108,7 +108,7 @@ public class FrameInfoDecoder {
 
         /* Read encoded bci from uncompressed frame slice. */
         long actualEncodedBci = readBuffer.getUV();
-        assert actualEncodedBci != ENCODED_BCI_NO_CALLER;
+        assert actualEncodedBci != ENCODED_BCI_NO_CALLER : actualEncodedBci;
 
         return actualEncodedBci == searchEncodedBci;
     }
@@ -164,7 +164,7 @@ public class FrameInfoDecoder {
                     switch (valueInfo.kind) {
                         case Object:
                             valueInfo.value = SubstrateObjectConstant.forObject(null, valueInfo.isCompressedReference);
-                            assert valueInfo.value.isDefaultForKind();
+                            assert valueInfo.value.isDefaultForKind() : valueInfo;
                             break;
                         default:
                             valueInfo.value = JavaConstant.defaultForKind(valueInfo.kind);
@@ -183,7 +183,7 @@ public class FrameInfoDecoder {
                             valueInfo.value = JavaConstant.forDouble(Double.longBitsToDouble(valueInfo.data));
                             break;
                         default:
-                            assert valueInfo.kind.isNumericInteger();
+                            assert valueInfo.kind.isNumericInteger() : valueInfo;
                             valueInfo.value = JavaConstant.forIntegerKind(valueInfo.kind, valueInfo.data);
                     }
                     break;
@@ -318,7 +318,7 @@ public class FrameInfoDecoder {
             }
 
             if (CompressedFrameDecoderHelper.isSharedFramePointer(firstEntry)) {
-                assert state.successorIndex == NO_SUCCESSOR_INDEX_MARKER && bufferIndexToRestore == -1;
+                assert state.successorIndex == NO_SUCCESSOR_INDEX_MARKER && bufferIndexToRestore == -1 : state;
                 long sharedFrameByteIndex = CompressedFrameDecoderHelper.decodeSharedFrameIndex(firstEntry);
 
                 // save current buffer index
@@ -387,7 +387,7 @@ public class FrameInfoDecoder {
 
         state.isDone = CompressedFrameDecoderHelper.isSliceEnd(encodedSourceLineNumber);
 
-        assert !state.isDone || state.successorIndex == NO_SUCCESSOR_INDEX_MARKER;
+        assert !state.isDone || state.successorIndex == NO_SUCCESSOR_INDEX_MARKER : state;
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -537,12 +537,12 @@ public class FrameInfoDecoder {
     }
 
     protected static boolean decodeDuringCall(long encodedBci) {
-        assert encodedBci >= 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER;
+        assert encodedBci >= 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER : encodedBci;
         return (encodedBci & ENCODED_BCI_DURING_CALL_MASK) != 0;
     }
 
     protected static boolean decodeRethrowException(long encodedBci) {
-        assert encodedBci >= 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER;
+        assert encodedBci >= 0 && encodedBci != FrameInfoDecoder.ENCODED_BCI_NO_CALLER : encodedBci;
         return (encodedBci & ENCODED_BCI_RETHROW_EXCEPTION_MASK) != 0;
     }
 

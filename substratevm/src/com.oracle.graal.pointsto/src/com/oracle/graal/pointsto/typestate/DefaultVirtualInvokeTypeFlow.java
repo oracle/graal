@@ -103,7 +103,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
                 continue;
             }
 
-            assert !Modifier.isAbstract(method.getModifiers());
+            assert !Modifier.isAbstract(method.getModifiers()) : method;
 
             var calleeList = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(method), targetMethod, callerMultiMethodKey,
                             this);
@@ -112,7 +112,7 @@ final class DefaultVirtualInvokeTypeFlow extends AbstractVirtualInvokeTypeFlow {
                     allOriginalCallees = false;
                 }
                 MethodFlowsGraphInfo calleeFlows = callee.getTypeFlow().getOrCreateMethodFlowsGraphInfo(bb, this);
-                assert callee.getTypeFlow().getMethod().equals(callee);
+                assert callee.getTypeFlow().getMethod().equals(callee) : callee;
 
                 /*
                  * Different receiver type can yield the same target method; although it is correct

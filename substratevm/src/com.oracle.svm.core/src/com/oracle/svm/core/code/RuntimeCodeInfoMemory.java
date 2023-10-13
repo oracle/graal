@@ -215,7 +215,7 @@ public class RuntimeCodeInfoMemory {
 
     public boolean remove(CodeInfo info) {
         assert !VMOperation.isGCInProgress() : "Must call removeDuringGC";
-        assert info.isNonNull();
+        assert info.isNonNull() : "null";
         lock.lock();
         try {
             return remove0(info);
