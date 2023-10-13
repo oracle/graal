@@ -97,7 +97,9 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
     private static final Source SOURCE_BYTECODE_DSL = Source.create("bm", NAME_BYTECODE_DSL);
     private static final Source SOURCE_BYTECODE_DSL_UNCACHED = Source.create("bm", NAME_BYTECODE_DSL_UNCACHED);
     private static final Source SOURCE_BYTECODE_DSL_UNSAFE = Source.create("bm", NAME_BYTECODE_DSL_UNSAFE);
+    @SuppressWarnings("unused") // temporary unused
     private static final Source SOURCE_BYTECODE_DSL_BE = Source.create("bm", NAME_BYTECODE_DSL_BE);
+    @SuppressWarnings("unused") // temporary unused
     private static final Source SOURCE_BYTECODE_DSL_QUICKENED = Source.create("bm", NAME_BYTECODE_DSL_QUICKENED);
     private static final Source SOURCE_BYTECODE_DSL_ALL = Source.create("bm", NAME_BYTECODE_DSL_ALL);
     private static final Source SOURCE_MANUAL_BCI = Source.create("bm", NAME_MANUAL_BCI);
@@ -115,7 +117,8 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
     private static final int LOC_J = 6;
     private static final int LOC_TEMP = 7;
 
-    public static short NUM_BYTECODE_PROFILES = 0;
+    public static short numBytecodeProfiles = 0;
+
     private static final short[] BYTECODE = {
                     // i = 0
                     /* 00 */ OP_CONST, 0, 0,
@@ -130,7 +133,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
                     /* 10 */ OP_LD_LOC, LOC_I,
                     /* 12 */ OP_CONST, 0, (short) TOTAL_ITERATIONS,
                     /* 15 */ OP_LESS,
-                    /* 16 */ OP_JUMP_FALSE, 86, NUM_BYTECODE_PROFILES++, // while_0_end
+                    /* 16 */ OP_JUMP_FALSE, 86, numBytecodeProfiles++, // while_0_end
 
                     // j = 0
                     /* 19 */ OP_CONST, 0, 0,
@@ -141,7 +144,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
                     /* 24 */ OP_LD_LOC, LOC_J, // j
                     /* 26 */ OP_LD_LOC, LOC_I, // i
                     /* 28 */ OP_LESS,
-                    /* 29 */ OP_JUMP_FALSE, 69, NUM_BYTECODE_PROFILES++, // while_1_end
+                    /* 29 */ OP_JUMP_FALSE, 69, numBytecodeProfiles++, // while_1_end
 
                     // if (i % 3 < 1) {
                     /* 32 */ OP_LD_LOC, LOC_I, // i
@@ -149,7 +152,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
                     /* 37 */ OP_MOD,
                     /* 38 */ OP_CONST, 0, 1,
                     /* 41 */ OP_LESS,
-                    /* 42 */ OP_JUMP_FALSE, 52, NUM_BYTECODE_PROFILES++, // if_else
+                    /* 42 */ OP_JUMP_FALSE, 52, numBytecodeProfiles++, // if_else
 
                     // temp = 1
                     /* 45 */ OP_CONST, 0, 1,
@@ -200,7 +203,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
 
     };
 
-    private static short NUM_BC_SHORT_PROFILES = 0;
+    private static short numBytecodeShortProfiles = 0;
     private static final short[] BC_SHORT = {
                     // i = 0
                     /* 00 */ OP_CONST, 0, // 0
@@ -215,7 +218,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
                     /* 08 */ OP_LD_LOC, LOC_I,
                     /* 10 */ OP_CONST, 3, // TOTAL_ITERATIONS (5000)
                     /* 12 */ OP_LESS,
-                    /* 13 */ OP_JUMP_FALSE, 82, NUM_BC_SHORT_PROFILES++, // while_0_end
+                    /* 13 */ OP_JUMP_FALSE, 82, numBytecodeShortProfiles++, // while_0_end
 
                     // j = 0
                     /* 16 */ OP_CONST, 0, // 0
@@ -226,7 +229,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
                     /* 20 */ OP_LD_LOC, LOC_J,
                     /* 22 */ OP_LD_LOC, LOC_I,
                     /* 24 */ OP_LESS,
-                    /* 25 */ OP_JUMP_FALSE, 64, NUM_BC_SHORT_PROFILES++, // while_1_end
+                    /* 25 */ OP_JUMP_FALSE, 64, numBytecodeShortProfiles++, // while_1_end
 
                     // if (i % 3 < 1) {
                     /* 28 */ OP_LD_LOC, LOC_I,
@@ -234,7 +237,7 @@ public class SimpleBytecodeBenchmark extends TruffleBenchmark {
                     /* 32 */ OP_MOD, 0,
                     /* 34 */ OP_CONST, 1, // 1
                     /* 36 */ OP_LESS,
-                    /* 37 */ OP_JUMP_FALSE, 46, NUM_BC_SHORT_PROFILES++, // if_else
+                    /* 37 */ OP_JUMP_FALSE, 46, numBytecodeShortProfiles++, // if_else
 
                     // temp = 1
                     /* 40 */ OP_CONST, 1, // 1

@@ -44,10 +44,9 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
-import com.oracle.truffle.api.benchmark.bytecode.ManualUnsafeNodedInterpreterFactory;
-import com.oracle.truffle.api.bytecode.BytecodeSupport;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleSafepoint;
+import com.oracle.truffle.api.bytecode.BytecodeSupport;
 import com.oracle.truffle.api.dsl.GeneratedBy;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
@@ -286,7 +285,7 @@ abstract class BaseBytecodeNode extends RootNode implements BytecodeOSRNode {
          * interpreter will allocate just enough space for the branches, but for small programs this
          * overhead should be insignificant.
          */
-        this.branchProfiles = BytecodeSupport.allocateBranchProfiles(SimpleBytecodeBenchmark.NUM_BYTECODE_PROFILES);
+        this.branchProfiles = BytecodeSupport.allocateBranchProfiles(SimpleBytecodeBenchmark.numBytecodeProfiles);
     }
 
     @CompilationFinal(dimensions = 1) protected short[] bc;
