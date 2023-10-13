@@ -199,6 +199,11 @@ public final class Resources {
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
+    public static void registerResource(String resourceName, InputStream is) {
+        singleton().registerResource(null, resourceName, is, true);
+    }
+
+    @Platforms(Platform.HOSTED_ONLY.class)
     public void registerResource(Module module, String resourceName, byte[] resourceContent) {
         addEntry(module, resourceName, false, resourceContent, true, false);
     }
