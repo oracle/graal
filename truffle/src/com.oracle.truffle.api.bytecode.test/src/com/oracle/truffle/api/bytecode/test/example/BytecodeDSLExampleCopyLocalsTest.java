@@ -118,7 +118,7 @@ public class BytecodeDSLExampleCopyLocalsTest {
          *   local1 = 42L
          *   local2 = "abcd"
          *   local3 = true
-         *   CopyLocalsToFrame(<frame>, 2) // copy all locals
+         *   CopyLocalsToFrame(<frame>, 2) // copy first two locals
          * }
          * @formatter:on
          */

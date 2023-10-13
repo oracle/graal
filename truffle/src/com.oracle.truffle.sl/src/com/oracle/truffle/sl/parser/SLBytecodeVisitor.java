@@ -59,6 +59,7 @@ import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.debug.DebuggerTags;
+import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -192,7 +193,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
             Token paramToken = ctx.IDENTIFIER(i + 1).getSymbol();
 
             TruffleString paramName = asTruffleString(paramToken, false);
-            BytecodeLocal argLocal = b.createLocal(paramName);
+            BytecodeLocal argLocal = b.createLocal(FrameSlotKind.Illegal, paramName, null);
             locals.add(argLocal);
 
             b.beginStoreLocal(argLocal);
@@ -231,7 +232,7 @@ public final class SLBytecodeVisitor extends SLBaseVisitor {
 
         List<TruffleString> newLocals = enterBlock(ctx);
         for (TruffleString newLocal : newLocals) {
-            locals.add(b.createLocal(newLocal));
+            locals.add(b.createLocal(FrameSlotKind.Illegal, newLocal, null));
         }
 
         for (StatementContext child : ctx.statement()) {
