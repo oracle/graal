@@ -194,6 +194,8 @@ public class ProcessUtil {
                             System.out.println("***************************************");
                             System.out.println("Print out.getStdOut(): ");
                             System.out.println(out.getStdOut());
+                            throw new RuntimeException(e);
+
                         }
                     }
                 }
@@ -225,6 +227,7 @@ public class ProcessUtil {
                 System.out.println("***************************************");
                 System.out.println("Print pr.getStdOut(): ");
                 System.out.println(pr.getStdOutput());
+                throw new RuntimeException(e);
             }
             return pr;
         }
