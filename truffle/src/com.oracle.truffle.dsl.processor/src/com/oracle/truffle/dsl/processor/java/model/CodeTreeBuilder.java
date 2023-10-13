@@ -605,12 +605,16 @@ public class CodeTreeBuilder {
         return this;
     }
 
-    public CodeTreeBuilder startNew(TypeMirror uninializedNodeClass) {
-        return startGroup().string("new ").type(uninializedNodeClass).startParanthesesCommaGroup().endAfter();
+    public CodeTreeBuilder startNew(TypeMirror uninitializedNodeClass) {
+        return startGroup().string("new ").type(uninitializedNodeClass).startParanthesesCommaGroup().endAfter();
     }
 
     public CodeTreeBuilder startNew(String typeName) {
         return startGroup().string("new ").string(typeName).startParanthesesCommaGroup().endAfter();
+    }
+
+    public CodeTreeBuilder startNew(CodeTree typeTree) {
+        return startGroup().string("new ").tree(typeTree).startParanthesesCommaGroup().endAfter();
     }
 
     public CodeTreeBuilder startIndention() {
