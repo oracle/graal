@@ -226,7 +226,8 @@ public class ErrorTests {
 
         @GenerateCached(false)
         @OperationProxy.Proxyable
-        @ExpectError("Class com.oracle.truffle.api.bytecode.test.ErrorTests.NoCachedProxyType.NodeWithNoCache does not generate a cached node, so it cannot be used as an OperationProxy. Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.")
+        @ExpectError("Class com.oracle.truffle.api.bytecode.test.ErrorTests.NoCachedProxyType.NodeWithNoCache does not generate a cached node, so it cannot be used as an OperationProxy. " +
+                        "Enable cached node generation using @GenerateCached(true) or delegate to this node using a regular Operation.")
         public static final class NodeWithNoCache extends Node {
             @Specialization
             public static int doInt() {

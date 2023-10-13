@@ -821,6 +821,7 @@ public interface Frame {
      * @param slot the slot of the local variable
      * @since XXX
      */
+    @SuppressWarnings("unused")
     default void copyTo(int srcOffset, Frame dst, int dstOffset, int length) {
         CompilerDirectives.transferToInterpreterAndInvalidate();
         throw new UnsupportedOperationException();
