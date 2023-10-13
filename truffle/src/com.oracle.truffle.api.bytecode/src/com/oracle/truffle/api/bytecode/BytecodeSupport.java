@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.api.bytecode;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives;
 
 /**
@@ -97,6 +100,92 @@ public final class BytecodeSupport {
         } else {
             int sum = t + f;
             return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
+        }
+    }
+
+    public static final class TransparentOperationData {
+        public boolean producedValue;
+        public int childBci;
+
+        public TransparentOperationData(boolean producedValue, int childBci) {
+            this.producedValue = producedValue;
+            this.childBci = childBci;
+        }
+    }
+
+    public static final class IfThenData {
+        public int falseBranchFixupBci;
+
+        public IfThenData(int falseBranchFixupBci) {
+            this.falseBranchFixupBci = falseBranchFixupBci;
+        }
+    }
+
+    public static final class IfThenElseData {
+        public int falseBranchFixupBci;
+        public int endBranchFixupBci;
+
+        public IfThenElseData(int falseBranchFixupBci, int endBranchFixupBci) {
+            this.falseBranchFixupBci = falseBranchFixupBci;
+            this.endBranchFixupBci = endBranchFixupBci;
+        }
+    }
+
+    public static final class WhileData {
+        public final int whileStartBci;
+        public int endBranchFixupBci;
+
+        public WhileData(int whileStartBci, int endBranchFixupBci) {
+            this.whileStartBci = whileStartBci;
+            this.endBranchFixupBci = endBranchFixupBci;
+        }
+    }
+
+    public static final class TryCatchData {
+        public final int tryStartBci;
+        public final int startStackHeight;
+        public final int exceptionLocalIndex;
+        public int tryEndBci;
+        public int catchStartBci;
+        public int endBranchFixupBci;
+
+        public TryCatchData(int tryStartBci, int startStackHeight, int exceptionLocalIndex, int tryEndBci, int catchStartBci, int endBranchFixupBci) {
+            this.tryStartBci = tryStartBci;
+            this.startStackHeight = startStackHeight;
+            this.exceptionLocalIndex = exceptionLocalIndex;
+            this.tryEndBci = tryEndBci;
+            this.catchStartBci = catchStartBci;
+            this.endBranchFixupBci = endBranchFixupBci;
+        }
+    }
+
+    public static final class FinallyTryData {
+        public final BytecodeLocal exceptionLocal;
+        public final Object finallyTryContext;
+
+        public FinallyTryData(BytecodeLocal exceptionLocal, Object finallyTryContext) {
+            this.exceptionLocal = exceptionLocal;
+            this.finallyTryContext = finallyTryContext;
+        }
+    }
+
+    public static final class CustomOperationData {
+        public final int[] childBcis;
+        public final Object[] locals;
+
+        public CustomOperationData(int[] childBcis, Object... locals) {
+            this.childBcis = childBcis;
+            this.locals = locals;
+        }
+    }
+
+    public static final class CustomShortCircuitOperationData {
+        public int childBci;
+        public final List<Integer> branchFixupBcis;
+
+        public CustomShortCircuitOperationData(int childBci) {
+            this.childBci = childBci;
+            branchFixupBcis = new ArrayList<>(4);
         }
     }
 
