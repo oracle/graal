@@ -158,6 +158,14 @@ public final class ProbeNode extends Node {
     @CompilationFinal private volatile Assumption version;
     @CompilationFinal private volatile int seen = 0;
 
+    private static final boolean ASSERT_ENTER_RETURN_PARITY;
+
+    static {
+        boolean assertsOn = false;
+        assert !!(assertsOn = true);
+        ASSERT_ENTER_RETURN_PARITY = assertsOn;
+    }
+
     /** Instantiated by the instrumentation framework. */
     ProbeNode(InstrumentationHandler handler, SourceSection sourceSection) {
         this.handler = handler;
@@ -210,6 +218,9 @@ public final class ProbeNode extends Node {
      * @since 0.12
      */
     public void onEnter(VirtualFrame frame) {
+        if (ASSERT_ENTER_RETURN_PARITY) {
+            InstrumentAccessor.ENGINE.assertReturnParityEnter(this, handler.getSourceVM());
+        }
         EventChainNode localChain = lazyUpdate(frame);
         if (localChain != null) {
             EventChainNode.onEnter(localChain, context, frame);
@@ -225,6 +236,9 @@ public final class ProbeNode extends Node {
      * @since 0.12
      */
     public void onReturnValue(VirtualFrame frame, Object result) {
+        if (ASSERT_ENTER_RETURN_PARITY) {
+            InstrumentAccessor.ENGINE.assertReturnParityLeave(this, handler.getSourceVM());
+        }
         EventChainNode localChain = lazyUpdate(frame);
         assert isNullOrInteropValue(result);
         if (localChain != null) {
@@ -282,6 +296,9 @@ public final class ProbeNode extends Node {
      * @since 0.31
      */
     public Object onReturnExceptionalOrUnwind(VirtualFrame frame, Throwable exception, boolean isReturnCalled) {
+        if (ASSERT_ENTER_RETURN_PARITY && !isReturnCalled) {
+            InstrumentAccessor.ENGINE.assertReturnParityLeave(this, handler.getSourceVM());
+        }
         UnwindException unwind = null;
         if (exception instanceof UnwindException) {
             profileBranch(SEEN_UNWIND);
@@ -346,6 +363,9 @@ public final class ProbeNode extends Node {
      * @since 24.0
      */
     public void onYield(VirtualFrame frame, Object result) {
+        if (ASSERT_ENTER_RETURN_PARITY) {
+            InstrumentAccessor.ENGINE.assertReturnParityLeave(this, handler.getSourceVM());
+        }
         EventChainNode localChain = lazyUpdate(frame);
         if (localChain != null) {
             EventChainNode.onYield(localChain, context, frame, result);
@@ -364,6 +384,9 @@ public final class ProbeNode extends Node {
      * @since 24.0
      */
     public void onResume(VirtualFrame frame) {
+        if (ASSERT_ENTER_RETURN_PARITY) {
+            InstrumentAccessor.ENGINE.assertReturnParityEnter(this, handler.getSourceVM());
+        }
         EventChainNode localChain = lazyUpdate(frame);
         if (localChain != null) {
             EventChainNode.onResume(localChain, context, frame);

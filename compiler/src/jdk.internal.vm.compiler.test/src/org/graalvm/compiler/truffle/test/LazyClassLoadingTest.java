@@ -108,6 +108,8 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
         vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
         vmArgs.add("-dsa");
         vmArgs.add("-da");
+        vmArgs.add("-Dpolyglot.engine.AssertProbes=false");
+        vmArgs.add("-Dpolyglot.engine.AllowExperimentalOptions=true");
         vmArgs.add("-XX:-UseJVMCICompiler");
 
         // Remove -Dgraal.CompilationFailureAction as it drags in CompilationWrapper

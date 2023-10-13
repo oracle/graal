@@ -1197,7 +1197,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         }
                         Object returnValue = getReturnValueAsObject(frame, top);
                         if (instrument != null) {
-                            instrument.notifyReturn(frame, statementIndex, returnValue);
+                            instrument.exitAt(frame, statementIndex, returnValue);
                         }
                         return returnValue;
                     }
@@ -1405,9 +1405,6 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                         throw EspressoError.shouldNotReachHere(Bytecodes.nameOf(curOpcode));
                 }
             } catch (AbstractTruffleException | StackOverflowError | OutOfMemoryError e) {
-                if (instrument != null && e instanceof EspressoException) {
-                    instrument.notifyExceptionAt(frame, e, statementIndex);
-                }
                 CompilerAsserts.partialEvaluationConstant(curBCI);
                 // Handle both guest and host StackOverflowError.
                 if (e == getContext().getStackOverflow() || e instanceof StackOverflowError) {
@@ -1512,7 +1509,11 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
                 if (CompilerDirectives.hasNextTier() && loopCount.value > 0) {
                     LoopNode.reportLoopCount(this, loopCount.value);
                 }
-                return e.getResultOrRethrow();
+                Object returnValue = e.getResultOrRethrow();
+                if (instrument != null) {
+                    instrument.notifyReturn(frame, statementIndex, returnValue);
+                }
+                return returnValue;
             }
             assert curOpcode != WIDE && curOpcode != LOOKUPSWITCH && curOpcode != TABLESWITCH;
 
@@ -2886,7 +2887,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             if (statementIndex == nextStatementIndex) {
                 return;
             }
-            exitAt(frame, statementIndex);
+            exitAt(frame, statementIndex, StaticObject.NULL);
             enterAt(frame, nextStatementIndex);
         }
 
@@ -2901,7 +2902,7 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
         public void notifyReturn(VirtualFrame frame, int statementIndex, Object returnValue) {
             if (context.shouldReportVMEvents() && method.hasActiveHook()) {
                 if (context.reportOnMethodReturn(method, returnValue)) {
-                    enterAt(frame, statementIndex);
+                    exitAt(frame, statementIndex, returnValue);
                 }
             }
         }
@@ -2954,14 +2955,14 @@ public final class BytecodeNode extends AbstractInstrumentableBytecodeNode imple
             }
         }
 
-        private void exitAt(VirtualFrame frame, int index) {
+        private void exitAt(VirtualFrame frame, int index, Object returnValue) {
             WrapperNode wrapperNode = getWrapperAt(index);
             if (wrapperNode == null) {
                 return;
             }
             ProbeNode probeNode = wrapperNode.getProbeNode();
             try {
-                probeNode.onReturnValue(frame, StaticObject.NULL);
+                probeNode.onReturnValue(frame, returnValue);
             } catch (Throwable t) {
                 Object result = probeNode.onReturnExceptionalOrUnwind(frame, t, true);
                 if (result == ProbeNode.UNWIND_ACTION_REENTER) {

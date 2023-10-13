@@ -295,6 +295,9 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     final int resultCount = codeEntry.resultCount();
                     unwindStack(frame, stackPointer, localCount, resultCount);
                     dropStack(frame, stackPointer, localCount + resultCount);
+                    if (notifyFunction != null) {
+                        notifyFunction.notifyLine(frame, line, -1, line);
+                    }
                     return WasmConstant.RETURN_VALUE;
                 }
                 case Bytecode.LABEL_U8: {
