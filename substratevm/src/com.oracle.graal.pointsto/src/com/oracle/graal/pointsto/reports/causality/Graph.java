@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.graal.pointsto.reports.causality;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -17,8 +41,11 @@ import com.oracle.graal.pointsto.flow.TypeFlow;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
 import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.util.ClassUtil;
 import org.graalvm.collections.Pair;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.io.PrintStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -28,6 +55,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -35,7 +63,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
-import java.util.Stack;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
@@ -45,10 +72,10 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 class Graph {
-    static abstract class Node implements Comparable<Node> {
+    abstract static class Node implements Comparable<Node> {
         private final String toStringCached;
 
-        public Node(String debugStr) {
+        Node(String debugStr) {
             toStringCached = debugStr;
         }
 
@@ -80,7 +107,7 @@ class Graph {
     }
 
     static final class InvocationFlowNode extends FlowNode {
-        public InvocationFlowNode(CausalityEvent invocationTarget, TypeState filter) {
+        InvocationFlowNode(CausalityEvent invocationTarget, TypeState filter) {
             super("Virtual Invocation Flow Node: " + invocationTarget, invocationTarget, filter);
         }
 
@@ -91,7 +118,8 @@ class Graph {
     }
 
     static class DirectEdge {
-        public final CausalityEvent from, to;
+        public final CausalityEvent from;
+        public final CausalityEvent to;
 
         DirectEdge(CausalityEvent from, CausalityEvent to) {
             assert to != null;
@@ -101,8 +129,12 @@ class Graph {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
             DirectEdge that = (DirectEdge) o;
             return Objects.equals(from, that.from) && to.equals(that.to);
         }
@@ -119,7 +151,9 @@ class Graph {
     }
 
     static class HyperEdge {
-        public final CausalityEvent from1, from2, to;
+        public final CausalityEvent from1;
+        public final CausalityEvent from2;
+        public final CausalityEvent to;
 
         HyperEdge(CausalityEvent from1, CausalityEvent from2, CausalityEvent to) {
             assert from1 != null;
@@ -137,8 +171,12 @@ class Graph {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
             HyperEdge that = (HyperEdge) o;
             return to.equals(that.to) && (
                     (from1.equals(that.from1) && from2.equals(that.from2))
@@ -153,11 +191,13 @@ class Graph {
     }
 
     static class FlowEdge {
-        public final FlowNode from, to;
+        public final FlowNode from;
+        public final FlowNode to;
 
         FlowEdge(FlowNode from, FlowNode to) {
-            if (to == null)
+            if (to == null) {
                 throw new NullPointerException();
+            }
 
             this.from = from;
             this.to = to;
@@ -165,8 +205,12 @@ class Graph {
 
         @Override
         public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
+            if (this == o) {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass()) {
+                return false;
+            }
             FlowEdge flowEdge = (FlowEdge) o;
             return Objects.equals(from, flowEdge.from) && to.equals(flowEdge.to);
         }
@@ -181,7 +225,7 @@ class Graph {
         private final TypeFlow<?> f;
 
         static String customToString(TypeFlow<?> f) {
-            String str = f.getClass().getSimpleName();
+            String str = ClassUtil.getUnqualifiedName(f.getClass());
 
             if (f.method() != null) {
                 str += " in " + f.method().getQualifiedName();
@@ -207,8 +251,9 @@ class Graph {
                 detail = Integer.toString(((FormalParamTypeFlow) f).position());
             }
 
-            if (detail != null)
+            if (detail != null) {
                 str += ": " + detail;
+            }
 
             return str;
         }
@@ -224,7 +269,7 @@ class Graph {
             }
         }
 
-        public RealFlowNode(TypeFlow<?> f, CausalityEvent containing, TypeState filter) {
+        RealFlowNode(TypeFlow<?> f, CausalityEvent containing, TypeState filter) {
             super(customToString(f), containing, filter);
             this.f = f;
         }
@@ -264,22 +309,22 @@ class Graph {
     }
 
     private static class SeenTypestates implements Iterable<TypeState> {
-        private final ArrayList<TypeState> typestate_by_id = new ArrayList<>();
-        private final HashMap<TypeState, Integer> typestate_to_id = new HashMap<>();
+        private final ArrayList<TypeState> typestateById = new ArrayList<>();
+        private final HashMap<TypeState, Integer> typestateToId = new HashMap<>();
 
         private int assignId(TypeState s) {
-            int size = typestate_by_id.size();
-            typestate_by_id.add(s);
+            int size = typestateById.size();
+            typestateById.add(s);
             return size;
         }
 
         public Integer getId(PointsToAnalysis bb, TypeState s) {
-            return typestate_to_id.computeIfAbsent(s.forCanBeNull(bb, true), this::assignId);
+            return typestateToId.computeIfAbsent(s.forCanBeNull(bb, true), this::assignId);
         }
 
         @Override
         public Iterator<TypeState> iterator() {
-            return typestate_by_id.iterator();
+            return typestateById.iterator();
         }
     }
 
@@ -290,9 +335,9 @@ class Graph {
         Queue<Integer> worklist = new ArrayDeque<>(neededNodes.cardinality());
         neededNodes.stream().forEach(worklist::add);
 
-        while(!worklist.isEmpty()) {
+        while (!worklist.isEmpty()) {
             int u = worklist.poll();
-            for(int v : backwardAdj[u]) {
+            for (int v : backwardAdj[u]) {
                 if (!neededNodes.get(v)) {
                     neededNodes.set(v);
                     worklist.add(v);
@@ -305,8 +350,9 @@ class Graph {
         HashSet<CausalityEvent> nodes = new HashSet<>();
 
         for (DirectEdge e : directEdges) {
-            if (e.from != null)
+            if (e.from != null) {
                 nodes.add(e.from);
+            }
             nodes.add(e.to);
         }
 
@@ -317,10 +363,12 @@ class Graph {
         }
 
         for (FlowEdge e : interflows) {
-            if (e.from != null && e.from.containing != null)
+            if (e.from != null && e.from.containing != null) {
                 nodes.add(e.from.containing);
-            if (e.to.containing != null)
+            }
+            if (e.to.containing != null) {
                 nodes.add(e.to.containing);
+            }
         }
         return nodes;
     }
@@ -348,49 +396,54 @@ class Graph {
         BitSet needed = new BitSet(nodes.length);
         methods.stream().filter(CausalityEvent::essential).map(nodesInverse::get).forEach(needed::set);
 
-        {
-            int[] adjReverseLens = new int[nodes.length];
-
-            Consumer<BiConsumer<Object, Object>> forAllEdges = visitor -> {
-                for (FlowEdge e : interflows)
-                    visitor.accept(e.from, e.to);
-                for (var e : directEdges)
-                    visitor.accept(e.from, e.to);
-                for (var he : hyperEdges) {
-                    visitor.accept(he.from1, he.to);
-                    visitor.accept(he.from2, he.to);
-                }
-                for (var f : typeflows) {
-                    if (f.containing != null) {
-                        if (f.makesContainingReachable()) {
-                            visitor.accept(f, f.containing);
-                        } else {
-                            visitor.accept(f.containing, f);
-                        }
-                    }
-                }
-            };
-
-            forAllEdges.accept((from, to) -> {
-                adjReverseLens[nodesInverse.get(to)]++;
-            });
-
-            int[][] adjReverse = new int[nodes.length][];
-            for (int i = 0; i < adjReverse.length; i++)
-                adjReverse[i] = new int[adjReverseLens[i]];
-
-            int[] adjReversePositions = new int[nodes.length];
-
-            forAllEdges.accept((from, to) -> {
-                int toIndex = nodesInverse.get(to);
-                adjReverse[toIndex][adjReversePositions[toIndex]++] = nodesInverse.get(from);
-            });
-
-            collectNodesLeadingSomewhere(needed, adjReverse);
-        }
+        collectNodesLeadingSomewhere(needed, makeReverseAdjacency(nodes, typeflows, nodesInverse));
 
         needed.set(0, false);
         return needed.stream().mapToObj(i -> nodes[i]).collect(Collectors.toSet());
+    }
+
+    private int[][] makeReverseAdjacency(Object[] nodes, Set<FlowNode> typeflows, HashMap<Object, Integer> nodesInverse) {
+        int[] adjReverseLens = new int[nodes.length];
+
+        Consumer<BiConsumer<Object, Object>> forAllEdges = visitor -> {
+            for (FlowEdge e : interflows) {
+                visitor.accept(e.from, e.to);
+            }
+            for (var e : directEdges) {
+                visitor.accept(e.from, e.to);
+            }
+            for (var he : hyperEdges) {
+                visitor.accept(he.from1, he.to);
+                visitor.accept(he.from2, he.to);
+            }
+            for (var f : typeflows) {
+                if (f.containing != null) {
+                    if (f.makesContainingReachable()) {
+                        visitor.accept(f, f.containing);
+                    } else {
+                        visitor.accept(f.containing, f);
+                    }
+                }
+            }
+        };
+
+        forAllEdges.accept((from, to) -> {
+            adjReverseLens[nodesInverse.get(to)]++;
+        });
+
+        int[][] adjReverse = new int[nodes.length][];
+        for (int i = 0; i < adjReverse.length; i++) {
+            adjReverse[i] = new int[adjReverseLens[i]];
+        }
+
+        int[] adjReversePositions = new int[nodes.length];
+
+        forAllEdges.accept((from, to) -> {
+            int toIndex = nodesInverse.get(to);
+            adjReverse[toIndex][adjReversePositions[toIndex]++] = nodesInverse.get(from);
+        });
+
+        return adjReverse;
     }
 
     private static <T> Stream<T> filterType(Class<T> type, Stream<?> s) {
@@ -400,185 +453,204 @@ class Graph {
     public void export(PointsToAnalysis bb, ZipOutputStream zip, boolean exportTypeflowNames) throws java.io.IOException {
         Map<AnalysisType, Integer> typeIdMap = makeDenseTypeIdMap(bb, bb.getAllInstantiatedTypeFlow().getState()::containsType);
         AnalysisType[] typesSorted = getRelevantTypes(bb, typeIdMap);
-        CausalityEvent[] methodsSorted;
-        FlowNode[] flowsSorted;
 
-        {
-            var neededAbstractNodes = collectNeededAbstractNodes();
-            methodsSorted = filterType(CausalityEvent.class, neededAbstractNodes.stream())
-                .map(reason -> Pair.create(reason.toString(bb.getMetaAccess()), reason))
-                .sorted(Comparator.comparing(Pair::getLeft))
-                .map(Pair::getRight)
-                .toArray(CausalityEvent[]::new);
-            flowsSorted = filterType(FlowNode.class, neededAbstractNodes.stream())
-                    .sorted()
-                    .toArray(FlowNode[]::new);
-        }
+        var neededAbstractNodes = collectNeededAbstractNodes();
+        CausalityEvent[] methodsSorted = filterType(CausalityEvent.class, neededAbstractNodes.stream())
+            .map(reason -> Pair.create(reason.toString(bb.getMetaAccess()), reason))
+            .sorted(Comparator.comparing(Pair::getLeft))
+            .map(Pair::getRight)
+            .toArray(CausalityEvent[]::new);
+        FlowNode[] flowsSorted = filterType(FlowNode.class, neededAbstractNodes.stream())
+                .sorted()
+                .toArray(FlowNode[]::new);
 
         HashMap<CausalityEvent, Integer> methodIdMap = inverse(methodsSorted, 1);
         HashMap<FlowNode, Integer> flowIdMap = inverse(flowsSorted, 1);
 
-        if(typesSorted.length > 0xFFFF) {
+        if (typesSorted.length > 0xFFFF) {
             throw new RuntimeException("Too many types! CausalityExport can only handle up to 65535.");
         }
 
         zip.putNextEntry(new ZipEntry("types.txt"));
-        {
-            PrintStream w = new PrintStream(zip);
-            for (AnalysisType type : typesSorted) {
-                w.println(type.toJavaName());
-            }
-        }
+        writeTypes(zip, typesSorted);
 
         zip.putNextEntry(new ZipEntry("methods.txt"));
-        {
-            PrintStream w = new PrintStream(zip);
-            for (CausalityEvent method : methodsSorted) {
-                w.println(method.toString(bb.getMetaAccess()));
-            }
-        }
+        writeMethods(bb, zip, methodsSorted);
 
         zip.putNextEntry(new ZipEntry("direct_invokes.bin"));
-        {
-            WritableByteChannel c = Channels.newChannel(zip);
-            ByteBuffer b = ByteBuffer.allocate(2 * Integer.BYTES);
-            b.order(ByteOrder.LITTLE_ENDIAN);
-
-            for (DirectEdge e : directEdges) {
-                Integer src = e.from == null ? Integer.valueOf(0) : methodIdMap.get(e.from);
-                Integer dst = methodIdMap.get(e.to);
-
-                if (src == null || dst == null)
-                    continue;
-
-                b.putInt(src);
-                b.putInt(dst);
-                b.flip();
-                c.write(b);
-                b.flip();
-            }
-        }
+        writeDirectEdges(zip, methodIdMap);
 
         zip.putNextEntry(new ZipEntry("hyper_edges.bin"));
-        {
-            WritableByteChannel c = Channels.newChannel(zip);
-            ByteBuffer b = ByteBuffer.allocate(3 * Integer.BYTES);
-            b.order(ByteOrder.LITTLE_ENDIAN);
-
-            for (HyperEdge e : hyperEdges) {
-                Integer src1 = methodIdMap.get(e.from1);
-                Integer src2 = methodIdMap.get(e.from2);
-                Integer dst = methodIdMap.get(e.to);
-
-                if (src1 == null || src2 == null || dst == null)
-                    continue;
-
-                b.putInt(src1);
-                b.putInt(src2);
-                b.putInt(dst);
-                b.flip();
-                c.write(b);
-                b.flip();
-            }
-        }
+        writeHyperEdges(zip, methodIdMap);
 
         SeenTypestates typestates = new SeenTypestates();
 
         zip.putNextEntry(new ZipEntry("interflows.bin"));
-        {
-            WritableByteChannel c = Channels.newChannel(zip);
-            ByteBuffer b = ByteBuffer.allocate(2 * Integer.BYTES);
-            b.order(ByteOrder.LITTLE_ENDIAN);
-
-            for (FlowEdge e : interflows) {
-                Integer fromId = e.from == null ? Integer.valueOf(0) : flowIdMap.get(e.from);
-                Integer toId = flowIdMap.get(e.to);
-
-                if(fromId == null || toId == null)
-                    continue;
-
-                b.putInt(fromId);
-                b.putInt(toId);
-                b.flip();
-                c.write(b);
-                b.flip();
-            }
-        }
+        writeInterflows(zip, flowIdMap);
 
         zip.putNextEntry(new ZipEntry("typeflow_filters.bin"));
-        {
-            WritableByteChannel c = Channels.newChannel(zip);
-            ByteBuffer b = ByteBuffer.allocate(Integer.BYTES);
-            b.order(ByteOrder.LITTLE_ENDIAN);
-
-            for (FlowNode flow : flowsSorted) {
-                int typestate_id = typestates.getId(bb, flow.filter);
-                b.putInt(typestate_id);
-                b.flip();
-                c.write(b);
-                b.flip();
-            }
-        }
+        writeTypeflowFilters(bb, zip, flowsSorted, typestates);
 
         zip.putNextEntry(new ZipEntry("typestates.bin"));
-        {
-            WritableByteChannel c = Channels.newChannel(zip);
-            int bytesPerTypestate = (typesSorted.length + 7) / 8;
-
-            ByteBuffer zero = ByteBuffer.allocate(bytesPerTypestate);
-            ByteBuffer b = ByteBuffer.allocate(bytesPerTypestate);
-            b.order(ByteOrder.LITTLE_ENDIAN);
-
-            for (TypeState state : typestates) {
-                b.clear();
-                zero.clear();
-
-                b.put(zero);
-
-                for (AnalysisType t : state.types(bb)) {
-                    Integer maybeId = typeIdMap.get(t);
-                    if (maybeId == null)
-                        continue;
-                    int id = maybeId;
-                    int byte_index = id / 8;
-                    int bit_index = id % 8;
-                    byte old = b.get(byte_index);
-                    old |= (byte) (1 << bit_index);
-                    b.put(byte_index, old);
-                }
-
-                b.flip();
-                c.write(b);
-            }
-        }
+        writeTypestates(bb, zip, typesSorted, typestates, typeIdMap);
 
         zip.putNextEntry(new ZipEntry("typeflow_methods.bin"));
-        {
-            WritableByteChannel c = Channels.newChannel(zip);
-            ByteBuffer b = ByteBuffer.allocate(Integer.BYTES);
-            b.order(ByteOrder.LITTLE_ENDIAN);
+        writeTypeflowMethods(zip, flowsSorted, methodIdMap);
 
-            for (FlowNode f : flowsSorted) {
-                int mid = f.containing == null ? 0 : methodIdMap.get(f.containing);
-
-                if (f.makesContainingReachable())
-                    mid |= Integer.MIN_VALUE; // Set MSB
-
-                b.putInt(mid);
-                b.flip();
-                c.write(b);
-                b.flip();
-            }
-        }
-
-        if(exportTypeflowNames) {
+        if (exportTypeflowNames) {
             zip.putNextEntry(new ZipEntry("typeflows.txt"));
-            {
-                PrintStream w = new PrintStream(zip);
-                for (FlowNode flow : flowsSorted) {
-                    w.println(flow);
-                }
+            writeTypeflows(zip, flowsSorted);
+        }
+    }
+
+    private static void writeTypes(OutputStream out, AnalysisType[] typesSorted) {
+        PrintStream w = new PrintStream(out);
+        for (AnalysisType type : typesSorted) {
+            w.println(type.toJavaName());
+        }
+    }
+
+    private static void writeMethods(PointsToAnalysis bb, OutputStream out, CausalityEvent[] methodsSorted) {
+        PrintStream w = new PrintStream(out);
+        for (CausalityEvent method : methodsSorted) {
+            w.println(method.toString(bb.getMetaAccess()));
+        }
+    }
+
+    private void writeDirectEdges(OutputStream out, HashMap<CausalityEvent, Integer> methodIdMap) throws IOException {
+        WritableByteChannel c = Channels.newChannel(out);
+        ByteBuffer b = ByteBuffer.allocate(2 * Integer.BYTES);
+        b.order(ByteOrder.LITTLE_ENDIAN);
+
+        for (DirectEdge e : directEdges) {
+            Integer src = e.from == null ? Integer.valueOf(0) : methodIdMap.get(e.from);
+            Integer dst = methodIdMap.get(e.to);
+
+            if (src == null || dst == null) {
+                continue;
             }
+
+            b.putInt(src);
+            b.putInt(dst);
+            b.flip();
+            c.write(b);
+            b.flip();
+        }
+    }
+
+    private void writeHyperEdges(OutputStream out, HashMap<CausalityEvent, Integer> methodIdMap) throws IOException {
+        WritableByteChannel c = Channels.newChannel(out);
+        ByteBuffer b = ByteBuffer.allocate(3 * Integer.BYTES);
+        b.order(ByteOrder.LITTLE_ENDIAN);
+
+        for (HyperEdge e : hyperEdges) {
+            Integer src1 = methodIdMap.get(e.from1);
+            Integer src2 = methodIdMap.get(e.from2);
+            Integer dst = methodIdMap.get(e.to);
+
+            if (src1 == null || src2 == null || dst == null) {
+                continue;
+            }
+
+            b.putInt(src1);
+            b.putInt(src2);
+            b.putInt(dst);
+            b.flip();
+            c.write(b);
+            b.flip();
+        }
+    }
+
+    private void writeInterflows(OutputStream out, HashMap<FlowNode, Integer> flowIdMap) throws IOException {
+        WritableByteChannel c = Channels.newChannel(out);
+        ByteBuffer b = ByteBuffer.allocate(2 * Integer.BYTES);
+        b.order(ByteOrder.LITTLE_ENDIAN);
+
+        for (FlowEdge e : interflows) {
+            Integer fromId = e.from == null ? Integer.valueOf(0) : flowIdMap.get(e.from);
+            Integer toId = flowIdMap.get(e.to);
+
+            if (fromId == null || toId == null) {
+                continue;
+            }
+
+            b.putInt(fromId);
+            b.putInt(toId);
+            b.flip();
+            c.write(b);
+            b.flip();
+        }
+    }
+
+    private static void writeTypeflowFilters(PointsToAnalysis bb, OutputStream out, FlowNode[] flowsSorted, SeenTypestates typestates) throws IOException {
+        WritableByteChannel c = Channels.newChannel(out);
+        ByteBuffer b = ByteBuffer.allocate(Integer.BYTES);
+        b.order(ByteOrder.LITTLE_ENDIAN);
+
+        for (FlowNode flow : flowsSorted) {
+            int id = typestates.getId(bb, flow.filter);
+            b.putInt(id);
+            b.flip();
+            c.write(b);
+            b.flip();
+        }
+    }
+
+    private static void writeTypestates(PointsToAnalysis bb, ZipOutputStream out, AnalysisType[] typesSorted, SeenTypestates typestates, Map<AnalysisType, Integer> typeIdMap) throws IOException {
+        WritableByteChannel c = Channels.newChannel(out);
+        int bytesPerTypestate = (typesSorted.length + 7) / 8;
+
+        ByteBuffer zero = ByteBuffer.allocate(bytesPerTypestate);
+        ByteBuffer b = ByteBuffer.allocate(bytesPerTypestate);
+        b.order(ByteOrder.LITTLE_ENDIAN);
+
+        for (TypeState state : typestates) {
+            b.clear();
+            zero.clear();
+
+            b.put(zero);
+
+            for (AnalysisType t : state.types(bb)) {
+                Integer maybeId = typeIdMap.get(t);
+                if (maybeId == null) {
+                    continue;
+                }
+                int id = maybeId;
+                int byteIndex = id / 8;
+                int bitIndex = id % 8;
+                byte old = b.get(byteIndex);
+                old |= (byte) (1 << bitIndex);
+                b.put(byteIndex, old);
+            }
+
+            b.flip();
+            c.write(b);
+        }
+    }
+
+    private static void writeTypeflowMethods(OutputStream out, FlowNode[] flowsSorted, HashMap<CausalityEvent, Integer> methodIdMap) throws IOException {
+        WritableByteChannel c = Channels.newChannel(out);
+        ByteBuffer b = ByteBuffer.allocate(Integer.BYTES);
+        b.order(ByteOrder.LITTLE_ENDIAN);
+
+        for (FlowNode f : flowsSorted) {
+            int mid = f.containing == null ? 0 : methodIdMap.get(f.containing);
+
+            if (f.makesContainingReachable()) {
+                mid |= Integer.MIN_VALUE; // Set MSB
+            }
+
+            b.putInt(mid);
+            b.flip();
+            c.write(b);
+            b.flip();
+        }
+    }
+
+    private static void writeTypeflows(OutputStream out, FlowNode[] flowsSorted) {
+        PrintStream w = new PrintStream(out);
+        for (FlowNode flow : flowsSorted) {
+            w.println(flow);
         }
     }
 
@@ -587,14 +659,15 @@ class Graph {
         ArrayList<AnalysisType> typesInPreorder = new ArrayList<>();
 
         // Execute inorder-tree-traversal on subclass hierarchy in order to have hierarchy subtrees in one contiguous id range
-        Stack<AnalysisType> worklist = new Stack<>();
+        Deque<AnalysisType> worklist = new ArrayDeque<>();
         worklist.add(bb.getUniverse().objectType());
 
-        while (!worklist.empty()) {
+        while (!worklist.isEmpty()) {
             AnalysisType u = worklist.pop();
 
-            if (shouldBeIncluded.test(u))
+            if (shouldBeIncluded.test(u)) {
                 typesInPreorder.add(u);
+            }
 
             for (AnalysisType v : u.getSubTypes()) {
                 if (v != u && !v.isInterface()) {
@@ -623,10 +696,9 @@ class Graph {
 
     private static AnalysisType[] getRelevantTypes(PointsToAnalysis bb, Map<AnalysisType, Integer> typeIdMap) {
         AnalysisType[] types = new AnalysisType[typeIdMap.size()];
-
-        for (AnalysisType t : bb.getAllInstantiatedTypes())
+        for (AnalysisType t : bb.getAllInstantiatedTypes()) {
             types[typeIdMap.get(t)] = t;
-
+        }
         return types;
     }
 }

@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.graal.pointsto.reports.causality;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -30,8 +54,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static com.oracle.graal.pointsto.reports.causality.CausalityExport.*;
-
 class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
     private final ConcurrentHashMap<Pair<TypeFlow<?>, TypeFlow<?>>, Boolean> interflows = new ConcurrentHashMap<>();
 
@@ -44,7 +66,7 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
     public static final class ThreadContext extends BasicImpl.ThreadContext {
         public int currentlySaturatingDepth; // Inhibits the registration of new typeflow edges
 
-        public final class SaturationHappeningToken implements NonThrowingAutoCloseable {
+        public final class SaturationHappeningToken implements CausalityExport.NonThrowingAutoCloseable {
             SaturationHappeningToken() {
                 currentlySaturatingDepth++;
             }
@@ -52,8 +74,9 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
             @Override
             public void close() {
                 currentlySaturatingDepth--;
-                if (currentlySaturatingDepth < 0)
+                if (currentlySaturatingDepth < 0) {
                     throw new RuntimeException();
+                }
             }
         }
     }
@@ -68,19 +91,20 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
 
     @Override
     public void registerTypeFlowEdge(TypeFlow<?> from, TypeFlow<?> to) {
-        if (from == to)
+        if (from == to) {
             return;
+        }
 
-        if (from instanceof AllInstantiatedTypeFlow)
-            if (getContext().currentlySaturatingDepth > 0)
-                return;
+        if (from instanceof AllInstantiatedTypeFlow && getContext().currentlySaturatingDepth > 0) {
+            return;
+        }
 
         assert getContext().currentlySaturatingDepth == 0 || to.isContextInsensitive() || from instanceof ActualReturnTypeFlow && to instanceof ActualReturnTypeFlow || to instanceof ActualParameterTypeFlow;
         interflows.put(Pair.create(from, to), Boolean.TRUE);
     }
 
     @Override
-    public NonThrowingAutoCloseable setSaturationHappening() {
+    public CausalityExport.NonThrowingAutoCloseable setSaturationHappening() {
         return getContext().new SaturationHappeningToken();
     }
 
@@ -95,8 +119,9 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
 
     @Override
     public void addVirtualInvokeTypeFlow(AbstractVirtualInvokeTypeFlow invocation) {
-        if (invocation.method() != null)
+        if (invocation.method() != null) {
             originalInvokeReceivers.put(invocation, invocation.getReceiver());
+        }
     }
 
     protected void forEachTypeflow(Consumer<TypeFlow<?>> callback) {
@@ -116,7 +141,7 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         originalInvokeReceivers.keySet().stream().map(InvokeTypeFlow::getTargetMethod).flatMap(targetMethod -> Arrays.stream(targetMethod.getImplementations())).map(CausalityEvents.MethodImplementationInvoked::create).forEach(callback);
 
         forEachTypeflow(tf -> {
-            if(tf != null) {
+            if (tf != null) {
                 CausalityEvent e = getContainingEvent(tf);
                 if (e != null) {
                     callback.accept(e);
@@ -126,19 +151,22 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
     }
 
     private static BytecodePosition chopUnwindFrames(BytecodePosition p) {
-        while (p != null && p.getBCI() == BytecodeFrame.UNWIND_BCI)
+        while (p != null && p.getBCI() == BytecodeFrame.UNWIND_BCI) {
             p = p.getCaller();
+        }
         return p;
     }
 
     private static BytecodePosition takePlausibleFramesFromBottom(BytecodePosition p) {
-        if (p == null)
+        if (p == null) {
             return null;
+        }
 
         BytecodePosition callerPos = takePlausibleFramesFromBottom(p.getCaller());
 
-        if (callerPos != p.getCaller())
+        if (callerPos != p.getCaller()) {
             return callerPos;
+        }
 
         if (!((AnalysisMethod) p.getMethod()).isInlined()) {
             return callerPos != null ? callerPos : new BytecodePosition(null, p.getMethod(), p.getBCI());
@@ -148,15 +176,18 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
     }
 
     private static BytecodePosition takePlausibleFramesFromTop(BytecodePosition p) {
-        if (p == null)
+        if (p == null) {
             return null;
+        }
 
-        if (!((AnalysisMethod) p.getMethod()).isInlined())
+        if (!((AnalysisMethod) p.getMethod()).isInlined()) {
             return new BytecodePosition(null, p.getMethod(), p.getBCI());
+        }
 
         BytecodePosition callerPos = takePlausibleFramesFromTop(p.getCaller());
-        if (callerPos != p.getCaller())
+        if (callerPos != p.getCaller()) {
             return new BytecodePosition(callerPos, p.getMethod(), p.getBCI());
+        }
 
         return p;
     }
@@ -190,15 +221,17 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
 
         if (override != null && override.isImplementationInvoked()) {
             result.compute(override, (m, existingTypes) -> {
-                if (existingTypes == null)
+                if (existingTypes == null) {
                     existingTypes = TypeState.forEmpty();
+                }
                 return TypeState.forUnion(bb, existingTypes, TypeState.forExactType(bb, type, false));
             });
         }
 
         for (AnalysisType subType : type.getSubTypes()) {
-            if (subType == type)
+            if (subType == type) {
                 continue;
+            }
             addSubtypeImplementations(bb, result, base, subType);
         }
     }
@@ -219,22 +252,21 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
 
         HashMap<TypeFlow<?>, Graph.RealFlowNode> flowMapping = new HashMap<>();
 
-        Function<TypeFlow<?>, Graph.RealFlowNode> flowMapper = flow ->
-        {
-            if(flow.getState().typesCount() == 0 && !flow.isSaturated())
+        Function<TypeFlow<?>, Graph.RealFlowNode> flowMapper = flow -> {
+            if (flow.getState().typesCount() == 0 && !flow.isSaturated()) {
                 return null;
+            }
 
             return flowMapping.computeIfAbsent(flow, f -> {
                 CausalityEvent reason = getContainingEvent(f);
-
-                if(reason != null && reason.unused())
+                if (reason != null && reason.unused()) {
                     return null;
-
+                }
                 return Graph.RealFlowNode.create(bb, f, reason);
             });
         };
 
-        Map<AnalysisMethod, Pair<Set<AbstractVirtualInvokeTypeFlow>, TypeState>> virtual_invokes = new HashMap<>();
+        Map<AnalysisMethod, Pair<Set<AbstractVirtualInvokeTypeFlow>, TypeState>> virtualInvokes = new HashMap<>();
 
         Map<AnalysisMethod, Map<AnalysisMethod, TypeState>> implementationsAndTheirTypes = new HashMap<>();
         for (var e : originalInvokeReceivers.keySet()) {
@@ -244,19 +276,21 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         for (var e : originalInvokeReceivers.entrySet()) {
             PointsToAnalysisMethod targetMethod = e.getKey().getTargetMethod();
             TypeState receiverState = bb.getAllInstantiatedTypeFlow().getState();
-            if (e.getValue() != null && !e.getValue().isSaturated())
+            if (e.getValue() != null && !e.getValue().isSaturated()) {
                 receiverState = e.getValue().filter(bb, receiverState);
+            }
 
             for (var implementationWithTypes : implementationsAndTheirTypes.get(targetMethod).entrySet()) {
                 TypeState and = TypeState.forIntersection(bb, receiverState, implementationWithTypes.getValue());
-                if (and.typesCount() == 0)
+                if (and.typesCount() == 0) {
                     continue;
+                }
 
                 var calleeList = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(implementationWithTypes.getKey()), targetMethod, e.getKey().getCallerMultiMethodKey(), e.getKey());
                 for (PointsToAnalysisMethod callee : calleeList) {
                     assert callee.getTypeFlow().getMethod().equals(callee);
 
-                    virtual_invokes.compute(callee, (m, pair) -> {
+                    virtualInvokes.compute(callee, (m, pair) -> {
                         Set<AbstractVirtualInvokeTypeFlow> invokes;
                         TypeState targetReachingTypes;
 
@@ -275,11 +309,12 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
             }
         }
 
-        for (var e : virtual_invokes.entrySet()) {
+        for (var e : virtualInvokes.entrySet()) {
             CausalityEvent reason = CausalityEvents.MethodImplementationInvoked.create(e.getKey());
 
-            if(reason.unused())
+            if (reason.unused()) {
                 continue;
+            }
 
             Graph.InvocationFlowNode invocationFlowNode = new Graph.InvocationFlowNode(reason, e.getValue().getRight());
 
@@ -304,7 +339,7 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
                 } else  {
                     assert receiver != null;
                     Graph.FlowNode receiverNode = flowMapper.apply(receiver);
-                    if(receiverNode != null) {
+                    if (receiverNode != null) {
                         g.add(new Graph.FlowEdge(
                                 receiverNode,
                                 invocationFlowNode
@@ -317,15 +352,17 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         for (Pair<TypeFlow<?>, TypeFlow<?>> e : interflows.keySet()) {
             Graph.RealFlowNode left = null;
 
-            if(e.getLeft() != null) {
+            if (e.getLeft() != null) {
                 left = flowMapper.apply(e.getLeft());
-                if(left == null)
+                if (left == null) {
                     continue;
+                }
             }
 
             Graph.RealFlowNode right = flowMapper.apply(e.getRight());
-            if(right == null)
+            if (right == null) {
                 continue;
+            }
 
             g.add(new Graph.FlowEdge(left, right));
         }
@@ -344,8 +381,9 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         for (Map.Entry<Pair<CausalityEvent, TypeFlow<?>>, HashSet<AnalysisType>> e : flowingFromHeap.entrySet()) {
             Graph.RealFlowNode fieldNode = flowMapper.apply(e.getKey().getRight());
 
-            if (fieldNode == null)
+            if (fieldNode == null) {
                 continue;
+            }
 
             // The causality-query implementation saturates at 20 types.
             // Saturation will happen even if the types don't pass the filter
@@ -357,7 +395,7 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
             while (typeIter.hasNext()) {
                 TypeState state = TypeState.forEmpty();
 
-                for(int j = 0; j < 20 && typeIter.hasNext(); j++) {
+                for (int j = 0; j < 20 && typeIter.hasNext(); j++) {
                     state = TypeState.forUnion(bb, state, TypeState.forExactType(bb, typeIter.next(), false));
                 }
 

@@ -129,11 +129,12 @@ public class JsonWriter implements AutoCloseable {
 
     public void print(Object[] array) throws IOException {
         append('[');
-        for(int i = 0; i < array.length; i++) {
+        for (int i = 0; i < array.length; i++) {
             Object e = array[i];
             print(e);
-            if(i < array.length - 1)
+            if (i < array.length - 1) {
                 append(',');
+            }
         }
         append(']');
     }

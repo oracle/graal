@@ -433,7 +433,9 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         // Lies a bit about the inline context, since getCallerNodeSourcePosition() may drop the top frame...
         // But it lies consistent with the NodeSourcePosition as observed in MethodTypeFlowBuilder
         var callerScopeEvent = CausalityEvents.InlinedMethodCode.create(inlineScope.getCallerNodeSourcePosition()); // createEventForInlinedMethodCode(callerScope);
-        var inlineScopeEvent = CausalityEvents.InlinedMethodCode.create(new BytecodePosition(inlineScope.getCallerNodeSourcePosition(), invokeData.callTarget.targetMethod(), jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI)); // createEventForInlinedMethodCode(inlineScope);
+        var inlineScopeEvent = CausalityEvents.InlinedMethodCode.create(
+                new BytecodePosition(inlineScope.getCallerNodeSourcePosition(),
+                invokeData.callTarget.targetMethod(), jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI)); // createEventForInlinedMethodCode(inlineScope);
         CausalityExport.registerEdge(callerScopeEvent, inlineScopeEvent);
         try (var ignored = CausalityExport.overwriteCause(callerScopeEvent)) {
             ((AnalysisMethod) invokeData.callTarget.targetMethod()).registerAsInlined(reason);

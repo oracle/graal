@@ -84,7 +84,7 @@ public class ReachabilityExporter implements InternalFeature {
             public final boolean isMain;
             public final int codeSize;
 
-            public Method(AnalysisMethod m, Function<AnalysisMethod, Integer> compilations,
+            Method(AnalysisMethod m, Function<AnalysisMethod, Integer> compilations,
                           Map<AnalysisMethod, Executable> reflectionExecutables, Set<AnalysisMethod> jniMethods,
                           AnalysisMethod mainMethod) {
                 Integer codeSize = compilations.apply(m);
@@ -99,17 +99,21 @@ public class ReachabilityExporter implements InternalFeature {
                 EconomicMap<String, Object> map = EconomicMap.create();
                 ArrayList<String> flagsList = new ArrayList<>();
 
-                if(reflection)
+                if (reflection) {
                     flagsList.add("reflection");
-                if(jni)
+                }
+                if (jni) {
                     flagsList.add("jni");
-                if(synthetic)
+                }
+                if (synthetic) {
                     flagsList.add("synthetic");
-                if(isMain)
+                }
+                if (isMain) {
                     flagsList.add("main");
-
-                if(!flagsList.isEmpty())
+                }
+                if (!flagsList.isEmpty()) {
                     map.put("flags", flagsList.toArray());
+                }
                 map.put("size", codeSize);
                 return map;
             }
@@ -120,7 +124,7 @@ public class ReachabilityExporter implements InternalFeature {
             public final boolean jni;
             public final boolean synthetic;
 
-            public Field(AnalysisField f, Map<AnalysisField, java.lang.reflect.Field> reflectionFields) {
+            Field(AnalysisField f, Map<AnalysisField, java.lang.reflect.Field> reflectionFields) {
                 reflection = reflectionFields.containsKey(f);
                 jni = f.isJNIAccessed();
                 synthetic = f.isSynthetic();
@@ -129,17 +133,18 @@ public class ReachabilityExporter implements InternalFeature {
             EconomicMap<String, Object> serialize() {
                 EconomicMap<String, Object> map = EconomicMap.create();
                 ArrayList<String> flagsList = new ArrayList<>();
-
-                if(reflection)
+                if (reflection) {
                     flagsList.add("reflection");
-                if(jni)
+                }
+                if (jni) {
                     flagsList.add("jni");
-                if(synthetic)
+                }
+                if (synthetic) {
                     flagsList.add("synthetic");
-
-                if(!flagsList.isEmpty())
+                }
+                if (!flagsList.isEmpty()) {
                     map.put("flags", flagsList.toArray());
-
+                }
                 return map;
             }
         }
@@ -153,12 +158,12 @@ public class ReachabilityExporter implements InternalFeature {
             public final boolean jni;
             public final boolean reflection;
 
-            public Type(AnalysisType type, Map<Class<?>, InitKind> classInitKinds, Set<AnalysisType> reflectionTypes, Set<AnalysisType> jniTypes) {
+            Type(AnalysisType type, Map<Class<?>, InitKind> classInitKinds, Set<AnalysisType> reflectionTypes, Set<AnalysisType> jniTypes) {
                 synthetic = type.getJavaClass().isSynthetic();
                 jni = jniTypes.contains(type);
                 reflection = reflectionTypes.contains(type);
 
-                if(type.getWrapped().getClassInitializer() != null) {
+                if (type.getWrapped().getClassInitializer() != null) {
                     InitKind initKind = classInitKinds.get(type.getJavaClass());
 
                     if (initKind != null) {
@@ -176,22 +181,24 @@ public class ReachabilityExporter implements InternalFeature {
                 EconomicMap<String, Object> map = EconomicMap.create();
                 ArrayList<String> initKindList = new ArrayList<>();
 
-                if (runTimeInit)
+                if (runTimeInit) {
                     initKindList.add("run-time");
-                if (buildTimeInit)
+                }
+                if (buildTimeInit) {
                     initKindList.add("build-time");
-
-                if (!initKindList.isEmpty())
+                }
+                if (!initKindList.isEmpty()) {
                     map.put("init-kind", initKindList.toArray());
+                }
 
                 EconomicMap<String, Object> jsonMethods = EconomicMap.create();
                 EconomicMap<String, Object> jsonFields = EconomicMap.create();
 
-                for(Pair<String, Method> m : methods) {
+                for (Pair<String, Method> m : methods) {
                     jsonMethods.put(m.getLeft(), m.getRight().serialize());
                 }
 
-                for(Pair<String, Export.Field> f : fields) {
+                for (Pair<String, Export.Field> f : fields) {
                     jsonFields.put(f.getLeft(), f.getRight().serialize());
                 }
 
@@ -200,16 +207,18 @@ public class ReachabilityExporter implements InternalFeature {
 
                 ArrayList<String> flagsList = new ArrayList<>();
 
-                if(reflection)
+                if (reflection) {
                     flagsList.add("reflection");
-                if(jni)
+                }
+                if (jni) {
                     flagsList.add("jni");
-                if(synthetic)
+                }
+                if (synthetic) {
                     flagsList.add("synthetic");
-
-                if(!flagsList.isEmpty())
+                }
+                if (!flagsList.isEmpty()) {
                     map.put("flags", flagsList.toArray());
-
+                }
                 return map;
             }
         }
@@ -221,8 +230,9 @@ public class ReachabilityExporter implements InternalFeature {
                 EconomicMap<String, Object> map = EconomicMap.create(1);
                 EconomicMap<String, Object> typeMap = EconomicMap.create(types.size());
 
-                for(Map.Entry<String, Type> t : types.entrySet())
+                for (Map.Entry<String, Type> t : types.entrySet()) {
                     typeMap.put(t.getKey(), t.getValue().serialize());
+                }
 
                 map.put("types", typeMap);
                 return map;
@@ -236,7 +246,7 @@ public class ReachabilityExporter implements InternalFeature {
 
             public final HashMap<String, Package> packages = new HashMap<>();
 
-            public TopLevelOrigin(String path, String module, boolean isSystem) {
+            TopLevelOrigin(String path, String module, boolean isSystem) {
                 this.path = path;
                 this.module = module;
                 this.isSystem = isSystem;
@@ -244,18 +254,21 @@ public class ReachabilityExporter implements InternalFeature {
 
             public EconomicMap<String, Object> serialize() {
                 EconomicMap<String, Object> map = EconomicMap.create();
-                if (path != null)
+                if (path != null) {
                     map.put("path", path);
-                if (module != null)
+                }
+                if (module != null) {
                     map.put("module", module);
-                if (isSystem)
-                    map.put("flags", new Object[] { "system" });
+                }
+                if (isSystem) {
+                    map.put("flags", new Object[]{"system"});
+                }
 
                 EconomicMap<String, Object> packagesMap = EconomicMap.create();
 
-                for(Map.Entry<String, Package> p : packages.entrySet())
+                for (Map.Entry<String, Package> p : packages.entrySet()) {
                     packagesMap.put(p.getKey(), p.getValue().serialize());
-
+                }
                 map.put("packages", packagesMap);
                 return map;
             }
@@ -265,7 +278,7 @@ public class ReachabilityExporter implements InternalFeature {
             CodeSource codeSource = clazz.getProtectionDomain().getCodeSource();
             if (codeSource != null && codeSource.getLocation() != null) {
                 URL url = codeSource.getLocation();
-                if("file".equals(url.getProtocol())) {
+                if ("file".equals(url.getProtocol())) {
                     return url.getPath();
                 }
             }
@@ -278,50 +291,53 @@ public class ReachabilityExporter implements InternalFeature {
 
         private final HashMap<Pair<String, String>, TopLevelOrigin> topLevelOrigins = new HashMap<>();
 
-        private static AnalysisMethod getMainMethod(AnalysisUniverse universe)
-        {
-            if(!ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class))
+        private static AnalysisMethod getMainMethod(AnalysisUniverse universe) {
+            if (!ImageSingletons.contains(JavaMainWrapper.JavaMainSupport.class)) {
                 return null;
+            }
             JavaMainWrapper.JavaMainSupport jms = ImageSingletons.lookup(JavaMainWrapper.JavaMainSupport.class);
             java.lang.reflect.Method m = jms.getMainMethod();
             return universe.getBigbang().getMetaAccess().lookupJavaMethod(m);
         }
 
-        public Export(AnalysisUniverse universe, Function<AnalysisMethod, Integer> compilations) {
+        Export(AnalysisUniverse universe, Function<AnalysisMethod, Integer> compilations) {
             Map<Class<?>, InitKind> classInitKinds = ((ClassInitializationSupport) ImageSingletons.lookup(RuntimeClassInitializationSupport.class)).getClassInitKinds();
             ReflectionHostedSupport reflectionHostedSupport = ImageSingletons.lookup(ReflectionHostedSupport.class);
             Map<AnalysisMethod, Executable> reflectionExecutables = reflectionHostedSupport.getReflectionExecutables();
             Map<AnalysisField, java.lang.reflect.Field> reflectionFields = reflectionHostedSupport.getReflectionFields();
             JNIAccessFeature jniAccessFeature = JNIAccessFeature.singleton();
-            Set<AnalysisMethod> jniMethods = Arrays.stream(jniAccessFeature.getRegisteredMethods()).map(universe::lookup).collect(Collectors.toSet());
+            Set<AnalysisMethod> jniMethods = Arrays.stream(jniAccessFeature.getRegisteredMethods())
+                    .map(universe::lookup)
+                    .collect(Collectors.toSet());
             AnalysisMethod mainMethod = getMainMethod(universe);
-            Set<AnalysisType> jniTypes = Arrays.stream(jniAccessFeature.getRegisteredClasses()).map(universe.getBigbang().getMetaAccess()::optionalLookupJavaType).filter(Optional::isPresent).map(Optional::get).collect(Collectors.toSet());
-            Set<AnalysisType> reflectionTypes = Arrays.stream(ClassForNameSupport.getSuccessfullyRegisteredClasses()).map(universe.getBigbang().getMetaAccess()::optionalLookupJavaType).filter(Optional::isPresent).map(Optional::get).collect(Collectors.toSet());
+            Set<AnalysisType> jniTypes = Arrays.stream(jniAccessFeature.getRegisteredClasses())
+                    .map(universe.getBigbang().getMetaAccess()::optionalLookupJavaType)
+                    .filter(Optional::isPresent).map(Optional::get)
+                    .collect(Collectors.toSet());
+            Set<AnalysisType> reflectionTypes = Arrays.stream(ClassForNameSupport.getSuccessfullyRegisteredClasses())
+                    .map(universe.getBigbang().getMetaAccess()::optionalLookupJavaType)
+                    .filter(Optional::isPresent).map(Optional::get)
+                    .collect(Collectors.toSet());
 
             Path buildPath = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton());
             Path targetPath = buildPath.resolve(SubstrateOptions.REACHABILITY_FILE_NAME);
 
             for (AnalysisType t : universe.getTypes()) {
-                if(!t.isReachable())
-                    continue;
-
-                if(t.isArray())
-                    continue;
-
-                getType(t, classInitKinds, reflectionTypes, jniTypes);
+                if (t.isReachable() && !t.isArray()) {
+                    getType(t, classInitKinds, reflectionTypes, jniTypes);
+                }
             }
             for (AnalysisMethod m : universe.getMethods()) {
-                if(!m.isReachable())
+                if (!m.isReachable()) {
                     continue;
-
+                }
                 Type t = getType(m.getDeclaringClass(), classInitKinds, reflectionTypes, jniTypes);
-
                 t.methods.add(Pair.create(m.format("%n(%P):%R"), new Method(m, compilations, reflectionExecutables, jniMethods, mainMethod)));
             }
             for (AnalysisField f : universe.getFields()) {
-                if(!f.isReachable())
+                if (!f.isReachable()) {
                     continue;
-
+                }
                 Type t = getType(f.getDeclaringClass(), classInitKinds, reflectionTypes, jniTypes);
                 t.fields.add(Pair.create(f.getName(), new Field(f, reflectionFields)));
             }
@@ -366,8 +382,9 @@ public class ReachabilityExporter implements InternalFeature {
         Map<AnalysisMethod, Integer> compilations = new HashMap<>();
         for (var pair : accessImpl.getCompilations().entrySet()) {
             compilations.compute(pair.getKey().getWrapped(), (m, size) -> {
-                if (size == null)
+                if (size == null) {
                     size = 0;
+                }
                 size += pair.getValue().result.getTargetCodeSize();
                 return size;
             });

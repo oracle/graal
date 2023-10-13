@@ -362,7 +362,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * (currently) used for runtime compilation; in this use case, all necessary linking
              * will be done during callee resolution.
              */
-            if(invokeSpecial) {
+            if (invokeSpecial) {
                 CausalityExport.registerEvent(CausalityEvents.MethodReachable.create(originalPTAMethod));
             }
             postTask(() -> {

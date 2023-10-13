@@ -573,7 +573,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         if (!AtomicUtils.isSet(this, isReachableUpdater)) {
             /* Mark this type and all its super types as reachable. */
             forAllSuperTypes(type -> {
-                if(type != this) {
+                if (type != this) {
                     CausalityExport.registerEdge(CausalityEvents.TypeReachable.create(this), CausalityEvents.TypeReachable.create(type));
                 }
                 AtomicUtils.atomicSetAndRun(type, reason, isReachableUpdater, type::onReachable);

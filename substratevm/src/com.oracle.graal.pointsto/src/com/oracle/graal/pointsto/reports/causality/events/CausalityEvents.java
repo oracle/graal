@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.graal.pointsto.reports.causality.events;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
@@ -20,8 +44,10 @@ import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import static org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
+
 public final class CausalityEvents {
-    private CausalityEvents() {}
+    private CausalityEvents() { }
 
     public interface EventFactory<T> {
         CausalityEvent create(T data);
@@ -56,7 +82,7 @@ public final class CausalityEvents {
         }
     }
 
-    private static class InterningEventFactory2<T1, T2> extends InterningEventFactory<Pair<T1, T2>> implements EventFactory2<T1, T2> {
+    private static final class InterningEventFactory2<T1, T2> extends InterningEventFactory<Pair<T1, T2>> implements EventFactory2<T1, T2> {
         private InterningEventFactory2(BiFunction<T1, T2, CausalityEvent> constructor) {
             super(pair -> constructor.apply(pair.getLeft(), pair.getRight()));
         }
@@ -66,7 +92,7 @@ public final class CausalityEvents {
         }
     }
 
-    private static class InterningJniCallVariantWrapperEventFactory extends InterningEventFactory<InterningJniCallVariantWrapperEventFactory.Key> implements JniCallVariantWrapperEventFactory {
+    private static final class InterningJniCallVariantWrapperEventFactory extends InterningEventFactory<InterningJniCallVariantWrapperEventFactory.Key> implements JniCallVariantWrapperEventFactory {
         private InterningJniCallVariantWrapperEventFactory() {
             super(k -> new JniCallVariantWrapper(k.signature, k.isVirtual));
         }
@@ -79,12 +105,16 @@ public final class CausalityEvents {
         public record Key(Signature signature, boolean isVirtual) {}
     }
 
-    private static class InterningCodeEventFactory extends InterningEventFactory<InterningCodeEventFactory.InlinedMethods> implements CodeEventFactory {
+    private static final class InterningCodeEventFactory extends InterningEventFactory<InterningCodeEventFactory.InlinedMethods> implements CodeEventFactory {
         private record InlinedMethods(AnalysisMethod[] context) {
             @Override
             public boolean equals(Object o) {
-                if (this == o) return true;
-                if (o == null || getClass() != o.getClass()) return false;
+                if (this == o) {
+                    return true;
+                }
+                if (o == null || getClass() != o.getClass()) {
+                    return false;
+                }
                 InlinedMethods that = (InlinedMethods) o;
                 return Arrays.equals(context, that.context);
             }
@@ -109,15 +139,16 @@ public final class CausalityEvents {
                 invokePos = invokePos.getCaller();
             }
 
-            if (context.isEmpty())
+            if (context.isEmpty()) {
                 throw new RuntimeException();
+            }
 
             return create(new InlinedMethods(context.toArray(AnalysisMethod[]::new)));
         }
 
         @Override
         public CausalityEvent create(AnalysisMethod m) {
-            return create(new InlinedMethods(new AnalysisMethod[] { m }));
+            return create(new InlinedMethods(new AnalysisMethod[] {m}));
         }
     }
 
@@ -172,36 +203,34 @@ public final class CausalityEvents {
         }
     }
 
-
-
-    public static final EventFactory<AnalysisMethod> MethodReachable = factory(com.oracle.graal.pointsto.reports.causality.events.MethodReachable::new);
-    public static final EventFactory<AnalysisMethod> MethodImplementationInvoked = factory(com.oracle.graal.pointsto.reports.causality.events.MethodImplementationInvoked::new);
-    public static final EventFactory<AnalysisMethod> MethodInlined = factory(com.oracle.graal.pointsto.reports.causality.events.MethodInlined::new);
-    public static final EventFactory<AnalysisMethod> MethodSnippet = factory(com.oracle.graal.pointsto.reports.causality.events.MethodSnippet::new);
-    public static final EventFactory<AnalysisMethod> RootMethodRegistration = factory(com.oracle.graal.pointsto.reports.causality.events.RootMethodRegistration::new);
-    public static final EventFactory<AnalysisMethod> VirtualMethodInvoked = factory(com.oracle.graal.pointsto.reports.causality.events.VirtualMethodInvoked::new);
-    public static final EventFactory<AnalysisMethod> MethodGraphParsed = factory(com.oracle.graal.pointsto.reports.causality.events.MethodGraphParsed::new);
-    public static final EventFactory<AnalysisType> TypeReachable = factory(com.oracle.graal.pointsto.reports.causality.events.TypeReachable::new);
-    public static final EventFactory<AnalysisType> TypeInstantiated = factory(com.oracle.graal.pointsto.reports.causality.events.TypeInstantiated::new);
-    public static final EventFactory<AnalysisType> TypeInHeap = factory(com.oracle.graal.pointsto.reports.causality.events.TypeInHeap::new);
-    public static final EventFactory<AnalysisField> FieldRead = factory(com.oracle.graal.pointsto.reports.causality.events.FieldRead::new);
-    public static final EventFactory<Consumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess>> ReachabilityNotificationCallback = factory(com.oracle.graal.pointsto.reports.causality.events.ReachabilityNotificationCallback::new);
-    public static final EventFactory<BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Class<?>>> SubtypeReachableNotificationCallback = factory(com.oracle.graal.pointsto.reports.causality.events.SubtypeReachableNotificationCallback::new);
-    public static final EventFactory<BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Executable>> OverrideReachableNotificationCallback = factory(com.oracle.graal.pointsto.reports.causality.events.OverrideReachableNotificationCallback::new);
-    public static final EventFactory<String> ConfigurationCondition = factory(com.oracle.graal.pointsto.reports.causality.events.ConfigurationCondition::new);
-    public static final EventFactory<URI> ConfigurationFile = factory(com.oracle.graal.pointsto.reports.causality.events.ConfigurationFile::new);
-    public static final EventFactory<Class<?>> UnknownHeapObject = factory(com.oracle.graal.pointsto.reports.causality.events.UnknownHeapObject::new);
-    public static final EventFactory<Class<?>> BuildTimeClassInitialization = factory(com.oracle.graal.pointsto.reports.causality.events.BuildTimeClassInitialization::new);
-    public static final EventFactory<Class<?>> HeapObjectDynamicHub = factory(com.oracle.graal.pointsto.reports.causality.events.HeapObjectDynamicHub::new);
-    public static final EventFactory<Class<?>> HeapObjectClass = factory(com.oracle.graal.pointsto.reports.causality.events.HeapObjectClass::new);
-    public static final EventFactory<org.graalvm.nativeimage.hosted.Feature> Feature = factory(com.oracle.graal.pointsto.reports.causality.events.Feature::new);
+    public static final EventFactory<AnalysisMethod> MethodReachable = factory(MethodReachable::new);
+    public static final EventFactory<AnalysisMethod> MethodImplementationInvoked = factory(MethodImplementationInvoked::new);
+    public static final EventFactory<AnalysisMethod> MethodInlined = factory(MethodInlined::new);
+    public static final EventFactory<AnalysisMethod> MethodSnippet = factory(MethodSnippet::new);
+    public static final EventFactory<AnalysisMethod> RootMethodRegistration = factory(RootMethodRegistration::new);
+    public static final EventFactory<AnalysisMethod> VirtualMethodInvoked = factory(VirtualMethodInvoked::new);
+    public static final EventFactory<AnalysisMethod> MethodGraphParsed = factory(MethodGraphParsed::new);
+    public static final EventFactory<AnalysisType> TypeReachable = factory(TypeReachable::new);
+    public static final EventFactory<AnalysisType> TypeInstantiated = factory(TypeInstantiated::new);
+    public static final EventFactory<AnalysisType> TypeInHeap = factory(TypeInHeap::new);
+    public static final EventFactory<AnalysisField> FieldRead = factory(FieldRead::new);
+    public static final EventFactory<Consumer<DuringAnalysisAccess>> ReachabilityNotificationCallback = factory(ReachabilityNotificationCallback::new);
+    public static final EventFactory<BiConsumer<DuringAnalysisAccess, Class<?>>> SubtypeReachableNotificationCallback = factory(SubtypeReachableNotificationCallback::new);
+    public static final EventFactory<BiConsumer<DuringAnalysisAccess, Executable>> OverrideReachableNotificationCallback = factory(OverrideReachableNotificationCallback::new);
+    public static final EventFactory<String> ConfigurationCondition = factory(ConfigurationCondition::new);
+    public static final EventFactory<URI> ConfigurationFile = factory(ConfigurationFile::new);
+    public static final EventFactory<Class<?>> UnknownHeapObject = factory(UnknownHeapObject::new);
+    public static final EventFactory<Class<?>> BuildTimeClassInitialization = factory(BuildTimeClassInitialization::new);
+    public static final EventFactory<Class<?>> HeapObjectDynamicHub = factory(HeapObjectDynamicHub::new);
+    public static final EventFactory<Class<?>> HeapObjectClass = factory(HeapObjectClass::new);
+    public static final EventFactory<org.graalvm.nativeimage.hosted.Feature> Feature = factory(Feature::new);
     public static final CodeEventFactory InlinedMethodCode = CausalityExport.isEnabled() ? new InterningCodeEventFactory() : new DummyCodeEventFactory();
-    public static final EventFactory2<BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Executable>, AnalysisMethod> OverrideReachableNotificationCallbackInvocation = factory(com.oracle.graal.pointsto.reports.causality.events.OverrideReachableNotificationCallbackInvocation::new);
-    public static final EventFactory2<BiConsumer<org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess, Class<?>>, AnalysisType> SubtypeReachableNotificationCallbackInvocation = factory(com.oracle.graal.pointsto.reports.causality.events.SubtypeReachableNotificationCallbackInvocation::new);
+    public static final EventFactory2<BiConsumer<DuringAnalysisAccess, Executable>, AnalysisMethod> OverrideReachableNotificationCallbackInvocation = factory(OverrideReachableNotificationCallbackInvocation::new);
+    public static final EventFactory2<BiConsumer<DuringAnalysisAccess, Class<?>>, AnalysisType> SubtypeReachableNotificationCallbackInvocation = factory(SubtypeReachableNotificationCallbackInvocation::new);
     public static final JniCallVariantWrapperEventFactory JniCallVariantWrapper = CausalityExport.isEnabled() ? new InterningJniCallVariantWrapperEventFactory() : new DummyJniCallVariantWrapperEventFactory();
-    public static final EventFactory<AnnotatedElement> JNIRegistration = factory(com.oracle.graal.pointsto.reports.causality.events.JNIRegistration::new);
-    public static final EventFactory<AnnotatedElement> ReflectionRegistration = factory(com.oracle.graal.pointsto.reports.causality.events.ReflectionRegistration::new);
-    public static final EventFactory<AnnotatedElement> ReflectionObjectInHeap = factory(com.oracle.graal.pointsto.reports.causality.events.ReflectionObjectInHeap::new);
+    public static final EventFactory<AnnotatedElement> JNIRegistration = factory(JNIRegistration::new);
+    public static final EventFactory<AnnotatedElement> ReflectionRegistration = factory(ReflectionRegistration::new);
+    public static final EventFactory<AnnotatedElement> ReflectionObjectInHeap = factory(ReflectionObjectInHeap::new);
     public static final CausalityEvent AutomaticFeatureRegistration = new RootEvent("[Automatic Feature Registration]");
     public static final CausalityEvent UserEnabledFeatureRegistration = new RootEvent("[User-Requested Feature Registration]");
     public static final CausalityEvent InitialRegistration = new RootEvent("[Initial Registrations]");

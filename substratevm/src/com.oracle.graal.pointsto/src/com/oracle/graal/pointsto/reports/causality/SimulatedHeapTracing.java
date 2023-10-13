@@ -1,3 +1,27 @@
+/*
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * This code is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU General Public License version 2 only, as
+ * published by the Free Software Foundation.  Oracle designates this
+ * particular file as subject to the "Classpath" exception as provided
+ * by Oracle in the LICENSE file that accompanied this code.
+ *
+ * This code is distributed in the hope that it will be useful, but WITHOUT
+ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+ * version 2 for more details (a copy is included in the LICENSE file that
+ * accompanied this code).
+ *
+ * You should have received a copy of the GNU General Public License version
+ * 2 along with this work; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+ *
+ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+ * or visit www.oracle.com if you need additional information or have any
+ * questions.
+ */
 package com.oracle.graal.pointsto.reports.causality;
 
 import java.util.Arrays;
@@ -19,7 +43,7 @@ public class SimulatedHeapTracing {
     private static class HeapConstantContext {
         public final CausalityEvent allocator;
 
-        public HeapConstantContext(CausalityEvent allocator) {
+        HeapConstantContext(CausalityEvent allocator) {
             this.allocator = allocator;
         }
 
@@ -31,12 +55,12 @@ public class SimulatedHeapTracing {
     private static final class HeapInstanceContext extends HeapConstantContext {
         public final CausalityEvent[] fieldWriters;
 
-        public HeapInstanceContext(CausalityEvent allocator, AnalysisType constantType) {
+        HeapInstanceContext(CausalityEvent allocator, AnalysisType constantType) {
             super(allocator);
             this.fieldWriters = new CausalityEvent[constantType.getInstanceFields(true).length];
         }
 
-        public HeapInstanceContext(CausalityEvent cloner, HeapInstanceContext original) {
+        HeapInstanceContext(CausalityEvent cloner, HeapInstanceContext original) {
             super(cloner);
             fieldWriters = new CausalityEvent[original.fieldWriters.length];
             Arrays.fill(fieldWriters, cloner);
@@ -51,12 +75,12 @@ public class SimulatedHeapTracing {
     private static final class HeapArrayContext extends HeapConstantContext {
         public final CausalityEvent[] arrayWriters;
 
-        public HeapArrayContext(CausalityEvent allocator, int length) {
+        HeapArrayContext(CausalityEvent allocator, int length) {
             super(allocator);
             this.arrayWriters = new CausalityEvent[length];
         }
 
-        public HeapArrayContext(CausalityEvent cloner, HeapArrayContext orignal) {
+        HeapArrayContext(CausalityEvent cloner, HeapArrayContext orignal) {
             super(cloner);
             arrayWriters = new CausalityEvent[orignal.arrayWriters.length];
             Arrays.fill(arrayWriters, cloner);
@@ -65,14 +89,6 @@ public class SimulatedHeapTracing {
         @Override
         public HeapConstantContext clone(CausalityEvent cloner) {
             return new HeapArrayContext(cloner, this);
-        }
-    }
-
-    private static class TypeContext {
-        public final CausalityEvent[] fieldWriters;
-
-        private TypeContext(AnalysisType type) {
-            fieldWriters = new CausalityEvent[type.getStaticFields().length];
         }
     }
 
@@ -132,17 +148,17 @@ public class SimulatedHeapTracing {
 
     public static final SimulatedHeapTracing instance = CausalityExport.isEnabled() ? new Impl() : new SimulatedHeapTracing();
 
-    public void traceAllocation(CausalityEvent cause, ImageHeapInstance instance, AnalysisType type) {}
+    public void traceAllocation(CausalityEvent cause, ImageHeapInstance instance, AnalysisType type) { }
 
-    public void traceAllocation(CausalityEvent cause, ImageHeapArray array) {}
+    public void traceAllocation(CausalityEvent cause, ImageHeapArray array) { }
 
-    public void traceWrite(CausalityEvent cause, ImageHeapInstance instance, AnalysisField field) {}
+    public void traceWrite(CausalityEvent cause, ImageHeapInstance instance, AnalysisField field) { }
 
-    public void traceWrite(CausalityEvent cause, ImageHeapArray array, int position) {}
+    public void traceWrite(CausalityEvent cause, ImageHeapArray array, int position) { }
 
-    public void traceWrite(CausalityEvent cause, AnalysisField field) {}
+    public void traceWrite(CausalityEvent cause, AnalysisField field) { }
 
-    public void traceClone(CausalityEvent cause, ImageHeapConstant original, ImageHeapConstant cloned) {}
+    public void traceClone(CausalityEvent cause, ImageHeapConstant original, ImageHeapConstant cloned) { }
 
     public CausalityEvent getHeapObjectCreator(ImageHeapConstant constant) {
         throw new UnsupportedOperationException();
