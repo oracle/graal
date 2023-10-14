@@ -673,7 +673,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     private static void logException(Throwable exception) {
         try {
-            Log.log().exception(exception);
+            Log.log().exception(exception).newline();
         } catch (Throwable ex) {
             /* Logging failed, so there is nothing we can do anymore to log. */
         }

@@ -157,7 +157,7 @@ public abstract class ExceptionUnwind {
      */
     private static void reportFatalUnwind(Throwable exception) {
         Log.log().string("Fatal error: exception unwind while thread is not in Java state: ");
-        Log.log().exception(exception);
+        Log.log().exception(exception).newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
@@ -169,7 +169,7 @@ public abstract class ExceptionUnwind {
      */
     private static void reportUnhandledException(Throwable exception) {
         Log.log().string("Fatal error: unhandled exception in isolate ").hex(CurrentIsolate.getIsolate()).string(": ");
-        Log.log().exception(exception);
+        Log.log().exception(exception).newline();
         ImageSingletons.lookup(LogHandler.class).fatalError();
     }
 
