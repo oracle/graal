@@ -13,6 +13,7 @@ This changelog summarizes major changes between Truffle versions relevant to lan
 * GR-45863 Adopted onYield() and onResume() instrumentation events in the debugger stepping logic.
 * [GR-21361] Remove support for legacy `<language-id>.home` system property. Only `org.graalvm.language.<language-id>.home` will be used.
 * GR-41302 Added the `--engine.AssertProbes` option, which asserts that enter and return are always called in pairs on ProbeNode, verifies correct behavior of wrapper nodes. Java asserts need to be turned on for this option to have an effect.
+* GR-48816 Added new interpreted performance warning to Truffle DSL.
 
 ## Version 23.1.0
 

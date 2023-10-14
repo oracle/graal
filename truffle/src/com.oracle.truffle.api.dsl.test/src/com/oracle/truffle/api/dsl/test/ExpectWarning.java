@@ -38,59 +38,18 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.dsl.processor.model;
+package com.oracle.truffle.api.dsl.test;
 
-import java.util.Collections;
-import java.util.List;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 
-import javax.lang.model.element.AnnotationMirror;
-import javax.lang.model.element.Element;
-import javax.lang.model.element.TypeElement;
+/**
+ * This annotation is internally known by the dsl processor and used to expect warnings for testing
+ * purposes. This is not part of public API.
+ */
+@Retention(RetentionPolicy.RUNTIME)
+public @interface ExpectWarning {
 
-import com.oracle.truffle.dsl.processor.ProcessorContext;
-import com.oracle.truffle.dsl.processor.java.ElementUtils;
-
-public abstract class Template extends MessageContainer {
-
-    private final ProcessorContext context;
-    private final TypeElement templateType;
-    private final AnnotationMirror annotation;
-
-    public Template(ProcessorContext context, TypeElement templateType, AnnotationMirror annotation) {
-        this.context = context;
-        this.templateType = templateType;
-        this.annotation = annotation;
-    }
-
-    public ProcessorContext getContext() {
-        return context;
-    }
-
-    @Override
-    public Element getMessageElement() {
-        return templateType;
-    }
-
-    public String dump() {
-        return toString();
-    }
-
-    @Override
-    protected List<MessageContainer> findChildContainers() {
-        return Collections.emptyList();
-    }
-
-    public TypeElement getTemplateType() {
-        return templateType;
-    }
-
-    public AnnotationMirror getTemplateTypeAnnotation() {
-        return annotation;
-    }
-
-    @Override
-    public String toString() {
-        return getClass().getSimpleName() + "[" + ElementUtils.getSimpleName(getTemplateType()) + "]";
-    }
+    String[] value();
 
 }
