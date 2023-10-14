@@ -46,7 +46,19 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
+import com.oracle.truffle.api.InternalResource.OS;
+
 public class ErrorContext {
+    private static final String ERRNO_LOCATION;
+
+    static {
+        ERRNO_LOCATION = switch (OS.getCurrent()) {
+            case DARWIN -> "__error";
+            case LINUX -> "__errno_location";
+            case WINDOWS -> "_errno";
+        };
+    }
+
     private Throwable throwable = null;
     @SuppressWarnings("preview") private MemorySegment errnoLocation;
     private Integer nativeErrno = null;
@@ -81,7 +93,7 @@ public class ErrorContext {
         Linker linker = Linker.nativeLinker();
         FunctionDescriptor desc = FunctionDescriptor.of(ValueLayout.JAVA_LONG);
 
-        MemorySegment t = linker.defaultLookup().find("__errno_location").get();
+        MemorySegment t = linker.defaultLookup().find(ERRNO_LOCATION).get();
         MethodHandle handle = linker.downcallHandle(desc);
         try {
             return MemorySegment.ofAddress((long) handle.invokeExact(t)).reinterpret(4);
