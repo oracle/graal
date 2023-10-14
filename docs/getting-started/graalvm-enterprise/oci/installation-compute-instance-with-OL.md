@@ -57,9 +57,9 @@ The installation steps may differ per Oracle Linux version or package manager.
    ```
    Confirm that the installed package size is correct by entering `yes` at the prompt.
 
-### Oracle Linux 8 and 9
+### Oracle Linux 8
 
-On Oracle Linux 8 and 9 with the `yum` package manager, run these commands one by one:
+On Oracle Linux 8 with the `yum` package manager, run these commands one by one:
 ```shell
 sudo yum update -y oraclelinux-release-el8
 ```
@@ -71,17 +71,41 @@ sudo yum install graalvm-21-native-image
 ```
 Confirm that the installed package size is correct by entering `yes` at the prompt.
 
-On Oracle Linux 8 and 9 with `dnf` or `microdnf` default package managers, run these commands one by one:
+On Oracle Linux 8 with `dnf` or `microdnf` default package managers, run these commands one by one:
 ```shell
-dnf update -y oraclelinux-release-el8
+sudo dnf update -y oraclelinux-release-el8
 ```
 ```shell
-dnf config-manager --set-enabled ol8_codeready_builder
+sudo dnf config-manager --set-enabled ol8_codeready_builder
 ```
 ```shell
-dnf install graalvm-21-native-image
+sudo dnf install graalvm-21-native-image
+```
+
+### Oracle Linux 9
+
+On Oracle Linux 9 with the `yum` package manager, run these commands one by one:
+```shell
+sudo yum update -y oraclelinux-release-el9
+```
+```shell
+sudo yum config-manager --set-enabled ol9_codeready_builder
+```
+```shell
+sudo yum install graalvm-21-native-image
 ```
 Confirm that the installed package size is correct by entering `yes` at the prompt.
+
+On Oracle Linux 9 with `dnf` or `microdnf` default package managers, run these commands one by one:
+```shell
+sudo dnf update -y oraclelinux-release-el9
+```
+```shell
+sudo dnf config-manager --set-enabled ol9_codeready_builder
+```
+```shell
+sudo dnf install graalvm-21-native-image
+```
 
 ### Configure Environment Variables
 
@@ -109,39 +133,6 @@ After installation, the package files are placed in the _/usr/lib64/graalvm_ dir
    ```shell
    java -version
    ```
-
-Now you have a ready-to-go OCI Compute instance with Oracle GraalVM installed.
-
-## Install Additional Features
-
-Oracle GraalVM provides more technologies such as the Javascript runtime and Java on Truffle, each of which can be installed separately.
-
-1. Check what additional features are available for your current Oracle GraalVM installation:
-
-   ```shell
-   sudo yum list graalvm-21*
-   ```
-   ```shell
-   dnf list graalvm-21*
-   ```
-   The printed list may be large. If you are interested in a particular feature, for example, the Python runtime, narrow down the search providing the exact package name:
-
-   ```shell
-   sudo yum list graalvm-21-python*
-   ```
-   ```shell
-   dnf list graalvm-21-python*
-   ```
-
-2. Install the feature to Oracle GraalVM using its `<package_name>`. For example, to install the Python runtime with `yum`, run:
-   ```shell
-   sudo yum install graalvm-21-python
-   ```
-   With `dnf`:
-   ```shell
-   dnf install graalvm-21-python
-   ```
-   Confirm that the installed package size is correct by entering `yes` at the prompt.
 
 Congratulations! You have installed Oracle GraalVM on the Compute instance with the Oracle Linux image, and can use it as any other Java Development Kit.
 
