@@ -120,7 +120,7 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int hugeMethodLimit = getFlag("HugeMethodLimit", Integer.class);
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
-    public final boolean useFastLocking = getFlag("JVMCIUseFastLocking", Boolean.class);
+    public final boolean useFastLocking = getFlag("JVMCIUseFastLocking", Boolean.class, true, !(JDK >= 22 && JDK_BUILD >= 18));
     private final boolean useHeavyMonitors = JDK < 22 && getFlag("UseHeavyMonitors", Boolean.class);
 
     // Use only heavy monitors for locking

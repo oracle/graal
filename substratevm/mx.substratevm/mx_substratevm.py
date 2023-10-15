@@ -1681,7 +1681,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                         else:
                             # Linux objdump objdump --wide --syms
                             # 0000000000000000         *UND*	0000000000000000 JVM_InitStackTraceElement
-                            found_undef = line_tokens[1] = '*UND*'
+                            found_undef = line_tokens[1] == '*UND*'
                         if found_undef:
                             symbol_candiate = line_tokens[-1]
                             mx.logvv('Found undefined symbol: ' + symbol_candiate)

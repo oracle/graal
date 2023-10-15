@@ -32,7 +32,6 @@ import java.io.File;
 import java.io.InputStream;
 import java.io.PrintStream;
 import java.net.URL;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.List;
@@ -41,7 +40,6 @@ import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.graalvm.compiler.replacements.nodes.BinaryMathIntrinsicNode;
@@ -186,73 +184,6 @@ final class Target_java_lang_String {
     @Alias //
     int hash;
 
-    /**
-     * This is a copy of String.split from the JDK, but with the fastpath loop factored out into a
-     * separate method. This allows inlining and constant folding of the condition for call sites
-     * where the regex is a constant (which is a common usage pattern).
-     *
-     * JDK-8262994 should make that refactoring in OpenJDK, after which this substitution can be
-     * removed.
-     */
-    @Substitute
-    public String[] split(String regex, int limit) {
-        /*
-         * fastpath if the regex is a (1) one-char String and this character is not one of the
-         * RegEx's meta characters ".$|()[{^?*+\\", or (2) two-char String and the first char is the
-         * backslash and the second is not the ascii digit or ascii letter.
-         */
-        char ch = 0;
-        if (((regex.length() == 1 &&
-                        ".$|()[{^?*+\\".indexOf(ch = regex.charAt(0)) == -1) ||
-                        (regex.length() == 2 &&
-                                        regex.charAt(0) == '\\' &&
-                                        (((ch = regex.charAt(1)) - '0') | ('9' - ch)) < 0 &&
-                                        ((ch - 'a') | ('z' - ch)) < 0 &&
-                                        ((ch - 'A') | ('Z' - ch)) < 0)) &&
-                        (ch < Character.MIN_HIGH_SURROGATE ||
-                                        ch > Character.MAX_LOW_SURROGATE)) {
-            return StringHelper.simpleSplit(SubstrateUtil.cast(this, String.class), limit, ch);
-        }
-        return Pattern.compile(regex).split(SubstrateUtil.cast(this, String.class), limit);
-    }
-}
-
-final class StringHelper {
-    static String[] simpleSplit(String that, int limit, char ch) {
-        int off = 0;
-        int next = 0;
-        boolean limited = limit > 0;
-        ArrayList<String> list = new ArrayList<>();
-        while ((next = that.indexOf(ch, off)) != -1) {
-            if (!limited || list.size() < limit - 1) {
-                list.add(that.substring(off, next));
-                off = next + 1;
-            } else {    // last one
-                // assert (list.size() == limit - 1);
-                int last = that.length();
-                list.add(that.substring(off, last));
-                off = last;
-                break;
-            }
-        }
-        // If no match was found, return this
-        if (off == 0) {
-            return new String[]{that};
-        }
-        // Add remaining segment
-        if (!limited || list.size() < limit) {
-            list.add(that.substring(off, that.length()));
-        }
-        // Construct result
-        int resultSize = list.size();
-        if (limit == 0) {
-            while (resultSize > 0 && list.get(resultSize - 1).isEmpty()) {
-                resultSize--;
-            }
-        }
-        String[] result = new String[resultSize];
-        return list.subList(0, resultSize).toArray(result);
-    }
 }
 
 @TargetClass(className = "java.lang.StringLatin1")

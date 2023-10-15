@@ -147,7 +147,7 @@ final class PanamaSignature {
     }
 
     @TruffleBoundary
-    @SuppressWarnings("preview")
+    @SuppressWarnings({"preview", "restricted"})
     MemorySegment bind(MethodHandle cachedHandle, Object receiver) {
         MethodHandle bound = cachedHandle.bindTo(receiver);
         @SuppressWarnings("preview")
@@ -310,7 +310,7 @@ final class PanamaSignature {
 
     static MethodHandle createDowncallHandle(@SuppressWarnings("preview") FunctionDescriptor descriptor) {
         int parameterCount = descriptor.argumentLayouts().size();
-        @SuppressWarnings("preview")
+        @SuppressWarnings({"preview", "restricted"})
         MethodHandle handle = Linker.nativeLinker().downcallHandle(descriptor).asSpreader(Object[].class, parameterCount).asType(
                         MethodType.methodType(Object.class, new Class<?>[]{MemorySegment.class, Object[].class}));
         return handle;

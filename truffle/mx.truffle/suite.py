@@ -837,6 +837,8 @@ suite = {
       "javaCompliance" : "21+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
+      # disable SpotBugs as long is panama is preview [GR-49448]
+      "spotbugs" : "false",
     },
 
     "com.oracle.truffle.nfi.backend.spi" : {

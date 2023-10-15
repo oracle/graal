@@ -88,7 +88,7 @@ public class ErrorContext {
         this.nativeErrno = nativeErrno;
     }
 
-    @SuppressWarnings("preview")
+    @SuppressWarnings({"preview", "restricted"})
     MemorySegment getErrnoLocation() {
         Linker linker = Linker.nativeLinker();
         FunctionDescriptor desc = FunctionDescriptor.of(ValueLayout.JAVA_LONG);
