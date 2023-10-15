@@ -36,6 +36,7 @@ import org.graalvm.compiler.graph.GraalGraphError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.Position;
+import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
 import org.graalvm.compiler.nodes.AbstractMergeNode;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -181,6 +182,48 @@ public final class GraphOrder {
                 protected NodeBitMap processBlock(final HIRBlock block, final NodeBitMap currentState) {
                     final List<Node> list = graph.getLastSchedule().getBlockToNodesMap().get(block);
 
+                    AbstractBeginNode blockBegin = block.getBeginNode();
+                    if (blockBegin instanceof AbstractMergeNode merge) {
+                        /**
+                         * Phis aren't scheduled, so they need to be added explicitly. We must do
+                         * this first because there might be floating nodes depending on the phis
+                         * that have floated to the beginning of the block.
+                         * <p/>
+                         *
+                         * That is, we might have a graph like this:
+                         *
+                         * <pre>
+                         *      ...   ...  (inputs from predecessor blocks)
+                         *        \   /
+                         *  +----- Phi
+                         *  |       |
+                         *  |      Pi (or any other floating node)
+                         *  |       |
+                         *  |   FrameState
+                         *  |       |
+                         *  +---> Merge
+                         * </pre>
+                         *
+                         * In the schedule the order of these nodes can be:
+                         *
+                         * <pre>
+                         *     Pi
+                         *     FrameState
+                         *     Merge
+                         *     ...
+                         * </pre>
+                         *
+                         * This may seem unnatural, but due to the cyclic dependency on the state,
+                         * any other order would be unnatural as well. For the use case of checking
+                         * the schedule, pretend that all phis in the block precede everything else.
+                         */
+                        currentState.markAll(merge.phis());
+                        if (merge instanceof LoopBeginNode loopBegin) {
+                            // remember the state at the loop entry, it's restored at exits
+                            loopEntryStates.put(loopBegin, currentState.copy());
+                        }
+                    }
+
                     /*
                      * A stateAfter is not valid directly after its associated state split, but
                      * right before the next fixed node. Therefore a pending stateAfter is kept that
@@ -211,12 +254,7 @@ public final class GraphOrder {
                             }
 
                             if (node instanceof AbstractMergeNode) {
-                                // phis aren't scheduled, so they need to be added explicitly
-                                currentState.markAll(((AbstractMergeNode) node).phis());
-                                if (node instanceof LoopBeginNode) {
-                                    // remember the state at the loop entry, it's restored at exits
-                                    loopEntryStates.put((LoopBeginNode) node, currentState.copy());
-                                }
+                                GraalError.guarantee(node == blockBegin, "block should contain only one merge, found %s, expected %s", node, blockBegin);
                             } else if (node instanceof ProxyNode) {
                                 assert false : "proxy nodes should not be in the schedule";
                             } else if (node instanceof LoopExitNode) {

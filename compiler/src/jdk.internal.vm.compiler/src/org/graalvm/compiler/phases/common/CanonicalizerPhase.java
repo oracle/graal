@@ -79,6 +79,9 @@ import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 
@@ -86,6 +89,13 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
 
 public class CanonicalizerPhase extends BasePhase<CoreProviders> {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Verify if the current graph state allows GVN to be performed.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> CanonicalizerVerifyGVNAllowed = new OptionKey<>(true);
+        // @formatter:on
+    }
 
     /**
      * Constants for types of canonicalization that can be performed.
@@ -527,9 +537,11 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     }
 
     public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
-        assert ((StructuredGraph) node.graph()).getGraphState().isBeforeStage(StageFlag.PARTIAL_REDUNDANCY_SCHEDULE) : "GVN must not occur after expanding partially redundant nodes, trying to gvn " +
-                        node +
-                        " for graph " + node.graph();
+        if (Options.CanonicalizerVerifyGVNAllowed.getValue(node.getOptions())) {
+            assert ((StructuredGraph) node.graph()).getGraphState().isBeforeStage(
+                            StageFlag.PARTIAL_REDUNDANCY_SCHEDULE) : "GVN must not occur after expanding partially redundant nodes, trying to gvn " + node + " for graph " +
+                                            node.graph();
+        }
         return gvn(node, nodeClass);
     }
 
