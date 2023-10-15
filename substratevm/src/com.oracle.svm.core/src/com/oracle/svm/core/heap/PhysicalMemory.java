@@ -46,12 +46,6 @@ public class PhysicalMemory {
 
     /** Implemented by operating-system specific code. */
     public interface PhysicalMemorySupport {
-
-        /* Will be removed in GR-48001. */
-        default boolean hasSize() {
-            throw VMError.shouldNotReachHere("Unused, will be removed");
-        }
-
         /** Get the size of physical memory from the OS. */
         UnsignedWord size();
     }
