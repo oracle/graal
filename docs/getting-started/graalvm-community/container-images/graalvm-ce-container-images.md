@@ -9,6 +9,10 @@ permalink: /docs/getting-started/container-images/
 
 To support container-based development, GraalVM Community Edition container images are published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages).
 
+## Oracle GraalVM Container Images 
+
+Oracle GraalVM container images are published in the [Oracle Container Registry](https://container-registry.oracle.com/ords/ocr/ba/graalvm). 
+
 ## Repositories
 
 There are different GraalVM Community Edition container images provided depending on the architecture and the Java version.
@@ -97,8 +101,6 @@ The most-specific tag is unique and always points to the same image, while the l
     ```bash
     docker pull --platform linux/aarch64 ghcr.io/graalvm/native-image-community:17
     ```
-
-If you are looking for Oracle GraalVM container images, they are published in the [Oracle Container Registry](https://container-registry.oracle.com/ords/ocr/ba/graalvm).
 
 ### Learn More
 
