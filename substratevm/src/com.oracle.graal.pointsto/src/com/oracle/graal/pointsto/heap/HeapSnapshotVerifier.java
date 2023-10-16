@@ -75,7 +75,7 @@ public class HeapSnapshotVerifier {
     }
 
     public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, ForkJoinPool threadPool, String stage) {
-        CompletionExecutor executor = new CompletionExecutor(bb, threadPool, bb.getHeartbeatCallback());
+        CompletionExecutor executor = new CompletionExecutor(bb, threadPool);
         executor.init();
         return checkHeapSnapshot(metaAccess, executor, stage, false);
     }

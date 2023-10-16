@@ -91,8 +91,6 @@ public interface BigBang extends ReachabilityAnalysis {
 
     DebugContext getDebug();
 
-    Runnable getHeartbeatCallback();
-
     boolean extendedAsserts();
 
     void runAnalysis(DebugContext debug, Function<AnalysisUniverse, Boolean> duringAnalysisAction) throws InterruptedException;

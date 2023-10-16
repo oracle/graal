@@ -51,9 +51,8 @@ public class StandalonePointsToAnalysis extends PointsToAnalysis {
     public StandalonePointsToAnalysis(OptionValues options, AnalysisUniverse universe, HostVM hostVM,
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
-                    ForkJoinPool executorService, Runnable heartbeatCallback,
-                    TimerCollection timerCollection) {
-        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, heartbeatCallback, new UnsupportedFeatures(), timerCollection,
+                    ForkJoinPool executorService, TimerCollection timerCollection) {
+        super(options, universe, hostVM, metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executorService, new UnsupportedFeatures(), timerCollection,
                         true);
     }
 

@@ -271,6 +271,11 @@ public class SVMHost extends HostVM {
     }
 
     @Override
+    public void recordActivity() {
+        DeadlockWatchdog.singleton().recordActivity();
+    }
+
+    @Override
     public boolean isRelocatedPointer(UniverseMetaAccess metaAccess, JavaConstant constant) {
         return constant instanceof RelocatableConstant;
     }

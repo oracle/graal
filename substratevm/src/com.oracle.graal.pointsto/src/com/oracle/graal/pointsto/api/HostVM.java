@@ -187,6 +187,12 @@ public abstract class HostVM {
         return null;
     }
 
+    /**
+     * Notify VM about activity.
+     */
+    public void recordActivity() {
+    }
+
     public void addMethodAfterParsingListener(BiConsumer<AnalysisMethod, StructuredGraph> methodAfterParsingHook) {
         methodAfterParsingListeners.add(methodAfterParsingHook);
     }

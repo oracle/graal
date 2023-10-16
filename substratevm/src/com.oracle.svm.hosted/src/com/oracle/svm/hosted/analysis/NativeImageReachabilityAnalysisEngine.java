@@ -55,10 +55,9 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
                     AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
                     ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor,
-                    ForkJoinPool executor,
-                    Runnable heartbeatCallback, TimerCollection timerCollection, ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
-        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executor, heartbeatCallback, new SubstrateUnsupportedFeatures(),
-                        timerCollection, reachabilityMethodProcessingHandler);
+                    ForkJoinPool executor, TimerCollection timerCollection, ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
+        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, executor, new SubstrateUnsupportedFeatures(), timerCollection,
+                        reachabilityMethodProcessingHandler);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
         this.strengthenGraalGraphs = SubstrateOptions.parseOnce();
         this.dynamicHubInitializer = new DynamicHubInitializer(this);

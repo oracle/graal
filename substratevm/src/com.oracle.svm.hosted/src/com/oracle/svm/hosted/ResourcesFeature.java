@@ -231,18 +231,16 @@ public final class ResourcesFeature implements InternalFeature {
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
         private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
         private static final int WATCHDOG_WARNING_AFTER_EVERY_N_SECONDS = 20;
-        private final Runnable heartbeatCallback;
         private final LongAdder reachedResourceEntries;
         private boolean initialReport;
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
 
-        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns, Runnable heartbeatCallback) {
+        private ResourceCollectorImpl(DebugContext debugContext, ResourcePattern[] includePatterns, ResourcePattern[] excludePatterns) {
             this.debugContext = debugContext;
             this.includePatterns = includePatterns;
             this.excludePatterns = excludePatterns;
 
-            this.heartbeatCallback = heartbeatCallback;
             this.reachedResourceEntries = new LongAdder();
             this.initialReport = true;
             this.currentlyProcessedEntry = null;
@@ -274,7 +272,7 @@ public final class ResourcesFeature implements InternalFeature {
 
             this.reachedResourceEntries.increment();
             if (this.reachedResourceEntries.longValue() % WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES == 0) {
-                this.heartbeatCallback.run();
+                DeadlockWatchdog.singleton().recordActivity();
             }
 
             String relativePathWithTrailingSlash = resourceName + RESOURCES_INTERNAL_PATH_SEPARATOR;
@@ -340,7 +338,7 @@ public final class ResourcesFeature implements InternalFeature {
         }
         ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
         DebugContext debugContext = duringAnalysisAccess.getDebugContext();
-        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns, duringAnalysisAccess.bb.getHeartbeatCallback());
+        ResourceCollectorImpl collector = new ResourceCollectorImpl(debugContext, includePatterns, excludePatterns);
         try {
             collector.prepareProgressReporter();
             ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
