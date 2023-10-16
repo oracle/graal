@@ -162,10 +162,13 @@ public class PermissionsFeature implements Feature {
      * Path to store report into.
      */
     private Path reportFilePath;
+
     /**
      * Methods which are allowed to do privileged calls without being reported.
      */
     private Set<? extends BaseMethodNode> whiteList;
+
+    private Set<CallGraphFilter> contextFilters;
 
     /**
      * Classes for reflective accesses which are opaque for permission analysis.
@@ -197,6 +200,12 @@ public class PermissionsFeature implements Feature {
 
         var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
         initializeDeniedMethods(accessImpl);
+
+        BigBang bb = accessImpl.getBigBang();
+        contextFilters = new HashSet<>();
+        Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
+                        new SafeServiceLoaderRecognizer(bb, accessImpl.getImageClassLoader()), new SafeSetThreadNameRecognizer(bb));
+
         /*
          * Ensure methods which are either deniedMethods or on the whiteList are never inlined into
          * methods. These methods are important for identifying violations.
@@ -204,6 +213,8 @@ public class PermissionsFeature implements Feature {
         Set<AnalysisMethod> preventInlineBeforeAnalysis = new HashSet<>();
         deniedMethods.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
         whiteList.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
+        contextFilters.stream().map(CallGraphFilter::getInspectedMethods).forEach(preventInlineBeforeAnalysis::addAll);
+
         accessImpl.getHostVM().registerNeverInlineTrivialHandler((caller, callee) -> {
             if (!caller.isOriginalMethod()) {
                 // we only care about tracing original methods
@@ -263,9 +274,6 @@ public class PermissionsFeature implements Feature {
             BigBang bb = accessImpl.getBigBang();
             Map<BaseMethodNode, Set<BaseMethodNode>> cg = callGraph(bb, deniedMethods, debugContext, (SVMHost) bb.getHostVM());
             List<List<BaseMethodNode>> report = new ArrayList<>();
-            Set<CallGraphFilter> contextFilters = new HashSet<>();
-            Collections.addAll(contextFilters, new SafeInterruptRecognizer(bb), new SafePrivilegedRecognizer(bb),
-                            new SafeServiceLoaderRecognizer(bb, accessImpl.getImageClassLoader()), new SafeSetThreadNameRecognizer(bb));
             int maxStackDepth = Options.TruffleTCKPermissionsMaxStackTraceDepth.getValue();
             maxStackDepth = maxStackDepth == -1 ? Integer.MAX_VALUE : maxStackDepth;
             for (BaseMethodNode deniedMethod : deniedMethods) {
@@ -618,6 +626,8 @@ public class PermissionsFeature implements Feature {
          * @return whether this methodNode should not be considered a violation
          */
         boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, LinkedHashSet<BaseMethodNode> trace);
+
+        Collection<AnalysisMethod> getInspectedMethods();
     }
 
     /**
@@ -627,7 +637,7 @@ public class PermissionsFeature implements Feature {
 
         private final SVMHost hostVM;
         private final AnalysisMethodNode threadInterrupt;
-        private final ResolvedJavaMethod threadCurrentThread;
+        private final AnalysisMethod threadCurrentThread;
 
         SafeInterruptRecognizer(BigBang bb) {
             this.hostVM = (SVMHost) bb.getHostVM();
@@ -665,6 +675,11 @@ public class PermissionsFeature implements Feature {
             }
             return res != null && res;
         }
+
+        @Override
+        public Collection<AnalysisMethod> getInspectedMethods() {
+            return Set.of(threadInterrupt.getMethod(), threadCurrentThread);
+        }
     }
 
     /**
@@ -673,7 +688,7 @@ public class PermissionsFeature implements Feature {
     private static final class SafePrivilegedRecognizer implements CallGraphFilter {
 
         private final SVMHost hostVM;
-        private final Set<? extends BaseMethodNode> doPrivileged;
+        private final Set<AnalysisMethodNode> doPrivileged;
 
         SafePrivilegedRecognizer(BigBang bb) {
             this.hostVM = (SVMHost) bb.getHostVM();
@@ -727,6 +742,11 @@ public class PermissionsFeature implements Feature {
                 ep = m;
             }
             return null;
+        }
+
+        @Override
+        public Collection<AnalysisMethod> getInspectedMethods() {
+            return doPrivileged.stream().map(AnalysisMethodNode::getMethod).toList();
         }
     }
 
@@ -787,14 +807,19 @@ public class PermissionsFeature implements Feature {
             }
             return false;
         }
+
+        @Override
+        public Collection<AnalysisMethod> getInspectedMethods() {
+            return Set.of(providerImplGet.getMethod());
+        }
     }
 
     private static final class SafeSetThreadNameRecognizer implements CallGraphFilter {
 
         private final SVMHost hostVM;
         private final AnalysisMethodNode threadSetName;
-        private final Set<? extends ResolvedJavaMethod> envCreateThread;
-        private final Set<? extends ResolvedJavaMethod> envCreateSystemThread;
+        private final Set<AnalysisMethod> envCreateThread;
+        private final Set<AnalysisMethod> envCreateSystemThread;
 
         SafeSetThreadNameRecognizer(BigBang bb) {
             hostVM = (SVMHost) bb.getHostVM();
@@ -838,6 +863,14 @@ public class PermissionsFeature implements Feature {
                 }
             }
             return res != null && res;
+        }
+
+        @Override
+        public Collection<AnalysisMethod> getInspectedMethods() {
+            Set<AnalysisMethod> set = new HashSet<>(envCreateThread);
+            set.addAll(envCreateSystemThread);
+            set.add(threadSetName.getMethod());
+            return set;
         }
     }
 
