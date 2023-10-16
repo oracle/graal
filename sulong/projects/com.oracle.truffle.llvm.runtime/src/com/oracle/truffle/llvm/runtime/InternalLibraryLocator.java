@@ -31,11 +31,12 @@ package com.oracle.truffle.llvm.runtime;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+
+import org.graalvm.polyglot.io.ByteSequence;
 
 import com.oracle.truffle.api.InternalResource.CPUArchitecture;
 import com.oracle.truffle.api.InternalResource.OS;
@@ -45,7 +46,6 @@ import com.oracle.truffle.api.source.Source.SourceBuilder;
 import com.oracle.truffle.llvm.runtime.config.Configurations;
 import com.oracle.truffle.llvm.runtime.config.LLVMCapability;
 import com.oracle.truffle.llvm.spi.internal.LLVMResourceProvider;
-import org.graalvm.polyglot.io.ByteSequence;
 
 /**
  * Locates internal libraries.
