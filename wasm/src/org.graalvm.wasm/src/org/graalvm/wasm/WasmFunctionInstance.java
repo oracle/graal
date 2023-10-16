@@ -143,7 +143,9 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
             // At this point the multi-value stack has already been populated, therefore, we don't
             // have to check the size of the multi-value stack.
             if (result == WasmConstant.MULTI_VALUE) {
-                return multiValueStackAsArray(WasmLanguage.get(self));
+                WasmLanguage language = context.language();
+                assert language == WasmLanguage.get(null);
+                return multiValueStackAsArray(language);
             }
             return result;
         } finally {
