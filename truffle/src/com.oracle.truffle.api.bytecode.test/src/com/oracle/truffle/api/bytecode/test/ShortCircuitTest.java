@@ -347,10 +347,10 @@ public class ShortCircuitTest {
  *
  * Also note that converters can be repeated without introducing duplicate operations.
  */
-@ShortCircuitOperation(name = "ObjectAnd", continueWhen = true, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterOperation.class)
-@ShortCircuitOperation(name = "ObjectOr", continueWhen = false, booleanConverter = BooleanConverterOperationProxy.class)
-@ShortCircuitOperation(name = "BoolAnd", continueWhen = true, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class, returnConvertedValue = true)
-@ShortCircuitOperation(name = "BoolOr", continueWhen = false, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class, returnConvertedValue = true)
+@ShortCircuitOperation(name = "ObjectAnd", continueWhen = true, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterOperation.class, returnConvertedValue = false)
+@ShortCircuitOperation(name = "ObjectOr", continueWhen = false, booleanConverter = BooleanConverterOperationProxy.class, returnConvertedValue = false)
+@ShortCircuitOperation(name = "BoolAnd", continueWhen = true, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class)
+@ShortCircuitOperation(name = "BoolOr", continueWhen = false, booleanConverter = BytecodeNodeWithShortCircuit.BooleanConverterNonOperation.class)
 abstract class BytecodeNodeWithShortCircuit extends RootNode implements BytecodeRootNode {
     protected BytecodeNodeWithShortCircuit(TruffleLanguage<?> language, FrameDescriptor frameDescriptor) {
         super(language, frameDescriptor);

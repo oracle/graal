@@ -85,8 +85,8 @@ import com.oracle.truffle.api.nodes.RootNode;
                                 boxingEliminationTypes = {long.class}, decisionsFile = "bytecode_dsl_example_decisions.json"))
 })
 @GenerateAOT
-@ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScAnd", continueWhen = true)
-@ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScOr", continueWhen = false)
+@ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScAnd", continueWhen = true, returnConvertedValue = false)
+@ShortCircuitOperation(booleanConverter = BytecodeDSLExample.ToBoolean.class, name = "ScOr", continueWhen = false, returnConvertedValue = false)
 @OperationProxy(value = ContinuationResult.ContinueNode.class, name = "Continue")
 public abstract class BytecodeDSLExample extends RootNode implements BytecodeRootNode {
 

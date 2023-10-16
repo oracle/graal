@@ -135,9 +135,18 @@ public @interface ShortCircuitOperation {
     Class<?> booleanConverter() default void.class;
 
     /**
-     * Whether to return the boolean value produced after {@link #booleanConverter conversion}. By
-     * default, the original (unconverted) value is returned. If only the boolean value is needed
-     * (e.g., to implement a condition), this field can be set to {@code true}.
+     * Whether to return the boolean value produced during {@link #booleanConverter conversion}. By
+     * default, the boolean value is returned, but if the original operand value is desired (e.g.,
+     * to implement null coalescing), this field can be set to {@code false}.
+     *
+     * For example, consider a {@link ShortCircuitOperation} that implements logical "or" where
+     * certain values are "falsy" (0, the empty string, etc.):
+     * <ul>
+     * <li>If {@link #returnConvertedValue} is {@code true}, then {@code 0 or 42 or 123} will
+     * evaluate to {@code true}.
+     * <li>If {@link #returnConvertedValue} is {@code false}, then {@code 0 or 42 or 123} will
+     * evaluate to {@code 42}.
+     * </ul>
      */
-    boolean returnConvertedValue() default false;
+    boolean returnConvertedValue() default true;
 }
