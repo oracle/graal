@@ -196,6 +196,7 @@ public abstract class BaseSuiteHarness {
         try {
             result = testEngineMode.run(candidateBinary.toAbsolutePath().toFile(), inputArgs, getContextOptions(candidateBinary.toAbsolutePath().toString()), evaluateSourceOnly());
         } catch (Exception e) {
+            System.out.println("*************Failure in BaseSuiteHarness.runCandidate()*************");
             throw fail(getTestName(), new Exception("Candidate binary that failed: " + candidateBinary, e));
         }
 
