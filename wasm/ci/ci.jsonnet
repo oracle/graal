@@ -6,6 +6,12 @@ local jdks = {
   jdkLatest:: graal_common.labsjdkLatest,
 };
 
+local extra_java_homes = {
+  downloads+: {
+    EXTRA_JAVA_HOMES: graal_common.jdks_data['oraclejdk21'],
+  },
+};
+
 jdks + wasm_common +
 {
   wasm_suite_root:: 'wasm',
@@ -15,6 +21,7 @@ jdks + wasm_common +
   builds: [
     # Gates.
     $.jdk21     + $.linux_amd64     + $.gate         + $.gate_graalwasm_style                                                                      + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
+    $.jdkLatest + $.linux_amd64     + $.gate         + $.gate_graalwasm_style       + extra_java_homes                                             + {name: 'gate-graalwasm-style-fullbuild' + self.name_suffix},
 
     $.jdk21     + $.linux_amd64     + $.gate         + $.gate_graalwasm_full        + {environment+: {GATE_TAGS: 'build,wasmtest'}}                + {name: 'gate-graalwasm-unittest' + self.name_suffix},
   ] + [
