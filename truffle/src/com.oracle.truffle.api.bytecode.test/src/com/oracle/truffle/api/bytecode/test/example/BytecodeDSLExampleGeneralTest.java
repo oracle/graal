@@ -830,6 +830,75 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
     }
 
     @Test
+    public void testNoReturn() {
+        RootCallTarget root = parse("noReturn", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginBlock();
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        thrown.expect(AssertionError.class);
+        thrown.expectMessage("Control reached past the end of the bytecode.");
+        root.call();
+    }
+
+    @Test
+    public void testNoReturnInABranch() {
+        RootCallTarget root = parse("noReturn", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginIfThenElse();
+            b.emitLoadArgument(0);
+
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.beginBlock();
+            b.endBlock();
+
+            b.endIfThenElse();
+
+            b.endRoot();
+        });
+
+        assertEquals(42L, root.call(true));
+
+        thrown.expect(AssertionError.class);
+        thrown.expectMessage("Control reached past the end of the bytecode.");
+        root.call(false);
+    }
+
+    @Test
+    public void testBranchPastEnd() {
+        RootCallTarget root = parse("noReturn", b -> {
+            b.beginRoot(LANGUAGE);
+
+            b.beginBlock();
+            BytecodeLabel label = b.createLabel();
+            b.emitBranch(label);
+
+            // skipped
+            b.beginReturn();
+            b.emitLoadConstant(42L);
+            b.endReturn();
+
+            b.emitLabel(label);
+            b.endBlock();
+
+            b.endRoot();
+        });
+
+        thrown.expect(AssertionError.class);
+        thrown.expectMessage("Control reached past the end of the bytecode.");
+        root.call(false);
+    }
+
+
+    @Test
     public void testIntrospectionData() {
         BytecodeDSLExample node = parseNode(interpreterClass, "introspectionData", b -> {
             b.beginRoot(LANGUAGE);

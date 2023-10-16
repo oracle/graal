@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.TruffleLanguage;
 
 /**
  * Contains code to support Truffle operation interpreters. This code should not be referenced
@@ -100,6 +101,16 @@ public final class BytecodeSupport {
         } else {
             int sum = t + f;
             return CompilerDirectives.injectBranchProbability((double) t / (double) sum, val);
+        }
+    }
+
+    public static final class RootData {
+        public final TruffleLanguage<?> language;
+        public boolean mayFallThrough;
+
+        public RootData(TruffleLanguage<?> language) {
+            this.language = language;
+            this.mayFallThrough = true;
         }
     }
 

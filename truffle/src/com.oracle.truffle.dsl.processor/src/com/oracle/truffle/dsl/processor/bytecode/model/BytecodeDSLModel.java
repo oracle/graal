@@ -125,6 +125,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
 
     public InstructionModel popInstruction;
     public InstructionModel dupInstruction;
+    public InstructionModel trapInstruction;
+    public InstructionModel returnInstruction;
     public InstructionModel branchInstruction;
     public InstructionModel branchBackwardInstruction;
     public InstructionModel branchFalseInstruction;
@@ -149,6 +151,8 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
     public void addDefault() {
         popInstruction = instruction(InstructionKind.POP, "pop");
         dupInstruction = instruction(InstructionKind.DUP, "dup");
+        trapInstruction = instruction(InstructionKind.TRAP, "trap");
+        returnInstruction = instruction(InstructionKind.RETURN, "return");
         branchInstruction = instruction(InstructionKind.BRANCH, "branch").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
         branchBackwardInstruction = instruction(InstructionKind.BRANCH_BACKWARD, "branch.backward").addImmediate(ImmediateKind.BYTECODE_INDEX, "branch_target");
         branchFalseInstruction = instruction(InstructionKind.BRANCH_FALSE, "branch.false") //
@@ -246,7 +250,7 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         operation(OperationKind.RETURN, "Return") //
                         .setNumChildren(1) //
                         .setChildrenMustBeValues(true) //
-                        .setInstruction(instruction(InstructionKind.RETURN, "return"));
+                        .setInstruction(returnInstruction);
         if (enableYield) {
             yieldInstruction = instruction(InstructionKind.YIELD, "yield").addImmediate(ImmediateKind.CONSTANT, "location");
             operation(OperationKind.YIELD, "Yield") //
