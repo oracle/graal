@@ -868,22 +868,48 @@ public class SubstrateDiagnostics {
             if (!success && DiagnosticLevel.unsafeOperationsAllowed(maxDiagnosticLevel)) {
                 /*
                  * If the stack pointer is not sufficiently aligned, then we might be in the middle
-                 * of a call (i.e., only the return address and the arguments are on the stack). In
-                 * that case, we can read the return address from the top of the stack, align the
-                 * stack pointer, and start a stack walk in the caller.
+                 * of a call (i.e., only the arguments and the return address are on the stack).
                  */
                 int expectedStackAlignment = ConfigurationValues.getTarget().stackAlignment;
                 if (sp.unsignedRemainder(expectedStackAlignment).notEqual(0) && sp.unsignedRemainder(ConfigurationValues.getTarget().wordSize).equal(0)) {
                     log.newline();
-                    log.string("WARNING: stack pointer is NOT aligned to ").signed(expectedStackAlignment).string(" bytes. Starting a stack walk in the most likely caller instead.").newline();
-                    ip = sp.readWord(0);
-                    sp = sp.add(ConfigurationValues.getTarget().wordSize);
-
-                    ThreadStackPrinter.printStacktrace(sp, ip, printVisitors[invocationCount - 1].reset(), log);
+                    // Checkstyle: Allow raw info or warning printing - begin
+                    log.string("Warning: stack pointer is not aligned to ").signed(expectedStackAlignment).string(" bytes.").newline();
+                    // Checkstyle: Allow raw info or warning printing - end
                 }
+
+                startStackWalkInMostLikelyCaller(log, invocationCount, sp);
             }
 
             log.indent(false);
+        }
+
+        private static void startStackWalkInMostLikelyCaller(Log log, int invocationCount, Pointer originalSp) {
+            UnsignedWord stackBase = VMThreads.StackBase.get();
+            if (stackBase.equal(0)) {
+                /* We don't know the stack boundaries, so only search within 32 bytes. */
+                stackBase = originalSp.add(32);
+            }
+
+            /* Search until we find a valid return address. We may encounter false-positives. */
+            int wordSize = ConfigurationValues.getTarget().wordSize;
+            Pointer pos = originalSp;
+            while (pos.belowThan(stackBase)) {
+                CodePointer possibleIp = pos.readWord(0);
+                if (pointsIntoNativeImageCode(possibleIp)) {
+                    Pointer sp = pos.add(wordSize);
+                    log.newline();
+                    log.string("Starting the stack walk in a possible caller:").newline();
+                    ThreadStackPrinter.printStacktrace(sp, possibleIp, printVisitors[invocationCount - 1].reset(), log);
+                    break;
+                }
+                pos = pos.add(wordSize);
+            }
+        }
+
+        @Uninterruptible(reason = "Prevent the GC from freeing the CodeInfo.")
+        private static boolean pointsIntoNativeImageCode(CodePointer possibleIp) {
+            return CodeInfoTable.lookupCodeInfo(possibleIp).isNonNull();
         }
     }
 
