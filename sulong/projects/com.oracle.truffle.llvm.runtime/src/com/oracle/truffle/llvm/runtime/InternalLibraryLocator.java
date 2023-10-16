@@ -139,11 +139,10 @@ public abstract class InternalLibraryLocator extends LibraryLocator implements L
 
         @Override
         protected SourceBuilder locateLibrary(LLVMContext context, String lib, Object reason) {
-            InputStream is = resourceLocation.getResourceAsStream(basePath + lib);
-            if (is == null) {
-                return null;
-            }
-            try {
+            try (InputStream is = resourceLocation.getResourceAsStream(basePath + lib)) {
+                if (is == null) {
+                    return null;
+                }
                 return Source.newBuilder("llvm", ByteSequence.create(is.readAllBytes()), lib).internal(true);
             } catch (IOException e) {
                 return null;
