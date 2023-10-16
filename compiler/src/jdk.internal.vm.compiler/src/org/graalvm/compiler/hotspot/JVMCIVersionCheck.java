@@ -47,8 +47,8 @@ public final class JVMCIVersionCheck {
      * Minimum JVMCI version supported by Graal.
      */
     private static final Map<String, Version> JVMCI_MIN_VERSIONS = Map.of(
-                    "21", new Version(23, 1, 15),
-                    "22", new Version("22+18", 1));
+                    "21", new Version(23, 1, 20),
+                    "22", new Version("22+18", 2));
 
     private static final int NA = 0;
     /**
