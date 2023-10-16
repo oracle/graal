@@ -96,7 +96,7 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
         ValueNode[] pushedValues = null;
         ValueNode[] locks = ValueNode.EMPTY_ARRAY;
         List<MonitorIdNode> monitorIds = null;
-        FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, locals, stack, 1, pushedSlotKinds, pushedValues, locks, monitorIds, true, false));
+        FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, locals, stack, 1, pushedSlotKinds, pushedValues, locks, monitorIds, false, true));
         exceptionObject.setStateAfter(stateAfter);
         bci++;
     }
@@ -129,7 +129,7 @@ public class SubstrateIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
             ValueNode[] locks = ValueNode.EMPTY_ARRAY;
             List<MonitorIdNode> monitorIds = null;
 
-            FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, locals, stack, 1, pushedSlotKinds, pushedValues, locks, monitorIds, true, false));
+            FrameState stateAfter = getGraph().add(new FrameState(null, code, bci, locals, stack, 1, pushedSlotKinds, pushedValues, locks, monitorIds, false, true));
             unwindMergeNode.setStateAfter(stateAfter);
             bci++;
         }
