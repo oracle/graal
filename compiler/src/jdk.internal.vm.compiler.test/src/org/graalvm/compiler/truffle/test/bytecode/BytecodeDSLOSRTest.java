@@ -14,10 +14,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.bytecode.GenerateBytecode;
 import com.oracle.truffle.api.bytecode.Operation;
+import com.oracle.truffle.api.bytecode.AbstractBytecodeTruffleException;
 import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.nodes.RootNode;
@@ -47,23 +50,21 @@ public class BytecodeDSLOSRTest extends TestWithSynchronousCompiling {
     public void testInfiniteInterpreterLoop() {
         BytecodeDSLOSRTestRootNode root = parseNode(b -> {
             b.beginRoot(LANGUAGE);
-
-            b.beginWhile();
-            b.emitInInterpreterOperation();
-
             b.beginBlock();
-            b.endBlock();
-
+            b.beginWhile();
+            b.emitLoadConstant(true);
+            b.emitThrowsInCompiledCode();
             b.endWhile();
-
-            b.beginReturn();
-            b.emitLoadConstant(42L);
-            b.endReturn();
-
+            b.endBlock();
             b.endRoot();
         });
 
-        Assert.assertEquals(42L, root.getCallTarget().call());
+        try {
+            root.getCallTarget().call();
+            Assert.fail("Should not reach here.");
+        } catch (BytecodeDSLOSRTestRootNode.InCompiledCodeException ex) {
+            // expected
+        }
     }
 
 }
@@ -79,15 +80,21 @@ class BytecodeDSLOSRTestLanguage extends TruffleLanguage<Object> {
 @GenerateBytecode(languageClass = BytecodeDSLOSRTestLanguage.class)
 abstract class BytecodeDSLOSRTestRootNode extends RootNode implements BytecodeRootNode {
 
+    static class InCompiledCodeException extends AbstractBytecodeTruffleException {
+        private static final long serialVersionUID = 1L;
+    }
+
     protected BytecodeDSLOSRTestRootNode(TruffleLanguage<?> language, FrameDescriptor fd) {
         super(language, fd);
     }
 
     @Operation
-    static final class InInterpreterOperation {
+    static final class ThrowsInCompiledCode {
         @Specialization
-        public static boolean doBoolean() {
-            return CompilerDirectives.inInterpreter();
+        public static void perform() {
+            if (CompilerDirectives.inCompiledCode()) {
+                throw new InCompiledCodeException();
+            }
         }
     }
 
