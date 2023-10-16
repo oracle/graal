@@ -257,7 +257,7 @@ public abstract class ImageHeapScanner {
                 if (reason instanceof FieldScan fs) {
                     cause = CausalityExport.getHeapFieldAssigner(bb, fs.getConstant(), fs.getField(), constant);
                 } else if (reason instanceof ArrayScan as) {
-                    cause = CausalityExport.getHeapArrayAssigner(bb, as.getConstant(), 0 /* Best-effort */, constant);
+                    cause = CausalityExport.getHeapArrayAssigner(bb, as.getConstant(), as.getIndex(), constant);
                 }
 
                 if (cause == null || cause instanceof UnknownHeapObject) {

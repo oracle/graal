@@ -648,6 +648,10 @@ public class ObjectScanner {
             this.idx = idx;
         }
 
+        public int getIndex() {
+            return idx;
+        }
+
         @Override
         public String toString(BigBang bb) {
             return "indexing into array " + asString(bb, constant) + (idx != -1 ? " at index " + idx : "");
