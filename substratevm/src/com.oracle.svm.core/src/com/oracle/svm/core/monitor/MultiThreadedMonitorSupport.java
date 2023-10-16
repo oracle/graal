@@ -72,7 +72,7 @@ import jdk.internal.misc.Unsafe;
  * monitor slot because it would increase the size of every array and it is not possible to
  * distinguish between arrays with different header sizes. See
  * {@code UniverseBuilder.getImmutableTypes()} for details.
- * 
+ *
  * Synchronization on {@link String}, arrays, and other types not having a monitor slot fall back to
  * a monitor stored in {@link #additionalMonitors}. Synchronization of such objects is very slow and
  * not scaling well with more threads because the {@link #additionalMonitorsLock additional monitor
@@ -196,8 +196,32 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         StackOverflowCheck.singleton().makeYellowZoneAvailable();
         VMOperationControl.guaranteeOkayToBlock("No Java synchronization must be performed within a VMOperation: if the object is already locked, the VM is deadlocked");
         try {
-            singleton().monitorEnter(obj, MonitorInflationCause.MONITOR_ENTER);
+            int monitorOffset = getMonitorOffset(obj);
+            if (monitorOffset == 0) {
+                // Slow path
+                singleton().monitorEnter(obj, MonitorInflationCause.MONITOR_ENTER);
+                return;
+            }
 
+            /*
+             * Optimized path takes advantage of the knowledge that, when a new monitor object is
+             * created, it is not shared with other threads, so we can set its state without CAS. It
+             * also has acquisitions == 1 by construction, so we don't need to set that too.
+             */
+            long current = JavaMonitor.getCurrentThreadIdentity();
+            JavaMonitor monitor = (JavaMonitor) BarrieredAccess.readObject(obj, monitorOffset);
+            if (monitor == null) {
+                long startTicks = JfrTicks.elapsedTicks();
+                JavaMonitor newMonitor = newMonitorLock();
+                newMonitor.setState(current);
+                monitor = (JavaMonitor) UNSAFE.compareAndExchangeObject(obj, monitorOffset, null, newMonitor);
+                if (monitor == null) {
+                    JavaMonitorInflateEvent.emit(obj, startTicks, MonitorInflationCause.MONITOR_ENTER);
+                    newMonitor.latestJfrTid = current;
+                    return;
+                }
+            }
+            monitor.monitorEnter(obj);
         } catch (OutOfMemoryError ex) {
             /*
              * Exposing OutOfMemoryError to application. Note that since the foreign call from
@@ -243,8 +267,19 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
              * Monitor inflation cannot happen here because Graal enforces structured locking and
              * unlocking, see comment below.
              */
-            singleton().monitorExit(obj, MonitorInflationCause.VM_INTERNAL);
+            int monitorOffset = getMonitorOffset(obj);
+            if (monitorOffset == 0) {
+                // Slow path
+                singleton().monitorExit(obj, MonitorInflationCause.VM_INTERNAL);
+                return;
+            }
 
+            /*
+             * Optimized path: we know that monitor object exists, due to structured locking, so
+             * does not need to be created/inflated.
+             */
+            JavaMonitor monitor = (JavaMonitor) BarrieredAccess.readObject(obj, monitorOffset);
+            monitor.monitorExit();
         } catch (OutOfMemoryError ex) {
             /*
              * Exposing OutOfMemoryError to application. Note that since the foreign call from
@@ -461,7 +496,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
         }
     }
 
-    protected JavaMonitor newMonitorLock() {
+    protected static JavaMonitor newMonitorLock() {
         return new JavaMonitor();
     }
 }
