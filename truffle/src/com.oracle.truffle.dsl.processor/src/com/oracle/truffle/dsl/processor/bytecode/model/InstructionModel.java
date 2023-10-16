@@ -57,6 +57,7 @@ public class InstructionModel implements PrettyPrintable {
         BRANCH_FALSE,
         POP,
         DUP,
+        TRAP,
         INSTRUMENTATION_ENTER,
         INSTRUMENTATION_EXIT,
         INSTRUMENTATION_LEAVE,
@@ -256,6 +257,7 @@ public class InstructionModel implements PrettyPrintable {
             case YIELD:
             case THROW:
             case CUSTOM_SHORT_CIRCUIT:
+            case TRAP:
                 return true;
             default:
                 return false;

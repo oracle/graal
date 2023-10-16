@@ -2372,8 +2372,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startStatement().startCall("beginOperation");
             b.tree(createOperationConstant(rootOperation));
-            b.string("language");
-            b.end(3);
+            b.tree(createOperationData("RootData", "language"));
+            b.end(2);
 
             return ex;
         }
@@ -2718,9 +2718,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.end().startElseBlock(); // } {
 
-            b.startStatement();
-            b.type(types.TruffleLanguage).string("language = ");
-            b.cast(types.TruffleLanguage).string("operationStack[operationSp].data");
+            emitCastOperationData(b, "RootData", "operationSp");
+            b.declaration(types.TruffleLanguage, "language", "operationData.language");
+
+            b.startIf().string("operationData.mayFallThrough").end().startBlock();
+            buildEmitInstruction(b, model.trapInstruction, null);
             b.end();
 
             // Allocate stack space in the frame descriptor.
@@ -3216,6 +3218,36 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 }
 
                 switch (op.kind) {
+                    case ROOT:
+                        /**
+                         * To avoid reading past the end of the bytecode, we insert a TRAP at the
+                         * end. If the root ends with an instruction that definitely cannot fall
+                         * through, we can omit it.
+                         *
+                         * NB: This is a simple heuristic, but it is conservative: it should not
+                         * incorrectly omit a TRAP. Certain problematic cases (e.g., IfThenElse
+                         * operations, a label after the last instruction) are avoided because the
+                         * childBci will be -1.
+                         */
+                        emitCastOperationData(b, "RootData", "operationSp - 1");
+                        b.startIf().string("childBci != -1").end().startBlock();
+                        b.startSwitch().string(readBc("childBci")).end().startBlock(); // switch
+                        List<InstructionModel> nonFallthroughInstructions = List.of(model.returnInstruction, model.branchBackwardInstruction, model.throwInstruction, model.trapInstruction);
+                        for (InstructionModel instr : nonFallthroughInstructions) {
+                            b.startCase().tree(createInstructionConstant(instr)).end();
+                        }
+                        b.startBlock();
+                        b.statement("operationData.mayFallThrough = false");
+                        b.statement("break");
+                        b.end();
+                        b.caseDefault().startBlock();
+                        b.statement("operationData.mayFallThrough = true");
+                        b.end();
+                        b.end(); // switch
+                        b.end().startElseBlock();
+                        b.statement("operationData.mayFallThrough = true");
+                        b.end();
+                        break;
                     case IF_THEN:
                         emitCastOperationData(b, "IfThenData", "operationSp - 1");
                         b.startIf().string("childIndex == 0").end().startBlock();
@@ -3646,6 +3678,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 case THROW:
                 case YIELD:
                 case RETURN:
+                case TRAP:
                     break;
                 case BRANCH_FALSE:
                 case POP:
@@ -4184,6 +4217,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     case DUP:
                         b.statement(copyFrameSlot("sp - 1", "sp"));
                         b.statement("sp += 1");
+                        break;
+                    case TRAP:
+                        emitThrowAssertionError(b, "\"Control reached past the end of the bytecode.\"");
                         break;
                     case RETURN:
                         if (tier.isUncached) {
