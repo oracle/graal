@@ -127,7 +127,7 @@ public final class FrameState extends VirtualState implements IterableNodeType {
      */
     @OptionalInput private NodeInputList<ValueNode> values;
 
-    @Input(Association) NodeInputList<MonitorIdNode> monitorIds;
+    @OptionalInput(Association) NodeInputList<MonitorIdNode> monitorIds;
 
     @OptionalInput(State) NodeInputList<EscapeObjectState> virtualObjectMappings;
 

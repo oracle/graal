@@ -145,7 +145,7 @@ public final class LightImmutableCollection {
      * concurrently.
      */
     public static <T, U> void initializeNonEmpty(U holder, AtomicReferenceFieldUpdater<U, Object> updater, T element) {
-        assert element != null && !(element instanceof Object[]);
+        assert element != null && !(element instanceof Object[]) : element;
 
         /* Single element. */
         updater.set(holder, element);
@@ -156,12 +156,12 @@ public final class LightImmutableCollection {
      * concurrently.
      */
     public static <T, U> void initializeNonEmpty(U holder, AtomicReferenceFieldUpdater<U, Object> updater, Collection<T> value) {
-        assert value != null && value.size() != 0;
+        assert value != null && value.size() != 0 : value;
 
         if (value.size() == 1) {
             /* Extract single element. */
             T element = value.iterator().next();
-            assert element != null && !(element instanceof Object[]);
+            assert element != null && !(element instanceof Object[]) : element;
 
             updater.set(holder, element);
         } else {

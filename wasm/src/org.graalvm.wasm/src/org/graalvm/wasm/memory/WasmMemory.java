@@ -195,6 +195,10 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
         return currentMinSize;
     }
 
+    public final long maxAllowedSize() {
+        return maxAllowedSize;
+    }
+
     /**
      * @return Whether the index type (addressing mode) is 64-bit or 32-bit.
      */
@@ -877,4 +881,8 @@ public abstract class WasmMemory extends EmbedderDataHolder implements TruffleOb
      * @throws IOException if writing the stream leads to an error.
      */
     public abstract void copyToStream(Node node, OutputStream stream, int offset, int length) throws IOException;
+
+    public boolean isUnsafe() {
+        return false;
+    }
 }

@@ -1470,4 +1470,9 @@ public interface JNINativeInterface extends PointerBase {
 
     @CField
     void setGetModule(CFunctionPointer p);
+
+    // Virtual threads
+
+    @CField
+    void setIsVirtualThread(CFunctionPointer p);
 }

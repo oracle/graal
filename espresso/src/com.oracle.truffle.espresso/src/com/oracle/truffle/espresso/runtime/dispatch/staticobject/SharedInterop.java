@@ -54,7 +54,7 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.espresso.meta.InteropKlassesDispatch;
 import com.oracle.truffle.espresso.nodes.EspressoNode;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.ArrayIterator;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.HashIterator;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.InteropMessage;

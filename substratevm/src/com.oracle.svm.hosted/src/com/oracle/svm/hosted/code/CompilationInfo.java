@@ -55,7 +55,6 @@ public class CompilationInfo {
     protected boolean inCompileQueue;
 
     private volatile CompilationGraph compilationGraph;
-    private OptionValues compileOptions;
 
     protected boolean isTrivialMethod;
     protected boolean trivialInliningDisabled;
@@ -107,8 +106,8 @@ public class CompilationInfo {
     }
 
     @SuppressWarnings("try")
-    public StructuredGraph createGraph(DebugContext debug, CompilationIdentifier compilationId, boolean decode) {
-        var graph = new StructuredGraph.Builder(compileOptions, debug)
+    public StructuredGraph createGraph(DebugContext debug, OptionValues options, CompilationIdentifier compilationId, boolean decode) {
+        var graph = new StructuredGraph.Builder(options, debug)
                         .method(method)
                         .recordInlinedMethods(false)
                         .trackNodeSourcePosition(getCompilationGraph().getEncodedGraph().trackNodeSourcePosition())
@@ -132,14 +131,6 @@ public class CompilationInfo {
 
     public void setCompilationGraph(CompilationGraph graph) {
         compilationGraph = graph;
-    }
-
-    public void setCompileOptions(OptionValues compileOptions) {
-        this.compileOptions = compileOptions;
-    }
-
-    public OptionValues getCompileOptions() {
-        return compileOptions;
     }
 
     public void clear() {

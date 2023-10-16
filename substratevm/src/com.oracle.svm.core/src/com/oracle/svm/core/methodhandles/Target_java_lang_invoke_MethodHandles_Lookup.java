@@ -31,6 +31,7 @@ import java.lang.invoke.MethodHandles;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
+import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
@@ -78,6 +79,9 @@ final class Target_java_lang_invoke_MethodHandles_Lookup {
         }
         return new IllegalAccessException(message);
     }
+
+    @Delete
+    native MethodHandle linkMethodHandleConstant(byte refKind, Class<?> defc, String name, Object type) throws ReflectiveOperationException;
 
     /** This call is a noop without the security manager. */
     @SuppressWarnings("unused")

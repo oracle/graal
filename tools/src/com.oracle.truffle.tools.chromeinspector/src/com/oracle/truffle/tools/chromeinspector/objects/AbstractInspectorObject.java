@@ -36,6 +36,7 @@ import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.utilities.TriState;
 
 /**
  * A base class for objects returned by Inspector module.
@@ -102,6 +103,21 @@ abstract class AbstractInspectorObject implements TruffleObject {
     protected Object instantiate(Object[] arguments) throws UnsupportedMessageException {
         CompilerDirectives.transferToInterpreter();
         throw UnsupportedMessageException.create();
+    }
+
+    @ExportMessage
+    TriState isIdenticalOrUndefined(Object other) {
+        if (getClass() == other.getClass()) {
+            return TriState.valueOf(this == other);
+        } else {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @ExportMessage
+    @TruffleBoundary
+    int identityHashCode() {
+        return hashCode();
     }
 
     private TruffleObject createMethodExecutable(String name) {

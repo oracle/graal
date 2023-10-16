@@ -49,12 +49,10 @@ import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.annotate.Alias;
-import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.InjectAccessors;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.util.VMError;
@@ -327,19 +325,13 @@ final class Target_java_util_concurrent_ForkJoinPool {
         return ForkJoinPoolCommonAccessor.get().getParallelism();
     }
 
-    /* Delete the original static field for common parallelism. */
-    @Delete //
-    @TargetElement(onlyWith = JDK17OrEarlier.class)//
-    static int COMMON_PARALLELISM;
-
-    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    @Alias //
     private static Unsafe U;
 
-    @Alias @TargetElement(onlyWith = JDK19OrLater.class) //
+    @Alias //
     private static long POOLIDS;
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class) //
     private static int getAndAddPoolIds(int x) {
         // Original method wrongly uses ForkJoinPool.class instead of calling U.staticFieldBase()
         return U.getAndAddInt(StaticFieldsSupport.getStaticPrimitiveFields(), POOLIDS, x);

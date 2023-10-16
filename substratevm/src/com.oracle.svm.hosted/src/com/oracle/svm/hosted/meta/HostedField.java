@@ -30,6 +30,7 @@ import com.oracle.graal.pointsto.infrastructure.OriginalFieldProvider;
 import com.oracle.graal.pointsto.infrastructure.WrappedJavaField;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.core.meta.SharedField;
+import com.oracle.svm.hosted.ameta.ReadableJavaField;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -119,7 +120,7 @@ public class HostedField extends HostedElement implements OriginalFieldProvider,
 
     @Override
     public boolean isValueAvailable() {
-        return wrapped.isValueAvailable();
+        return ReadableJavaField.isValueAvailable(wrapped);
     }
 
     @Override

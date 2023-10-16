@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import java.util.Map;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
+import org.graalvm.polyglot.Value;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmLanguage;
 
@@ -105,8 +106,8 @@ public class MemoryLayoutRunner {
         for (int i = 0; i < warmupIterations + 1; i++) {
             final Context context = contextBuilder.build();
 
-            context.eval(source);
-            context.getBindings(WasmLanguage.ID).getMember("main").getMember(entryPoint);
+            Value mainModule = context.eval(source);
+            mainModule.getMember(entryPoint);
 
             sleep();
             System.gc();

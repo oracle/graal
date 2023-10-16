@@ -29,16 +29,26 @@ import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.SubstrateOptions;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 
 public final class KnownOffsets {
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private int vtableBaseOffset;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private int vtableEntrySize;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private int typeIDSlotsOffset;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private int componentHubOffset;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private int javaFrameAnchorLastSPOffset;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private int javaFrameAnchorLastIPOffset;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private int vmThreadStatusOffset;
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class) //
     private int imageCodeInfoCodeStartOffset;
 
     @Fold

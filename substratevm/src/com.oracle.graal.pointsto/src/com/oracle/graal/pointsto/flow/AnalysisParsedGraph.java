@@ -102,7 +102,7 @@ public final class AnalysisParsedGraph {
                 if (result instanceof StructuredGraph) {
                     return optimizeAndEncode(bb, method, (StructuredGraph) result, false);
                 } else {
-                    assert result == HostVM.PARSING_FAILED;
+                    assert result == HostVM.PARSING_FAILED : result;
                     return EMPTY;
                 }
             }

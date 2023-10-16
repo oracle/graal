@@ -164,9 +164,8 @@ public class VMErrorSubstitutions {
                 }
                 if (ex != null) {
                     log.string(": ").exception(ex);
-                } else {
-                    log.newline();
                 }
+                log.newline();
 
                 SubstrateDiagnostics.printFatalError(log, KnownIntrinsics.readCallerStackPointer(), KnownIntrinsics.readReturnAddress());
 

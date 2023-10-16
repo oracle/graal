@@ -29,6 +29,7 @@ import static org.graalvm.compiler.core.common.GraalOptions.MaximumEscapeAnalysi
 import java.util.List;
 
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.ConstantNode;
@@ -120,6 +121,19 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
         ValueNode oldValue = getEntry(virtual, index);
         boolean oldIsIllegal = oldValue.isIllegalConstant();
         boolean canVirtualize = entryKind == accessKind || (entryKind == accessKind.getStackKind() && virtual instanceof VirtualInstanceNode);
+        if (canVirtualize && virtual.isVirtualByteArrayAccess(getMetaAccessExtensionProvider(), accessKind)) {
+            GraalError.guarantee(entryKind == JavaKind.Byte && accessKind == JavaKind.Byte, "expected byte kinds by canVirtualize condition");
+            /*
+             * Special case: An explicit byte write into a virtual byte array. We cannot virtualize
+             * this if it would overwrite part of a larger value. That is the case if the old value
+             * is either larger than a byte (indicating the first byte of the value) or illegal
+             * (indicating one of the following bytes of a preceding value).
+             */
+            if (theAccessKind == JavaKind.Byte &&  // explicitly specified by the caller
+                            (oldIsIllegal || ((VirtualArrayNode) virtual).byteArrayEntryByteCount(index, this) > 1)) {
+                canVirtualize = false;
+            }
+        }
         if (!canVirtualize) {
             assert entryKind != JavaKind.Long || newValue != null;
             if (entryKind == JavaKind.Long && oldValue.getStackKind() == newValue.getStackKind() && oldValue.getStackKind().isPrimitive()) {
@@ -190,8 +204,11 @@ class VirtualizerToolImpl extends CoreProvidersDelegate implements VirtualizerTo
             }
             return true;
         }
-        // Should only occur if there are mismatches between the entry and access kind
-        assert entryKind != accessKind;
+        /*
+         * Should only occur if there are mismatches between the entry and access kind, or we are
+         * clobbering a byte in a larger value.
+         */
+        assert entryKind != accessKind || entryKind == JavaKind.Byte : "setVirtualEntry failed on entry kind " + entryKind + ", access kind " + accessKind;
         return false;
     }
 

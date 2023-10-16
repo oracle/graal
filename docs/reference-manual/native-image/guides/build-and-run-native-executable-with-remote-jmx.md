@@ -11,7 +11,7 @@ Remote management using [Java Management Extensions (JMX)](https://www.oracle.co
 
 > Note: The feature is experimental.
 
-This guide covers the steps required to build, run, and interact with such a native executable using JMX.
+This guide covers the steps required to build, run, and interact with a native executable using JMX.
 It also shows you how to register a custom managed bean (MBean) with the JMX server and the additional steps required for it to work with Native Image.
 
 ## Currently Supported Features and Limitations
@@ -20,7 +20,8 @@ A JMX connection from a client to a remote MBean server is supported.
 The client, the server, or both may be a native executable.
 Only MXBeans, and standard user-defined MBeans, are supported. 
 Dynamic and model MBeans are not supported because their management interfaces are defined at run time. 
-Although remote management of MXBeans is supported, not all platform MXBean functionality is implemented or is applicable in Native Image. Additionally, to define and use standard MBeans, you must specify metadata configuration. 
+Although remote management of MXBeans is supported, not all platform MXBean functionality is implemented or is applicable in Native Image. 
+Additionally, to define and use standard MBeans, you must specify metadata configuration. 
 This is further explained in this guide.    
 
 ## Step 1: Create a Demo Application
@@ -130,14 +131,6 @@ You can configure JMX to apply all the usual properties as shown in [this guide]
 ## Step 6: Inspect Using VisualVM
 
 1. Start [VisualVM](https://visualvm.github.io/) to view the managed beans in a user-friendly way.
-   Note that VisualVM is shipped separately and should be first added to GraalVM using `gu`, and then started:
-
-    ```shell
-    $JAVA_HOME/bin/gu install visualvm
-    ```
-    ```shell
-    $JAVA_HOME/bin/jvisualvm 
-    ```
 
 2. Make sure you have the **VisualVM-MBeans plugin** installed (go to Tools, then Plugins, under Available Plugins, select "VisualVM-MBeans", and click Install).
 

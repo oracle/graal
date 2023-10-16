@@ -25,19 +25,21 @@
 package com.oracle.graal.pointsto.typestate;
 
 import java.util.Collection;
-import java.util.stream.Collectors;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 
-public final class DefaultInvokeTypeFlowUtil {
+final class DefaultInvokeTypeFlowUtil {
+    static Collection<MethodFlowsGraph> getAllNonStubCalleesFlows(InvokeTypeFlow typeFlow) {
+        if (typeFlow.linksOnlyOriginalCallees()) {
+            var callees = typeFlow.getAllCallees().stream().map(method -> (PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow()).getMethodFlowsGraph()).toList();
+            assert callees.stream().noneMatch(MethodFlowsGraph::isStub) : callees;
+            return callees;
 
-    static Collection<MethodFlowsGraph> getAllCalleesFlows(InvokeTypeFlow typeFlow) {
-        return typeFlow.getAllCallees().stream().map(method -> {
-            MethodFlowsGraph graph = (PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow()).getMethodFlowsGraph();
-            assert !graph.isStub();
-            return graph;
-        }).collect(Collectors.toUnmodifiableList());
+        } else {
+            return typeFlow.getAllCallees().stream().map(method -> (PointsToAnalysis.assertPointsToAnalysisMethod(method).getTypeFlow()).getMethodFlowsGraph()).filter(graph -> !graph.isStub())
+                            .toList();
+        }
     }
 }

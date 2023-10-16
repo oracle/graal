@@ -210,8 +210,8 @@ public class LinearScan {
         this.numVariables = ir.numVariables();
         this.blockData = new BlockMap<>(ir.getControlFlowGraph());
         this.neverSpillConstants = neverSpillConstants;
-        this.rangeEndMarker = new Range(Integer.MAX_VALUE, Integer.MAX_VALUE, null);
-        this.intervalEndMarker = new Interval(Value.ILLEGAL, Interval.END_MARKER_OPERAND_NUMBER, null, rangeEndMarker);
+        this.rangeEndMarker = new Range(Integer.MAX_VALUE, Integer.MAX_VALUE, null, ir);
+        this.intervalEndMarker = new Interval(ir, Value.ILLEGAL, Interval.END_MARKER_OPERAND_NUMBER, null, rangeEndMarker);
         this.intervalEndMarker.next = intervalEndMarker;
         this.detailedAsserts = Assertions.detailedAssertionsEnabled(ir.getOptions());
     }
@@ -370,7 +370,7 @@ public class LinearScan {
     Interval createInterval(AllocatableValue operand) {
         assert isLegal(operand);
         int operandNumber = operandNumber(operand);
-        Interval interval = new Interval(operand, operandNumber, intervalEndMarker, rangeEndMarker);
+        Interval interval = new Interval(ir, operand, operandNumber, intervalEndMarker, rangeEndMarker);
         assert operandNumber < intervalsSize;
         assert intervals[operandNumber] == null;
         intervals[operandNumber] = interval;

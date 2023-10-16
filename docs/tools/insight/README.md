@@ -27,12 +27,14 @@ To learn about Insight on versions 20.0 and 19.3, proceed [here](https://github.
 1. Create a simple _source-tracing.js_ script with the following content:
 ```javascript
 insight.on('source', function(ev) {
-    print(`Loading ${ev.characters.length} characters from ${ev.name}`);
+    if (ev.characters) {
+        print(`Loading ${ev.characters.length} characters from ${ev.name}`);
+    }
 });
 ```
-2. Having set `JAVA_HOME` to the GraalVM home directory, start the `node` launcher with the `--insight` tool and observe what scripts are being loaded and evaluated:
+2. Having installed the [Node.js runtime](https://github.com/oracle/graaljs/blob/master/docs/user/NodeJS.md#nodejs-runtime), start the `node` launcher with the `--insight` tool and observe what scripts are being loaded and evaluated:
 ```shell
-$JAVA_HOME/bin/node --insight=source-tracing.js --js.print -e "print('The result: ' + 6 * 7)" | tail -n 10
+./bin/node --insight=source-tracing.js --js.print --experimental-options -e "print('The result: ' + 6 * 7)" | tail -n 10
 Loading 215 characters from internal/modules/esm/transform_source.js
 Loading 12107 characters from internal/modules/esm/translators.js
 Loading 1756 characters from internal/modules/esm/create_dynamic_module.js
@@ -55,6 +57,7 @@ var map = new Map();
 
 function dumpHotness() {
     print("==== Hotness Top 10 ====");
+    var count = 10;
     var digits = 3;
     Array.from(map.entries()).sort((one, two) => two[1] - one[1]).forEach(function (entry) {
         var number = entry[1].toString();
@@ -63,7 +66,7 @@ function dumpHotness() {
         } else {
             number = Array(digits - number.length + 1).join(' ') + number;
         }
-        if (number > 10) print(`${number} calls to ${entry[0]}`);
+        if (count-- > 0) print(`${number} calls to ${entry[0]}`);
     });
     print("========================");
 }
@@ -90,26 +93,19 @@ A table with names and counts of function invocations is printed out when the `n
 
 Invoke it as:
 ```shell
-$JAVA_HOME/bin/node --insight=function-hotness-tracing.js --js.print -e "print('The result: ' + 6 * 7)"
+./bin/node --insight=function-hotness-tracing.js --js.print --experimental-options -e "print('The result: ' + 6 * 7)"
 The result: 42
 ==== Hotness Top 10 ====
-543 calls to isPosixPathSeparator
-211 calls to E
-211 calls to makeNodeErrorWithCode
-205 calls to NativeModule
-198 calls to uncurryThis
-154 calls to :=>
-147 calls to nativeModuleRequire
-145 calls to NativeModule.compile
- 55 calls to internalBinding
- 53 calls to :anonymous
- 49 calls to :program
- 37 calls to getOptionValue
- 24 calls to copyProps
- 18 calls to validateString
- 13 calls to copyPrototype
- 13 calls to hideStackFrames
- 13 calls to addReadOnlyProcessAlias
+516 calls to isPosixPathSeparator
+311 calls to :=>
+269 calls to E
+263 calls to makeNodeErrorWithCode
+159 calls to :anonymous
+157 calls to :program
+ 58 calls to getOptionValue
+ 58 calls to getCLIOptionsFromBinding
+ 48 calls to validateString
+ 43 calls to hideStackFrames
 ========================
 ```
 
@@ -132,7 +128,7 @@ puts 'Hello from GraalVM Ruby!'
 ```
 3. Apply the JavaScript instrument to the Ruby program:
 ```shell
-$JAVA_HOME/bin/ruby --jvm --polyglot --insight=source-trace.js helloworld.rb
+./bin/ruby --polyglot --insight=source-trace.js helloworld.rb
 JavaScript instrument observed load of helloworld.rb
 Hello from GraalVM Ruby!
 ```
@@ -152,7 +148,7 @@ puts 'Ruby: Hooks are ready!'
 
 2. Launch a Node.js application and instrument it with the Ruby script:
 ```shell
-$JAVA_HOME/bin/node --jvm  --polyglot --insight=source-tracing.rb --js.print -e "print('With Ruby: ' + 6 * 7)" | grep Ruby
+./bin/node --polyglot --insight=source-tracing.rb -e "console.log('With Ruby: ' + 6 * 7)" | grep Ruby
 Ruby: Initializing GraalVM Insight script
 Ruby: Hooks are ready!
 Ruby: observed loading of internal/per_context/primordials.js
@@ -196,7 +192,7 @@ print("Two is the result " + fib(3));
 
 When the instrument is stored in a `fib-trace.js` file and the actual code is in `fib.js`, invoking the following command yields detailed information about the program execution and parameters passed between function invocations:
 ```shell
-$JAVA_HOME/bin/node --insight=fib-trace.js --js.print fib.js
+./bin/node --insight=fib-trace.js --js.print --experimental-options fib.js
 fib for 3
 fib for 2
 fib for 1

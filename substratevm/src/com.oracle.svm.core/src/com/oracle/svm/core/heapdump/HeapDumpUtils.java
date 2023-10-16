@@ -37,6 +37,7 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.BuildPhaseProvider.AfterCompilation;
 import com.oracle.svm.core.NeverInline;
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.code.CodeInfo;
@@ -64,7 +65,7 @@ import com.oracle.svm.core.thread.VMThreads;
  */
 public class HeapDumpUtils {
 
-    @UnknownObjectField private byte[] fieldsMap;
+    @UnknownObjectField(availability = AfterCompilation.class) private byte[] fieldsMap;
 
     /** Extra methods for testing. */
     private final TestingBackDoor testingBackDoor;

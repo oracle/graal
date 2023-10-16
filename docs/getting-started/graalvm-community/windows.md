@@ -12,20 +12,20 @@ You can install it on Windows from an archive file (_zip_).
 
 Follow these steps to install GraalVM:
 
-1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **17** or **20** for the Java version, **Windows** for the operating system, and download.
+1. Navigate to the [GraalVM Downloads page](https://www.graalvm.org/downloads/). Select **21** for the Java version, **Windows** for the operating system, and download.
 
 2. Change to the directory where you want to install GraalVM, then move the _.zip_ archive file to it.
 
 3. Unzip the archive to your file system.
 
 4. There can be multiple JDKs installed on the machine. The next step is to configure the runtime environment. Setting environment variables via the command line will work the same way for Windows 8, 10, and 11.
-  - Set the value of the `PATH` environment variable to the GraalVM _bin_ directory:
-    ```shell
-    setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
-    ```
   - Set the `JAVA_HOME` environment variable to resolve to the GraalVM installation directory:
     ```shell
     setx /M JAVA_HOME "C:\Progra~1\Java\<graalvm>"
+    ```
+  - Set the value of the `PATH` environment variable to the GraalVM _bin_ directory:
+    ```shell
+    setx /M PATH "C:\Progra~1\Java\<graalvm>\bin;%PATH%"
     ```
   Note that the `/M` flag, equivalent to `-m`, requires elevated user privileges.
 

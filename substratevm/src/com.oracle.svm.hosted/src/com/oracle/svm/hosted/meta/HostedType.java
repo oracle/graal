@@ -353,7 +353,6 @@ public abstract class HostedType extends HostedElement implements SharedType, Wr
 
     @Override
     public final boolean isInstance(JavaConstant obj) {
-        assert universe.lookup(obj) == obj : "constant should not have analysis-universe dependent value";
         return wrapped.isInstance(obj);
     }
 

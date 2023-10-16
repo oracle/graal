@@ -30,31 +30,26 @@ import static com.oracle.svm.core.thread.VirtualThreadHelper.asThread;
 import java.util.Locale;
 import java.util.concurrent.Executor;
 
+import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.AnnotateOriginal;
 import com.oracle.svm.core.annotate.Delete;
-import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK20OrEarlier;
-import com.oracle.svm.core.jdk.JDK20OrLater;
-import com.oracle.svm.core.jdk.JDK21OrLater;
+import com.oracle.svm.core.jdk.JDK21OrEarlier;
 import com.oracle.svm.core.jdk.LoomJDK;
+import com.oracle.svm.core.jfr.HasJfrSupport;
+import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.jfr.HasJfrSupport;
 
 @TargetClass(className = "java.lang.VirtualThread", onlyWith = LoomJDK.class)
 public final class Target_java_lang_VirtualThread {
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset)//
-    @TargetElement(onlyWith = JDK20OrEarlier.class)//
-    private static boolean notifyJvmtiEvents;
-
     // Checkstyle: stop
     @Alias static int NEW;
     @Alias static int STARTED;
@@ -65,8 +60,12 @@ public final class Target_java_lang_VirtualThread {
     @Alias static int PINNED;
     @Alias static int YIELDING;
     @Alias static int TERMINATED;
-    @Alias static int RUNNABLE_SUSPENDED;
-    @Alias static int PARKED_SUSPENDED;
+    @Alias //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) //
+    static int RUNNABLE_SUSPENDED;
+    @Alias //
+    @TargetElement(onlyWith = JDK21OrEarlier.class) //
+    static int PARKED_SUSPENDED;
     @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
     // Checkstyle: resume
 
@@ -75,50 +74,33 @@ public final class Target_java_lang_VirtualThread {
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiStart() {
         // unimplemented (GR-46126)
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiEnd() {
         // unimplemented (GR-46126)
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiMount(boolean hide) {
         // unimplemented (GR-45392)
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiUnmount(boolean hide) {
         // unimplemented (GR-45392)
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK21OrLater.class)
     @SuppressWarnings({"static-method", "unused"})
     private void notifyJvmtiHideFrames(boolean hide) {
         // unimplemented (GR-45392)
-    }
-
-    @Substitute
-    @TargetElement(onlyWith = {JDK20OrLater.class, JDK20OrEarlier.class}, name = "notifyJvmtiHideFrames")
-    @SuppressWarnings({"static-method", "unused"})
-    private void notifyJvmtiHideFramesJDK20(boolean hide) {
-        /*
-         * Unfortunately, resetting the `notifyJvmtiEvents` field is not enough to completely remove
-         * calls to this method due to the way it's used from the `switchToVirtualThread` method, so
-         * unlike the other `notifyJvmti*` methods, we need a substitution to prevent linker errors.
-         */
-        throw VMError.shouldNotReachHereSubstitution();
     }
 
     @Alias Executor scheduler;
@@ -214,7 +196,7 @@ public final class Target_java_lang_VirtualThread {
             } else {
                 return Thread.State.RUNNABLE;
             }
-        } else if (state == RUNNABLE || state == RUNNABLE_SUSPENDED) {
+        } else if (state == RUNNABLE || (JavaVersionUtil.JAVA_SPEC <= 21 && state == RUNNABLE_SUSPENDED)) {
             return Thread.State.RUNNABLE;
         } else if (state == RUNNING) {
             Object token = VirtualThreadHelper.acquireInterruptLockMaybeSwitch(this);
@@ -229,7 +211,7 @@ public final class Target_java_lang_VirtualThread {
             return Thread.State.RUNNABLE;
         } else if (state == PARKING || state == YIELDING) {
             return Thread.State.RUNNABLE;
-        } else if (state == PARKED || state == PARKED_SUSPENDED || state == PINNED) {
+        } else if (state == PARKED || (JavaVersionUtil.JAVA_SPEC <= 21 && state == PARKED_SUSPENDED) || state == PINNED) {
             int parkedThreadStatus = MonitorSupport.singleton().getParkedThreadStatus(asThread(this), false);
             switch (parkedThreadStatus) {
                 case ThreadStatus.BLOCKED_ON_MONITOR_ENTER:

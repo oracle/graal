@@ -109,10 +109,6 @@ public abstract class MessageContainer implements Iterable<MessageContainer> {
 
     public abstract Element getMessageElement();
 
-    public MessageContainer getBaseContainer() {
-        return null;
-    }
-
     public Iterator<MessageContainer> iterator() {
         return findChildContainers().iterator();
     }

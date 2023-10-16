@@ -252,7 +252,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      * method does not always return a parameter.
      */
     public int getReturnedParameterIndex() {
-        assert flowsGraphCreated();
+        assert flowsGraphCreated() : returnedParameterIndex;
         return returnedParameterIndex;
     }
 
@@ -282,7 +282,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
      * @return whether a new graph was created
      */
     public synchronized boolean updateFlowsGraph(PointsToAnalysis bb, MethodFlowsGraph.GraphKind newGraphKind, InvokeTypeFlow newParsingReason, boolean forceReparse) {
-        assert !method.isOriginalMethod();
+        assert !method.isOriginalMethod() : method;
         if (sealedFlowsGraph != null) {
             throwSealedError();
         }
@@ -300,7 +300,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
             return false;
         }
         if (newGraphKind == MethodFlowsGraph.GraphKind.STUB) {
-            assert originalGraphKind == MethodFlowsGraph.GraphKind.STUB;
+            assert originalGraphKind == MethodFlowsGraph.GraphKind.STUB : originalGraphKind;
             /*
              * No action is needed since a stub creation is idempotent.
              */
@@ -319,7 +319,7 @@ public class MethodTypeFlow extends TypeFlow<AnalysisMethod> {
         }
 
         try {
-            assert returnedParameterIndex == -1;
+            assert returnedParameterIndex == -1 : returnedParameterIndex;
 
             // if the graph is a stub, then it has not yet be registered as implementation invoked
             boolean registerAsImplementationInvoked = originalGraphKind == MethodFlowsGraph.GraphKind.STUB;

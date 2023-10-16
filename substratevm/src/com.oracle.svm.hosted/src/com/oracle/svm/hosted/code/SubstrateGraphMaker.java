@@ -47,7 +47,7 @@ public class SubstrateGraphMaker extends GraphMaker {
 
     private final WordTypes wordTypes;
 
-    protected SubstrateGraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, WordTypes wordTypes) {
+    public SubstrateGraphMaker(ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, WordTypes wordTypes) {
         super(replacements, substitute, substitutedMethod);
         this.wordTypes = wordTypes;
     }

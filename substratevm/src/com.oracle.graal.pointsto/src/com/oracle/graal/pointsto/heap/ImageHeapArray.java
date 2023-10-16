@@ -32,13 +32,13 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 public abstract class ImageHeapArray extends ImageHeapConstant {
 
     public static ImageHeapArray create(AnalysisType type, int length) {
-        assert type.isArray();
+        assert type.isArray() : type;
         return type.getComponentType().getStorageKind().isPrimitive() ? new ImageHeapPrimitiveArray(type, length) : new ImageHeapObjectArray(type, length);
     }
 
     protected ImageHeapArray(ResolvedJavaType type, JavaConstant object, int identityHashCode, boolean compressed) {
         super(type, object, identityHashCode, compressed);
-        assert type.isArray();
+        assert type.isArray() : type;
     }
 
     public abstract Object getElement(int idx);

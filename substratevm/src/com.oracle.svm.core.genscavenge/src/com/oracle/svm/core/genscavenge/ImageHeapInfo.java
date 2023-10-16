@@ -47,29 +47,29 @@ public final class ImageHeapInfo {
     /** Indicates no chunk with {@link #initialize} chunk offset parameters. */
     public static final long NO_CHUNK = -1;
 
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object firstReadOnlyPrimitiveObject;
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object lastReadOnlyPrimitiveObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object firstReadOnlyPrimitiveObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object lastReadOnlyPrimitiveObject;
 
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object firstReadOnlyReferenceObject;
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object lastReadOnlyReferenceObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object firstReadOnlyReferenceObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object lastReadOnlyReferenceObject;
 
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object firstReadOnlyRelocatableObject;
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object lastReadOnlyRelocatableObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object firstReadOnlyRelocatableObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object lastReadOnlyRelocatableObject;
 
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object firstWritablePrimitiveObject;
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object lastWritablePrimitiveObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object firstWritablePrimitiveObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object lastWritablePrimitiveObject;
 
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object firstWritableReferenceObject;
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object lastWritableReferenceObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object firstWritableReferenceObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object lastWritableReferenceObject;
 
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object firstWritableHugeObject;
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object lastWritableHugeObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object firstWritableHugeObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object lastWritableHugeObject;
 
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object firstReadOnlyHugeObject;
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object lastReadOnlyHugeObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object firstReadOnlyHugeObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object lastReadOnlyHugeObject;
 
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object firstObject;
-    @UnknownObjectField(availability = AfterHeapLayout.class) public Object lastObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object firstObject;
+    @UnknownObjectField(availability = AfterHeapLayout.class, canBeNull = true) public Object lastObject;
 
     // All offsets are relative to the heap base.
     @UnknownPrimitiveField(availability = AfterHeapLayout.class) public long offsetOfFirstWritableAlignedChunk;

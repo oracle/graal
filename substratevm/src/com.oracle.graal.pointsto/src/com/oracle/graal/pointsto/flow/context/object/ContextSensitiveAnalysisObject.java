@@ -51,13 +51,13 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
 
     public ContextSensitiveAnalysisObject(AnalysisUniverse universe, AnalysisType type, AnalysisObjectKind kind) {
         super(universe, type, kind);
-        assert universe.analysisPolicy().allocationSiteSensitiveHeap();
+        assert universe.analysisPolicy().allocationSiteSensitiveHeap() : "policy mismatch";
     }
 
     /** The object has been in contact with an context insensitive object in an union operation. */
     @Override
     public void noteMerge(PointsToAnalysis bb) {
-        assert bb.analysisPolicy().isMergingEnabled();
+        assert bb.analysisPolicy().isMergingEnabled() : "policy mismatch";
 
         if (!merged) {
             super.noteMerge(bb);
@@ -73,7 +73,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
     }
 
     private void mergeArrayElementsFlow(PointsToAnalysis bb) {
-        assert this.isObjectArray();
+        assert this.isObjectArray() : this;
 
         ArrayElementsTypeFlow contextInsensitiveWriteArrayElementsFlow = type.getContextInsensitiveAnalysisObject().getArrayElementsFlow(bb, true);
         contextInsensitiveWriteArrayElementsFlow.addUse(bb, this.arrayElementsTypeStore.writeFlow());
@@ -119,8 +119,8 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
 
     @Override
     public ArrayElementsTypeFlow getArrayElementsFlow(PointsToAnalysis bb, boolean isStore) {
-        assert type.isArray();
-        assert bb.analysisPolicy().allocationSiteSensitiveHeap();
+        assert type.isArray() : type;
+        assert bb.analysisPolicy().allocationSiteSensitiveHeap() : "policy mismatch";
 
         return isStore ? arrayElementsTypeStore.writeFlow() : arrayElementsTypeStore.readFlow();
     }
@@ -128,7 +128,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
     /** Returns the filter field flow corresponding to an unsafe accessed field. */
     @Override
     public FieldFilterTypeFlow getInstanceFieldFilterFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field) {
-        assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed() && bb.analysisPolicy().allocationSiteSensitiveHeap();
+        assert !Modifier.isStatic(field.getModifiers()) && field.isUnsafeAccessed() && bb.analysisPolicy().allocationSiteSensitiveHeap() : field;
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
 
@@ -145,7 +145,7 @@ public class ContextSensitiveAnalysisObject extends AnalysisObject {
 
     @Override
     public FieldTypeFlow getInstanceFieldFlow(PointsToAnalysis bb, TypeFlow<?> objectFlow, BytecodePosition context, AnalysisField field, boolean isStore) {
-        assert !Modifier.isStatic(field.getModifiers()) && bb.analysisPolicy().allocationSiteSensitiveHeap();
+        assert !Modifier.isStatic(field.getModifiers()) && bb.analysisPolicy().allocationSiteSensitiveHeap() : field;
 
         FieldTypeStore fieldTypeStore = getInstanceFieldTypeStore(bb, objectFlow, context, field);
 

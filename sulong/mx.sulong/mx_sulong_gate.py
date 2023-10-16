@@ -27,17 +27,16 @@
 # NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
 # OF THE POSSIBILITY OF SUCH DAMAGE.
 #
-import argparse
 import os
 from argparse import ArgumentParser
 
 import mx
 import mx_subst
-import mx_unittest
 
 from mx_gate import Task, add_gate_runner, add_gate_argument
 
 import mx_sulong_suite_constituents
+import mx_sulong_unittest
 
 _suite = mx.suite('sulong')
 
@@ -125,45 +124,6 @@ class UnittestTaskFactory(object):
             test_task(tasks)
 
 
-_sulongTestConfigRoot = os.path.join(_suite.dir, "tests", "configs")
-
-
-def set_sulong_test_config_root(root):
-    global _sulongTestConfigRoot
-    _sulongTestConfigRoot = root
-
-
-class MxUnittestTestEngineConfigAction(argparse.Action):
-
-    config = None
-
-    def __init__(self, **kwargs):
-        kwargs['required'] = False
-        super(MxUnittestTestEngineConfigAction, self).__init__(**kwargs)
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        MxUnittestTestEngineConfigAction.config = values
-
-
-def _unittest_config_participant(config):
-    (vmArgs, mainClass, mainClassArgs) = config
-    vmArgs += get_test_distribution_path_properties(_suite)
-    vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
-    vmArgs += ['-Dsulongtest.configRoot={}'.format(_sulongTestConfigRoot)]
-    if MxUnittestTestEngineConfigAction.config:
-        vmArgs += ['-Dsulongtest.config=' + MxUnittestTestEngineConfigAction.config]
-    return (vmArgs, mainClass, mainClassArgs)
-
-
-def get_test_distribution_path_properties(suite):
-    return ['-Dsulongtest.path.{}={}'.format(d.name, d.get_output()) for d in suite.dists if
-            d.is_test_distribution() and not d.isClasspathDependency()]
-
-
-mx_unittest.add_config_participant(_unittest_config_participant)
-mx_unittest.add_unittest_argument('--sulong-config', default=None, help='Select test engine configuration for the sulong unittests.', metavar='<config>', action=MxUnittestTestEngineConfigAction)
-
-
 class SulongGateEnv(object):
     """"Sets a marker environment variable."""
     def __enter__(self):
@@ -190,9 +150,33 @@ def _sulong_gate_runner(args, tasks):
 
     with Task('ClangFormat', tasks, tags=['style', 'clangformat']) as t:
         if t: mx.command_function('clangformat')([])
+
+    standaloneMode = mx.get_opts().use_llvm_standalone
+    slowStandalone = False
+    if mx.is_windows():
+        slowStandalone = standaloneMode is not None
+    else:
+        slowStandalone = standaloneMode == "jvm"
+
+    with Task('Build GraalJDK', tasks, tags=['standalone']) as t:
+        # building GraalJDK to work around a bug in the mx support code of the compiler suite
+        # `mx unittest` doesn't work if this is not built, and we want to avoid doing a full `mx build` in the standalone jobs
+        if t:
+            import mx_compiler
+            mx.command_function('build')(['--dependencies', mx_compiler._graaljdk_dist(edition='ce').name])
+
+    if standaloneMode == "native":
+        with Task('Build Native LLVM Standalone', tasks, tags=['standalone']) as t:
+            if t: mx.command_function('build')(['--dependencies', 'LLVM_NATIVE_STANDALONE_SVM_JAVA21'])
+
+    if standaloneMode == "jvm":
+        with Task('Build Java LLVM Standalone', tasks, tags=['standalone']) as t:
+            if t: mx.command_function('build')(['--dependencies', 'LLVM_JAVA_STANDALONE_SVM_JAVA21'])
+
     # Folders not containing tests: options, services, util
     _unittest('Benchmarks', 'SULONG_SHOOTOUT_TEST_SUITE', description="Language Benchmark game tests", testClasses=['ShootoutsSuite'], tags=['benchmarks', 'sulongMisc'])
-    _unittest('Types', 'SULONG_TEST', description="Test floating point arithmetic", testClasses=['com.oracle.truffle.llvm.tests.types.floating.'], tags=['type', 'sulongMisc', 'sulongWinSupport'])
+    _unittest('Internal', 'SULONG_EMBEDDED_TEST_SUITES', description="Test internal Sulong implementation classes (e.g. fp80)", testClasses=['com.oracle.truffle.llvm.tests.internal.'], tags=['internal', 'sulongMisc', 'sulongWinSupport'])
+    _unittest('API', 'SULONG_TEST', description="Test Sulong APIs (e.g. toolchain)", testClasses=['com.oracle.truffle.llvm.tests.api.'], tags=['sulongApi', 'sulongMisc', 'sulongWinSupport'])
     _unittest('Pipe', 'SULONG_TEST', description="Test output capturing", testClasses=['CaptureOutputTest'], tags=['pipe', 'sulongMisc'])
     _unittest('LLVM', 'SULONG_LLVM_TEST_SUITE', description="LLVM 3.2 test suite", testClasses=['LLVMSuite'], tags=['llvm'])
     _unittest('NWCC', 'SULONG_NWCC_TEST_SUITE', description="Test suite of the NWCC compiler v0.8.3", testClasses=['NWCCSuite'], tags=['nwcc'])
@@ -200,21 +184,28 @@ def _sulong_gate_runner(args, tasks):
     _unittest('GCC_C', 'SULONG_GCC_C_TEST_SUITE', description="GCC 5.2 test suite (C tests)", testClasses=['GccCSuite'], tags=['gcc_c'])
     _unittest('GCC_CPP', 'SULONG_GCC_CPP_TEST_SUITE', description="GCC 5.2 test suite (C++ tests)", testClasses=['GccCppSuite'], tags=['gcc_cpp'])
     _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran'])
-    _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic'])
+    _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic', 'standalone'],
+              # run only a small subset of the tests on the jvm standalone, the startup overhead per test is too high for more
+              extraUnittestArgs=['-Dsulongtest.testNameFilter=cpp'] if slowStandalone else [])
     _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongWinSupport'])
+    if standaloneMode is None:
+        # can't test with resources in standalone mode
+        _unittest('SulongUnchained', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests with resources instead of language home", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic', 'sulongUnchained'],
+              extraUnittestArgs=['--sulong-test-resources'])
+        _unittest('InteropUnchained', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests with resources instead of language home", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongWinSupport', 'sulongUnchained'],
+              extraUnittestArgs=['--sulong-test-resources'])
     _unittest('SulongNFI', 'SULONG_NFI_TESTS', description="Truffle NFI test suite with the Sulong NFI backend", testClasses=['com.oracle.truffle.nfi.test'], tags=['sulongNFI', 'sulongBasic', 'sulongWinSupport'],
-            extraUnittestArgs=['-Dnative.test.backend=llvm', '-Dnative.test.path.llvm=<path:SULONG_NFI_TESTS>'])
+              extraUnittestArgs=['-Dnative.test.backend=llvm', '-Dnative.test.path.llvm=<path:SULONG_NFI_TESTS>', '-Dorg.graalvm.language.llvm.home=<path:SULONG_HOME>'])
     _unittest('Linker', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.linker.'], tags=['linker', 'sulongBasic'])
     _unittest('Debug', 'SULONG_EMBEDDED_TEST_SUITES', description="Debug support test suite", testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugTest'], tags=['debug', 'sulongBasic', 'sulongWinSupport'])
     _unittest('IRDebug', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMIRDebugTest'], tags=['irdebug', 'sulongBasic'])
-    _unittest('BitcodeFormat', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.bitcodeformat.'], tags=['bitcodeFormat', 'sulongBasic'])
     _unittest('DebugExpr', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.debug.LLVMDebugExprParserTest'], tags=['debugexpr', 'sulongBasic', 'sulongWinSupport'])
-    _unittest('OtherTests', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.bitcode.', 'com.oracle.truffle.llvm.tests.other.', 'com.oracle.truffle.llvm.tests.runtime.'], tags=['otherTests', 'sulongBasic', 'sulongWinSupport'])
+    _unittest('OtherTests', 'SULONG_EMBEDDED_TEST_SUITES', description=None, testClasses=['com.oracle.truffle.llvm.tests.other.', 'com.oracle.truffle.llvm.tests.runtime.'], tags=['otherTests', 'sulongBasic', 'sulongWinSupport'])
     _unittest('Args', 'SULONG_EMBEDDED_TEST_SUITES', description="Tests main args passing", testClasses=['com.oracle.truffle.llvm.tests.MainArgsTest'], tags=['args', 'sulongMisc', 'sulongWinSupport'])
     _unittest('Callback', 'SULONG_EMBEDDED_TEST_SUITES', description="Test calling native functions", testClasses=['com.oracle.truffle.llvm.tests.CallbackTest'], tags=['callback', 'sulongMisc', 'sulongWinSupport'])
     _unittest('Varargs', 'SULONG_EMBEDDED_TEST_SUITES', description="Varargs tests", testClasses=['com.oracle.truffle.llvm.tests.VAArgsTest'], tags=['vaargs', 'sulongMisc', 'sulongWinSupport'])
     _unittest_task_factory.execute(tasks)
-    with Task('TestToolchain', description="build toolchain-launchers-tests project", tags=['toolchain', 'sulongMisc'], tasks=tasks) as t:
+    with Task('TestToolchain', description="build toolchain-launchers-tests project", tags=['toolchain', 'standalone', 'sulongMisc'], tasks=tasks) as t:
         if t:
             with SulongGateEnv():
                 mx.command_function('clean')(['--project', 'toolchain-launchers-tests'] + args.extra_build_args)
@@ -272,13 +263,19 @@ def runLLVMUnittests(unittest_runner):
 
     test_harness_dist = mx.distribution('SULONG_TEST')
     java_run_props = [x for x in mx.get_runtime_jvm_args(test_harness_dist) if x.startswith('-D')]
-    # necessary because mx native-unittest ignores config participants (GR-34875)
-    java_run_props += [x for x in _unittest_config_participant(([], None, None))[0] if x.startswith('-D')]
+
+    # necessary because mx native-unittest ignores unittest config (GR-34875)
+    java_run_props += [x for x in mx_sulong_unittest.get_vm_args_for_native() if x.startswith('-D')]
 
     test_suite = 'SULONG_EMBEDDED_TEST_SUITES'
     mx_sulong_suite_constituents.compileTestSuite(test_suite, extra_build_args=[])
 
     run_args = [libpath, libs] + java_run_props
-    build_args = ['--language:llvm'] + java_run_props
-    unittest_runner(['com.oracle.truffle.llvm.tests.interop', '--run-args'] + run_args +
-                    ['--build-args', '--add-exports=java.base/jdk.internal.module=ALL-UNNAMED', '--initialize-at-build-time'] + build_args)
+    build_args = ['--add-exports=java.base/jdk.internal.module=ALL-UNNAMED',
+                  '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime=ALL-UNNAMED',
+                  '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime.except=ALL-UNNAMED',
+                  '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime.memory=ALL-UNNAMED',
+                  '--add-exports=org.graalvm.llvm_community/com.oracle.truffle.llvm.runtime.pointer=ALL-UNNAMED',
+                  '--initialize-at-build-time',
+                  '--language:llvm'] + java_run_props
+    unittest_runner(['com.oracle.truffle.llvm.tests.interop', '--run-args'] + run_args + ['--build-args'] + build_args)

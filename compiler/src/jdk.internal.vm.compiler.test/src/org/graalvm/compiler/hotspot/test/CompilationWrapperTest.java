@@ -47,6 +47,7 @@ import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.test.SubprocessUtil;
 import org.graalvm.compiler.test.SubprocessUtil.Subprocess;
 import org.junit.Assert;
+import org.junit.Assume;
 import org.junit.Test;
 
 /**
@@ -59,6 +60,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
      */
     @Test
     public void testVMCompilation1() throws IOException, InterruptedException {
+        assumeNotImpactedByJDK8316453();
         assumeManagementLibraryIsLoadable();
         testHelper(Collections.emptyList(), Arrays.asList("-XX:-TieredCompilation",
                         "-XX:+UseJVMCICompiler",
@@ -68,6 +70,15 @@ public class CompilationWrapperTest extends GraalCompilerTest {
                         "-Xcomp",
                         "-XX:CompileCommand=compileonly,*/TestProgram.print*",
                         TestProgram.class.getName()));
+    }
+
+    /**
+     * Assumes the current JDK does not contain the bug resolved by JDK-8316453.
+     */
+    private static void assumeNotImpactedByJDK8316453() {
+        Runtime.Version version = Runtime.version();
+        Runtime.Version jdk8316453 = Runtime.Version.parse("22+17");
+        Assume.assumeTrue("-Xcomp broken", version.feature() < 22 || version.compareTo(jdk8316453) >= 0);
     }
 
     static class Probe {
@@ -101,6 +112,7 @@ public class CompilationWrapperTest extends GraalCompilerTest {
      */
     @Test
     public void testVMCompilation3() throws IOException, InterruptedException {
+        assumeNotImpactedByJDK8316453();
         assumeManagementLibraryIsLoadable();
         final int maxProblems = 2;
         Probe failurePatternProbe = new Probe("[[[Graal compilation failure]]]", maxProblems) {

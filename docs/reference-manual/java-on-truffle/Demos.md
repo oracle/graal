@@ -35,7 +35,7 @@ This design naturally fits the point we are trying to illustrate. We can build a
 
 Prerequisites:
 * [Latest GraalVM](https://www.graalvm.org/downloads/)
-* [Java on Truffle](README.md#install-java-on-truffle)
+* [Java on Truffle](README.md#getting-started)
 
 1. Clone the [project](https://github.com/graalvm/graalvm-demos) with the demo applications and navigate to the `espresso-jshell` directory:
 
@@ -69,7 +69,6 @@ To try it out, build the `espresso-jshell` binary using the provided script, whi
 2. Build the JAR file
 3. Build a native executable
 
-The most important configuration line in the `native-image` command is `--language:java` which instructs to include the Java on Truffle implementation into the binary.
 After the build you can observe the resulting binary file (`file` and `ldd` are Linux commands)
 ```shell
 file ./espresso-jshell
@@ -167,7 +166,7 @@ You can also try an experiment with the `--memtracer` option, to see where the a
 java -truffle --experimental-options --memtracer Main > output.txt
 ```
 
-Other tools that GraalVM offers are [Chrome Debugger](/tools/chrome-debugger/), [Code Coverage](/tools/code-coverage/), and [GraalVM Insight](/tools/graalvm-insight/).
+Other tools that GraalVM offers are [Chrome Debugger](../../tools/chrome-debugger.md), [Code Coverage](../../tools/code-coverage.md), and [GraalVM Insight](../../tools/insight/README.md).
 
 Having the "out-of-the-box" support for the developer tooling makes Java on Truffle an interesting choice of the JVM.
 

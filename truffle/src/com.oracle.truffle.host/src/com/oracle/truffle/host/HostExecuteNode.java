@@ -85,6 +85,7 @@ import com.oracle.truffle.host.HostTargetMappingNodeGen.SingleMappingNodeGen;
 @GenerateUncached
 @GenerateInline
 @GenerateCached(false)
+@SuppressWarnings("truffle-interpreted-performance")
 abstract class HostExecuteNode extends Node {
     static final int LIMIT = 3;
     private static final Class<?>[] EMPTY_CLASS_ARRAY = new Class<?>[0];

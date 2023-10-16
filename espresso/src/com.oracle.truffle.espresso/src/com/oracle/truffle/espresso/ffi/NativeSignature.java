@@ -37,13 +37,23 @@ public interface NativeSignature {
     int getParameterCount();
 
     /**
+     * Number of varargs parameters.
+     */
+    int getVarArgsParameterCount();
+
+    /**
      * Returns the i-th (0-based) parameter type, guaranteed to be != {@link NativeType#VOID void}.
      *
      * @throws IndexOutOfBoundsException if the index is negative or >= {@link #getParameterCount()}
+     *             + {@link #getVarArgsParameterCount()}.
      */
     NativeType parameterTypeAt(int index);
 
     static NativeSignature create(NativeType returnType, NativeType... parameterTypes) {
         return new NativeSignatureImpl(returnType, parameterTypes);
+    }
+
+    static NativeSignature createVarArg(NativeType returnType, NativeType[] parameterTypes, NativeType[] varArgsParameterTypes) {
+        return new NativeSignatureImpl(returnType, parameterTypes, varArgsParameterTypes);
     }
 }

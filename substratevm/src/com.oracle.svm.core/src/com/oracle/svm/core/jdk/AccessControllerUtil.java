@@ -64,7 +64,7 @@ class PrivilegedStack {
     static {
         @SuppressWarnings("unchecked")
         Class<ArrayDeque<StackElement>> cls = (Class<ArrayDeque<StackElement>>) (Object) ArrayDeque.class;
-        stack = FastThreadLocalFactory.createObject(cls, "AccessControlContextStack");
+        stack = FastThreadLocalFactory.createObject(cls, "PrivilegedStack.AccessControlContextStack");
     }
 
     @SuppressWarnings("unchecked")

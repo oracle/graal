@@ -2036,7 +2036,7 @@ public class FileSystemsTest {
 
     @Test
     public void testSetAttribute() throws IOException {
-        Assume.assumeFalse("JDK-8308386", Runtime.version().feature() == 21 && isMacOSOlderThanHighSierra());
+        Assume.assumeFalse("JDK-8308386", isMacOSOlderThanHighSierra());
         Context ctx = cfg.getContext();
         String configuration = cfg.getName();
         String path = cfg.getPath().toString();

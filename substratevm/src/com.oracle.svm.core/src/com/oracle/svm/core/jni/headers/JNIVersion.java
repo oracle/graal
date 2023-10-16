@@ -34,9 +34,10 @@ import com.oracle.svm.core.Uninterruptible;
 public final class JNIVersion {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isSupported(int version) {
-        return (JavaVersionUtil.JAVA_SPEC >= 21 && version == JNIVersionJDK21OrLater.JNI_VERSION_21()) ||
-                        (JavaVersionUtil.JAVA_SPEC >= 20 && version == JNIVersionJDK20OrLater.JNI_VERSION_20()) ||
-                        (JavaVersionUtil.JAVA_SPEC >= 19 && version == JNIVersionJDK19OrLater.JNI_VERSION_19()) ||
+        return (JavaVersionUtil.JAVA_SPEC >= 22 && version == JNIVersionJDK22OrLater.JNI_VERSION_22()) ||
+                        version == JNI_VERSION_21() ||
+                        version == JNI_VERSION_20() ||
+                        version == JNI_VERSION_19() ||
                         version == JNI_VERSION_10() ||
                         version == JNI_VERSION_9() ||
                         version == JNI_VERSION_1_8() ||
@@ -68,6 +69,15 @@ public final class JNIVersion {
 
     @CConstant
     public static native int JNI_VERSION_10();
+
+    @CConstant
+    public static native int JNI_VERSION_19();
+
+    @CConstant
+    public static native int JNI_VERSION_20();
+
+    @CConstant
+    public static native int JNI_VERSION_21();
 
     // Checkstyle: resume
 

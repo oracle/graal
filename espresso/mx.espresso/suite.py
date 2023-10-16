@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2017, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -20,6 +20,7 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
+
 suite = {
     "mxversion": "6.44.0",
     "name": "espresso",
@@ -72,18 +73,6 @@ suite = {
             {
                 "name": "sulong",
                 "subdir": True,
-                "os_arch": {
-                    "windows": {
-                        "<others>": {
-                            "ignore": True,
-                        },
-                    },
-                    "<others>": {
-                        "<others>": {
-                            "ignore": False,
-                        }
-                    }
-                }
             },
             {
                 "name" : "java-benchmarks",
@@ -220,7 +209,6 @@ suite = {
             "platformDependent": True,
             "use_jdk_headers": True,
             "buildDependencies": [
-                "truffle:TRUFFLE_NFI_NATIVE",
                 "com.oracle.truffle.espresso.mokapot",
             ],
             "os_arch": {
@@ -281,9 +269,6 @@ suite = {
             "deliverable": "jvm",
             "platformDependent": True,
             "use_jdk_headers": True,
-            "buildDependencies": [
-                "truffle:TRUFFLE_NFI_NATIVE",
-            ],
             "os_arch": {
                 "darwin": {
                     "<others>": {
@@ -344,6 +329,9 @@ suite = {
         "ESPRESSO": {
             "moduleInfo" : {
                 "name" : "org.graalvm.espresso",
+                "exports": [
+                    "com.oracle.truffle.espresso.runtime.staticobject",  # Workaround GR-48132
+                ]
             },
             "description" : "Core module of the Java on Truffle (aka Espresso): a Java bytecode interpreter",
             "subDir": "src",

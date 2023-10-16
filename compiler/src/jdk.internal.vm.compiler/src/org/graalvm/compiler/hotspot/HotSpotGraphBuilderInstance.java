@@ -35,7 +35,7 @@ import org.graalvm.compiler.phases.OptimisticOptimizations;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class HotSpotGraphBuilderInstance extends GraphBuilderPhase.Instance {
-    HotSpotGraphBuilderInstance(CoreProviders theProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+    public HotSpotGraphBuilderInstance(CoreProviders theProviders, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
         super(theProviders, graphBuilderConfig, optimisticOpts, initialIntrinsicContext);
     }
 

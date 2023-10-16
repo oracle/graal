@@ -53,6 +53,7 @@ import com.oracle.svm.core.stack.JavaFrameAnchor;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.thread.JavaVMOperation;
+import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
@@ -78,7 +79,7 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalInt;
  * encountered during the stack walk, or the thread holds the pool's lock when the signal arrives).
  * If such a situation is detected, the sample is omitted.
  */
-public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
+public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler implements ThreadListener {
     private static final FastThreadLocalInt samplerState = FastThreadLocalFactory.createInt("JfrSampler.samplerState");
     private static final FastThreadLocalInt isDisabledForCurrentThread = FastThreadLocalFactory.createInt("JfrSampler.isDisabledForCurrentThread");
 
@@ -157,6 +158,14 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
         assert value >= 0;
     }
 
+    @Override
+    @Uninterruptible(reason = "Prevent VM operations that modify execution sampler state.")
+    public void afterThreadRun() {
+        IsolateThread thread = CurrentIsolate.getCurrentThread();
+        uninstall(thread);
+        ExecutionSamplerInstallation.disallow(thread);
+    }
+
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     protected static boolean isExecutionSamplingAllowedInCurrentThread() {
         boolean disallowed = singleton().isSignalHandlerDisabledGlobally.get() > 0 ||
@@ -171,6 +180,8 @@ public abstract class AbstractJfrExecutionSampler extends JfrExecutionSampler {
     protected abstract void stopSampling();
 
     protected abstract void updateInterval();
+
+    protected abstract void uninstall(IsolateThread thread);
 
     @Uninterruptible(reason = "The method executes during signal handling.", callerMustBe = true)
     protected static void tryUninterruptibleStackWalk(CodePointer ip, Pointer sp) {

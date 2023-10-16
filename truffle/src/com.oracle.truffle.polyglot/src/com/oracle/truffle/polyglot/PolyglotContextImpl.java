@@ -906,7 +906,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         initializeThreadLocals(threadInfo);
                     }
 
-                    prev = threadInfo.enterInternal();
+                    prev = threadInfo.enterInternal(engine);
                     if (leaveAndEnter) {
                         threadInfo.setLeaveAndEnterInterrupter(null);
                         notifyAll();
@@ -918,7 +918,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         try {
                             threadInfo.notifyEnter(engine, this);
                         } catch (Throwable t) {
-                            threadInfo.leaveInternal(prev);
+                            threadInfo.leaveInternal(engine, prev);
                             throw t;
                         }
                     }
@@ -1145,7 +1145,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         threadInfo.notifyLeave(engine, this);
                     }
                 } finally {
-                    threadInfo.leaveInternal(prev);
+                    threadInfo.leaveInternal(engine, prev);
                 }
             }
             if (threadInfo.getEnteredCount() == 0) {
@@ -1722,7 +1722,18 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
         try {
             OutputStream out = languageContext.context.config.out;
-            out.write(stringResult.getBytes(StandardCharsets.UTF_8));
+            int lastEndPos = 0;
+            // avoid hitting the java array length limit during conversion to UTF-8 by printing in
+            // chunks
+            while (lastEndPos < stringResult.length()) {
+                int endPos = (int) Math.min(stringResult.length(), ((long) lastEndPos) + (Integer.MAX_VALUE / 4));
+                if (endPos < stringResult.length() && Character.isHighSurrogate(stringResult.charAt(endPos - 1)) && Character.isLowSurrogate(stringResult.charAt(endPos))) {
+                    // don't split in the middle of surrogate pairs
+                    endPos++;
+                }
+                out.write(stringResult.substring(lastEndPos, endPos).getBytes(StandardCharsets.UTF_8));
+                lastEndPos = endPos;
+            }
             out.write(System.getProperty("line.separator").getBytes(StandardCharsets.UTF_8));
         } catch (IOException ioex) {
             // out stream has problems.

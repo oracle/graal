@@ -1023,11 +1023,11 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
 
         @Specialization
         static void append(Node node, TruffleStringBuilderGeneric sb, AbstractTruffleString a,
-                        @Cached @Shared TruffleString.ToIndexableNode toIndexableNode,
+                        @Cached @Exclusive TruffleString.ToIndexableNode toIndexableNode,
                         @Cached @Exclusive TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached @Exclusive TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
-                        @Cached @Shared InlinedBranchProfile bufferGrowProfile,
-                        @Cached @Shared InlinedBranchProfile errorProfile) {
+                        @Cached @Exclusive InlinedBranchProfile bufferGrowProfile,
+                        @Cached @Exclusive InlinedBranchProfile errorProfile) {
             if (a.length() == 0) {
                 return;
             }
@@ -1197,13 +1197,13 @@ public abstract sealed class TruffleStringBuilder permits TruffleStringBuilderGe
         @Specialization
         static void append(TruffleStringBuilderGeneric sb, AbstractTruffleString a, int fromIndex, int length,
                         @Bind("this") Node node,
-                        @Cached @Shared TruffleString.ToIndexableNode toIndexableNode,
+                        @Cached @Exclusive TruffleString.ToIndexableNode toIndexableNode,
                         @Cached TStringInternalNodes.GetCodePointLengthNode getCodePointLengthNode,
                         @Cached TStringInternalNodes.GetPreciseCodeRangeNode getPreciseCodeRangeNode,
                         @Cached TStringInternalNodes.CalcStringAttributesNode calcAttributesNode,
                         @Cached InlinedConditionProfile calcAttrsProfile,
-                        @Cached @Shared InlinedBranchProfile bufferGrowProfile,
-                        @Cached @Shared InlinedBranchProfile errorProfile) {
+                        @Cached @Exclusive InlinedBranchProfile bufferGrowProfile,
+                        @Cached @Exclusive InlinedBranchProfile errorProfile) {
             if (length == 0) {
                 return;
             }

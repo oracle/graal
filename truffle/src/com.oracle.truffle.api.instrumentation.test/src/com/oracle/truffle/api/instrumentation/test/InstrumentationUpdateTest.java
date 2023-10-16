@@ -89,10 +89,12 @@ public class InstrumentationUpdateTest {
         };
         context.eval("InstrumentationUpdateLanguage", "");
         instrumentEnv = context.getEngine().getInstruments().get("InstrumentationUpdateInstrument").lookup(TruffleInstrument.Env.class);
+        context.enter();
     }
 
     @After
     public void teardown() {
+        context.leave();
         context.close();
     }
 

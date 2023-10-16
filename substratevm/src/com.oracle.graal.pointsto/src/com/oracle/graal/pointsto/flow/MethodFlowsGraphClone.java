@@ -46,7 +46,7 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
         super(method, originalFlowsGraph.getGraphKind());
         this.context = context;
         this.originalFlowsGraph = originalFlowsGraph;
-        assert this.originalFlowsGraph.isLinearized();
+        assert this.originalFlowsGraph.isLinearized() : originalFlowsGraph;
     }
 
     public AnalysisContext context() {
@@ -151,7 +151,7 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
             // copy only makes a shallow copy of the original flows;
             // it does not copy it's uses or inputs (for those flows that have inputs)
             clone = original.copy(bb, this);
-            assert slot == clone.getSlot();
+            assert slot == clone.getSlot() : slot + " != " + clone.getSlot();
 
             assert linearizedGraph[slot] == null : "Clone already exists: " + slot + " : " + original;
             linearizedGraph[slot] = clone;
@@ -176,8 +176,8 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
             /* Link all 'internal' observers. */
             for (TypeFlow<?> originalObserver : original.getObservers()) {
                 // only clone the original observers
-                assert !(originalObserver instanceof AllInstantiatedTypeFlow);
-                assert !(originalObserver.isClone());
+                assert !(originalObserver instanceof AllInstantiatedTypeFlow) : originalObserver;
+                assert !(originalObserver.isClone()) : originalObserver;
 
                 if (MethodFlowsGraph.nonCloneableFlow(originalObserver)) {
                     clone.addObserver(bb, originalObserver);
@@ -193,7 +193,7 @@ public class MethodFlowsGraphClone extends MethodFlowsGraph {
             /* Link all 'internal' uses. */
             for (TypeFlow<?> originalUse : original.getUses()) {
                 // only clone the original uses
-                assert !(originalUse instanceof AllInstantiatedTypeFlow);
+                assert !(originalUse instanceof AllInstantiatedTypeFlow) : originalUse;
                 assert !(originalUse.isClone()) : "Original use " + originalUse + " should not be a clone. Reached from: " + original;
 
                 if (MethodFlowsGraph.nonCloneableFlow(originalUse)) {

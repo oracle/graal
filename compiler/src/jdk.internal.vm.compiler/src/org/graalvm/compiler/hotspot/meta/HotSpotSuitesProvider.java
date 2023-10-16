@@ -31,6 +31,7 @@ import org.graalvm.compiler.debug.Assertions;
 import org.graalvm.compiler.hotspot.GraalHotSpotVMConfig;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntime;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.HotSpotGraphBuilderPhase;
 import org.graalvm.compiler.hotspot.lir.HotSpotZapRegistersPhase;
 import org.graalvm.compiler.hotspot.lir.VerifyMaxRegisterSizePhase;
 import org.graalvm.compiler.java.GraphBuilderPhase;
@@ -116,6 +117,11 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
      * for equality.
      */
     private boolean appendGraphEncoderTest(PhaseSuite<HighTierContext> suite) {
+        if (config.xcompMode) {
+            // Do not do this in -Xcomp mode. It adds too much compilation time.
+            // Testing coverage is provided by Graal unit testing instead.
+            return true;
+        }
         suite.appendPhase(new BasePhase<HighTierContext>() {
             @Override
             public Optional<NotApplicable> notApplicableTo(GraphState graphState) {
@@ -149,7 +155,7 @@ public class HotSpotSuitesProvider extends SuitesProviderBase {
         PhaseSuite<HighTierContext> newGbs = gbs.copy();
         GraphBuilderPhase graphBuilderPhase = (GraphBuilderPhase) newGbs.findPhase(GraphBuilderPhase.class).previous();
         GraphBuilderConfiguration graphBuilderConfig = graphBuilderPhase.getGraphBuilderConfig();
-        GraphBuilderPhase newGraphBuilderPhase = new GraphBuilderPhase(graphBuilderConfig.withNodeSourcePosition(true));
+        GraphBuilderPhase newGraphBuilderPhase = new HotSpotGraphBuilderPhase(graphBuilderConfig.withNodeSourcePosition(true));
         newGbs.findPhase(GraphBuilderPhase.class).set(newGraphBuilderPhase);
         return newGbs;
     }

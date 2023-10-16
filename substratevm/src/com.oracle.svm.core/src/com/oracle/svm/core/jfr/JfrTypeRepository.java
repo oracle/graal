@@ -87,7 +87,7 @@ public class JfrTypeRepository implements JfrRepository {
      */
     private TypeInfo collectTypeInfo(boolean flushpoint) {
         TypeInfo typeInfo = new TypeInfo();
-        for (Class<?> clazz : Heap.getHeap().getLoadedClasses()) {
+        Heap.getHeap().visitLoadedClasses((clazz) -> {
             if (flushpoint) {
                 if (JfrTraceId.isUsedCurrentEpoch(clazz)) {
                     visitClass(typeInfo, clazz);
@@ -98,7 +98,7 @@ public class JfrTypeRepository implements JfrRepository {
                     visitClass(typeInfo, clazz);
                 }
             }
-        }
+        });
         return typeInfo;
     }
 

@@ -72,11 +72,12 @@ public class HeapDumpFeature implements InternalFeature {
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
         /*
-         * Include the feature unconditionally on Linux and macOS. The code and all its data are
-         * only present in the final image if the heap dumping infrastructure is actually called by
-         * any code (e.g., VMRuntime.dumpHeap(...) or --enable-monitoring=heapdump).
+         * Include the feature unconditionally (all platforms except Windows - even unknown
+         * platforms). The code and all its data are only present in the final image if the heap
+         * dumping infrastructure is actually called by any code (e.g., VMRuntime.dumpHeap(...) or
+         * --enable-monitoring=heapdump).
          */
-        return Platform.includedIn(Platform.LINUX.class) || Platform.includedIn(Platform.DARWIN.class);
+        return !Platform.includedIn(Platform.WINDOWS.class);
     }
 
     @Override

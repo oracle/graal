@@ -25,7 +25,7 @@
 package org.graalvm.compiler.replacements.test;
 
 import org.graalvm.compiler.core.common.CompilationIdentifier;
-import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.hotspot.test.HotSpotGraalCompilerTest;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.test.AddExports;
 import org.junit.Test;
@@ -34,7 +34,7 @@ import jdk.vm.ci.code.InstalledCode;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @AddExports({"java.base/java.lang", "java.base/sun.nio.cs"})
-public class EncodeArrayTest extends GraalCompilerTest {
+public class EncodeArrayTest extends HotSpotGraalCompilerTest {
 
     protected final String[] testData = new String[]{
                     "A", "\uFF21", "AB", "A", "a", "Ab", "AA", "\uFF21",
@@ -68,7 +68,7 @@ public class EncodeArrayTest extends GraalCompilerTest {
     public void testStringCodingISO() throws ClassNotFoundException {
         Class<?> klass = Class.forName("java.lang.StringCoding");
         ResolvedJavaMethod method = getResolvedJavaMethod(klass, "implEncodeISOArray");
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
+        StructuredGraph graph = getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
         InstalledCode compiledMethod = getCode(method, graph);
 
         // Caller of the tested method should guarantee the indexes are within the range -- there is
@@ -101,7 +101,7 @@ public class EncodeArrayTest extends GraalCompilerTest {
     public void testStringCodingAscii() throws ClassNotFoundException {
         Class<?> klass = Class.forName("java.lang.StringCoding");
         ResolvedJavaMethod method = getResolvedJavaMethod(klass, "implEncodeAsciiArray");
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
+        StructuredGraph graph = getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
         InstalledCode compiledMethod = getCode(method, graph);
 
         // Caller of the tested method should guarantee the indexes are within the range --
@@ -134,7 +134,7 @@ public class EncodeArrayTest extends GraalCompilerTest {
     public void testISOEncoding() throws ClassNotFoundException {
         Class<?> klass = Class.forName("sun.nio.cs.ISO_8859_1$Encoder");
         ResolvedJavaMethod method = getResolvedJavaMethod(klass, "implEncodeISOArray");
-        StructuredGraph graph = getReplacements().getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
+        StructuredGraph graph = getIntrinsicGraph(method, CompilationIdentifier.INVALID_COMPILATION_ID, getDebugContext(), StructuredGraph.AllowAssumptions.YES, null);
         InstalledCode compiledMethod = getCode(method, graph);
 
         // Caller of the tested method should guarantee the indexes are within the range -- there is

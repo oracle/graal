@@ -103,7 +103,7 @@ public final class NativeIsolateThread {
     }
 
     boolean invalidate() {
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: busy loop
             int value = enteredCount.get();
             if (value == CLOSED) {
                 return true;
@@ -142,7 +142,7 @@ public final class NativeIsolateThread {
     }
 
     private boolean incrementAttached() {
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: busy loop
             int value = enteredCount.get();
             if (value == CLOSED) {
                 if (executesShutDown) {
@@ -161,7 +161,7 @@ public final class NativeIsolateThread {
     }
 
     private void decrementAttached() {
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: busy loop
             int value = enteredCount.get();
             if (value == CLOSED) {
                 if (executesShutDown) {

@@ -92,7 +92,6 @@ public final class ProjectHeaderFile {
 
         /** Register additional resolvers. */
         public static void registerAdditionalResolver(HeaderResolver resolver) {
-            assert ImageSingletons.contains(HeaderResolversRegistry.class);
             HeaderResolversRegistry registry = ImageSingletons.lookup(HeaderResolversRegistry.class);
             registry.register(resolver);
         }

@@ -31,13 +31,13 @@ import com.oracle.svm.core.annotate.TargetClass;
 @TargetClass(className = "java.lang.invoke.ClassSpecializer")
 final class Target_java_lang_invoke_ClassSpecializer {
     @Alias
-    native Target_java_lang_invoke_BoundMethodHandle_SpeciesData findSpecies(Object ll);
+    native Target_java_lang_invoke_ClassSpecializer_SpeciesData findSpecies(Object ll);
 }
 
 @TargetClass(className = "java.lang.invoke.ClassSpecializer", innerClass = "SpeciesData")
 final class Target_java_lang_invoke_ClassSpecializer_SpeciesData {
     @Alias
-    native String key();
+    native Object key();
 
     @Alias
     protected native String deriveClassName();

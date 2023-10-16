@@ -140,7 +140,7 @@ public class ProgressReporter {
         PARSING("Parsing methods", true, true),
         INLINING("Inlining methods", true, false),
         COMPILING("Compiling methods", true, true),
-        LAYOUTING("Layouting methods", true, true),
+        LAYING_OUT("Laying out methods", true, true),
         CREATING("Creating image", true, true);
 
         private static final int NUM_STAGES = values().length;
@@ -331,13 +331,13 @@ public class ProgressReporter {
                     if (lmov.getValuesWithOrigins().allMatch(o -> o.getRight().isStable())) {
                         continue;
                     } else {
-                        origins = lmov.getValuesWithOrigins().map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
+                        origins = lmov.getValuesWithOrigins().filter(p -> !isStableOrInternalOrigin(p.getRight())).map(p -> p.getRight().toString()).collect(Collectors.joining(", "));
                         alternatives = lmov.getValuesWithOrigins().map(p -> SubstrateOptionsParser.commandArgument(hok, p.getLeft().toString())).filter(c -> !c.startsWith(hostedOptionPrefix))
                                         .collect(Collectors.joining(", "));
                     }
                 } else {
                     OptionOrigin origin = hok.getLastOrigin();
-                    if (origin == null /* unknown */ || origin.isStable() || origin.isInternal()) {
+                    if (origin == null /* unknown */ || isStableOrInternalOrigin(origin)) {
                         continue;
                     }
                     origins = origin.toString();
@@ -368,6 +368,10 @@ public class ProgressReporter {
         for (var optionAndDetails : experimentalOptions.entrySet()) {
             l().a(" - '%s'%s", optionAndDetails.getKey(), optionAndDetails.getValue().toSuffix()).println();
         }
+    }
+
+    private static boolean isStableOrInternalOrigin(OptionOrigin origin) {
+        return origin.isStable() || origin.isInternal();
     }
 
     private void printResourceInfo() {
@@ -507,7 +511,7 @@ public class ProgressReporter {
     }
 
     public ReporterClosable printLayouting() {
-        return print(TimerCollection.Registry.LAYOUT, BuildStage.LAYOUTING);
+        return print(TimerCollection.Registry.LAYOUT, BuildStage.LAYING_OUT);
     }
 
     // TODO: merge printCreationStart and printCreationEnd at some point (GR-35721).
@@ -1412,7 +1416,7 @@ public class ProgressReporter {
             if (filenameOnly) {
                 Path filename = normalized.getFileName();
                 if (filename != null) {
-                    name = normalized.toString();
+                    name = filename.toString();
                 } else {
                     throw VMError.shouldNotReachHere("filename should never be null, illegal path: " + path);
                 }

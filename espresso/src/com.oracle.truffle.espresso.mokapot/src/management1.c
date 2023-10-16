@@ -23,7 +23,6 @@
 #include "management.h"
 #include "jmm1.h"
 
-#include <trufflenfi.h>
 #include <jni.h>
 #include <stdlib.h>
 #include <stdio.h>

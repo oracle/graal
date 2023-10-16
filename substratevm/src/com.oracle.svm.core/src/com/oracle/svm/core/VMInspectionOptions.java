@@ -56,12 +56,20 @@ public final class VMInspectionOptions {
     private static final String MONITORING_JVMSTAT_NAME = "jvmstat";
     private static final String MONITORING_JMXCLIENT_NAME = "jmxclient";
     private static final String MONITORING_JMXSERVER_NAME = "jmxserver";
-    private static final String MONITORING_ALLOWED_VALUES = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', '" + MONITORING_JMXSERVER_NAME +
-                    "' (experimental), '" + MONITORING_JMXCLIENT_NAME + "' (experimental), or '" + MONITORING_ALL_NAME +
+    private static final String MONITORING_THREADDUMP_NAME = "threaddump";
+
+    private static final List<String> MONITORING_ALL_VALUES = List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME,
+                    MONITORING_THREADDUMP_NAME, MONITORING_ALL_NAME, MONITORING_DEFAULT_NAME);
+    private static final String MONITORING_ALLOWED_VALUES_TEXT = "'" + MONITORING_HEAPDUMP_NAME + "', '" + MONITORING_JFR_NAME + "', '" + MONITORING_JVMSTAT_NAME + "', '" + MONITORING_JMXSERVER_NAME +
+                    "' (experimental), '" + MONITORING_JMXCLIENT_NAME + "' (experimental), '" + MONITORING_THREADDUMP_NAME + "', or '" + MONITORING_ALL_NAME +
                     "' (deprecated behavior: defaults to '" + MONITORING_ALL_NAME + "' if no argument is provided)";
 
+    static {
+        assert MONITORING_ALL_VALUES.stream().allMatch(v -> MONITORING_DEFAULT_NAME.equals(v) || MONITORING_ALLOWED_VALUES_TEXT.contains(v)) : "A value is missing in the user-facing help text";
+    }
+
     @APIOption(name = ENABLE_MONITORING_OPTION, defaultValue = MONITORING_DEFAULT_NAME) //
-    @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES + ". " +
+    @Option(help = "Enable monitoring features that allow the VM to be inspected at run time. Comma-separated list can contain " + MONITORING_ALLOWED_VALUES_TEXT + ". " +
                     "For example: '--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_HEAPDUMP_NAME + "," + MONITORING_JFR_NAME + "'.", type = OptionType.User) //
     public static final HostedOptionKey<LocatableMultiOptionValue.Strings> EnableMonitoringFeatures = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.buildWithCommaDelimiter(),
                     VMInspectionOptions::validateEnableMonitoringFeatures);
@@ -75,11 +83,10 @@ public final class VMInspectionOptions {
                             getDefaultMonitoringCommandArgument(),
                             SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, String.join(",", List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME))));
         }
-        enabledFeatures.removeAll(List.of(MONITORING_HEAPDUMP_NAME, MONITORING_JFR_NAME, MONITORING_JVMSTAT_NAME, MONITORING_JMXCLIENT_NAME, MONITORING_JMXSERVER_NAME, MONITORING_ALL_NAME,
-                        MONITORING_DEFAULT_NAME));
+        enabledFeatures.removeAll(MONITORING_ALL_VALUES);
         if (!enabledFeatures.isEmpty()) {
             throw UserError.abort("The '%s' option contains invalid value(s): %s. It can only contain %s.", getDefaultMonitoringCommandArgument(), String.join(", ", enabledFeatures),
-                            MONITORING_ALLOWED_VALUES);
+                            MONITORING_ALLOWED_VALUES_TEXT);
         }
     }
 
@@ -89,7 +96,7 @@ public final class VMInspectionOptions {
     }
 
     @Fold
-    public static String getHeapdumpsCommandArgument() {
+    public static String getHeapDumpCommandArgument() {
         return SubstrateOptionsParser.commandArgument(EnableMonitoringFeatures, MONITORING_HEAPDUMP_NAME);
     }
 
@@ -121,7 +128,7 @@ public final class VMInspectionOptions {
             return true;
         } else {
             System.out.println("Unable to dump heap. Heap dumping is only supported on Linux and MacOS for native executables built with '" +
-                            VMInspectionOptions.getHeapdumpsCommandArgument() + "'.");
+                            VMInspectionOptions.getHeapDumpCommandArgument() + "'.");
             return false;
         }
     }
@@ -151,15 +158,17 @@ public final class VMInspectionOptions {
         return hasAllOrKeywordMonitoringSupport(MONITORING_JMXCLIENT_NAME) && !Platform.includedIn(WINDOWS.class);
     }
 
+    @Fold
+    public static boolean hasThreadDumpSupport() {
+        return hasAllOrKeywordMonitoringSupport(MONITORING_THREADDUMP_NAME) || DeprecatedOptions.DumpThreadStacksOnSignal.getValue();
+    }
+
     @Option(help = "Dumps all runtime compiled methods on SIGUSR2.", type = OptionType.User) //
     public static final HostedOptionKey<Boolean> DumpRuntimeCompilationOnSignal = new HostedOptionKey<>(false);
 
-    @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User) //
-    public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
-
     static class DeprecatedOptions {
         @Option(help = "Enables features that allow the VM to be inspected during run time.", type = OptionType.User, //
-                        deprecated = true, deprecationMessage = "Please use --" + ENABLE_MONITORING_OPTION) //
+                        deprecated = true, deprecationMessage = "Please use '--" + ENABLE_MONITORING_OPTION + "'") //
         static final HostedOptionKey<Boolean> AllowVMInspection = new HostedOptionKey<>(false) {
             @Override
             protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
@@ -168,6 +177,10 @@ public final class VMInspectionOptions {
                 super.onValueUpdate(values, oldValue, newValue);
             }
         };
+
+        @Option(help = "Dumps all thread stacktraces on SIGQUIT/SIGBREAK.", type = OptionType.User, //
+                        deprecated = true, deprecationMessage = "Please use '--" + ENABLE_MONITORING_OPTION + "=" + MONITORING_THREADDUMP_NAME + "'") //
+        public static final HostedOptionKey<Boolean> DumpThreadStacksOnSignal = new HostedOptionKey<>(false);
     }
 
     private VMInspectionOptions() {

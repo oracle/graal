@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -178,7 +178,7 @@ public final class SubstrateObjectCloneSnippets extends SubstrateTemplates imple
         if (alias instanceof VirtualObjectNode) {
             return true;
         }
-        ResolvedJavaType type = node.getConcreteType(alias.stamp(NodeView.DEFAULT));
+        ResolvedJavaType type = ObjectClone.getConcreteType(alias.stamp(NodeView.DEFAULT));
         if (type instanceof SharedType) {
             // Hybrids are instances with array-like encoding; cloning virtually is unimplemented.
             int encoding = ((SharedType) type).getHub().getLayoutEncoding();

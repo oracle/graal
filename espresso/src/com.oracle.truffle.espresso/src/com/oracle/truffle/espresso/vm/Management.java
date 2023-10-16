@@ -67,7 +67,7 @@ import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.JavaKind;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.CallableFromNative;
 import com.oracle.truffle.espresso.substitutions.GenerateNativeEnv;
 import com.oracle.truffle.espresso.substitutions.Inject;
@@ -853,8 +853,11 @@ public final class Management extends NativeEnv {
     }
 
     @ManagementImpl
-    public boolean ResetStatistic(@JavaType(Object.class) @SuppressWarnings("unused") StaticObject obj,
-                    /* jmmStatisticType */ int type) {
+    public boolean ResetStatistic(@SuppressWarnings("unused") long obj, /* jmmStatisticType */ int type) {
+        // obj is an abused jobject, so we have to manually handle it
+        // obj - specify which instance the statistic associated with to be reset
+        // For PEAK_POOL_USAGE and GC stat, obj is required to be a memory pool object.
+        // For THREAD_CONTENTION_COUNT and TIME stat, obj is required to be a thread ID.
         switch (type) {
             case JMM_STAT_PEAK_THREAD_COUNT: {
                 getContext().resetPeakThreadCount();

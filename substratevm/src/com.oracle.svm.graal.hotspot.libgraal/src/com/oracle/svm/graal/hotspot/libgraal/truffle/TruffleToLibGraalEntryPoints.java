@@ -242,6 +242,7 @@ final class TruffleToLibGraalEntryPoints {
                 compiler.doCompile(task, compilable, listener);
             } finally {
                 Heap.getHeap().doReferenceHandling();
+                Heap.getHeap().getGC().collectionHint(true);
             }
         } catch (Throwable t) {
             JNIExceptionWrapper.throwInHotSpot(env, t);

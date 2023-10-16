@@ -51,6 +51,7 @@ import org.graalvm.nativebridge.processor.test.TestJNIConfig;
 @AlwaysByReference(type = Context.class, startPointClass = NativeContext.class)
 @AlwaysByReference(type = LanguageAPI.class, startPointClass = NativeCustomLanguageDispatch.class)
 @AlwaysByReference(type = Record.class, startPointClass = NativeRecord.class)
+@AlwaysByReference(type = Handler.class, startPointClass = HSHandler.class)
 abstract class HSAlwaysByReferenceHandler extends HSObject implements Handler {
     HSAlwaysByReferenceHandler(JNIEnv env, JObject handle) {
         super(env, handle);

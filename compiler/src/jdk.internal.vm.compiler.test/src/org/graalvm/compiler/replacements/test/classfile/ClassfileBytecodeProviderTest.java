@@ -293,7 +293,7 @@ public class ClassfileBytecodeProviderTest extends GraalCompilerTest {
             try {
                 compare0();
             } catch (Throwable e) {
-                BytecodeDisassembler dis = new BytecodeDisassembler(true, false);
+                BytecodeDisassembler dis = new BytecodeDisassembler(true, null);
                 Formatter msg = new Formatter();
                 msg.format("Error comparing bytecode for %s", expected.getMethod().format("%H.%n(%p)"));
                 if (bci >= 0) {

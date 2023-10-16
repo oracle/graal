@@ -24,8 +24,11 @@
  */
 package com.oracle.truffle.tools.chromeinspector.objects;
 
+import java.util.Arrays;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
+import com.oracle.truffle.api.utilities.TriState;
 
 public final class JavaTruffleArray extends AbstractInspectorArray {
 
@@ -48,4 +51,20 @@ public final class JavaTruffleArray extends AbstractInspectorArray {
         }
         return array[(int) index];
     }
+
+    @Override
+    TriState isIdenticalOrUndefined(Object other) {
+        if (other instanceof JavaTruffleArray otherArray) {
+            return TriState.valueOf(array == otherArray.array);
+        } else {
+            return TriState.UNDEFINED;
+        }
+    }
+
+    @Override
+    @CompilerDirectives.TruffleBoundary
+    int identityHashCode() {
+        return Arrays.hashCode(array);
+    }
+
 }

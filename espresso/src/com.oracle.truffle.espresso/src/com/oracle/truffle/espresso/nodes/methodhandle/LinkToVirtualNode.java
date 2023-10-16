@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.nodes.methodhandle;
 import static com.oracle.truffle.espresso.classfile.Constants.REF_invokeSpecial;
 
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 public final class LinkToVirtualNode implements Linker {
     public static final Linker virtualLinker = new LinkToVirtualNode();

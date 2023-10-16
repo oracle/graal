@@ -32,7 +32,7 @@ public class CompareZeroExtendWithConstantTest extends GraalCompilerTest {
 
     public static byte[] a = {};
 
-    public static void snippet() {
+    public static void snippet01() {
         for (byte b : a) {
             char c = (char) b;
             GraalDirectives.blackhole(c);
@@ -43,7 +43,21 @@ public class CompareZeroExtendWithConstantTest extends GraalCompilerTest {
     }
 
     @Test
-    public void testSnippet() {
-        test("snippet");
+    public void testSnippet01() {
+        test("snippet01");
+    }
+
+    public static boolean snippet02(boolean p0, long p1) {
+        boolean var0 = p0;
+        byte b = (byte) p1;
+        for (long i = 245799965; i >= 245797839; i = 3) {
+            b = (byte) Character.toUpperCase((char) b);
+        }
+        return var0;
+    }
+
+    @Test
+    public void testSnippet02() {
+        test("snippet02", true, 53069L);
     }
 }

@@ -426,7 +426,7 @@ public class AMD64HotSpotLIRGenerator extends AMD64LIRGenerator implements HotSp
             HotSpotLIRGenerationResult generationResult = getResult();
             LIRFrameState key = currentRuntimeCallInfo;
             if (key == null) {
-                key = LIRFrameState.NO_CALLEE_SAVE_INFO;
+                key = LIRFrameState.noCalleeSaveInfo();
             }
             assert !generationResult.getCalleeSaveInfo().containsKey(key);
             generationResult.getCalleeSaveInfo().put(key, save);

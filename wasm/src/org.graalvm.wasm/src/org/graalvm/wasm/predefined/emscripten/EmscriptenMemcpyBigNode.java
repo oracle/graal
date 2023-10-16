@@ -40,28 +40,31 @@
  */
 package org.graalvm.wasm.predefined.emscripten;
 
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
+
 public class EmscriptenMemcpyBigNode extends WasmBuiltinRootNode {
-    public EmscriptenMemcpyBigNode(WasmLanguage language, WasmInstance module) {
+    public EmscriptenMemcpyBigNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         Object[] args = frame.getArguments();
-        assert args.length == 3;
+        assert WasmArguments.getArgumentCount(args) == 3;
 
-        int dest = (int) args[0];
-        int src = (int) args[1];
-        int num = (int) args[2];
+        int dest = (int) WasmArguments.getArgument(args, 0);
+        int src = (int) WasmArguments.getArgument(args, 1);
+        int num = (int) WasmArguments.getArgument(args, 2);
 
-        WasmMemory memory = instance.memory(0);
+        WasmMemory memory = memory(frame);
         memory.copyFrom(memory, src, dest, num);
 
         return 0;

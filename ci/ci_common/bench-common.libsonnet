@@ -4,9 +4,9 @@
 
   # benchmark job base with automatically generated name
   bench_base:: common.build_base + {
-    # job name automatically generated: <job_prefix>-<suite>-<platform>-<jdk_version>-<os>-<arch>-<job_suffix>
+    # job name automatically generated: <job_prefix>-<suite>-<platform>-<jdk_name>-<os>-<arch>-<job_suffix>
     # null values are omitted from the list.
-    generated_name:: utils.hyphenize([self.job_prefix, self.suite, self.platform, utils.prefixed_jdk(self.jdk_version), self.os, self.arch, self.job_suffix]),
+    generated_name:: utils.hyphenize([self.job_prefix, self.suite, self.platform, self.jdk_name, self.os, self.arch, self.job_suffix]),
     job_prefix:: null,
     job_suffix:: null,
     name:

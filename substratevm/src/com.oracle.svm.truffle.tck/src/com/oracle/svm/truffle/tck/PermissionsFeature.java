@@ -75,7 +75,6 @@ import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.LocatableMultiOptionValue;
 import com.oracle.svm.core.util.UserError;
-import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.ImageClassLoader;
 import com.oracle.svm.hosted.SVMHost;
@@ -133,17 +132,17 @@ public class PermissionsFeature implements Feature {
     /**
      * List of safe packages.
      */
-    private static final Set<String> compilerPackages;
+    private static final Set<String> safePackages;
     static {
-        compilerPackages = new HashSet<>();
-        compilerPackages.add("org.graalvm.");
-        compilerPackages.add("com.oracle.graalvm.");
-        compilerPackages.add("com.oracle.svm.core.");
-        compilerPackages.add("com.oracle.truffle.api.");
-        compilerPackages.add("com.oracle.truffle.polyglot.");
-        compilerPackages.add("com.oracle.truffle.host.");
-        compilerPackages.add("com.oracle.truffle.nfi.");
-        compilerPackages.add("com.oracle.truffle.object.");
+        safePackages = new HashSet<>();
+        safePackages.add("org.graalvm.");
+        safePackages.add("com.oracle.graalvm.");
+        safePackages.add("com.oracle.svm.core.");
+        safePackages.add("com.oracle.truffle.api.");
+        safePackages.add("com.oracle.truffle.polyglot.");
+        safePackages.add("com.oracle.truffle.host.");
+        safePackages.add("com.oracle.truffle.nfi.");
+        safePackages.add("com.oracle.truffle.object.");
     }
 
     private static final Set<ClassLoader> systemClassLoaders;
@@ -153,6 +152,11 @@ public class PermissionsFeature implements Feature {
             systemClassLoaders.add(cl);
         }
     }
+
+    /**
+     * Methods which should not be found.
+     */
+    private Set<BaseMethodNode> deniedMethods = new HashSet<>();
 
     /**
      * Path to store report into.
@@ -166,7 +170,6 @@ public class PermissionsFeature implements Feature {
     /**
      * Classes for reflective accesses which are opaque for permission analysis.
      */
-    private AnalysisType reflectionFieldAccessorFactory;
 
     private InlinedUnsafeMethodNode inlinedUnsafeCall;
 
@@ -178,7 +181,7 @@ public class PermissionsFeature implements Feature {
     }
 
     @Override
-    public void duringSetup(DuringSetupAccess access) {
+    public void beforeAnalysis(BeforeAnalysisAccess access) {
         if (SubstrateOptions.FoldSecurityManagerGetter.getValue()) {
             UserError.abort("%s requires -H:-FoldSecurityManagerGetter option.", ClassUtil.getUnqualifiedName(getClass()));
         }
@@ -192,8 +195,58 @@ public class PermissionsFeature implements Feature {
             sunMiscUnsafe = access.findClassByName("sun.misc.Unsafe");
         }
 
-        FeatureImpl.DuringSetupAccessImpl accessImpl = (FeatureImpl.DuringSetupAccessImpl) access;
+        var accessImpl = (FeatureImpl.BeforeAnalysisAccessImpl) access;
+        initializeDeniedMethods(accessImpl);
+        /*
+         * Ensure methods which are either deniedMethods or on the whiteList are never inlined into
+         * methods. These methods are important for identifying violations.
+         */
+        Set<AnalysisMethod> preventInlineBeforeAnalysis = new HashSet<>();
+        deniedMethods.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
+        whiteList.stream().map(BaseMethodNode::getMethod).forEach(preventInlineBeforeAnalysis::add);
+        accessImpl.getHostVM().registerNeverInlineTrivialHandler((caller, callee) -> {
+            if (!caller.isOriginalMethod()) {
+                // we only care about tracing original methods
+                return false;
+            }
+            if (preventInlineBeforeAnalysis.contains(callee)) {
+                return true;
+            }
+            // We must maintain the boundary of entering a safe class
+            return !isSafeClass(caller.getDeclaringClass()) && isSafeClass(callee.getDeclaringClass());
+        });
+
         accessImpl.getHostVM().keepAnalysisGraphs();
+    }
+
+    private void initializeDeniedMethods(FeatureImpl.BeforeAnalysisAccessImpl accessImpl) {
+        BigBang bb = accessImpl.getBigBang();
+        if (sunMiscUnsafe != null) {
+            inlinedUnsafeCall = new InlinedUnsafeMethodNode(bb.getMetaAccess().lookupJavaType(sunMiscUnsafe));
+        }
+        WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), bb);
+        ConfigurationParserUtils.parseAndRegisterConfigurations(parser,
+                        accessImpl.getImageClassLoader(),
+                        ClassUtil.getUnqualifiedName(getClass()),
+                        Options.TruffleTCKPermissionsExcludeFiles,
+                        new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
+                        CONFIG);
+        whiteList = parser.getLoadedWhiteList();
+        deniedMethods.addAll(findMethods(bb, SecurityManager.class, (m) -> m.getName().startsWith("check")));
+        if (sunMiscUnsafe != null) {
+            deniedMethods.addAll(findMethods(bb, sunMiscUnsafe, ModifiersProvider::isPublic));
+        }
+        // The type of the host Java NIO FileSystem.
+        // The FileSystem obtained from the FileSystem.newDefaultFileSystem() is in the Truffle
+        // package but
+        // can be directly used by a language. We need to include it into deniedMethods.
+        deniedMethods.addAll(findMethods(bb, FileSystem.newDefaultFileSystem().getClass(), ModifiersProvider::isPublic));
+        // JDK 19 introduced BigInteger.parallelMultiply that uses the ForkJoinPool.
+        // We deny this method but explicitly allow non-parallel multiply (cf. jre.json).
+        deniedMethods.addAll(findMethods(bb, BigInteger.class, (m) -> m.getName().startsWith("parallel")));
+        if (inlinedUnsafeCall != null) {
+            deniedMethods.add(inlinedUnsafeCall);
+        }
     }
 
     @Override
@@ -208,35 +261,6 @@ public class PermissionsFeature implements Feature {
         DebugContext debugContext = accessImpl.getDebugContext();
         try (DebugContext.Scope s = debugContext.scope(ClassUtil.getUnqualifiedName(getClass()))) {
             BigBang bb = accessImpl.getBigBang();
-            if (sunMiscUnsafe != null) {
-                inlinedUnsafeCall = new InlinedUnsafeMethodNode(bb.getMetaAccess().lookupJavaType(sunMiscUnsafe));
-            }
-            WhiteListParser parser = new WhiteListParser(accessImpl.getImageClassLoader(), bb);
-            ConfigurationParserUtils.parseAndRegisterConfigurations(parser,
-                            accessImpl.getImageClassLoader(),
-                            ClassUtil.getUnqualifiedName(getClass()),
-                            Options.TruffleTCKPermissionsExcludeFiles,
-                            new ResourceAsOptionDecorator(getClass().getPackage().getName().replace('.', '/') + "/resources/jre.json"),
-                            CONFIG);
-            reflectionFieldAccessorFactory = bb.getMetaAccess().lookupJavaType(loadClassOrFail("jdk.internal.reflect.UnsafeFieldAccessorFactory"));
-            VMError.guarantee(reflectionFieldAccessorFactory != null, "Cannot load one or several reflection types");
-            whiteList = parser.getLoadedWhiteList();
-            Set<BaseMethodNode> deniedMethods = new HashSet<>();
-            deniedMethods.addAll(findMethods(bb, SecurityManager.class, (m) -> m.getName().startsWith("check")));
-            if (sunMiscUnsafe != null) {
-                deniedMethods.addAll(findMethods(bb, sunMiscUnsafe, ModifiersProvider::isPublic));
-            }
-            // The type of the host Java NIO FileSystem.
-            // The FileSystem obtained from the FileSystem.newDefaultFileSystem() is in the Truffle
-            // package but
-            // can be directly used by a language. We need to include it into deniedMethods.
-            deniedMethods.addAll(findMethods(bb, FileSystem.newDefaultFileSystem().getClass(), ModifiersProvider::isPublic));
-            // JDK 19 introduced BigInteger.parallelMultiply that uses the ForkJoinPool.
-            // We deny this method but explicitly allow non-parallel multiply (cf. jre.json).
-            deniedMethods.addAll(findMethods(bb, BigInteger.class, (m) -> m.getName().startsWith("parallel")));
-            if (inlinedUnsafeCall != null) {
-                deniedMethods.add(inlinedUnsafeCall);
-            }
             Map<BaseMethodNode, Set<BaseMethodNode>> cg = callGraph(bb, deniedMethods, debugContext, (SVMHost) bb.getHostVM());
             List<List<BaseMethodNode>> report = new ArrayList<>();
             Set<CallGraphFilter> contextFilters = new HashSet<>();
@@ -268,8 +292,6 @@ public class PermissionsFeature implements Feature {
                                     pw.print(builder);
                                 });
             }
-        } finally {
-            inlinedUnsafeCall = null;
         }
     }
 
@@ -296,7 +318,7 @@ public class PermissionsFeature implements Feature {
         Map<BaseMethodNode, Set<BaseMethodNode>> visited = new HashMap<>();
         for (AnalysisMethodNode m : findMethods(bb, OptimizedCallTarget.class, (m) -> "profiledPERoot".equals(m.getName()))) {
             visited.put(m, new HashSet<>());
-            todo.offer(m);
+            todo.add(m);
         }
         Deque<BaseMethodNode> path = new LinkedList<>();
         for (AnalysisMethodNode m : todo) {
@@ -316,7 +338,7 @@ public class PermissionsFeature implements Feature {
         String mName = getMethodName(m);
         path.addFirst(mNode);
         StructuredGraph mGraph = hostVM.getAnalysisGraph(m);
-        if (mGraph.hasUnsafeAccess() && !(isSystemClass(mNode) || isCompilerClass(mNode))) {
+        if (mGraph.hasUnsafeAccess() && !isSystemOrSafeClass(mNode)) {
             debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Method: %s has unsafe access.", mName);
             if (inlinedUnsafeCall != null) {
                 visited.computeIfAbsent(inlinedUnsafeCall, (e) -> new HashSet<>()).add(mNode);
@@ -328,7 +350,7 @@ public class PermissionsFeature implements Feature {
             for (InvokeInfo invoke : m.getInvokes()) {
                 for (AnalysisMethod callee : invoke.getOriginalCallees()) {
                     AnalysisMethodNode calleeNode = new AnalysisMethodNode(callee);
-                    if (callee.isInvoked() || !(isSystemClass(calleeNode) || isCompilerClass(calleeNode))) {
+                    if (callee.isInvoked() || !isSystemOrSafeClass(calleeNode)) {
                         Set<BaseMethodNode> parents = visited.get(calleeNode);
                         String calleeName = getMethodName(callee);
                         debugContext.log(DebugContext.VERY_DETAILED_LEVEL, "Callee: %s, new: %b.", calleeName, parents == null);
@@ -392,7 +414,7 @@ public class PermissionsFeature implements Feature {
      * @return {@code true} if the call of given method crosses some language method.
      */
     private static boolean isBackTraceOverLanguageMethod(AnalysisMethodNode method, Deque<? extends BaseMethodNode> path) {
-        if (!isCompilerClass(method) && !isSystemClass(method)) {
+        if (!isSystemOrSafeClass(method)) {
             return false;
         }
         boolean found = false;
@@ -400,7 +422,7 @@ public class PermissionsFeature implements Feature {
             BaseMethodNode pe = it.next();
             if (method.equals(pe)) {
                 found = true;
-            } else if (found && !isCompilerClass(pe) && !isSystemClass(pe)) {
+            } else if (found && !isSystemOrSafeClass(pe)) {
                 return true;
             }
         }
@@ -429,19 +451,19 @@ public class PermissionsFeature implements Feature {
                     Set<CallGraphFilter> contextFilters,
                     LinkedHashSet<BaseMethodNode> visited,
                     int depth,
-                    int noReports) {
-        int useNoReports = noReports;
-        if (useNoReports >= maxReports) {
-            return useNoReports;
+                    int initialNumReports) {
+        int numReports = initialNumReports;
+        if (numReports >= maxReports) {
+            return numReports;
         }
         if (depth > 1) {
-            // The denied method can be a compiler method
-            if (isCompilerClass(mNode)) {
-                return useNoReports;
+            // The denied method can be a method from a "safe" class
+            if (isSafeClass(mNode)) {
+                return numReports;
             }
-            // The denied method cannot be excluded by a white list
+            // The denied method can be excluded by a white list
             if (isExcludedClass(mNode)) {
-                return useNoReports;
+                return numReports;
             }
         }
         if (!visited.contains(mNode)) {
@@ -450,35 +472,28 @@ public class PermissionsFeature implements Feature {
                 Set<BaseMethodNode> callers = callGraph.get(mNode);
                 if (depth > maxDepth) {
                     if (!callers.isEmpty()) {
-                        useNoReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
+                        numReports = collectViolations(report, callers.iterator().next(), maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, numReports);
                     }
                 } else if (!isSystemClass(mNode)) {
                     List<BaseMethodNode> callPath = new ArrayList<>(visited);
                     report.add(callPath);
-                    useNoReports++;
+                    numReports++;
                 } else {
-                    nextCaller: for (BaseMethodNode caller : callers) {
-                        for (CallGraphFilter filter : contextFilters) {
-                            if (isReflectionFieldAccessorFactory(caller) || filter.test(mNode, caller, visited)) {
-                                continue nextCaller;
-                            }
+                    for (BaseMethodNode caller : callers) {
+                        if (contextFilters.stream().noneMatch((f) -> f.test(mNode, caller, visited))) {
+                            numReports = collectViolations(report, caller, maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, numReports);
                         }
-                        useNoReports = collectViolations(report, caller, maxDepth, maxReports, callGraph, contextFilters, visited, depth + 1, useNoReports);
                     }
                 }
             } finally {
                 visited.remove(mNode);
             }
         }
-        return useNoReports;
+        return numReports;
     }
 
-    /**
-     * Tests if the given {@link BaseMethodNode} is part of the factory of field accessors.
-     */
-    private boolean isReflectionFieldAccessorFactory(BaseMethodNode methodNode) {
-        AnalysisMethod method = methodNode.getMethod();
-        return method != null && reflectionFieldAccessorFactory.isAssignableFrom(method.getDeclaringClass());
+    private static boolean isSystemOrSafeClass(BaseMethodNode methodNode) {
+        return isSystemClass(methodNode) || isSafeClass(methodNode);
     }
 
     /**
@@ -501,17 +516,12 @@ public class PermissionsFeature implements Feature {
      *
      * @param method the {@link AnalysisMethod} to check
      */
-    private static boolean isCompilerClass(BaseMethodNode method) {
-        return isClassInPackage(method.getOwner().toJavaName(), compilerPackages);
+    private static boolean isSafeClass(BaseMethodNode method) {
+        return isSafeClass(method.getOwner());
     }
 
-    /**
-     * Tests if the given {@link BaseMethodNode} is excluded by white list.
-     *
-     * @param methodNode the {@link BaseMethodNode} to check
-     */
-    private boolean isExcludedClass(BaseMethodNode methodNode) {
-        return whiteList.contains(methodNode);
+    private static boolean isSafeClass(AnalysisType type) {
+        return isClassInPackage(type.toJavaName(), safePackages);
     }
 
     /**
@@ -528,6 +538,15 @@ public class PermissionsFeature implements Feature {
             }
         }
         return false;
+    }
+
+    /**
+     * Tests if the given {@link BaseMethodNode} is excluded by white list.
+     *
+     * @param methodNode the {@link BaseMethodNode} to check
+     */
+    private boolean isExcludedClass(BaseMethodNode methodNode) {
+        return whiteList.contains(methodNode);
     }
 
     /**
@@ -595,6 +614,9 @@ public class PermissionsFeature implements Feature {
      * Filter to filter out known valid calls, included by points to analysis, from the report.
      */
     private interface CallGraphFilter {
+        /**
+         * @return whether this methodNode should not be considered a violation
+         */
         boolean test(BaseMethodNode methodNode, BaseMethodNode callerNode, LinkedHashSet<BaseMethodNode> trace);
     }
 
@@ -648,7 +670,7 @@ public class PermissionsFeature implements Feature {
     /**
      * Filters out {@code AccessController#doPrivileged} done by JRE.
      */
-    private final class SafePrivilegedRecognizer implements CallGraphFilter {
+    private static final class SafePrivilegedRecognizer implements CallGraphFilter {
 
         private final SVMHost hostVM;
         private final Set<? extends BaseMethodNode> doPrivileged;
@@ -663,8 +685,7 @@ public class PermissionsFeature implements Feature {
             if (!doPrivileged.contains(methodNode)) {
                 return false;
             }
-            boolean safeClass = isCompilerClass(callerNode) || isSystemClass(callerNode);
-            if (safeClass) {
+            if (isSystemOrSafeClass(callerNode)) {
                 return true;
             }
             AnalysisMethod method = methodNode.getMethod();

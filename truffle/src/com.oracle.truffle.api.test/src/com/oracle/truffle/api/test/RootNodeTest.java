@@ -264,6 +264,8 @@ public class RootNodeTest {
         if (interop.hasExecutableName(guestObject)) {
             Object executableName = interop.getExecutableName(guestObject);
             Assert.assertTrue(interop.isString(executableName));
+        } else {
+            AbstractPolyglotTest.assertFails(() -> interop.getExecutableName(guestObject), UnsupportedMessageException.class);
         }
         if (interop.hasDeclaringMetaObject(guestObject)) {
             Object metaObject = interop.getDeclaringMetaObject(guestObject);

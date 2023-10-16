@@ -214,9 +214,7 @@ public class SVMMethodTypeFlowBuilder extends MethodTypeFlowBuilder {
          * Create a proxy invoke type flow for the inlined method.
          */
         PointsToAnalysisMethod targetMethod = (PointsToAnalysisMethod) node.getInvokeTarget();
-        // GR-45916 add proper source position information.
-        BytecodePosition position = AbstractAnalysisEngine.syntheticSourcePosition(node, method);
         InvokeKind invokeKind = targetMethod.isStatic() ? InvokeKind.Static : InvokeKind.Special;
-        processMethodInvocation(state, node, invokeKind, targetMethod, node.getArguments(), true, position, true);
+        processMethodInvocation(state, node, invokeKind, targetMethod, node.getArguments(), true, getInvokePosition(node), true);
     }
 }

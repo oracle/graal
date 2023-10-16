@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,11 +76,12 @@ public class WasmPolyglotTestSuite {
                         ByteSequence.create(binaryReturnConst),
                         "main");
         Source source = sourceBuilder.build();
-        Context context = contextBuilder.build();
-        context.eval(source);
-        Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
-        Value result = mainFunction.execute();
-        Assert.assertEquals("Should be equal: ", 42, result.asInt());
+        try (Context context = contextBuilder.build()) {
+            context.eval(source);
+            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value result = mainFunction.execute();
+            Assert.assertEquals("Should be equal: ", 42, result.asInt());
+        }
     }
 
     @Test
@@ -110,11 +111,12 @@ public class WasmPolyglotTestSuite {
         Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
         Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, test, "main");
         Source source = sourceBuilder.build();
-        Context context = contextBuilder.build();
-        context.eval(source);
-        Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
-        Value result = mainFunction.execute();
-        Assert.assertEquals("Should be equal: ", 11, result.asInt());
+        try (Context context = contextBuilder.build()) {
+            context.eval(source);
+            Value mainFunction = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            Value result = mainFunction.execute();
+            Assert.assertEquals("Should be equal: ", 11, result.asInt());
+        }
     }
 
     @Test
@@ -202,21 +204,23 @@ public class WasmPolyglotTestSuite {
                     "74615f656e6403020a090202000b0400",
                     "412a0b");
 
-    private static final String textOverwriteElement = "(module" +
-                    "  (table 10 funcref)\n" +
-                    "  (type (func (result i32)))\n" +
-                    "  (func $f (result i32)\n" +
-                    "    i32.const 7)\n" +
-                    "  (func $g (result i32)\n" +
-                    "    i32.const 11)\n" +
-                    "  (func (result i32)\n" +
-                    "    i32.const 3\n" +
-                    "    call_indirect (type 0))\n" +
-                    "  (export \"main\" (func 2))\n" +
-                    "  (elem (i32.const 0) $f)\n" +
-                    "  (elem (i32.const 3) $f)\n" +
-                    "  (elem (i32.const 7) $f)\n" +
-                    "  (elem (i32.const 5) $f)\n" +
-                    "  (elem (i32.const 3) $g)\n" +
-                    ")";
+    private static final String textOverwriteElement = """
+                    (module
+                      (table 10 funcref)
+                      (type (func (result i32)))
+                      (func $f (result i32)
+                        i32.const 7)
+                      (func $g (result i32)
+                        i32.const 11)
+                      (func (result i32)
+                        i32.const 3
+                        call_indirect (type 0))
+                      (export "main" (func 2))
+                      (elem (i32.const 0) $f)
+                      (elem (i32.const 3) $f)
+                      (elem (i32.const 7) $f)
+                      (elem (i32.const 5) $f)
+                      (elem (i32.const 3) $g)
+                    )
+                    """;
 }

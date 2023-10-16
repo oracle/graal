@@ -37,8 +37,10 @@ import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
+import org.graalvm.compiler.nodes.extended.ForeignCallNode;
 import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
 import org.graalvm.compiler.nodes.spi.Lowerable;
+import org.graalvm.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
 /**
@@ -76,15 +78,13 @@ public class CFunctionCaptureNode extends FixedWithNextNode implements Lowerable
         return LocationIdentity.any();
     }
 
-    public ForeignCallDescriptor getCaptureFunction() {
-        return captureFunction;
-    }
+    @Override
+    public void lower(LoweringTool tool) {
+        if (tool.getLoweringStage() != LoweringTool.StandardLoweringStage.LOW_TIER) {
+            return;
+        }
 
-    public ValueNode getStatesToCapture() {
-        return statesToCapture;
-    }
-
-    public ValueNode getCaptureBuffer() {
-        return captureBuffer;
+        final ForeignCallNode call = graph().add(new ForeignCallNode(captureFunction, statesToCapture, captureBuffer));
+        graph().replaceFixedWithFixed(this, call);
     }
 }

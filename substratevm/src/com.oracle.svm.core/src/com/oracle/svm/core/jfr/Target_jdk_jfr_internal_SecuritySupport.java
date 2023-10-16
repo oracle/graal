@@ -30,8 +30,6 @@ import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK17OrEarlier;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.jfr.internal.SecuritySupport.SafePath;
@@ -41,9 +39,6 @@ public final class Target_jdk_jfr_internal_SecuritySupport {
     // Checkstyle: stop
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     static SafePath JFC_DIRECTORY;
-    @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
-    @TargetElement(onlyWith = JDK17OrEarlier.class) //
-    static SafePath USER_HOME;
     @Alias @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Reset) //
     static SafePath JAVA_IO_TMPDIR;
     // Checkstyle: resume

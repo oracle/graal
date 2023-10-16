@@ -29,6 +29,7 @@ import java.io.FilterInputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import jdk.internal.misc.Unsafe;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -39,6 +40,10 @@ import com.oracle.svm.core.jdk.RuntimeSupport;
 final class NativeSecureRandomFilesCloserTearDownHook implements RuntimeSupport.Hook {
     @Override
     public void execute(boolean isFirstIsolate) {
+        if (Unsafe.getUnsafe().shouldBeInitialized(Target_sun_security_provider_NativePRNG.class)) {
+            // Avoid NativePRNG tear down hooks if platform native libs not initialized
+            return;
+        }
         Target_sun_security_provider_NativePRNG_RandomIO instance = Target_sun_security_provider_NativePRNG.INSTANCE;
         if (instance != null) {
             close(instance.nextIn);

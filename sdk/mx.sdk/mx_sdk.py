@@ -46,6 +46,7 @@ import mx
 import mx_gate
 import mx_sdk_vm
 import mx_sdk_vm_impl
+import pathlib
 import mx_sdk_benchmark # pylint: disable=unused-import
 import mx_sdk_clangformat # pylint: disable=unused-import
 import datetime
@@ -270,3 +271,41 @@ class GraalVMJDK(mx.JDKFactory):
         return "GraalVM JDK"
 
 mx.addJDKFactory('graalvm', mx.get_jdk(tag='default').javaCompliance, GraalVMJDK())
+
+
+def maven_deploy_public_repo_dir():
+    return os.path.join(_suite.get_mx_output_dir(), 'public-maven-repo')
+
+@mx.command(_suite.name, 'maven-deploy-public')
+def maven_deploy_public(args, licenses=None, deploy_snapshots=True):
+    """Helper to simplify deploying all public Maven dependendencies into the mxbuild directory"""
+    if deploy_snapshots:
+        artifact_version = f'{mx_sdk_vm_impl.graalvm_version("graalvm")}-SNAPSHOT'
+    else:
+        artifact_version = f'{mx_sdk_vm_impl.graalvm_version("graalvm")}'
+    path = maven_deploy_public_repo_dir()
+    mx.rmtree(path, ignore_errors=True)
+    os.mkdir(path)
+
+    if not licenses:
+        # default licenses used
+        licenses = ['GFTC', 'EPL-2.0', 'PSF-License', 'GPLv2-CPE', 'ICU,GPLv2', 'BSD-simplified', 'BSD-new', 'UPL', 'MIT']
+
+    deploy_args = [
+            '--tags=public',
+            '--all-suites',
+            '--all-distribution-types',
+            f'--version-string={artifact_version}',
+            '--validate=full',
+            '--licenses', ','.join(licenses),
+            'local',
+            pathlib.Path(path).as_uri(),
+        ]
+    if mx.get_jdk().javaCompliance > '17':
+        mx.warn("Javadoc won't be deployed as a JDK > 17 is not yet compatible with javadoc doclets. In order to deploy javadoc use a JDK 17 as a JDK on JAVA_HOME.")
+        deploy_args += ["--suppress-javadoc"]
+
+    mx.log(f'mx maven-deploy {" ".join(deploy_args)}')
+    mx.maven_deploy(deploy_args)
+    mx.log(f'Deployed Maven artefacts to {path}')
+    return path

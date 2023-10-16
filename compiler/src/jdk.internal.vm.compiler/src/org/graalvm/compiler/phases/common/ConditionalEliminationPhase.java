@@ -85,6 +85,7 @@ import org.graalvm.compiler.nodes.calc.AndNode;
 import org.graalvm.compiler.nodes.calc.IntegerEqualsNode;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.cfg.HIRBlock;
+import org.graalvm.compiler.nodes.extended.CaptureStateBeginNode;
 import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.extended.IntegerSwitchNode;
 import org.graalvm.compiler.nodes.extended.LoadHubNode;
@@ -226,11 +227,46 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
 
         HIRBlock anchorBlock;
 
+        /**
+         * Guards cannot be moved above CaptureStateBeginNodes in order to ensure deoptimizations
+         * are always attached to valid FrameStates.
+         */
+        private static boolean disallowUpwardGuardMovement(HIRBlock b) {
+            return b.getBeginNode() instanceof CaptureStateBeginNode;
+        }
+
         @Override
         @SuppressWarnings("try")
         public HIRBlock enter(HIRBlock b) {
             HIRBlock oldAnchorBlock = anchorBlock;
-            if (b.getDominator() == null || b.getDominator().getPostdominator() != b) {
+            /*
+             * The goal of this pass is to move guards upward while not introducing the guards on
+             * new paths. At all points the anchorBlock must set so the following two invariants
+             * hold:
+             *
+             * (1) The anchorBlock dominates the current block.
+             *
+             * (2) The current block post-dominates the anchorBlock.
+             *
+             * Note blocks are traversed in dominator tree order.
+             *
+             * anchorBlock must be set to the current block if:
+             *
+             * (1) The current block does not have a dominator (i.e., this is the start of a new
+             * dominator tree walk).
+             *
+             * (2) The immediate dominator of current block is not post-dominated by this block. Due
+             * to using a dominator tree traversal, this is equivalent to ensuring the current block
+             * post-dominates the anchorBlock.
+             *
+             * (3) Guards are not allowed to move above this block. The can happen when dominator
+             * blocks can have invalid FrameStates, such as when the block start is a
+             * CaptureStateBeginNode.
+             */
+            boolean updateAnchorBlock = b.getDominator() == null ||
+                            b.getDominator().getPostdominator() != b ||
+                            disallowUpwardGuardMovement(b);
+            if (updateAnchorBlock) {
                 // New anchor.
                 anchorBlock = b;
             }
@@ -271,52 +307,51 @@ public class ConditionalEliminationPhase extends BasePhase<CoreProviders> {
                      * successors are loop exits, even of potentially different loops. Thus, we need
                      * to ensure we see all possible loop exits involved for all loops.
                      */
-                    LoopExitNode trueSuccLex = trueSuccessor instanceof LoopExitNode ? (LoopExitNode) trueSuccessor : null;
-                    LoopExitNode falseSuccLex = falseSuccessor instanceof LoopExitNode ? (LoopExitNode) falseSuccessor : null;
                     EconomicSet<LoopExitNode> allLoopsAllExits = null;
-                    if (trueSuccLex != null) {
+                    if (trueSuccessor instanceof LoopExitNode successor) {
                         if (allLoopsAllExits == null) {
                             allLoopsAllExits = EconomicSet.create();
                         }
-                        allLoopsAllExits.addAll(trueSuccLex.loopBegin().loopExits());
-                        allLoopsAllExits.remove(trueSuccLex);
+                        allLoopsAllExits.addAll(successor.loopBegin().loopExits());
+                        allLoopsAllExits.remove(successor);
                     }
-                    if (falseSuccLex != null) {
+                    if (falseSuccessor instanceof LoopExitNode successor) {
                         if (allLoopsAllExits == null) {
                             allLoopsAllExits = EconomicSet.create();
                         }
-                        allLoopsAllExits.addAll(falseSuccLex.loopBegin().loopExits());
-                        allLoopsAllExits.remove(falseSuccLex);
+                        allLoopsAllExits.addAll(successor.loopBegin().loopExits());
+                        allLoopsAllExits.remove(successor);
                     }
                     if (allLoopsAllExits == null || allLoopsAllExits.isEmpty()) {
-                        for (GuardNode guard : falseSuccessor.guards().snapshot()) {
-                            GuardNode otherGuard = trueGuards.get(guard.getCondition());
-                            if (otherGuard != null && guard.isNegated() == otherGuard.isNegated()) {
-                                Speculation speculation = otherGuard.getSpeculation();
+                        for (GuardNode falseGuard : falseSuccessor.guards().snapshot()) {
+                            GuardNode trueGuard = trueGuards.get(falseGuard.getCondition());
+                            if (trueGuard != null && falseGuard.isNegated() == trueGuard.isNegated()) {
+                                Speculation speculation = trueGuard.getSpeculation();
                                 if (speculation == null) {
-                                    speculation = guard.getSpeculation();
-                                } else if (guard.getSpeculation() != null && guard.getSpeculation() != speculation) {
+                                    speculation = falseGuard.getSpeculation();
+                                } else if (falseGuard.getSpeculation() != null && falseGuard.getSpeculation() != speculation) {
                                     // Cannot optimize due to different speculations.
                                     continue;
                                 }
-                                try (DebugCloseable closeable = guard.withNodeSourcePosition()) {
-                                    StructuredGraph graph = guard.graph();
-                                    GuardNode newlyCreatedGuard = new GuardNode(guard.getCondition(), anchorBlock.getBeginNode(), guard.getReason(), guard.getAction(), guard.isNegated(), speculation,
-                                                    guard.getNoDeoptSuccessorPosition());
+                                try (DebugCloseable closeable = falseGuard.withNodeSourcePosition()) {
+                                    StructuredGraph graph = falseGuard.graph();
+                                    GuardNode newlyCreatedGuard = new GuardNode(falseGuard.getCondition(), anchorBlock.getBeginNode(), falseGuard.getReason(), falseGuard.getAction(),
+                                                    falseGuard.isNegated(), speculation,
+                                                    falseGuard.getNoDeoptSuccessorPosition());
                                     GuardNode newGuard = node.graph().unique(newlyCreatedGuard);
-                                    if (otherGuard.isAlive()) {
+                                    if (trueGuard.isAlive()) {
                                         if (trueSuccessor instanceof LoopExitNode && beginNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
-                                            otherGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) trueSuccessor));
+                                            trueGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) trueSuccessor));
                                         } else {
-                                            otherGuard.replaceAndDelete(newGuard);
+                                            trueGuard.replaceAndDelete(newGuard);
                                         }
                                     }
                                     if (falseSuccessor instanceof LoopExitNode && beginNode.graph().isBeforeStage(StageFlag.VALUE_PROXY_REMOVAL)) {
-                                        guard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) falseSuccessor));
+                                        falseGuard.replaceAndDelete(ProxyNode.forGuard(newGuard, (LoopExitNode) falseSuccessor));
                                     } else {
-                                        guard.replaceAndDelete(newGuard);
+                                        falseGuard.replaceAndDelete(newGuard);
                                     }
-                                    graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardCombination", guard);
+                                    graph.getOptimizationLog().report(ConditionalEliminationPhase.class, "GuardCombination", falseGuard);
                                 }
                             }
                         }

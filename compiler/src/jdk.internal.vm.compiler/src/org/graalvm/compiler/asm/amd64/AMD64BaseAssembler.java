@@ -311,18 +311,6 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
         }
     }
 
-    /**
-     * Returns {@link CPUFeature} instance denoted by {@code name}, or null if the JVMCI release
-     * does not support this feature.
-     */
-    public static final CPUFeature asCPUFeature(String name) {
-        try {
-            return CPUFeature.valueOf(name);
-        } catch (IllegalArgumentException e) {
-            return null;
-        }
-    }
-
     protected static boolean inRC(RegisterCategory rc, Register r) {
         return r.getRegisterCategory().equals(rc);
     }

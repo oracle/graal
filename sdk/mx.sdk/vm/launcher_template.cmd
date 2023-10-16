@@ -80,12 +80,7 @@ set "module_launcher=<module_launcher>"
 if "%module_launcher%"=="True" (
   set "main_class=--module <main_module>/<main_class>"
   set "app_path_arg=--module-path"
-  set exports_file="%location%.!basename!.exports"
-  if not exist "!exports_file!" (
-    for %%a in (<add_exports>) do (
-      echo %%a >> "!exports_file!"
-    )
-  )
+  set exports_file="%location%!basename!.export-list"
   set "jvm_args=!jvm_args! @!exports_file!"
 ) else (
   set "main_class=<main_class>"

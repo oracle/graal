@@ -27,6 +27,7 @@ package org.graalvm.compiler.microbenchmarks.graal.util;
 import static org.graalvm.compiler.microbenchmarks.graal.util.GraalUtil.getGraph;
 import static org.graalvm.compiler.microbenchmarks.graal.util.GraalUtil.getMethodFromMethodSpec;
 
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.openjdk.jmh.annotations.Level;
@@ -76,6 +77,11 @@ public abstract class GraphState {
 
     @Setup(Level.Invocation)
     public void beforeInvocation() {
+        /*
+         * [GR-48937] Reset the progress-based compilation alarm for the jmh thread, because it can
+         * falsely assume that this thread is stuck during graph copying.
+         */
+        CompilationAlarm.resetProgressDetection();
         graph = (StructuredGraph) originalGraph.copy(originalGraph.getDebug());
     }
 }

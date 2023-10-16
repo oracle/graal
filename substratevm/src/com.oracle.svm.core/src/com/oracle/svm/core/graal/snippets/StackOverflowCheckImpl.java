@@ -58,8 +58,6 @@ import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
 import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
 import org.graalvm.compiler.replacements.Snippets;
 import org.graalvm.nativeimage.ImageInfo;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;
@@ -111,27 +109,33 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
 
     @Uninterruptible(reason = "Called while thread is being attached to the VM, i.e., when the thread state is not yet set up.")
     @Override
-    public void initialize(IsolateThread thread) {
-        /*
-         * Get the real physical end of the stack. Everything past this point is memory-protected.
-         */
-        OSSupport osSupport = ImageSingletons.lookup(StackOverflowCheck.OSSupport.class);
+    public boolean initialize() {
+        /* Get the physical end of the stack. Everything past this point is memory-protected. */
         WordPointer stackBasePtr = StackValue.get(WordPointer.class);
         WordPointer stackEndPtr = StackValue.get(WordPointer.class);
-        osSupport.lookupStack(stackBasePtr, stackEndPtr, WordFactory.zero());
+        if (!PlatformSupport.singleton().lookupStack(stackBasePtr, stackEndPtr)) {
+            return false;
+        }
+
         UnsignedWord stackBase = stackBasePtr.read();
         UnsignedWord stackEnd = stackEndPtr.read();
+        VMError.guarantee(stackEnd.notEqual(0), "Stack end must not be 0");
 
-        /* Initialize the stack base and the stack end thread locals. */
-        VMThreads.StackBase.set(thread, stackBase);
-        VMThreads.StackEnd.set(thread, stackEnd);
+        /* Cache the stack boundaries in thread locals and setup yellow/red zone. */
+        VMThreads.StackBase.set(stackBase);
+        VMThreads.StackEnd.set(stackEnd);
+        setupYellowAndRedZone(stackEnd);
+        return true;
+    }
 
+    @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+    private static void setupYellowAndRedZone(UnsignedWord stackEnd) {
         /*
-         * Set up our yellow and red zones. That memory is not memory protected, it is a soft limit
-         * that we can change.
+         * The memory of the yellow and red zone is not protected, it is just a soft limit that we
+         * can change.
          */
-        stackBoundaryTL.set(thread, stackEnd.add(Options.StackYellowZoneSize.getValue() + Options.StackRedZoneSize.getValue()));
-        yellowZoneStateTL.set(thread, STATE_YELLOW_ENABLED);
+        stackBoundaryTL.set(stackEnd.add(Options.StackYellowZoneSize.getValue() + Options.StackRedZoneSize.getValue()));
+        yellowZoneStateTL.set(STATE_YELLOW_ENABLED);
     }
 
     @Override
@@ -244,25 +248,32 @@ public final class StackOverflowCheckImpl implements StackOverflowCheck {
         yellowZoneStateTL.set(0x7EFEFEFE);
     }
 
+    /**
+     * If the stack size is larger than the requested stack size, then artificially limit the stack
+     * to match the requested stack size.
+     */
     @Uninterruptible(reason = "Atomically manipulating state of multiple thread local variables.")
-    private static void updateStackOverflowBoundary(long requestedSize) {
-        UnsignedWord stackEnd = ImageSingletons.lookup(StackOverflowCheck.OSSupport.class).lookupStackEnd(WordFactory.unsigned(requestedSize));
-        VMThreads.StackEnd.set(stackEnd);
+    private static void updateStackOverflowBoundary(UnsignedWord requestedStackSize) {
+        UnsignedWord stackBase = VMThreads.StackBase.get();
+        UnsignedWord stackEnd = VMThreads.StackEnd.get();
+        if (stackBase.equal(0) || stackEnd.equal(0)) {
+            /* The stack size is unknown. */
+            return;
+        }
 
-        /*
-         * Set up our yellow and red zones. That memory is not memory protected, it is a soft limit
-         * that we can change.
-         */
-        stackBoundaryTL.set(stackEnd.add(Options.StackYellowZoneSize.getValue() + Options.StackRedZoneSize.getValue()));
-        yellowZoneStateTL.set(STATE_YELLOW_ENABLED);
+        UnsignedWord stackSize = stackBase.subtract(stackEnd);
+        if (stackSize.aboveThan(requestedStackSize)) {
+            UnsignedWord newStackEnd = stackBase.subtract(requestedStackSize);
+            VMThreads.StackEnd.set(newStackEnd);
+            setupYellowAndRedZone(newStackEnd);
+        }
     }
 
     @Override
     public void updateStackOverflowBoundary() {
         long threadSize = PlatformThreads.getRequestedStackSize(Thread.currentThread());
-
         if (threadSize != 0) {
-            updateStackOverflowBoundary(threadSize);
+            updateStackOverflowBoundary(WordFactory.unsigned(threadSize));
         }
     }
 

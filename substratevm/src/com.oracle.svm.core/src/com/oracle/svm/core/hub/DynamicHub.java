@@ -72,6 +72,7 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.StringJoiner;
 
+import org.graalvm.compiler.api.replacements.Fold;
 import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -100,8 +101,6 @@ import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.heap.UnknownPrimitiveField;
-import com.oracle.svm.core.jdk.JDK19OrLater;
-import com.oracle.svm.core.jdk.JDK21OrLater;
 import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.meta.SharedType;
@@ -314,6 +313,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
      * Back link to the SubstrateType used by the substrate meta access. Only used for the subset of
      * types for which a SubstrateType exists.
      */
+    @UnknownObjectField(fullyQualifiedTypes = "com.oracle.svm.graal.meta.SubstrateType")//
     private SharedType metaType;
 
     /**
@@ -350,7 +350,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
 
     private final DynamicHubCompanion companion;
 
-    private String signature;
+    private final String signature;
 
     @Substitute //
     @InjectAccessors(ClassLoaderAccessors.class) //
@@ -386,7 +386,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     @Platforms(Platform.HOSTED_ONLY.class)
     public DynamicHub(Class<?> hostedJavaClass, String name, int hubType, ReferenceType referenceType, DynamicHub superType, DynamicHub componentHub, String sourceFileName, int modifiers,
                     ClassLoader classLoader, boolean isHidden, boolean isRecord, Class<?> nestHost, boolean assertionStatus, boolean hasDefaultMethods, boolean declaresDefaultMethods,
-                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, String simpleBinaryName, Object declaringClass) {
+                    boolean isSealed, boolean isVMInternal, boolean isLambdaFormHidden, String simpleBinaryName, Object declaringClass, String signature) {
         this.hostedJavaClass = hostedJavaClass;
         this.module = hostedJavaClass.getModule();
         this.name = name;
@@ -399,6 +399,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         this.nestHost = nestHost;
         this.simpleBinaryName = simpleBinaryName;
         this.declaringClass = declaringClass;
+        this.signature = signature;
 
         this.flags = NumUtil.safeToUShort(makeFlag(IS_PRIMITIVE_FLAG_BIT, hostedJavaClass.isPrimitive()) |
                         makeFlag(IS_INTERFACE_FLAG_BIT, hostedJavaClass.isInterface()) |
@@ -518,11 +519,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
             String message = e.getMessage();
             enumConstantsReference = new LazyFinalReference<>(() -> throwNoClassDefFoundErrorAtRuntime(message));
         }
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    public void setSignature(String signature) {
-        this.signature = signature;
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)
@@ -751,12 +747,12 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    private Object getComponentType() {
+    private DynamicHub getComponentType() {
         return componentType;
     }
 
     @Substitute
-    private Object getSuperclass() {
+    private DynamicHub getSuperclass() {
         return superHub;
     }
 
@@ -790,18 +786,18 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
          * We do not do the check "this.getModifiers() & ENUM) != 0" because we do not have the full
          * modifier bits.
          */
-        return this.getSuperclass() == java.lang.Enum.class;
+        return toClass(getSuperclass()) == java.lang.Enum.class;
     }
 
     @KeepOriginal
-    private native Enum<?>[] getEnumConstants();
+    private native Object[] getEnumConstants();
 
     @Substitute
-    public Enum<?>[] getEnumConstantsShared() {
+    public Object[] getEnumConstantsShared() {
         if (enumConstantsReference instanceof LazyFinalReference) {
-            return (Enum<?>[]) ((LazyFinalReference<?>) enumConstantsReference).get();
+            return (Object[]) ((LazyFinalReference<?>) enumConstantsReference).get();
         }
-        return (Enum<?>[]) enumConstantsReference;
+        return (Object[]) enumConstantsReference;
     }
 
     @KeepOriginal
@@ -861,7 +857,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     private native boolean isAnonymousClass();
 
     @KeepOriginal
-    @TargetElement(onlyWith = JDK21OrLater.class)
+    @TargetElement
     private native boolean isUnnamedClass();
 
     @Substitute
@@ -961,7 +957,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         T[] result = getDeclaredAnnotationsByType(annotationClass);
 
         if (result.length == 0 && AnnotationAccess.isAnnotationPresent(annotationClass, Inherited.class)) {
-            DynamicHub superClass = (DynamicHub) this.getSuperclass();
+            DynamicHub superClass = this.getSuperclass();
             if (superClass != null) {
                 /* Determine if the annotation is associated with the superclass. */
                 result = superClass.getAnnotationsByType(annotationClass);
@@ -1304,7 +1300,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static Class<?> forName(String className, Class<?> caller) throws Throwable {
         return forName(className, true, caller.getClassLoader(), caller);
@@ -1317,7 +1312,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     @Platforms(InternalPlatform.NATIVE_ONLY.class)
     private static Class<?> forName(@SuppressWarnings("unused") Module module, String className, Class<?> caller) throws Throwable {
         /*
@@ -1337,7 +1331,6 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
     }
 
     @Substitute
-    @TargetElement(onlyWith = JDK19OrLater.class)
     private static Class<?> forName(String name, boolean initialize, ClassLoader loader, @SuppressWarnings("unused") Class<?> caller) throws Throwable {
         if (name == null) {
             throw new NullPointerException();
@@ -1377,7 +1370,7 @@ public final class DynamicHub implements AnnotatedElement, java.lang.reflect.Typ
         String pn = null;
         DynamicHub me = this;
         while (me.hubIsArray()) {
-            me = (DynamicHub) me.getComponentType();
+            me = me.getComponentType();
         }
         if (me.isPrimitive()) {
             pn = "java.lang";
@@ -1944,6 +1937,30 @@ final class Target_jdk_internal_reflect_ReflectionFactory {
         boolean isReadOnly = isFinal && (!override || langReflectAccess.isTrustedFinalField(field));
         return UnsafeFieldAccessorFactory.newFieldAccessor(field, isReadOnly);
     }
+
+    /**
+     * Work around "JDK-8315810: Reimplement
+     * sun.reflect.ReflectionFactory::newConstructorForSerialization with method handles"
+     * [GR-48901].
+     *
+     * @see Target_jdk_internal_reflect_DirectConstructorHandleAccessor
+     */
+    @Substitute
+    @TargetElement(onlyWith = JDK22OrLater.class)
+    @Fold // cut off the alternative branch, already during analysis
+    static boolean useOldSerializableConstructor() {
+        return true;
+    }
+}
+
+/**
+ * Ensure that we are not accidentally using the method handle based constructor accessor.
+ *
+ * @see Target_jdk_internal_reflect_ReflectionFactory#useOldSerializableConstructor()
+ */
+@Delete
+@TargetClass(className = "jdk.internal.reflect.DirectConstructorHandleAccessor")
+final class Target_jdk_internal_reflect_DirectConstructorHandleAccessor {
 }
 
 @TargetClass(className = "java.lang.Class", innerClass = "EnclosingMethodInfo")

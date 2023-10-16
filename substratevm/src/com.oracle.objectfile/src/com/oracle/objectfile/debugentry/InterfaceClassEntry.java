@@ -56,7 +56,9 @@ public class InterfaceClassEntry extends ClassEntry {
 
     public void addImplementor(ClassEntry classEntry, DebugContext debugContext) {
         implementors.add(classEntry);
-        debugContext.log("typename %s add implementor %s%n", typeName, classEntry.getTypeName());
+        if (debugContext.isLogEnabled()) {
+            debugContext.log("typename %s add implementor %s%n", typeName, classEntry.getTypeName());
+        }
     }
 
     public Stream<ClassEntry> implementors() {

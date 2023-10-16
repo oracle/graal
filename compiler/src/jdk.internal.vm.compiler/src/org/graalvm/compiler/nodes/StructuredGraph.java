@@ -604,16 +604,22 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         return copy(newName, rootMethodForCopy, inlinedMethodsForCopy, optionsForCopy, duplicationMapCallback, newCompilationId, debugForCopy, trackNodeSourcePositionForCopy);
     }
 
-    @SuppressWarnings("try")
     private StructuredGraph copy(String newName, ResolvedJavaMethod rootMethodForCopy, List<ResolvedJavaMethod> inlinedMethodsForCopy, OptionValues optionsForCopy,
                     Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback,
                     CompilationIdentifier newCompilationId, DebugContext debugForCopy, boolean trackNodeSourcePositionForCopy) {
-        AllowAssumptions allowAssumptions = allowAssumptions();
+        return copy(newName, rootMethodForCopy, inlinedMethodsForCopy, optionsForCopy, duplicationMapCallback, newCompilationId, debugForCopy, trackNodeSourcePositionForCopy, assumptions);
+    }
+
+    @SuppressWarnings("try")
+    private StructuredGraph copy(String newName, ResolvedJavaMethod rootMethodForCopy, List<ResolvedJavaMethod> inlinedMethodsForCopy, OptionValues optionsForCopy,
+                    Consumer<UnmodifiableEconomicMap<Node, Node>> duplicationMapCallback,
+                    CompilationIdentifier newCompilationId, DebugContext debugForCopy, boolean trackNodeSourcePositionForCopy, Assumptions assumptionsForCopy) {
+        AllowAssumptions allowAssumptions = AllowAssumptions.ifNonNull(assumptionsForCopy);
 
         StructuredGraph copy = new StructuredGraph(newName,
                         rootMethodForCopy,
                         entryBCI,
-                        assumptions == null ? null : new Assumptions(),
+                        assumptionsForCopy == null ? null : new Assumptions(),
                         profileProvider,
                         graphState.copy(),
                         isSubstitution,
@@ -621,8 +627,8 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
                         trackNodeSourcePositionForCopy,
                         newCompilationId,
                         optionsForCopy, debugForCopy, null, callerContext);
-        if (allowAssumptions == AllowAssumptions.YES && assumptions != null) {
-            copy.assumptions.record(assumptions);
+        if (allowAssumptions == AllowAssumptions.YES && assumptionsForCopy != null) {
+            copy.assumptions.record(assumptionsForCopy);
         }
         copy.hasUnsafeAccess = hasUnsafeAccess;
         EconomicMap<Node, Node> replacements = EconomicMap.create(Equivalence.IDENTITY);
@@ -658,6 +664,24 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
     public StructuredGraph copy(ResolvedJavaMethod rootMethodForCopy, List<ResolvedJavaMethod> inlinedMethodsForCopy, OptionValues optionsForCopy, DebugContext debugForCopy,
                     boolean trackNodeSourcePositionForCopy) {
         return copy(name, rootMethodForCopy, inlinedMethodsForCopy, optionsForCopy, null, compilationId, debugForCopy, trackNodeSourcePositionForCopy);
+    }
+
+    /**
+     * Makes a copy of this graph, recording both this graph's assumptions (if any) and the
+     * additional {@code newAssumptions} in it.
+     *
+     * @param debugForCopy the debug context for the graph copy. This must not be the debug for this
+     *            graph if this graph can be accessed from multiple threads (e.g., it's in a cache
+     *            accessed by multiple threads).
+     */
+    public StructuredGraph copyWithAssumptions(Assumptions newAssumptions, DebugContext debugForCopy) {
+        List<ResolvedJavaMethod> inlinedMethodsForCopy = methods != null ? new ArrayList<>(methods) : null;
+        Assumptions assumptionsForCopy = new Assumptions();
+        if (assumptions != null) {
+            assumptionsForCopy.record(assumptions);
+        }
+        assumptionsForCopy.record(newAssumptions);
+        return copy(name, rootMethod, inlinedMethodsForCopy, getOptions(), null, compilationId, debugForCopy, trackNodeSourcePosition, assumptionsForCopy);
     }
 
     public ParameterNode getParameter(int index) {

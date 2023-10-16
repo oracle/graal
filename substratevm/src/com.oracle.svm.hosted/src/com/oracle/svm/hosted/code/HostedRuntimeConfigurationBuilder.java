@@ -39,6 +39,7 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.word.WordTypes;
 
+import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.graal.code.SubstrateBackendFactory;
@@ -61,13 +62,15 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     private final HostedUniverse universe;
     private final HostedProviders analysisProviders;
+    private final ImageHeapScanner heapScanner;
 
-    public HostedRuntimeConfigurationBuilder(OptionValues options, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess, HostedProviders analysisProviders,
-                    ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
+    public HostedRuntimeConfigurationBuilder(OptionValues options, ImageHeapScanner heapScanner, SVMHost hostVM, HostedUniverse universe, HostedMetaAccess metaAccess,
+                    HostedProviders analysisProviders, ClassInitializationSupport classInitializationSupport, LoopsDataProvider originalLoopsDataProvider,
                     SubstratePlatformConfigurationProvider platformConfig) {
         super(options, hostVM, metaAccess, SubstrateBackendFactory.get()::newBackend, classInitializationSupport, originalLoopsDataProvider, platformConfig);
         this.universe = universe;
         this.analysisProviders = analysisProviders;
+        this.heapScanner = heapScanner;
     }
 
     @Override
@@ -95,7 +98,7 @@ public class HostedRuntimeConfigurationBuilder extends SharedRuntimeConfiguratio
 
     @Override
     protected SnippetReflectionProvider createSnippetReflectionProvider(WordTypes wordTypes) {
-        return new HostedSnippetReflectionProvider(wordTypes);
+        return new HostedSnippetReflectionProvider(heapScanner, wordTypes);
     }
 
     @Override

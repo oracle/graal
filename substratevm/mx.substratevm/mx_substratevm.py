@@ -1,6 +1,4 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
 # Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -24,9 +22,6 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
-
-from __future__ import print_function
 
 import os
 import re
@@ -38,6 +33,7 @@ import pipes
 from argparse import ArgumentParser
 import fnmatch
 import collections
+from io import StringIO
 
 import mx
 import mx_compiler
@@ -56,10 +52,6 @@ from mx_unittest import _run_tests, _VMLauncher
 import sys
 
 
-if sys.version_info[0] < 3:
-    from StringIO import StringIO
-else:
-    from io import StringIO
 
 suite = mx.suite('substratevm')
 svmSuites = [suite]
@@ -224,6 +216,27 @@ def vm_executable_path(executable, config=None):
     return join(_vm_home(config), 'bin', executable)
 
 
+def _escape_for_args_file(arg):
+    if not (arg.startswith('\\Q') and arg.endswith('\\E')):
+        arg = arg.replace('\\', '\\\\')
+        if ' ' in arg:
+            arg = '\"' + arg + '\"'
+    return arg
+
+
+def _maybe_convert_to_args_file(args):
+    total_command_line_args_length = sum([len(arg) for arg in args])
+    if total_command_line_args_length < 80:
+        # Do not use argument file when total command line length is reasonable,
+        # so that both code paths are exercised on all platforms
+        return args
+    else:
+        # Use argument file to avoid exceeding the command line length limit on Windows
+        with tempfile.NamedTemporaryFile(delete=False, mode='w', prefix='ni_args_', suffix='.args') as args_file:
+            args_file.write('\n'.join([_escape_for_args_file(a) for a in args]))
+        return ['@' + args_file.name]
+
+
 @contextmanager
 def native_image_context(common_args=None, hosted_assertions=True, native_image_cmd='', config=None, build_if_missing=False):
     common_args = [] if common_args is None else common_args
@@ -254,7 +267,7 @@ def native_image_context(common_args=None, hosted_assertions=True, native_image_
             raise mx.abort('The built GraalVM for config ' + str(config) + ' does not contain a native-image command')
 
     def _native_image(args, **kwargs):
-        mx.run([native_image_cmd] + args, **kwargs)
+        mx.run([native_image_cmd] + _maybe_convert_to_args_file(args), **kwargs)
 
     def is_launcher(launcher_path):
         with open(launcher_path, 'rb') as fp:
@@ -1016,7 +1029,10 @@ driver_build_args = [
     '--features=com.oracle.svm.driver.APIOptionFeature',
     '--initialize-at-build-time=com.oracle.svm.driver',
     '--link-at-build-time=com.oracle.svm.driver,com.oracle.svm.driver.metainf',
-] + svm_experimental_options([
+]
+
+driver_exe_build_args = driver_build_args + svm_experimental_options([
+    '-H:+AllowJRTFileSystem',
     '-H:IncludeResources=com/oracle/svm/driver/launcher/.*',
     '-H:-ParseRuntimeOptions',
     f'-R:MaxHeapSize={256 * 1024 * 1024}',
@@ -1058,7 +1074,7 @@ mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmJreComponent(
             destination="bin/<exe:native-image>",
             jar_distributions=["substratevm:SVM_DRIVER"],
             main_class=_native_image_launcher_main_class(),
-            build_args=driver_build_args,
+            build_args=driver_exe_build_args,
             extra_jvm_args=_native_image_launcher_extra_jvm_args(),
             home_finder=False,
         ),
@@ -1284,11 +1300,18 @@ libgraal_build_args = [
     '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
 
     '-H:+ReportExceptionStackTraces',
-] + svm_experimental_options([
+
+    # Set minimum based on libgraal-ee-pgo
+    '-J-Xms7g'
+] + ([
+    # If building on the console, use as many cores as available
+    f'--parallelism={mx.cpu_count()}',
+] if mx.is_interactive() else []) + svm_experimental_options([
     '-H:-UseServiceLoaderFeature',
     '-H:+AllowFoldMethods',
     '-Djdk.vm.ci.services.aot=true',
     '-Dtruffle.TruffleRuntime=',
+    '-H:+JNIEnhancedErrorCodes',
     '-H:InitialCollectionPolicy=LibGraal',
 
     # These 2 arguments provide walkable call stacks for a crash in libgraal
@@ -1513,9 +1536,9 @@ def clinittest(args):
         mx.ensure_dir_exists(build_dir)
 
         if new_class_init_policy:
-            policy_args = svm_experimental_options(['-H:-UseDeprecatedOldClassInitialization', '-H:+SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
+            policy_args = svm_experimental_options(['-H:+SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureNewPolicyFeature']
         else:
-            policy_args = svm_experimental_options(['-H:+UseDeprecatedOldClassInitialization', '-H:-SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
+            policy_args = svm_experimental_options(['-H:-StrictImageHeap', '-H:-SimulateClassInitializer']) + ['--features=com.oracle.svm.test.clinit.TestClassInitializationFeatureOldPolicyFeature']
 
         # Build and run the example
         binary_path = join(build_dir, 'clinittest')
@@ -1658,7 +1681,7 @@ class JvmFuncsFallbacksBuildTask(mx.BuildTask):
                         else:
                             # Linux objdump objdump --wide --syms
                             # 0000000000000000         *UND*	0000000000000000 JVM_InitStackTraceElement
-                            found_undef = line_tokens[1] = '*UND*'
+                            found_undef = line_tokens[1] == '*UND*'
                         if found_undef:
                             symbol_candiate = line_tokens[-1]
                             mx.logvv('Found undefined symbol: ' + symbol_candiate)
@@ -1883,30 +1906,14 @@ class SubstrateCompilerFlagsBuilder(mx.ArchivableProject):
     # com.oracle.svm.driver.NativeImage.BuildConfiguration.getBuilderJavaArgs().
     def compute_graal_compiler_flags_map(self):
         graal_compiler_flags_map = dict()
-        graal_compiler_flags_map['8'] = [
-            '-d64',
-            '-XX:-UseJVMCIClassLoader'
-        ]
-
-        graal_compiler_flags_map['11'] = [
-            # Disable the check for JDK-8 graal version.
-            '-Dsubstratevm.IgnoreGraalVersionCheck=true',
-        ]
 
         # Packages to add-export
         distributions_transitive = mx.classpath_entries(self.buildDependencies)
         required_exports = mx_javamodules.requiredExports(distributions_transitive, get_jdk())
         exports_flags = mx_sdk_vm.AbstractNativeImageConfig.get_add_exports_list(required_exports)
-        graal_compiler_flags_map['11'].extend(exports_flags)
-        # Currently JDK 17 and JDK 11 have the same flags
-        graal_compiler_flags_map['17'] = graal_compiler_flags_map['11']
-        # Currently JDK 19 and JDK 17 have the same flags
-        graal_compiler_flags_map['19'] = graal_compiler_flags_map['17']
-        graal_compiler_flags_map['19-ea'] = graal_compiler_flags_map['19']
-        # Currently JDK 20 and JDK 19 have the same flags
-        graal_compiler_flags_map['20'] = graal_compiler_flags_map['19']
-        # Currently JDK 22, JDK 21 and JDK 20 have the same flags
-        graal_compiler_flags_map['21'] = graal_compiler_flags_map['20']
+
+        graal_compiler_flags_map['21'] = exports_flags
+        # Currently JDK 22 has the same flags
         graal_compiler_flags_map['22'] = graal_compiler_flags_map['21']
         # DO NOT ADD ANY NEW ADD-OPENS OR ADD-EXPORTS HERE!
         #

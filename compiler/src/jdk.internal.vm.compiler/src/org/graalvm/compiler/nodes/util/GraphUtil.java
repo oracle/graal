@@ -40,6 +40,7 @@ import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.code.SourceStackTraceBailoutException;
 import org.graalvm.compiler.core.common.type.ObjectStamp;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Graph;
@@ -370,6 +371,7 @@ public class GraphUtil {
         LinkedStack<Node> stack = null;
         Node cur = node;
         do {
+            CompilationAlarm.checkProgress(node.graph());
             assert checkKill(cur, mayKillGuard);
             cur.markDeleted();
             outer: for (Node in : cur.inputs()) {
@@ -404,7 +406,8 @@ public class GraphUtil {
             } else {
                 cur = stack.pop();
             }
-        } while (true);
+        } while (true); // TERMINATION ARGUMENT: processing floating nodes without inputs until
+                        // input is found
     }
 
     public static void removeFixedWithUnusedInputs(FixedWithNextNode fixed) {
@@ -739,41 +742,58 @@ public class GraphUtil {
         return arrayLength(value, mode, constantReflection, null);
     }
 
+    /**
+     * Filters out non-constant results when requested.
+     */
+    private static ValueNode filterArrayLengthResult(ValueNode result, boolean allowOnlyConstantResult) {
+        return result == null || !allowOnlyConstantResult || result.isConstant() ? result : null;
+    }
+
     private static ValueNode arrayLength(ValueNode value, FindLengthMode mode, ConstantReflectionProvider constantReflection, EconomicMap<ValueNode, ValueNode> visitedPhiInputs) {
         Objects.requireNonNull(mode);
 
         EconomicMap<ValueNode, ValueNode> visitedPhiInputMap = visitedPhiInputs;
         ValueNode current = value;
+        StructuredGraph graph = value.graph();
+        boolean allowOnlyConstantResult = false;
         do {
+            CompilationAlarm.checkProgress(graph);
             /*
              * PiArrayNode implements ArrayLengthProvider and ValueProxy. We want to treat it as an
              * ArrayLengthProvider, therefore we check this case first.
              */
-            if (current instanceof ArrayLengthProvider) {
-                return ((ArrayLengthProvider) current).findLength(mode, constantReflection);
+            if (current instanceof ArrayLengthProvider provider) {
+                return filterArrayLengthResult(provider.findLength(mode, constantReflection), allowOnlyConstantResult);
 
-            } else if (current instanceof ValuePhiNode) {
+            } else if (current instanceof ValuePhiNode phi) {
                 if (visitedPhiInputMap == null) {
                     visitedPhiInputMap = EconomicMap.create();
                 }
-                return phiArrayLength((ValuePhiNode) current, mode, constantReflection, visitedPhiInputMap);
+                return filterArrayLengthResult(phiArrayLength(phi, mode, constantReflection, visitedPhiInputMap), allowOnlyConstantResult);
 
-            } else if (current instanceof ValueProxyNode) {
-                ValueProxyNode proxy = (ValueProxyNode) current;
+            } else if (current instanceof ValueProxyNode proxy) {
                 ValueNode length = arrayLength(proxy.getOriginalNode(), mode, constantReflection);
                 if (mode == ArrayLengthProvider.FindLengthMode.CANONICALIZE_READ && length != null && !length.isConstant()) {
                     length = new ValueProxyNode(length, proxy.proxyPoint());
                 }
-                return length;
+                return filterArrayLengthResult(length, allowOnlyConstantResult);
 
-            } else if (current instanceof ValueProxy) {
-                /* Written as a loop instead of a recursive call to reduce recursion depth. */
-                current = ((ValueProxy) current).getOriginalNode();
-
+            } else if (current instanceof LimitedValueProxy valueProxy) {
+                /*
+                 * Note is it usually recommended to check for ValueProxy, not LimitedValueProxy.
+                 * However, in this case we are intentionally unproxifying all LimitedValueProxies,
+                 * as we want constant lengths to be found across DeoptProxyNodes. When the result
+                 * is not a ValueProxy we limit the returned result to constant values.
+                 */
+                if (!(valueProxy instanceof ValueProxy)) {
+                    allowOnlyConstantResult = true;
+                }
+                current = valueProxy.getOriginalNode();
             } else {
                 return null;
             }
-        } while (true);
+        } while (true);  // TERMINATION ARGUMENT: processing specific inputs until an exit criteria
+                         // is met
     }
 
     private static ValueNode phiArrayLength(ValuePhiNode phi, ArrayLengthProvider.FindLengthMode mode, ConstantReflectionProvider constantReflection,
@@ -1184,7 +1204,8 @@ public class GraphUtil {
             return false;
         }
         FixedNode node = start;
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: following next nodes or returning
+            CompilationAlarm.checkProgress(start.graph());
             if (node instanceof AbstractMergeNode) {
                 AbstractMergeNode mergeNode = (AbstractMergeNode) node;
                 if (mergeNode.stateAfter() == null) {
@@ -1316,7 +1337,8 @@ public class GraphUtil {
         assert start != null;
         FixedNode lastFixedNode = null;
         FixedNode currentStart = start;
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: following prev nodes
+            CompilationAlarm.checkProgress(start.graph());
             for (FixedNode fixed : GraphUtil.predecessorIterable(currentStart)) {
                 if (fixed instanceof StateSplit) {
                     StateSplit stateSplit = (StateSplit) fixed;

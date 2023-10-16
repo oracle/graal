@@ -34,13 +34,13 @@ import java.util.Collections;
 import java.util.Formatter;
 import java.util.ListIterator;
 import java.util.Optional;
-import java.util.Random;
 import java.util.Set;
 
 import org.graalvm.compiler.api.test.Graal;
 import org.graalvm.compiler.core.phases.fuzzing.AbstractCompilationPlan;
 import org.graalvm.compiler.core.phases.fuzzing.FullFuzzedCompilationPlan;
 import org.graalvm.compiler.core.phases.fuzzing.FullFuzzedTierPlan;
+import org.graalvm.compiler.core.phases.fuzzing.FuzzedSuites;
 import org.graalvm.compiler.core.phases.fuzzing.MinimalFuzzedCompilationPlan;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.core.test.TestPhase;
@@ -121,8 +121,16 @@ public class JTTTest extends GraalCompilerTest {
         }
     }
 
+    protected OptionValues getOptions() {
+        OptionValues options = getInitialOptions();
+        if (Boolean.getBoolean(COMPILATION_PLAN_FUZZING_SYSTEM_PROPERTY)) {
+            options = FuzzedSuites.fuzzingOptions(options);
+        }
+        return options;
+    }
+
     protected void runTest(String name, Object... args) {
-        runTest(getInitialOptions(), name, args);
+        runTest(getOptions(), name, args);
     }
 
     protected void runTest(OptionValues options, String name, Object... args) {
@@ -130,7 +138,7 @@ public class JTTTest extends GraalCompilerTest {
     }
 
     protected void runTest(Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {
-        runTest(getInitialOptions(), shouldNotDeopt, name, args);
+        runTest(getOptions(), shouldNotDeopt, name, args);
     }
 
     protected void runTest(OptionValues options, Set<DeoptimizationReason> shouldNotDeopt, String name, Object... args) {
@@ -216,7 +224,7 @@ public class JTTTest extends GraalCompilerTest {
         // phases that cannot be serialized.
         removeTestPhases(originalSuites);
         StructuredGraph graph = parseForCompile(method, getCompilationId(method), options);
-        long randomSeed = Long.getLong(SEED_SYSTEM_PROPERTY, new Random().nextLong());
+        long randomSeed = Long.getLong(SEED_SYSTEM_PROPERTY, getRandomInstance().nextLong());
         RuntimeProvider runtime = Graal.getRequiredCapability(RuntimeProvider.class);
 
         MinimalFuzzedCompilationPlan minimalFuzzedCompilationPlan = MinimalFuzzedCompilationPlan.createMinimalFuzzedCompilationPlan(
@@ -255,10 +263,11 @@ public class JTTTest extends GraalCompilerTest {
      */
     private void testFuzzedCompilationPlan(MinimalFuzzedCompilationPlan plan, OptionValues options, ResolvedJavaMethod method, Result expect, Set<DeoptimizationReason> shouldNotDeopt,
                     Object receiver, Object... args) {
+        OptionValues fuzzingOptions = FuzzedSuites.fuzzingOptions(options);
         fuzzedSuites = plan.getSuites();
         Result actual = null;
         try {
-            actual = executeActualCheckDeopt(options, method, shouldNotDeopt, receiver, args);
+            actual = executeActualCheckDeopt(fuzzingOptions, method, shouldNotDeopt, receiver, args);
         } catch (AssumptionViolatedException e) {
             throw e;
         } catch (Throwable t) {

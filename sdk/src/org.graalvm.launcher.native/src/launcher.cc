@@ -43,14 +43,13 @@
 
 #include <cstdint>
 #include <cstring>
+#include <climits>
+#include <cstdlib>
 
 #include <string>
 #include <iostream>
 #include <sstream>
 #include <vector>
-#include <filesystem>
-
-namespace fs = std::filesystem;
 
 #define QUOTE(name) #name
 #define STR(macro) QUOTE(macro)
@@ -91,15 +90,23 @@ namespace fs = std::filesystem;
 #define VM_ARG_PREFIX "--vm."
 #define VM_CP_ARG_PREFIX "--vm.cp="
 #define VM_CLASSPATH_ARG_PREFIX "--vm.classpath="
+#define VM_P_ARG_PREFIX "--vm.p="
 #define VM_MODULE_PATH_ARG_PREFIX "--vm.-module-path="
+#define VM_LIBRARY_PATH_ARG_PREFIX "--vm.Djava.library.path="
+
 #define VM_ARG_OFFSET (sizeof(VM_ARG_PREFIX)-1)
 #define VM_CP_ARG_OFFSET (sizeof(VM_CP_ARG_PREFIX)-1)
 #define VM_CLASSPATH_ARG_OFFSET (sizeof(VM_CLASSPATH_ARG_PREFIX)-1)
+#define VM_P_ARG_OFFSET (sizeof(VM_P_ARG_PREFIX)-1)
 #define VM_MODULE_PATH_ARG_OFFSET (sizeof(VM_MODULE_PATH_ARG_PREFIX)-1)
+#define VM_LIBRARY_PATH_ARG_OFFSET (sizeof(VM_LIBRARY_PATH_ARG_PREFIX)-1)
+
 #define IS_VM_ARG(ARG) (ARG.rfind(VM_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_CP_ARG(ARG) (ARG.rfind(VM_CP_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_CLASSPATH_ARG(ARG) (ARG.rfind(VM_CLASSPATH_ARG_PREFIX, 0) != std::string::npos)
+#define IS_VM_P_ARG(ARG) (ARG.rfind(VM_P_ARG_PREFIX, 0) != std::string::npos)
 #define IS_VM_MODULE_PATH_ARG(ARG) (ARG.rfind(VM_MODULE_PATH_ARG_PREFIX, 0) != std::string::npos)
+#define IS_VM_LIBRARY_PATH_ARG(ARG) (ARG.rfind(VM_LIBRARY_PATH_ARG_PREFIX, 0) != std::string::npos)
 
 #define NMT_ARG_NAME "XX:NativeMemoryTracking"
 #define NMT_ENV_NAME "NMT_LEVEL_"
@@ -111,6 +118,7 @@ namespace fs = std::filesystem;
     #include <limits.h>
     #include <unistd.h>
     #include <errno.h>
+    #include <dirent.h>
     #include <sys/types.h>
     #include <sys/stat.h>
 #elif defined (__APPLE__)
@@ -119,6 +127,7 @@ namespace fs = std::filesystem;
     #include <libgen.h>
     #include <unistd.h>
     #include <errno.h>
+    #include <dirent.h>
     #include <mach-o/dyld.h>
     #include <sys/syslimits.h>
     #include <sys/stat.h>
@@ -151,6 +160,7 @@ typedef jint(*CreateJVM)(JavaVM **, void **, void *);
 extern char **environ;
 bool debug = false;
 bool relaunch = false;
+bool found_switch_to_jvm_flag = false;
 
 /* platform-independent environment setter, use empty value to clear */
 int setenv(std::string key, std::string value) {
@@ -221,6 +231,21 @@ std::string exe_directory() {
     return exeDir;
 }
 
+static std::string canonicalize(std::string path) {
+    char *result;
+    #ifndef _WIN32
+    char real[PATH_MAX];
+    result = realpath(path.c_str(), real);
+    #else
+    char real[_MAX_PATH];
+    result = _fullpath(real, path.c_str(), _MAX_PATH);
+    #endif
+    if (result == NULL) {
+        std::cerr << "Could not canonicalize " << path << std::endl;
+    }
+    return std::string(real);
+}
+
 #if defined (__APPLE__)
 /* Load libjli - this is needed on osx for libawt, which uses JLI_* methods.
  * If the GraalVM libjli is not loaded, the osx linker will look up the symbol
@@ -273,17 +298,28 @@ std::string vm_path(std::string exeDir, bool jvmMode) {
     return liblangPath.str();
 }
 
-void parse_vm_option(std::vector<std::string> *vmArgs, std::stringstream *cp, std::stringstream *modulePath, std::string option) {
+void parse_vm_option(
+        std::vector<std::string> *vmArgs,
+        std::stringstream *cp,
+        std::stringstream *modulePath,
+        std::stringstream *libraryPath,
+        std::string option) {
     if (IS_VM_CP_ARG(option)) {
         *cp << CP_SEP_STR << option.substr(VM_CP_ARG_OFFSET);
     } else if (IS_VM_CLASSPATH_ARG(option)) {
         *cp << CP_SEP_STR << option.substr(VM_CLASSPATH_ARG_OFFSET);
+    } else if (IS_VM_P_ARG(option)) {
+        *modulePath << CP_SEP_STR << option.substr(VM_P_ARG_OFFSET);
     } else if (IS_VM_MODULE_PATH_ARG(option)) {
         *modulePath << CP_SEP_STR << option.substr(VM_MODULE_PATH_ARG_OFFSET);
+    } else if (IS_VM_LIBRARY_PATH_ARG(option)) {
+        *libraryPath << CP_SEP_STR << option.substr(VM_LIBRARY_PATH_ARG_OFFSET);
     } else if (IS_VM_ARG(option)) {
         std::stringstream opt;
         opt << '-' << option.substr(VM_ARG_OFFSET);
         vmArgs->push_back(opt.str());
+    } else if (option == "--jvm") {
+        found_switch_to_jvm_flag = true;
     }
 }
 
@@ -328,20 +364,6 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
 
     /* construct classpath - only needed for jvm mode */
     std::stringstream cp;
-    cp << "-Djava.class.path=";
-    #ifdef LAUNCHER_CLASSPATH
-    if (jvmMode) {
-        /* add the launcher classpath */
-        const char *launcherCpEntries[] = LAUNCHER_CLASSPATH;
-        int launcherCpCnt = sizeof(launcherCpEntries) / sizeof(*launcherCpEntries);
-        for (int i = 0; i < launcherCpCnt; i++) {
-            cp << exeDir << DIR_SEP_STR << launcherCpEntries[i];
-            if (i < launcherCpCnt-1) {
-                cp << CP_SEP_STR;
-            }
-        }
-    }
-    #endif
 
     /* construct module path - only needed for jvm mode */
     std::stringstream modulePath;
@@ -354,7 +376,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         for (int i = 0; i < launcherModulePathCnt; i++) {
             std::stringstream entry;
             entry << exeDir << DIR_SEP_STR << launcherModulePathEntries[i];
-            modulePath << fs::canonical(entry.str()).string();
+            modulePath << canonicalize(entry.str());
             if (i < launcherModulePathCnt-1) {
                 modulePath << CP_SEP_STR;
             }
@@ -363,46 +385,61 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     #endif
 
 
+    #if defined(LANGUAGES_DIR) && defined(TOOLS_DIR)
     if (jvmMode) {
-        #ifdef LANGUAGES_DIR
-        /* Add languages to module path */
-        std::stringstream languagesDir;
-        languagesDir << exeDir << DIR_SEP_STR << LANGUAGES_DIR_STR;
-        fs::path languagesDirPath = fs::canonical(languagesDir.str());
-        for (const auto & entry : fs::directory_iterator(languagesDirPath)) {
-            modulePath << CP_SEP_STR << entry.path().string();
-        }
-        #endif
+        /* Add languages and tools to module path */
+        const char* dirs[] = { LANGUAGES_DIR_STR, TOOLS_DIR_STR };
+        for (int i = 0; i < 2; i++) {
+            const char* relativeDir = dirs[i];
+            std::stringstream absoluteDirStream;
+            absoluteDirStream << exeDir << DIR_SEP_STR << relativeDir;
+            std::string absoluteDir = absoluteDirStream.str();
 
-        #ifdef TOOLS_DIR
-        /* Add tools to module path */
-        std::stringstream toolsDir;
-        toolsDir << exeDir << DIR_SEP_STR << TOOLS_DIR_STR;
-        if (fs::is_directory(toolsDir.str())) {
-            fs::path toolsDirPath = fs::canonical(toolsDir.str());
-            for (const auto & entry : fs::directory_iterator(toolsDirPath)) {
-                modulePath << CP_SEP_STR << entry.path().string();
+            #ifndef _WIN32
+            DIR* dir = opendir(absoluteDir.c_str());
+            if (dir) {
+                std::string canonicalDir = canonicalize(absoluteDir);
+                struct dirent* entry;
+                while ((entry = readdir(dir))) {
+                    char* name = entry->d_name;
+                    if (name[0] != '.') {
+                        modulePath << CP_SEP_STR << canonicalDir << DIR_SEP_STR << name;
+                    }
+                }
+                closedir(dir);
             }
+            #else
+            // From https://learn.microsoft.com/en-us/windows/win32/fileio/listing-the-files-in-a-directory
+            // and https://learn.microsoft.com/en-us/windows/win32/api/fileapi/nf-fileapi-findfirstfilea
+            WIN32_FIND_DATAA entry;
+            std::stringstream searchDir;
+            searchDir << absoluteDir << "\\*";
+            HANDLE dir = FindFirstFileA(searchDir.str().c_str(), &entry);
+            if (dir != INVALID_HANDLE_VALUE) {
+                std::string canonicalDir = canonicalize(absoluteDir);
+                do {
+                    char* name = entry.cFileName;
+                    if (name[0] != '.') {
+                        modulePath << CP_SEP_STR << canonicalDir << DIR_SEP_STR << name;
+                    }
+                } while (FindNextFileA(dir, &entry));
+                FindClose(dir);
+            }
+            #endif
         }
-        #endif
     }
+    #endif
 
+    /* construct java.library.path - only needed for jvm mode */
+    std::stringstream libraryPath;
     #ifdef LAUNCHER_LIBRARY_PATH
     if (jvmMode) {
-        /* construct java.library.path - only needed for jvm mode */
-        std::stringstream libraryPath;
-        libraryPath << "-Djava.library.path=";
         /* add the library path */
         const char *launcherLibraryPathEntries[] = LAUNCHER_LIBRARY_PATH;
         int launcherLibraryPathCnt = sizeof(launcherLibraryPathEntries) / sizeof(*launcherLibraryPathEntries);
         for (int i = 0; i < launcherLibraryPathCnt; i++) {
-            libraryPath << exeDir << DIR_SEP_STR << launcherLibraryPathEntries[i];
-            if (i < launcherLibraryPathCnt-1) {
-                libraryPath << CP_SEP_STR;
-            }
+            libraryPath << CP_SEP_STR << exeDir << DIR_SEP_STR << launcherLibraryPathEntries[i];
         }
-        /* TODO: this overrides -Djava.library.path=, but it should accept a CLI --vm.Djava.library.path= */
-        vmArgs.push_back(libraryPath.str());
     }
     #endif
 
@@ -415,7 +452,22 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
             std::stringstream ss;
             std::stringstream relativeHome;
             relativeHome << exeDir << DIR_SEP_STR << launcherLangHomePaths[i];
-            ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << fs::canonical(relativeHome.str()).c_str();
+            ss << "-Dorg.graalvm.language." << launcherLangHomeNames[i] << ".home=" << canonicalize(relativeHome.str());
+            vmArgs.push_back(ss.str());
+        }
+    }
+    #endif
+
+    #if defined(LAUNCHER_EXTRACTED_LIB_NAMES) && defined(LAUNCHER_EXTRACTED_LIB_PATHS)
+    if (jvmMode) {
+        const char *extractedLibNames[] = LAUNCHER_EXTRACTED_LIB_NAMES;
+        const char *extractedLibPaths[] = LAUNCHER_EXTRACTED_LIB_PATHS;
+        int extractedLibCnt = sizeof(extractedLibNames) / sizeof(*extractedLibNames);
+        for (int i = 0; i < extractedLibCnt; i++) {
+            std::stringstream ss;
+            std::stringstream relativePath;
+            relativePath << exeDir << DIR_SEP_STR << extractedLibPaths[i];
+            ss << "-D" << extractedLibNames[i] << "=" << canonicalize(relativePath.str());
             vmArgs.push_back(ss.str());
         }
     }
@@ -427,7 +479,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     const char *launcherDefaultVmArgs[] = LAUNCHER_DEFAULT_VM_ARGS;
     for (int i = 0; i < sizeof(launcherDefaultVmArgs)/sizeof(char*); i++) {
         if (IS_VM_ARG(std::string(launcherDefaultVmArgs[i]))) {
-            parse_vm_option(&vmArgs, &cp, &modulePath, launcherDefaultVmArgs[i]);
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, launcherDefaultVmArgs[i]);
         }
     }
     #endif
@@ -435,7 +487,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
     /* handle CLI arguments */
     if (!vmArgInfo) {
         for (int i = 0; i < argc; i++) {
-            parse_vm_option(&vmArgs, &cp, &modulePath, std::string(argv[i]));
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, std::string(argv[i]));
         }
     }
 
@@ -453,7 +505,7 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
                 std::cerr << "VM arguments specified: " << vmArgCount << " but argument " << i << "missing" << std::endl;
                 break;
             }
-            parse_vm_option(&vmArgs, &cp, &modulePath, std::string(cur));
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, std::string(cur));
             /* clean up env variable */
             setenv(envKey, "");
         }
@@ -475,16 +527,21 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
         size_t next = 0;
         while ((next = optionLine.find(" ", last)) != std::string::npos) {
             std::string option = optionLine.substr(last, next-last);
-            parse_vm_option(&vmArgs, &cp, &modulePath, option);
+            parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, option);
             last = next + 1;
         };
-        parse_vm_option(&vmArgs, &cp, &modulePath, optionLine.substr(last));
+        parse_vm_option(&vmArgs, &cp, &modulePath, &libraryPath, optionLine.substr(last));
     }
     #endif
 
     /* set classpath and module path arguments - only needed for jvm mode */
     if (jvmMode) {
-        vmArgs.push_back(cp.str());
+        if (!cp.str().empty()) {
+            vmArgs.push_back("-Djava.class.path=" + cp.str().substr(1));
+        }
+        if (!libraryPath.str().empty()) {
+            vmArgs.push_back("-Djava.library.path=" + libraryPath.str().substr(1));
+        }
 #ifdef LAUNCHER_MODULE_PATH
         vmArgs.push_back(modulePath.str());
         vmArgs.push_back("-Djdk.module.main=" LAUNCHER_MAIN_MODULE_STR);
@@ -622,7 +679,11 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
     vmInitArgs.nOptions = 0;
     parse_vm_options(argc, argv, exeDir, &vmInitArgs, jvmMode);
     vmInitArgs.version = JNI_VERSION_9;
-    vmInitArgs.ignoreUnrecognized = true;
+    /* In general we want to validate VM arguments.
+     * But we must disable it for the case there is a native library and we saw a --jvm argument,
+     * as the VM arguments are then JVM VM arguments and not SVM VM arguments.
+     * In that case we validate them after the execve() when running in --jvm mode. */
+    vmInitArgs.ignoreUnrecognized = found_switch_to_jvm_flag && !jvmMode;
 
     /* load VM library - after parsing arguments s.t. NMT
      * tracking variable is already set */

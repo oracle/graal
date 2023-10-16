@@ -15,18 +15,11 @@ Note that some algorithms are allowed by FIPS for specific use cases only. As a 
 
 > Note: Jipher is not available in GraalVM Community Edition. It is supported on Linux and macOS (macOS 10.15 and higher) on both AMD64 and AArch64 architectures.
 
+Jipher JARs are included in the Oracle GraalVM core package at: _lib/jipher/jipher-jce.jar_ and _lib/jipher/jipher-pki.jar_.
+To enable Jipher, pass these JARs on the application class path.
+
 This page describes how to use Jipher with GraalVM Native Image.
 
-## Install Jipher
-
-Jipher is distributed as a separate component and can be added to GraalVM with the [GraalVM Updater](../reference-manual/graalvm-updater.md) tool.
-
-Run this command to install Jipher:
-```shell
-gu install jipher
-```
-This adds Jipher JAR files to the GraalVM's lib directory: `lib/jipher/jipher-jce.jar` and `lib/jipher/jipher-pki.jar`.
- 
 ## Build a Native Executable with Jipher
 
 JCA algorithms rely on reflection. 

@@ -24,14 +24,12 @@
  */
 package com.oracle.svm.core.jdk;
 
-import java.util.Deque;
 import java.util.Map;
 import java.util.Set;
 
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.annotate.TargetElement;
 
 import jdk.internal.loader.NativeLibraries;
 
@@ -44,14 +42,6 @@ final class Target_jdk_internal_loader_NativeLibraries {
      */
     @SuppressWarnings("unused")
     @Substitute//
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    public static NativeLibraries jniNativeLibraries(ClassLoader loader) {
-        return null;
-    }
-
-    @SuppressWarnings("unused")
-    @Substitute//
-    @TargetElement(onlyWith = JDK19OrLater.class)
     public static NativeLibraries newInstance(ClassLoader loader) {
         return null;
     }
@@ -63,9 +53,6 @@ final class Target_jdk_internal_loader_NativeLibraries {
     private Map<?, ?> libraries;
     @Delete //
     private static Set<String> loadedLibraryNames;
-    @Delete //
-    @TargetElement(onlyWith = JDK17OrEarlier.class)//
-    private static Deque<?> nativeLibraryContext;
 
     /*
      * We are defensive and also handle private native methods by marking them as deleted. If they
@@ -74,23 +61,13 @@ final class Target_jdk_internal_loader_NativeLibraries {
      */
 
     @Delete//
-    @TargetElement(onlyWith = JDK20OrLater.class)
     private static native boolean load(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl impl, String name, boolean isBuiltin, boolean throwExceptionIfFail);
 
     @Delete//
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    private static native void unload(String name, boolean isBuiltin, boolean isJNI, long handle);
-
-    @Delete//
-    @TargetElement(onlyWith = JDK19OrLater.class)
     private static native void unload(String name, boolean isBuiltin, long handle);
 
     @Delete
     private static native String findBuiltinLib(String name);
-
-    @Delete//
-    @TargetElement(onlyWith = JDK17OrEarlier.class)
-    private static native long findEntry0(Target_jdk_internal_loader_NativeLibraries_NativeLibraryImpl lib, String name);
 }
 
 @TargetClass(value = jdk.internal.loader.NativeLibraries.class, innerClass = "NativeLibraryImpl")

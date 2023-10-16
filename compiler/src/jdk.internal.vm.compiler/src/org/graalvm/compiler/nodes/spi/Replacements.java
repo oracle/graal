@@ -29,10 +29,8 @@ import java.util.BitSet;
 import org.graalvm.compiler.api.replacements.Snippet;
 import org.graalvm.compiler.api.replacements.SnippetTemplateCache;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.NodeSourcePosition;
-import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
@@ -117,19 +115,6 @@ public interface Replacements extends GeneratedPluginInjectionProvider {
      */
     StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
                     AllowAssumptions allowAssumptions, OptionValues options);
-
-    /**
-     * Gets a graph produced from the intrinsic for a given method that can be compiled and
-     * installed for the method.
-     *
-     * @param method
-     * @param compilationId
-     * @param debug
-     * @param allowAssumptions
-     * @param cancellable
-     * @return an intrinsic graph that can be compiled and installed for {@code method} or null
-     */
-    StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, AllowAssumptions allowAssumptions, Cancellable cancellable);
 
     /**
      * Determines if there may be a

@@ -79,6 +79,9 @@ import org.graalvm.compiler.nodes.spi.CoreProvidersDelegate;
 import org.graalvm.compiler.nodes.spi.Simplifiable;
 import org.graalvm.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.compiler.nodes.util.GraphUtil;
+import org.graalvm.compiler.options.Option;
+import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionType;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 
@@ -86,6 +89,13 @@ import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
 
 public class CanonicalizerPhase extends BasePhase<CoreProviders> {
+
+    public static class Options {
+        // @formatter:off
+        @Option(help = "Verify if the current graph state allows GVN to be performed.", type = OptionType.Debug)
+        public static final OptionKey<Boolean> CanonicalizerVerifyGVNAllowed = new OptionKey<>(true);
+        // @formatter:on
+    }
 
     /**
      * Constants for types of canonicalization that can be performed.
@@ -154,6 +164,10 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
     protected CanonicalizerPhase(CustomSimplification customSimplification, EnumSet<CanonicalizerFeature> features) {
         this.customSimplification = customSimplification;
         this.features = features;
+    }
+
+    public EnumSet<CanonicalizerFeature> getFeatures() {
+        return features;
     }
 
     public CanonicalizerPhase copyWithCustomSimplification(CustomSimplification newSimplification) {
@@ -508,7 +522,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         return false;
     }
 
-    public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
+    public static boolean gvn(Node node, NodeClass<?> nodeClass) {
         if (nodeClass.valueNumberable()) {
             Node newNode = node.graph().findDuplicate(node);
             if (newNode != null) {
@@ -520,6 +534,15 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
             }
         }
         return false;
+    }
+
+    public boolean tryGlobalValueNumbering(Node node, NodeClass<?> nodeClass) {
+        if (Options.CanonicalizerVerifyGVNAllowed.getValue(node.getOptions())) {
+            assert ((StructuredGraph) node.graph()).getGraphState().isBeforeStage(
+                            StageFlag.PARTIAL_REDUNDANCY_SCHEDULE) : "GVN must not occur after expanding partially redundant nodes, trying to gvn " + node + " for graph " +
+                                            node.graph();
+        }
+        return gvn(node, nodeClass);
     }
 
     private static AutoCloseable getCanonicalizeableContractAssertion(Node node) {

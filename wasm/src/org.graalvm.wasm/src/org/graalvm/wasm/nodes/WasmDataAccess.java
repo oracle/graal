@@ -70,27 +70,27 @@ public interface WasmDataAccess {
 
     boolean isValidGlobalIndex(int index);
 
-    int loadI32FromGlobals(int index);
+    int loadI32FromGlobals(MaterializedFrame frame, int index);
 
-    long loadI64FromGlobals(int index);
+    long loadI64FromGlobals(MaterializedFrame frame, int index);
 
-    float loadF32FromGlobals(int index);
+    float loadF32FromGlobals(MaterializedFrame frame, int index);
 
-    double loadF64FromGlobals(int index);
+    double loadF64FromGlobals(MaterializedFrame frame, int index);
 
-    boolean isValidMemoryAddress(long address, int length);
+    boolean isValidMemoryAddress(MaterializedFrame frame, long address, int length);
 
-    byte loadI8FromMemory(long address);
+    byte loadI8FromMemory(MaterializedFrame frame, long address);
 
-    short loadI16FromMemory(long address);
+    short loadI16FromMemory(MaterializedFrame frame, long address);
 
-    int loadI32FromMemory(long address);
+    int loadI32FromMemory(MaterializedFrame frame, long address);
 
-    long loadI64FromMemory(long address);
+    long loadI64FromMemory(MaterializedFrame frame, long address);
 
-    float loadF32FromMemory(long address);
+    float loadF32FromMemory(MaterializedFrame frame, long address);
 
-    double loadF64FromMemory(long address);
+    double loadF64FromMemory(MaterializedFrame frame, long address);
 
-    String loadStringFromMemory(long address, int length);
+    String loadStringFromMemory(MaterializedFrame frame, long address, int length);
 }

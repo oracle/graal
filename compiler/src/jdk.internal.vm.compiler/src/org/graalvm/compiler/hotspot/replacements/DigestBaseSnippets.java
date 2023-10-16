@@ -112,17 +112,17 @@ public class DigestBaseSnippets implements Snippets {
 
     @Fold
     public static boolean useSHA1Intrinsics(@Fold.InjectedParameter GraalHotSpotVMConfig config) {
-        return config.useSHA1Intrinsics();
+        return config.sha1ImplCompressMultiBlock != 0L;
     }
 
     @Fold
     public static boolean useSHA256Intrinsics(@Fold.InjectedParameter GraalHotSpotVMConfig config) {
-        return config.useSHA256Intrinsics();
+        return config.sha256ImplCompressMultiBlock != 0L;
     }
 
     @Fold
     public static boolean useSHA512Intrinsics(@Fold.InjectedParameter GraalHotSpotVMConfig config) {
-        return config.useSHA512Intrinsics();
+        return config.sha512ImplCompressMultiBlock != 0L;
     }
 
     @Fold

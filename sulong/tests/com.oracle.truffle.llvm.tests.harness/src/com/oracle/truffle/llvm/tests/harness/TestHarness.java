@@ -38,8 +38,6 @@ import java.util.Arrays;
 import java.util.Map;
 import java.util.TreeMap;
 
-import com.oracle.truffle.llvm.runtime.LLVMLanguage;
-import com.oracle.truffle.llvm.runtime.except.LLVMLinkerException;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 
 import org.graalvm.polyglot.Context;
@@ -47,6 +45,7 @@ import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.Context.Builder;
+import org.junit.Assert;
 
 public class TestHarness {
     private static Engine testEngine = Engine.newBuilder().allowExperimentalOptions(true).build();
@@ -56,12 +55,12 @@ public class TestHarness {
     }
 
     private static int runBitcode(File bitcodeFile, String[] args, Map<String, String> options, Engine engine, boolean evalSourceOnly) throws IOException {
-        Source source = Source.newBuilder(LLVMLanguage.ID, bitcodeFile).build();
+        Source source = Source.newBuilder("llvm", bitcodeFile).build();
         Builder builder = Context.newBuilder();
-        try (Context context = builder.engine(engine).arguments(LLVMLanguage.ID, args).options(options).allowAllAccess(true).build()) {
+        try (Context context = builder.engine(engine).arguments("llvm", args).options(options).allowAllAccess(true).build()) {
             Value main = context.eval(source);
             if (!main.canExecute()) {
-                throw new LLVMLinkerException("No main function found.");
+                Assert.fail("No main function found.");
             }
             if (!evalSourceOnly) {
                 return main.execute().asInt();

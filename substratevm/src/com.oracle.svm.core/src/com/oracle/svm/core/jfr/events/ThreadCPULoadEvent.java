@@ -29,7 +29,6 @@ import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;
-import com.oracle.svm.core.heap.VMOperationInfos;
 import com.oracle.svm.core.jdk.Jvm;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jfr.JfrEvent;
@@ -37,12 +36,12 @@ import com.oracle.svm.core.jfr.JfrNativeEventWriter;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterData;
 import com.oracle.svm.core.jfr.JfrNativeEventWriterDataAccess;
 import com.oracle.svm.core.jfr.JfrTicks;
-import com.oracle.svm.core.thread.JavaVMOperation;
 import com.oracle.svm.core.thread.ThreadCpuTimeSupport;
-import com.oracle.svm.core.thread.VMThreads;
 import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.core.util.TimeUtils;
+
+import static com.oracle.svm.core.thread.PlatformThreads.fromVMThread;
 
 public class ThreadCPULoadEvent {
     private static final FastThreadLocalLong cpuTimeTL = FastThreadLocalFactory.createLong("ThreadCPULoadEvent.cpuTimeTL");
@@ -119,18 +118,10 @@ public class ThreadCPULoadEvent {
 
         JfrNativeEventWriter.beginSmallEvent(data, JfrEvent.ThreadCPULoad);
         JfrNativeEventWriter.putLong(data, JfrTicks.elapsedTicks());
-        JfrNativeEventWriter.putEventThread(data);
+        JfrNativeEventWriter.putThread(data, fromVMThread(isolateThread));
         JfrNativeEventWriter.putFloat(data, userTime / totalAvailableTime);
         JfrNativeEventWriter.putFloat(data, systemTime / totalAvailableTime);
         JfrNativeEventWriter.endSmallEvent(data);
-    }
-
-    public static void emitEvents() {
-        /* This is safe because the VM operation rechecks if the event should be emitted. */
-        if (shouldEmitUnsafe()) {
-            EmitThreadCPULoadEventsOperation vmOp = new EmitThreadCPULoadEventsOperation();
-            vmOp.enqueue();
-        }
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
@@ -160,24 +151,5 @@ public class ThreadCPULoadEvent {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     private static long getCurrentTime() {
         return System.nanoTime();
-    }
-
-    @Uninterruptible(reason = "Used to avoid the VM operation if it is not absolutely needed.")
-    private static boolean shouldEmitUnsafe() {
-        /* The returned value is racy. */
-        return JfrEvent.ThreadCPULoad.shouldEmit();
-    }
-
-    private static final class EmitThreadCPULoadEventsOperation extends JavaVMOperation {
-        EmitThreadCPULoadEventsOperation() {
-            super(VMOperationInfos.get(EmitThreadCPULoadEventsOperation.class, "Emit ThreadCPULoad events", SystemEffect.SAFEPOINT));
-        }
-
-        @Override
-        protected void operate() {
-            for (IsolateThread isolateThread = VMThreads.firstThread(); isolateThread.isNonNull(); isolateThread = VMThreads.nextThread(isolateThread)) {
-                emit(isolateThread);
-            }
-        }
     }
 }

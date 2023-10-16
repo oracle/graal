@@ -1001,6 +1001,11 @@ public final class UnsafeWasmMemory extends WasmMemory {
         }
     }
 
+    @Override
+    public boolean isUnsafe() {
+        return true;
+    }
+
     @SuppressWarnings("deprecation"/* JDK-8277863 */)
     private static long getObjectFieldOffset(Field field) {
         return unsafe.objectFieldOffset(field);

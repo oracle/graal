@@ -55,6 +55,7 @@ import org.graalvm.compiler.nodeinfo.NodeInfo;
 import org.graalvm.compiler.nodeinfo.NodeSize;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.options.OptionValues;
+import org.graalvm.compiler.serviceprovider.IsolateUtil;
 import org.graalvm.util.json.JSONFormatter;
 
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -706,7 +707,7 @@ public class OptimizationLogImpl implements OptimizationLog {
                 }
                 PathUtilities.createDirectories(pathOptionValue);
                 @SuppressWarnings("deprecation")
-                String fileName = String.valueOf(Thread.currentThread().getId());
+                String fileName = IsolateUtil.getIsolateID() + "_" + Thread.currentThread().getId();
                 String filePath = PathUtilities.getPath(pathOptionValue, fileName);
                 try (OutputStream outputStream = PathUtilities.openOutputStream(filePath, true);
                                 PrintStream printStream = new PrintStream(outputStream)) {

@@ -52,6 +52,13 @@ public interface ObjectScanningObserver {
     }
 
     /**
+     * Hook for scanned value of primitive field.
+     */
+    default boolean forPrimitiveFieldValue(JavaConstant receiver, AnalysisField field, JavaConstant fieldValue, ScanReason reason) {
+        return false;
+    }
+
+    /**
      * Hook for scanned null field value.
      */
     default boolean forNullFieldValue(JavaConstant receiver, AnalysisField field, ScanReason reason) {

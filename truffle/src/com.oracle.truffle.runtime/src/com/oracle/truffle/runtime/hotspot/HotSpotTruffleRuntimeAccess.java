@@ -79,7 +79,8 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         } catch (Error e) {
             // hack to detect the exact error that is thrown when
             if (e.getClass() == Error.class && e.getMessage().startsWith("The EnableJVMCI VM option must be true")) {
-                return new DefaultTruffleRuntime("JVMCI is not enabled on this JVM. JVMCI may be enabled using -XX:+EnableJVMCI. This is necessary on JVMs that do not enable JVMCI by default.");
+                return new DefaultTruffleRuntime(
+                                "JVMCI is required to enable optimizations. Pass -XX:+EnableJVMCI as a virtual machine argument to the java executable to resolve this. This is necessary on JVMs that do not enable JVMCI by default.");
             }
             throw e;
         }
@@ -88,7 +89,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         boolean useCompiler = config.getFlag("UseCompiler", Boolean.class);
         if (!useCompiler) {
             // compilation disabled in host VM -> fallback to default runtime
-            return new DefaultTruffleRuntime("JVMCI compilation was disabled on this JVM. JVMCI may be enabled using -XX:+EnableJVMCI.");
+            return new DefaultTruffleRuntime("JVMCI compilation was disabled on this JVM. Pass -XX:+EnableJVMCI as a virtual machine argument to the java executable to resolve this.");
         }
         /*
          * Module integrity rules ignore qualified exports from a parent module layer to a child
@@ -117,7 +118,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
                 if (compilerModule == null) {
                     // jargraal compiler module not found -> fallback to default runtime
                     return new DefaultTruffleRuntime(
-                                    "Libgraal compilation is not available on this JVM. Alternatively, the compiler module jdk.internal.vm.compiler was not found on the --upgrade-module-path.");
+                                    "Libgraal compilation is not available on this JVM. Alternatively, the org.graalvm.compiler:compiler module can be put on the --upgrade-module-path.");
                 }
                 /*
                  * That the compiler has a qualified export to Truffle may not be enough if truffle

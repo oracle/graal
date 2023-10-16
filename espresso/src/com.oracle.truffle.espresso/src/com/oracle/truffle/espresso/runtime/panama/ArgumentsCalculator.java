@@ -25,7 +25,11 @@ package com.oracle.truffle.espresso.runtime.panama;
 import com.oracle.truffle.espresso.impl.Klass;
 
 public interface ArgumentsCalculator {
-    int getNextInputIndex(VMStorage reg, Klass type);
+    int SKIP = -2;
+
+    int getNextInputIndex(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType);
+
+    boolean isVarArg(VMStorage reg, Klass type, VMStorage nextReg, Klass nextType);
 
     boolean checkReturn(VMStorage reg, Klass type);
 }

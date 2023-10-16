@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -133,5 +133,34 @@ public interface ExecutionEventListener {
      */
     default Object onUnwind(EventContext context, VirtualFrame frame, Object info) {
         return null;
+    }
+
+    /**
+     * Invoked on a yield of the current thread. A yield interrupts the current execution, which is
+     * {@link #onResume(EventContext, VirtualFrame) resumed} later on. Delegates to
+     * {@link #onReturnValue(EventContext, VirtualFrame, Object)} by default.
+     *
+     * @param context indicating the current location in the guest language AST
+     * @param frame the frame that was used for executing instrumented node
+     * @since 24.0
+     */
+    default void onYield(EventContext context, VirtualFrame frame, Object value) {
+        onReturnValue(context, frame, value);
+    }
+
+    /**
+     * Invoked on a resume of the execution on the current thread after a
+     * {@link #onYield(EventContext, VirtualFrame, Object) yield}. Delegates to
+     * {@link #onEnter(EventContext, VirtualFrame)} by default.
+     * <p>
+     * Use {@link TruffleInstrument.Env#isSameFrame(RootNode, Frame, Frame)} to match the
+     * interrupted and resumed execution.
+     *
+     * @param context indicating the current location in the guest language AST
+     * @param frame the frame that was used for executing instrumented node
+     * @since 24.0
+     */
+    default void onResume(EventContext context, VirtualFrame frame) {
+        onEnter(context, frame);
     }
 }

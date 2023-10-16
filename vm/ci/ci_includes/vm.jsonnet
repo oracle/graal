@@ -8,7 +8,9 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
 {
   vm_java_21:: graal_common.labsjdk21 + vm_common.vm_env_mixin('21'),
-  vm_java_22:: graal_common.oraclejdk22 + vm_common.vm_env_mixin('22'),
+  vm_java_Latest::
+    local jdk = graal_common.labsjdkLatest;
+    jdk + vm_common.vm_env_mixin(std.toString(jdk.jdk_version)),
 
   vm_java_21_llvm:: self.vm_java_21 + graal_common['labsjdk-ce-21-llvm'],
 
@@ -29,8 +31,6 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
 
   check_graalvm_base_build(path, os, arch, java_version): [],
 
-  check_graalvm_complete_build(mx_command_base, os, arch, java_version): [],
-
   vm_setup:: {
     short_name:: 'ce',
     setup+: [
@@ -43,7 +43,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   },
 
   notify_releaser_build: vm_common.common_vm_linux + graal_common.linux_amd64 + {
-    name: 'daily-vm-notify-releaser-build-linux-amd64',
+    name: 'daily-deploy-vm-notify-releaser-build-linux-amd64',
     packages+: {
       curl: '>=7.50.1',
       git: '>=1.8.3',
@@ -51,35 +51,26 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     run+: [
         ['test', ['git', 'rev-parse', '--abbrev-ref', 'HEAD'], '!=', 'master', '||'] + self.ci_resources.infra.notify_releaser_service,
     ],
-    requireArtifacts: [
-      {name: 'post-merge-deploy-vm-java21-linux-amd64'},
-      {name: 'daily-deploy-vm-java21-linux-aarch64'},
-      {name: 'daily-deploy-vm-base-java21-darwin-amd64'},
-      {name: 'daily-deploy-vm-installable-java21-darwin-amd64'},
-      {name: 'daily-deploy-vm-base-java21-darwin-aarch64'},
-      {name: 'daily-deploy-vm-installable-java21-darwin-aarch64'},
-      {name: 'daily-deploy-vm-base-java21-windows-amd64'},
-      {name: 'daily-deploy-vm-installable-java21-windows-amd64'},
-      {name: 'daily-deploy-vm-ruby-java21-linux-amd64'},
-      {name: 'daily-deploy-vm-ruby-java21-darwin-amd64'},
-      {name: 'daily-deploy-vm-ruby-java21-darwin-aarch64'},
-      {name: 'daily-deploy-vm-espresso-java21-linux-amd64'},
-      {name: 'daily-deploy-vm-espresso-java21-linux-aarch64'},
-      {name: 'daily-deploy-vm-espresso-java21-darwin-amd64'},
-      {name: 'daily-deploy-vm-espresso-java21-darwin-aarch64'},
-      {name: 'daily-deploy-vm-espresso-java21-windows-amd64'},
+    runAfter: [
+      'post-merge-deploy-vm-base-java21-linux-amd64',
+      'daily-deploy-vm-installables-standalones-java21-linux-amd64',
+      'daily-deploy-vm-base-java21-linux-aarch64',
+      'daily-deploy-vm-installables-standalones-java21-linux-aarch64',
+      'daily-deploy-vm-base-java21-darwin-amd64',
+      'daily-deploy-vm-standalones-java21-darwin-amd64',
+      'daily-deploy-vm-base-java21-darwin-aarch64',
+      'daily-deploy-vm-standalones-java21-darwin-aarch64',
+      'daily-deploy-vm-base-java21-windows-amd64',
+      'daily-deploy-vm-standalones-java21-windows-amd64',
+      'daily-deploy-vm-maven-linux-amd64',
+      'daily-deploy-vm-espresso-java21-linux-amd64',
+      'daily-deploy-vm-espresso-java21-linux-aarch64',
+      'daily-deploy-vm-espresso-java21-darwin-amd64',
+      'daily-deploy-vm-espresso-java21-darwin-aarch64',
+      'daily-deploy-vm-espresso-java21-windows-amd64',
     ],
-    targets+: ['daily'],
+    targets+: ['daily', 'deploy'],
     notify_groups:: ['deploy'],
-  },
-
-  deploy_vm_publish_releaser_artifact(build): build + {
-    publishArtifacts: [
-      {
-        name: build.name,
-        patterns: [build.name]
-      }
-    ]
   },
 
   diskspace_required: {
@@ -89,14 +80,17 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
   maven_deploy_base_functions: {
     edition:: 'ce',
 
+    mx_args(os, arch)::
+      ['--native-images=false'],
+
     dynamic_imports(os, arch)::
       ['--dynamicimports', vm_common.maven_deploy_base_functions.dynamic_ce_imports(os, arch)],
 
-    suites(os, arch)::
-      vm_common.maven_deploy_base_functions.ce_suites(os,arch),
+    ee_suites(os, arch)::
+      error 'The vm suite does not define ee suites',
 
-    licenses()::
-      ['--licenses', vm_common.maven_deploy_base_functions.ce_licenses()],
+    ee_licenses()::
+      error 'The vm suite does not define ee licenses',
   },
 
   local builds = [
@@ -195,38 +189,36 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     #
 
     # Linux/AMD64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java21_linux_amd64),
+    vm_common.deploy_vm_base_java21_linux_amd64,
+    vm_common.deploy_vm_installables_standalones_java21_linux_amd64,
 
     # Linux/AARCH64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_java21_linux_aarch64),
+    vm_common.deploy_vm_base_java21_linux_aarch64,
+    vm_common.deploy_vm_installables_standalones_java21_linux_aarch64,
 
     # Darwin/AMD64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_darwin_amd64),
+    vm_common.deploy_vm_base_java21_darwin_amd64,
+    vm_common.deploy_vm_installables_java21_darwin_amd64,
+    vm_common.deploy_vm_standalones_java21_darwin_amd64,
 
     # Darwin/AARCH64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_darwin_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_darwin_aarch64),
+    vm_common.deploy_vm_base_java21_darwin_aarch64,
+    vm_common.deploy_vm_installables_java21_darwin_aarch64,
+    vm_common.deploy_vm_standalones_java21_darwin_aarch64,
 
     # Windows/AMD64
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_base_java21_windows_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_installable_java21_windows_amd64),
-
-    #
-    # Deploy the GraalVM Ruby image (GraalVM Base + ruby)
-    #
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_linux_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_ruby_java21_darwin_aarch64),
+    vm_common.deploy_vm_base_java21_windows_amd64,
+    vm_common.deploy_vm_installables_java21_windows_amd64,
+    vm_common.deploy_vm_standalones_java21_windows_amd64,
 
     #
     # Deploy the GraalVM Espresso image (GraalVM Base + espresso)
     #
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_linux_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_linux_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_darwin_amd64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_darwin_aarch64),
-    self.deploy_vm_publish_releaser_artifact(vm_common.deploy_vm_espresso_java21_windows_amd64),
+    vm_common.deploy_vm_espresso_java21_linux_amd64,
+    vm_common.deploy_vm_espresso_java21_linux_aarch64,
+    vm_common.deploy_vm_espresso_java21_darwin_amd64,
+    vm_common.deploy_vm_espresso_java21_darwin_aarch64,
+    vm_common.deploy_vm_espresso_java21_windows_amd64,
 
     # Trigger the releaser service
     self.notify_releaser_build,

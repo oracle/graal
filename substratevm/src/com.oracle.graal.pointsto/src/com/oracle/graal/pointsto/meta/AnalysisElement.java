@@ -148,7 +148,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
          * triggers, the one that triggers it is passed into triggeredElement for debugging.
          */
         AnalysisFuture<Void> notifyCallback(AnalysisUniverse universe, AnalysisElement triggeredElement) {
-            assert triggeredElement.isTriggered();
+            assert triggeredElement.isTriggered() : triggeredElement;
             var existing = notified.get();
             if (existing != null) {
                 return existing;
@@ -181,7 +181,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
         /** Notify the callback exactly once for each reachable subtype. */
         public AnalysisFuture<Void> notifyCallback(AnalysisUniverse universe, AnalysisType reachableSubtype) {
-            assert reachableSubtype.isReachable();
+            assert reachableSubtype.isReachable() : reachableSubtype;
             return seenSubtypes.computeIfAbsent(reachableSubtype, k -> {
                 CausalityExport.registerConjunctiveEdge(
                         CausalityEvents.SubtypeReachableNotificationCallback.create(callback),
@@ -210,7 +210,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
         /** Notify the callback exactly once for each reachable method override. */
         public void notifyCallback(AnalysisUniverse universe, AnalysisMethod reachableOverride) {
-            assert reachableOverride.isReachable();
+            assert reachableOverride.isReachable() : reachableOverride;
             if (seenOverride.add(reachableOverride)) {
                 Executable javaMethod = reachableOverride.getJavaMethod();
                 if (javaMethod != null) {

@@ -67,7 +67,7 @@ public abstract class GeneratedInvocationPlugin extends RequiredInlineOnlyInvoca
         Class<?> c = getClass();
         for (Method m : c.getDeclaredMethods()) {
             if (m.getName().equals("execute")) {
-                return String.format("%s.%s()", m.getClass().getName(), m.getName());
+                return String.format("%s.%s()", m.getDeclaringClass().getName(), m.getName());
             }
         }
         throw new GraalError("could not find method named \"execute\" in " + c.getName());

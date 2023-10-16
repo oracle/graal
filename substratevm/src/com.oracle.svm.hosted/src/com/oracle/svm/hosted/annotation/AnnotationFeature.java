@@ -59,6 +59,7 @@ public class AnnotationFeature implements InternalFeature {
             Class<? extends Annotation> annotationType = annotation.annotationType();
             if (processedTypes.add(annotationType)) {
                 RuntimeReflection.registerAllDeclaredMethods(annotationType);
+                RuntimeReflection.register(annotationType.getDeclaredMethods());
             }
         }
         return obj;

@@ -195,7 +195,9 @@ public class SubstrateOptionsParser {
                     }
                 }
             }
-            return HOSTED_OPTION_PREFIX + value + option;
+            String optionString = HOSTED_OPTION_PREFIX + value + option;
+            assert apiOptionName == null : "The API option " + apiOptionName + " not found for " + optionString;
+            return optionString;
         } else {
             String apiOptionWithValue = null;
             for (APIOption apiOption : apiOptions) {

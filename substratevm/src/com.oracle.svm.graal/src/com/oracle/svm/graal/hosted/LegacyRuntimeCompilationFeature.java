@@ -300,6 +300,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                     new DeoptimizeOnExceptionPhase(deoptimizeOnExceptionPredicate).apply(graph);
                 }
                 new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, hostedProviders);
+                unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
 
                 graphEncoder.prepare(graph);
                 node.graph = graph;
@@ -467,6 +468,8 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
                      */
                     convertDeoptimizeToGuard.apply(graph, hostedProviders);
 
+                    unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
+
                     graphEncoder.prepare(graph);
                     assert RuntimeCompilationFeature.verifyNodes(graph);
                 } catch (Throwable ex) {
@@ -518,6 +521,11 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
     }
 
     @Override
+    public void beforeHeapLayout(BeforeHeapLayoutAccess a) {
+        super.beforeHeapLayoutHelper(a);
+    }
+
+    @Override
     public void afterHeapLayout(AfterHeapLayoutAccess a) {
         super.afterHeapLayoutHelper(a);
     }
@@ -536,8 +544,11 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
     }
 
     @Override
-    protected void requireFrameInformationForMethodHelper(AnalysisMethod aMethod) {
+    protected void requireFrameInformationForMethodHelper(AnalysisMethod aMethod, FeatureImpl.BeforeAnalysisAccessImpl config, boolean registerAsRoot) {
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(aMethod, aMethod);
+        if (registerAsRoot) {
+            config.registerAsRoot(aMethod, true, "Frame information required, registered in " + LegacyRuntimeCompilationFeature.class);
+        }
     }
 
     @Override

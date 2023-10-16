@@ -86,13 +86,13 @@ public class ImageHeap {
 
     /** Record the future computing the snapshot in the heap. */
     public Object setTask(JavaConstant constant, AnalysisFuture<ImageHeapConstant> task) {
-        assert !(constant instanceof ImageHeapConstant);
+        assert !(constant instanceof ImageHeapConstant) : constant;
         return objectsCache.putIfAbsent(constant, task);
     }
 
     /** Record the snapshot in the heap. */
     public void setValue(JavaConstant constant, ImageHeapConstant value) {
-        assert !(constant instanceof ImageHeapConstant);
+        assert !(constant instanceof ImageHeapConstant) : constant;
         Object previous = objectsCache.put(constant, value);
         AnalysisError.guarantee(!(previous instanceof ImageHeapConstant), "An ImageHeapConstant: %s is already registered for hosted JavaConstant: %s.", previous, constant);
     }
@@ -102,7 +102,7 @@ public class ImageHeap {
     }
 
     public boolean addReachableObject(AnalysisType type, ImageHeapConstant heapObj) {
-        assert heapObj.isReachable();
+        assert heapObj.isReachable() : heapObj;
         Set<ImageHeapConstant> objectSet = reachableObjects.computeIfAbsent(type, t -> ConcurrentHashMap.newKeySet());
         return objectSet.add(heapObj);
     }

@@ -2808,6 +2808,58 @@ public class ContextPreInitializationTest {
         }
     }
 
+    @Test
+    public void testPatchNotCalledOnNonAllowedLanguage() throws ReflectiveOperationException {
+        setPatchable(FIRST, SECOND);
+        doContextPreinitialize(FIRST, SECOND);
+        List<CountingContext> contexts = new ArrayList<>(emittedContexts);
+        assertEquals(2, contexts.size());
+        CountingContext firstLangCtx = findContext(FIRST, contexts);
+        assertNotNull(firstLangCtx);
+        CountingContext secondLangCtx = findContext(SECOND, contexts);
+        assertNotNull(secondLangCtx);
+        assertEquals(1, firstLangCtx.createContextCount);
+        assertEquals(1, firstLangCtx.initializeContextCount);
+        assertEquals(0, firstLangCtx.patchContextCount);
+        assertEquals(0, firstLangCtx.disposeContextCount);
+        assertEquals(1, firstLangCtx.initializeThreadCount);
+        assertEquals(1, firstLangCtx.disposeThreadCount);
+        assertEquals(1, secondLangCtx.createContextCount);
+        assertEquals(1, secondLangCtx.initializeContextCount);
+        assertEquals(0, secondLangCtx.patchContextCount);
+        assertEquals(0, secondLangCtx.disposeContextCount);
+        assertEquals(1, secondLangCtx.initializeThreadCount);
+        assertEquals(1, secondLangCtx.disposeThreadCount);
+        try (Context ctx = Context.create(FIRST)) {
+            Value res = ctx.eval(Source.create(FIRST, "test"));
+            assertEquals("test", res.asString());
+            contexts = new ArrayList<>(emittedContexts);
+            assertEquals(3, contexts.size());
+            Collection<? extends CountingContext> firstLangCtxs = findContexts(FIRST, contexts);
+            firstLangCtxs.remove(firstLangCtx);
+            assertEquals(1, firstLangCtxs.size());
+            CountingContext firstLangCtx2 = firstLangCtxs.iterator().next();
+            assertEquals(1, firstLangCtx.createContextCount);
+            assertEquals(1, firstLangCtx.initializeContextCount);
+            assertEquals(1, firstLangCtx.patchContextCount);
+            assertEquals(1, firstLangCtx.disposeContextCount);
+            assertEquals(2, firstLangCtx.initializeThreadCount); // Close initializes thread
+            assertEquals(2, firstLangCtx.disposeThreadCount);    // Close initializes thread
+            assertEquals(1, secondLangCtx.createContextCount);
+            assertEquals(1, secondLangCtx.initializeContextCount);
+            assertEquals(0, secondLangCtx.patchContextCount);
+            assertEquals(1, secondLangCtx.disposeContextCount);
+            assertEquals(2, secondLangCtx.initializeThreadCount);    // Close initializes thread
+            assertEquals(2, secondLangCtx.disposeThreadCount);       // Close initializes thread
+            assertEquals(1, firstLangCtx2.createContextCount);
+            assertEquals(1, firstLangCtx2.initializeContextCount);
+            assertEquals(0, firstLangCtx2.patchContextCount);
+            assertEquals(0, firstLangCtx2.disposeContextCount);
+            assertEquals(1, firstLangCtx2.initializeThreadCount);
+            assertEquals(0, firstLangCtx2.disposeThreadCount);
+        }
+    }
+
     private static boolean executedWithXCompOptions() {
         Properties props = System.getProperties();
         return props.containsKey("polyglot.engine.CompileImmediately") || props.containsKey("polyglot.engine.BackgroundCompilation");

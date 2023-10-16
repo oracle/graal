@@ -31,7 +31,6 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
-import com.oracle.truffle.api.TruffleLogger;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.Version;
 import org.graalvm.options.OptionDescriptors;
@@ -78,8 +77,8 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoThreadLocalState;
 import com.oracle.truffle.espresso.runtime.GuestAllocator;
 import com.oracle.truffle.espresso.runtime.JavaVersion;
-import com.oracle.truffle.espresso.runtime.StaticObject;
-import com.oracle.truffle.espresso.runtime.StaticObject.StaticObjectFactory;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject.StaticObjectFactory;
 import com.oracle.truffle.espresso.substitutions.Substitutions;
 
 // TODO: Update website once Espresso has one
@@ -453,17 +452,7 @@ public final class EspressoLanguage extends TruffleLanguage<EspressoContext> {
     @TruffleBoundary
     private StaticShape<StaticObjectFactory> createArrayShape() {
         assert arrayShape == null;
-        try {
-            return StaticShape.newBuilder(this).property(arrayProperty, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
-        } catch (IllegalAccessError e) {
-            if (EspressoLanguage.class.getModule().isNamed()) {
-                TruffleLogger.getLogger(ID).warning("""
-                                IllegalAccessError while trying static shape from espresso module.
-                                You might need to use the following java argument to work around:
-                                --add-exports=org.graalvm.espresso/com.oracle.truffle.espresso.runtime=ALL-UNNAMED""");
-            }
-            throw e;
-        }
+        return StaticShape.newBuilder(this).property(arrayProperty, Object.class, true).build(StaticObject.class, StaticObjectFactory.class);
     }
 
     public StaticProperty getForeignProperty() {

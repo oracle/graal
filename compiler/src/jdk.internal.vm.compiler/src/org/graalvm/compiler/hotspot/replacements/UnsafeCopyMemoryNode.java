@@ -53,22 +53,15 @@ public class UnsafeCopyMemoryNode extends AbstractStateSplit implements Lowerabl
 
     @OptionalInput(Memory) MemoryKill lastLocationAccess;
 
-    private final boolean guarded;
-
-    public UnsafeCopyMemoryNode(boolean guarded, ValueNode receiver, ValueNode srcBase, ValueNode srcOffset, ValueNode destBase, ValueNode desOffset,
+    public UnsafeCopyMemoryNode(ValueNode receiver, ValueNode srcBase, ValueNode srcOffset, ValueNode destBase, ValueNode desOffset,
                     ValueNode bytes) {
         super(TYPE, StampFactory.forVoid());
-        this.guarded = guarded;
         this.receiver = receiver;
         this.srcBase = srcBase;
         this.srcOffset = srcOffset;
         this.destBase = destBase;
         this.desOffset = desOffset;
         this.bytes = bytes;
-    }
-
-    public boolean isGuarded() {
-        return guarded;
     }
 
     @Override
@@ -91,7 +84,4 @@ public class UnsafeCopyMemoryNode extends AbstractStateSplit implements Lowerabl
         updateUsagesInterface(lastLocationAccess, lla);
         lastLocationAccess = lla;
     }
-
-    @NodeIntrinsic
-    public static native void copyMemory(@ConstantNodeParameter boolean guarded, Object receiver, Object srcBase, long srcOffset, Object destBase, long destOffset, long bytes);
 }

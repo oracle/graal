@@ -179,7 +179,7 @@ public class MethodTypeFlowBuilder {
         } else {
             this.flowsGraph = flowsGraph;
             newFlowsGraph = false;
-            assert graphKind == GraphKind.FULL;
+            assert graphKind == GraphKind.FULL : graphKind;
         }
         typeFlowGraphBuilder = new TypeFlowGraphBuilder(bb);
     }
@@ -323,7 +323,7 @@ public class MethodTypeFlowBuilder {
                     ConstantNode cn = (ConstantNode) n;
                     JavaConstant root = cn.asJavaConstant();
                     if (cn.hasUsages() && cn.isJavaConstant() && root.getJavaKind() == JavaKind.Object && root.isNonNull()) {
-                        assert StampTool.isExactType(cn);
+                        assert StampTool.isExactType(cn) : cn;
                         AnalysisType type = (AnalysisType) StampTool.typeOrNull(cn, bb.getMetaAccess());
                         type.registerAsInHeap(new EmbeddedRootScan(AbstractAnalysisEngine.sourcePosition(cn), root));
                         if (registerEmbeddedRoots && !ignoreConstant(bb, cn)) {
@@ -417,10 +417,7 @@ public class MethodTypeFlowBuilder {
     }
 
     private static void registerEmbeddedRoot(PointsToAnalysis bb, ConstantNode cn) {
-        JavaConstant root = cn.asJavaConstant();
-        if (bb.scanningPolicy().trackConstant(bb, root)) {
-            bb.getUniverse().registerEmbeddedRoot(root, AbstractAnalysisEngine.sourcePosition(cn));
-        }
+        bb.getUniverse().registerEmbeddedRoot(cn.asJavaConstant(), AbstractAnalysisEngine.sourcePosition(cn));
     }
 
     private static void registerForeignCall(PointsToAnalysis bb, ForeignCallsProvider foreignCallsProvider, ForeignCallDescriptor foreignCallDescriptor, ResolvedJavaMethod from) {
@@ -463,7 +460,7 @@ public class MethodTypeFlowBuilder {
         var returnFlow = new FormalReturnTypeFlow(position, returnType);
         flowsGraph.setReturnFlow(returnFlow);
 
-        assert returnType.equals(returnFlow.getDeclaredType());
+        assert returnType.equals(returnFlow.getDeclaredType()) : returnType + " != " + returnFlow.getDeclaredType();
         returnType.getTypeFlow(bb, true).addUse(bb, returnFlow);
     }
 
@@ -480,7 +477,7 @@ public class MethodTypeFlowBuilder {
                     AnalysisType paramType = (AnalysisType) paramTypes[index];
                     FormalParamTypeFlow parameter;
                     if (!isStatic && index == 0) {
-                        assert paramType.equals(method.getDeclaringClass());
+                        assert paramType.equals(method.getDeclaringClass()) : paramType + ", " + method;
                         parameter = new FormalReceiverTypeFlow(position, paramType);
                     } else {
                         parameter = new FormalParamTypeFlow(position, paramType, index);
@@ -570,9 +567,9 @@ public class MethodTypeFlowBuilder {
                          * equals to Object. Do we care about the effective value of these primitive
                          * constants in the analysis?
                          */
-                        assert StampTool.isExactType(node);
+                        assert StampTool.isExactType(node) : node;
                         AnalysisType type = (AnalysisType) StampTool.typeOrNull(node, bb.getMetaAccess());
-                        assert type.isInstantiated();
+                        assert type.isInstantiated() : type;
                         TypeFlowBuilder<ConstantTypeFlow> sourceBuilder = TypeFlowBuilder.create(bb, node, ConstantTypeFlow.class, () -> {
                             JavaConstant constantValue = node.asJavaConstant();
                             BytecodePosition position = AbstractAnalysisEngine.sourcePosition(node);
@@ -673,7 +670,7 @@ public class MethodTypeFlowBuilder {
         }
 
         public TypeFlowBuilder<?> lookup(ValueNode n) {
-            assert n.stamp(NodeView.DEFAULT) instanceof ObjectStamp;
+            assert n.stamp(NodeView.DEFAULT) instanceof ObjectStamp : n;
 
             ValueNode node = typeFlowUnproxify(n);
             TypeFlowBuilder<?> result = flows.get(node);
@@ -714,12 +711,12 @@ public class MethodTypeFlowBuilder {
         }
 
         public void add(ValueNode node, TypeFlowBuilder<?> flow) {
-            assert !contains(node);
+            assert !contains(node) : node;
             flows.put(typeFlowUnproxify(node), flow);
         }
 
         public void update(ValueNode node, TypeFlowBuilder<?> flow) {
-            assert contains(node);
+            assert contains(node) : node;
             flows.put(typeFlowUnproxify(node), flow);
         }
 
@@ -1045,7 +1042,7 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof NewMultiArrayNode) {
                 NewMultiArrayNode node = (NewMultiArrayNode) n;
                 AnalysisType type = ((AnalysisType) node.type());
-                assert type.isInstantiated();
+                assert type.isInstantiated() : type;
 
                 TypeFlowBuilder<NewInstanceTypeFlow> newArrayBuilder = TypeFlowBuilder.create(bb, node, NewInstanceTypeFlow.class, () -> {
                     NewInstanceTypeFlow newArray = new NewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type);
@@ -1058,7 +1055,7 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof LoadFieldNode) { // value = object.field
                 LoadFieldNode node = (LoadFieldNode) n;
                 AnalysisField field = (AnalysisField) node.field();
-                assert field.isAccessed();
+                assert field.isAccessed() : field;
                 if (node.getStackKind() == JavaKind.Object) {
                     TypeFlowBuilder<? extends LoadFieldTypeFlow> loadFieldBuilder;
                     BytecodePosition loadLocation = AbstractAnalysisEngine.sourcePosition(node);
@@ -1112,14 +1109,14 @@ public class MethodTypeFlowBuilder {
 
             } else if (n instanceof UnsafePartitionLoadNode) {
                 UnsafePartitionLoadNode node = (UnsafePartitionLoadNode) n;
-                assert node.object().getStackKind() == JavaKind.Object;
+                assert node.object().getStackKind() == JavaKind.Object : node.object();
 
                 checkUnsafeOffset(node.object(), node.offset());
 
                 AnalysisType partitionType = (AnalysisType) node.partitionType();
 
                 AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object(), bb.getMetaAccess());
-                assert bb.getGraalNodeType().isAssignableFrom(objectType);
+                assert bb.getGraalNodeType().isAssignableFrom(objectType) : objectType;
 
                 /* Use the Object type as a conservative type for the values loaded. */
                 AnalysisType componentType = bb.getObjectType();
@@ -1137,21 +1134,21 @@ public class MethodTypeFlowBuilder {
             } else if (n instanceof UnsafePartitionStoreNode) {
                 UnsafePartitionStoreNode node = (UnsafePartitionStoreNode) n;
 
-                assert node.object().getStackKind() == JavaKind.Object;
-                assert node.value().getStackKind() == JavaKind.Object;
+                assert node.object().getStackKind() == JavaKind.Object : node.object();
+                assert node.value().getStackKind() == JavaKind.Object : node.value();
 
                 checkUnsafeOffset(node.object(), node.offset());
 
                 AnalysisType partitionType = (AnalysisType) node.partitionType();
 
                 AnalysisType objectType = (AnalysisType) StampTool.typeOrNull(node.object(), bb.getMetaAccess());
-                assert bb.getGraalNodeType().isAssignableFrom(objectType);
+                assert bb.getGraalNodeType().isAssignableFrom(objectType) : objectType;
 
                 /* Use the Object type as a conservative type for the values stored. */
                 AnalysisType componentType = bb.getObjectType();
 
                 AnalysisType valueType = (AnalysisType) StampTool.typeOrNull(node.value(), bb.getMetaAccess());
-                assert valueType.isJavaLangObject() || bb.getGraalNodeType().isAssignableFrom(valueType) || bb.getGraalNodeListType().isAssignableFrom(valueType);
+                assert valueType.isJavaLangObject() || bb.getGraalNodeType().isAssignableFrom(valueType) || bb.getGraalNodeListType().isAssignableFrom(valueType) : valueType;
 
                 TypeFlowBuilder<?> objectBuilder = state.lookup(node.object());
                 TypeFlowBuilder<?> valueBuilder = state.lookup(node.value());
@@ -1387,7 +1384,7 @@ public class MethodTypeFlowBuilder {
          * the previous value, therefore it is equivalent to the model for Unsafe.getAndSetObject().
          */
         private void modelUnsafeReadAndWriteFlow(ValueNode node, ValueNode object, ValueNode newValue, ValueNode offset) {
-            assert node instanceof UnsafeCompareAndExchangeNode || node instanceof AtomicReadAndWriteNode;
+            assert node instanceof UnsafeCompareAndExchangeNode || node instanceof AtomicReadAndWriteNode : node;
 
             checkUnsafeOffset(object, offset);
 
@@ -1488,7 +1485,7 @@ public class MethodTypeFlowBuilder {
     }
 
     /* Get a reasonable position for inlined invokes, avoiding cycles in the parsing backtrace. */
-    private BytecodePosition getInvokePosition(FixedNode invokeNode) {
+    protected BytecodePosition getInvokePosition(FixedNode invokeNode) {
         BytecodePosition invokePosition = invokeNode.getNodeSourcePosition();
         /* Get the outermost caller position for inlined invokes. */
         while (invokePosition != null && invokePosition.getCaller() != null) {
@@ -1697,7 +1694,7 @@ public class MethodTypeFlowBuilder {
             }
             objectStartIndex += virtualObject.entryCount();
         }
-        assert values.size() == objectStartIndex;
+        assert values.size() == objectStartIndex : values;
     }
 
     protected void processNewInstance(NewInstanceNode node, TypeFlowsOfNodes state) {
@@ -1710,7 +1707,7 @@ public class MethodTypeFlowBuilder {
     }
 
     protected void processNewInstance(ValueNode node, AnalysisType type, TypeFlowsOfNodes state) {
-        assert type.isInstantiated();
+        assert type.isInstantiated() : type;
 
         TypeFlowBuilder<?> newInstanceBuilder = TypeFlowBuilder.create(bb, node, NewInstanceTypeFlow.class, () -> {
             NewInstanceTypeFlow newInstance = new NewInstanceTypeFlow(AbstractAnalysisEngine.sourcePosition(node), type);
@@ -1725,7 +1722,7 @@ public class MethodTypeFlowBuilder {
     }
 
     protected void processStoreField(ValueNode node, AnalysisField field, ValueNode object, ValueNode value, TypeFlowsOfNodes state) {
-        assert field.isWritten();
+        assert field.isWritten() : field;
         if (value.getStackKind() == JavaKind.Object) {
             TypeFlowBuilder<?> valueBuilder = state.lookup(value);
 

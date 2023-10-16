@@ -49,6 +49,6 @@ public abstract class AbstractFastThreadLocal {
 
     public abstract <C> Object[] get();
 
-    public abstract <C> C fastGet(int index, Class<C> castType, boolean invalidateOnNull);
+    public abstract <C> C fastGet(int index, Class<C> castType, boolean invalidateOnNull, boolean nonNullResult);
 
 }

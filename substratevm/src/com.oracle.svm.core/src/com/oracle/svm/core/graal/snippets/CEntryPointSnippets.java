@@ -448,7 +448,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
                 }
             }
         } else {
-            StackOverflowCheck.singleton().initialize(WordFactory.nullPointer());
+            StackOverflowCheck.singleton().initialize();
         }
         CEntryPointListenerSupport.singleton().afterThreadAttach();
         return CEntryPointErrors.NO_ERROR;
@@ -458,10 +458,12 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     private static int attachUnattachedThread(Isolate isolate, boolean startedByIsolate, boolean inCrashHandler, int vmThreadSize) {
         IsolateThread thread = VMThreads.singleton().allocateIsolateThread(vmThreadSize);
         if (thread.isNull()) {
-            return CEntryPointErrors.THREADING_INITIALIZATION_FAILED;
+            return CEntryPointErrors.ALLOCATION_FAILED;
         }
-        StackOverflowCheck.singleton().initialize(thread);
         writeCurrentVMThread(thread);
+        if (!StackOverflowCheck.singleton().initialize()) {
+            return CEntryPointErrors.UNKNOWN_STACK_BOUNDARIES;
+        }
 
         if (inCrashHandler) {
             // If we are in the crash handler then we only want to make sure that this thread can
@@ -671,7 +673,7 @@ public final class CEntryPointSnippets extends SubstrateTemplates implements Sni
     @RestrictHeapAccess(access = NO_ALLOCATION, reason = "Must not allocate in fatal error handling.")
     private static void logException(Throwable exception) {
         try {
-            Log.log().exception(exception);
+            Log.log().exception(exception).newline();
         } catch (Throwable ex) {
             /* Logging failed, so there is nothing we can do anymore to log. */
         }

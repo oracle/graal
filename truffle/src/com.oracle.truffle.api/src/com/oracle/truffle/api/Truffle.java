@@ -144,7 +144,14 @@ public final class Truffle {
                 return runtime;
             }
         }
-        return new DefaultTruffleRuntime("No optimizing Truffle runtime found on the module-path.");
+
+        String reason;
+        if (ModuleLayer.boot().findModule("jdk.internal.vm.ci").isPresent()) {
+            reason = "No optimizing Truffle runtime found on the module or class-path.";
+        } else {
+            reason = "JVMCI is required to enable optimizations. Pass -XX:+EnableJVMCI as a virtual machine argument to the java executable to resolve this.";
+        }
+        return new DefaultTruffleRuntime(reason);
     }
 
     private static void maybeExportJVMCITo(Class<?> runtimeClass) throws ReflectiveOperationException {

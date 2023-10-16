@@ -304,4 +304,8 @@ public abstract class BasicBlock<T extends BasicBlock<T>> {
     }
 
     public static final BlockIdComparator BLOCK_ID_COMPARATOR = new BlockIdComparator();
+
+    public AbstractControlFlowGraph<T> getCfg() {
+        return cfg;
+    }
 }

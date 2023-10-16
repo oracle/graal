@@ -24,6 +24,7 @@ package com.oracle.truffle.espresso.runtime.panama;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
@@ -36,10 +37,14 @@ import com.oracle.truffle.espresso.runtime.panama.DowncallStubs.DowncallStub;
 public class DowncallStubNode extends Node {
     private final DowncallStub downcallStub;
     @Child SignatureCallNode signatureCall;
+    @Child InteropLibrary interop;
 
     protected DowncallStubNode(DowncallStub downcallStub, SignatureCallNode signatureCall) {
         this.downcallStub = downcallStub;
         this.signatureCall = signatureCall;
+        if (downcallStub.hasCapture()) {
+            this.interop = InteropLibrary.getFactory().createDispatched(2);
+        }
     }
 
     public static DowncallStubNode create(DowncallStub stub, NativeAccess access) {
@@ -47,9 +52,14 @@ public class DowncallStubNode extends Node {
     }
 
     public Object call(Object[] args) {
-        Object target = downcallStub.getTarget(args, EspressoContext.get(this));
+        EspressoContext context = EspressoContext.get(this);
+        Object target = downcallStub.getTarget(args, context);
         try {
-            return signatureCall.call(target, downcallStub.processArgs(args));
+            Object result = signatureCall.call(target, downcallStub.processArgs(args));
+            if (downcallStub.hasCapture()) {
+                downcallStub.captureState(args, interop, context);
+            }
+            return result;
         } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             throw EspressoError.shouldNotReachHere(e);

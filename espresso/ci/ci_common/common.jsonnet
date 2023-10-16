@@ -68,6 +68,7 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   dailyBench:      {targets+: ['bench', 'daily'],      notify_groups:: ['espresso']},
   daily:           {targets+: ['daily'],               notify_groups:: ['espresso']},
   weekly:          {targets+: ['weekly'],              notify_groups:: ['espresso']},
+  monthly:         {targets+: ['monthly'],              notify_groups:: ['espresso']},
   weeklyBench:     {targets+: ['bench', 'weekly'],     notify_groups:: ['espresso']},
   onDemand:        {targets+: ['on-demand']},
   onDemandBench:   {targets+: ['bench', 'on-demand']},
@@ -79,21 +80,32 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   windows_21:        graal_common.labsjdk21                              + self.windows + devkits["windows-jdk21"],
 
   // precise targets and capabilities
-  jdk21_gate_linux              : self.gate          + self.linux_amd64_21,
-  jdk21_gate_darwin             : self.gate          + self.darwin_amd64_21,
-  jdk21_gate_windows            : self.gate          + self.windows_21,
+  jdk21_gate_linux_amd64        : self.gate          + self.linux_amd64_21,
+  jdk21_gate_linux_aarch64      : self.gate          + self.linux_aarch64_21,
+  jdk21_gate_darwin_amd64       : self.gate          + self.darwin_amd64_21,
+  jdk21_gate_darwin_aarch64     : self.gate          + self.darwin_aarch64_21,
+  jdk21_gate_windows_amd64      : self.gate          + self.windows_21,
   jdk21_bench_linux             : self.bench         + self.linux_amd64_21 + self.x52,
   jdk21_bench_darwin            : self.bench         + self.darwin_amd64_21,
   jdk21_bench_windows           : self.bench         + self.windows_21,
-  jdk21_daily_linux             : self.daily         + self.linux_amd64_21,
-  jdk21_daily_darwin            : self.daily         + self.darwin_amd64_21,
-  jdk21_daily_windows           : self.daily         + self.windows_21,
+  jdk21_daily_linux_amd64       : self.daily         + self.linux_amd64_21,
+  jdk21_daily_linux_aarch64     : self.daily         + self.linux_aarch64_21,
+  jdk21_daily_darwin_amd64      : self.daily         + self.darwin_amd64_21,
+  jdk21_daily_darwin_aarch64    : self.daily         + self.darwin_aarch64_21,
+  jdk21_daily_windows_amd64     : self.daily         + self.windows_21,
   jdk21_daily_bench_linux       : self.dailyBench    + self.linux_amd64_21 + self.x52,
   jdk21_daily_bench_darwin      : self.dailyBench    + self.darwin_amd64_21,
   jdk21_daily_bench_windows     : self.dailyBench    + self.windows_21,
-  jdk21_weekly_linux            : self.weekly        + self.linux_amd64_21,
-  jdk21_weekly_darwin           : self.weekly        + self.darwin_amd64_21,
-  jdk21_weekly_windows          : self.weekly        + self.windows_21,
+  jdk21_weekly_linux_amd64      : self.weekly        + self.linux_amd64_21,
+  jdk21_weekly_linux_aarch64    : self.weekly        + self.linux_aarch64_21,
+  jdk21_weekly_darwin_amd64     : self.weekly        + self.darwin_amd64_21,
+  jdk21_weekly_darwin_aarch64   : self.weekly        + self.darwin_aarch64_21,
+  jdk21_weekly_windows_amd64    : self.weekly        + self.windows_21,
+  jdk21_monthly_linux_amd64     : self.monthly        + self.linux_amd64_21,
+  jdk21_monthly_linux_aarch64   : self.monthly        + self.linux_aarch64_21,
+  jdk21_monthly_darwin_amd64    : self.monthly        + self.darwin_amd64_21,
+  jdk21_monthly_darwin_aarch64  : self.monthly        + self.darwin_aarch64_21,
+  jdk21_monthly_windows_amd64   : self.monthly        + self.windows_21,
   jdk21_weekly_bench_linux      : self.weeklyBench   + self.linux_amd64_21 + self.x52,
   jdk21_weekly_bench_darwin     : self.weeklyBench   + self.darwin_amd64_21,
   jdk21_weekly_bench_windows    : self.weeklyBench   + self.windows_21,
@@ -122,10 +134,10 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
   // shared functions
   _mx(env, args): ['mx', '--env', env] + args,
 
-  build_espresso(env, debug=false): {
+  build_espresso(env, debug=false, extra_mx_args=[]): {
     run+: [
       ['mx', 'sversions'],
-      that._mx(env, (if debug then ['--debug-images'] else []) + ['build']),
+      that._mx(env, (if debug then ['--debug-images'] else []) + extra_mx_args + ['build']),
     ],
   },
 
@@ -238,6 +250,6 @@ local benchmark_suites = ['dacapo', 'renaissance', 'scala-dacapo'];
 
   builds: [
     // Gates
-    that.jdk21_gate_linux + that.eclipse + that.jdt + that.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-style-jdk21-linux-amd64'),
+    that.jdk21_gate_linux_amd64 + that.eclipse + that.jdt + that.espresso_gate(allow_warnings=false, tags='style,fullbuild', timelimit='35:00', name='gate-espresso-style-jdk21-linux-amd64'),
   ],
 }

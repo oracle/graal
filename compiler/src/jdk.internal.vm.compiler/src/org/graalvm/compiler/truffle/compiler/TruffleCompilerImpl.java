@@ -60,6 +60,7 @@ import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugContext.Builder;
 import org.graalvm.compiler.debug.DebugContext.Scope;
+import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.DiagnosticsOutputDirectory;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.debug.Indent;
@@ -540,6 +541,9 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
                             wrapper.compilationId, TruffleTierContext.getSpeculationLog(wrapper), wrapper.task,
                             handler);
 
+            // Save the graph so it can dumped into the graal_diagnostics zip
+            wrapper.graph = context.graph;
+
             try (Scope s = context.debug.scope("CreateGraph", context.graph);
                             Indent indent = context.debug.logAndIndent("evaluate %s", context.graph);) {
                 truffleTier.apply(context.graph, context);
@@ -676,6 +680,7 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         final CompilationIdentifier compilationId;
         final ExpansionStatistics statistics;
         final OptionValues compilerOptions;
+        StructuredGraph graph;
         boolean silent;
 
         private TruffleCompilationWrapper(
@@ -698,6 +703,18 @@ public abstract class TruffleCompilerImpl implements TruffleCompiler, Compilatio
         @Override
         public String toString() {
             return compilable.toString();
+        }
+
+        @SuppressWarnings("try")
+        @Override
+        protected void dumpOnError(DebugContext errorContext, Throwable cause) {
+            if (graph != null) {
+                try (DebugContext.Scope s = errorContext.scope("DumpOnError", graph, compilationId, new DebugDumpScope("Original failure"))) {
+                    errorContext.forceDump(graph, "Exception: %s", cause);
+                } catch (Throwable t) {
+                    throw errorContext.handle(t);
+                }
+            }
         }
 
         @Override

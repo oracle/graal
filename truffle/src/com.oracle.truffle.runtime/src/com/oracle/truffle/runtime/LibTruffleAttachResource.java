@@ -46,14 +46,12 @@ import com.oracle.truffle.api.InternalResource;
 import java.io.IOException;
 import java.nio.file.Path;
 
-@InternalResource.Id(LibTruffleAttachResource.ID)
+@InternalResource.Id(value = LibTruffleAttachResource.ID, componentId = "engine", optional = true)
 final class LibTruffleAttachResource implements InternalResource {
 
     static final String ID = "libtruffleattach";
 
-    static final LibTruffleAttachResource INSTANCE = new LibTruffleAttachResource();
-
-    private LibTruffleAttachResource() {
+    LibTruffleAttachResource() {
     }
 
     @Override

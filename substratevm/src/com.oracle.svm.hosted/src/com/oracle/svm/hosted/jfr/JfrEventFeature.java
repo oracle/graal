@@ -24,18 +24,14 @@
  */
 package com.oracle.svm.hosted.jfr;
 
-import java.lang.reflect.Field;
 import java.lang.reflect.Method;
-import java.lang.reflect.Modifier;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
-import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
@@ -49,9 +45,7 @@ import com.oracle.svm.core.jfr.traceid.JfrTraceIdMap;
 import com.oracle.svm.core.meta.SharedType;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.hosted.FeatureImpl;
-import com.oracle.svm.hosted.FeatureImpl.DuringAnalysisAccessImpl;
 import com.oracle.svm.util.ModuleSupport;
-import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.internal.event.Event;
 import jdk.jfr.internal.JVM;
@@ -93,14 +87,6 @@ public class JfrEventFeature implements InternalFeature {
     }
 
     @Override
-    public void beforeAnalysis(Feature.BeforeAnalysisAccess access) {
-        if (JavaVersionUtil.JAVA_SPEC < 19) {
-            /* In JDK 19+, events don't have an eventHandler field anymore. */
-            access.registerSubtypeReachabilityHandler(JfrEventFeature::eventSubtypeReachable, Event.class);
-        }
-    }
-
-    @Override
     public void beforeCompilation(BeforeCompilationAccess a) {
         // Reserve slot 0 for error-catcher.
         int mapSize = ImageSingletons.lookup(DynamicHubSupport.class).getMaxTypeId() + 1;
@@ -118,32 +104,16 @@ public class JfrEventFeature implements InternalFeature {
         }
 
         /* Store the event configuration in the dynamic hub companion. */
-        if (JavaVersionUtil.JAVA_SPEC >= 19) {
-            try {
-                FeatureImpl.CompilationAccessImpl accessImpl = ((FeatureImpl.CompilationAccessImpl) a);
-                Method getConfiguration = JVM.class.getDeclaredMethod("getConfiguration", Class.class);
-                for (var newEventClass : JfrJavaEvents.getAllEventClasses()) {
-                    Object ec = getConfiguration.invoke(JfrJdkCompatibility.getJVMOrNull(), newEventClass);
-                    DynamicHub dynamicHub = accessImpl.getMetaAccess().lookupJavaType(newEventClass).getHub();
-                    dynamicHub.setJrfEventConfiguration(ec);
-                }
-            } catch (ReflectiveOperationException ex) {
-                throw VMError.shouldNotReachHere(ex);
+        try {
+            FeatureImpl.CompilationAccessImpl accessImpl = ((FeatureImpl.CompilationAccessImpl) a);
+            Method getConfiguration = JVM.class.getDeclaredMethod("getConfiguration", Class.class);
+            for (var newEventClass : JfrJavaEvents.getAllEventClasses()) {
+                Object ec = getConfiguration.invoke(JfrJdkCompatibility.getJVMOrNull(), newEventClass);
+                DynamicHub dynamicHub = accessImpl.getMetaAccess().lookupJavaType(newEventClass).getHub();
+                dynamicHub.setJrfEventConfiguration(ec);
             }
-        }
-    }
-
-    private static void eventSubtypeReachable(DuringAnalysisAccess a, Class<?> c) {
-        if (Modifier.isAbstract(c.getModifiers())) {
-            return;
-        }
-
-        DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
-        Field f = ReflectionUtil.lookupField(c, "eventHandler");
-        RuntimeReflection.register(f);
-        access.rescanRoot(f);
-        if (!access.concurrentReachabilityHandlers()) {
-            access.requireAnalysisIteration();
+        } catch (ReflectiveOperationException ex) {
+            throw VMError.shouldNotReachHere(ex);
         }
     }
 }

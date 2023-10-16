@@ -104,20 +104,26 @@ import com.sun.jmx.mbeanserver.MXBeanLookup;
  */
 public final class ManagementSupport implements ThreadListener {
 
-    private static final boolean isJdkManagementJfrModulePresent;
+    private static final Class<?> FLIGHT_RECORDER_MX_BEAN_CLASS;
 
     static {
-        var loggingModule = ModuleLayer.boot().findModule("jdk.management.jfr");
-        if (loggingModule.isPresent()) {
-            ManagementSupport.class.getModule().addReads(loggingModule.get());
+        var jfrModule = ModuleLayer.boot().findModule("jdk.management.jfr");
+        if (jfrModule.isPresent()) {
+            ManagementSupport.class.getModule().addReads(jfrModule.get());
+            try {
+                FLIGHT_RECORDER_MX_BEAN_CLASS = Class.forName("jdk.management.jfr.FlightRecorderMXBean", false, Object.class.getClassLoader());
+            } catch (ClassNotFoundException ex) {
+                throw VMError.shouldNotReachHere(ex);
+            }
+        } else {
+            FLIGHT_RECORDER_MX_BEAN_CLASS = null;
         }
-        isJdkManagementJfrModulePresent = loggingModule.isPresent();
     }
 
     static class JdkManagementJfrModulePresent implements BooleanSupplier {
         @Override
         public boolean getAsBoolean() {
-            return isJdkManagementJfrModulePresent;
+            return FLIGHT_RECORDER_MX_BEAN_CLASS != null;
         }
     }
 
@@ -166,7 +172,9 @@ public final class ManagementSupport implements ThreadListener {
          * run time.
          */
         doAddPlatformManagedObjectSingleton(getOsMXBeanInterface(), (PlatformManagedObjectSupplier) this::getOsMXBean);
-        doAddPlatformManagedObjectSingleton(PlatformManagedObject.class, (PlatformManagedObjectSupplier) this::getFlightRecorderMXBean);
+        if (FLIGHT_RECORDER_MX_BEAN_CLASS != null) {
+            doAddPlatformManagedObjectSingleton(FLIGHT_RECORDER_MX_BEAN_CLASS, (PlatformManagedObjectSupplier) this::getFlightRecorderMXBean);
+        }
     }
 
     private static Class<?> getOsMXBeanInterface() {

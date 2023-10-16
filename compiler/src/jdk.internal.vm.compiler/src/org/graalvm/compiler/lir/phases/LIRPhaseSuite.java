@@ -30,6 +30,9 @@ import java.util.List;
 import java.util.ListIterator;
 
 import org.graalvm.compiler.core.common.util.PhasePlan;
+import org.graalvm.compiler.debug.DebugCloseable;
+import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.debug.TimerKey;
 import org.graalvm.compiler.lir.gen.LIRGenerationResult;
 import org.graalvm.compiler.serviceprovider.GraalServices;
 
@@ -94,12 +97,20 @@ public class LIRPhaseSuite<C> extends LIRPhase<C> implements PhasePlan<LIRPhase<
         return false;
     }
 
+    /**
+     * Time spent in hinted GC in backend.
+     */
+    public static final TimerKey LIRHintedGC = DebugContext.timer("LIRHintedGC").doc("Time spent in hinted GC performed before each LIR phase.");
+
+    @SuppressWarnings({"try"})
     @Override
     protected final void run(TargetDescription target, LIRGenerationResult lirGenRes, C context) {
         for (LIRPhase<C> phase : phases) {
             // Notify the runtime that most objects allocated in previous LIR phase are dead and can
             // be reclaimed. This will lower the chance of allocation failure in the next LIR phase.
-            GraalServices.notifyLowMemoryPoint(false);
+            try (DebugCloseable timer = LIRHintedGC.start(lirGenRes.getLIR().getDebug())) {
+                GraalServices.notifyLowMemoryPoint(false);
+            }
             phase.apply(target, lirGenRes, context);
         }
     }

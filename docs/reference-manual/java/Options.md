@@ -113,16 +113,16 @@ Graal diagnostic output saved in /Users/graal/graal_dumps/1549459528316/graal_di
 * `-Dgraal.PrintCompilation=false`: Prints an informational line to the console for each completed compilation.
   For example:
   ```shell
-HotSpotCompilation-11  Ljava/lang/Object;                            wait          ()V       |  591ms    12B    92B  4371kB
-HotSpotCompilation-175 Ljava/lang/String;                            lastIndexOf   (II)I     |  590ms   126B   309B  4076kB
-HotSpotCompilation-184 Ljava/util/concurrent/ConcurrentHashMap;      setTabAt      ([Ljava/util/concurrent/ConcurrentHashMap$Node;ILjava/util/concurrent/ConcurrentHashMap$Node;)V  |  591ms    38B    67B  3411kB
-HotSpotCompilation-136 Lsun/nio/cs/UTF_8$Encoder;                    encode        ([CII[B)I |  591ms   740B   418B  4921
+  HotSpotCompilation-11  Ljava/lang/Object;                            wait          ()V       |  591ms    12B    92B  4371kB
+  HotSpotCompilation-175 Ljava/lang/String;                            lastIndexOf   (II)I     |  590ms   126B   309B  4076kB
+  HotSpotCompilation-184 Ljava/util/concurrent/ConcurrentHashMap;      setTabAt      ([Ljava/util/concurrent/ConcurrentHashMap$Node;ILjava/util/concurrent/ConcurrentHashMap$Node;)V  |  591ms    38B    67B  3411kB
+  HotSpotCompilation-136 Lsun/nio/cs/UTF_8$Encoder;                    encode        ([CII[B)I |  591ms   740B   418B  4921
   ```
 
 ## Setting Compiler Options with Language Launchers
 
-The Graal compiler properties above are usable with some other GraalVM launchers such as
-`node`, `js` and `lli`. The prefix for specifying the properties is slightly different.
+The Graal compiler properties above are usable with some other GraalVM launchers such as `node`, `js` and `lli`. 
+The prefix for specifying the properties is slightly different.
 For example:
 ```shell
 java -XX:+EagerJVMCI -Dgraal.ShowConfiguration=info -version
@@ -130,7 +130,7 @@ java -XX:+EagerJVMCI -Dgraal.ShowConfiguration=info -version
 
 Becomes:
 ```shell
-js --jvm --vm.Dgraal.ShowConfiguration=info -version
+js --vm.Dgraal.ShowConfiguration=info -version
 ```
 
 > Note the `-D` prefix is replaced by `--vm.D`.

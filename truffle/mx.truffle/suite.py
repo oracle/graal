@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # The Universal Permissive License (UPL), Version 1.0
@@ -131,12 +131,14 @@ suite = {
       },
     },
 
-    # Deprecated: Do not use, replaced by TRUFFLE_JSON.
-    "TruffleJSON" : {
-      "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20230227.jar"],
-      "digest" : "sha512:2b48819e94ca82472ffbdd3befc214351e1cfd0f87eb97d4aed092b48f11b53a7d82a637b008e022254781d2439aefe45ca4794eea8ad05de69934c5317c9a27",
-      "sourceUrls": ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/trufflejson-20230227-src.jar"],
-      "sourceDigest" : "sha512:ecf08ea386398a9834f560e0afbb1bc2630037e3b170fe6d5c60e23ed4e198072cec2cd3569bdc1cae22318cd5fb97123dc5bb6d1e138c08f8d5c612f486956a",
+    "XZ-1.9" : {
+      "digest" : "sha512:a4362db234d4e83683e90f5baf90c82107450cc4404acab96e3fab14b8a3d4588a19722171d32f27d18463682a6994cad9af0b1065c954e3a77ea7bdcf586bac",
+      "sourceDigest" : "sha512:5625f7392d1958466507f0530585c2c40c5b301981ab64115f489dc4599e3364acd7f00bfdc69aa3124d4641a562923dc3ee038faee5a52dd3cbe29a1a35e5ab",
+      "maven" : {
+        "groupId" : "org.tukaani",
+        "artifactId" : "xz",
+        "version" : "1.9",
+      },
     },
 
     "JSON" : {
@@ -835,6 +837,8 @@ suite = {
       "javaCompliance" : "21+",
       "annotationProcessors" : ["TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle",
+      # disable SpotBugs as long is panama is preview [GR-49448]
+      "spotbugs" : "false",
     },
 
     "com.oracle.truffle.nfi.backend.spi" : {
@@ -1132,6 +1136,30 @@ suite = {
       "jacoco" : "exclude",
     },
 
+    "org.graalvm.shadowed.org.tukaani.xz" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "shadedDependencies" : [
+        "truffle:XZ-1.9",
+      ],
+      "class" : "ShadedLibraryProject",
+      "shade" : {
+        "packages" : {
+          "org.tukaani.xz" : "org.graalvm.shadowed.org.tukaani.xz",
+        },
+        "exclude" : [
+          "META-INF/MANIFEST.MF",
+          "META-INF/versions/9/module-info.java"
+        ],
+      },
+      "description" : "shaded XZ Java library.",
+      "allowsJavadocWarnings": True,
+      "javac.lint.overrides" : 'none',
+      "jacoco" : "exclude",
+    },
+
     "com.oracle.truffle.runtime.attach" : {
       "subDir" : "src",
       "native" : "shared_lib",
@@ -1311,6 +1339,7 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
+          "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
         ],
         "exports" : [
           # Qualified exports
@@ -1349,6 +1378,7 @@ suite = {
           "jdk.unsupported", # sun.misc.Unsafe
           "java.logging",
           "java.management",
+          "static jdk.internal.vm.ci",  # JVMCI module is not on the boot layer if not enabled
         ],
         "exports" : [
           # Qualified exports
@@ -1563,9 +1593,6 @@ suite = {
       "distDependencies" : [
         "TRUFFLE_NFI",
       ],
-      "javaProperties" : {
-          "truffle.nfi.library" : "<path:TRUFFLE_NFI_NATIVE>/bin/<lib:trufflenfi>"
-      },
       "description" : """Implementation of the Truffle NFI using libffi.""",
       "allowsJavadocWarnings": True,
       "maven": {
@@ -1951,6 +1978,15 @@ suite = {
       "maven" : False,
     },
 
+    "TRUFFLE_XZ_GRAALVM_SUPPORT" : {
+      "native" : True,
+      "description" : "Truffle support distribution for XZ Java library",
+      "layout" : {
+        "native-image.properties" : "file:mx.truffle/language-xz.properties",
+      },
+      "maven" : False,
+    },
+
     "LOCATOR": {
       "subDir": "src",
       "moduleInfo" : {
@@ -1975,7 +2011,7 @@ suite = {
         ],
         "exports" : [
           # Qualified exports.
-          "org.graalvm.shadowed.com.ibm.icu.lang to org.graalvm.js, org.graalvm.py",
+          "org.graalvm.shadowed.com.ibm.icu.lang to com.oracle.truffle.regex, org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.math to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.number to org.graalvm.js, org.graalvm.py",
           "org.graalvm.shadowed.com.ibm.icu.text to org.graalvm.js, org.graalvm.py",
@@ -2001,6 +2037,34 @@ suite = {
       "maven" : {
         "groupId" : "org.graalvm.shadowed",
         "artifactId" : "icu4j",
+        "tag": ["default", "public"],
+      },
+    },
+
+    "TRUFFLE_XZ" : {
+      # This distribution defines a module.
+      "moduleInfo" : {
+        "name" : "org.graalvm.shadowed.xz",
+        "requires" : [
+        ],
+        "exports" : [
+          # Qualified exports.
+          "org.graalvm.shadowed.org.tukaani.xz to org.graalvm.py, org.graalvm.r",
+          "org.graalvm.shadowed.org.tukaani.xz.* to org.graalvm.py, org.graalvm.r",
+        ],
+      },
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "javaCompliance" : "17+",
+      "spotbugs" : "false",
+      "dependencies" : [
+        "org.graalvm.shadowed.org.tukaani.xz",
+      ],
+      "description" : "shaded XZ Java module.",
+      "allowsJavadocWarnings" : True,
+      "maven" : {
+        "groupId" : "org.graalvm.shadowed",
+        "artifactId" : "xz",
         "tag": ["default", "public"],
       },
     },

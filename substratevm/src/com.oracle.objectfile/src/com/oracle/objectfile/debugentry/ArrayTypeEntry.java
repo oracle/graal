@@ -56,7 +56,9 @@ public class ArrayTypeEntry extends StructureTypeEntry {
         this.lengthOffset = debugArrayTypeInfo.lengthOffset();
         /* Add details of fields and field types */
         debugArrayTypeInfo.fieldInfoProvider().forEach(debugFieldInfo -> this.processField(debugFieldInfo, debugInfoBase, debugContext));
-        debugContext.log("typename %s element type %s base size %d length offset %d%n", typeName, this.elementType.getTypeName(), baseSize, lengthOffset);
+        if (debugContext.isLogEnabled()) {
+            debugContext.log("typename %s element type %s base size %d length offset %d%n", typeName, this.elementType.getTypeName(), baseSize, lengthOffset);
+        }
     }
 
     public TypeEntry getElementType() {

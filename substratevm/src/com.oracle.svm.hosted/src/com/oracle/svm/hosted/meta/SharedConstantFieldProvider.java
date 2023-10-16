@@ -53,10 +53,8 @@ public abstract class SharedConstantFieldProvider extends JavaConstantFieldProvi
 
     @Override
     public <T> T readConstantField(ResolvedJavaField field, ConstantFieldTool<T> analysisTool) {
-        if (asAnalysisField(field).getWrapped() instanceof ReadableJavaField readableField) {
-            if (!readableField.isValueAvailable()) {
-                return null;
-            }
+        if (!ReadableJavaField.isValueAvailable(asAnalysisField(field))) {
+            return null;
         }
         return super.readConstantField(field, analysisTool);
     }

@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.phases;
 
 import org.graalvm.compiler.graph.Node;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.nodes.FixedWithNextNode;
 import org.graalvm.compiler.nodes.ValueNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
@@ -93,7 +94,7 @@ public abstract class InlineBeforeAnalysisPolicy {
 
     protected abstract boolean tryInvocationPlugins();
 
-    protected abstract FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments);
+    protected abstract FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition);
 
     protected abstract AbstractPolicyScope createRootScope();
 
@@ -132,7 +133,7 @@ public abstract class InlineBeforeAnalysisPolicy {
         }
 
         @Override
-        protected FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments) {
+        protected FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition) {
             throw AnalysisError.shouldNotReachHere("NO_INLINING policy should not try to inline");
         }
 

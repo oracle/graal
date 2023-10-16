@@ -24,7 +24,7 @@
 package com.oracle.truffle.espresso.threads;
 
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * Represents thread state transition in Espresso. Instances of this class are intended to be used

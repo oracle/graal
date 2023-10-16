@@ -39,20 +39,27 @@ import jdk.vm.ci.hotspot.HotSpotVMEventListener;
 
 public class HotSpotGraalVMEventListener implements HotSpotVMEventListener {
 
-    private final HotSpotGraalRuntime runtime;
+    private HotSpotGraalRuntime runtime;
     private List<HotSpotCodeCacheListener> listeners;
 
     HotSpotGraalVMEventListener(HotSpotGraalRuntime runtime) {
-        this.runtime = runtime;
+        setRuntime(runtime);
         listeners = new ArrayList<>();
         for (HotSpotCodeCacheListener listener : GraalServices.load(HotSpotCodeCacheListener.class)) {
             listeners.add(listener);
         }
     }
 
+    void setRuntime(HotSpotGraalRuntime runtime) {
+        assert this.runtime == null || this.runtime == runtime;
+        this.runtime = runtime;
+    }
+
     @Override
     public void notifyShutdown() {
-        runtime.shutdown();
+        if (runtime != null) {
+            runtime.shutdown();
+        }
     }
 
     @Override

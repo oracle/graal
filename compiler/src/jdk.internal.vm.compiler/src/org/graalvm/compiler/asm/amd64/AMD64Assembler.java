@@ -36,6 +36,8 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512CD;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512DQ;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512F;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.AVX512VL;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.F16C;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.GFNI;
 import static jdk.vm.ci.code.MemoryBarriers.STORE_LOAD;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADC;
 import static org.graalvm.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic.ADD;
@@ -1142,8 +1144,8 @@ public class AMD64Assembler extends AMD64BaseAssembler {
         MASK_XMM_XMM_AVX512F_VL(CPUFeature.AVX512VL, CPUFeature.AVX512VL, null, EVEXFeatureAssertion.AVX512F_VL, MASK, XMM, XMM, null),
         AVX1_128ONLY_CLMUL(CPUFeature.AVX, null, CPUFeature.CLMUL, null, XMM, XMM, XMM, XMM),
         AVX1_128ONLY_AES(CPUFeature.AVX, null, CPUFeature.AES, null, XMM, XMM, XMM, XMM),
-        AVX1_GFNI_AVX512F_VL(asCPUFeature("GFNI"), asCPUFeature("GFNI"), CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null),
-        F16C_AVX512F_VL(asCPUFeature("F16C"), asCPUFeature("F16C"), null, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null);
+        AVX1_GFNI_AVX512F_VL(GFNI, GFNI, CPUFeature.AVX, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null),
+        F16C_AVX512F_VL(F16C, F16C, null, EVEXFeatureAssertion.AVX512F_VL, XMM, XMM, XMM, null);
 
         private final CPUFeature l128feature;
         private final CPUFeature l256feature;
@@ -3715,7 +3717,7 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void gf2p8affineqb(Register dst, Register src, int imm8) {
-        GraalError.guarantee(supportsCPUFeature("GFNI"), "gf2p8affineqb requires GFNI");
+        GraalError.guarantee(supports(GFNI), "gf2p8affineqb requires GFNI");
         assert inRC(XMM, dst) && inRC(XMM, src);
 
         if (supports(CPUFeature.AVX)) {
@@ -3729,14 +3731,14 @@ public class AMD64Assembler extends AMD64BaseAssembler {
     }
 
     public final void vcvtps2ph(Register dst, Register src, int imm8) {
-        GraalError.guarantee(supportsCPUFeature("F16C"), "vcvtps2ph requires F16C");
+        GraalError.guarantee(supports(F16C), "vcvtps2ph requires F16C");
         assert inRC(XMM, dst) && inRC(XMM, src);
 
         VCVTPS2PH.emit(this, AVXSize.XMM, dst, src, imm8);
     }
 
     public final void vcvtph2ps(Register dst, Register src) {
-        GraalError.guarantee(supportsCPUFeature("F16C"), "vcvtph2ps requires F16C");
+        GraalError.guarantee(supports(F16C), "vcvtph2ps requires F16C");
         assert inRC(XMM, dst) && inRC(XMM, src);
 
         VCVTPH2PS.emit(this, AVXSize.XMM, dst, src);

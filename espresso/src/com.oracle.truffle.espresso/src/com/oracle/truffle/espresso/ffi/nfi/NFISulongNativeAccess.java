@@ -107,7 +107,7 @@ public final class NFISulongNativeAccess extends NFINativeAccess {
         // Try $ESPRESSO_HOME/lib/llvm/default first.
         Path llvmDefault = llvmRoot.resolve("default");
         if (!Files.exists(llvmDefault)) {
-            getLogger().warning(() -> "espresso-llvm (default) component not found. Run 'gu install espresso-llvm' to install it, if available for your platform.");
+            getLogger().warning(() -> "espresso-llvm (default) component not found. Install it, if available for your platform.");
         }
         String llvmDefaultVersion = getJavaVersion(llvmDefault);
         getLogger().fine(() -> "Check " + llvmDefault + " with Java version: " + llvmDefaultVersion);

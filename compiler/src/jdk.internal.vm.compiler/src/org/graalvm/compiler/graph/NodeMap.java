@@ -261,7 +261,7 @@ public class NodeMap<T> extends NodeIdAccessor implements EconomicMap<Node, T> {
 
         StringBuilder sb = new StringBuilder();
         sb.append('{');
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: to string code, never called in compile code
             Node key = i.getKey();
             T value = i.getValue();
             sb.append(key);

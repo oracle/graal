@@ -12,7 +12,7 @@ For self-contained executables, generated with GraalVM Native Image, containers 
 
 To support container-based development, there are several GraalVM container images available, depending on the platform, the architecture, the Java version, and the edition:
 
-- Oracle GraalVM container images, available in [Oracle Container Registry (OCR)](https://container-registry.oracle.com) under the [GraalVM Free Terms and Conditions (GFTC) license](https://www.oracle.com/downloads/licenses/graal-free-license.html).
+- Oracle GraalVM container images, available in [Oracle Container Registry (OCR)](https://container-registry.oracle.com/ords/ocr/ba/graalvm) under the [GraalVM Free Terms and Conditions (GFTC) license](https://www.oracle.com/downloads/licenses/graal-free-license.html).
 - GraalVM Community Edition container images published in the [GitHub Container Registry](https://github.com/orgs/graalvm/packages).
 
 This guide shows how to containerise a native executable for your Java application.

@@ -604,14 +604,31 @@ public final class NodeParser extends AbstractParser<NodeData> {
             }
 
             boolean usesInlinedNodes = false;
+            boolean usesSpecializationClass = FlatNodeGenFactory.useSpecializationClass(specialization);
+            boolean usesSharedInlineNodes = false;
+            boolean usesExclusiveInlineNodes = false;
             for (CacheExpression cache : specialization.getCaches()) {
                 if (cache.getInlinedNode() != null) {
                     usesInlinedNodes = true;
-                    break;
+                    if (cache.getSharedGroup() != null) {
+                        usesSharedInlineNodes = true;
+                    } else {
+                        usesExclusiveInlineNodes = true;
+                    }
                 }
             }
 
             if (usesInlinedNodes) {
+                if (usesSpecializationClass && usesSharedInlineNodes && usesExclusiveInlineNodes) {
+                    specialization.addSuppressableWarning(TruffleSuppressedWarnings.INTERPRETED_PERFORMANCE,
+                                    "It is discouraged that specializations with specialization data class combine " + //
+                                                    "shared and exclusive @Cached inline nodes or profiles arguments. Truffle inlining support code then must " + //
+                                                    "traverse the parent pointer in order to resolve the inline data of the shared nodes or profiles, " + //
+                                                    "which incurs performance hit in the interpreter. To resolve this: make all the arguments @Exclusive, " + //
+                                                    "or merge specializations to avoid @Shared arguments, or if the footprint benefit outweighs the " + //
+                                                    "performance degradation, then suppress the warning.");
+                }
+
                 boolean isStatic = element.getModifiers().contains(Modifier.STATIC);
                 if (node.isGenerateInline()) {
                     /*

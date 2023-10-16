@@ -32,6 +32,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.espresso.impl.Method;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @ExportLibrary(InteropLibrary.class)
 public final class EspressoFunction implements TruffleObject {

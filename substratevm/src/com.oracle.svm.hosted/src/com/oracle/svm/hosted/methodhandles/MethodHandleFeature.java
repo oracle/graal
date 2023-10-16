@@ -94,6 +94,7 @@ public class MethodHandleFeature implements InternalFeature {
     private Field lambdaFormNFIdentity;
     private Field lambdaFormNFZero;
     private Field typedAccessors;
+    private Field typedCollectors;
 
     /**
      * A new {@link MethodType} interning table which contains only objects that are already part of
@@ -123,6 +124,8 @@ public class MethodHandleFeature implements InternalFeature {
 
         Class<?> arrayAccessorClass = access.findClassByName("java.lang.invoke.MethodHandleImpl$ArrayAccessor");
         typedAccessors = ReflectionUtil.lookupField(arrayAccessorClass, "TYPED_ACCESSORS");
+        Class<?> methodHandleImplClass = access.findClassByName("java.lang.invoke.MethodHandleImpl$Makers");
+        typedCollectors = ReflectionUtil.lookupField(methodHandleImplClass, "TYPED_COLLECTORS");
 
         if (JavaVersionUtil.JAVA_SPEC >= 22) {
             try {
@@ -384,6 +387,7 @@ public class MethodHandleFeature implements InternalFeature {
         access.rescanRoot(lambdaFormNFIdentity);
         access.rescanRoot(lambdaFormNFZero);
         access.rescanRoot(typedAccessors);
+        access.rescanRoot(typedCollectors);
         access.rescanObject(runtimeMethodTypeInternTable);
     }
 

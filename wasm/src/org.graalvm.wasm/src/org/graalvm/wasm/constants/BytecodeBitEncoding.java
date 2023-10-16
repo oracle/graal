@@ -47,13 +47,10 @@ package org.graalvm.wasm.constants;
 public class BytecodeBitEncoding {
     // Labels
 
-    public static final int LABEL_U8_RESULT_SHIFT = 7;
-    public static final int LABEL_U8_RESULT_TYPE_MASK = 0b0110_0000;
-    public static final int LABEL_U8_RESULT_TYPE_NUM = 0b0010_0000;
-    public static final int LABEL_U8_RESULT_TYPE_REF = 0b0100_0000;
-    public static final int LABEL_U8_RESULT_TYPE_MIX = 0b0110_0000;
-    public static final int LABEL_U8_RESULT_TYPE_SHIFT = 5;
-    public static final int LABEL_U8_STACK_VALUE = 0b0001_1111;
+    public static final int LABEL_U8_RESULT_MASK = 0b1100_0000;
+    public static final int LABEL_U8_RESULT_NUM = 0b1000_0000;
+    public static final int LABEL_U8_RESULT_REF = 0b1100_0000;
+    public static final int LABEL_U8_STACK_VALUE = 0b0011_1111;
 
     public static final int LABEL_U16_RESULT_TYPE_MASK = 0b1100_0000;
     public static final int LABEL_U16_RESULT_TYPE_NUM = 0b0100_0000;

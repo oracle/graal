@@ -46,6 +46,7 @@ import java.util.function.Supplier;
 import org.graalvm.compiler.core.common.Fields;
 import org.graalvm.compiler.core.common.type.AbstractPointerStamp;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
@@ -95,7 +96,7 @@ public abstract class Node implements Cloneable, Formattable {
 
     public static final NodeClass<?> TYPE = null;
 
-    public static final boolean TRACK_CREATION_POSITION = Boolean.parseBoolean(Services.getSavedProperties().get("debug.graal.TrackNodeCreationPosition"));
+    public static final boolean TRACK_CREATION_POSITION = Boolean.parseBoolean(Services.getSavedProperty("debug.graal.TrackNodeCreationPosition"));
 
     static final int DELETED_ID_START = -1000000000;
     static final int INITIAL_ID = -1;
@@ -358,6 +359,7 @@ public abstract class Node implements Cloneable, Formattable {
      * @return an {@link NodeIterable iterable} for all non-null input edges.
      */
     public NodeIterable<Node> inputs() {
+        CompilationAlarm.checkProgress(this.graph);
         return nodeClass.getInputIterable(this);
     }
 
@@ -433,6 +435,7 @@ public abstract class Node implements Cloneable, Formattable {
      * Gets the list of nodes that use {@code this} (i.e., as an input).
      */
     public final NodeIterable<Node> usages() {
+        CompilationAlarm.checkProgress(this.graph);
         return new NodeUsageIterable(this);
     }
 
@@ -1346,6 +1349,18 @@ public abstract class Node implements Cloneable, Formattable {
                                 pos.getInputType(), pos.getName());
                 Class<?> expectedType = pos.getType();
                 assertTrue(expectedType.isAssignableFrom(input.getClass()), "Invalid input type for %s: expected a %s but was a %s", pos, expectedType, input.getClass());
+            }
+        }
+        /*
+         * Verify properties of input list objects themselves, as opposed to their contents. The
+         * iteration over input positions above visits the contents of input lists but does not
+         * distinguish between null and empty lists.
+         */
+        InputEdges inputEdges = nodeClass.getInputEdges();
+        for (int i = inputEdges.getDirectCount(); i < inputEdges.getCount(); i++) {
+            Object inputList = inputEdges.get(this, i);
+            if (inputList == null) {
+                assertTrue(inputEdges.isOptional(i), "non-optional input list %s cannot be null in %s (fix nullness or use @OptionalInput)", inputEdges.getName(i), this);
             }
         }
         return true;

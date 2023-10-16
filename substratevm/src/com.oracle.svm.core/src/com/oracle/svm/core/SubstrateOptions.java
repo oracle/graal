@@ -131,7 +131,6 @@ public class SubstrateOptions {
 
         @Override
         public String getValue(OptionValues values) {
-            assert checkDescriptorExists();
             return getValueOrDefault(values.getMap());
         }
     };
@@ -154,13 +153,10 @@ public class SubstrateOptions {
     };
 
     @Option(help = "Builds a statically linked executable with libc dynamically linked", type = Expert, stability = OptionStability.EXPERIMENTAL)//
-    public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<>(false) {
-        @Override
-        protected void onValueUpdate(EconomicMap<OptionKey<?>, Object> values, Boolean oldValue, Boolean newValue) {
-            StaticExecutable.update(values, true);
-            super.onValueUpdate(values, oldValue, newValue);
-        }
-    };
+    public static final HostedOptionKey<Boolean> StaticExecutableWithDynamicLibC = new HostedOptionKey<>(false);
+
+    @Option(help = "Builds image with libstdc++ statically linked into the image (if needed)", type = Expert, stability = OptionStability.EXPERIMENTAL)//
+    public static final HostedOptionKey<Boolean> StaticLibStdCpp = new HostedOptionKey<>(false);
 
     public static final int ForceFallback = 10;
     public static final int Automatic = 5;
@@ -464,6 +460,9 @@ public class SubstrateOptions {
     @Option(help = "Export Invocation API symbols.", type = OptionType.User)//
     public static final HostedOptionKey<Boolean> JNIExportSymbols = new HostedOptionKey<>(true);
 
+    @Option(help = "JNI functions will return more specific error codes.", type = OptionType.User)//
+    public static final HostedOptionKey<Boolean> JNIEnhancedErrorCodes = new HostedOptionKey<>(false);
+
     @Option(help = "Alignment of AOT and JIT compiled code in bytes.")//
     public static final HostedOptionKey<Integer> CodeAlignment = new HostedOptionKey<>(16);
 
@@ -631,7 +630,9 @@ public class SubstrateOptions {
                     isLLVMBackendMissing = ReflectionUtil.lookupClass(true, "com.oracle.svm.core.graal.llvm.LLVMFeature") == null;
                 }
                 if (isLLVMBackendMissing) {
-                    throw UserError.abort("Please install the LLVM backend for GraalVM Native Image via `$JAVA_HOME/bin/gu install native-image-llvm-backend`.");
+                    throw UserError.abort(
+                                    "The LLVM backend for GraalVM Native Image is missing and needs to be build from source. " +
+                                                    "For instructions, please see https://github.com/oracle/graal/blob/master/docs/reference-manual/native-image/LLVMBackend.md.");
                 }
 
                 /* See GR-14405, https://github.com/oracle/graal/issues/1056 */
@@ -930,7 +931,7 @@ public class SubstrateOptions {
         if (value == 0) {
             return Unsafe.getUnsafe().pageSize();
         }
-        assert value > 0;
+        assert value > 0 : value;
         return value;
     }
 
@@ -1019,4 +1020,10 @@ public class SubstrateOptions {
 
     @Option(help = "Force using legacy method handle intrinsics.", type = Expert) //
     public static final HostedOptionKey<Boolean> UseOldMethodHandleIntrinsics = new HostedOptionKey<>(false);
+
+    @Option(help = "Include all classes, methods, and fields from given modules", type = OptionType.Debug) //
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromModule = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
+
+    @Option(help = "Include all classes, methods, fields, and resources from given paths", type = OptionType.Debug) //
+    public static final HostedOptionKey<LocatableMultiOptionValue.Strings> IncludeAllFromPath = new HostedOptionKey<>(LocatableMultiOptionValue.Strings.build());
 }

@@ -39,7 +39,9 @@ import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
@@ -51,25 +53,12 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class LambdaUtils {
 
-    private static final Pattern LAMBDA_PATTERN;
+    private static final Pattern LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda[/.][^/]+;");
     private static final char[] HEX = "0123456789abcdef".toCharArray();
-    public static final String LAMBDA_SPLIT_PATTERN;
-    public static final String LAMBDA_CLASS_NAME_SUBSTRING;
+    public static final String LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda";
+    public static final String LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda";
     public static final String SERIALIZATION_TEST_LAMBDA_CLASS_SUBSTRING = "$$Lambda";
     public static final String SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN = "\\$\\$Lambda";
-
-    static {
-        if (Runtime.version().feature() < 21) {
-            LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda\\$\\d+[/.][^/]+;");
-            LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda\\$";
-            LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda$";
-        } else {
-            // JDK-8292914
-            LAMBDA_PATTERN = Pattern.compile("\\$\\$Lambda[/.][^/]+;");
-            LAMBDA_SPLIT_PATTERN = "\\$\\$Lambda";
-            LAMBDA_CLASS_NAME_SUBSTRING = "$$Lambda";
-        }
-    }
 
     private static GraphBuilderConfiguration buildLambdaParserConfig(ClassInitializationPlugin cip) {
         GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(new InvocationPlugins());
@@ -117,7 +106,7 @@ public final class LambdaUtils {
          */
         StructuredGraph graph = new StructuredGraph.Builder(options, debug).method(lambdaProxyMethods[0]).build();
         try (DebugContext.Scope ignored = debug.scope("Lambda target method analysis", graph, lambdaType, ctx)) {
-            GraphBuilderPhase lambdaParserPhase = new GraphBuilderPhase(buildLambdaParserConfig(cip));
+            GraphBuilderPhase lambdaParserPhase = new LambdaGraphBuilder(LambdaUtils.buildLambdaParserConfig(cip));
             HighTierContext context = new HighTierContext(providers, null, OptimisticOptimizations.NONE);
             lambdaParserPhase.apply(graph, context);
         } catch (Throwable e) {
@@ -179,5 +168,45 @@ public final class LambdaUtils {
 
     public static String capturingClass(String className) {
         return className.split(LambdaUtils.SERIALIZATION_TEST_LAMBDA_CLASS_SPLIT_PATTERN)[0];
+    }
+
+    private static final class LambdaGraphBuilder extends GraphBuilderPhase {
+
+        private LambdaGraphBuilder(GraphBuilderConfiguration config) {
+            super(config);
+        }
+
+        @Override
+        protected GraphBuilderPhase.Instance createInstance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts,
+                        IntrinsicContext initialIntrinsicContext) {
+            return new Instance(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext);
+        }
+
+        private static class Instance extends GraphBuilderPhase.Instance {
+            Instance(CoreProviders providers, GraphBuilderConfiguration instanceGBConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {
+                super(providers, instanceGBConfig, optimisticOpts, initialIntrinsicContext);
+            }
+
+            @Override
+            protected BytecodeParser createBytecodeParser(StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
+                return new LambdaBytecodeParser(this, graph, parent, method, entryBCI, intrinsicContext);
+            }
+        }
+    }
+
+    private static class LambdaBytecodeParser extends BytecodeParser {
+
+        LambdaBytecodeParser(GraphBuilderPhase.Instance instance, StructuredGraph graph, BytecodeParser parent, ResolvedJavaMethod method, int entryBCI, IntrinsicContext intrinsicContext) {
+            super(instance, graph, parent, method, entryBCI, intrinsicContext);
+        }
+
+        @Override
+        protected Object lookupConstant(int cpi, int opcode, boolean allowBootstrapMethodInvocation) {
+            /*
+             * Native Image forces bootstrap method invocation at build time until support has been
+             * added for doing the invocation at runtime (GR-45806)
+             */
+            return super.lookupConstant(cpi, opcode, true);
+        }
     }
 }

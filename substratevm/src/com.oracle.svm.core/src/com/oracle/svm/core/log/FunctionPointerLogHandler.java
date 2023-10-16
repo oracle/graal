@@ -137,11 +137,6 @@ public class FunctionPointerLogHandler implements LogHandlerExtension {
         void invoke();
     }
 
-    interface FatalContextFunctionPointer extends CFunctionPointer {
-        @InvokeCFunctionPointer
-        boolean invoke(CodePointer callerIP, String msg, Throwable ex);
-    }
-
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public static boolean isJniVMOption(CCharPointer optionString) {
         return LibC.strcmp(optionString, LOG_OPTION.get()) == 0 ||

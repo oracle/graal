@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2012, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -589,6 +589,19 @@ public abstract class RootNode extends ExecutableNode {
      */
     protected FrameDescriptor getParentFrameDescriptor() {
         return null;
+    }
+
+    /**
+     * Tests if two frames are the same. This method is mainly used by instruments in case of
+     * <code>yield</code> of the execution and later resume. Frame comparison is used to match the
+     * particular yielded and resumed execution.
+     * <p>
+     * The default implementation compares the frames identity.
+     *
+     * @since 24.0
+     */
+    protected boolean isSameFrame(Frame frame1, Frame frame2) {
+        return frame1 == frame2;
     }
 
     final ReentrantLock getLazyLock() {

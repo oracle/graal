@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2013, 2017, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2013, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -35,6 +35,7 @@ import org.graalvm.nativeimage.c.struct.AllowWideningCast;
 import org.graalvm.nativeimage.c.struct.CField;
 import org.graalvm.nativeimage.c.struct.CFieldAddress;
 import org.graalvm.nativeimage.c.struct.CStruct;
+import org.graalvm.nativeimage.c.type.CLongPointer;
 import org.graalvm.word.PointerBase;
 
 // Checkstyle: stop
@@ -49,6 +50,9 @@ public class Time {
     public interface timeval extends PointerBase {
         @CField
         long tv_sec();
+
+        @CFieldAddress
+        CLongPointer addressOftv_sec();
 
         @CField
         void set_tv_sec(long value);
@@ -91,6 +95,10 @@ public class Time {
         timeval it_value();
     }
 
+    @CStruct(addStructKeyword = true)
+    public interface tm extends PointerBase {
+    }
+
     @CEnum
     @CContext(PosixDirectives.class)
     public enum TimerTypeEnum {
@@ -114,6 +122,9 @@ public class Time {
 
         @CFunction(transition = CFunction.Transition.NO_TRANSITION)
         public static native int gettimeofday(timeval tv, timezone tz);
+
+        @CFunction(transition = CFunction.Transition.NO_TRANSITION)
+        public static native tm localtime_r(CLongPointer timep, tm result);
 
         @CFunction(transition = Transition.NO_TRANSITION)
         public static native int nanosleep(timespec requestedtime, timespec remaining);

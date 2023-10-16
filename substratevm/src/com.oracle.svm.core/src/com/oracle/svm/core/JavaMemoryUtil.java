@@ -429,7 +429,7 @@ public final class JavaMemoryUtil {
      * compatible).
      */
     public static void copyObjectArrayForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
-        assert length >= 0;
+        assert length >= 0 : length;
 
         UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
         UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
@@ -444,7 +444,7 @@ public final class JavaMemoryUtil {
      * compatible).
      */
     public static void copyObjectArrayBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
-        assert length >= 0;
+        assert length >= 0 : length;
 
         UnsignedWord fromOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, fromIndex);
         UnsignedWord toOffset = LayoutEncoding.getArrayElementOffset(layoutEncoding, toIndex);
@@ -502,7 +502,7 @@ public final class JavaMemoryUtil {
      * Copies between Java primitive arrays.
      */
     public static void copyPrimitiveArrayForward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
-        assert length >= 0;
+        assert length >= 0 : length;
         assert fromArray != null;
         assert toArray != null;
 
@@ -537,7 +537,7 @@ public final class JavaMemoryUtil {
      * Copies between Java primitive arrays.
      */
     public static void copyPrimitiveArrayBackward(Object fromArray, int fromIndex, Object toArray, int toIndex, int length, int layoutEncoding) {
-        assert length >= 0;
+        assert length >= 0 : length;
         assert fromArray != null;
         assert toArray != null;
 

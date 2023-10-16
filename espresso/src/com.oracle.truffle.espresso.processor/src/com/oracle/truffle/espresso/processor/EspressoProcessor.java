@@ -100,7 +100,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
      * import com.oracle.truffle.espresso.substitutions.Collect;
      *
      * import com.oracle.truffle.espresso.substitutions.JavaSubstitution;
-     * import com.oracle.truffle.espresso.runtime.StaticObject;
+     * import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
      * import com.oracle.truffle.espresso.substitutions.Target_java_lang_invoke_MethodHandleNatives.Resolve;
      *
      * /**
@@ -229,7 +229,7 @@ public abstract class EspressoProcessor extends BaseProcessor {
     private static final String SUBSTITUTION_PROFILER = "com.oracle.truffle.espresso.substitutions.SubstitutionProfiler";
 
     TypeElement staticObject;
-    private static final String STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
+    protected static final String STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.staticobject.StaticObject";
 
     TypeElement javaType;
     private static final String JAVA_TYPE = "com.oracle.truffle.espresso.substitutions.JavaType";
@@ -258,11 +258,11 @@ public abstract class EspressoProcessor extends BaseProcessor {
     static final String STATIC_OBJECT_NULL = "StaticObject.NULL";
 
     static final String IMPORT_INTEROP_LIBRARY = "com.oracle.truffle.api.interop.InteropLibrary";
-    static final String IMPORT_STATIC_OBJECT = "com.oracle.truffle.espresso.runtime.StaticObject";
+    static final String IMPORT_STATIC_OBJECT = STATIC_OBJECT;
     static final String IMPORT_TRUFFLE_OBJECT = "com.oracle.truffle.api.interop.TruffleObject";
-    static final String IMPORT_ESPRESSO_LANGUAGE = "com.oracle.truffle.espresso.EspressoLanguage";
+    static final String IMPORT_ESPRESSO_LANGUAGE = ESPRESSO_LANGUAGE;
     static final String IMPORT_META = "com.oracle.truffle.espresso.meta.Meta";
-    static final String IMPORT_ESPRESSO_CONTEXT = "com.oracle.truffle.espresso.runtime.EspressoContext";
+    static final String IMPORT_ESPRESSO_CONTEXT = ESPRESSO_CONTEXT;
     static final String IMPORT_PROFILE = "com.oracle.truffle.espresso.substitutions.SubstitutionProfiler";
     static final String IMPORT_COLLECT = "com.oracle.truffle.espresso.substitutions.Collect";
 

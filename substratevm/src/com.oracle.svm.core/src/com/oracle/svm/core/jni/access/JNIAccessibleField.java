@@ -33,8 +33,10 @@ import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 import org.graalvm.word.WordFactory;
 
+import com.oracle.svm.core.BuildPhaseProvider.ReadyForCompilation;
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.heap.UnknownPrimitiveField;
 import com.oracle.svm.core.jni.headers.JNIFieldId;
 
 import jdk.vm.ci.meta.JavaKind;
@@ -76,6 +78,7 @@ public final class JNIAccessibleField extends JNIAccessibleMember {
      * <li>Remaining 62 bits for (unsigned) offset in the object</li>
      * </ul>
      */
+    @UnknownPrimitiveField(availability = ReadyForCompilation.class)//
     private UnsignedWord id = WordFactory.zero();
 
     @Platforms(HOSTED_ONLY.class)

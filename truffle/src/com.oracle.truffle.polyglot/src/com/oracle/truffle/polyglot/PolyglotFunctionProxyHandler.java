@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.polyglot;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -53,7 +50,6 @@ import java.util.Objects;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleOptions;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -191,18 +187,7 @@ final class PolyglotFunctionProxyHandler implements InvocationHandler, PolyglotW
         if (TruffleOptions.AOT) {
             throw new UnsupportedOperationException("calling default method " + method.getName() + " is not yet supported on SubstrateVM");
         }
-
-        // default method; requires Java 9 (JEP 274)
-        Class<?> declaringClass = method.getDeclaringClass();
-        assert declaringClass.isInterface() : declaringClass;
-        MethodHandle mh;
-        try {
-            Truffle.class.getModule().addReads(declaringClass.getModule());
-            mh = MethodHandles.lookup().findSpecial(declaringClass, method.getName(), MethodType.methodType(method.getReturnType(), method.getParameterTypes()), declaringClass);
-        } catch (IllegalAccessException e) {
-            throw new UnsupportedOperationException(method.getName(), e);
-        }
-        return mh.bindTo(proxy).invokeWithArguments(arguments);
+        return InvocationHandler.invokeDefault(proxy, method, arguments);
     }
 
     @ImportStatic(ProxyInvokeNode.class)

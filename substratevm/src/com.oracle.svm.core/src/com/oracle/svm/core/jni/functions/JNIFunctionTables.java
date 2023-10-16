@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jni.functions;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
@@ -38,8 +37,6 @@ import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordBase;
 
-import jdk.internal.misc.Unsafe;
-
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.c.CIsolateData;
 import com.oracle.svm.core.c.CIsolateDataFactory;
@@ -48,8 +45,9 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jni.headers.JNIInvokeInterface;
 import com.oracle.svm.core.jni.headers.JNIJavaVM;
 import com.oracle.svm.core.jni.headers.JNINativeInterface;
-import com.oracle.svm.core.jni.headers.JNINativeInterfaceJDK19OrLater;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.internal.misc.Unsafe;
 
 /**
  * Performs the initialization of the JNI function table structures at runtime.
@@ -75,7 +73,7 @@ public final class JNIFunctionTables {
     private final CIsolateData<JNIJavaVM> jniJavaVM = CIsolateDataFactory.createStruct("jniJavaVM", JNIJavaVM.class);
 
     private static int getFunctionTableSize() {
-        return JavaVersionUtil.JAVA_SPEC <= 17 ? SizeOf.get(JNINativeInterface.class) : SizeOf.get(JNINativeInterfaceJDK19OrLater.class);
+        return SizeOf.get(JNINativeInterface.class);
     }
 
     @Platforms(Platform.HOSTED_ONLY.class)

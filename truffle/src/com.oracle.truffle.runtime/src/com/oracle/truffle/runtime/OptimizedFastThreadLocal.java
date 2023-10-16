@@ -61,7 +61,7 @@ public abstract class OptimizedFastThreadLocal extends AbstractFastThreadLocal {
 
     @Override
     @SuppressWarnings("unchecked")
-    public final <C> C fastGet(int index, Class<C> castType, boolean invalidateOnNull) {
+    public final <C> C fastGet(int index, Class<C> castType, boolean invalidateOnNull, boolean nonNullResult) {
         Object[] data;
         if (inCompiledCode()) {
             partialEvaluationConstant(index);
@@ -74,7 +74,7 @@ public abstract class OptimizedFastThreadLocal extends AbstractFastThreadLocal {
                 return null;
             }
             Object v = castArrayFixedLength(array, index + 1)[index];
-            C result = unsafeCast(v, castType, true, false, true);
+            C result = unsafeCast(v, castType, true, nonNullResult, true);
             return result;
         } else {
             data = get();

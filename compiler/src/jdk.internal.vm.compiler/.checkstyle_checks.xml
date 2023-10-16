@@ -10,6 +10,18 @@
 -->
 <module name="Checker">
   <property name="severity" value="error"/>
+  <module name="SuppressionSingleFilter">
+    <property name="files" value=".*Test.*.java"/>
+    <property name="id" value="endless-loop"/>
+  </module>
+  <module name="SuppressionSingleFilter">
+    <property name="files" value=".*test.*.java"/>
+    <property name="id" value="endless-loop"/>
+  </module>
+  <module name="SuppressionSingleFilter">
+    <property name="files" value=".*jtt.*.java"/>
+    <property name="id" value="endless-loop"/>
+  </module>
   <module name="TreeWalker">
     <module name="AvoidStarImport"/>
     <module name="JavadocStyle">
@@ -152,6 +164,18 @@
     <module name="RegexpSinglelineJava">
       <property name="format" value="\(LoadConstantOp\)"/>
       <property name="message" value="Do not cast directly to `LoadConstantOp`. Use `LoadConstantOp.asLoadConstantOp(op)` instead!"/>
+    </module>
+    <module name="RegexpSinglelineJava">
+      <property name="format" value="while \(true\)"/>
+      <property name="message" value="Do not introduce untrusted endless loops. Ensure the loop terminates or is capped with a maximum number of iterations. If you trust your loop ignore this checkstyle message with a line comment in the line of the loop header with TERMINATION ARGUMENT: ."/>
+      <property name="ignoreComments" value="true"/>
+      <property name="id" value="endless-loop"/>
+    </module>
+    <module name="SuppressWithNearbyCommentFilter">
+      <property name="commentFormat" value="TERMINATION ARGUMENT: \w.*"/>
+      <property name="checkFormat" value=".*"/>
+      <property name="influenceFormat" value="0"/>
+      <property name="idFormat" value="endless-loop"/>
     </module>
     <module name="SuppressionCommentFilter">
       <property name="offCommentFormat" value="Checkstyle: stop constant name check"/>

@@ -89,4 +89,22 @@ final class X64Regs {
     private static VMStorage vectorRegister(int index) {
         return new VMStorage(X64StorageType.VECTOR.getId(), XMM_MASK, index);
     }
+
+    public static String getIntegerRegisterName(int idx) {
+        return switch (idx) {
+            case 0 -> "rax";
+            case 1 -> "rcx";
+            case 2 -> "rdx";
+            case 3 -> "rbx";
+            case 4 -> "rsp";
+            case 5 -> "rbp";
+            case 6 -> "rsi";
+            case 7 -> "rdi";
+            default -> "r" + idx;
+        };
+    }
+
+    public static String getVectorRegisterName(int idx) {
+        return "xmm" + idx;
+    }
 }

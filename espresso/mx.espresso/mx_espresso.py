@@ -67,8 +67,6 @@ def _espresso_standalone_command(args, use_optimized_runtime=False, with_sulong=
         + mx.get_runtime_jvm_args(distributions, jdk=mx.get_jdk())
         # We are not adding the truffle runtime
         + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
-        # Workaround StaticShape generating classes in the unnamed module (GR-48132)
-        + ['--add-exports=org.graalvm.espresso/com.oracle.truffle.espresso.runtime=ALL-UNNAMED']
         + [mx.distribution('ESPRESSO_LAUNCHER').mainClass] + args
     )
 
@@ -202,9 +200,9 @@ espresso_library_config = mx_sdk_vm.LanguageLibraryConfig(
         '-R:+EnableSignalHandling',
         '-R:+InstallSegfaultHandler',
         '--features=com.oracle.truffle.espresso.ref.FinalizationFeature',
+        '--enable-monitoring=threaddump',
     ] + mx_sdk_vm_impl.svm_experimental_options([
         '-H:-JNIExportSymbols',
-        '-H:+DumpThreadStacksOnSignal',
     ]),
 )
 

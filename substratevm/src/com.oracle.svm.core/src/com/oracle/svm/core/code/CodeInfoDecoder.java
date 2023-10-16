@@ -200,7 +200,7 @@ public final class CodeInfoDecoder {
             }
         }
 
-        assert entryIP == method;
+        assert entryIP == method : entryIP;
         assert decodeMethodStart(loadEntryFlags(info, entryOffset), sizeEncoding);
 
         do {
@@ -351,7 +351,7 @@ public final class CodeInfoDecoder {
     }
 
     private static boolean decodeMethodStart(int entryFlags, long sizeEncoding) {
-        assert sizeEncoding != initialSizeEncoding();
+        assert sizeEncoding != initialSizeEncoding() : sizeEncoding;
 
         switch (extractFS(entryFlags)) {
             case FS_NO_CHANGE:

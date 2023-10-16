@@ -140,9 +140,6 @@ public class PointstoOptions {
     @Option(help = "Object scanning in parallel")//
     public static final OptionKey<Boolean> ScanObjectsParallel = new OptionKey<>(true);
 
-    @Option(help = "Scan all objects reachable from roots for analysis. By default false.")//
-    public static final OptionKey<Boolean> ExhaustiveHeapScan = new OptionKey<>(false);
-
     @Option(help = "Run partial escape analysis on compiler graphs before static analysis.", type = Expert)//
     public static final OptionKey<Boolean> EscapeAnalysisBeforeAnalysis = new OptionKey<>(true);
 

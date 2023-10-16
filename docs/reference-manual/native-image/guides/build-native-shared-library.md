@@ -20,7 +20,7 @@ native-image -jar <jarfile> --shared
 
 The resulting native shared library will have the `main()` method of the given Java class as its **entrypoint** method.
 
-If your library doesn't include a `main()` method, use the `-H:Name=` command-line option to specify the library name, as follows:
+If your library does not include a `main()` method, use the `-H:Name=` command-line option to specify the library name, as follows:
 
 ```shell
 native-image --shared -H:Name=<libraryname> <class name>
@@ -68,20 +68,14 @@ A native shared library can have an unlimited number of **entrypoints**, for exa
 
 ### Run a Demo
 
-In the following example, you'll create a small Java class library (containing one class), use `native-image` to create a shared library from the class library, and then create a small C application that uses the shared library.
+In the following example, you will create a small Java class library (containing one class), use `native-image` to create a shared library from the class library, and then create a small C application that uses that shared library.
 The C application takes a string as its argument, passes it to the shared library, and prints environment variables that contain the argument.
 
 1. Make sure you have installed a GraalVM JDK.
 The easiest way to get started is with [SDKMAN!](https://sdkman.io/jdks#graal).
 For other installation options, visit the [Downloads section](https://www.graalvm.org/downloads/).
 
-2. Then install the LLVM toolchain: 
-    ```bash
-    gu install llvm-toolchain
-    ```
-    > Note: The llvm-toolchain GraalVM component is not available on Microsoft Windows.
-
-3. Save the following Java code to a file named _LibEnvMap.java_:
+2. Save the following Java code to a file named _LibEnvMap.java_:
 
     ```java
     import java.util.Map;
@@ -111,7 +105,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
     ```
     Notice how the method `filterEnv()` is identified as an **entrypoint** using the `@CEntryPoint` annotation and the method is given a name as a argument to the annotation. 
 
-4. Compile the Java code and build a native shared library, as follows:
+3. Compile the Java code and build a native shared library, as follows:
     ```shell
     $JAVA_HOME/bin/javac LibEnvMap.java
     ```
@@ -134,7 +128,7 @@ For other installation options, visit the [Downloads section](https://www.graalv
 
     If you work with C or C++, use these header files directly. For other languages, such as Java, use the function declarations in the headers to set up your foreign call bindings. 
 
-5. Create a C application, _main.c_, in the same directory containing the following code:
+4. Create a C application, _main.c_, in the same directory containing the following code:
 
     ```c
     #include <stdio.h>
@@ -165,17 +159,17 @@ For other installation options, visit the [Downloads section](https://www.graalv
     The statement `#include "libenvmap.h"` loads the native shared library.
 
 
-6. Compile the C application using `clang`. 
+5. Compile the C application using `clang` from the [the GraalVM LLVM runtime](../reference-manual/llvm/README.md#llvm-toolchain):
     ```shell
     $JAVA_HOME/languages/llvm/native/bin/clang -I ./ -L ./ -l envmap -Wl,-rpath ./ -o main main.c 
     ```
 
-7. Run the C application by passing a string as an argument. For example:
+6. Run the C application by passing a string as an argument. For example:
     ```shell
     ./main USER
     ```
     It will correctly print out the name and value of the matching environment variable(s). 
-    
+
 The advantage of using the Native Image C API is that you can determine what your API will look like. 
 The restriction is that your parameter and return types must be non-object types.
 If you want to manage Java objects from C, you should consider [JNI Invocation API](../JNI.md). 

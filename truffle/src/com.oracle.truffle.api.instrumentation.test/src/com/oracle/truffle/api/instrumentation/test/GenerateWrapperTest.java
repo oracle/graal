@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -134,6 +134,19 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
                 assertEquals(42, e.getResult());
             }
         });
+        YieldNode defaultYield = new YieldNode();
+        Supplier<YieldNode> yieldNode = adoptNode(defaultYield);
+        Runnable yieldExec = () -> {
+            try {
+                yieldNode.get().execute(testFrame);
+                fail();
+            } catch (YieldException ye) {
+                // Expected
+            }
+        };
+        assertYieldExecutionEvent(defaultYield, testFrame, "YieldRetValue", yieldExec);
+        // For compatibility, we get the yield return value when onYield() is not overridden:
+        assertExecutionEvent(defaultYield, testFrame, "YieldRetValue", yieldExec);
     }
 
     @Test
@@ -210,6 +223,18 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         } catch (ClassCastException e) {
             // expects to fail with ClassCastException cannot return the value.
         }
+    }
+
+    @Test
+    public void testResumeExecution() {
+        setupEnv();
+        ResumeNode node = new ResumeNode();
+        VirtualFrame testFrame = Truffle.getRuntime().createVirtualFrame(new Object[0], new FrameDescriptor());
+        Supplier<ResumeNode> resumeNode = adoptNode(node);
+        Runnable resumeExec = () -> {
+            resumeNode.get().resumeTest(testFrame);
+        };
+        assertResumeExecutionEvent(node, testFrame, 42, resumeExec);
     }
 
     private void assertUnwindInEnter(Node node, VirtualFrame expectedFrame, Object unwindValue, Supplier<Object> r) {
@@ -329,6 +354,100 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         });
         r.run();
         assertEquals("Execution event did not trigger.", Arrays.asList("onEnter", "onReturnValue"), events);
+        binding.dispose();
+    }
+
+    private void assertYieldExecutionEvent(Node node, VirtualFrame expectedFrame, Object expectedResult, Runnable r) {
+        List<String> events = new ArrayList<>();
+        EventBinding<?> binding = instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+
+            @Override
+            public void onResume(EventContext c, VirtualFrame frame) {
+                assertSame(expectedFrame, frame);
+                assertSame(c.getInstrumentedNode(), node);
+                throw new AssertionError("Error not expected");
+            }
+
+            @Override
+            public void onEnter(EventContext c, VirtualFrame frame) {
+                events.add("onEnter");
+                assertSame(expectedFrame, frame);
+                assertSame(c.getInstrumentedNode(), node);
+            }
+
+            @Override
+            public void onYield(EventContext c, VirtualFrame frame, Object value) {
+                events.add("onYield");
+                assertSame(expectedFrame, frame);
+                assertSame(c.getInstrumentedNode(), node);
+                assertEquals(expectedResult, value);
+            }
+
+            @Override
+            public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+                events.add("onReturnValue");
+                assertSame(expectedFrame, frame);
+                assertEquals(expectedResult, result);
+                throw new AssertionError("Error not expected");
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+                events.add("onReturnExceptional");
+                if (exception instanceof YieldException) {
+                    throw (YieldException) exception;
+                }
+                throw new AssertionError("Error not expected", exception);
+            }
+        });
+        r.run();
+        assertEquals("Execution event did not trigger.", Arrays.asList("onEnter", "onYield"), events);
+        binding.dispose();
+    }
+
+    private void assertResumeExecutionEvent(Node node, VirtualFrame expectedFrame, Object expectedResult, Runnable r) {
+        List<String> events = new ArrayList<>();
+        EventBinding<?> binding = instrumentEnv.getInstrumenter().attachExecutionEventListener(SourceSectionFilter.ANY, new ExecutionEventListener() {
+
+            @Override
+            public void onResume(EventContext c, VirtualFrame frame) {
+                events.add("onResume");
+                assertSame(expectedFrame, frame);
+                assertSame(c.getInstrumentedNode(), node);
+            }
+
+            @Override
+            public void onEnter(EventContext c, VirtualFrame frame) {
+                events.add("onEnter");
+                assertSame(expectedFrame, frame);
+                assertSame(c.getInstrumentedNode(), node);
+                throw new AssertionError("Error not expected");
+            }
+
+            @Override
+            public void onYield(EventContext c, VirtualFrame frame, Object value) {
+                assertSame(expectedFrame, frame);
+                assertSame(c.getInstrumentedNode(), node);
+                throw new AssertionError("Error not expected");
+            }
+
+            @Override
+            public void onReturnValue(EventContext c, VirtualFrame frame, Object result) {
+                events.add("onReturnValue");
+                assertSame(expectedFrame, frame);
+                assertEquals(expectedResult, result);
+            }
+
+            @Override
+            public void onReturnExceptional(EventContext c, VirtualFrame frame, Throwable exception) {
+                if (exception instanceof AssertionError) {
+                    throw (AssertionError) exception;
+                }
+                throw new AssertionError("Error not expected", exception);
+            }
+        });
+        r.run();
+        assertEquals("Execution event did not trigger.", Arrays.asList("onResume", "onReturnValue"), events);
         binding.dispose();
     }
 
@@ -780,6 +899,9 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
             throw new UnexpectedResultException(42);
         }
 
+        public Object resumeExecute(VirtualFrame frame) {
+            return "Resumed.";
+        }
     }
 
     @GenerateWrapper
@@ -913,8 +1035,8 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         }
     }
 
-    @ExpectError("No methods starting with name execute found to wrap.")
-    @GenerateWrapper
+    @ExpectError("No methods starting with name execute or resume found to wrap.")
+    @GenerateWrapper(resumeMethodPrefix = "resume")
     public static class ErrorNode4 extends Node implements InstrumentableNode {
 
         public WrapperNode createWrapper(ProbeNode probe) {
@@ -1044,4 +1166,149 @@ public class GenerateWrapperTest extends AbstractPolyglotTest {
         }
     }
 
+    @ExpectError("YieldExceptionErr1 in `yieldExceptions` must extend java.lang.Throwable.")
+    @GenerateWrapper(yieldExceptions = YieldExceptionErr1.class)
+    @SuppressWarnings("unused")
+    public abstract static class ErrorYieldNode1 extends Node implements InstrumentableNode {
+
+        public void execute(VirtualFrame frame) {
+        }
+
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return null;
+        }
+
+        public boolean isInstrumentable() {
+            return false;
+        }
+    }
+
+    @ExpectError("YieldExceptionErr2 in `yieldExceptions` must implement com.oracle.truffle.api.instrumentation.GenerateWrapper.YieldException.")
+    @GenerateWrapper(yieldExceptions = YieldExceptionErr2.class)
+    @SuppressWarnings("unused")
+    public abstract static class ErrorYieldNode2 extends Node implements InstrumentableNode {
+
+        public void execute(VirtualFrame frame) {
+        }
+
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return null;
+        }
+
+        public boolean isInstrumentable() {
+            return false;
+        }
+    }
+
+    @ExpectError("YieldExceptionErr3 in `yieldExceptions` must extend java.lang.Throwable.")
+    @GenerateWrapper(yieldExceptions = YieldExceptionErr3.class)
+    @SuppressWarnings("unused")
+    public abstract static class ErrorYieldNode3 extends Node implements InstrumentableNode {
+
+        public void execute(VirtualFrame frame) {
+        }
+
+        public WrapperNode createWrapper(ProbeNode probe) {
+            return null;
+        }
+
+        public boolean isInstrumentable() {
+            return false;
+        }
+    }
+
+    @GenerateWrapper(yieldExceptions = YieldException.class)
+    @SuppressWarnings("unused")
+    public static class YieldNode extends Node implements InstrumentableNode {
+
+        public void execute(VirtualFrame frame) {
+            throw new YieldException("YieldRetValue");
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probeNode) {
+            return new YieldNodeWrapper(this, probeNode);
+        }
+
+        public boolean isInstrumentable() {
+            return true;
+        }
+    }
+
+    @GenerateWrapper(yieldExceptions = {YieldException.class, YieldExceptionValid.class})
+    @SuppressWarnings("unused")
+    public static class YieldNodeThrows extends Node implements InstrumentableNode {
+
+        public void execute(VirtualFrame frame) throws YieldExceptionValid {
+            throw new YieldExceptionValid();
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probeNode) {
+            return new YieldNodeThrowsWrapper(this, probeNode);
+        }
+
+        public boolean isInstrumentable() {
+            return true;
+        }
+    }
+
+    static class YieldException extends RuntimeException implements GenerateWrapper.YieldException {
+
+        private static final long serialVersionUID = 0L;
+        private final transient Object yieldValue;
+
+        YieldException(Object yieldValue) {
+            this.yieldValue = yieldValue;
+        }
+
+        @Override
+        public Object getYieldValue() {
+            return yieldValue;
+        }
+    }
+
+    static class YieldExceptionErr1 {
+    }
+
+    static class YieldExceptionErr2 extends Throwable {
+
+        private static final long serialVersionUID = 0L;
+
+    }
+
+    static class YieldExceptionErr3 implements GenerateWrapper.YieldException {
+        @Override
+        public Object getYieldValue() {
+            return null;
+        }
+    }
+
+    static class YieldExceptionValid extends Throwable implements GenerateWrapper.YieldException {
+
+        private static final long serialVersionUID = 0L;
+
+        @Override
+        public Object getYieldValue() {
+            return null;
+        }
+    }
+
+    @GenerateWrapper(resumeMethodPrefix = "resumeTest")
+    @SuppressWarnings("unused")
+    public static class ResumeNode extends Node implements InstrumentableNode {
+
+        public int resumeTest(VirtualFrame frame) {
+            return 42;
+        }
+
+        @Override
+        public WrapperNode createWrapper(ProbeNode probeNode) {
+            return new ResumeNodeWrapper(this, probeNode);
+        }
+
+        public boolean isInstrumentable() {
+            return true;
+        }
+    }
 }

@@ -9,7 +9,7 @@ permalink: /reference-manual/java-on-truffle/
 
 Using GraalVM, you can run Java applications normally [on the JVM](../java/README.md), in [Native Image](../native-image/README.md), and now on Truffle.
 Java on Truffle is an implementation of the Java Virtual Machine Specification, [Java SE 8](https://docs.oracle.com/javase/specs/jvms/se8/html/index.html) and [Java SE 11](https://docs.oracle.com/javase/specs/jvms/se11/html/index.html), built upon GraalVM as a Truffle interpreter.
-It is a minified Java VM that includes all core components of a VM, implements the same API as the Java Runtime Environment library (libjvm.so), and reuses all JARs and native libraries from GraalVM.
+It is a minified Java VM that includes all core components of a VM, implements the same API as the Java Runtime Environment library (`libjvm.so`), and reuses all JARs and native libraries from GraalVM.
 See the [Implementation Details](ImplementationDetails.md) for more information.
 The project name behind this implementation is "Espresso".
 Its open source version is available on [GitHub](https://github.com/oracle/graal/tree/master/espresso).
@@ -19,22 +19,42 @@ Now Java can be executed by the same principle as other languages in the GraalVM
 Besides complete language interoperability, with Java on Truffle you can:
 
 - run Java bytecode in a separate context from the host Java VM.
-- run either a Java 8, Java 11, Java 17 guest JVM, allowing to embed e.g. a Java 8 context in a Java 11 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html)
+- run either a Java 8, Java 11, Java 17, or Java 21 guest JVM, allowing to embed e.g. a Java 17 context in a Java 21 application, by using [GraalVM’s Polyglot API](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/package-summary.html)
 - leverage the whole stack of tools provided by the Truffle framework, not previously available for Java.
 - have an improved isolation of the host Java VM and the Java program running on Truffle, so you can run less trusted guest code.
 - run in the context of a native executable while still allowing dynamically-loaded bytecodes.
 
 Java on Truffle passes the Java Compatibility Kit (JCK or TCK for Java SE).
 
-## Install Java on Truffle
+## Getting Started
 
-The Java on Truffle runtime is not available by default, but can be easily added to GraalVM using the [GraalVM Updater tool](../graalvm-updater.md).
-```shell
-gu install espresso
-```
+As of GraalVM for JDK 21, Java on Truffle (known as Espresso) is available as a standalone distribution. 
+You can download a standalone based on Oracle GraalVM or GraalVM Community Edition. 
 
-The installable's name, `espresso`, is the project code-name, it is used to avoid ambiguity with the other ways Java code can run on GraalVM.
-It installs the `jvm` runtime library under the `$JAVA_HOME/lib/truffle/` location.
+1. Download the Java on Truffle (Espresso) standalone for your operating system:
+   * [Linux x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062424081E0631818000A781E/content)
+   * [Linux AArch64](https://gds.oracle.com/api/20220101/artifacts/04F556B0056D3A58E0631818000A322D/content)
+   * [macOS x64](https://gds.oracle.com/api/20220101/artifacts/04F556B005743A58E0631818000A322D/content)
+   * [macOS AArch64](https://gds.oracle.com/api/20220101/artifacts/04F556B0057A3A58E0631818000A322D/content)
+   * [Windows x64](https://gds.oracle.com/api/20220101/artifacts/04F488A062484081E0631818000A781E/content)
+
+2. Unzip the archive:
+
+    > Note: If you are using macOS Catalina and later you may need to remove the quarantine attribute:
+    ```shell
+    sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
+    ```
+    
+    Extact:
+    ```shell
+    tar -xzf <archive>.tar.gz
+    ```
+   
+3. A standalone comes with a JVM in addition to its native launcher. Check the version to see the Java on Truffle runtime is active:
+    ```shell
+    # Path to Java on Truffle (Espresso) installation
+    ./path/to/bin/java -truffle -version
+    ```
 
 ## Run Java on Truffle
 
@@ -80,7 +100,8 @@ This might be important for options such as `MaxDirectMemorySize` which can be s
 
 To ensure you have successfully installed Java on Truffle, verify its version:
 ```shell
-java -truffle -version
+# Path to Java on Truffle (Espresso) installation
+./path/to/bin/java -truffle -version
 ```
 
 Taking this `HelloWorld.java` example, compile it and run from the command line:

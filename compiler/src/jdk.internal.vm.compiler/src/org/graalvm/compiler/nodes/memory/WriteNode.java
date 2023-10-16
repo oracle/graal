@@ -30,6 +30,7 @@ import org.graalvm.compiler.core.common.LIRKind;
 import org.graalvm.compiler.core.common.memory.BarrierType;
 import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
 import org.graalvm.compiler.core.common.type.Stamp;
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.NodeInfo;
@@ -150,7 +151,9 @@ public class WriteNode extends AbstractWriteNode implements LIRLowerableAccess, 
 
     private static boolean followedByVolatileWrite(FixedWithNextNode start) {
         FixedWithNextNode cur = start;
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: processing fixed nodes of a block until exit
+                       // condition is met (unknown or known node encountered)
+            CompilationAlarm.checkProgress(start.graph());
             // Check the memory usages of the current access
             for (Node usage : cur.usages()) {
                 if (!(usage instanceof MemoryAccess) || !(usage instanceof FixedWithNextNode)) {

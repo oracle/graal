@@ -41,10 +41,15 @@ import org.graalvm.compiler.core.CompilerThreadFactory;
 import org.graalvm.compiler.core.GraalCompilerOptions;
 import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.Assertions;
+import org.graalvm.compiler.hotspot.CommunityCompilerConfigurationFactory;
+import org.graalvm.compiler.hotspot.CompilerConfigurationFactory;
+import org.graalvm.compiler.hotspot.EconomyCompilerConfigurationFactory;
+import org.graalvm.compiler.hotspot.HotSpotGraalVMEventListener;
 import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.options.OptionDescriptor;
 import org.graalvm.compiler.options.OptionDescriptors;
 import org.graalvm.compiler.options.OptionKey;
+import org.graalvm.compiler.options.OptionStability;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.options.OptionsParser;
 import org.graalvm.compiler.test.SubprocessUtil;
@@ -103,6 +108,8 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
         vmArgs.add(SubprocessUtil.PACKAGE_OPENING_OPTIONS);
         vmArgs.add("-dsa");
         vmArgs.add("-da");
+        vmArgs.add("-Dpolyglot.engine.AssertProbes=false");
+        vmArgs.add("-Dpolyglot.engine.AllowExperimentalOptions=true");
         vmArgs.add("-XX:-UseJVMCICompiler");
 
         // Remove -Dgraal.CompilationFailureAction as it drags in CompilationWrapper
@@ -206,6 +213,14 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
             }
         }
 
+        // classes needed to find out whether enterprise is installed in the JDK
+        allowList.add(OptionStability.class);
+        allowList.add(CompilerConfigurationFactory.class);
+        allowList.add(CompilerConfigurationFactory.Options.class);
+        allowList.add(CompilerConfigurationFactory.ShowConfigurationLevel.class);
+        allowList.add(EconomyCompilerConfigurationFactory.class);
+        allowList.add(CommunityCompilerConfigurationFactory.class);
+
         allowList.add(Cancellable.class);
 
         List<String> forbiddenClasses = new ArrayList<>();
@@ -247,7 +262,7 @@ public class LazyClassLoadingTest extends TestWithPolyglotOptions {
             return true;
         }
 
-        if (JVMCIServiceLocator.class.isAssignableFrom(cls) || cls == hotSpotGraalJVMCIServiceLocatorShared) {
+        if (JVMCIServiceLocator.class.isAssignableFrom(cls) || cls == hotSpotGraalJVMCIServiceLocatorShared || HotSpotGraalVMEventListener.class.isAssignableFrom(cls)) {
             return true;
         }
 

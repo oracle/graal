@@ -70,7 +70,8 @@ public class InstrumentationCompilerTest extends PartialEvaluationTest {
     }
 
     private void setup(String enabledInstrument) {
-        setupContext(Context.newBuilder().option(enabledInstrument, "true"));
+        // ProbeNode assertions have an effect on compilation. We turn them off.
+        setupContext(Context.newBuilder().option(enabledInstrument, "true").option("engine.AssertProbes", "false").allowExperimentalOptions(true));
         getContext().initialize(ProxyLanguage.ID);
         this.language = ProxyLanguage.get(null);
     }

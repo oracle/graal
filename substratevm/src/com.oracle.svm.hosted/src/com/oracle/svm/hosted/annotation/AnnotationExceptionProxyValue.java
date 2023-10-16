@@ -63,7 +63,7 @@ public final class AnnotationExceptionProxyValue extends AnnotationMemberValue {
     @Override
     public List<JavaConstant> getExceptionProxies(SnippetReflectionProvider snippetReflection) {
         if (objectConstant == null) {
-            objectConstant = snippetReflection.forObject(exceptionProxy);
+            objectConstant = snippetReflection.unwrapConstant(snippetReflection.forObject(exceptionProxy));
         }
         return Collections.singletonList(objectConstant);
     }

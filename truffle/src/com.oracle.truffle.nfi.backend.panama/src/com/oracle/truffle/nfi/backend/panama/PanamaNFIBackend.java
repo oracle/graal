@@ -110,7 +110,7 @@ final class PanamaNFIBackend implements NFIBackend {
         }
 
         @TruffleBoundary
-        @SuppressWarnings("preview")
+        @SuppressWarnings({"preview", "restricted"})
         private SymbolLookup doLoad() {
             PanamaNFIContext ctx = PanamaNFIContext.get(this);
             try {

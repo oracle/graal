@@ -29,7 +29,7 @@ import java.lang.annotation.Target;
 
 import com.oracle.truffle.espresso.impl.Field;
 import com.oracle.truffle.espresso.impl.Method;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 /**
  * Marker for parameters and return types to hint the primitive is a handle.

@@ -128,7 +128,7 @@ public class SingleTypeState extends TypeState {
     /** Note that the objects of this type state have been merged. */
     @Override
     public void noteMerge(PointsToAnalysis bb) {
-        assert bb.analysisPolicy().isMergingEnabled();
+        assert bb.analysisPolicy().isMergingEnabled() : "policy mismatch";
 
         if (!merged) {
             type.getContextInsensitiveAnalysisObject().noteMerge(bb);

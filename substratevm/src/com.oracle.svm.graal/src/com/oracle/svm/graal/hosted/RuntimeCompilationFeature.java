@@ -44,8 +44,10 @@ import org.graalvm.compiler.api.runtime.GraalRuntime;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
 import org.graalvm.compiler.debug.DebugContext;
+import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.lir.phases.LIRSuites;
+import org.graalvm.compiler.nodes.ConstantNode;
 import org.graalvm.compiler.nodes.GraphEncoder;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.extended.BytecodeExceptionNode;
@@ -63,10 +65,12 @@ import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.AfterCompilationAccess;
 import org.graalvm.nativeimage.hosted.Feature.AfterHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.BeforeAnalysisAccess;
+import org.graalvm.nativeimage.hosted.Feature.BeforeHeapLayoutAccess;
 import org.graalvm.nativeimage.hosted.Feature.DuringSetupAccess;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -118,10 +122,10 @@ import com.oracle.svm.hosted.phases.SubstrateClassInitializationPlugin;
 
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
+import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.vm.ci.services.Services;
 
 /**
  * The main handler for running the Graal compiler in the Substrate VM at run time. This feature
@@ -366,10 +370,11 @@ public abstract class RuntimeCompilationFeature {
     }
 
     protected static List<Class<? extends Feature>> getRequiredFeaturesHelper() {
-        if (Services.IS_BUILDING_NATIVE_IMAGE) {
+        if (SubstrateUtil.isBuildingLibgraal()) {
             return List.of(FieldsOffsetsFeature.class);
+        } else {
+            return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, FieldsOffsetsFeature.class);
         }
-        return List.of(RuntimeCompilationCanaryFeature.class, DeoptimizationFeature.class, FieldsOffsetsFeature.class);
     }
 
     public void setUniverseFactory(SubstrateUniverseFactory universeFactory) {
@@ -474,6 +479,12 @@ public abstract class RuntimeCompilationFeature {
         for (NodeClass<?> nodeClass : replacements.getSnippetNodeClasses()) {
             config.getMetaAccess().lookupJavaType(nodeClass.getClazz()).registerAsAllocated("All " + NodeClass.class.getName() + " classes are marked as instantiated eagerly.");
         }
+        /*
+         * Ensure runtime snippet graphs are analyzed.
+         */
+        if (!SubstrateUtil.isBuildingLibgraal()) {
+            NativeImageGenerator.performSnippetGraphAnalysis(config.getBigBang(), replacements, config.getBigBang().getOptions());
+        }
 
         /*
          * Ensure that all snippet methods have their SubstrateMethod object created by the object
@@ -516,21 +527,21 @@ public abstract class RuntimeCompilationFeature {
         runtimeCompilationCandidatePredicateUpdated = true;
         deoptimizeOnExceptionPredicate = newDeoptimizeOnExceptionPredicate;
 
-        if (SubstrateOptions.IncludeNodeSourcePositions.getValue()) {
+        if (SubstrateOptions.IncludeNodeSourcePositions.getValue() || SubstrateOptions.parseOnce()) {
             graphBuilderConfig = graphBuilderConfig.withNodeSourcePosition(true);
         }
     }
 
-    public SubstrateMethod requireFrameInformationForMethod(ResolvedJavaMethod method) {
+    public SubstrateMethod requireFrameInformationForMethod(ResolvedJavaMethod method, BeforeAnalysisAccessImpl config, boolean registerAsRoot) {
         AnalysisMethod aMethod = (AnalysisMethod) method;
         SubstrateMethod sMethod = objectReplacer.createMethod(aMethod);
 
-        requireFrameInformationForMethodHelper(aMethod);
+        requireFrameInformationForMethodHelper(aMethod, config, registerAsRoot);
 
         return sMethod;
     }
 
-    protected abstract void requireFrameInformationForMethodHelper(AnalysisMethod aMethod);
+    protected abstract void requireFrameInformationForMethodHelper(AnalysisMethod aMethod, BeforeAnalysisAccessImpl config, boolean registerAsRoot);
 
     public SubstrateMethod prepareMethodForRuntimeCompilation(Executable method, BeforeAnalysisAccessImpl config) {
         return prepareMethodForRuntimeCompilation(config.getMetaAccess().lookupJavaMethod(method), config);
@@ -653,10 +664,12 @@ public abstract class RuntimeCompilationFeature {
         HostedMetaAccess hMetaAccess = config.getMetaAccess();
         HostedUniverse hUniverse = hMetaAccess.getUniverse();
         objectReplacer.updateSubstrateDataAfterCompilation(hUniverse, config.getProviders());
+    }
 
-        objectReplacer.registerImmutableObjects(config);
-        GraalSupport.registerImmutableObjects(config);
-        ((SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(config);
+    protected final void beforeHeapLayoutHelper(BeforeHeapLayoutAccess a) {
+        objectReplacer.registerImmutableObjects(a);
+        GraalSupport.registerImmutableObjects(a);
+        ((SubstrateReplacements) GraalSupport.getRuntimeConfig().getProviders().getReplacements()).registerImmutableObjects(a);
     }
 
     protected final void afterHeapLayoutHelper(AfterHeapLayoutAccess a) {
@@ -666,6 +679,20 @@ public abstract class RuntimeCompilationFeature {
         objectReplacer.updateSubstrateDataAfterHeapLayout(hUniverse);
     }
 
+    /**
+     * Unwrap the hosted constant from an {@link ImageHeapConstant} before encoding the graph for
+     * run time compilation. {@link ImageHeapConstant} is a hosted only constant representation.
+     */
+    public static void unwrapImageHeapConstants(StructuredGraph graph, MetaAccessProvider metaAccess) {
+        for (Node n : graph.getNodes()) {
+            if (n instanceof ConstantNode constantNode) {
+                if (constantNode.getValue() instanceof ImageHeapConstant heapConstant) {
+                    VMError.guarantee(heapConstant.isBackedByHostedObject(), "Expected to find a heap object backed by a hosted object, found %s", heapConstant);
+                    constantNode.replace(graph, ConstantNode.forConstant(heapConstant.getHostedObject(), metaAccess, graph));
+                }
+            }
+        }
+    }
 }
 
 /**

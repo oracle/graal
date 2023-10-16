@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,4 +49,5 @@ public final class WasmTestOptions {
     public static final String OFFICIAL_TESTS_DIR = System.getProperty("wasmtest.officialTestsDir");
     public static final boolean OFFICIAL_TESTS_RUN_ALL = Boolean.parseBoolean(System.getProperty("wasmtest.officialTestsRunAll"));
     public static final boolean OFFICIAL_TESTS_LOG = Boolean.parseBoolean(System.getProperty("wasmtest.officialTestsLog"));
+    public static final boolean SHARED_ENGINE = Boolean.parseBoolean(System.getProperty("wasmtest.sharedEngine"));
 }

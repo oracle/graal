@@ -34,7 +34,7 @@
   },
 
   local gate_lite = truffle_common + {
-    name: 'gate-truffle-mac-lite-oraclejdk-' + self.jdk_version,
+    name: 'gate-truffle-mac-lite-oraclejdk-' + self.jdk_name,
     run: [
       ["mx", "build"],
       ["mx", "unittest", "--verbose"],
@@ -42,15 +42,15 @@
   },
 
   local sigtest = truffle_common + {
-    name: 'gate-truffle-sigtest-' + self.jdk_version,
+    name: 'gate-truffle-sigtest-' + self.jdk_name,
     run: [
       ["mx", "build"],
-      ["mx", "sigtest", "--check", (if self.jdk_version == 17 then "all" else "bin")],
+      ["mx", "sigtest", "--check", (if self.jdk_version == 21 then "all" else "bin")],
     ],
   },
 
   local simple_tool_maven_project_gate = truffle_common + {
-    name: 'gate-external-mvn-simpletool-' + self.jdk_version,
+    name: 'gate-external-mvn-simpletool-' + self.jdk_name,
     packages+: {
       maven: "==3.3.9"
     },
@@ -70,7 +70,7 @@
   },
 
   local simple_language_maven_project_gate = truffle_common + {
-    name: 'gate-external-mvn-simplelanguage-' + self.jdk_version,
+    name: 'gate-external-mvn-simplelanguage-' + self.jdk_name,
     packages+: {
       maven: "==3.3.9",
       ruby: ">=2.1.0",
@@ -95,16 +95,14 @@
       ["./sl", "-disassemble", "language/tests/Add.sl"],
       ["./sl", "language/tests/Add.sl"],
       ["./native/slnative", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/gu", "install", "-L", "component/sl-component.jar"],
-      ["$JAVA_HOME/bin/sl", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/slnative", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/polyglot", "--jvm", "--language", "sl", "--file", "language/tests/Add.sl"],
-      ["$JAVA_HOME/bin/gu", "remove", "sl"],
     ],
   },
 
   local truffle_gate = truffle_common + common.deps.eclipse + common.deps.jdt {
-    name: 'gate-truffle-oraclejdk-' + self.jdk_version,
+    downloads+: {
+      EXTRA_JAVA_HOMES: common.jdks_data['oraclejdk21'],
+    },
+    name: 'gate-truffle-oraclejdk-' + self.jdk_name,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
   },
 
@@ -114,13 +112,16 @@
       [
         linux_amd64  + jdk + sigtest + guard,
         linux_amd64  + jdk + simple_tool_maven_project_gate + common.mach5_target,
-        linux_amd64  + jdk + simple_language_maven_project_gate,
         darwin_amd64 + jdk + truffle_weekly + gate_lite + guard,
-      ] for jdk in [common.oraclejdk21, common.oraclejdk17]
+      ] for jdk in [common.oraclejdk21, common.oraclejdkLatest]
     ]) +
   [
-    linux_amd64 + common.oraclejdk17 + truffle_gate + guard + {timelimit: "45:00"},
-    linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
+    # The simple_language_maven_project_gate uses native-image, so we must run on labsjdk rather than oraclejdk
+    linux_amd64  + common.labsjdk21 + simple_language_maven_project_gate,
+    linux_amd64  + common.labsjdkLatest + simple_language_maven_project_gate,
+
+    linux_amd64 + common.oraclejdk21 + truffle_gate + guard + {timelimit: "45:00"},
+    linux_amd64 + common.oraclejdkLatest + truffle_gate + guard + {environment+: {DISABLE_DSL_STATE_BITS_TESTS: "true"}},
 
     truffle_common + linux_amd64 + common.oraclejdk17 + guard {
       name: "gate-truffle-javadoc",
@@ -130,7 +131,7 @@
       ],
     },
 
-    truffle_common + linux_amd64 + common.oraclejdk17 + guard {
+    truffle_common + linux_amd64 + common.oraclejdk21 + guard {
       name: "gate-truffle-slow-path-unittests",
       run: [
         ["mx", "build", "-n", "-c", "-A-Atruffle.dsl.GenerateSlowPathOnly=true"],
@@ -141,8 +142,8 @@
       ],
     },
 
-    truffle_common + windows_amd64 + common.oraclejdk17 + devkits["windows-jdk17"] + guard {
-      name: "gate-truffle-nfi-windows-17",
+    truffle_common + windows_amd64 + common.oraclejdk21 + devkits["windows-jdk21"] + guard {
+      name: "gate-truffle-nfi-windows-21",
       # TODO make that a full gate run
       # currently, some truffle unittests fail on windows
       run: [
@@ -151,8 +152,8 @@
       ],
     },
 
-    truffle_common + linux_amd64 + common.oraclejdk17 + common.deps.eclipse + common.deps.jdt + guard + {
-      name: "weekly-truffle-coverage-17-linux-amd64",
+    truffle_common + linux_amd64 + common.oraclejdk21 + common.deps.eclipse + common.deps.jdt + guard + {
+      name: "weekly-truffle-coverage-21-linux-amd64",
       run: [
         ["mx", "--strict-compliance", "gate", "--strict-mode", "--jacoco-relativize-paths", "--jacoco-omit-src-gen", "--jacocout", "coverage", "--jacoco-format", "lcov"],
       ],

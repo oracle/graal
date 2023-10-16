@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.meta;
 
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe;
 
 /**

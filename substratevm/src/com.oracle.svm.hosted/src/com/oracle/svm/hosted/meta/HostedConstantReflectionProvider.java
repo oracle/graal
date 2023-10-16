@@ -31,7 +31,6 @@ import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.graal.meta.SharedConstantReflectionProvider;
 import com.oracle.svm.core.hub.DynamicHub;
-import com.oracle.svm.core.meta.SubstrateObjectConstant;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 
@@ -83,7 +82,7 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
 
     @Override
     public JavaConstant asJavaClass(ResolvedJavaType type) {
-        return SubstrateObjectConstant.forObject(hostVM.dynamicHub(((HostedType) type).wrapped));
+        return aConstantReflection.asJavaClass(((HostedType) type).wrapped);
     }
 
     @Override
@@ -108,7 +107,17 @@ public class HostedConstantReflectionProvider extends SharedConstantReflectionPr
     public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
         var hField = (HostedField) field;
         assert checkHub(receiver) : "Receiver " + receiver + " of field " + hField + " read should not be java.lang.Class. Expecting to see DynamicHub here.";
-        return hUniverse.lookup(aConstantReflection.readValue(hMetaAccess, hField.getWrapped(), receiver, true));
+        return aConstantReflection.readValue(hMetaAccess, hField.getWrapped(), receiver, true);
+    }
+
+    @Override
+    public JavaConstant forString(String value) {
+        return aConstantReflection.forString(value);
+    }
+
+    @Override
+    protected JavaConstant forObject(Object object) {
+        return aConstantReflection.forObject(object);
     }
 
     private boolean checkHub(JavaConstant constant) {

@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -135,9 +134,7 @@ public final class JfrThreadRepository implements JfrRepository {
             JfrNativeEventWriter.putString(data, thread.getName()); // Java thread name
             JfrNativeEventWriter.putLong(data, threadId); // Java thread id
             JfrNativeEventWriter.putLong(data, threadGroupId); // Java thread group
-            if (JavaVersionUtil.JAVA_SPEC >= 19) {
-                JfrNativeEventWriter.putBoolean(data, isVirtual);
-            }
+            JfrNativeEventWriter.putBoolean(data, isVirtual);
             if (!JfrNativeEventWriter.commit(data)) {
                 return;
             }

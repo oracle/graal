@@ -47,7 +47,7 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
         super(bb, canBeNull, typesBitSet, typesCount);
         this.objects = objects;
         assert objects.length > 1 : "Multi type state with single object.";
-        assert !bb.extendedAsserts() || checkObjects(bb);
+        assert checkObjects(bb);
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
@@ -80,7 +80,9 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
     }
 
     private boolean checkObjects(PointsToAnalysis bb) {
-        assert bb.extendedAsserts();
+        if (!bb.extendedAsserts()) {
+            return true;
+        }
 
         for (int idx = 0; idx < objects.length - 1; idx++) {
             AnalysisObject o0 = objects[idx];
@@ -92,8 +94,8 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
             assert (o0.type().equals(o1.type()) && o0.getId() < o1.getId()) || o0.type().getId() < o1.type().getId() : "Analysis objects must be sorted by type ID and ID.";
 
             /* Check that the bit is set for the types. */
-            assert typesBitSet.get(o0.type().getId());
-            assert typesBitSet.get(o1.type().getId());
+            assert typesBitSet.get(o0.type().getId()) : typesBitSet;
+            assert typesBitSet.get(o1.type().getId()) : typesBitSet;
         }
 
         return true;
@@ -232,7 +234,7 @@ public class ContextSensitiveMultiTypeState extends MultiTypeState {
     /** Note that the objects of this type state have been merged. */
     @Override
     public void noteMerge(PointsToAnalysis bb) {
-        assert bb.analysisPolicy().isMergingEnabled();
+        assert bb.analysisPolicy().isMergingEnabled() : "policy mismatch";
 
         if (!merged) {
             for (AnalysisObject obj : objects) {

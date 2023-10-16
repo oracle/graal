@@ -43,8 +43,8 @@ public interface ConvertNode extends ValueNodeInterface {
     Constant reverse(Constant c, ConstantReflectionProvider constantReflection);
 
     /**
-     * Checks whether a null check may skip the conversion. This is true if in the conversion NULL
-     * is converted to NULL and if it is the only value converted to NULL.
+     * Checks whether a null check may skip the conversion. This is true only if the conversion does
+     * not impact the result of the isNullNode, i.e., isNull(input) === isNull(convert(input)).
      *
      * @return whether a null check may skip the conversion
      */

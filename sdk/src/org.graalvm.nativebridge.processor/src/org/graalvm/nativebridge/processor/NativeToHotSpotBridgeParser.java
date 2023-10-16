@@ -40,17 +40,22 @@
  */
 package org.graalvm.nativebridge.processor;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
 
 import javax.lang.model.type.DeclaredType;
+import javax.lang.model.type.TypeKind;
+import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Types;
 
 public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
 
     static final String GENERATE_NATIVE_TO_HOTSPOT_ANNOTATION = "org.graalvm.nativebridge.GenerateNativeToHotSpotBridge";
 
     private NativeToHotSpotBridgeParser(NativeBridgeProcessor processor, TypeCache typeCache) {
-        super(processor, typeCache,
+        super(processor, typeCache, new NativeToHotSpotEndPointMethodProvider(processor.env().getTypeUtils(), typeCache),
                         createConfiguration(typeCache),
                         HotSpotToNativeBridgeParser.createConfiguration(processor.env().getTypeUtils(), typeCache));
     }
@@ -95,6 +100,82 @@ public final class NativeToHotSpotBridgeParser extends AbstractBridgeParser {
             this.jNIMethod = (DeclaredType) processor.getType("org.graalvm.jniutils.JNICalls.JNIMethod");
             this.jValue = (DeclaredType) processor.getType("org.graalvm.jniutils.JNI.JValue");
             this.runtimeException = (DeclaredType) processor.getType("java.lang.RuntimeException");
+        }
+    }
+
+    private static final class NativeToHotSpotEndPointMethodProvider extends AbstractEndPointMethodProvider {
+
+        private final Types types;
+        private final TypeCache typeCache;
+
+        NativeToHotSpotEndPointMethodProvider(Types types, TypeCache typeCache) {
+            this.types = types;
+            this.typeCache = typeCache;
+        }
+
+        @Override
+        TypeMirror getEntryPointMethodParameterType(MarshallerData marshaller, TypeMirror type) {
+            throw new UnsupportedOperationException("Native to HotSpot has no entry point method.");
+        }
+
+        @Override
+        TypeMirror getEndPointMethodParameterType(MarshallerData marshaller, TypeMirror type) {
+            return switch (marshaller.kind) {
+                case CUSTOM -> types.getArrayType(types.getPrimitiveType(TypeKind.BYTE));
+                case RAW_REFERENCE -> typeCache.object;
+                case VALUE -> type;
+                case REFERENCE -> {
+                    if (marshaller.sameDirection) {
+                        yield type;
+                    } else {
+                        TypeMirror longType = types.getPrimitiveType(TypeKind.LONG);
+                        yield type.getKind() == TypeKind.ARRAY ? types.getArrayType(longType) : longType;
+                    }
+                }
+            };
+        }
+
+        @Override
+        String getEntryPointMethodName(MethodData methodData) {
+            // No entry point method
+            return null;
+        }
+
+        @Override
+        String getEndPointMethodName(MethodData methodData) {
+            return methodData.element.getSimpleName().toString();
+        }
+
+        @Override
+        List<TypeMirror> getEntryPointSignature(MethodData methodData, boolean hasCustomDispatch) {
+            // No entry point method
+            return null;
+        }
+
+        @Override
+        List<TypeMirror> getEndPointSignature(MethodData methodData, TypeMirror serviceType, boolean hasCustomDispatch) {
+            List<? extends TypeMirror> parameterTypes = methodData.type.getParameterTypes();
+            List<TypeMirror> signature = new ArrayList<>(1 + parameterTypes.size());
+            if (!hasCustomDispatch) {
+                signature.add(serviceType);
+            }
+            if (NativeToHotSpotBridgeGenerator.needsExplicitIsolateParameter(methodData)) {
+                signature.add(types.getPrimitiveType(TypeKind.LONG));
+            }
+            int marshalledParametersCount = 0;
+            for (int i = 0; i < parameterTypes.size(); i++) {
+                MarshallerData marshallerData = methodData.getParameterMarshaller(i);
+                if (marshallerData.isCustom()) {
+                    marshalledParametersCount++;
+                } else {
+                    TypeMirror parameterType = parameterTypes.get(i);
+                    signature.add(getEndPointMethodParameterType(marshallerData, parameterType));
+                }
+            }
+            if (marshalledParametersCount > 0) {
+                signature.add(types.getArrayType(types.getPrimitiveType(TypeKind.BYTE)));
+            }
+            return signature;
         }
     }
 }

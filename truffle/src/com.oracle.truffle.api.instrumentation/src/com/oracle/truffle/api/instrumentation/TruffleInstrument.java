@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1163,6 +1163,17 @@ public abstract class TruffleInstrument {
          */
         public TruffleLogger getLogger(Class<?> forClass) {
             return getLogger(forClass.getName());
+        }
+
+        /**
+         * Tests if two frames are the same. This method is mainly used by instruments in case of
+         * <code>yield</code> of the execution and later resume. Frame comparison is used to match
+         * the particular yielded and resumed execution. The frames must correspond to the root.
+         *
+         * @since 24.0
+         */
+        public boolean isSameFrame(RootNode root, Frame frame1, Frame frame2) {
+            return InstrumentAccessor.nodesAccess().isSameFrame(root, frame1, frame2);
         }
 
         private static class MessageTransportProxy implements MessageTransport {

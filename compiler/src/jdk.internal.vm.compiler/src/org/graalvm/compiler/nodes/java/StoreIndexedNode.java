@@ -29,6 +29,7 @@ import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_8;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_8;
 
 import org.graalvm.compiler.core.common.type.StampFactory;
+import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodeinfo.InputType;
@@ -117,8 +118,12 @@ public final class StoreIndexedNode extends AccessIndexedNode implements StateSp
                 ResolvedJavaType componentType = virtual.type().getComponentType();
                 if (elementKind.isPrimitive() || StampTool.isPointerAlwaysNull(value) || componentType.isJavaLangObject() ||
                                 (StampTool.typeReferenceOrNull(value) != null && componentType.isAssignableFrom(StampTool.typeOrNull(value)))) {
-                    tool.setVirtualEntry(virtual, idx, value());
-                    tool.delete();
+                    boolean success = tool.setVirtualEntry(virtual, idx, value(), elementKind(), 0);
+                    if (success) {
+                        tool.delete();
+                    } else {
+                        GraalError.guarantee(virtual.isVirtualByteArray(tool.getMetaAccessExtensionProvider()), "only stores to virtual byte arrays can fail: %s", virtual);
+                    }
                 }
             }
         }

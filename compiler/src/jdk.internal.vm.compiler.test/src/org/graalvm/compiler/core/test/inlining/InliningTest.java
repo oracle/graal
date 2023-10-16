@@ -31,7 +31,6 @@ import org.graalvm.compiler.core.test.GraalCompilerTest;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugDumpScope;
 import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.nodes.FullInfopointNode;
 import org.graalvm.compiler.nodes.Invoke;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -304,25 +303,6 @@ public class InliningTest extends GraalCompilerTest {
 
     private static StructuredGraph assertNotInlined(StructuredGraph graph) {
         return assertInGraph(graph, Invoke.class);
-    }
-
-    private static StructuredGraph assertNotInGraph(StructuredGraph graph, Class<?> clazz) {
-        for (Node node : graph.getNodes()) {
-            if (clazz.isInstance(node)) {
-                fail(node.toString());
-            }
-        }
-        return graph;
-    }
-
-    private static StructuredGraph assertInGraph(StructuredGraph graph, Class<?> clazz) {
-        for (Node node : graph.getNodes()) {
-            if (clazz.isInstance(node)) {
-                return graph;
-            }
-        }
-        fail("Graph does not contain a node of class " + clazz.getName());
-        return graph;
     }
 
     private static int[] countMethodInfopoints(StructuredGraph graph) {

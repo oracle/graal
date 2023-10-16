@@ -24,6 +24,8 @@
  */
 package org.graalvm.compiler.phases.common;
 
+import static jdk.vm.ci.services.Services.getSavedProperty;
+
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashSet;
@@ -58,8 +60,8 @@ import org.graalvm.compiler.nodes.calc.MulNode;
 import org.graalvm.compiler.nodes.calc.NotNode;
 import org.graalvm.compiler.nodes.calc.ReinterpretNode;
 import org.graalvm.compiler.nodes.calc.RemNode;
-import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
+import org.graalvm.compiler.nodes.cfg.HIRBlock;
 import org.graalvm.compiler.nodes.debug.DynamicCounterNode;
 import org.graalvm.compiler.nodes.extended.SwitchNode;
 import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
@@ -70,8 +72,6 @@ import org.graalvm.compiler.nodes.spi.ValueProxy;
 import org.graalvm.compiler.nodes.virtual.VirtualObjectNode;
 import org.graalvm.compiler.phases.Phase;
 import org.graalvm.compiler.phases.schedule.SchedulePhase;
-
-import jdk.vm.ci.services.Services;
 
 /**
  * This phase add counters for the dynamically executed number of nodes. Incrementing the counter
@@ -91,17 +91,9 @@ public class ProfileCompiledMethodsPhase extends Phase {
     private static final String GROUP_NAME_WITHOUT = "~profiled weight (invoke-free sections)";
     private static final String GROUP_NAME_INVOKES = "~profiled invokes";
 
-    private static String getProperty(String name, String def) {
-        String value = Services.getSavedProperties().get(name);
-        if (value == null) {
-            return def;
-        }
-        return value;
-    }
-
-    private static final boolean WITH_SECTION_HEADER = Boolean.parseBoolean(getProperty("ProfileCompiledMethodsPhase.WITH_SECTION_HEADER", "false"));
-    private static final boolean WITH_INVOKE_FREE_SECTIONS = Boolean.parseBoolean(getProperty("ProfileCompiledMethodsPhase.WITH_FREE_SECTIONS", "false"));
-    private static final boolean WITH_INVOKES = Boolean.parseBoolean(getProperty("ProfileCompiledMethodsPhase.WITH_INVOKES", "true"));
+    private static final boolean WITH_SECTION_HEADER = Boolean.parseBoolean(getSavedProperty("ProfileCompiledMethodsPhase.WITH_SECTION_HEADER", "false"));
+    private static final boolean WITH_INVOKE_FREE_SECTIONS = Boolean.parseBoolean(getSavedProperty("ProfileCompiledMethodsPhase.WITH_FREE_SECTIONS", "false"));
+    private static final boolean WITH_INVOKES = Boolean.parseBoolean(getSavedProperty("ProfileCompiledMethodsPhase.WITH_INVOKES", "true"));
 
     @Override
     public Optional<NotApplicable> notApplicableTo(GraphState graphState) {

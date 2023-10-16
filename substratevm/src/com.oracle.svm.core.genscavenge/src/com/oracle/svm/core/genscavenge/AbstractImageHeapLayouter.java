@@ -129,12 +129,12 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
         ImageHeapLayoutInfo layoutInfo = doLayout(imageHeap);
 
         for (T partition : getPartitions()) {
-            assert partition.getStartOffset() % partition.getStartAlignment() == 0;
-            assert (partition.getStartOffset() + partition.getSize()) % partition.getEndAlignment() == 0;
+            assert partition.getStartOffset() % partition.getStartAlignment() == 0 : partition;
+            assert (partition.getStartOffset() + partition.getSize()) % partition.getEndAlignment() == 0 : partition;
         }
 
-        assert layoutInfo.getReadOnlyRelocatableOffset() % pageSize == 0 && layoutInfo.getReadOnlyRelocatableSize() % pageSize == 0;
-        assert layoutInfo.getWritableOffset() % pageSize == 0 && layoutInfo.getWritableSize() % pageSize == 0;
+        assert layoutInfo.getReadOnlyRelocatableOffset() % pageSize == 0 && layoutInfo.getReadOnlyRelocatableSize() % pageSize == 0 : layoutInfo;
+        assert layoutInfo.getWritableOffset() % pageSize == 0 && layoutInfo.getWritableSize() % pageSize == 0 : layoutInfo;
 
         return layoutInfo;
     }
@@ -229,7 +229,7 @@ public abstract class AbstractImageHeapLayouter<T extends AbstractImageHeapLayou
         }
 
         public void assign(ImageHeapObject obj) {
-            assert obj.getPartition() == this;
+            assert obj.getPartition() == this : obj;
             objects.add(obj);
         }
 

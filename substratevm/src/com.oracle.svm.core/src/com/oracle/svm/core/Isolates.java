@@ -80,8 +80,8 @@ public class Isolates {
     }
 
     public static void setCurrentStartTime() {
-        assert startTimeMillis == 0;
-        assert startNanoTime == 0;
+        assert startTimeMillis == 0 : startTimeMillis;
+        assert startNanoTime == 0 : startNanoTime;
         startTimeMillis = System.currentTimeMillis();
         startNanoTime = System.nanoTime();
     }

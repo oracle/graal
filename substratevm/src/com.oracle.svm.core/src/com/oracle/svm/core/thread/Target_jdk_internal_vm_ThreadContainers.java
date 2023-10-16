@@ -32,13 +32,12 @@ import java.util.stream.Stream;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK19OrLater;
 
 /**
  * We currently don't provide/expose means for debugging and monitoring of threads, so we replace
  * these methods with an empty implementation.
  */
-@TargetClass(className = "jdk.internal.vm.ThreadContainers", onlyWith = JDK19OrLater.class)
+@TargetClass(className = "jdk.internal.vm.ThreadContainers")
 @SuppressWarnings("unused")
 final class Target_jdk_internal_vm_ThreadContainers {
     // Checkstyle: stop
@@ -61,6 +60,6 @@ final class Target_jdk_internal_vm_ThreadContainers {
     }
 }
 
-@TargetClass(className = "jdk.internal.vm.ThreadContainer", onlyWith = JDK19OrLater.class)
+@TargetClass(className = "jdk.internal.vm.ThreadContainer")
 final class Target_jdk_internal_vm_ThreadContainer {
 }

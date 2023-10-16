@@ -39,7 +39,7 @@ import java.util.Random;
 
 public class ReassociationTest extends GraalCompilerTest {
 
-    private static final Random random = new Random(11);
+    private static final Random random = getRandomInstance();
     private static int rnd1 = random.nextInt();
     private static int rnd2 = random.nextInt();
     private static long rndL1 = random.nextLong();

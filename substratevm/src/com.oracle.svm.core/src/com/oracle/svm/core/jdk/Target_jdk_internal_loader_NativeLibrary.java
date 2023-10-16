@@ -27,7 +27,7 @@ package com.oracle.svm.core.jdk;
 import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.TargetClass;
 
-@TargetClass(value = jdk.internal.loader.NativeLibrary.class, onlyWith = JDK19OrLater.class)
+@TargetClass(value = jdk.internal.loader.NativeLibrary.class)
 final class Target_jdk_internal_loader_NativeLibrary {
     @Delete
     private static native long findEntry0(long handle, String name);

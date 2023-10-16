@@ -231,6 +231,12 @@ public final class EspressoOptions {
                     usageSyntax = "false|true") //
     public static final OptionKey<Boolean> EnableSystemAssertions = new OptionKey<>(false);
 
+    @Option(help = "Enable extended NullPointerException message.", //
+                    category = OptionCategory.USER, //
+                    stability = OptionStability.EXPERIMENTAL, //
+                    usageSyntax = "true|false") //
+    public static final OptionKey<Boolean> ShowCodeDetailsInExceptionMessages = new OptionKey<>(true);
+
     public static List<Path> parsePaths(String paths) {
         List<Path> list = new ArrayList<>();
         for (String path : splitByFileSeparator(paths)) {

@@ -217,15 +217,17 @@ local repo_config = import '../../../ci/repo-configuration.libsonnet';
 
   vm_bench_polybench_nfi: {
     base_cmd:: ['mx', '--env', 'polybench-nfi-${VM_ENV}'],
-    bench_cmd:: self.base_cmd + ['benchmark', 'polybench:r[nfi/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}'],
+    bench_cmd_jvm::    self.base_cmd + ['benchmark', 'polybench:r[nfi/.*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=jvm-standard'],
+    # Panama is not supported on native-image, once supported we can run [nfi/.*] like on jvm above (GR-46740)
+    bench_cmd_native:: self.base_cmd + ['benchmark', 'polybench:r[nfi/(downcall|upcall)_(many|prim|simple|env|void).*]', '--results-file', self.result_file, '--', '--polybench-vm=graalvm-${VM_ENV}', '--polybench-vm-config=native-standard'],
     setup+: [
       self.base_cmd + ['build'],
       self.base_cmd + ['build', '--dependencies=POLYBENCH_BENCHMARKS'],
     ],
     run+: [
-      self.bench_cmd + ['--polybench-vm-config=jvm-standard'],
+      self.bench_cmd_jvm,
       self.upload,
-      self.bench_cmd + ['--polybench-vm-config=native-standard'],
+      self.bench_cmd_native,
       self.upload,
     ],
     notify_groups:: ['sulong'],

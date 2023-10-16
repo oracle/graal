@@ -42,6 +42,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.config.ConfigurationValues;
+import com.oracle.svm.core.heap.ReferenceAccess;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.hub.PredefinedClassesSupport;
@@ -145,6 +146,12 @@ final class Target_jdk_internal_misc_Unsafe_Core {
             return ImageSingletons.lookup(LoadAverageSupport.class).getLoadAverage(loadavg, nelems);
         }
         return -1; /* The load average is unobtainable. */
+    }
+
+    @Substitute
+    public Object getUncompressedObject(long address) {
+        /* Adapted from `Unsafe_GetUncompressedObject` in `src/hotspot/share/prims/unsafe.cpp`. */
+        return ReferenceAccess.singleton().readObjectAt(WordFactory.pointer(address), false);
     }
 
     /*

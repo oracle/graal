@@ -35,6 +35,7 @@ import com.oracle.svm.core.annotate.RecomputeFieldValue;
 import com.oracle.svm.core.annotate.RecomputeFieldValue.Kind;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
+import com.oracle.svm.core.heap.PhysicalMemory;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
 import jdk.internal.misc.Unsafe;
@@ -67,36 +68,28 @@ public final class Target_jdk_internal_misc_VM {
 
     @Alias @InjectAccessors(DirectMemoryAccessors.class) //
     private static long directMemory;
-    @Alias @InjectAccessors(DirectMemoryAccessors.class) //
+    @Alias @InjectAccessors(PageAlignDirectMemoryAccessors.class) //
     private static boolean pageAlignDirectMemory;
 }
 
 final class DirectMemoryAccessors {
+    private static final long DIRECT_MEMORY_DURING_INITIALIZATION = 25 * 1024 * 1024;
 
     /*
      * Not volatile to avoid a memory barrier when reading the values. Instead, an explicit barrier
      * is inserted when writing the values.
      */
     private static boolean initialized;
-
     private static long directMemory;
-    private static boolean pageAlignDirectMemory;
 
     static long getDirectMemory() {
         if (!initialized) {
-            initialize();
+            return tryInitialize();
         }
         return directMemory;
     }
 
-    static boolean getPageAlignDirectMemory() {
-        if (!initialized) {
-            initialize();
-        }
-        return pageAlignDirectMemory;
-    }
-
-    private static void initialize() {
+    private static long tryInitialize() {
         /*
          * The JDK method VM.saveAndRemoveProperties looks at the system property
          * "sun.nio.MaxDirectMemorySize". However, that property is always set by the Java HotSpot
@@ -109,6 +102,15 @@ final class DirectMemoryAccessors {
              * No value explicitly specified. The default in the JDK in this case is the maximum
              * heap size.
              */
+            if (PhysicalMemory.isInitializationInProgress()) {
+                /*
+                 * When initializing PhysicalMemory, we use NIO/cgroups code that calls
+                 * VM.getDirectMemory(). When this initialization is in progress, we need to prevent
+                 * that Runtime.maxMemory() is called below because it would trigger a recursive
+                 * initialization of PhysicalMemory. So, we return a temporary value.
+                 */
+                return DIRECT_MEMORY_DURING_INITIALIZATION;
+            }
             newDirectMemory = Runtime.getRuntime().maxMemory();
         }
 
@@ -118,6 +120,31 @@ final class DirectMemoryAccessors {
          * possible but not a case we care about.
          */
         directMemory = newDirectMemory;
+
+        /* Ensure values are published to other threads before marking fields as initialized. */
+        Unsafe.getUnsafe().storeFence();
+        initialized = true;
+
+        return newDirectMemory;
+    }
+}
+
+final class PageAlignDirectMemoryAccessors {
+    /*
+     * Not volatile to avoid a memory barrier when reading the values. Instead, an explicit barrier
+     * is inserted when writing the values.
+     */
+    private static boolean initialized;
+    private static boolean pageAlignDirectMemory;
+
+    static boolean getPageAlignDirectMemory() {
+        if (!initialized) {
+            initialize();
+        }
+        return pageAlignDirectMemory;
+    }
+
+    private static void initialize() {
         pageAlignDirectMemory = Boolean.getBoolean("sun.nio.PageAlignDirectMemory");
 
         /* Ensure values are published to other threads before marking fields as initialized. */

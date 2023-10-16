@@ -62,4 +62,17 @@ public class WasmMemoryFactory {
             return new ByteArrayWasmMemory(declaredMinSize, declaredMaxSize, maxAllowedSize, indexType64, shared);
         }
     }
+
+    public static Class<? extends WasmMemory> getMemoryImplementation(long maxAllowedSize, boolean unsafeMemory) {
+        if (unsafeMemory) {
+            if (maxAllowedSize > Sizes.MAX_MEMORY_INSTANCE_SIZE) {
+                return NativeWasmMemory.class;
+            } else {
+                return UnsafeWasmMemory.class;
+            }
+        } else {
+            assert maxAllowedSize <= Sizes.MAX_MEMORY_INSTANCE_SIZE;
+            return ByteArrayWasmMemory.class;
+        }
+    }
 }

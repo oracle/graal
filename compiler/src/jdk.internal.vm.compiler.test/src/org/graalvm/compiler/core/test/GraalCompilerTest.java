@@ -52,6 +52,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
@@ -145,6 +146,7 @@ import jdk.vm.ci.code.Architecture;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.InstalledCode;
+import jdk.vm.ci.code.InvalidInstalledCodeException;
 import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.Assumptions.Assumption;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -1075,10 +1077,13 @@ public abstract class GraalCompilerTest extends GraalTest {
     protected InstalledCode getCode(final ResolvedJavaMethod installedCodeOwner, StructuredGraph graph, boolean forceCompile, boolean installAsDefault, OptionValues options) {
         boolean useCache = !forceCompile && getArgumentToBind() == null;
         if (useCache && graph == null) {
-            InstalledCode cached = cache.get().get(installedCodeOwner);
+            HashMap<ResolvedJavaMethod, InstalledCode> tlCache = cache.get();
+            InstalledCode cached = tlCache.get(installedCodeOwner);
             if (cached != null) {
                 if (cached.isValid()) {
                     return cached;
+                } else {
+                    tlCache.remove(installedCodeOwner);
                 }
             }
         }
@@ -1315,6 +1320,22 @@ public abstract class GraalCompilerTest extends GraalTest {
         }
         assert receiver == null : "no receiver for constructor invokes";
         return ((Constructor<?>) method).newInstance(applyArgSuppliers(args));
+    }
+
+    protected static Object executeVarargsSafe(InstalledCode code, Object... args) {
+        try {
+            return code.executeVarargs(args);
+        } catch (InvalidInstalledCodeException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    protected Object invokeSafe(ResolvedJavaMethod method, Object receiver, Object... args) {
+        try {
+            return invoke(method, receiver, args);
+        } catch (IllegalAccessException | IllegalArgumentException | InvocationTargetException | InstantiationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -1670,5 +1691,36 @@ public abstract class GraalCompilerTest extends GraalTest {
 
     protected CanonicalizerPhase createCanonicalizerPhase() {
         return CanonicalizerPhase.create();
+    }
+
+    /**
+     * Defines property name for seed value.
+     */
+    public static final String SEED_PROPERTY_NAME = "test.graal.random.seed";
+
+    /**
+     * Globally shared, lazily initialized random generator.
+     */
+    private static volatile Random randomGenerator;
+
+    /**
+     * Returns a global {@link java.util.Random} generator. The generator is seeded with the value
+     * specified by {@link #SEED_PROPERTY_NAME} if it exists.
+     *
+     * The used seed printed to stdout for reproducing test failures.
+     */
+    public static Random getRandomInstance() {
+        if (randomGenerator == null) {
+            synchronized (GraalCompilerTest.class) {
+                if (randomGenerator == null) {
+                    var seedLong = Long.getLong(SEED_PROPERTY_NAME);
+                    var seed = seedLong != null ? seedLong : new Random().nextLong();
+                    System.out.printf("Random generator seed: %d%n", seed);
+                    System.out.printf("To re-run test with same seed, set \"-D%s=%d\" on command line.%n", SEED_PROPERTY_NAME, seed);
+                    randomGenerator = new Random(seed);
+                }
+            }
+        }
+        return randomGenerator;
     }
 }

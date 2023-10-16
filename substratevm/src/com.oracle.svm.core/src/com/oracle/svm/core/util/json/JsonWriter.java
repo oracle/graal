@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.util.json;
 
+import org.graalvm.collections.EconomicMap;
+
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;
@@ -33,7 +35,6 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Function;
 
 import org.graalvm.collections.EconomicMap;
 
@@ -88,8 +89,25 @@ public class JsonWriter implements AutoCloseable {
         return quote(key).appendFieldSeparator().quote(value);
     }
 
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    public void print(Object value) throws IOException {
+        if (value instanceof Map map) {
+            printMap(map); // Must always be <String, Object>
+        } else if (value instanceof Iterator it) {
+            printIterator(it);
+        } else if (value instanceof List list) {
+            printIterator(list.iterator());
+        } else if (value instanceof EconomicMap map) {
+            printMap(map);
+        } else if (value instanceof Object[] array) {
+            printArray(array);
+        } else {
+            quote(value);
+        }
+    }
+
     @SuppressWarnings("unchecked")
-    public void print(Map<String, Object> map) throws IOException {
+    private void printMap(Map<String, Object> map) throws IOException {
         if (map.isEmpty()) {
             append("{}");
             return;
@@ -108,7 +126,7 @@ public class JsonWriter implements AutoCloseable {
         append('}');
     }
 
-    public void print(EconomicMap<String, Object> map) throws IOException {
+    private void printMap(EconomicMap<String, Object> map) throws IOException {
         if (map.isEmpty()) {
             append("{}");
             return;
@@ -127,7 +145,7 @@ public class JsonWriter implements AutoCloseable {
         append('}');
     }
 
-    public void print(Object[] array) throws IOException {
+    private void printArray(Object[] array) throws IOException {
         append('[');
         for (int i = 0; i < array.length; i++) {
             Object e = array[i];
@@ -139,36 +157,13 @@ public class JsonWriter implements AutoCloseable {
         append(']');
     }
 
-    @SuppressWarnings("unchecked")
-    public void print(Object value) throws IOException {
-        if (value instanceof Map) {
-            print((Map<String, Object>) value);
-        } else if (value instanceof EconomicMap) {
-            print((EconomicMap<String, Object>) value);
-        } else if (value instanceof Object[]) {
-            print((Object[]) value);
-        } else if (value instanceof List) {
-            print((List<String>) value);
-        } else {
-            quote(value);
-        }
-    }
-
-    public void print(List<String> list) throws IOException {
-        print(list, s -> s);
-    }
-
-    public <T> void print(List<T> list, Function<T, String> mapper) throws IOException {
-        if (list.isEmpty()) {
-            append("[]");
-            return;
-        }
+    private void printIterator(Iterator<?> iter) throws IOException {
         append('[');
-        Iterator<T> iter = list.iterator();
-        while (iter.hasNext()) {
-            quote(mapper.apply(iter.next()));
-            if (iter.hasNext()) {
+        if (iter.hasNext()) {
+            print(iter.next());
+            while (iter.hasNext()) {
                 append(',');
+                print(iter.next());
             }
         }
         append(']');

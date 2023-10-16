@@ -29,10 +29,8 @@
 
 #include "libjavavm_dynamic.h"
 
-#include <trufflenfi.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <errno.h>
 
 struct MokapotNativeInterface_;
 struct MokapotEnv_;
@@ -1039,5 +1037,10 @@ typedef struct LibJavaVMIsolate {
     graal_isolate_t *isolate;
     jboolean is_sun_standard_launcher; // -Dsun.java.launcher=SUN_STANDARD
 } LibJavaVMIsolate;
+
+// see DowncallLinker::capture_state and CapturableState
+#define CAPTURABLE_STATE_GET_LAST_ERROR     (1 << 0)
+#define CAPTURABLE_STATE_WSA_GET_LAST_ERROR (1 << 1)
+#define CAPTURABLE_STATE_ERRNO              (1 << 2)
 
 #endif // _MOKAPOT_H

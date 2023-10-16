@@ -186,51 +186,6 @@ abstract class AbstractBridgeGenerator {
         return builder;
     }
 
-    static TypeMirror jniTypeForJavaType(TypeMirror javaType, Types types, AbstractTypeCache cache) {
-        if (javaType.getKind().isPrimitive() || javaType.getKind() == TypeKind.VOID) {
-            return javaType;
-        }
-        TypeMirror erasedType = types.erasure(javaType);
-        switch (erasedType.getKind()) {
-            case DECLARED:
-                if (types.isSameType(cache.string, javaType)) {
-                    return cache.jString;
-                } else if (types.isSameType(cache.clazz, javaType)) {
-                    return cache.jClass;
-                } else if (types.isSubtype(javaType, cache.throwable)) {
-                    return cache.jThrowable;
-                } else {
-                    return cache.jObject;
-                }
-            case ARRAY:
-                TypeMirror componentType = types.erasure(((ArrayType) erasedType).getComponentType());
-                switch (componentType.getKind()) {
-                    case BOOLEAN:
-                        return cache.jBooleanArray;
-                    case BYTE:
-                        return cache.jByteArray;
-                    case CHAR:
-                        return cache.jCharArray;
-                    case SHORT:
-                        return cache.jShortArray;
-                    case INT:
-                        return cache.jIntArray;
-                    case LONG:
-                        return cache.jLongArray;
-                    case FLOAT:
-                        return cache.jFloatArray;
-                    case DOUBLE:
-                        return cache.jDoubleArray;
-                    case DECLARED:
-                        return cache.jObjectArray;
-                    default:
-                        throw new UnsupportedOperationException("Not supported for array of " + componentType.getKind());
-                }
-            default:
-                throw new UnsupportedOperationException("Not supported for " + javaType.getKind());
-        }
-    }
-
     static boolean isParameterizedType(TypeMirror type) {
         switch (type.getKind()) {
             case DECLARED:
@@ -417,15 +372,6 @@ abstract class AbstractBridgeGenerator {
         return parameters.stream().map((p) -> p.name).toArray(CharSequence[]::new);
     }
 
-    static AnnotationMirror find(List<? extends AnnotationMirror> annotations, DeclaredType requiredAnnotation, Types types) {
-        for (AnnotationMirror annotation : annotations) {
-            if (types.isSameType(annotation.getAnnotationType(), requiredAnnotation)) {
-                return annotation;
-            }
-        }
-        return null;
-    }
-
     static boolean isBinaryMarshallable(MarshallerData marshaller, TypeMirror type, boolean hostToIsolate) {
         if (marshaller.isCustom()) {
             // Custom type is always marshalled
@@ -450,20 +396,18 @@ abstract class AbstractBridgeGenerator {
         final MarshallerData marshallerData;
         final Types types;
 
-        MarshallerSnippet(NativeBridgeProcessor processor, MarshallerData marshallerData, Types types, AbstractTypeCache cache, BinaryNameCache binaryNameCache) {
-            this.processor = processor;
+        MarshallerSnippet(AbstractBridgeGenerator generator, MarshallerData marshallerData) {
+            this.processor = generator.parser.processor;
             this.marshallerData = marshallerData;
-            this.types = types;
-            this.cache = cache;
-            this.binaryNameCache = binaryNameCache;
+            this.types = generator.types;
+            this.cache = generator.typeCache;
+            this.binaryNameCache = generator.binaryNameCache;
         }
 
         @SuppressWarnings("unused")
         Set<CharSequence> getEndPointSuppressedWarnings(CodeBuilder currentBuilder, TypeMirror type) {
             return Collections.emptySet();
         }
-
-        abstract TypeMirror getEndPointMethodParameterType(TypeMirror type);
 
         abstract CharSequence marshallParameter(CodeBuilder currentBuilder, TypeMirror parameterType, CharSequence formalParameter, CharSequence marshalledParametersOutput,
                         CharSequence jniEnvFieldName);
@@ -594,26 +538,17 @@ abstract class AbstractBridgeGenerator {
             } else if (type.getKind() == TypeKind.ARRAY) {
                 return "write";
             } else {
-                switch (type.getKind()) {
-                    case BOOLEAN:
-                        return "writeBoolean";
-                    case BYTE:
-                        return "writeByte";
-                    case CHAR:
-                        return "writeChar";
-                    case SHORT:
-                        return "writeShort";
-                    case INT:
-                        return "writeInt";
-                    case LONG:
-                        return "writeLong";
-                    case FLOAT:
-                        return "writeFloat";
-                    case DOUBLE:
-                        return "writeDouble";
-                    default:
-                        throw new IllegalArgumentException("Unsupported kind " + type.getKind());
-                }
+                return switch (type.getKind()) {
+                    case BOOLEAN -> "writeBoolean";
+                    case BYTE -> "writeByte";
+                    case CHAR -> "writeChar";
+                    case SHORT -> "writeShort";
+                    case INT -> "writeInt";
+                    case LONG -> "writeLong";
+                    case FLOAT -> "writeFloat";
+                    case DOUBLE -> "writeDouble";
+                    default -> throw new IllegalArgumentException("Unsupported kind " + type.getKind());
+                };
             }
         }
 
@@ -623,26 +558,17 @@ abstract class AbstractBridgeGenerator {
             } else if (type.getKind() == TypeKind.ARRAY) {
                 return "read";
             } else {
-                switch (type.getKind()) {
-                    case BOOLEAN:
-                        return "readBoolean";
-                    case BYTE:
-                        return "readByte";
-                    case CHAR:
-                        return "readChar";
-                    case SHORT:
-                        return "readShort";
-                    case INT:
-                        return "readInt";
-                    case LONG:
-                        return "readLong";
-                    case FLOAT:
-                        return "readFloat";
-                    case DOUBLE:
-                        return "readDouble";
-                    default:
-                        throw new IllegalArgumentException("Unsupported kind " + type.getKind());
-                }
+                return switch (type.getKind()) {
+                    case BOOLEAN -> "readBoolean";
+                    case BYTE -> "readByte";
+                    case CHAR -> "readChar";
+                    case SHORT -> "readShort";
+                    case INT -> "readInt";
+                    case LONG -> "readLong";
+                    case FLOAT -> "readFloat";
+                    case DOUBLE -> "readDouble";
+                    default -> throw new IllegalArgumentException("Unsupported kind " + type.getKind());
+                };
             }
         }
 

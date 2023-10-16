@@ -23,7 +23,7 @@
 
 package com.oracle.truffle.espresso.runtime.dispatch.staticobject;
 
-import static com.oracle.truffle.espresso.runtime.StaticObject.EMPTY_ARRAY;
+import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.EMPTY_ARRAY;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -38,7 +38,7 @@ import com.oracle.truffle.espresso.impl.ObjectKlass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.nodes.interop.InvokeEspressoNode;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 

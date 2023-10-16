@@ -25,13 +25,20 @@
 package org.graalvm.compiler.hotspot.test;
 
 import org.graalvm.compiler.api.test.Graal;
+import org.graalvm.compiler.bytecode.Bytecode;
+import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
 import org.graalvm.compiler.core.common.CompilationIdentifier;
 import org.graalvm.compiler.core.test.GraalCompilerTest;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.hotspot.HotSpotBackend;
 import org.graalvm.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import org.graalvm.compiler.hotspot.HotSpotReplacementsImpl;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
+import org.graalvm.compiler.nodes.Cancellable;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.runtime.RuntimeProvider;
 import org.junit.Assume;
@@ -77,9 +84,23 @@ public abstract class HotSpotGraalCompilerTest extends GraalCompilerTest {
         HotSpotProviders providers = rt.getHostBackend().getProviders();
         CompilationIdentifier compilationId = runtime().getHostBackend().getCompilationIdentifier(method);
         OptionValues options = getInitialOptions();
-        StructuredGraph graph = providers.getReplacements().getIntrinsicGraph(method, compilationId, getDebugContext(options), AllowAssumptions.YES, null);
+        StructuredGraph graph = getIntrinsicGraph(method, compilationId, getDebugContext(options), AllowAssumptions.YES, null);
         if (graph != null) {
             return getCode(method, graph, true, true, graph.getOptions());
+        }
+        return null;
+    }
+
+    public StructuredGraph getIntrinsicGraph(ResolvedJavaMethod method, CompilationIdentifier compilationId, DebugContext debug, AllowAssumptions allowAssumptions, Cancellable cancellable) {
+        GraphBuilderConfiguration.Plugins graphBuilderPlugins = getReplacements().getGraphBuilderPlugins();
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method, debug.getOptions());
+        if (plugin != null && !plugin.inlineOnly()) {
+            assert !plugin.isDecorator() : "lookupInvocation shouldn't return decorator plugins";
+            Bytecode code = new ResolvedJavaMethodBytecode(method);
+            OptionValues options = debug.getOptions();
+            GraphBuilderConfiguration.Plugins plugins = new GraphBuilderConfiguration.Plugins(graphBuilderPlugins);
+            GraphBuilderConfiguration config = GraphBuilderConfiguration.getSnippetDefault(plugins);
+            return new HotSpotReplacementsImpl.HotSpotIntrinsicGraphBuilder(options, debug, getProviders(), code, -1, StructuredGraph.AllowAssumptions.YES, config).buildGraph(plugin);
         }
         return null;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -36,7 +36,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.function.Function;
 
-import com.oracle.truffle.llvm.runtime.NativeContextExtension;
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -46,13 +45,14 @@ import org.junit.Test;
 import com.oracle.truffle.llvm.tests.options.TestOptions;
 import com.oracle.truffle.llvm.tests.pipe.CaptureNativeOutput;
 import com.oracle.truffle.llvm.tests.pipe.CaptureOutput;
+import com.oracle.truffle.llvm.tests.util.PathUtil;
 
 public class LoaderTest {
     protected static Function<Context.Builder, CaptureOutput> getCaptureOutput() {
         return c -> new CaptureNativeOutput();
     }
 
-    private static final String SO_EXT = NativeContextExtension.getNativeLibrarySuffix();
+    private static final String SO_EXT = PathUtil.getNativeLibrarySuffix();
 
     @Test
     public void test() throws IOException {

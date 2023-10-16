@@ -73,20 +73,18 @@ class LibGraalCollectionPolicy extends AdaptiveCollectionPolicy {
      * size is lower but the hinted GC is more often.
      */
     @Override
-    public boolean shouldCollectOnRequest(GCCause cause, boolean fullGC) {
-        if (cause == GCCause.HintedGC) {
-            guaranteeSizeParametersInitialized();
-            UnsignedWord edenUsedBytes = HeapImpl.getAccounting().getEdenUsedBytes();
-            if (fullGC) {
-                // For full GC request, we slightly lower the threshold to increase their
-                // probability to be performed, as they are supposed to be issued at the lowest
-                // memory usage point.
-                edenUsedBytes = edenUsedBytes.add(FULL_GC_BONUS);
-            }
-            return edenUsedBytes.aboveOrEqual(WordFactory.unsigned(Options.ExpectedEdenSize.getValue())) ||
-                            (UnsignedUtils.toDouble(edenUsedBytes) / UnsignedUtils.toDouble(edenSize) >= Options.UsedEdenProportionThreshold.getValue());
+    public boolean shouldCollectOnHint(boolean fullGC) {
+        guaranteeSizeParametersInitialized();
+        UnsignedWord edenUsedBytes = HeapImpl.getAccounting().getEdenUsedBytes();
+        if (fullGC) {
+            /*
+             * For full GC request, we slightly lower the threshold to increase their probability to
+             * be performed, as they are supposed to be issued at the lowest memory usage point.
+             */
+            edenUsedBytes = edenUsedBytes.add(FULL_GC_BONUS);
         }
-        return super.shouldCollectOnRequest(cause, fullGC);
+        return edenUsedBytes.aboveOrEqual(WordFactory.unsigned(Options.ExpectedEdenSize.getValue())) ||
+                        (UnsignedUtils.toDouble(edenUsedBytes) / UnsignedUtils.toDouble(edenSize) >= Options.UsedEdenProportionThreshold.getValue());
     }
 
     @Override

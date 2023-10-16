@@ -23,23 +23,29 @@
 package com.oracle.truffle.espresso.runtime.panama;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.TruffleLogger;
 import com.oracle.truffle.api.interop.ArityException;
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.ffi.NativeAccess;
 import com.oracle.truffle.espresso.ffi.NativeSignature;
 import com.oracle.truffle.espresso.ffi.NativeType;
 import com.oracle.truffle.espresso.impl.Klass;
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
+import com.oracle.truffle.espresso.runtime.OS;
 
 public final class DowncallStubs {
+    private static final TruffleLogger LOGGER = TruffleLogger.getLogger(EspressoLanguage.ID, DowncallStubs.class);
     public static final int MAX_STUB_COUNT = Integer.MAX_VALUE - 8;
     private final Platform platform;
     private DowncallStub[] stubs;
@@ -80,13 +86,50 @@ public final class DowncallStubs {
                     boolean needsReturnBuffer, int capturedStateMask, @SuppressWarnings("unused") boolean needsTransition) {
         assert pTypes.length == inputRegs.length;
         EspressoError.guarantee(!needsReturnBuffer, "unimplemented");
-        EspressoError.guarantee(capturedStateMask == 0, "unimplemented");
+
+        EnumSet<CapturableState> capturedStates = CapturableState.fromMask(capturedStateMask);
+        assert validCapturableState(capturedStates, OS.getCurrent());
+
+        LOGGER.fine(() -> {
+            StringBuilder sb = new StringBuilder("Downcall stub request: ");
+            if (!needsReturnBuffer) {
+                sb.append("no ");
+            }
+            sb.append("ret buf, captured state=").append(capturedStates).append(", sig=(");
+            for (int i = 0; i < pTypes.length; i++) {
+                Klass pType = pTypes[i];
+                sb.append(pType.getType());
+                if (i < pTypes.length - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append(")").append(rType.getType()).append(", in=(");
+            for (int i = 0; i < inputRegs.length; i++) {
+                VMStorage inputReg = inputRegs[i];
+                sb.append(platform.toString(inputReg));
+                if (i < inputRegs.length - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append("), out=(");
+            for (int i = 0; i < outRegs.length; i++) {
+                VMStorage outReg = outRegs[i];
+                sb.append(platform.toString(outReg));
+                if (i < outRegs.length - 1) {
+                    sb.append(", ");
+                }
+            }
+            sb.append(")");
+            return sb.toString();
+        });
 
         ArgumentsCalculator argsCalc = platform.getArgumentsCalculator();
         int targetIndex = -1;
+        int captureIndex = -1;
         int[] shuffle = new int[pTypes.length];
         NativeType[] nativeParamTypes = new NativeType[pTypes.length];
         int nativeIndex = 0;
+        int nativeVarArgsIndex = -1;
         for (int i = 0; i < pTypes.length; i++) {
             Klass pType = pTypes[i];
             VMStorage inputReg = inputRegs[i];
@@ -94,15 +137,28 @@ public final class DowncallStubs {
             if (regType.isPlaceholder()) {
                 switch (inputReg.getStubLocation(platform)) {
                     case TARGET_ADDRESS -> targetIndex = i;
+                    case CAPTURED_STATE_BUFFER -> captureIndex = i;
                     default -> throw EspressoError.unimplemented(inputReg.getStubLocation(platform).toString());
                 }
             } else {
-                int index = argsCalc.getNextInputIndex(inputReg, pType);
+                VMStorage nextInputReg;
+                Klass nextPType;
+                if (i + 1 < pTypes.length) {
+                    nextInputReg = inputRegs[i + 1];
+                    nextPType = pTypes[i + 1];
+                } else {
+                    nextInputReg = null;
+                    nextPType = null;
+                }
+                if (nativeVarArgsIndex < 0 && argsCalc.isVarArg(inputReg, pType, nextInputReg, nextPType)) {
+                    nativeVarArgsIndex = nativeIndex;
+                }
+                int index = argsCalc.getNextInputIndex(inputReg, pType, nextInputReg, nextPType);
                 if (index >= 0) {
                     shuffle[nativeIndex] = i;
                     nativeParamTypes[nativeIndex] = inputReg.asNativeType(platform, pType);
                     nativeIndex++;
-                } else if (!platform.ignoreDownCallArgument(inputReg)) {
+                } else if (index != ArgumentsCalculator.SKIP && !platform.ignoreDownCallArgument(inputReg)) {
                     throw EspressoError.shouldNotReachHere("Cannot understand argument " + i + " in downcall: " + inputReg + " for type " + pType + " calc: " + argsCalc);
                 }
             }
@@ -119,8 +175,34 @@ public final class DowncallStubs {
         if (targetIndex < 0) {
             throw EspressoError.shouldNotReachHere("Didn't find the target index in downcall arguments");
         }
-        NativeSignature nativeSignature = NativeSignature.create(nativeReturnType, Arrays.copyOf(nativeParamTypes, nativeIndex));
-        return new DowncallStub(targetIndex, Arrays.copyOf(shuffle, nativeIndex), nativeSignature);
+        if (!capturedStates.isEmpty() && captureIndex < 0) {
+            throw EspressoError.shouldNotReachHere("Didn't find the capture index in downcall arguments");
+        }
+        NativeSignature nativeSignature;
+        if (nativeVarArgsIndex < 0) {
+            nativeSignature = NativeSignature.create(nativeReturnType, Arrays.copyOf(nativeParamTypes, nativeIndex));
+        } else {
+            nativeSignature = NativeSignature.createVarArg(nativeReturnType, Arrays.copyOf(nativeParamTypes, nativeVarArgsIndex),
+                            Arrays.copyOfRange(nativeParamTypes, nativeVarArgsIndex, nativeIndex));
+        }
+        DowncallStub downcallStub = new DowncallStub(targetIndex, Arrays.copyOf(shuffle, nativeIndex), nativeSignature, captureIndex, capturedStates);
+        LOGGER.fine(() -> {
+            StringBuilder sb = new StringBuilder("Creating downcall stub: targetIndex=");
+            sb.append(downcallStub.targetIndex).append(" shuffle=").append(Arrays.toString(downcallStub.shuffle));
+            sb.append(" sig=").append(downcallStub.signature).append(" capture=").append(capturedStates);
+            if (downcallStub.captureIndex >= 0) {
+                sb.append("@").append(downcallStub.captureIndex);
+            }
+            return sb.toString();
+        });
+        return downcallStub;
+    }
+
+    private static boolean validCapturableState(EnumSet<CapturableState> states, OS os) {
+        for (CapturableState state : states) {
+            assert state.isSupported(os);
+        }
+        return true;
     }
 
     public boolean freeStub(long downcallStub) {
@@ -142,16 +224,25 @@ public final class DowncallStubs {
         private final int targetIndex;
         @CompilationFinal(dimensions = 1) private final int[] shuffle;
         final NativeSignature signature;
+        private final int captureIndex;
+        private final int captureMask;
         @CompilationFinal private Object callableSignature;
 
-        public DowncallStub(int targetIndex, int[] shuffle, NativeSignature signature) {
+        public DowncallStub(int targetIndex, int[] shuffle, NativeSignature signature, int captureIndex, EnumSet<CapturableState> capturedStates) {
             this.targetIndex = targetIndex;
             this.shuffle = shuffle;
             this.signature = signature;
+            this.captureIndex = captureIndex;
+            this.captureMask = CapturableState.toMask(capturedStates);
+            assert captureMask == 0 || captureIndex >= 0;
         }
 
         public long getTargetHandle(Object[] args) {
             return (long) args[targetIndex];
+        }
+
+        public long getCaptureAddress(Object[] args) {
+            return (long) args[captureIndex];
         }
 
         @ExplodeLoop
@@ -183,11 +274,28 @@ public final class DowncallStubs {
             return callableSignature;
         }
 
+        public void captureState(Object[] args, InteropLibrary interop, EspressoContext context) {
+            try {
+                interop.execute(context.getVM().getMokapotCaptureState(), getCaptureAddress(args), captureMask);
+            } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                throw EspressoError.shouldNotReachHere(e);
+            }
+        }
+
+        public boolean hasCapture() {
+            return captureIndex >= 0;
+        }
+
         public Object uncachedCall(Object[] args, EspressoContext context) {
             TruffleObject target = getTarget(args, context);
             NativeAccess access = context.getNativeAccess();
             try {
-                return access.callSignature(getCallableSignature(access), target, processArgs(args));
+                Object result = access.callSignature(getCallableSignature(access), target, processArgs(args));
+                if (hasCapture()) {
+                    captureState(args, InteropLibrary.getUncached(), context);
+                }
+                return result;
             } catch (ArityException | UnsupportedTypeException | UnsupportedMessageException e) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 throw EspressoError.shouldNotReachHere(e);

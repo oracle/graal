@@ -32,9 +32,10 @@ import java.util.List;
 
 import org.openjdk.jmh.annotations.Level;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.annotations.Setup;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.TearDown;
-
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeClass;
 import org.graalvm.compiler.nodes.StructuredGraph;
@@ -106,5 +107,15 @@ public abstract class NodesState {
                 }
             }
         }
+    }
+
+    @Setup(Level.Invocation)
+    public void beforeInvocation() {
+        /*
+         * [GR-48937] Reset the progress-based compilation alarm, because repeated invocations of
+         * methods which include progress detection (i.e. node.inputs()) on the same graph
+         * throughout many benchmark invocations can falsely detect endless loops.
+         */
+        CompilationAlarm.resetProgressDetection();
     }
 }

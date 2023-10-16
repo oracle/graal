@@ -46,10 +46,13 @@ import static java.nio.file.StandardOpenOption.CREATE_NEW;
 import static java.nio.file.StandardOpenOption.WRITE;
 
 import java.io.BufferedOutputStream;
+import java.io.Console;
 import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.nio.channels.FileChannel;
 import java.nio.channels.OverlappingFileLockException;
 import java.nio.file.AccessDeniedException;
@@ -974,13 +977,44 @@ public abstract class Launcher {
         return builder.toString();
     }
 
+    private static final Method IS_TERMINAL_METHOD = getIsTerminalMethod();
+
+    private static Method getIsTerminalMethod() {
+        try {
+            return Console.class.getMethod("isTerminal");
+        } catch (NoSuchMethodException e) {
+            return null;
+        }
+    }
+
+    /**
+     * Returns true if stdin and stdout are both TTY, false otherwise.
+     *
+     * @since 24.0
+     */
+    protected static boolean isTTY() {
+        Console console = System.console();
+        if (console == null) {
+            return false;
+        }
+        if (IS_TERMINAL_METHOD != null) {
+            try {
+                return (boolean) IS_TERMINAL_METHOD.invoke(console);
+            } catch (IllegalAccessException | InvocationTargetException e) {
+                throw new Error(e);
+            }
+        } else {
+            return true;
+        }
+    }
+
     private static final int FALLBACK_TERMINAL_WIDTH = 120;
     private int terminalWidth = -1;
 
     int getTerminalWidth() {
         if (terminalWidth == -1) {
             int width;
-            if (System.console() != null) {
+            if (isTTY()) {
                 try (Terminal terminal = createSystemTerminal()) {
                     width = terminal.getWidth();
                 } catch (IOException exception) {

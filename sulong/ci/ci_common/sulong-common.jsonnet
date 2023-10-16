@@ -146,6 +146,10 @@ local sulong_deps = common.deps.sulong;
     job:: std.join("-", processTags(self.gateTags)),
     run+: [self.mx + ["gate"] + self.extra_gate_args + ["--tags", tags]],
     description_text:: "Run mx gate --tags " + tags,
+    catch_files+: [
+      # logs from cmake-based tests
+      "Output from these tests are in: (?P<filename>.+\\.log)",
+    ],
   },
 
   gateTags(tags):: $.mxGate + {

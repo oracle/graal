@@ -27,7 +27,6 @@ package org.graalvm.compiler.hotspot;
 import static jdk.vm.ci.common.InitTimer.timer;
 import static jdk.vm.ci.hotspot.HotSpotJVMCIRuntime.runtime;
 import static org.graalvm.compiler.core.common.GraalOptions.HotSpotPrintInlining;
-import static org.graalvm.compiler.hotspot.GraalHotSpotVMConfigAccess.JDK;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -130,6 +129,11 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         HotSpotVMConfigStore store = jvmciRuntime.getConfigStore();
         config = new GraalHotSpotVMConfig(store);
 
+        if (config.lockingMode == GraalHotSpotVMConfig.LM_LIGHTWEIGHT) {
+            TTY.println("Lightweight locking (-XX:LockingMode=2) is not supported");
+            jvmciRuntime.exitHotSpot(-1);
+        }
+
         // Only set HotSpotPrintInlining if it still has its default value (false).
         if (GraalOptions.HotSpotPrintInlining.getValue(initialOptions) == false && config.printInlining) {
             options = new OptionValues(initialOptions, HotSpotPrintInlining, true);
@@ -205,7 +209,7 @@ public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
         Serial(true, true, "UseSerialGC", true),
         Parallel(true, true, "UseParallelGC", true),
         G1(true, true, "UseG1GC", true),
-        Z(JDK == 17 || JDK >= 20, true, "UseZGC", true),
+        Z(true, true, "UseZGC", true),
 
         // Unsupported GCs
         Epsilon(false, true, "UseEpsilonGC", true),

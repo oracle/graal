@@ -1491,7 +1491,7 @@ public class BciBlockMappingTest extends GraalCompilerTest {
     }
 
     public int manyLoops() {
-        Random rng = new Random();
+        Random rng = getRandomInstance();
         int count = 0;
         // @formatter:off
         while (rng.nextBoolean()) { ++count; }

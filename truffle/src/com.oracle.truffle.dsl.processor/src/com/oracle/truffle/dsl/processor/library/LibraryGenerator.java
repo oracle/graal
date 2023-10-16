@@ -47,6 +47,7 @@ import static javax.lang.model.element.Modifier.FINAL;
 import static javax.lang.model.element.Modifier.PRIVATE;
 import static javax.lang.model.element.Modifier.STATIC;
 
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.BitSet;
@@ -196,6 +197,11 @@ public class LibraryGenerator extends CodeTypeElementFactory<LibraryData> {
             index++;
         }
         genClass.add(getDefault);
+
+        CodeExecutableElement getLookup = CodeExecutableElement.clone(ElementUtils.findExecutableElement(types.LibraryFactory, "getLookup"));
+        builder = getLookup.createBuilder();
+        builder.startReturn().startStaticCall(context.getType(MethodHandles.class), "lookup").end(2);
+        genClass.add(getLookup);
 
         // class MessageImpl
         final CodeTypeElement messageClass = createClass(model, null, modifiers(PRIVATE, STATIC), "MessageImpl", types.Message);

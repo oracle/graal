@@ -22,6 +22,8 @@
  */
 package com.oracle.truffle.espresso.bytecode;
 
+import com.oracle.truffle.espresso.meta.EspressoError;
+
 /**
  * An abstract class that provides the state and methods common to {@link Bytecodes#LOOKUPSWITCH}
  * and {@link Bytecodes#TABLESWITCH} instructions.
@@ -30,6 +32,16 @@ public abstract class BytecodeSwitch {
 
     public static int getAlignedBci(int bci) {
         return (bci + 4) & 0xfffffffc;
+    }
+
+    public static BytecodeSwitch get(int opcode) {
+        if (opcode == Bytecodes.TABLESWITCH) {
+            return BytecodeTableSwitch.INSTANCE;
+        }
+        if (opcode == Bytecodes.LOOKUPSWITCH) {
+            return BytecodeLookupSwitch.INSTANCE;
+        }
+        throw EspressoError.shouldNotReachHere("Invalid switch bytecode: " + Bytecodes.nameOf(opcode));
     }
 
     /**

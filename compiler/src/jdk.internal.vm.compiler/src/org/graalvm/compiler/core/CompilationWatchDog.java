@@ -229,7 +229,7 @@ public final class CompilationWatchDog implements Runnable, AutoCloseable {
         return false;
     }
 
-    private final boolean debug = Boolean.parseBoolean(Services.getSavedProperties().get("debug.graal.CompilationWatchDog"));
+    private final boolean debug = Boolean.parseBoolean(Services.getSavedProperty("debug.graal.CompilationWatchDog"));
 
     /**
      * Handle to scheduled task.

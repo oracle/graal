@@ -30,8 +30,8 @@ import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostInt;
 import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostLong;
 import static com.oracle.truffle.espresso.runtime.InteropUtils.isAtMostShort;
 import static com.oracle.truffle.espresso.runtime.InteropUtils.isNegativeZero;
-import static com.oracle.truffle.espresso.runtime.StaticObject.CLASS_TO_STATIC;
-import static com.oracle.truffle.espresso.runtime.StaticObject.notNull;
+import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.CLASS_TO_STATIC;
+import static com.oracle.truffle.espresso.runtime.staticobject.StaticObject.notNull;
 import static com.oracle.truffle.espresso.vm.InterpreterToVM.instanceOf;
 
 import java.time.Duration;
@@ -83,7 +83,7 @@ import com.oracle.truffle.espresso.runtime.EspressoContext;
 import com.oracle.truffle.espresso.runtime.EspressoException;
 import com.oracle.truffle.espresso.runtime.EspressoFunction;
 import com.oracle.truffle.espresso.runtime.InteropUtils;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.GenerateInteropNodes;
 import com.oracle.truffle.espresso.runtime.dispatch.messages.Shareable;
 

@@ -33,7 +33,7 @@ Choose your operating system and proceed to the installation steps for your spec
 
 ## Start Running Applications
 
-The core distribution of Oracle GraalVM includes the Java Development Kit (JDK), the just-in-time compiler (the Graal compiler), Native Image, and others.
+Oracle GraalVM includes the Java Development Kit (JDK), the just-in-time compiler (the Graal compiler), Native Image, and other regular Java tools.
 You can use the GraalVM JDK just like any other JDK in your IDE, so having installed Oracle GraalVM, you can run any Java application unmodified.
 
 The `java` launcher runs the JVM with Graal as the last-tier compiler.
@@ -88,6 +88,6 @@ This page focuses on using Oracle GraalVM with an Oracle Cloud Infrastructure Co
 
 Developers who are more experienced with GraalVM or want to do more with GraalVM can proceed directly to [Reference Manuals](../../reference-manual/reference-manuals.md) for in-depth documentation. 
 
-You can find information on GraalVM's security model in the [Security Guide](../../security/security-guide.md), and rich API documentation in the [Oracle GraalVM Java API Reference](https://docs.oracle.com/en/graalvm/jdk/17/sdk/).
+You can find information on GraalVM's security model in the [Security Guide](../../security/security-guide.md), and rich API documentation in the [Oracle GraalVM Java API Reference](https://docs.oracle.com/en/graalvm/jdk/21/sdk/index.html).
 
 We also recommend checking the [GraalVM Team Blog](https://medium.com/graalvm).

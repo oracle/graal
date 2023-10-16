@@ -357,6 +357,39 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
         return UNSAFE.getLong(t, getUnsafeByteArrayOffset(0));
     }
 
+    public static long unsafeSnippet24(long l1, boolean c) {
+        byte[] t = new byte[8];
+        UNSAFE.putLong(t, getUnsafeByteArrayOffset(0), l1);
+        t[7] = (byte) 0xff;
+        sideEffect();
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getLong(t, getUnsafeByteArrayOffset(0));
+    }
+
+    public static long unsafeSnippet25(long l1, boolean c) {
+        byte[] t = new byte[8];
+        UNSAFE.putLong(t, getUnsafeByteArrayOffset(0), l1);
+        t[0] = (byte) 0xff;
+        sideEffect();
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getLong(t, getUnsafeByteArrayOffset(0));
+    }
+
+    public static long unsafeSnippet26(long l1, boolean c) {
+        byte[] t = new byte[8];
+        UNSAFE.putLong(t, getUnsafeByteArrayOffset(0), l1);
+        UNSAFE.putByte(t, getUnsafeByteArrayOffset(3), (byte) 0xff);
+        sideEffect();
+        if (c) {
+            GraalDirectives.deoptimize();
+        }
+        return UNSAFE.getLong(t, getUnsafeByteArrayOffset(0));
+    }
+
     @Test
     public void testUnsafePEA01() {
         performTest("unsafeSnippet1", false, true, 1.0);
@@ -475,6 +508,21 @@ public class UnsafeVirtualizationTest extends GraalCompilerTest {
     @Test
     public void testUnsafePEA23() {
         performTest("unsafeSnippet23", false, false, 0x0102030405060708L, (short) 0x0102, Float.intBitsToFloat(0x01020304), new byte[1][]);
+    }
+
+    @Test
+    public void testUnsafePEA24() {
+        performTest("unsafeSnippet24", false, false, 0x0102030405060708L);
+    }
+
+    @Test
+    public void testUnsafePEA25() {
+        performTest("unsafeSnippet25", false, false, 0x0102030405060708L);
+    }
+
+    @Test
+    public void testUnsafePEA26() {
+        performTest("unsafeSnippet26", false, false, 0x0102030405060708L);
     }
 
     private void performTest(String snippet, boolean shouldEscapeRead, boolean shouldEscapeWrite, Object... args) {

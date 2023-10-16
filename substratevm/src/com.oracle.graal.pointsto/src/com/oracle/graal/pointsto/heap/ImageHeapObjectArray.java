@@ -60,7 +60,7 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
 
     private ImageHeapObjectArray(ResolvedJavaType type, JavaConstant object, Object[] arrayElementValues, int identityHashCode, boolean compressed) {
         super(type, object, identityHashCode, compressed);
-        assert type.isArray();
+        assert type.isArray() : type;
         this.arrayElementValues = arrayElementValues;
     }
 
@@ -100,13 +100,13 @@ public final class ImageHeapObjectArray extends ImageHeapArray {
 
     @Override
     public JavaConstant compress() {
-        assert !compressed;
+        assert !compressed : this;
         return new ImageHeapObjectArray(type, hostedObject, arrayElementValues, identityHashCode, true);
     }
 
     @Override
     public JavaConstant uncompress() {
-        assert compressed;
+        assert compressed : this;
         return new ImageHeapObjectArray(type, hostedObject, arrayElementValues, identityHashCode, false);
     }
 

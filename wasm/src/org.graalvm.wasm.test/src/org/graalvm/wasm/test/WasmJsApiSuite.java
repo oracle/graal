@@ -206,7 +206,7 @@ public class WasmJsApiSuite {
                                             "defaultTable", table
                             }),
             });
-            wasm.tableWrite(table, 0, new WasmFunctionInstance(context, null,
+            wasm.tableWrite(table, 0, new WasmFunctionInstance(context,
                             new RootNode(context.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
@@ -413,7 +413,7 @@ public class WasmJsApiSuite {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmGlobal global = wasm.globalAlloc(ValueType.i32, true, 0);
             try {
-                wasm.globalWrite(global, new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+                wasm.globalWrite(global, new WasmFunctionInstance(context, new RootNode(context.language()) {
                     @Override
                     public Object execute(VirtualFrame frame) {
                         return 0;
@@ -600,7 +600,7 @@ public class WasmJsApiSuite {
             final WasmInstance instance = moduleInstantiate(wasm, exportMemoryTwice, null);
             final InteropLibrary lib = InteropLibrary.getUncached();
             try {
-                final Object f = new WasmFunctionInstance(context, null,
+                final Object f = new WasmFunctionInstance(context,
                                 new RootNode(context.language()) {
                                     @Override
                                     public Object execute(VirtualFrame frame) {
@@ -889,7 +889,6 @@ public class WasmJsApiSuite {
             WasmContext wasmContext = WasmContext.get(null);
             final WasmFunctionInstance functionInstance = new WasmFunctionInstance(
                             wasmContext,
-                            null,
                             new RootNode(wasmContext.language()) {
                                 @Override
                                 public Object execute(VirtualFrame frame) {
@@ -1163,21 +1162,25 @@ public class WasmJsApiSuite {
     @Test
     public void testTableImport() throws IOException, InterruptedException {
         // Exports table with a function
-        final byte[] exportTable = compileWat("exportTable", "(module" +
-                        "(func $f0 (result i32) i32.const 42)" +
-                        "(table 1 1 funcref)" +
-                        "(export \"table\" (table 0))" +
-                        "(elem (i32.const 0) $f0)" +
-                        ")");
+        final byte[] exportTable = compileWat("exportTable", """
+                        (module
+                        (func $f0 (result i32) i32.const 42)
+                        (table 1 1 funcref)
+                        (export "table" (table 0))
+                        (elem (i32.const 0) $f0)
+                        )
+                        """);
 
         // Imports table and exports function that invokes functions from the table
-        final byte[] importTable = compileWat("importTable", "(module" +
-                        "(type (func (param i32) (result i32)))" +
-                        "(type (func (result i32)))" +
-                        "(import \"tableImport\" \"table\" (table 1 1 funcref))" +
-                        "(func (type 0) (param i32) (result i32) local.get 0 call_indirect (type 1))" +
-                        "(export \"testFunc\" (func 0))" +
-                        ")");
+        final byte[] importTable = compileWat("importTable", """
+                        (module
+                        (type (func (param i32) (result i32)))
+                        (type (func (result i32)))
+                        (import "tableImport" "table" (table 1 1 funcref))
+                        (func (type 0) (param i32) (result i32) local.get 0 call_indirect (type 1))
+                        (export "testFunc" (func 0))
+                        )
+                        """);
 
         runTest(context -> {
             WebAssembly wasm = new WebAssembly(context);
@@ -1280,21 +1283,23 @@ public class WasmJsApiSuite {
 
     @Test
     public void testMultiValueReferencePassThrough() throws IOException, InterruptedException {
-        final byte[] source = compileWat("data", "(module " +
-                        "(type (func (result funcref externref)))" +
-                        "(import \"m\" \"f\" (func (type 0)))" +
-                        "(func (export \"main\") (type 0)" +
-                        "call 0" +
-                        "))");
+        final byte[] source = compileWat("data", """
+                        (module
+                        (type (func (result funcref externref)))
+                        (import "m" "f" (func (type 0)))
+                        (func (export "main") (type 0)
+                        call 0
+                        ))
+                        """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmFunctionInstance func = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final WasmFunctionInstance func = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return 0;
                 }
             }.getCallTarget());
-            final WasmFunctionInstance f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final WasmFunctionInstance f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     final Object[] result = new Object[2];
@@ -1614,19 +1619,21 @@ public class WasmJsApiSuite {
 
     @Test
     public void testImportMultiValue() throws IOException, InterruptedException {
-        final byte[] source = compileWat("data", "(module" +
-                        "(type (func (result i32 i32 i32))) " +
-                        "(import \"m\" \"f\" (func $i (type 0)))" +
-                        "(func $f (result i32)" +
-                        "   call $i" +
-                        "   i32.add" +
-                        "   i32.add" +
-                        ")" +
-                        "(export \"f\" (func $f)))");
+        final byte[] source = compileWat("data", """
+                        (module
+                        (type (func (result i32 i32 i32)))
+                        (import "m" "f" (func $i (type 0)))
+                        (func $f (result i32)
+                           call $i
+                           i32.add
+                           i32.add
+                        )
+                        (export "f" (func $f)))
+                        """);
 
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     final Object[] arr = {1, 2, 3};
@@ -1651,18 +1658,20 @@ public class WasmJsApiSuite {
 
     @Test
     public void testImportMultiValueNotArray() throws IOException, InterruptedException {
-        final byte[] source = compileWat("data", "(module" +
-                        "(type (func (result i32 i32 i32))) " +
-                        "(import \"m\" \"f\" (func $i (type 0)))" +
-                        "(func $f (result i32)" +
-                        "   call $i" +
-                        "   i32.add" +
-                        "   i32.add" +
-                        ")" +
-                        "(export \"f\" (func $f)))");
+        final byte[] source = compileWat("data", """
+                        (module
+                        (type (func (result i32 i32 i32)))
+                        (import "m" "f" (func $i (type 0)))
+                        (func $f (result i32)
+                           call $i
+                           i32.add
+                           i32.add
+                        )
+                        (export "f" (func $f)))
+                        """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return 0;
@@ -1689,19 +1698,21 @@ public class WasmJsApiSuite {
 
     @Test
     public void testImportMultiValueInvalidArraySize() throws IOException, InterruptedException {
-        final byte[] source = compileWat("data", "(module" +
-                        "(type (func (result i32 i32 i32))) " +
-                        "(import \"m\" \"f\" (func $i (type 0)))" +
-                        "(func $f (result i32)" +
-                        "   call $i" +
-                        "   i32.add" +
-                        "   i32.add" +
-                        ")" +
-                        "(export \"f\" (func $f)))");
+        final byte[] source = compileWat("data", """
+                        (module
+                        (type (func (result i32 i32 i32)))
+                        (import "m" "f" (func $i (type 0)))
+                        (func $f (result i32)
+                           call $i
+                           i32.add
+                           i32.add
+                        )
+                        (export "f" (func $f)))
+                        """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
 
-            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return InteropArray.create(new Object[]{1, 2});
@@ -1728,19 +1739,21 @@ public class WasmJsApiSuite {
 
     @Test
     public void testImportMultiValueTypeMismatch() throws IOException, InterruptedException {
-        final byte[] source = compileWat("data", "(module" +
-                        "(type (func (result i32 i32 i32))) " +
-                        "(import \"m\" \"f\" (func $i (type 0)))" +
-                        "(func $f (result i32)" +
-                        "   call $i" +
-                        "   i32.add" +
-                        "   i32.add" +
-                        ")" +
-                        "(export \"f\" (func $f)))");
+        final byte[] source = compileWat("data", """
+                        (module
+                        (type (func (result i32 i32 i32)))
+                        (import "m" "f" (func $i (type 0)))
+                        (func $f (result i32)
+                           call $i
+                           i32.add
+                           i32.add
+                        )
+                        (export "f" (func $f)))
+                        """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
 
-            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     return InteropArray.create(new Object[]{0, 1.1, 2});
@@ -1767,15 +1780,17 @@ public class WasmJsApiSuite {
 
     @Test
     public void testExportMultiValue() throws IOException, InterruptedException {
-        final byte[] source = compileWat("data", "(module" +
-                        "(type (func (result i32 i32 i32)))" +
-                        "(func $f (type 0)" +
-                        "   i32.const 1" +
-                        "   i32.const 2" +
-                        "   i32.const 3" +
-                        ")" +
-                        "(export \"f\" (func $f))" +
-                        ")");
+        final byte[] source = compileWat("data", """
+                        (module
+                        (type (func (result i32 i32 i32)))
+                        (func $f (type 0)
+                           i32.const 1
+                           i32.const 2
+                           i32.const 3
+                        )
+                        (export "f" (func $f))
+                        )
+                        """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
             final WasmInstance instance = moduleInstantiate(wasm, source, null);
@@ -1795,13 +1810,15 @@ public class WasmJsApiSuite {
 
     @Test
     public void testImportExportMultiValue() throws IOException, InterruptedException {
-        final byte[] source = compileWat("data", "(module" +
-                        "(type (func (result i32 i32 i32)))" +
-                        "(import \"m\" \"f\" (func $i (type 0)))" +
-                        "(export \"f\" (func $i)))");
+        final byte[] source = compileWat("data", """
+                        (module
+                        (type (func (result i32 i32 i32)))
+                        (import "m" "f" (func $i (type 0)))
+                        (export "f" (func $i)))
+                        """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Object f = new WasmFunctionInstance(context, null, new RootNode(context.language()) {
+            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
                 @Override
                 public Object execute(VirtualFrame frame) {
                     final Object[] arr = {1, 2, 3};
@@ -1967,36 +1984,38 @@ public class WasmJsApiSuite {
 
     @Test
     public void testImportManyGlobals() throws IOException, InterruptedException {
-        String importManyGlobalsWat = "(module\n" +
-                        "(global $global0 (import \"globals\" \"global0\") i32)\n" +
-                        "(global $global1 (import \"globals\" \"global1\") i32)\n" +
-                        "(global $global2 (import \"globals\" \"global2\") i32)\n" +
-                        "(global $global3 (import \"globals\" \"global3\") i32)\n" +
-                        "(global $global4 (import \"globals\" \"global4\") i32)\n" +
-                        "(global $global5 (import \"globals\" \"global5\") i32)\n" +
-                        "(global $global6 (import \"globals\" \"global6\") i32)\n" +
-                        "(global $global7 (import \"globals\" \"global7\") i32)\n" +
-                        "(global $global8 (import \"globals\" \"global8\") i32)\n" +
-                        "(func (export \"sum\") (result i32)\n" +
-                        "    global.get $global0\n" +
-                        "    global.get $global1\n" +
-                        "    i32.add\n" +
-                        "    global.get $global2\n" +
-                        "    i32.add\n" +
-                        "    global.get $global3\n" +
-                        "    i32.add\n" +
-                        "    global.get $global4\n" +
-                        "    i32.add\n" +
-                        "    global.get $global5\n" +
-                        "    i32.add\n" +
-                        "    global.get $global6\n" +
-                        "    i32.add\n" +
-                        "    global.get $global7\n" +
-                        "    i32.add\n" +
-                        "    global.get $global8\n" +
-                        "    i32.add\n" +
-                        ")\n" +
-                        ")";
+        String importManyGlobalsWat = """
+                        (module
+                        (global $global0 (import "globals" "global0") i32)
+                        (global $global1 (import "globals" "global1") i32)
+                        (global $global2 (import "globals" "global2") i32)
+                        (global $global3 (import "globals" "global3") i32)
+                        (global $global4 (import "globals" "global4") i32)
+                        (global $global5 (import "globals" "global5") i32)
+                        (global $global6 (import "globals" "global6") i32)
+                        (global $global7 (import "globals" "global7") i32)
+                        (global $global8 (import "globals" "global8") i32)
+                        (func (export "sum") (result i32)
+                            global.get $global0
+                            global.get $global1
+                            i32.add
+                            global.get $global2
+                            i32.add
+                            global.get $global3
+                            i32.add
+                            global.get $global4
+                            i32.add
+                            global.get $global5
+                            i32.add
+                            global.get $global6
+                            i32.add
+                            global.get $global7
+                            i32.add
+                            global.get $global8
+                            i32.add
+                        )
+                        )
+                        """;
         byte[] importManyGlobalsBytes = compileWat("importManyGlobals", importManyGlobalsWat);
         runTest(context -> {
             WebAssembly wasm = new WebAssembly(context);
@@ -2028,61 +2047,63 @@ public class WasmJsApiSuite {
 
     @Test
     public void testImportManyTables() throws IOException, InterruptedException {
-        String importManyTablesWat = "(module" +
-                        "(table $table0 (import \"tables\" \"table0\") 1 1 funcref)" +
-                        "(table $table1 (import \"tables\" \"table1\") 1 1 funcref)" +
-                        "(table $table2 (import \"tables\" \"table2\") 1 1 funcref)" +
-                        "(table $table3 (import \"tables\" \"table3\") 1 1 funcref)" +
-                        "(table $table4 (import \"tables\" \"table4\") 1 1 externref)" +
-                        "(func $id (param i32) (result i32)" +
-                        "   local.get 0" +
-                        ")" +
-                        "(func (export \"funcInit\")" +
-                        "   i32.const 0" +
-                        "   i32.const 0" +
-                        "   i32.const 1" +
-                        "   table.init 0 0" +
-                        "   i32.const 0" +
-                        "   i32.const 0" +
-                        "   i32.const 1" +
-                        "   table.init 1 0" +
-                        "   i32.const 0" +
-                        "   i32.const 0" +
-                        "   i32.const 1" +
-                        "   table.init 2 0" +
-                        "   i32.const 0" +
-                        "   i32.const 0" +
-                        "   i32.const 1" +
-                        "   table.init 3 0" +
-                        ")" +
-                        "(func (export \"funcSum\") (result i32)" +
-                        "   i32.const 1" +
-                        "   i32.const 0" +
-                        "   call_indirect 0 (type 0)" +
-                        "   i32.const 2" +
-                        "   i32.const 0" +
-                        "   call_indirect 1 (type 0)" +
-                        "   i32.const 3" +
-                        "   i32.const 0" +
-                        "   call_indirect 2 (type 0)" +
-                        "   i32.const 4" +
-                        "   i32.const 0" +
-                        "   call_indirect 3 (type 0)" +
-                        "   i32.add" +
-                        "   i32.add" +
-                        "   i32.add" +
-                        ")" +
-                        "(func (export \"setTable4\") (param i32 externref)" +
-                        "   local.get 0" +
-                        "   local.get 1" +
-                        "   table.set 4" +
-                        ")" +
-                        "(func (export \"getTable4\") (param i32) (result externref)" +
-                        "   local.get 0" +
-                        "   table.get 4" +
-                        ")" +
-                        "(elem funcref (ref.func 0))" +
-                        ")";
+        String importManyTablesWat = """
+                        (module
+                        (table $table0 (import "tables" "table0") 1 1 funcref)
+                        (table $table1 (import "tables" "table1") 1 1 funcref)
+                        (table $table2 (import "tables" "table2") 1 1 funcref)
+                        (table $table3 (import "tables" "table3") 1 1 funcref)
+                        (table $table4 (import "tables" "table4") 1 1 externref)
+                        (func $id (param i32) (result i32)
+                           local.get 0
+                        )
+                        (func (export "funcInit")
+                           i32.const 0
+                           i32.const 0
+                           i32.const 1
+                           table.init 0 0
+                           i32.const 0
+                           i32.const 0
+                           i32.const 1
+                           table.init 1 0
+                           i32.const 0
+                           i32.const 0
+                           i32.const 1
+                           table.init 2 0
+                           i32.const 0
+                           i32.const 0
+                           i32.const 1
+                           table.init 3 0
+                        )
+                        (func (export "funcSum") (result i32)
+                           i32.const 1
+                           i32.const 0
+                           call_indirect 0 (type 0)
+                           i32.const 2
+                           i32.const 0
+                           call_indirect 1 (type 0)
+                           i32.const 3
+                           i32.const 0
+                           call_indirect 2 (type 0)
+                           i32.const 4
+                           i32.const 0
+                           call_indirect 3 (type 0)
+                           i32.add
+                           i32.add
+                           i32.add
+                        )
+                        (func (export "setTable4") (param i32 externref)
+                           local.get 0
+                           local.get 1
+                           table.set 4
+                        )
+                        (func (export "getTable4") (param i32) (result externref)
+                           local.get 0
+                           table.get 4
+                        )
+                        (elem funcref (ref.func 0))
+                        )
+                        """;
         byte[] importManyTablesBytes = compileWat("importManyTables", importManyTablesWat);
         runTest(context -> {
             WebAssembly wasm = new WebAssembly(context);
@@ -2176,15 +2197,15 @@ public class WasmJsApiSuite {
             options.accept(contextBuilder);
         }
         contextBuilder.option("wasm.Builtins", "testutil:testutil");
-        final Context context = contextBuilder.build();
-        Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
-        Source source = sourceBuilder.build();
-        context.eval(source);
-        Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
-        main.execute();
-        Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
-        run.execute(new GuestCode(testCase));
-        context.close();
+        try (Context context = contextBuilder.build()) {
+            Source.Builder sourceBuilder = Source.newBuilder(WasmLanguage.ID, ByteSequence.create(binaryWithExports), "main");
+            Source source = sourceBuilder.build();
+            context.eval(source);
+            Value main = context.getBindings(WasmLanguage.ID).getMember("main").getMember("main");
+            main.execute();
+            Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+            run.execute(new GuestCode(testCase));
+        }
     }
 
     private static final class GuestCode implements Consumer<WasmContext>, TruffleObject {

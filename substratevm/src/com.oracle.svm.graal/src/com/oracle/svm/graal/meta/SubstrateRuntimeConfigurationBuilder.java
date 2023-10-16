@@ -32,6 +32,7 @@ import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
 import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
+import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
 import org.graalvm.compiler.nodes.spi.LoweringProvider;
 import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
@@ -39,6 +40,7 @@ import org.graalvm.compiler.nodes.spi.Replacements;
 import org.graalvm.compiler.nodes.spi.StampProvider;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.util.Providers;
+import org.graalvm.compiler.replacements.ReplacementsImpl;
 import org.graalvm.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
@@ -51,17 +53,21 @@ import com.oracle.svm.core.graal.meta.SharedCodeCacheProvider;
 import com.oracle.svm.core.graal.meta.SubstrateLoweringProvider;
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 import com.oracle.svm.core.graal.meta.SubstrateSnippetReflectionProvider;
+import com.oracle.svm.graal.hosted.RuntimeCompilationFeature;
 import com.oracle.svm.graal.isolated.IsolateAwareCodeCacheProvider;
 import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
 import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.SharedRuntimeConfigurationBuilder;
+import com.oracle.svm.hosted.code.SubstrateGraphMaker;
 import com.oracle.svm.hosted.code.SubstrateGraphMakerFactory;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.code.RegisterConfig;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigurationBuilder {
 
@@ -106,7 +112,7 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
     protected Replacements createReplacements(Providers p, SnippetReflectionProvider snippetReflection) {
         BytecodeProvider bytecodeProvider = new ResolvedJavaMethodBytecodeProvider();
         WordTypes wordTypes = p.getWordTypes();
-        return new SubstrateReplacements(p, snippetReflection, bytecodeProvider, ConfigurationValues.getTarget(), wordTypes, new SubstrateGraphMakerFactory(wordTypes));
+        return new SubstrateReplacements(p, snippetReflection, bytecodeProvider, ConfigurationValues.getTarget(), wordTypes, new SubstrateRuntimeGraphMakerFactory(wordTypes));
     }
 
     @Override
@@ -117,4 +123,30 @@ public class SubstrateRuntimeConfigurationBuilder extends SharedRuntimeConfigura
         return new SubstrateCodeCacheProvider(ConfigurationValues.getTarget(), registerConfig);
     }
 
+    static class SubstrateRuntimeGraphMakerFactory extends SubstrateGraphMakerFactory {
+
+        SubstrateRuntimeGraphMakerFactory(WordTypes wordTypes) {
+            super(wordTypes);
+        }
+
+        @Override
+        public ReplacementsImpl.GraphMaker create(MetaAccessProvider metaAccess, ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod) {
+            return new SubstrateRuntimeGraphMaker(metaAccess, replacements, substitute, substitutedMethod, wordTypes);
+        }
+    }
+
+    static class SubstrateRuntimeGraphMaker extends SubstrateGraphMaker {
+        private final MetaAccessProvider metaAccess;
+
+        SubstrateRuntimeGraphMaker(MetaAccessProvider metaAccess, ReplacementsImpl replacements, ResolvedJavaMethod substitute, ResolvedJavaMethod substitutedMethod, WordTypes wordTypes) {
+            super(replacements, substitute, substitutedMethod, wordTypes);
+            this.metaAccess = metaAccess;
+        }
+
+        @Override
+        protected void finalizeGraph(StructuredGraph graph) {
+            RuntimeCompilationFeature.unwrapImageHeapConstants(graph, metaAccess);
+            super.finalizeGraph(graph);
+        }
+    }
 }

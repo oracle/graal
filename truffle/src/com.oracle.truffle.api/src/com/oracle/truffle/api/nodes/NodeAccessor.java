@@ -193,6 +193,10 @@ final class NodeAccessor extends Accessor {
             return new EncapsulatingNodeReference(thread);
         }
 
+        @Override
+        public boolean isSameFrame(RootNode root, Frame frame1, Frame frame2) {
+            return root.isSameFrame(frame1, frame2);
+        }
     }
 
 }

@@ -78,19 +78,19 @@ public abstract class DirectInvokeTypeFlow extends InvokeTypeFlow {
     }
 
     @Override
-    public final Collection<AnalysisMethod> getAllComputedCallees() {
+    public final Collection<AnalysisMethod> getCalleesForReturnLinking() {
         return getAllCalleesHelper(true);
     }
 
     private Collection<AnalysisMethod> getAllCalleesHelper(boolean allComputed) {
-        if (allComputed || targetMethod.isImplementationInvoked()) {
+        if (allComputed || targetMethod.isImplementationInvoked() || isDeoptInvokeTypeFlow()) {
             /*
              * When type states are filtered (e.g. due to context sensitivity), it is possible for a
              * callee to be set, but for it not to be linked.
              */
             Collection<AnalysisMethod> result = LightImmutableCollection.toCollection(this, CALLEES_ACCESSOR);
             if (!allComputed) {
-                assert result.stream().filter(m -> m.isOriginalMethod()).allMatch(AnalysisMethod::isImplementationInvoked);
+                assert result.stream().filter(m -> m.isOriginalMethod()).allMatch(AnalysisMethod::isImplementationInvoked) : result;
             }
             return result;
         }

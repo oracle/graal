@@ -45,12 +45,12 @@ import com.oracle.truffle.espresso.runtime.panama.Platform;
 import com.oracle.truffle.espresso.runtime.panama.StorageType;
 import com.oracle.truffle.espresso.runtime.panama.VMStorage;
 
-public final class AAPCS64 extends Platform {
+public class AAPCS64 extends Platform {
     public static final AAPCS64 INSTANCE = new AAPCS64();
     public static final VMStorage[] CALL_INT_REGS = {r0, r1, r2, r3, r4, r5, r6, r7};
     public static final VMStorage[] CALL_FLOAT_REGS = {v0, v1, v2, v3, v4, v5, v6, v7};
 
-    private AAPCS64() {
+    AAPCS64() {
     }
 
     @Override
@@ -66,5 +66,23 @@ public final class AAPCS64 extends Platform {
     @Override
     public ArgumentsCalculator getArgumentsCalculator() {
         return new DefaultArgumentsCalculator(this, CALL_INT_REGS, CALL_FLOAT_REGS, r0, v0);
+    }
+
+    @Override
+    protected String getIntegerRegisterName(int idx, int maskOrSize) {
+        if (maskOrSize == AArch64Regs.REG64_MASK) {
+            return AArch64Regs.getIntegerRegisterName(idx);
+        } else {
+            return "?INT_REG?[" + idx + ", " + maskOrSize + "]";
+        }
+    }
+
+    @Override
+    protected String getVectorRegisterName(int idx, int maskOrSize) {
+        if (maskOrSize == AArch64Regs.V128_MASK) {
+            return AArch64Regs.getVectorRegisterName(idx);
+        } else {
+            return "?VEC_REG?[" + idx + ", " + maskOrSize + "]";
+        }
     }
 }

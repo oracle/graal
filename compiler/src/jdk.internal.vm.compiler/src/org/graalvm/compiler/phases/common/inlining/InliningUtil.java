@@ -48,6 +48,7 @@ import org.graalvm.compiler.core.common.util.Util;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.graph.Graph;
 import org.graalvm.compiler.graph.Graph.DuplicationReplacement;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -500,7 +501,7 @@ public class InliningUtil extends ValueMergeUtil {
             }
         }
 
-        finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph, returnAction);
+        finishInlining(invoke, graph, firstCFGNode, returnNodes, unwindNode, inlineGraph, returnAction, mark);
         GraphUtil.killCFG(invokeNode);
 
         return duplicates;
@@ -584,7 +585,7 @@ public class InliningUtil extends ValueMergeUtil {
 
     @SuppressWarnings("try")
     private static ValueNode finishInlining(Invoke invoke, StructuredGraph graph, FixedNode firstNode, List<ReturnNode> returnNodes, UnwindNode unwindNode,
-                    StructuredGraph inlineGraph, InlineeReturnAction inlineeReturnAction) {
+                    StructuredGraph inlineGraph, InlineeReturnAction inlineeReturnAction, Graph.Mark beforeInlining) {
 
         List<ReturnNode> processedReturns = inlineeReturnAction.processInlineeReturns(returnNodes);
 
@@ -634,14 +635,14 @@ public class InliningUtil extends ValueMergeUtil {
             invoke.setNext(null);
             if (processedReturns.size() == 1) {
                 ReturnNode returnNode = processedReturns.get(0);
-                Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, returnNode.result(), next);
+                Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, returnNode.result(), next, beforeInlining);
                 returnValue = returnAnchorPair.getLeft();
                 returnNode.replaceAndDelete(returnAnchorPair.getRight());
             } else {
                 MergeNode merge = graph.add(new MergeNode());
                 merge.setStateAfter(stateAfter);
                 ValueNode mergedReturn = mergeReturns(merge, processedReturns);
-                Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, mergedReturn, merge);
+                Pair<ValueNode, FixedNode> returnAnchorPair = replaceInvokeAtUsages(invokeNode, mergedReturn, merge, beforeInlining);
                 returnValue = returnAnchorPair.getLeft();
                 assert returnAnchorPair.getRight() == merge;
                 if (merge.isPhiAtMerge(mergedReturn)) {
@@ -674,6 +675,10 @@ public class InliningUtil extends ValueMergeUtil {
      * @return new return and the anchoring values
      */
     public static Pair<ValueNode, FixedNode> replaceInvokeAtUsages(ValueNode invokeNode, ValueNode origReturn, FixedNode anchorCandidate) {
+        return replaceInvokeAtUsages(invokeNode, origReturn, anchorCandidate, null);
+    }
+
+    private static Pair<ValueNode, FixedNode> replaceInvokeAtUsages(ValueNode invokeNode, ValueNode origReturn, FixedNode anchorCandidate, Graph.Mark beforeInlining) {
         assert invokeNode instanceof Invoke;
         ValueNode returnVal = origReturn;
         FixedNode anchorVal = anchorCandidate;
@@ -711,7 +716,19 @@ public class InliningUtil extends ValueMergeUtil {
             }
         }
 
-        invokeNode.replaceAtUsages(returnVal);
+        if (beforeInlining != null && returnVal != origReturn) {
+            PiNode returnPi = (PiNode) returnVal;
+            StructuredGraph outerGraph = invokeNode.graph();
+            /*
+             * Don't replace the return value with the Pi in nodes inlined from the callee. This is
+             * relevant for snippet frame states, where we might produce an unschedulable graph if
+             * the snippet's side effect frame state uses the return value.
+             */
+            invokeNode.replaceAtUsages(returnPi, usage -> !outerGraph.isNew(beforeInlining, usage));
+            invokeNode.replaceAtUsages(returnPi.getOriginalNode());
+        } else {
+            invokeNode.replaceAtUsages(returnVal);
+        }
 
         return Pair.create(returnVal, anchorVal);
     }

@@ -162,8 +162,8 @@ public class TypeStateUtils {
     private static AnalysisObject[] arraysUnion(PointsToAnalysis bb, AnalysisObject[] a1, AnalysisObject[] a2) {
         // assert bb.options().allocationSiteSensitiveHeap();
         assert a1.length >= a2.length : "Union is commutative, must call it with a1 being the bigger state";
-        assert a1.length > 1 || !bb.analysisPolicy().isSummaryObject(a1[0]);
-        assert a2.length > 1 || !bb.analysisPolicy().isSummaryObject(a2[0]);
+        assert a1.length > 1 || !bb.analysisPolicy().isSummaryObject(a1[0]) : a1;
+        assert a2.length > 1 || !bb.analysisPolicy().isSummaryObject(a2[0]) : a2;
 
         // TOOD check same type
         // assert !bb.options().extendedAsserts() || (a1.checkState(bb.options()) &&
@@ -224,7 +224,7 @@ public class TypeStateUtils {
                     idx1++;
                     idx2++;
                 } else { // keep the list sorted by the id
-                    assert o1.getId() != o2.getId();
+                    assert o1.getId() != o2.getId() : o1 + ", " + o2;
                     if (o1.getId() < o2.getId()) {
                         objectsList.add(o1);
                         idx1++;
@@ -236,10 +236,10 @@ public class TypeStateUtils {
             }
 
             if (idx1 < a1.length) {
-                assert idx2 == a2.length;
+                assert idx2 == a2.length : idx2;
                 objectsList.addAll(Arrays.asList(a1).subList(idx1, a1.length));
             } else if (idx2 < a2.length) {
-                assert idx1 == a1.length;
+                assert idx1 == a1.length : idx1;
                 objectsList.addAll(Arrays.asList(a2).subList(idx2, a2.length));
             }
             return checkUnionSize(bb, a1, a2, objectsList.toArray(new AnalysisObject[objectsList.size()]));
@@ -248,7 +248,7 @@ public class TypeStateUtils {
     }
 
     private static AnalysisObject[] checkUnionSize(PointsToAnalysis bb, AnalysisObject[] oa1, AnalysisObject[] oa2, AnalysisObject[] result) {
-        assert result.length >= 2;
+        assert result.length >= 2 : result;
 
         if (bb.analysisPolicy().limitObjectArrayLength() && (result.length > bb.analysisPolicy().maxObjectSetSize())) {
             AnalysisObject rObj = result[0].type().getContextInsensitiveAnalysisObject();
@@ -280,7 +280,6 @@ public class TypeStateUtils {
 
     @SuppressWarnings("RedundantIfStatement")
     public static boolean holdsSingleTypeState(AnalysisObject[] objects, int size) {
-        assert size > 0;
         int firstType = objects[0].getTypeId();
         int lastType = objects[size - 1].getTypeId();
         if (firstType == lastType) {
@@ -301,7 +300,7 @@ public class TypeStateUtils {
             bsr = getClone(bs2);
             bsr.or(bs1);
         }
-        assert !needsTrim(bsr);
+        assert !needsTrim(bsr) : bsr;
         return bsr;
     }
 
@@ -365,7 +364,7 @@ public class TypeStateUtils {
             bsr = getClone(bs1);
             bsr.set(bitIndex);
         }
-        assert !needsTrim(bsr);
+        assert !needsTrim(bsr) : bsr;
         return bsr;
     }
 
@@ -375,7 +374,7 @@ public class TypeStateUtils {
         BitSet bs = new BitSet(Math.max(index1, index2) + 1);
         bs.set(index1);
         bs.set(index2);
-        assert !needsTrim(bs);
+        assert !needsTrim(bs) : bs;
         return bs;
     }
 
@@ -397,9 +396,9 @@ public class TypeStateUtils {
      * another thread calls clone() the words[] array can be in an inconsistent state.
      */
     private static BitSet getClone(BitSet original) {
-        assert getSizeIsSticky(original);
+        assert getSizeIsSticky(original) : original;
         BitSet clone = (BitSet) original.clone();
-        assert !needsTrim(clone);
+        assert !needsTrim(clone) : clone;
         return clone;
     }
 

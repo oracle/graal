@@ -337,6 +337,11 @@ public abstract class HIRBlock extends BasicBlock<HIRBlock> {
     }
 
     @Override
+    public ControlFlowGraph getCfg() {
+        return (ControlFlowGraph) super.getCfg();
+    }
+
+    @Override
     public HIRBlock getDominator(int distance) {
         HIRBlock result = this;
         for (int i = 0; i < distance; ++i) {

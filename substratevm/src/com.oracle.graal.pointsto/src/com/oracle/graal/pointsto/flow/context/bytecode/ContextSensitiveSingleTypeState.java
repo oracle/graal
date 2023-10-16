@@ -45,7 +45,7 @@ public class ContextSensitiveSingleTypeState extends SingleTypeState {
     public ContextSensitiveSingleTypeState(PointsToAnalysis bb, boolean canBeNull, AnalysisType type, AnalysisObject... objects) {
         super(bb, canBeNull, type);
         this.objects = objects;
-        assert !bb.extendedAsserts() || checkObjects(bb);
+        assert checkObjects(bb);
     }
 
     /** Create a type state with the same content and a reversed canBeNull value. */
@@ -55,7 +55,9 @@ public class ContextSensitiveSingleTypeState extends SingleTypeState {
     }
 
     protected boolean checkObjects(BigBang bb) {
-        assert bb.extendedAsserts();
+        if (!bb.extendedAsserts()) {
+            return true;
+        }
 
         /* Check that the objects array are sorted by type. */
         for (int idx = 0; idx < objects.length - 1; idx++) {
@@ -116,7 +118,7 @@ public class ContextSensitiveSingleTypeState extends SingleTypeState {
     /** Note that the objects of this type state have been merged. */
     @Override
     public void noteMerge(PointsToAnalysis bb) {
-        assert bb.analysisPolicy().isMergingEnabled();
+        assert bb.analysisPolicy().isMergingEnabled() : "policy mismatch";
 
         if (!merged) {
             for (AnalysisObject obj : objects) {

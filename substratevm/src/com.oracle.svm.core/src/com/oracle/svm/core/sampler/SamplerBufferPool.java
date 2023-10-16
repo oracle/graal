@@ -95,6 +95,7 @@ public class SamplerBufferPool {
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
     public void pushFullBuffer(SamplerBuffer buffer) {
         fullBuffers.pushBuffer(buffer);
+        SubstrateJVM.getRecorderThread().signal();
     }
 
     @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)

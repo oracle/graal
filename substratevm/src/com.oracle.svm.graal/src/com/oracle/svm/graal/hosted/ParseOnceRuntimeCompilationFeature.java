@@ -53,6 +53,7 @@ import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.DebugHandlersFactory;
 import org.graalvm.compiler.debug.Indent;
 import org.graalvm.compiler.graph.NodeClass;
+import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.java.BytecodeParser;
 import org.graalvm.compiler.java.GraphBuilderPhase;
 import org.graalvm.compiler.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -152,18 +153,25 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
     public static final class CallTreeNode extends AbstractCallTreeNode {
         final BytecodePosition position;
+        final boolean inlined;
 
-        CallTreeNode(AnalysisMethod implementationMethod, AnalysisMethod targetMethod, CallTreeNode parent, BytecodePosition position) {
+        CallTreeNode(AnalysisMethod implementationMethod, AnalysisMethod targetMethod, CallTreeNode parent, BytecodePosition position, boolean inlined) {
             super(parent, targetMethod, implementationMethod);
             this.position = position;
+            this.inlined = inlined;
         }
 
         @Override
         public String getPosition() {
-            if (position == null) {
-                return "[root]";
+            String message = "";
+            if (inlined) {
+                message += "(inlined: some parent frames may be missing) ";
+
             }
-            return position.toString();
+            if (getParent() == null) {
+                message += "[root] ";
+            }
+            return message + position;
         }
 
         /**
@@ -432,7 +440,8 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
     @Override
     protected AbstractCallTreeNode getCallTreeNode(ResolvedJavaMethod method) {
-        var result = runtimeCompiledMethodCallTree.get(method);
+        ResolvedJavaMethod origMethod = method instanceof MultiMethod m ? (ResolvedJavaMethod) m.getMultiMethod(ORIGINAL_METHOD) : method;
+        var result = runtimeCompiledMethodCallTree.get(origMethod);
         assert result != null;
         return result;
     }
@@ -467,7 +476,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             var runtimeRoot = root.getMultiMethod(RUNTIME_COMPILED_METHOD);
             if (runtimeRoot != null) {
                 runtimeCandidateCallTree.computeIfAbsent(new RuntimeCompilationCandidateImpl(root, root), (candidate) -> {
-                    var result = new CallTreeNode(root, root, null, null);
+                    var result = new CallTreeNode(root, root, null, new BytecodePosition(null, root, BytecodeFrame.UNKNOWN_BCI), false);
                     worklist.add(result);
                     return result;
                 });
@@ -480,7 +489,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
          * Note within the maps we store the original methods, not the runtime methods.
          */
         while (!worklist.isEmpty()) {
-            var caller = worklist.remove();
+            CallTreeNode caller = worklist.remove();
             caller.linkAsChild();
 
             /*
@@ -493,23 +502,24 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             } else {
                 runtimeCompiledMethodCallTree.put(method, caller);
             }
-            var runtimeMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
+            AnalysisMethod runtimeMethod = method.getMultiMethod(RUNTIME_COMPILED_METHOD);
             assert runtimeMethod != null;
 
             for (InvokeInfo invokeInfo : runtimeMethod.getInvokes()) {
                 AnalysisMethod invokeTarget = invokeInfo.getTargetMethod();
-                if (invokeInfo.isDeoptInvokeTypeFlow()) {
+                boolean deoptInvokeTypeFlow = invokeInfo.isDeoptInvokeTypeFlow();
+                if (deoptInvokeTypeFlow) {
                     assert SubstrateCompilationDirectives.isRuntimeCompiledMethod(invokeTarget);
                     invokeTarget = invokeTarget.getMultiMethod(ORIGINAL_METHOD);
                 }
                 AnalysisMethod target = invokeTarget;
                 assert target.isOriginalMethod();
                 for (AnalysisMethod implementation : invokeInfo.getAllCallees()) {
-                    if (SubstrateCompilationDirectives.isRuntimeCompiledMethod(implementation)) {
+                    if (deoptInvokeTypeFlow || SubstrateCompilationDirectives.isRuntimeCompiledMethod(implementation)) {
                         var origImpl = implementation.getMultiMethod(ORIGINAL_METHOD);
                         assert origImpl != null;
                         runtimeCandidateCallTree.computeIfAbsent(new RuntimeCompilationCandidateImpl(origImpl, target), (candidate) -> {
-                            var result = new CallTreeNode(origImpl, target, caller, invokeInfo.getPosition());
+                            var result = new CallTreeNode(origImpl, target, caller, invokeInfo.getPosition(), deoptInvokeTypeFlow);
                             worklist.add(result);
                             return result;
                         });
@@ -520,7 +530,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                          */
                         runtimeCandidateCallTree.computeIfAbsent(new RuntimeCompilationCandidateImpl(implementation, target),
                                         (candidate) -> {
-                                            var result = new CallTreeNode(implementation, target, caller, invokeInfo.getPosition());
+                                            var result = new CallTreeNode(implementation, target, caller, invokeInfo.getPosition(), false);
                                             result.linkAsChild();
                                             return result;
                                         });
@@ -560,7 +570,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         assert method.getMultiMethodKey() == RUNTIME_COMPILED_METHOD;
 
         AnalysisMethod aMethod = method.getWrapped();
-        StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null);
+        StructuredGraph graph = aMethod.decodeAnalyzedGraph(debug, null, false);
         if (graph == null) {
             throw VMError.shouldNotReachHere("Method not parsed during static analysis: " + aMethod.format("%r %H.%n(%p)"));
         }
@@ -603,6 +613,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                             VMError.guarantee(deoptMethod != null, "New deopt target method seen: %s", deoptEntryMethod);
                             return deoptMethod;
                         }));
+        unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
 
         assert RuntimeCompilationFeature.verifyNodes(graph);
         var previous = runtimeGraphs.put(method, graph);
@@ -715,6 +726,11 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     }
 
     @Override
+    public void beforeHeapLayout(BeforeHeapLayoutAccess a) {
+        super.beforeHeapLayoutHelper(a);
+    }
+
+    @Override
     public void afterHeapLayout(AfterHeapLayoutAccess a) {
         afterHeapLayoutHelper(a);
     }
@@ -743,14 +759,13 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     }
 
     @Override
-    protected void requireFrameInformationForMethodHelper(AnalysisMethod aMethod) {
-        /*
-         * Note: it may be necessary to also register this method as a registeredRuntimeCompilation
-         * (or in a new datastructure) to ensure these deoptimization targets are parsed during
-         * analysis.
-         */
+    protected void requireFrameInformationForMethodHelper(AnalysisMethod aMethod, FeatureImpl.BeforeAnalysisAccessImpl config, boolean registerAsRoot) {
+        assert aMethod.isOriginalMethod();
         AnalysisMethod deoptTarget = aMethod.getOrCreateMultiMethod(DEOPT_TARGET_METHOD);
         SubstrateCompilationDirectives.singleton().registerFrameInformationRequired(aMethod, deoptTarget);
+        if (registerAsRoot) {
+            config.registerAsRoot(aMethod, true, "Frame information required, registered in " + ParseOnceRuntimeCompilationFeature.class, DEOPT_TARGET_METHOD);
+        }
     }
 
     private class RuntimeCompilationParsingSupport implements SVMParsingSupport {
@@ -910,6 +925,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                     assert MultiMethod.isDeoptTarget(method);
                     ((PointsToAnalysisMethod) method).getTypeFlow().updateFlowsGraph(bb, MethodFlowsGraph.GraphKind.FULL, null, true);
                 }
+                unwrapImageHeapConstants(graph, hostedProviders.getMetaAccess());
 
                 // Note that this will be made thread-safe in the future
                 synchronized (this) {
@@ -1006,9 +1022,10 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         }
 
         @Override
-        protected FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments) {
+        protected FixedWithNextNode processInvokeArgs(ResolvedJavaMethod targetMethod, FixedWithNextNode insertionPoint, ValueNode[] arguments, NodeSourcePosition sourcePosition) {
             StructuredGraph graph = insertionPoint.graph();
             InlinedInvokeArgumentsNode newNode = graph.add(new InlinedInvokeArgumentsNode(targetMethod, arguments));
+            newNode.setNodeSourcePosition(sourcePosition);
             graph.addAfterFixed(insertionPoint, newNode);
             return newNode;
         }
@@ -1092,7 +1109,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                 var originalTarget = implementation.getMultiMethod(ORIGINAL_METHOD);
                 assert originalTarget != null;
                 runtimeCompilationCandidates.add(new RuntimeCompilationCandidateImpl(originalTarget, originalTarget));
-                return List.of(getDeoptVersion(implementation));
+                return List.of(getStubDeoptVersion(implementation));
             }
             assert implementation.isOriginalMethod() && target.isOriginalMethod();
 
@@ -1102,15 +1119,20 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                  * Unless the method is a registered runtime compilation, it is not possible for an
                  * original variant to call a runtime variant (and indirectly the deoptimiztation
                  * variant).
+                 *
+                 * However, frame information is matched using the deoptimization entry point of a
+                 * method, so deopt targets must be created for them as well.
                  */
                 if (registeredRuntimeCompilation) {
-                    return List.of(implementation, getDeoptVersion(implementation), getRuntimeVersion(bb, implementation, true, invokeFlow));
+                    return List.of(implementation, getStubDeoptVersion(implementation), getRuntimeVersion(bb, implementation, true, invokeFlow));
+                } else if (SubstrateCompilationDirectives.singleton().isFrameInformationRequired(implementation)) {
+                    return List.of(implementation, getDeoptVersion(bb, implementation, true, invokeFlow));
                 } else if (DeoptimizationUtils.canDeoptForTesting(implementation, false, () -> false)) {
                     /*
                      * If the target is registered for deoptimization, then we must also make a
                      * deoptimized version.
                      */
-                    return List.of(implementation, getDeoptVersion(implementation));
+                    return List.of(implementation, getStubDeoptVersion(implementation));
                 } else {
                     return List.of(implementation);
                 }
@@ -1126,7 +1148,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                      * runtime deoptimizes).
                      */
                     if (runtimeCompilationCandidate) {
-                        return List.of(implementation, getDeoptVersion(implementation), getRuntimeVersion(bb, implementation, true, invokeFlow));
+                        return List.of(implementation, getStubDeoptVersion(implementation), getRuntimeVersion(bb, implementation, true, invokeFlow));
                     } else {
                         /*
                          * If this method cannot be jitted, then only the original implementation is
@@ -1146,7 +1168,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
                      * runtime compiled method's invoke.
                      */
                     if (runtimeCompilationCandidate) {
-                        return List.of(implementation, getDeoptVersion(implementation), getRuntimeVersion(bb, implementation, false, invokeFlow));
+                        return List.of(implementation, getStubDeoptVersion(implementation), getRuntimeVersion(bb, implementation, false, invokeFlow));
                     } else {
                         /*
                          * If this method cannot be jitted, then only the original implementation is
@@ -1159,13 +1181,27 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
 
         }
 
-        @SuppressWarnings("unchecked")
-        protected <T extends AnalysisMethod> T getDeoptVersion(T implementation) {
+        protected <T extends AnalysisMethod> T getStubDeoptVersion(T implementation) {
             /*
              * Flows for deopt versions are only created once a frame state for the method is seen
              * within a runtime compiled method.
              */
-            return (T) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+            return getDeoptVersion(null, implementation, false, null);
+        }
+
+        @SuppressWarnings("unchecked")
+        protected <T extends AnalysisMethod> T getDeoptVersion(BigBang bb, T implementation, boolean createFlow, InvokeTypeFlow parsingReason) {
+            if (createFlow) {
+                PointsToAnalysisMethod runtimeMethod = (PointsToAnalysisMethod) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD);
+                PointsToAnalysis analysis = (PointsToAnalysis) bb;
+                runtimeMethod.getTypeFlow().updateFlowsGraph(analysis, MethodFlowsGraph.GraphKind.FULL, parsingReason, true);
+                return (T) runtimeMethod;
+            } else {
+                /*
+                 * If a flow is not needed then temporarily a stub can be created.
+                 */
+                return (T) implementation.getOrCreateMultiMethod(DEOPT_TARGET_METHOD, (newMethod) -> ((PointsToAnalysisMethod) newMethod).getTypeFlow().setAsStubFlow());
+            }
         }
 
         @SuppressWarnings("unchecked")

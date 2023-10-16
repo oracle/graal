@@ -25,7 +25,7 @@ package com.oracle.truffle.espresso.substitutions;
 
 import java.net.URL;
 
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 
 @EspressoSubstitutions
 public final class Target_sun_misc_URLClassPath {

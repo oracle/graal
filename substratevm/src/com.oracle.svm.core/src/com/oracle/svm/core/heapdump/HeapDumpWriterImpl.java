@@ -492,7 +492,8 @@ public class HeapDumpWriterImpl extends HeapDumpWriter {
         /* Dummy stack trace. */
         writeDummyTrace();
 
-        List<Class<?>> classList = Heap.getHeap().getLoadedClasses();
+        ArrayList<Class<?>> classList = new ArrayList<>();
+        Heap.getHeap().visitLoadedClasses((clazz) -> classList.add(clazz));
 
         /* hprof UTF-8 symbols section. */
         writeClassNames(classList);

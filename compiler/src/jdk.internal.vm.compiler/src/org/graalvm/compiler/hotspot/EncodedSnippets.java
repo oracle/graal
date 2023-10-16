@@ -126,7 +126,7 @@ public class EncodedSnippets {
 
         @Override
         int getStartOffset(Class<?> receiverClass) {
-            assert receiverClass == null;
+            assert receiverClass == null : receiverClass;
             return startOffset;
         }
     }
@@ -480,7 +480,7 @@ public class EncodedSnippets {
         public Object resolve(GraalRuntime runtime) {
             Object capability = runtime.getCapability(this.capabilityClass);
             if (capability != null) {
-                assert capability.getClass() == capabilityClass;
+                assert capability.getClass() == capabilityClass : capability.getClass() + " != " + capabilityClass;
                 return capability;
             }
             throw new InternalError(this.capabilityClass.getName());

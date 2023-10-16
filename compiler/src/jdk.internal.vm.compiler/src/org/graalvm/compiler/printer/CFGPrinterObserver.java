@@ -233,7 +233,7 @@ public class CFGPrinterObserver implements DebugDumpHandler {
 
     private static DisassemblerProvider selectDisassemblerProvider(OptionValues options) {
         DisassemblerProvider selected = null;
-        String arch = Services.getSavedProperties().get("os.arch");
+        String arch = Services.getSavedProperty("os.arch");
         final boolean isAArch64 = arch.equals("aarch64");
         for (DisassemblerProvider d : GraalServices.load(DisassemblerProvider.class)) {
             if (d.isAvailable(options)) {

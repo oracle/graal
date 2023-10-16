@@ -46,7 +46,6 @@ import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.jfr.sampler.AbstractJfrExecutionSampler;
 import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.PlatformThreads.ThreadLocalKey;
-import com.oracle.svm.core.thread.ThreadListener;
 import com.oracle.svm.core.thread.VMOperation;
 import com.oracle.svm.core.thread.VMThreads;
 
@@ -61,7 +60,7 @@ import com.oracle.svm.core.thread.VMThreads;
  * The signal handler calls Native Image code to restore reserved registers such as the heap base
  * and the isolate-thread, before preparing everything that is needed for a stack walk.
  */
-public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSampler implements IsolateListener, ThreadListener {
+public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSampler implements IsolateListener {
     private static final CGlobalData<Pointer> SIGNAL_HANDLER_ISOLATE = CGlobalDataFactory.createWord();
     private ThreadLocalKey keyForNativeThreadLocal;
 
@@ -147,14 +146,6 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
         storeIsolateThreadInNativeThreadLocal(thread);
     }
 
-    @Override
-    @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
-    public void afterThreadRun() {
-        IsolateThread thread = CurrentIsolate.getCurrentThread();
-        uninstall(thread);
-        ExecutionSamplerInstallation.disallow(thread);
-    }
-
     protected abstract void installSignalHandler();
 
     protected abstract void uninstallSignalHandler();
@@ -169,7 +160,7 @@ public abstract class SubstrateSigprofHandler extends AbstractJfrExecutionSample
     }
 
     @Uninterruptible(reason = "Prevent VM operations that modify thread-local execution sampler state.")
-    private void uninstall(IsolateThread thread) {
+    protected void uninstall(IsolateThread thread) {
         assert thread == CurrentIsolate.getCurrentThread() || VMOperation.isInProgressAtSafepoint();
 
         if (ExecutionSamplerInstallation.isInstalled(thread)) {

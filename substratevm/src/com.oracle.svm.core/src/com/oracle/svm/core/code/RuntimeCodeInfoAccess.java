@@ -83,7 +83,7 @@ public final class RuntimeCodeInfoAccess {
 
     public static void setCodeObjectConstantsInfo(CodeInfo info, NonmovableArray<Byte> refMapEncoding, long refMapIndex) {
         CodeInfoImpl impl = cast(info);
-        assert impl.getCodeStart().isNonNull();
+        assert impl.getCodeStart().isNonNull() : "null";
         impl.setCodeConstantsReferenceMapEncoding(refMapEncoding);
         impl.setCodeConstantsReferenceMapIndex(refMapIndex);
     }

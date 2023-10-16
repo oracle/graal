@@ -39,6 +39,7 @@ import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.ScheduleResult;
 import org.graalvm.compiler.nodes.cfg.ControlFlowGraph;
 import org.graalvm.compiler.nodes.spi.CoreProviders;
+import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.BasePhase;
 import org.graalvm.compiler.phases.common.CanonicalizerPhase;
 import org.graalvm.compiler.phases.common.DeadCodeEliminationPhase;
@@ -110,7 +111,7 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
                 }
                 boolean postTriggered = false;
                 try (DebugContext.Scope scheduleScope = debug.scope("EffectsPhaseWithSchedule", schedule)) {
-                    Closure<?> closure = createEffectsClosure(context, schedule, cfg);
+                    Closure<?> closure = createEffectsClosure(context, schedule, cfg, graph.getOptions());
                     ReentrantBlockIterator.apply(closure, cfg.getStartBlock());
 
                     if (closure.needsApplyEffects()) {
@@ -150,5 +151,5 @@ public abstract class EffectsPhase<CoreProvidersT extends CoreProviders> extends
         }
     }
 
-    protected abstract Closure<?> createEffectsClosure(CoreProvidersT context, ScheduleResult schedule, ControlFlowGraph cfg);
+    protected abstract Closure<?> createEffectsClosure(CoreProvidersT context, ScheduleResult schedule, ControlFlowGraph cfg, OptionValues options);
 }

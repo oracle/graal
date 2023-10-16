@@ -90,13 +90,11 @@ public abstract class WasmBenchmarkSuiteBase {
             context = contextBuilder.build();
             benchmarkCase = WasmCase.loadBenchmarkCase(benchmarkResource());
             System.out.println("...::: Benchmark " + benchmarkCase.name() + " :::...");
-            benchmarkCase.getSources(EnumSet.noneOf(WasmBinaryTools.WabtOption.class)).forEach(context::eval);
+            var sources = benchmarkCase.getSources(EnumSet.noneOf(WasmBinaryTools.WabtOption.class));
+            sources.forEach(context::eval);
 
-            // TODO: This should call benchmarkCase.name(), and not main (GR-26734),
-            // but we currently have a hack because the WASI module imports
-            // a memory from a module called main.
-            // We should fix that in the future.
-            Value benchmarkModule = context.getBindings(WasmLanguage.ID).getMember("main");
+            String mainModuleName = benchmarkCase.name();
+            Value benchmarkModule = context.getBindings(WasmLanguage.ID).getMember(mainModuleName);
             Value benchmarkSetupOnce = benchmarkModule.getMember("benchmarkSetupOnce");
             benchmarkSetupEach = benchmarkModule.getMember("benchmarkSetupEach");
             benchmarkTeardownEach = benchmarkModule.getMember("benchmarkTeardownEach");

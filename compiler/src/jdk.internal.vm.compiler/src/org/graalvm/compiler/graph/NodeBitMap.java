@@ -29,6 +29,7 @@ import java.util.ConcurrentModificationException;
 import java.util.Iterator;
 import java.util.NoSuchElementException;
 
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
 
 public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Node> {
@@ -188,7 +189,9 @@ public final class NodeBitMap extends NodeIdAccessor implements NodeIterable<Nod
         int wordsInUse = bits.length;
         if (wordIndex < wordsInUse) {
             long word = getPartOfWord(bits[wordIndex], fromNodeId);
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: process all nodes until highest node id created
+                           // so far
+                CompilationAlarm.checkProgress(graph);
                 while (word != 0) {
                     int bitIndex = Long.numberOfTrailingZeros(word);
                     int nodeId = wordIndex * Long.SIZE + bitIndex;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -29,6 +29,7 @@
  */
 package com.oracle.truffle.llvm.parser.binary;
 
+import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -107,11 +108,15 @@ public final class BinaryParser {
         if (sourcePath == null) {
             return null;
         }
-        Path parent = Paths.get(sourcePath).getParent();
-        if (parent == null) {
+        try {
+            Path parent = Paths.get(sourcePath).getParent();
+            if (parent == null) {
+                return null;
+            }
+            return parent.toString();
+        } catch (InvalidPathException ex) {
             return null;
         }
-        return parent.toString();
     }
 
     private ByteSequence parseBitcode(ByteSequence bytes, Source source) {

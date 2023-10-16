@@ -474,7 +474,7 @@ public class BenchmarkCounters {
                 @Override
                 public void run() {
                     try (PrintStreamScope scope = getPrintStream(options)) {
-                        while (true) {
+                        while (true) { // TERMINATION ARGUMENT: busy waiting loop
                             try {
                                 Thread.sleep(Options.TimedDynamicCounters.getValue(options));
                             } catch (InterruptedException e) {

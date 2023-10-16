@@ -24,6 +24,7 @@
  */
 package org.graalvm.compiler.nodes.loop;
 
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.ValueNode;
 
@@ -45,6 +46,7 @@ public abstract class DerivedInductionVariable extends InductionVariable {
     }
 
     public InductionVariable getBase() {
+        CompilationAlarm.checkProgress(base.graph());
         return base;
     }
 

@@ -133,7 +133,9 @@ public class AArch64ControlFlow {
         @Override
         protected void emitBranch(CompilationResultBuilder crb, AArch64MacroAssembler masm, LabelRef target, boolean negate) {
             AArch64Assembler.ConditionFlag finalCond = negate ? condition.negate() : condition;
-            masm.branchConditionally(finalCond, target.label());
+            Consumer<Label> originalBranch = l -> masm.branchConditionally(finalCond, l);
+            Consumer<Label> negatedBranch = l -> masm.branchConditionally(finalCond.negate(), l);
+            emitBranchOrFarBranch(crb, masm, this, 21, target.label(), originalBranch, negatedBranch);
         }
     }
 

@@ -25,7 +25,6 @@
 #include "jvmti_env.h"
 #include "structs.h"
 
-#include <trufflenfi.h>
 #include <jni.h>
 #include <stdlib.h>
 #include <stdio.h>

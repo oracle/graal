@@ -31,6 +31,8 @@ import org.graalvm.compiler.nodes.InvokeNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.java.MethodCallTargetNode;
 import org.graalvm.compiler.nodes.java.TypeSwitchNode;
+import org.graalvm.compiler.test.SubprocessUtil;
+import org.junit.Assume;
 import org.junit.Before;
 import org.junit.Test;
 
@@ -42,6 +44,11 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.TriState;
 
 public class PolymorphicInliningTest extends GraalCompilerTest {
+
+    @Before
+    public void checkJavaAgent() {
+        Assume.assumeFalse("Java Agent found -> skipping", SubprocessUtil.isJavaAgentAttached());
+    }
 
     @Before
     public void initializeNotInlinableMethod() {

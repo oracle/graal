@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,34 +40,38 @@
  */
 package org.graalvm.wasm.predefined.wasi;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.fd.Fd;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.frame.VirtualFrame;
+
 public final class WasiFdFdstatSetFlagsNode extends WasmBuiltinRootNode {
 
-    public WasiFdFdstatSetFlagsNode(WasmLanguage language, WasmInstance module) {
+    public WasiFdFdstatSetFlagsNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return fdFdstatSetFlags(context, (int) args[0], (short) (int) args[1]);
+        return fdFdstatSetFlags(context, memory(frame), (int) WasmArguments.getArgument(args, 0), (short) (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int fdFdstatSetFlags(WasmContext context, int fd, short fdflags) {
+    private int fdFdstatSetFlags(WasmContext context, WasmMemory memory, int fd, short fdflags) {
         final Fd handle = context.fdManager().get(fd);
         if (handle == null) {
             return Errno.Badf.ordinal();
         }
-        return handle.fdstatSetFlags(this, memory(), fdflags).ordinal();
+        return handle.fdstatSetFlags(this, memory, fdflags).ordinal();
     }
 
     @Override

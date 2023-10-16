@@ -280,7 +280,7 @@
     run+: [
       self.benchmark_cmd + ["jmh-whitebox:*", "--"] + self.extra_vm_args
     ],
-    timelimit: "3:00:00",
+    timelimit: "6:00:00",
     min_jdk_version:: 8,
     max_jdk_version:: null
   },

@@ -69,8 +69,12 @@ final class DefaultStackTraceElementObject implements TruffleObject {
 
     @ExportMessage
     @TruffleBoundary
-    Object getExecutableName() {
-        return rootNode.getName();
+    Object getExecutableName() throws UnsupportedMessageException {
+        String name = rootNode.getName();
+        if (name == null) {
+            throw UnsupportedMessageException.create();
+        }
+        return name;
     }
 
     @ExportMessage

@@ -1,6 +1,4 @@
 #
-# ----------------------------------------------------------------------------------------------------
-#
 # Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
@@ -24,7 +22,7 @@
 # or visit www.oracle.com if you need additional information or have any
 # questions.
 #
-# ----------------------------------------------------------------------------------------------------
+
 import datetime
 import os
 import re
@@ -136,7 +134,7 @@ class NativeImageVM(GraalVm):
             self.bmSuite = bm_suite
             self.benchmark_suite_name = bm_suite.benchSuiteName(args) if len(inspect.getfullargspec(bm_suite.benchSuiteName).args) > 1 else bm_suite.benchSuiteName()
             self.benchmark_name = bm_suite.benchmarkName()
-            self.executable, self.classpath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
+            self.executable, self.classpath_arguments, self.modulepath_arguments, self.system_properties, self.image_vm_args, image_run_args, self.split_run = NativeImageVM.extract_benchmark_arguments(args)
             self.extra_image_build_arguments = bm_suite.extra_image_build_argument(self.benchmark_name, args)
             # use list() to create fresh copies to safeguard against accidental modification
             self.image_run_args = bm_suite.extra_run_arg(self.benchmark_name, args, list(image_run_args))
@@ -185,6 +183,7 @@ class NativeImageVM(GraalVm):
             self.bundle_create_path = self.get_bundle_create_path_if_present()
             if not self.bundle_path:
                 self.base_image_build_args += self.classpath_arguments
+                self.base_image_build_args += self.modulepath_arguments
                 self.base_image_build_args += self.executable
                 self.base_image_build_args += svm_experimental_options(['-H:Path=' + self.output_dir])
             self.base_image_build_args += svm_experimental_options([
@@ -459,7 +458,7 @@ class NativeImageVM(GraalVm):
     _VM_OPTS_SPACE_SEPARATED_ARG = ['-mp', '-modulepath', '-limitmods', '-addmods', '-upgrademodulepath', '-m',
                                     '--module-path', '--limit-modules', '--add-modules', '--upgrade-module-path',
                                     '--module', '--module-source-path', '--add-exports', '--add-opens', '--add-reads',
-                                    '--patch-module', '--boot-class-path', '--source-path', '-cp', '-classpath']
+                                    '--patch-module', '--boot-class-path', '--source-path', '-cp', '-classpath', '-p']
 
     @staticmethod
     def _split_vm_arguments(args):
@@ -495,6 +494,7 @@ class NativeImageVM(GraalVm):
         vm_args, executable, image_run_args = NativeImageVM._split_vm_arguments(clean_args)
 
         classpath_arguments = []
+        modulepath_arguments = []
         system_properties = [a for a in vm_args if a.startswith('-D')]
         image_vm_args = []
         i = 0
@@ -505,6 +505,9 @@ class NativeImageVM(GraalVm):
                 i += 1
             elif vm_arg.startswith('-cp') or vm_arg.startswith('-classpath'):
                 classpath_arguments += [vm_arg, vm_args[i + 1]]
+                i += 2
+            elif vm_arg.startswith('-p') or vm_arg.startswith('-modulepath'):
+                modulepath_arguments += [vm_arg, vm_args[i + 1]]
                 i += 2
             else:
                 if not any(vm_arg.startswith(elem) for elem in NativeImageVM.supported_vm_arg_prefixes()):
@@ -518,7 +521,7 @@ class NativeImageVM(GraalVm):
                     image_vm_args.append(vm_arg)
                     i += 1
 
-        return executable, classpath_arguments, system_properties, image_vm_args, image_run_args, split_run
+        return executable, classpath_arguments, modulepath_arguments, system_properties, image_vm_args, image_run_args, split_run
 
     class Stages:
         def __init__(self, config, bench_out, bench_err, is_gate, non_zero_is_fatal, cwd):
@@ -910,7 +913,7 @@ class NativeImageVM(GraalVm):
         if config.image_vm_args is not None:
             hotspot_vm_args += config.image_vm_args
 
-        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.system_properties + config.executable + config.extra_agent_run_args
+        hotspot_args = hotspot_vm_args + config.classpath_arguments + config.modulepath_arguments + config.system_properties + config.executable + config.extra_agent_run_args
         with stages.set_command(self.generate_java_command(hotspot_args)) as s:
             s.execute_command()
 

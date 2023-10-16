@@ -17,8 +17,6 @@ These manuals are aimed at software engineers and developers who already work wi
 
 [Java on Truffle](java-on-truffle/README.md) - learn how to run Java via a Java bytecode interpreter, implemented with the [Truffle framework](../../truffle/docs/README.md).
 
-[GraalVM Updater](graalvm-updater.md) - learn how to add more capabilities and upgrade the core GraalVM installation.
-
 [Polyglot Programming](polyglot-programming.md) - learn how to write polyglot applications and allow languages to directly interoperate with each other in the same memory space.
 
 [Embedding Languages](embedding/embed-languages.md) - learn how to embed polyglot applications in Java host applications or native images.

@@ -42,7 +42,7 @@ package com.oracle.truffle.api.library;
 
 import static com.oracle.truffle.api.CompilerDirectives.shouldNotReachHere;
 
-import java.lang.reflect.Field;
+import java.lang.invoke.MethodHandles;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -67,8 +67,6 @@ import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.library.provider.DefaultExportProvider;
 import com.oracle.truffle.api.library.provider.EagerExportProvider;
 import com.oracle.truffle.api.utilities.FinalBitSet;
-
-import sun.misc.Unsafe;
 
 /**
  * Library factories allow to create instances of libraries used to call library messages. A library
@@ -374,7 +372,6 @@ public abstract class LibraryFactory<T extends Library> {
         return dispatch;
     }
 
-    @SuppressWarnings("deprecation")
     private void ensureLibraryInitialized() {
         CompilerAsserts.neverPartOfCompilation();
         /*
@@ -382,7 +379,11 @@ public abstract class LibraryFactory<T extends Library> {
          * initialized before any of the export subclasses. So this method must be invoked before
          * any instantiation of a library export.
          */
-        Lazy.UNSAFE.ensureClassInitialized(libraryClass);
+        try {
+            getLookup().ensureInitialized(libraryClass);
+        } catch (IllegalAccessException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
     }
 
     /**
@@ -617,6 +618,15 @@ public abstract class LibraryFactory<T extends Library> {
      */
     protected abstract Class<?> getDefaultClass(Object receiver);
 
+    /**
+     * Returns a method handle lookup used to initialize the library class.
+     *
+     * @since 24.0
+     */
+    protected MethodHandles.Lookup getLookup() {
+        throw new UnsupportedOperationException();
+    }
+
     private Class<?> getDefaultClassImpl(Object receiver) {
         for (DefaultExportProvider defaultExport : beforeBuiltinDefaultExports) {
             if (defaultExport.getReceiverClass().isInstance(receiver)) {
@@ -758,38 +768,6 @@ public abstract class LibraryFactory<T extends Library> {
             }
         }
         return (LibraryFactory<T>) lib;
-    }
-
-    /**
-     * Annotation processors running in the Eclipse JDT compiler that resolve {@link LibraryFactory}
-     * also try to eagerly resolve the type of all its fields. If {@code jdk.unsupported} is not in
-     * the module graph of the JDT compile environment, this can result in the Truffle annotation
-     * processor failing with an internal error that includes the follow message:
-     *
-     * <pre>
-     *   The type sun.misc.Unsafe cannot be resolved. It is indirectly referenced from required .class files
-     * </pre>
-     *
-     * Putting the Unsafe field in an inner class works around this (over)eager resolution by JDT.
-     */
-    static class Lazy {
-        private static final sun.misc.Unsafe UNSAFE;
-
-        static {
-            Unsafe unsafe;
-            try {
-                unsafe = Unsafe.getUnsafe();
-            } catch (SecurityException e) {
-                try {
-                    Field theUnsafeInstance = Unsafe.class.getDeclaredField("theUnsafe");
-                    theUnsafeInstance.setAccessible(true);
-                    unsafe = (Unsafe) theUnsafeInstance.get(Unsafe.class);
-                } catch (Exception e2) {
-                    throw new RuntimeException("exception while trying to get Unsafe.theUnsafe via reflection:", e2);
-                }
-            }
-            UNSAFE = unsafe;
-        }
     }
 
     static LibraryFactory<?> loadGeneratedClass(Class<?> libraryClass) {

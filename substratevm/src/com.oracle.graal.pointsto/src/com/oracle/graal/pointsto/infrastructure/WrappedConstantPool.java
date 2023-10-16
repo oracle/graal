@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 
 import org.graalvm.compiler.core.common.BootstrapMethodIntrospection;
 import org.graalvm.compiler.debug.GraalError;
+import org.graalvm.compiler.serviceprovider.GraalServices;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.svm.util.ReflectionUtil;
@@ -44,7 +45,6 @@ import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
@@ -61,6 +61,10 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
     @Override
     public int length() {
         return wrapped.length();
+    }
+
+    private JavaConstant lookupConstant(JavaConstant constant) {
+        return universe.lookup(constant);
     }
 
     /**
@@ -155,7 +159,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
 
     @Override
     public JavaConstant lookupAppendix(int cpi, int opcode) {
-        return universe.lookup(wrapped.lookupAppendix(cpi, opcode));
+        return lookupConstant(wrapped.lookupAppendix(cpi, opcode));
     }
 
     @Override
@@ -179,7 +183,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
                 return con;
             }
         } else if (con instanceof JavaConstant) {
-            return universe.lookup((JavaConstant) con);
+            return lookupConstant((JavaConstant) con);
         } else if (con == null && resolve == false) {
             return null;
         } else {
@@ -251,7 +255,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
         public JavaConstant getType() {
             if (bsmGetType != null) {
                 try {
-                    return universe.lookup((JavaConstant) bsmGetType.invoke(wrapped));
+                    return lookupConstant((JavaConstant) bsmGetType.invoke(wrapped));
                 } catch (Throwable t) {
                     throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }
@@ -264,7 +268,7 @@ public class WrappedConstantPool implements ConstantPool, ConstantPoolPatch {
             if (bsmGetStaticArguments != null) {
                 try {
                     List<?> original = (List<?>) bsmGetStaticArguments.invoke(wrapped);
-                    return original.stream().map(e -> universe.lookup((JavaConstant) e)).collect(Collectors.toList());
+                    return original.stream().map(e -> lookupConstant((JavaConstant) e)).collect(Collectors.toList());
                 } catch (Throwable t) {
                     throw GraalError.shouldNotReachHere(t); // ExcludeFromJacocoGeneratedReport
                 }

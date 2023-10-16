@@ -1,13 +1,35 @@
+# Copyright (c) 2019, 2023 Oracle and/or its affiliates. All rights reserved.
+# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+#
+# This code is free software; you can redistribute it and/or modify it
+# under the terms of the GNU General Public License version 2 only, as
+# published by the Free Software Foundation.  Oracle designates this
+# particular file as subject to the "Classpath" exception as provided
+# by Oracle in the LICENSE file that accompanied this code.
+#
+# This code is distributed in the hope that it will be useful, but WITHOUT
+# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+# version 2 for more details (a copy is included in the LICENSE file that
+# accompanied this code).
+#
+# You should have received a copy of the GNU General Public License version
+# 2 along with this work; if not, write to the Free Software Foundation,
+# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+#
+# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+# or visit www.oracle.com if you need additional information or have any
+# questions.
+#
+> java CopyStripLicense.java iterateFrames* ${TMP_DIR}/
+> java CopyStripLicense.java ../../../benchmarks/agentscript/sieve.js ${TMP_DIR}/sieve.js
+> java CopyStripLicense.java agent-fib-main.js ${TMP_DIR}/fib.js
+> cd ${TMP_DIR}
 >[0] js iterateFramesJsTypes.mjs
 6
 >[0] js --insight=iterateFramesJsInsight.js iterateFramesJsTypes.mjs
 at ./iterateFramesJsTypesMod.mjs:3 {"a":3}{"b":2}{"c":1}{}
 6
-> cp iterateFrames.js ${TMP_DIR}/iterateFrames.js
-> cp iterateFramesSieve.js ${TMP_DIR}/iterateFramesSieve.js
-> cp ../../../benchmarks/agentscript/sieve.js ${TMP_DIR}/sieve.js
-> cp agent-fib-main.js ${TMP_DIR}/fib.js
-> cd ${TMP_DIR}
 >[0] js --insight=iterateFrames.js fib.js
 dumping locals
     at fib (fib.js:8:3) n has value 1
@@ -90,19 +112,19 @@ Computed 12416 primes in [0-9]+ ms. Last one is 133033
 Computed 24832 primes in [0-9]+ ms. Last one is 284831
 Computed 49664 primes in [0-9]+ ms. Last one is 607417
 Iterating the Filter with 1289513 stack from Insight
-.*at.*js.*Filter.*sieve.js.*1413.
-.*at.*js.*Filter.acceptAndAdd.*sieve.js.*1712.
-.*at.*js.*Primes.next.*sieve.js.*2106.
-.*at.*js.*measure.*sieve.js.*2346.
-.*at.*js.*oneRound.*sieve.js.*3373.
-.*at.*js.*setTimeout.*sieve.js.*3216.
-.*at.*js.*program.*sieve.js.*3473.
+.*at.*js.*Filter.*sieve.js:8:.*
+.*at.*js.*Filter.acceptAndAdd.*sieve.js:25:.*
+.*at.*js.*Primes.next.*sieve.js:42:.*
+.*at.*js.*measure.*sieve.js:55:.*
+.*at.*js.*oneRound.*sieve.js:92:.*
+.*at.*js.*setTimeout.*sieve.js:84:.*
+.*at.*js.*program.*sieve.js:97:.*
 Is the printed stack comparable with thrown exception?
-.*at.*js.*dumpStack.*iterateFramesSieve.js.*476.
-.*at.*js.*Filter.*sieve.js.*1413.
-.*at.*js.*Filter.acceptAndAdd.*sieve.js.*1712.
-.*at.*js.*Primes.next.*sieve.js.*2106.
-.*at.*js.*measure.*sieve.js.*2346.
-.*at.*js.*oneRound.*sieve.js.*3373.
-.*at.*js.*setTimeout.*sieve.js.*3216.
-.*at.*js.*program.*sieve.js.*3473.
+.*at.*js.*dumpStack.*iterateFramesSieve.js:10:.*
+.*at.*js.*Filter.*sieve.js:8-12:.*
+.*at.*js.*Filter.acceptAndAdd.*sieve.js:25:.*
+.*at.*js.*Primes.next.*sieve.js:42:.*
+.*at.*js.*measure.*sieve.js:55:.*
+.*at.*js.*oneRound.*sieve.js:92:.*
+.*at.*js.*setTimeout.*sieve.js:84:.*
+.*at.*js.*program.*sieve.js:97:.*

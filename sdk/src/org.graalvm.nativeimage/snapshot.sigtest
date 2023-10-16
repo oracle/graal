@@ -17,6 +17,7 @@ intf java.lang.Comparable<{java.lang.Enum%0}>
 intf java.lang.constant.Constable
 meth protected final java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected final void finalize()
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="18")
 meth public final boolean equals(java.lang.Object)
 meth public final int compareTo({java.lang.Enum%0})
 meth public final int hashCode()
@@ -57,7 +58,7 @@ CLSS public java.lang.Object
 cons public init()
 meth protected java.lang.Object clone() throws java.lang.CloneNotSupportedException
 meth protected void finalize() throws java.lang.Throwable
- anno 0 java.lang.Deprecated(boolean forRemoval=false, java.lang.String since="9")
+ anno 0 java.lang.Deprecated(boolean forRemoval=true, java.lang.String since="9")
 meth public boolean equals(java.lang.Object)
 meth public final java.lang.Class<?> getClass()
 meth public final void notify()
@@ -943,6 +944,7 @@ innr public abstract interface static AfterImageWriteAccess
 innr public abstract interface static AfterRegistrationAccess
 innr public abstract interface static BeforeAnalysisAccess
 innr public abstract interface static BeforeCompilationAccess
+innr public abstract interface static BeforeHeapLayoutAccess
 innr public abstract interface static BeforeImageWriteAccess
 innr public abstract interface static BeforeUniverseBuildingAccess
 innr public abstract interface static CompilationAccess
@@ -963,6 +965,7 @@ meth public void afterImageWrite(org.graalvm.nativeimage.hosted.Feature$AfterIma
 meth public void afterRegistration(org.graalvm.nativeimage.hosted.Feature$AfterRegistrationAccess)
 meth public void beforeAnalysis(org.graalvm.nativeimage.hosted.Feature$BeforeAnalysisAccess)
 meth public void beforeCompilation(org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess)
+meth public void beforeHeapLayout(org.graalvm.nativeimage.hosted.Feature$BeforeHeapLayoutAccess)
 meth public void beforeImageWrite(org.graalvm.nativeimage.hosted.Feature$BeforeImageWriteAccess)
 meth public void beforeUniverseBuilding(org.graalvm.nativeimage.hosted.Feature$BeforeUniverseBuildingAccess)
 meth public void cleanup()
@@ -1005,6 +1008,10 @@ meth public abstract void registerMethodOverrideReachabilityHandler(java.util.fu
 meth public abstract void registerSubtypeReachabilityHandler(java.util.function.BiConsumer<org.graalvm.nativeimage.hosted.Feature$DuringAnalysisAccess,java.lang.Class<?>>,java.lang.Class<?>)
 
 CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeCompilationAccess
+ outer org.graalvm.nativeimage.hosted.Feature
+intf org.graalvm.nativeimage.hosted.Feature$CompilationAccess
+
+CLSS public abstract interface static org.graalvm.nativeimage.hosted.Feature$BeforeHeapLayoutAccess
  outer org.graalvm.nativeimage.hosted.Feature
 intf org.graalvm.nativeimage.hosted.Feature$CompilationAccess
 

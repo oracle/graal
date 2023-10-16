@@ -821,11 +821,11 @@ public final class NodeClass<T> extends FieldIntrospection<T> {
         return type == Edges.Type.Inputs ? inputs : successors;
     }
 
-    public Edges getInputEdges() {
+    public InputEdges getInputEdges() {
         return inputs;
     }
 
-    public Edges getSuccessorEdges() {
+    public SuccessorEdges getSuccessorEdges() {
         return successors;
     }
 

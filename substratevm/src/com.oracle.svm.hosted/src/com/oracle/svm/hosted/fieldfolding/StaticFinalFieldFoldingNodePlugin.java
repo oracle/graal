@@ -80,7 +80,7 @@ final class StaticFinalFieldFoldingNodePlugin implements NodePlugin {
             return false;
         }
 
-        if (aField.wrapped instanceof ReadableJavaField && !((ReadableJavaField) aField.wrapped).isValueAvailable()) {
+        if (!ReadableJavaField.isValueAvailable(aField)) {
             /*
              * Cannot optimize static field whose value is recomputed and is not yet available,
              * i.e., it may depend on analysis/compilation derived data.

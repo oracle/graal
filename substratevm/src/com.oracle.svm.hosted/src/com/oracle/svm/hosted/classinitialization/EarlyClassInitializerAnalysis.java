@@ -58,7 +58,6 @@ import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.tiers.HighTierContext;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 
@@ -123,7 +122,7 @@ final class EarlyClassInitializerAnalysis {
 
     @SuppressWarnings("try")
     boolean canInitializeWithoutSideEffects(Class<?> clazz, Set<Class<?>> existingAnalyzedClasses) {
-        if (JavaVersionUtil.JAVA_SPEC >= 19 && Proxy.isProxyClass(clazz)) {
+        if (Proxy.isProxyClass(clazz)) {
             /*
              * The checks below consider proxy class initialization as of JDK 19 to have side
              * effects because it accesses Class.classLoader and System.allowSecurityManager, but

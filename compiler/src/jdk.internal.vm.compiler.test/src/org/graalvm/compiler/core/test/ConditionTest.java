@@ -44,7 +44,7 @@ public class ConditionTest {
 
     @Test
     public void testImplies() {
-        Random rand = new Random(13);
+        Random rand = GraalCompilerTest.getRandomInstance();
         for (Condition c1 : Condition.values()) {
             for (Condition c2 : Condition.values()) {
                 boolean implies = c1.implies(c2);
@@ -65,7 +65,7 @@ public class ConditionTest {
 
     @Test
     public void testJoin() {
-        Random rand = new Random(13);
+        Random rand = GraalCompilerTest.getRandomInstance();
         for (Condition c1 : Condition.values()) {
             for (Condition c2 : Condition.values()) {
                 Condition join = c1.join(c2);
@@ -90,7 +90,7 @@ public class ConditionTest {
 
     @Test
     public void testMeet() {
-        Random rand = new Random(13);
+        Random rand = GraalCompilerTest.getRandomInstance();
         for (Condition c1 : Condition.values()) {
             for (Condition c2 : Condition.values()) {
                 Condition meet = c1.meet(c2);

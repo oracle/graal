@@ -74,6 +74,7 @@ public final class GraalServices {
             lookupConstantWithResolve = ConstantPool.class.getDeclaredMethod("lookupConstant", Integer.TYPE, Boolean.TYPE);
         } catch (NoSuchMethodException e) {
         }
+
         constantPoolLookupMethodWithCaller = lookupMethodWithCaller;
         constantPoolLookupConstantWithResolve = lookupConstantWithResolve;
     }
@@ -464,7 +465,7 @@ public final class GraalServices {
                 throw new InternalError(throwable);
             }
         }
-        throw new InternalError("This JVMCI version doesn't support ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)");
+        throw new InternalError("This JDK doesn't support ConstantPool.lookupMethod(int, int, ResolvedJavaMethod)");
     }
 
     public static Object lookupConstant(ConstantPool constantPool, int cpi, boolean resolve) {

@@ -100,9 +100,8 @@ public class SubstrateGraphKit extends GraphKit {
     private final FrameStateBuilder frameState;
     private int nextBCI;
 
-    // For GR-45916 this should be unconditionally true when parseOnce is enabled.
     private static boolean trackNodeSourcePosition(boolean forceTrackNodeSourcePosition) {
-        return forceTrackNodeSourcePosition || (SubstrateOptions.parseOnce() && !SubstrateOptions.ParseOnceJIT.getValue());
+        return forceTrackNodeSourcePosition || SubstrateOptions.parseOnce();
     }
 
     @SuppressWarnings("this-escape")

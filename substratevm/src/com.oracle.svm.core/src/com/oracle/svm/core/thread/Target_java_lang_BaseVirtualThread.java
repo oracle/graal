@@ -25,8 +25,7 @@
 package com.oracle.svm.core.thread;
 
 import com.oracle.svm.core.annotate.TargetClass;
-import com.oracle.svm.core.jdk.JDK19OrLater;
 
-@TargetClass(className = "java.lang.BaseVirtualThread", onlyWith = JDK19OrLater.class)
+@TargetClass(className = "java.lang.BaseVirtualThread")
 public final class Target_java_lang_BaseVirtualThread {
 }

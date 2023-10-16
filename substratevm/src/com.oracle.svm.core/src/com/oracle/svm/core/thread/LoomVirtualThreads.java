@@ -58,7 +58,7 @@ final class LoomVirtualThreads implements VirtualThreads {
 
     @Override
     public ThreadFactory createFactory() {
-        return Target_java_lang_Thread.ofVirtual().factory();
+        return SubstrateUtil.cast(Target_java_lang_Thread.ofVirtual(), Target_java_lang_Thread_Builder.class).factory();
     }
 
     @Override

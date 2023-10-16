@@ -447,9 +447,9 @@ CXX = {CXX}
 AR = {AR}
 
 """.format(gcc_toolchain=_ninja_escape_string(os.path.join(gcc_ninja_toolchain.get_output(), 'toolchain.ninja')),
-           CC=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('CC')),
-           CXX=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('CXX')),
-           AR=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('AR')))
+           CC=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('CC', allow_bootstrap=True)),
+           CXX=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('CXX', allow_bootstrap=True)),
+           AR=_ninja_escape_string(self.subject.suite.toolchain.get_toolchain_tool('AR', allow_bootstrap=True)))
 
 
 class AbstractSulongNativeProject(mx.NativeProject):  # pylint: disable=too-many-ancestors

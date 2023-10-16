@@ -53,12 +53,17 @@ public class LibGraalObject {
     static {
         if (LibGraal.isAvailable()) {
             LibGraal.registerNativeMethods(LibGraalObject.class);
-            Runtime.getRuntime().addShutdownHook(new Thread() {
-                @Override
-                public void run() {
-                    exiting = true;
-                }
-            });
+            try {
+                Runtime.getRuntime().addShutdownHook(new Thread() {
+                    @Override
+                    public void run() {
+                        exiting = true;
+                    }
+                });
+            } catch (IllegalStateException e) {
+                // shutdown already in progress
+                // catching the exception is the only way to detect this.
+            }
         }
     }
 

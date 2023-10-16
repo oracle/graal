@@ -80,8 +80,8 @@ import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.graal.code.CGlobalDataInfo;
 import com.oracle.svm.core.graal.nodes.CGlobalDataLoadAddressNode;
 import com.oracle.svm.core.util.VMError;
-import com.oracle.svm.hosted.FeatureImpl.DuringSetupAccessImpl;
 import com.oracle.svm.hosted.image.RelocatableBuffer;
+import com.oracle.svm.hosted.meta.HostedSnippetReflectionProvider;
 import com.oracle.svm.util.ReflectionUtil;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -96,7 +96,6 @@ public class CGlobalDataFeature implements InternalFeature {
     private final Field isSymbolReferenceField = ReflectionUtil.lookupField(CGlobalDataInfo.class, "isSymbolReference");
 
     private final CGlobalDataNonConstantRegistry nonConstantRegistry = new CGlobalDataNonConstantRegistry();
-    private JavaConstant nonConstantRegistryJavaConstant;
 
     private final Map<CGlobalDataImpl<?>, CGlobalDataInfo> map = new ConcurrentHashMap<>();
     private CGlobalDataInfo cGlobalDataBaseAddress;
@@ -112,10 +111,8 @@ public class CGlobalDataFeature implements InternalFeature {
 
     @Override
     public void duringSetup(DuringSetupAccess a) {
-        DuringSetupAccessImpl access = (DuringSetupAccessImpl) a;
         a.registerObjectReplacer(this::replaceObject);
         cGlobalDataBaseAddress = registerAsAccessedOrGet(CGlobalDataInfo.CGLOBALDATA_RUNTIME_BASE_ADDRESS);
-        nonConstantRegistryJavaConstant = access.getMetaAccess().getUniverse().getSnippetReflection().forObject(nonConstantRegistry);
     }
 
     @Override
@@ -129,6 +126,8 @@ public class CGlobalDataFeature implements InternalFeature {
         r.register(new RequiredInvocationPlugin("get", Receiver.class) {
             @Override
             public boolean apply(GraphBuilderContext b, ResolvedJavaMethod targetMethod, Receiver receiver) {
+                assert snippetReflection instanceof HostedSnippetReflectionProvider;
+                JavaConstant nonConstantRegistryJavaConstant = snippetReflection.forObject(nonConstantRegistry);
                 ValueNode cGlobalDataNode = receiver.get();
                 if (cGlobalDataNode.isConstant()) {
                     CGlobalDataImpl<?> data = providers.getSnippetReflection().asObject(CGlobalDataImpl.class, cGlobalDataNode.asJavaConstant());

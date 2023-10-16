@@ -32,14 +32,29 @@ final class NativeSignatureImpl implements NativeSignature {
     private final NativeType returnType;
     @CompilationFinal(dimensions = 1) //
     private final NativeType[] parameterTypes;
+    @CompilationFinal(dimensions = 1) //
+    private final NativeType[] varArgsParameterTypes;
 
     NativeSignatureImpl(NativeType returnType, NativeType[] parameterTypes) {
+        this(returnType, parameterTypes, null);
+    }
+
+    NativeSignatureImpl(NativeType returnType, NativeType[] parameterTypes, NativeType[] varArgsParameterTypes) {
         this.returnType = Objects.requireNonNull(returnType);
         this.parameterTypes = Objects.requireNonNull(parameterTypes);
+        this.varArgsParameterTypes = varArgsParameterTypes;
         for (int i = 0; i < parameterTypes.length; i++) {
             NativeType param = Objects.requireNonNull(parameterTypes[i]);
             if (param == NativeType.VOID) {
                 throw new IllegalArgumentException("Invalid VOID parameter type");
+            }
+        }
+        if (varArgsParameterTypes != null) {
+            for (int i = 0; i < varArgsParameterTypes.length; i++) {
+                NativeType param = Objects.requireNonNull(varArgsParameterTypes[i]);
+                if (param == NativeType.VOID) {
+                    throw new IllegalArgumentException("Invalid VOID parameter type");
+                }
             }
         }
     }
@@ -55,8 +70,16 @@ final class NativeSignatureImpl implements NativeSignature {
     }
 
     @Override
+    public int getVarArgsParameterCount() {
+        return varArgsParameterTypes == null ? 0 : varArgsParameterTypes.length;
+    }
+
+    @Override
     public NativeType parameterTypeAt(int index) {
-        return parameterTypes[index];
+        if (index < parameterTypes.length) {
+            return parameterTypes[index];
+        }
+        return varArgsParameterTypes[index - parameterTypes.length];
     }
 
     @Override
@@ -74,8 +97,12 @@ final class NativeSignatureImpl implements NativeSignature {
         if (parameterTypes.length != that.getParameterCount()) {
             return false;
         }
-        for (int i = 0; i < parameterTypes.length; ++i) {
-            if (parameterTypes[i] != that.parameterTypeAt(i)) {
+        if (this.getVarArgsParameterCount() != that.getParameterCount()) {
+            return false;
+        }
+        int totalParamaterCount = getParameterCount() + getVarArgsParameterCount();
+        for (int i = 0; i < totalParamaterCount; ++i) {
+            if (this.parameterTypeAt(i) != that.parameterTypeAt(i)) {
                 return false;
             }
         }
@@ -86,11 +113,12 @@ final class NativeSignatureImpl implements NativeSignature {
     public int hashCode() {
         int result = Objects.hash(returnType);
         result = 31 * result + Arrays.hashCode(parameterTypes);
+        result = 31 * result + Arrays.hashCode(varArgsParameterTypes);
         return result;
     }
 
     @Override
     public String toString() {
-        return Arrays.toString(parameterTypes) + " : " + returnType;
+        return Arrays.toString(parameterTypes) + (varArgsParameterTypes == null ? "" : "..." + Arrays.toString(varArgsParameterTypes)) + " : " + returnType;
     }
 }

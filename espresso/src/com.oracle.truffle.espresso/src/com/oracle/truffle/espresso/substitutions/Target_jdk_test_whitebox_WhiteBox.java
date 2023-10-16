@@ -32,7 +32,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.espresso.EspressoLanguage;
 import com.oracle.truffle.espresso.meta.Meta;
 import com.oracle.truffle.espresso.runtime.EspressoContext;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.vm.UnsafeAccess;
 
 @EspressoSubstitutions(nameProvider = Target_jdk_test_whitebox_WhiteBox.WhiteBoxNameProvider.class)

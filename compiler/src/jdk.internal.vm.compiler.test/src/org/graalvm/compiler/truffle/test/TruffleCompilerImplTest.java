@@ -125,7 +125,8 @@ public abstract class TruffleCompilerImplTest extends GraalCompilerTest {
     }
 
     protected final void setupContext(Context.Builder builder) {
-        setupContext(builder.allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "true").build());
+        // ProbeNode assertions have an effect on compilation. We turn them off.
+        setupContext(builder.allowAllAccess(true).option("engine.InstrumentExceptionsAreThrown", "true").option("engine.AssertProbes", "false").build());
     }
 
     protected final Context getContext() {

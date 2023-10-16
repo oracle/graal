@@ -31,7 +31,10 @@ import java.util.BitSet;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import org.graalvm.compiler.bytecode.Bytecode;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
+import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecode;
+import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.graph.NodeSourcePosition;
 import org.graalvm.compiler.hotspot.meta.HotSpotProviders;
@@ -39,18 +42,22 @@ import org.graalvm.compiler.hotspot.meta.HotSpotWordOperationPlugin;
 import org.graalvm.compiler.hotspot.word.HotSpotOperation;
 import org.graalvm.compiler.java.GraphBuilderPhase.Instance;
 import org.graalvm.compiler.nodes.Invoke;
+import org.graalvm.compiler.nodes.LogicNode;
 import org.graalvm.compiler.nodes.StructuredGraph;
 import org.graalvm.compiler.nodes.StructuredGraph.AllowAssumptions;
+import org.graalvm.compiler.nodes.extended.GuardingNode;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderPlugin;
 import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
 import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import org.graalvm.compiler.nodes.spi.CoreProviders;
 import org.graalvm.compiler.nodes.spi.SnippetParameterInfo;
 import org.graalvm.compiler.options.OptionValues;
 import org.graalvm.compiler.phases.OptimisticOptimizations;
 import org.graalvm.compiler.phases.util.Providers;
 import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import org.graalvm.compiler.replacements.IntrinsicGraphBuilder;
 import org.graalvm.compiler.replacements.ReplacementsImpl;
 
 import jdk.vm.ci.code.TargetDescription;
@@ -122,6 +129,49 @@ public class HotSpotReplacementsImpl extends ReplacementsImpl {
             }
         }
         super.notifyNotInlined(b, method, invoke);
+    }
+
+    public static class HotSpotIntrinsicGraphBuilder extends IntrinsicGraphBuilder {
+
+        public HotSpotIntrinsicGraphBuilder(OptionValues options, DebugContext debug, CoreProviders providers, Bytecode code, int invokeBci, AllowAssumptions allowAssumptions) {
+            super(options, debug, providers, code, invokeBci, allowAssumptions);
+        }
+
+        public HotSpotIntrinsicGraphBuilder(OptionValues options, DebugContext debug, CoreProviders providers, Bytecode code, int invokeBci, AllowAssumptions allowAssumptions,
+                        GraphBuilderConfiguration graphBuilderConfig) {
+            super(options, debug, providers, code, invokeBci, allowAssumptions, graphBuilderConfig);
+        }
+
+        @Override
+        public GuardingNode intrinsicRangeCheck(LogicNode condition, boolean negated) {
+            return HotSpotBytecodeParser.doIntrinsicRangeCheck(this, condition, negated);
+        }
+    }
+
+    @Override
+    public boolean hasSubstitution(ResolvedJavaMethod method, OptionValues options) {
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method, options);
+        return plugin != null;
+    }
+
+    @Override
+    public StructuredGraph getInlineSubstitution(ResolvedJavaMethod method, int invokeBci, Invoke.InlineControl inlineControl, boolean trackNodeSourcePosition, NodeSourcePosition replaceePosition,
+                    AllowAssumptions allowAssumptions, OptionValues options) {
+        assert invokeBci >= 0 : method;
+        if (!inlineControl.allowSubstitution()) {
+            return null;
+        }
+        StructuredGraph result;
+        InvocationPlugin plugin = graphBuilderPlugins.getInvocationPlugins().lookupInvocation(method, options);
+        if (plugin != null) {
+            Bytecode code = new ResolvedJavaMethodBytecode(method);
+            try (DebugContext debug = openSnippetDebugContext("Substitution_", method, options)) {
+                result = new HotSpotIntrinsicGraphBuilder(options, debug, providers, code, invokeBci, allowAssumptions).buildGraph(plugin);
+            }
+        } else {
+            result = null;
+        }
+        return result;
     }
 
     // When assertions are enabled, these fields are used to ensure all snippets are

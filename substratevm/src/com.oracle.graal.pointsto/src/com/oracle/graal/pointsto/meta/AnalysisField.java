@@ -131,7 +131,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
 
     @SuppressWarnings("this-escape")
     public AnalysisField(AnalysisUniverse universe, ResolvedJavaField wrappedField) {
-        assert !wrappedField.isInternal();
+        assert !wrappedField.isInternal() : wrappedField;
 
         this.position = -1;
 
@@ -240,14 +240,14 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     }
 
     public FieldTypeFlow getStaticFieldFlow() {
-        assert Modifier.isStatic(this.getModifiers());
+        assert Modifier.isStatic(this.getModifiers()) : this;
 
         return staticFieldFlow;
     }
 
     /** Get the field type flow, stripped of any context. */
     public ContextInsensitiveFieldTypeFlow getInstanceFieldFlow() {
-        assert !Modifier.isStatic(this.getModifiers());
+        assert !Modifier.isStatic(this.getModifiers()) : this;
 
         return instanceFieldFlow;
     }
@@ -317,7 +317,7 @@ public abstract class AnalysisField extends AnalysisElement implements WrappedJa
     public void registerAsFolded(Object reason) {
         assert isValidReason(reason) : "Registering a field as folded needs to provide a valid reason.";
         if (AtomicUtils.atomicSet(this, reason, isFoldedUpdater)) {
-            assert getDeclaringClass().isReachable();
+            assert getDeclaringClass().isReachable() : this;
             onReachable();
         }
     }

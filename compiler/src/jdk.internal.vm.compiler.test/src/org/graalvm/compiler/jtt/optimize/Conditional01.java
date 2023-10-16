@@ -85,13 +85,13 @@ public class Conditional01 extends JTTTest {
     }
 
     private static final int RAM_SIZE = 0x100;
-    private static final int init = new Random().nextInt();
+    public static final Random RANDOM_INSTANCE = getRandomInstance();
     private static final int init1 = new Register().val;
     private static final Register init2 = new CPC().r1;
 
     public static int test(int arg) {
         TestClass c = new TestClass();
-        Random rnd = new Random();
+        Random rnd = RANDOM_INSTANCE;
         for (int i = 0; i < arg; i++) {
             CPC i2 = new CPC();
             i2.r1 = new Register();

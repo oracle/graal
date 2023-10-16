@@ -40,7 +40,6 @@ import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
 import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
@@ -97,16 +96,16 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
 public class ReflectionFeature implements InternalFeature, ReflectionSubstitutionSupport {
 
     /**
-     * The CallerSensitiveAdapter mechanism of the JDK (introduced after JDK 17) is a formalization
-     * of {@link CallerSensitive} methods: the "caller sensitive adapter for a
-     * {@link CallerSensitive} method is a method with the same name and same signature (except for
-     * a trailing Class parameter). When a {@link CallerSensitive} method is invoked via reflection
-     * or a method handle, then the adapter is invoked instead and the caller class is passed in
-     * explicitly. This avoids corner cases where {@link Reflection#getCallerClass} returns an
-     * internal method of the reflection / method handle implementation.
+     * The CallerSensitiveAdapter mechanism of the JDK is a formalization of {@link CallerSensitive}
+     * methods: the "caller sensitive adapter for a {@link CallerSensitive} method is a method with
+     * the same name and same signature (except for a trailing Class parameter). When a
+     * {@link CallerSensitive} method is invoked via reflection or a method handle, then the adapter
+     * is invoked instead and the caller class is passed in explicitly. This avoids corner cases
+     * where {@link Reflection#getCallerClass} returns an internal method of the reflection / method
+     * handle implementation.
      */
-    private static final Method findCallerSensitiveAdapterMethod = JavaVersionUtil.JAVA_SPEC <= 17 ? null
-                    : ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "jdk.internal.reflect.DirectMethodHandleAccessor"), "findCSMethodAdapter", Method.class);
+    private static final Method findCallerSensitiveAdapterMethod = ReflectionUtil.lookupMethod(ReflectionUtil.lookupClass(false, "jdk.internal.reflect.DirectMethodHandleAccessor"),
+                    "findCSMethodAdapter", Method.class);
 
     private AnnotationSubstitutionProcessor annotationSubstitutions;
 
@@ -178,16 +177,14 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
                 expandSignature = register(analysisAccess.getMetaAccess().lookupJavaMethod(methodHandleInvokeErrorMethod), "Registered in " + ReflectionFeature.class);
             } else {
                 Method target = (Method) member;
-                if (JavaVersionUtil.JAVA_SPEC > 17) {
-                    try {
-                        Method adapter = (Method) findCallerSensitiveAdapterMethod.invoke(null, member);
-                        if (adapter != null) {
-                            target = adapter;
-                            callerSensitiveAdapter = true;
-                        }
-                    } catch (ReflectiveOperationException ex) {
-                        throw VMError.shouldNotReachHere(ex);
+                try {
+                    Method adapter = (Method) findCallerSensitiveAdapterMethod.invoke(null, member);
+                    if (adapter != null) {
+                        target = adapter;
+                        callerSensitiveAdapter = true;
                     }
+                } catch (ReflectiveOperationException ex) {
+                    throw VMError.shouldNotReachHere(ex);
                 }
                 expandSignature = createExpandSignatureMethod(target, callerSensitiveAdapter);
                 AnalysisMethod targetMethod = analysisAccess.getMetaAccess().lookupJavaMethod(target);

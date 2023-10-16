@@ -26,7 +26,7 @@ import java.nio.ByteOrder;
 
 import com.oracle.truffle.espresso.meta.EspressoError;
 import com.oracle.truffle.espresso.meta.Meta;
-import com.oracle.truffle.espresso.runtime.StaticObject;
+import com.oracle.truffle.espresso.runtime.staticobject.StaticObject;
 import com.oracle.truffle.espresso.substitutions.Target_sun_misc_Unsafe;
 
 import sun.misc.Unsafe;

@@ -149,11 +149,11 @@ public class HexCodeFileDisassemblerProvider implements DisassemblerProvider {
             // current platform).
             if (toolMethod != null) {
                 byte[] code = {};
-                String arch = Services.getSavedProperties().get("os.arch");
+                String arch = Services.getSavedProperty("os.arch");
                 if (arch.equals("x86_64")) {
                     arch = "amd64";
                 }
-                int wordWidth = arch.endsWith("64") ? 64 : Integer.parseInt(Services.getSavedProperties().getOrDefault("sun.arch.data.model", "64"));
+                int wordWidth = arch.endsWith("64") ? 64 : Integer.parseInt(Services.getSavedProperty("sun.arch.data.model", "64"));
                 String hcf = new HexCodeFile(code, 0L, arch.toLowerCase(), wordWidth).toEmbeddedString();
                 try {
                     toolMethod.invokeExact(hcf);

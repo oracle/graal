@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -146,9 +146,9 @@ public class WasmLauncher extends AbstractLanguageLauncher {
 
         try (Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
-            context.eval(Source.newBuilder(getLanguageId(), file).build());
+            Value mainModule = context.eval(Source.newBuilder(getLanguageId(), file).build());
 
-            Value entryPoint = detectEntryPoint(context);
+            Value entryPoint = detectEntryPoint(mainModule);
             if (entryPoint == null) {
                 throw abort("No entry-point function found, cannot start program.");
             }
@@ -168,13 +168,13 @@ public class WasmLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private Value detectEntryPoint(Context context) {
+    private Value detectEntryPoint(Value mainModule) {
         if (customEntryPoint != null) {
-            return context.getBindings(getLanguageId()).getMember("main").getMember(customEntryPoint);
+            return mainModule.getMember(customEntryPoint);
         }
-        Value candidate = context.getBindings(getLanguageId()).getMember("main").getMember("_start");
+        Value candidate = mainModule.getMember("_start");
         if (candidate == null) {
-            candidate = context.getBindings(getLanguageId()).getMember("main").getMember("_main");
+            candidate = mainModule.getMember("_main");
         }
         return candidate;
     }

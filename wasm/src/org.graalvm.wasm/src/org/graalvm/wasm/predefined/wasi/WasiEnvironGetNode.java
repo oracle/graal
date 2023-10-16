@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,12 @@ package org.graalvm.wasm.predefined.wasi;
 
 import java.util.Map;
 
+import org.graalvm.wasm.WasmArguments;
 import org.graalvm.wasm.WasmContext;
 import org.graalvm.wasm.WasmInstance;
 import org.graalvm.wasm.WasmLanguage;
+import org.graalvm.wasm.WasmModule;
+import org.graalvm.wasm.memory.WasmMemory;
 import org.graalvm.wasm.predefined.WasmBuiltinRootNode;
 import org.graalvm.wasm.predefined.wasi.types.Errno;
 
@@ -53,26 +56,26 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 
 public final class WasiEnvironGetNode extends WasmBuiltinRootNode {
 
-    public WasiEnvironGetNode(WasmLanguage language, WasmInstance module) {
+    public WasiEnvironGetNode(WasmLanguage language, WasmModule module) {
         super(language, module);
     }
 
     @Override
-    public Object executeWithContext(VirtualFrame frame, WasmContext context) {
+    public Object executeWithContext(VirtualFrame frame, WasmContext context, WasmInstance instance) {
         final Object[] args = frame.getArguments();
-        return environGet((int) args[0], (int) args[1]);
+        return environGet(memory(frame), (int) WasmArguments.getArgument(args, 0), (int) WasmArguments.getArgument(args, 1));
     }
 
     @TruffleBoundary
-    private int environGet(int envInitialPointer, int bufInitialPointer) {
+    private int environGet(WasmMemory memory, int envInitialPointer, int bufInitialPointer) {
         int bufPointer = bufInitialPointer;
         int envPointer = envInitialPointer;
         final Map<String, String> env = getContext().environment().getEnvironment();
         for (final Map.Entry<String, String> entry : env.entrySet()) {
-            memory().store_i32(this, envPointer, bufPointer);
+            memory.store_i32(this, envPointer, bufPointer);
             envPointer += 4;
-            bufPointer += memory().writeString(this, entry.getKey() + "=" + entry.getValue(), bufPointer);
-            memory().store_i32_8(this, bufPointer, (byte) 0);
+            bufPointer += memory.writeString(this, entry.getKey() + "=" + entry.getValue(), bufPointer);
+            memory.store_i32_8(this, bufPointer, (byte) 0);
             ++bufPointer;
         }
 

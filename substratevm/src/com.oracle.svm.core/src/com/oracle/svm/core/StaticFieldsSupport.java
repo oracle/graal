@@ -159,7 +159,7 @@ public final class StaticFieldsSupport {
             }
 
             JavaConstant constant = tool.getSnippetReflection().forObject(primitive ? StaticFieldsSupport.getStaticPrimitiveFields() : StaticFieldsSupport.getStaticObjectFields());
-            assert constant.isNonNull();
+            assert constant.isNonNull() : constant;
             replaceAndDelete(ConstantNode.forConstant(constant, tool.getMetaAccess(), graph()));
         }
     }

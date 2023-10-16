@@ -65,6 +65,15 @@ public interface SnippetReflectionProvider {
     <T> T asObject(Class<T> type, JavaConstant constant);
 
     /**
+     * Get the wrapped constant object, if any. This is a temporary workaround required in Native
+     * Image to expand the use of ImageHeapConstant. It will be removed when all hosted phases
+     * support ImageHeapConstant by default and no unwrapping is necessary. (GR-48682)
+     */
+    default JavaConstant unwrapConstant(JavaConstant constant) {
+        return constant;
+    }
+
+    /**
      * Creates a boxed constant for the given kind from an Object. The object needs to be of the
      * Java boxed type corresponding to the kind.
      *

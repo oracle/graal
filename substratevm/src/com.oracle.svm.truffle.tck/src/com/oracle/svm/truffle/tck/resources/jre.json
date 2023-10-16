@@ -227,6 +227,11 @@
       {
         "name": "multiply",
         "justification": "JDK 19 introduced parallelMultiply(BI) that shares its implementation with multiply(BI), which causes a spurious privileged call being found in the latter, so we explicitly deny parallelMultiply(BI) and allow multiply(BI) to avoid this false positive."
+      },
+      {
+        "name": "square",
+        "parameterTypes" : [],
+        "justification": "square() calls a method which has both serial and parallel implementations; however, it will always use the serial implementation."
       }
     ]
   },

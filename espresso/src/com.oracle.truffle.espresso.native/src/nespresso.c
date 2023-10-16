@@ -24,7 +24,6 @@
 
 #include <mokapot.h>
 #include <jni.h>
-#include <trufflenfi.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>

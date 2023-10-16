@@ -25,6 +25,9 @@
 
 package org.graalvm.compiler.lir.amd64;
 
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.CLWB;
+import static jdk.vm.ci.amd64.AMD64.CPUFeature.FLUSHOPT;
+
 import org.graalvm.compiler.asm.amd64.AMD64MacroAssembler;
 import org.graalvm.compiler.lir.LIRInstructionClass;
 import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
@@ -41,8 +44,8 @@ public final class AMD64CacheWritebackPostSyncOp extends AMD64LIRInstruction {
 
     @Override
     public void emitCode(CompilationResultBuilder crb, AMD64MacroAssembler masm) {
-        boolean optimized = masm.supportsCPUFeature("FLUSHOPT");
-        boolean noEvict = masm.supportsCPUFeature("CLWB");
+        boolean optimized = masm.supports(FLUSHOPT);
+        boolean noEvict = masm.supports(CLWB);
 
         // pick the correct implementation
         if (optimized || noEvict) {

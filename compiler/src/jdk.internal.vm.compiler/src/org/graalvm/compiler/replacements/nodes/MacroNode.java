@@ -28,6 +28,7 @@ import static jdk.vm.ci.code.BytecodeFrame.isPlaceholderBci;
 import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
+import org.graalvm.compiler.core.common.type.ObjectStamp;
 import org.graalvm.compiler.core.common.type.StampPair;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.GraalError;
@@ -139,8 +140,12 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         }
     }
 
-    @SuppressWarnings("this-escape")
     protected MacroNode(NodeClass<? extends MacroNode> c, MacroParams p) {
+        this(c, p, null);
+    }
+
+    @SuppressWarnings("this-escape")
+    protected MacroNode(NodeClass<? extends MacroNode> c, MacroParams p, FrameState stateAfter) {
         super(c, p.returnStamp != null ? p.returnStamp.getTrustedStamp() : null);
         this.arguments = new NodeInputList<>(this, p.arguments);
         this.bci = p.bci;
@@ -151,10 +156,18 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
         assert !isPlaceholderBci(p.bci);
         assert MacroInvokable.assertArgumentCount(this);
         this.originalArguments = new NodeInputList<>(this);
+        this.stateAfter = stateAfter;
     }
 
+    /**
+     * This override is final on purpose. Macro nodes are not supposed to change their stamps in
+     * place because the node's stamp must stay in sync with the fallback invoke's return stamp. If
+     * a macro is able to derive a new stamp for itself that is also valid for the fallback invoke,
+     * or if it can prove that it will never need to fall back to an invoke, it should canonicalize
+     * itself to a new copy with a more precise stamp.
+     */
     @Override
-    public boolean inferStamp() {
+    public final boolean inferStamp() {
         verifyStamp();
         return false;
     }
@@ -294,5 +307,15 @@ public abstract class MacroNode extends FixedWithNextNode implements MacroInvoka
      */
     public MacroParams copyParams() {
         return new MacroParams(invokeKind, callerMethod, targetMethod, bci, returnStamp, toArgumentArray());
+    }
+
+    /**
+     * Builds a new copy of this node's macro parameters, but with the return stamp replaced by the
+     * trusted {@code newStamp}.
+     */
+    protected MacroParams copyParamsWithImprovedStamp(ObjectStamp newStamp) {
+        GraalError.guarantee(newStamp.join(returnStamp.getTrustedStamp()).equals(newStamp), "stamp should improve from %s to %s", returnStamp, newStamp);
+        StampPair improvedReturnStamp = StampPair.createSingle(newStamp);
+        return new MacroParams(invokeKind, callerMethod, targetMethod, bci, improvedReturnStamp, toArgumentArray());
     }
 }

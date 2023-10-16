@@ -89,7 +89,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
         final long executing = 1L;
         final long executed = 2L;
 
-        while (true) {
+        while (true) { // TERMINATION ARGUMENT: busy wait loop
             long value = BARRIER.get();
             if (value == initial) {
                 if (BARRIER.compareAndSet(value, executing)) {
@@ -225,7 +225,7 @@ public class HotSpotTTYStreamProvider implements TTYStreamProvider {
                 if (inputArguments != null) {
                     ps.println("VM Arguments: " + String.join(" ", inputArguments));
                 }
-                String cmd = Services.getSavedProperties().get("sun.java.command");
+                String cmd = Services.getSavedProperty("sun.java.command");
                 if (cmd != null) {
                     ps.println("sun.java.command=" + cmd);
                 }

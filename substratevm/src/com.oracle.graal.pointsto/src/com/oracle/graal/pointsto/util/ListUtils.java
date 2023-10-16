@@ -24,9 +24,9 @@
  */
 package com.oracle.graal.pointsto.util;
 
-import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
-
 import java.util.Arrays;
+
+import com.oracle.graal.pointsto.flow.context.object.AnalysisObject;
 
 public class ListUtils {
 
@@ -118,7 +118,7 @@ public class ListUtils {
         }
 
         public E get(int i) {
-            assert i < size && i >= 0;
+            assert i < size && i >= 0 : i;
             return elementData[i];
         }
 

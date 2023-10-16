@@ -628,13 +628,16 @@ public class InliningLog {
      * preserving all inlining decisions. It is a responsibility of the caller to delete the
      * replaced invoke.
      *
+     * If the log is in a {@link #openDefaultUpdateScope default} update scope (i.e., updates to
+     * invokes are handled by the user), this call has no effect.
+     *
      * @param inliningLog the inlining log or {@code null} if it disabled
      * @param replacedInvoke the invoke that is getting replaced
      *
      * @return a bound {@link UpdateScope} or {@code null} if the log is disabled
      */
     public static UpdateScope openUpdateScopeTrackingReplacement(InliningLog inliningLog, Invokable replacedInvoke) {
-        if (inliningLog == null) {
+        if (inliningLog == null || inliningLog.currentUpdateScope == inliningLog.noUpdates) {
             return null;
         }
         return inliningLog.openUpdateScope((nullInvoke, replacementInvoke) -> {

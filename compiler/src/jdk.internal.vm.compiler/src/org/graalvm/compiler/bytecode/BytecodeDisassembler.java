@@ -78,13 +78,15 @@ import static org.graalvm.compiler.bytecode.Bytecodes.RET;
 import static org.graalvm.compiler.bytecode.Bytecodes.SIPUSH;
 import static org.graalvm.compiler.bytecode.Bytecodes.TABLESWITCH;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.serviceprovider.GraalServices;
+
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaField;
 import jdk.vm.ci.meta.JavaMethod;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
-import org.graalvm.compiler.serviceprovider.GraalServices;
 
 /**
  * Utility for producing a {@code javap}-like disassembly of bytecode.
@@ -92,27 +94,99 @@ import org.graalvm.compiler.serviceprovider.GraalServices;
 public class BytecodeDisassembler {
 
     /**
-     * Specifies if the disassembly for a single instruction can span multiple lines.
+     * Support for normalizing the values of constant pool index operands. Used to normalize
+     * disassembly for methods whose classfile representation does not change but whose bytecode as
+     * obtained via {@link ResolvedJavaMethod#getCode()} can be variable between JDK versions due to
+     * changes in VM internal bytecode rewriting (e.g. JDK-8301996).
      */
+    public interface CPIFunction {
+        /**
+         *
+         * @param opcode a bytecode instruction opcode
+         * @param cpi the constant pool index operand of an instruction whose opcode is
+         *            {@code opcode}
+         */
+        default int apply(int opcode, int cpi) {
+            return cpi;
+        }
+
+        /**
+         * Identitiy function.
+         */
+        CPIFunction Identity = new CPIFunction() {
+        };
+
+        /**
+         * Rewrites each CPI operand to a value denoting the order of the first time it is
+         * encountered during disassembly.
+         */
+        static CPIFunction normalizer() {
+            return new CPIFunction() {
+                EconomicMap<Integer, Integer> normalized = EconomicMap.create();
+
+                /**
+                 * Returns a value for the {@code (opcode, cpi)} tuple that depends solely on when
+                 * it is encountered with respective to all other such tuples in the disassembly of
+                 * a method.
+                 *
+                 * @param opcode opcode "namespace" of cpi
+                 * @param cpi the constant pool index operand of an instruction whose opcode is
+                 *            {@code opcode}. Due to VM internal bytecode rewriting, this may not be
+                 *            a class file constant pool index.
+                 */
+                @Override
+                public int apply(int opcode, int cpi) {
+                    int key = cpi << 8 | (opcode & 0xFF);
+                    Integer res = normalized.get(key);
+                    if (res == null) {
+                        res = normalized.size();
+                        normalized.put(key, res);
+                    }
+                    return res;
+                }
+            };
+        }
+    }
+
     private final boolean multiline;
+    private final String newLine;
+    private final boolean format;
 
-    private final boolean newLine;
+    private final CPIFunction cpiFunction;
 
-    public BytecodeDisassembler(boolean multiline, boolean newLine) {
+    /**
+     * Creates a bytecode disassembler.
+     *
+     * @param multiline specifies if the disassembly for a single instruction can span multiple
+     *            lines
+     * @param newLine specifies the new line string to use. If null, all output is on one line.
+     * @param format specifies if the disassembler should use {@link String#format} to do indenting
+     *            and aligning
+     */
+    public BytecodeDisassembler(boolean multiline, String newLine, boolean format, CPIFunction cpiFunction) {
         this.multiline = multiline;
         this.newLine = newLine;
+        this.format = format;
+        this.cpiFunction = cpiFunction;
+        if (multiline && newLine == null) {
+            throw new IllegalArgumentException("multiline cannot be true when newLine is null");
+        }
+    }
+
+    public BytecodeDisassembler(boolean multiline, String newLine) {
+        this(multiline, newLine, true, CPIFunction.Identity);
     }
 
     public BytecodeDisassembler(boolean multiline) {
-        this(multiline, true);
+        this(multiline, System.lineSeparator(), true, CPIFunction.Identity);
     }
 
     public BytecodeDisassembler() {
-        this(true, true);
+        this(true, System.lineSeparator(), true, CPIFunction.Identity);
     }
 
     public static String disassembleOne(ResolvedJavaMethod method, int bci) {
-        return new BytecodeDisassembler(false, false).disassemble(method, bci, bci);
+        return new BytecodeDisassembler(false, null).disassemble(method, bci, bci);
     }
 
     /**
@@ -157,12 +231,19 @@ public class BytecodeDisassembler {
                 int bci = stream.currentBCI();
                 if (bci >= startBci && bci <= endBci) {
                     String mnemonic = Bytecodes.nameOf(opcode);
-                    buf.append(String.format("%4d: %-14s", bci, mnemonic));
+                    if (format) {
+                        buf.append(String.format("%4d: %-14s", bci, mnemonic));
+                    } else {
+                        buf.append(bci).append(' ').append(mnemonic);
+                    }
                     if (stream.nextBCI() > bci + 1) {
+                        if (!format) {
+                            buf.append(' ');
+                        }
                         decodeOperand(buf, stream, cp, method, bci, opcode);
                     }
-                    if (newLine) {
-                        buf.append(String.format("%n"));
+                    if (newLine != null) {
+                        buf.append(newLine);
                     }
                 }
                 stream.next();
@@ -185,7 +266,12 @@ public class BytecodeDisassembler {
             case ANEWARRAY      : {
                 int cpi = stream.readCPI();
                 JavaType type = cp.lookupType(cpi, opcode);
-                buf.append(String.format("#%-10d // %s", cpi, type.toJavaName()));
+                cpi = cpiFunction.apply(opcode, cpi);
+                if (format) {
+                    buf.append(String.format("#%-10d // %s", cpi, type.toJavaName()));
+                } else {
+                    buf.append(cpi).append(" // ").append(type.getName());
+                }
                 break;
             }
             case GETSTATIC      :
@@ -194,8 +280,19 @@ public class BytecodeDisassembler {
             case PUTFIELD       : {
                 int cpi = stream.readCPI();
                 JavaField field = cp.lookupField(cpi, method, opcode);
-                String fieldDesc = field.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? field.format("%n:%T") : field.format("%H.%n:%T");
-                buf.append(String.format("#%-10d // %s", cpi, fieldDesc));
+                cpi = cpiFunction.apply(opcode, cpi);
+                if (format) {
+                    String fieldDesc = field.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? field.format("%n:%T") : field.format("%H.%n:%T");
+                    buf.append(String.format("#%-10d // %s", cpi, fieldDesc));
+                } else {
+                    buf.append(cpi)
+                       .append(" // ")
+                       .append(field.getDeclaringClass().getName())
+                       .append('.')
+                       .append(field.getName())
+                       .append(':')
+                       .append(field.getType().getName());
+                }
                 break;
             }
             case INVOKEVIRTUAL  :
@@ -203,22 +300,54 @@ public class BytecodeDisassembler {
             case INVOKESTATIC   : {
                 int cpi = stream.readCPI();
                 JavaMethod callee = cp.lookupMethod(cpi, opcode);
-                String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
-                buf.append(String.format("#%-10d // %s", cpi, calleeDesc));
+                cpi = cpiFunction.apply(opcode, cpi);
+                if (format) {
+                    String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
+                    buf.append(String.format("#%-10d // %s", cpi, calleeDesc));
+                } else {
+                    buf.append(cpi)
+                       .append(" // ")
+                       .append(method.getDeclaringClass().getName())
+                       .append('.')
+                       .append(method.getName())
+                       .append(method.getSignature().toMethodDescriptor());
+                }
                 break;
             }
             case INVOKEINTERFACE: {
                 int cpi = stream.readCPI();
                 JavaMethod callee = cp.lookupMethod(cpi, opcode);
-                String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
-                buf.append(String.format("#%-10s // %s", cpi + ", " + stream.readUByte(bci + 3), calleeDesc));
+                cpi = cpiFunction.apply(opcode, cpi);
+                if (format) {
+                    String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
+                    buf.append(String.format("#%-10s // %s", cpi + ", " + stream.readUByte(bci + 3), calleeDesc));
+                } else {
+                    buf.append(cpi)
+                            .append(',')
+                            .append(stream.readUByte(bci + 3))
+                            .append(" // ")
+                            .append(method.getDeclaringClass().getName())
+                            .append('.')
+                            .append(method.getName())
+                            .append(method.getSignature().toMethodDescriptor());
+                }
                 break;
             }
             case INVOKEDYNAMIC: {
                 int cpi = stream.readCPI4();
                 JavaMethod callee = cp.lookupMethod(cpi, opcode);
-                String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
-                buf.append(String.format("#%-10d // %s", cpi, calleeDesc));
+                cpi = cpiFunction.apply(opcode, cpi);
+                if (format) {
+                    String calleeDesc = callee.getDeclaringClass().getName().equals(method.getDeclaringClass().getName()) ? callee.format("%n:(%P)%R") : callee.format("%H.%n:(%P)%R");
+                    buf.append(String.format("#%-10d // %s", cpi, calleeDesc));
+                } else {
+                    buf.append(cpi)
+                            .append(" // ")
+                            .append(method.getDeclaringClass().getName())
+                            .append('.')
+                            .append(method.getName())
+                            .append(method.getSignature().toMethodDescriptor());
+                }
                 break;
             }
             case LDC            :
@@ -238,7 +367,12 @@ public class BytecodeDisassembler {
                 if (!multiline) {
                     desc = desc.replaceAll("\\n", "");
                 }
-                buf.append(String.format("#%-10d // %s", cpi, desc));
+                cpi = cpiFunction.apply(opcode, cpi);
+                if (format) {
+                    buf.append(String.format("#%-10d // %s", cpi, desc));
+                } else {
+                    buf.append(cpi).append(" // ").append(desc);
+                }
                 break;
             }
             case RET            :
@@ -252,7 +386,7 @@ public class BytecodeDisassembler {
             case FSTORE         :
             case DSTORE         :
             case ASTORE         : {
-                buf.append(String.format("%d", stream.readLocalIndex()));
+                buf.append(stream.readLocalIndex());
                 break;
             }
             case IFEQ           :
@@ -275,28 +409,43 @@ public class BytecodeDisassembler {
             case IFNONNULL      :
             case GOTO_W         :
             case JSR_W          : {
-                buf.append(String.format("%d", stream.readBranchDest()));
+                buf.append(stream.readBranchDest());
                 break;
             }
             case LOOKUPSWITCH   :
             case TABLESWITCH    : {
                 BytecodeSwitch bswitch = opcode == LOOKUPSWITCH ? new BytecodeLookupSwitch(stream, bci) : new BytecodeTableSwitch(stream, bci);
                 if (multiline) {
-                    buf.append("{ // " + bswitch.numberOfCases());
+                    buf.append("{ // ").append(bswitch.numberOfCases());
                     for (int i = 0; i < bswitch.numberOfCases(); i++) {
-                        buf.append(String.format("%n           %7d: %d", bswitch.keyAt(i), bswitch.targetAt(i)));
+                        if (format) {
+                            buf.append(String.format("%n           %7d: %d", bswitch.keyAt(i), bswitch.targetAt(i)));
+                        } else {
+                            buf.append(newLine)
+                               .append("           ")
+                               .append(bswitch.keyAt(i))
+                               .append(':')
+                               .append(bswitch.targetAt(i));
+                        }
                     }
-                    buf.append(String.format("%n           default: %d", bswitch.defaultTarget()));
-                    buf.append(String.format("%n      }"));
+                    if (format) {
+                        buf.append(String.format("%n           default: %d", bswitch.defaultTarget()));
+                        buf.append(String.format("%n      }"));
+                    } else {
+                        buf.append(newLine)
+                           .append("           default:")
+                           .append(bswitch.defaultTarget())
+                           .append(newLine).append('}');
+                    }
                 } else {
-                    buf.append("[" + bswitch.numberOfCases()).append("] {");
+                    buf.append("[").append(bswitch.numberOfCases()).append("] {");
                     for (int i = 0; i < bswitch.numberOfCases(); i++) {
-                        buf.append(String.format("%d: %d", bswitch.keyAt(i), bswitch.targetAt(i)));
+                        buf.append(bswitch.keyAt(i)).append(": ").append(bswitch.targetAt(i));
                         if (i != bswitch.numberOfCases() - 1) {
                             buf.append(", ");
                         }
                     }
-                    buf.append(String.format("} default: %d", bswitch.defaultTarget()));
+                    buf.append("} default: ").append(bswitch.defaultTarget());
                 }
                 break;
             }
@@ -320,7 +469,12 @@ public class BytecodeDisassembler {
             case MULTIANEWARRAY : {
                 int cpi = stream.readCPI();
                 JavaType type = cp.lookupType(cpi, opcode);
-                buf.append(String.format("#%-10s // %s", cpi + ", " + stream.readUByte(bci + 3), type.toJavaName()));
+                cpi = cpiFunction.apply(opcode, cpi);
+                if (format) {
+                    buf.append(String.format("#%-10s // %s", cpi + ", " + stream.readUByte(bci + 3), type.toJavaName()));
+                } else {
+                    buf.append(cpi).append(',').append(stream.readUByte(bci + 3)).append(type.getName());
+                }
                 break;
             }
         }
@@ -341,11 +495,7 @@ public class BytecodeDisassembler {
                     switch (opcode) {
                         case INVOKEVIRTUAL:
                         case INVOKESPECIAL:
-                        case INVOKESTATIC: {
-                            int cpi = stream.readCPI();
-                            JavaMethod callee = cp.lookupMethod(cpi, opcode);
-                            return callee;
-                        }
+                        case INVOKESTATIC:
                         case INVOKEINTERFACE: {
                             int cpi = stream.readCPI();
                             JavaMethod callee = cp.lookupMethod(cpi, opcode);

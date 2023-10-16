@@ -25,6 +25,7 @@
 
 package org.graalvm.compiler.core.amd64;
 
+import org.graalvm.compiler.core.common.util.CompilationAlarm;
 import org.graalvm.compiler.core.gen.NodeLIRBuilder;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.compiler.lir.LIRFrameState;
@@ -64,7 +65,8 @@ public abstract class AMD64NodeLIRBuilder extends NodeLIRBuilder {
             AMD64ArithmeticLIRGenerator arithmeticGen = (AMD64ArithmeticLIRGenerator) gen.getArithmetic();
             IntegerDivRemNode divRem = (IntegerDivRemNode) valueNode;
             FixedNode node = divRem.next();
-            while (true) {
+            while (true) { // TERMINATION ARGUMENT: iterating next nodes
+                CompilationAlarm.checkProgress(valueNode.graph());
                 if (node instanceof IfNode) {
                     IfNode ifNode = (IfNode) node;
                     double probability = ifNode.getTrueSuccessorProbability();
