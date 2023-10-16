@@ -2403,20 +2403,17 @@ public final class PolyglotNativeAPI {
         PolyglotCallbackInfoInternal info = new PolyglotCallbackInfoInternal(new ObjectHandle[0], data);
         var infoHandle = (PolyglotCallbackInfo) objectHandles.create(info);
         var handles = getHandles();
-        RecurringCallback recurringCallback = new RecurringCallback() {
-            @Override
-            public void run(Threading.RecurringCallbackAccess access) {
-                handles.freezeHandleCreation();
-                try {
-                    callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), infoHandle);
-                    CallbackException ce = threadLocals.get().callbackException;
-                    if (ce != null) {
-                        access.throwException(ce);
-                    }
-                } finally {
-                    threadLocals.get().callbackException = null;
-                    handles.unfreezeHandleCreation();
+        RecurringCallback recurringCallback = access -> {
+            handles.freezeHandleCreation();
+            try {
+                callback.invoke((PolyglotIsolateThread) CurrentIsolate.getCurrentThread(), infoHandle);
+                CallbackException ce = threadLocals.get().callbackException;
+                if (ce != null) {
+                    access.throwException(ce);
                 }
+            } finally {
+                threadLocals.get().callbackException = null;
+                handles.unfreezeHandleCreation();
             }
         };
         try {

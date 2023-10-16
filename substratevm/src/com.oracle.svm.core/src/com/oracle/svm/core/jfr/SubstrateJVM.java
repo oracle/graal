@@ -24,7 +24,6 @@
  */
 package com.oracle.svm.core.jfr;
 
-import java.lang.reflect.Field;
 import java.util.List;
 
 import jdk.graal.compiler.api.replacements.Fold;
@@ -184,16 +183,6 @@ public class SubstrateJVM {
     @Fold
     public static JfrLogging getJfrLogging() {
         return get().jfrLogging;
-    }
-
-    public static Object getHandler(Class<? extends jdk.internal.event.Event> eventClass) {
-        try {
-            Field f = eventClass.getDeclaredField("eventHandler");
-            f.setAccessible(true);
-            return f.get(null);
-        } catch (NoSuchFieldException | IllegalArgumentException | IllegalAccessException e) {
-            throw new InternalError("Could not access event handler");
-        }
     }
 
     @Uninterruptible(reason = "Prevent races with VM operations that start/stop recording.", callerMustBe = true)
