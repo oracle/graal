@@ -130,6 +130,7 @@ public class ReflectionFeature implements InternalFeature, ReflectionSubstitutio
     FeatureImpl.BeforeAnalysisAccessImpl analysisAccess;
 
     @Override
+    @SuppressWarnings("try")
     public SubstrateAccessor getOrCreateAccessor(Executable member) {
         SubstrateAccessor existing = accessors.get(member);
         if (existing != null) {

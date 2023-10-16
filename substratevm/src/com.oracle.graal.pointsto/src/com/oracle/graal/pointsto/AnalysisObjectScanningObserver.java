@@ -123,6 +123,7 @@ public class AnalysisObjectScanningObserver implements ObjectScanningObserver {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void forScannedConstant(JavaConstant value, ScanReason reason) {
         PointsToAnalysis analysis = getAnalysis();
         Object valueObj = analysis.getSnippetReflectionProvider().asObject(Object.class, value);

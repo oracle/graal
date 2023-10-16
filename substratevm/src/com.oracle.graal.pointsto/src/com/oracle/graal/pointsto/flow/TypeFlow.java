@@ -310,6 +310,7 @@ public abstract class TypeFlow<T> {
     }
 
     /* Add state and notify inputs of the result. */
+    @SuppressWarnings("try")
     public boolean addState(PointsToAnalysis bb, TypeState add, boolean postFlow) {
         PointsToStats.registerTypeFlowUpdate(bb, this, add);
 
@@ -381,6 +382,7 @@ public abstract class TypeFlow<T> {
         return addUse(bb, use, true);
     }
 
+    @SuppressWarnings("try")
     public boolean addUse(PointsToAnalysis bb, TypeFlow<?> use, boolean propagateTypeState) {
         CausalityExport.registerTypeFlowEdge(this, use);
 
@@ -462,6 +464,7 @@ public abstract class TypeFlow<T> {
         addObserver(bb, observer, true);
     }
 
+    @SuppressWarnings("try")
     public boolean addObserver(PointsToAnalysis bb, TypeFlow<?> observer, boolean triggerUpdate) {
         if (isSaturated() && triggerUpdate) {
             /* Register observee. */

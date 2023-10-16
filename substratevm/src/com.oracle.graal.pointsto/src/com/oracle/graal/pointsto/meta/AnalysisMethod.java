@@ -376,6 +376,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         return AtomicUtils.atomicSet(this, reason, isInvokedUpdater);
     }
 
+    @SuppressWarnings("try")
     public boolean registerAsImplementationInvoked(Object reason) {
         assert isValidReason(reason) : "Registering a method as implementation invoked needs to provide a valid reason, found: " + reason;
         assert isImplementationInvokable() : this;
@@ -462,6 +463,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
      * Class is always marked as reachable regardless of the success of the atomic mark, same reason
      * as in {@link AnalysisMethod#registerAsImplementationInvoked(Object)}.
      */
+    @SuppressWarnings("try")
     public boolean registerAsVirtualRootMethod(Object reason) {
         try (var ignored = CausalityExport.setCause(CausalityEvents.MethodReachable.create(this))) {
             getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as virtual root");
@@ -472,6 +474,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
     /**
      * Registers this method as a direct (special or static) root for the analysis.
      */
+    @SuppressWarnings("try")
     public boolean registerAsDirectRootMethod(Object reason) {
         try (var ignored = CausalityExport.setCause(CausalityEvents.MethodReachable.create(this))) {
             getDeclaringClass().registerAsReachable("declared method " + qualifiedName + " is registered as direct root");
@@ -895,6 +898,7 @@ public abstract class AnalysisMethod extends AnalysisElement implements WrappedJ
         }
     }
 
+    @SuppressWarnings("try")
     private AnalysisParsedGraph parseGraph(BigBang bb, Object expectedValue) {
         ReentrantLock lock = new ReentrantLock();
         lock.lock();

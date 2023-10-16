@@ -147,6 +147,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
          * Notify the callback exactly once. Note that this callback can be shared by multiple
          * triggers, the one that triggers it is passed into triggeredElement for debugging.
          */
+        @SuppressWarnings("try")
         AnalysisFuture<Void> notifyCallback(AnalysisUniverse universe, AnalysisElement triggeredElement) {
             assert triggeredElement.isTriggered() : triggeredElement;
             var existing = notified.get();
@@ -180,6 +181,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
         }
 
         /** Notify the callback exactly once for each reachable subtype. */
+        @SuppressWarnings("try")
         public AnalysisFuture<Void> notifyCallback(AnalysisUniverse universe, AnalysisType reachableSubtype) {
             assert reachableSubtype.isReachable() : reachableSubtype;
             return seenSubtypes.computeIfAbsent(reachableSubtype, k -> {
@@ -209,6 +211,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
         }
 
         /** Notify the callback exactly once for each reachable method override. */
+        @SuppressWarnings("try")
         public void notifyCallback(AnalysisUniverse universe, AnalysisMethod reachableOverride) {
             assert reachableOverride.isReachable() : reachableOverride;
             if (seenOverride.add(reachableOverride)) {

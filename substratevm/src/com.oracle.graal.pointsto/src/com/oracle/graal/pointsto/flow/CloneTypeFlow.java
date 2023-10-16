@@ -44,6 +44,7 @@ public class CloneTypeFlow extends TypeFlow<BytecodePosition> {
     /** The allocation context for the generated clone object. Null if this is not a clone. */
     protected final AnalysisContext allocationContext;
 
+    @SuppressWarnings("this-escape")
     public CloneTypeFlow(BytecodePosition cloneLocation, AnalysisType inputType, TypeFlow<?> input) {
         super(cloneLocation, inputType);
         this.allocationContext = null;

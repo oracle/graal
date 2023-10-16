@@ -487,6 +487,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      *            {@link com.oracle.graal.pointsto.ObjectScanner.ScanReason}, or a {@link String}
      *            describing why this type was manually marked as in-heap
      */
+    @SuppressWarnings("try")
     public boolean registerAsInHeap(Object reason) {
         assert isValidReason(reason) : "Registering a type as in-heap needs to provide a valid reason.";
         var inHeap = CausalityEvents.TypeInHeap.create(this);
@@ -508,6 +509,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      *            {@link com.oracle.graal.pointsto.ObjectScanner.ScanReason}, or a {@link String}
      *            describing why this type was manually marked as allocated
      */
+    @SuppressWarnings("try")
     public boolean registerAsAllocated(Object reason) {
         assert isValidReason(reason) : "Registering a type as allocated needs to provide a valid reason.";
         CausalityExport.registerEvent(CausalityEvents.TypeInstantiated.create(this));
@@ -623,6 +625,7 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return ConcurrentLightHashMap.getOrDefault(this, overrideReachableNotificationsUpdater, method, Collections.emptySet());
     }
 
+    @SuppressWarnings("try")
     public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
         CausalityEvent eventForRegistration = CausalityExport.getCause();
         CausalityEvent callbackEvent = CausalityEvents.ReachabilityNotificationCallback.create(callback);

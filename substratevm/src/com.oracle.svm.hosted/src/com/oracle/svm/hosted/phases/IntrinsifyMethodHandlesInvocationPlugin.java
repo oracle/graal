@@ -757,6 +757,7 @@ public class IntrinsifyMethodHandlesInvocationPlugin implements NodePlugin {
             }
         }
 
+        @SuppressWarnings("try")
         private boolean fixedWithNextNode(FixedNode oNode) throws AbortTransplantException {
             if (oNode.getClass() == InvokeNode.class) {
                 InvokeNode oInvoke = (InvokeNode) oNode;

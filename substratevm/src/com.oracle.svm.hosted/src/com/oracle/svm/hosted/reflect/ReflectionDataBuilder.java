@@ -167,6 +167,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void register(ConfigurationCondition condition, boolean unsafeInstantiated, Class<?> clazz) {
         checkNotSealed();
         register(analysisUniverse -> registerConditionalConfiguration(condition,
@@ -277,6 +278,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
         checkNotSealed();
         register(analysisUniverse -> registerConditionalConfiguration(condition, () -> {
@@ -415,6 +417,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         registerInternal(condition, fields);
     }
 
+    @SuppressWarnings("try")
     private void registerInternal(ConfigurationCondition condition, Field... fields) {
         register(analysisUniverse -> registerConditionalConfiguration(condition, () -> {
             for (Field field : fields) {
@@ -979,6 +982,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void registerHeapDynamicHub(Object object, ScanReason reason) {
         assert !sealed;
         DynamicHub hub = (DynamicHub) object;
@@ -997,6 +1001,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void registerHeapReflectionField(Field reflectField, ScanReason reason) {
         assert !sealed;
         var inHeap = CausalityEvents.ReflectionObjectInHeap.create(reflectField);
@@ -1015,6 +1020,7 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void registerHeapReflectionExecutable(Executable reflectExecutable, ScanReason reason) {
         assert !sealed;
         var inHeap = CausalityEvents.ReflectionObjectInHeap.create(reflectExecutable);

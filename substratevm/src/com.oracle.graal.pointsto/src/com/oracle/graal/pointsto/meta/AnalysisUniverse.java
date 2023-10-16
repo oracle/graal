@@ -348,6 +348,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     @Override
+    @SuppressWarnings("try")
     public JavaField lookupAllowUnresolved(JavaField rawField) {
         if (rawField == null) {
             return null;

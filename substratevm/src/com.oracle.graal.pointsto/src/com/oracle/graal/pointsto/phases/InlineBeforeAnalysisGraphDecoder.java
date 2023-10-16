@@ -384,6 +384,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void finishInlining(MethodScope is) {
         InlineBeforeAnalysisMethodScope inlineScope = cast(is);
         InlineBeforeAnalysisMethodScope callerScope = cast(inlineScope.caller);

@@ -410,6 +410,7 @@ public class ObjectScanner {
      * using the constant as a receiver. If the constant has an array class then it scans the array
      * element constants.
      */
+    @SuppressWarnings("try")
     private void doScan(WorklistEntry entry) {
         try {
             AnalysisType type = bb.getMetaAccess().lookupJavaType(entry.constant);

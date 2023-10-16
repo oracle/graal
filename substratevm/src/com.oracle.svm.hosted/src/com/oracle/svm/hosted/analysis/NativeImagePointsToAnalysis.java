@@ -122,6 +122,7 @@ public class NativeImagePointsToAnalysis extends PointsToAnalysis implements Inf
     }
 
     @Override
+    @SuppressWarnings("try")
     public void initializeMetaData(AnalysisType type) {
         try (var ignored = CausalityExport.setCause(CausalityEvents.TypeReachable.create(type), CausalityExport.HeapTracing.Full)) {
             dynamicHubInitializer.initializeMetaData(universe.getHeapScanner(), type);

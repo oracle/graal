@@ -104,7 +104,7 @@ public class FeatureHandler {
         }
     }
 
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "try"})
     public void registerFeatures(ImageClassLoader loader, DebugContext debug) {
         IsInConfigurationAccessImpl access = new IsInConfigurationAccessImpl(this, loader, debug);
 
@@ -203,7 +203,7 @@ public class FeatureHandler {
      *
      * @param access
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings({"unchecked", "try"})
     private void registerFeature(Class<?> baseFeatureClass, Function<Class<?>, Class<?>> specificClassProvider, IsInConfigurationAccessImpl access) {
         if (!Feature.class.isAssignableFrom(baseFeatureClass)) {
             throw UserError.abort("Class does not implement %s: %s", Feature.class.getName(), baseFeatureClass.getName());

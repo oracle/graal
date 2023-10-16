@@ -50,6 +50,7 @@ public abstract class ConditionalConfigurationRegistry {
         }
     }
 
+    @SuppressWarnings("try")
     public void flushConditionalConfiguration(Feature.BeforeAnalysisAccess b) {
         for (Map.Entry<String, Collection<Runnable>> reachabilityEntry : pendingReachabilityHandlers.entrySet()) {
             TypeResult<Class<?>> typeResult = ((FeatureImpl.BeforeAnalysisAccessImpl) b).getImageClassLoader().findClass(reachabilityEntry.getKey());

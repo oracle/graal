@@ -250,6 +250,7 @@ public class MethodTypeFlowBuilder {
         }
     }
 
+    @SuppressWarnings("try")
     protected static void registerUsedElements(PointsToAnalysis bb, StructuredGraph graph, boolean registerEmbeddedRoots) {
         PointsToAnalysisMethod method = (PointsToAnalysisMethod) graph.method();
         HostedProviders providers = bb.getProviders(method);

@@ -386,6 +386,7 @@ public class SVMHost extends HostVM {
         return hubToType.get(hub);
     }
 
+    @SuppressWarnings("try")
     private DynamicHub createHub(AnalysisType type) {
         DynamicHub superHub = null;
         if ((type.isInstanceClass() && type.getSuperclass() != null) || type.isArray()) {

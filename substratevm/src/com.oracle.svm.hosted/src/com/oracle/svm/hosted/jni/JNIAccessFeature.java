@@ -316,6 +316,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void duringAnalysis(DuringAnalysisAccess a) {
         getConditionalConfigurationRegistry().flushConditionalConfiguration(a);
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
@@ -368,6 +369,7 @@ public class JNIAccessFeature implements Feature {
         });
     }
 
+    @SuppressWarnings("try")
     private void addMethod(Executable method, DuringAnalysisAccessImpl access) {
         if (SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
             return;
@@ -408,6 +410,7 @@ public class JNIAccessFeature implements Feature {
         });
     }
 
+    @SuppressWarnings("try")
     private JNIJavaCallVariantWrapperGroup createJavaCallVariantWrappers(DuringAnalysisAccessImpl access, SimpleSignature wrapperSignature, boolean nonVirtual) {
         var map = nonVirtual ? nonvirtualCallVariantWrappers : callVariantWrappers;
         CausalityExport.registerEvent(CausalityEvents.JniCallVariantWrapper.create(wrapperSignature, !nonVirtual));

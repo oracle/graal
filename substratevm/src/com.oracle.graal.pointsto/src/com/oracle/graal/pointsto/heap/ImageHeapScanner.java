@@ -108,6 +108,7 @@ public abstract class ImageHeapScanner {
         hostedSnippetReflection = GraalAccess.getOriginalProviders().getSnippetReflection();
     }
 
+    @SuppressWarnings("try")
     public void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
         if (isNonNullObjectConstant(root)) {
             EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
@@ -119,6 +120,7 @@ public abstract class ImageHeapScanner {
         }
     }
 
+    @SuppressWarnings("try")
     public void onFieldRead(AnalysisField field) {
         assert field.isRead() : field;
         try (var ignored = CausalityExport.resetCause()) {
@@ -222,6 +224,7 @@ public abstract class ImageHeapScanner {
      * Create the ImageHeapConstant object wrapper, capture the hosted state of fields and arrays,
      * and install a future that can process them.
      */
+    @SuppressWarnings("try")
     protected ImageHeapConstant createImageHeapObject(JavaConstant constant, ScanReason reason) {
         assert constant.getJavaKind() == JavaKind.Object && !constant.isNull() : constant;
 
@@ -293,6 +296,7 @@ public abstract class ImageHeapScanner {
         return array;
     }
 
+    @SuppressWarnings("try")
     private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
         /* We are about to query the type's fields, the type must be marked as reachable. */
         var inHeap = CausalityEvents.TypeInHeap.create(type);
@@ -500,6 +504,7 @@ public abstract class ImageHeapScanner {
         return imageHeapConstant;
     }
 
+    @SuppressWarnings("try")
     protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         AnalysisType objectType = metaAccess.lookupJavaType(imageHeapConstant);
         imageHeap.addReachableObject(objectType, imageHeapConstant);
@@ -628,6 +633,7 @@ public abstract class ImageHeapScanner {
     /**
      * Add the object to the image heap and, if the object is a collection, rescan its elements.
      */
+    @SuppressWarnings("try")
     public void rescanObject(Object object) {
         try (var ignored = CausalityExport.resetCause()) {
             rescanObject(object, OtherReason.RESCAN);
@@ -728,6 +734,7 @@ public abstract class ImageHeapScanner {
      * schedule new tasks, because that would be treated as "the analysis has not finished yet". So
      * in that case we execute the task directly.
      */
+    @SuppressWarnings("try")
     private void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
         try (var ignored = CausalityExport.resetCause()) {
             if (bb.executorIsStarted()) {

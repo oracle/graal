@@ -51,6 +51,7 @@ public class AnalysisFuture<V> extends FutureTask<V> {
     }
 
     /** Run the task, wait for it to complete if necessary, then retrieve its result. */
+    @SuppressWarnings("try")
     public V ensureDone() {
         try {
             /*

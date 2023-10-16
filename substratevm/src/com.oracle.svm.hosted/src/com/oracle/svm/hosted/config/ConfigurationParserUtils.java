@@ -121,6 +121,7 @@ public final class ConfigurationParserUtils {
         return parsedCount;
     }
 
+    @SuppressWarnings("try")
     private static void doParseAndRegister(ConfigurationParser parser, String featureName, Object location) {
         try {
             URI uri;

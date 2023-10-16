@@ -929,6 +929,7 @@ public class SubstrateGraphBuilderPlugins {
         return true;
     }
 
+    @SuppressWarnings("try")
     private static void registerArrayPlugins(InvocationPlugins plugins, SnippetReflectionProvider snippetReflection, ParsingReason reason) {
         Registration r = new Registration(plugins, Array.class).setAllowOverwrite(true);
         r.register(new RequiredInvocationPlugin("newInstance", Class.class, int[].class) {

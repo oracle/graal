@@ -446,6 +446,7 @@ class Graph {
         return adjReverse;
     }
 
+    @SuppressWarnings("unchecked")
     private static <T> Stream<T> filterType(Class<T> type, Stream<?> s) {
         return (Stream<T>) s.filter(o -> type.isAssignableFrom(o.getClass()));
     }
