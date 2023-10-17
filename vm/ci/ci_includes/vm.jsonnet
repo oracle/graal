@@ -224,7 +224,7 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
     self.notify_releaser_build,
   ],
 
-  builds: [vm_common.verify_name(b1) for b1 in vm_common.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + [{'defined_in': std.thisFile} + b2  for b2 in builds]],
+  builds: [vm_common.verify_name(b) for b in vm_common.builds + vm_common_bench.builds + vm_bench.builds + vm_native.builds + utils.add_defined_in(builds, std.thisFile)],
 
   compiler_gate:: (import '../../../compiler/ci/ci_common/gate.jsonnet')
 }

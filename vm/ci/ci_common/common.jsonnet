@@ -1,5 +1,6 @@
 local vm = import '../ci_includes/vm.jsonnet';
 local graal_common = import '../../../ci/ci_common/common.jsonnet';
+local utils = import '../../../ci/ci_common/common-utils.libsonnet';
 local repo_config = import '../../../repo-configuration.libsonnet';
 local devkits = graal_common.devkits;
 
@@ -857,5 +858,5 @@ local devkits = graal_common.devkits;
     vm.vm_java_Latest + sulong_vm_tests,
   ] + (import 'libgraal.jsonnet').builds,
 
-  builds:: [{'defined_in': std.thisFile} + b for b in builds],
+  builds:: utils.add_defined_in(builds, std.thisFile),
 }
