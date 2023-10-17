@@ -250,7 +250,7 @@ def slnative(args):
     vm_args, sl_args = mx.extract_VM_args(args)
     target_dir = tempfile.mkdtemp()
     jdk = mx.get_jdk(tag='graalvm')
-    image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, force_cp=False)
+    image = _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, force_cp=False, hosted_assertions=False)
     if not image:
         mx.abort("No native-image installed in GraalVM {}. Switch to an environment that has an installed native-image command.".format(mx_sdk_vm.graalvm_home(fatalIfMissing=True)))
     mx.log("Image build completed. Running {}".format(" ".join([image] + sl_args)))
@@ -258,7 +258,7 @@ def slnative(args):
     return result
 
 
-def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, force_cp=False):
+def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_enterprise=True, force_cp=False, hosted_assertions=True):
     native_image_path = jdk.exe_path('native-image')
     if not exists(native_image_path):
         native_image_path = os.path.join(jdk.home, 'bin', mx.cmd_suffix('native-image'))
@@ -268,6 +268,9 @@ def _native_image_sl(jdk, vm_args, target_dir, use_optimized_runtime=True, use_e
 
     target_path = os.path.join(target_dir, mx.exe_suffix('sl'))
     dist_names = resolve_sl_dist_names(use_optimized_runtime=use_optimized_runtime, use_enterprise=use_enterprise)
+
+    if hosted_assertions:
+        vm_args += ["-J-ea", "-J-esa"]
 
     vm_args += mx.get_runtime_jvm_args(names=dist_names, force_cp=force_cp)
     if force_cp:
