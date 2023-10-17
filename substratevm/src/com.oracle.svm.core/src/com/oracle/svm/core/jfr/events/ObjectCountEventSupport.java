@@ -28,6 +28,7 @@ package com.oracle.svm.core.jfr.events;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.Heap;
+import com.oracle.svm.core.heap.GCCause;
 import com.oracle.svm.core.heap.ObjectVisitor;
 import com.oracle.svm.core.hub.DynamicHub;
 import com.oracle.svm.core.hub.DynamicHubSupport;
@@ -50,34 +51,30 @@ import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;
 
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
+import org.graalvm.word.UnsignedWord;
 
 public class ObjectCountEventSupport {
     private static final double CUTOFF_PERCENTAGE = 0.005;
     private static final ObjectCountVisitor objectCountVisitor = new ObjectCountVisitor();
-    private static volatile boolean shouldSendRequestableEvent = false;
 
     @Platforms(HOSTED_ONLY.class)
     ObjectCountEventSupport() {
     }
 
-    @Uninterruptible(reason = "Set and unset should be atomic with invoked GC.", callerMustBe = true)
-    public static void setShouldSendRequestableEvent(boolean value) {
-        shouldSendRequestableEvent = value;
-    }
 
-    public static void emitEvents(int gcId, long startTicks) {
-        if (HasJfrSupport.get() && shouldEmitEvents()) {
-            emitEvents0(gcId, startTicks);
+    public static void emitEvents(UnsignedWord gcId, long startTicks, GCCause cause) {
+        if (HasJfrSupport.get() && (GCCause.JfrObjectCount.equals(cause) || shouldEmitObjectCountAfterGC())) {
+            emitEvents0(gcId, startTicks, cause);
         }
     }
 
     /** ShouldEmit will be checked again later. This is merely an optimization. */
     @Uninterruptible(reason = "Caller of JfrEvent#shouldEmit must be uninterruptible.")
-    private static boolean shouldEmitEvents() {
-        return shouldSendRequestableEvent || JfrEvent.ObjectCountAfterGC.shouldEmit();
+    private static boolean shouldEmitObjectCountAfterGC() {
+        return JfrEvent.ObjectCountAfterGC.shouldEmit();
     }
 
-    private static void emitEvents0(int gcId, long startTicks) {
+    private static void emitEvents0(UnsignedWord gcId, long startTicks, GCCause cause) {
         PointerArray objectCounts = StackValue.get(PointerArray.class);
         try {
             int initialCapacity = ImageSingletons.lookup(DynamicHubSupport.class).getMaxTypeId();
@@ -88,21 +85,21 @@ public class ObjectCountEventSupport {
             long totalSize = visitObjects(objectCounts);
 
             for (int i = 0; i < objectCounts.getSize(); i++) {
-                emitForTypeId(i, objectCounts, gcId, startTicks, totalSize);
+                emitForTypeId(i, objectCounts, gcId, startTicks, totalSize, cause);
             }
         } finally {
             PointerArrayAccess.freeData(objectCounts);
         }
     }
 
-    private static void emitForTypeId(int typeId, PointerArray objectCounts, int gcId, long startTicks, long totalSize) {
+    private static void emitForTypeId(int typeId, PointerArray objectCounts, UnsignedWord gcId, long startTicks, long totalSize, GCCause cause) {
         ObjectCountData objectCountData = (ObjectCountData) PointerArrayAccess.get(objectCounts, typeId);
         if (objectCountData.isNonNull() && objectCountData.getSize() / (double) totalSize > CUTOFF_PERCENTAGE) {
             assert objectCountData.getSize() > 0 && objectCountData.getTraceId() > 0 && objectCountData.getSize() > 0;
-            if (shouldSendRequestableEvent) {
-                ObjectCountEvents.emit(JfrEvent.ObjectCount, startTicks, objectCountData.getTraceId(), objectCountData.getCount(), objectCountData.getSize(), gcId);
+            if (GCCause.JfrObjectCount.equals(cause)) {
+                ObjectCountEvents.emit(JfrEvent.ObjectCount, startTicks, objectCountData.getTraceId(), objectCountData.getCount(), objectCountData.getSize(), (int) gcId.rawValue());
             }
-            ObjectCountEvents.emit(JfrEvent.ObjectCountAfterGC, startTicks, objectCountData.getTraceId(), objectCountData.getCount(), objectCountData.getSize(), gcId);
+            ObjectCountEvents.emit(JfrEvent.ObjectCountAfterGC, startTicks, objectCountData.getTraceId(), objectCountData.getCount(), objectCountData.getSize(), (int) gcId.rawValue());
         }
     }
 

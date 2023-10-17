@@ -28,8 +28,8 @@ package com.oracle.svm.core.genscavenge;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.heap.GCCause;
+import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jfr.JfrEvent;
-import com.oracle.svm.core.jfr.events.ObjectCountEventSupport;
 import jdk.jfr.Event;
 import jdk.jfr.Name;
 import jdk.jfr.Period;
@@ -42,12 +42,15 @@ public class EveryChunkNativeGCPeriodicEvents extends Event {
         emitObjectCount();
     }
 
-    @Uninterruptible(reason = "Set and unset should be atomic with invoked GC to avoid races.")
     private static void emitObjectCount() {
-        if (JfrEvent.ObjectCount.shouldEmit()) {
-            ObjectCountEventSupport.setShouldSendRequestableEvent(true);
-            GCImpl.getGCImpl().collectWithoutAllocating(GCCause.JfrObjectCount, true);
-            ObjectCountEventSupport.setShouldSendRequestableEvent(false);
+        if (shouldEmitObjectCount()) {
+            Heap.getHeap().getGC().collectCompletely(GCCause.JfrObjectCount);
         }
+    }
+
+    /** ShouldEmit will be checked again later. This is merely an optimization to avoid a potentially unnecessary GC. */
+    @Uninterruptible(reason = "Caller of JfrEvent#shouldEmit must be uninterruptible.")
+    private static boolean shouldEmitObjectCount() {
+        return JfrEvent.ObjectCount.shouldEmit();
     }
 }

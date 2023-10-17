@@ -102,12 +102,12 @@ public class JfrTypeRepository implements JfrRepository {
         return typeInfo;
     }
 
-    boolean isClassGenerated(Class<?> clazz) {
+    private boolean isClassGenerated(Class<?> clazz) {
         return clazz != null && clazz.getPackage() != null && clazz.getPackage().getName().equals("jdk.internal.reflect") && clazz.getName().contains("GeneratedSerializationConstructorAccessor");
     }
 
     private void visitClass(TypeInfo typeInfo, Class<?> clazz) {
-        if ((clazz != null && addClass(typeInfo, clazz))) {
+        if (clazz != null && addClass(typeInfo, clazz)) {
             visitPackage(typeInfo, clazz.getPackage(), clazz.getModule(), isClassGenerated(clazz));
             visitClass(typeInfo, clazz.getSuperclass());
             visitClassLoader(typeInfo, clazz.getClassLoader());
@@ -252,17 +252,22 @@ public class JfrTypeRepository implements JfrRepository {
     }
 
     private boolean addPackage(TypeInfo typeInfo, Package pkg, Module module, boolean generated) {
+        /* If the current package is already visited, then the current module must also already be visited,
+             or it must be the unnamed module because the current class is generated. */
         if (isPackageVisited(typeInfo, pkg)) {
-            Module cached = (flushedPackages.containsKey(pkg.getName()) ? flushedPackages.get(pkg.getName()).module : typeInfo.packages.get(pkg.getName()).module);
-            if (cached.isNamed() || !module.isNamed()) {
-                assert module == cached || (generated && !module.isNamed());
+            Module cachedModule = (flushedPackages.containsKey(pkg.getName()) ? flushedPackages.get(pkg.getName()).module : typeInfo.packages.get(pkg.getName()).module);
+            /* We only want to continue on to replace the cachedModule, if it is the unnamed module.
+              And we only want to bother replacing it with a named module. */
+            if (cachedModule.isNamed() || !module.isNamed()) {
+                assert module == cachedModule || (generated && !module.isNamed());
                 return false;
             }
-            assert module != cached && !generated;
+            /* At this point we have determined we should replace the cachedModule. */
+            assert module != cachedModule && !generated;
         }
         // The empty package represented by "" is always traced with id 0
         long id = pkg.getName().isEmpty() ? 0 : ++currentPackageId;
-        typeInfo.packages.put(pkg.getName(), new PackageInfo(id, module));
+        typeInfo.packages.put(pkg.getName(), new PackageInfo(id, module, pkg));
         return true;
     }
 

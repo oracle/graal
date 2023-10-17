@@ -178,7 +178,7 @@ public final class GCImpl implements GC {
 
     @Uninterruptible(reason = "Avoid races with other threads that also try to trigger a GC")
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.NO_ALLOCATION, reason = "Must not allocate in the implementation of garbage collection.")
-    public boolean collectWithoutAllocating(GCCause cause, boolean forceFullGC) {
+    boolean collectWithoutAllocating(GCCause cause, boolean forceFullGC) {
         VMError.guarantee(!hasNeverCollectPolicy());
 
         int size = SizeOf.get(CollectionVMOperationData.class);
@@ -245,7 +245,7 @@ public final class GCImpl implements GC {
             }
         } finally {
             JfrGCEvents.emitGarbageCollectionEvent(getCollectionEpoch(), cause, startTicks);
-            ObjectCountEventSupport.emitEvents((int) getCollectionEpoch().rawValue(), startTicks);
+            ObjectCountEventSupport.emitEvents(getCollectionEpoch(), startTicks, cause);
         }
         return outOfMemory;
     }
