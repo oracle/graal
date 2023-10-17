@@ -179,7 +179,8 @@ local graal_common = import '../../../ci/ci_common/common.jsonnet';
         ['set-export', 'BRANCH_NAME', ['git', 'rev-parse', '--abbrev-ref', 'HEAD']],
         ['bash', '-c', 'if [[ ${BRANCH_NAME} == master ]] || [[ ${BRANCH_NAME} == release/* ]] || [[ ${BRANCH_NAME} == cpu/* ]]; then git -C ${MX_HOME} push origin +HEAD:refs/heads/graal/${BRANCH_NAME}; fi']
       ],
-        name: 'post-merge-vm-update-stable-mx-branch-linux-amd64',
+      name: 'post-merge-vm-update-stable-mx-branch-linux-amd64',
+      notify_groups:: ['deploy'],
     },
 
 
