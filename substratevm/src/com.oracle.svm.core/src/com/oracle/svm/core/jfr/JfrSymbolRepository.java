@@ -38,7 +38,6 @@ import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.c.struct.PinnedObjectField;
 import com.oracle.svm.core.collections.AbstractUninterruptibleHashtable;
 import com.oracle.svm.core.collections.UninterruptibleEntry;
-import com.oracle.svm.core.heap.Heap;
 import com.oracle.svm.core.jdk.UninterruptibleUtils;
 import com.oracle.svm.core.jdk.UninterruptibleUtils.CharReplacer;
 import com.oracle.svm.core.jfr.traceid.JfrTraceIdEpoch;
@@ -76,8 +75,6 @@ public class JfrSymbolRepository implements JfrRepository {
         if (imageHeapString == null) {
             return 0;
         }
-
-        assert Heap.getHeap().isInImageHeap(imageHeapString);
 
         JfrSymbol symbol = StackValue.get(JfrSymbol.class);
         symbol.setValue(imageHeapString);

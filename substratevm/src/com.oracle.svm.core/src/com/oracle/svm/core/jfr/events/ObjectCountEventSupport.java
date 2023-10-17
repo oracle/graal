@@ -101,7 +101,7 @@ public class ObjectCountEventSupport {
     private static long visitObjects(NonmovableArray<ObjectCountData> objectCounts) {
         assert VMOperation.isGCInProgress();
         objectCountVisitor.initialize(objectCounts);
-        Heap.getHeap().walkImageHeapObjects(objectCountVisitor);
+        Heap.getHeap().walkObjects(objectCountVisitor);
         return objectCountVisitor.getTotalSize();
     }
 
@@ -118,7 +118,7 @@ public class ObjectCountEventSupport {
     }
 
     /**
-     * It's ok to ge the trace ID here because JFR epoch will not change before jdk.ObjectCount
+     * It's ok to get the trace ID here because the JFR epoch will not change before jdk.ObjectCount
      * events are committed.
      */
     @Uninterruptible(reason = "Caller of SubstrateJVM#getClassId must be uninterruptible.")
@@ -160,21 +160,11 @@ public class ObjectCountEventSupport {
             objectCountData.setCount(objectCountData.getCount() + 1);
 
             // Get size
-            long additionalSize = uninterruptibleGetSize(obj);
+            long additionalSize = LayoutEncoding.getSizeFromObjectInGC(obj).rawValue();
             totalSize += additionalSize;
             objectCountData.setSize(objectCountData.getSize() + additionalSize);
 
             return true;
-        }
-
-        /**
-         * Caller can be interruptible code because GC should not touch this object again before we
-         * are done with it.
-         */
-        @Uninterruptible(reason = "Caller of LayoutEncoding#getSizeFromObject must be uninterruptible.")
-        private long uninterruptibleGetSize(Object obj) {
-            assert VMOperation.isGCInProgress();
-            return LayoutEncoding.getSizeFromObject(obj).rawValue();
         }
 
         public long getTotalSize() {
