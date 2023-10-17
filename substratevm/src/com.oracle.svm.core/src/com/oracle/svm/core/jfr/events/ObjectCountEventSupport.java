@@ -61,7 +61,6 @@ public class ObjectCountEventSupport {
     ObjectCountEventSupport() {
     }
 
-
     public static void emitEvents(UnsignedWord gcId, long startTicks, GCCause cause) {
         if (HasJfrSupport.get() && (GCCause.JfrObjectCount.equals(cause) || shouldEmitObjectCountAfterGC())) {
             emitEvents0(gcId, startTicks, cause);

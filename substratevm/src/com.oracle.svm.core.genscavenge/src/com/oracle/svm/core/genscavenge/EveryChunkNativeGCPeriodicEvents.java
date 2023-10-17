@@ -48,7 +48,10 @@ public class EveryChunkNativeGCPeriodicEvents extends Event {
         }
     }
 
-    /** ShouldEmit will be checked again later. This is merely an optimization to avoid a potentially unnecessary GC. */
+    /**
+     * ShouldEmit will be checked again later. This is merely an optimization to avoid a potentially
+     * unnecessary GC.
+     */
     @Uninterruptible(reason = "Caller of JfrEvent#shouldEmit must be uninterruptible.")
     private static boolean shouldEmitObjectCount() {
         return JfrEvent.ObjectCount.shouldEmit();
