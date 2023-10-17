@@ -102,6 +102,7 @@ import jdk.graal.compiler.nodes.ConstantNode;
 import jdk.graal.compiler.nodes.DeadEndNode;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.GraphState.GuardsStage;
 import jdk.graal.compiler.nodes.Invoke;
 import jdk.graal.compiler.nodes.LogicConstantNode;
@@ -959,12 +960,16 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         foreignCallNode.setValidateDeoptFrameStates(false);
         /*
          * The original BytecodeExceptionNode has a rethrowException FrameState which isn't suitable
-         * for deopt because the exception to be thrown come from this call so it's not available in
-         * the debug info. The foreign call needs a stateDuring instead so it can deopt with a
-         * pending exception.
+         * for deopt because the exception to be thrown comes from this call so it's not available
+         * in the debug info. The foreign call cannot be a stateDuring because that runs into
+         * assertions about which bytecodes must be reexecuted. The actual setting of reexecute
+         * doesn't matter here because it will always simply rethrow the exception instead.
          */
-        foreignCallNode.setStateDuring(node.createStateDuring());
-        // Keep a proper stateAfter for use by FSA
+        assert !FrameState.StackState.BeforePop.duringCall : "expect reexecute to be true which is `!duringCall";
+        FrameState stateDuring = node.stateAfter();
+        stateDuring = stateDuring.duplicateModified(graph, stateDuring.bci, FrameState.StackState.BeforePop, JavaKind.Object, null, null, null);
+        foreignCallNode.setStateDuring(stateDuring);
+        // Keep the original rethrowException stateAfter for use by FSA
         foreignCallNode.setStateAfter(node.stateAfter());
         graph.replaceFixedWithFixed(node, foreignCallNode);
     }
