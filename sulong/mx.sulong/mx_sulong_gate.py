@@ -188,7 +188,7 @@ def _sulong_gate_runner(args, tasks):
     _unittest('GCC_Fortran', 'SULONG_GCC_FORTRAN_TEST_SUITE', description="GCC 5.2 test suite (Fortran tests)", testClasses=['GccFortranSuite'], tags=['gcc_fortran'])
     _unittest('Sulong', 'SULONG_STANDALONE_TEST_SUITES', description="Sulong's internal tests", testClasses='SulongSuite', tags=['sulongStandalone', 'sulongBasic', 'standalone'],
               # run only a small subset of the tests on the jvm standalone, the startup overhead per test is too high for more
-              extraUnittestArgs=['-Dsulongtest.testNameFilter=cpp'] if slowStandalone else [])
+              extraUnittestArgs=['-Dsulongtest.testNameFilter=cpp', '-Dpolyglot.log.llvm.Loader.level=ALL', '-Dpolyglot.log.file=log.txt'] if slowStandalone else ['-Dpolyglot.log.llvm.Loader.level=ALL', '-Dpolyglot.log.file=log.txt'])
     _unittest('Interop', 'SULONG_EMBEDDED_TEST_SUITES', description="Truffle Language interoperability tests", testClasses=['com.oracle.truffle.llvm.tests.interop.'], tags=['interop', 'sulongBasic', 'sulongWinSupport'])
     if standaloneMode is None:
         # can't test with resources in standalone mode
