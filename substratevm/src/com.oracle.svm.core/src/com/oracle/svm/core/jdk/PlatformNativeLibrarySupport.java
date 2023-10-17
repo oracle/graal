@@ -65,6 +65,7 @@ public abstract class PlatformNativeLibrarySupport {
                     "javax_net",
                     "javax_script",
                     "javax_security",
+                    "jdk_internal_io",
                     "jdk_internal_jimage",
                     "jdk_internal_misc",
                     "jdk_internal_org",
