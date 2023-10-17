@@ -293,6 +293,7 @@ public final class JavaStackWalker {
 
     @Uninterruptible(reason = "Prevent deoptimization of stack frames while in this method.")
     public static boolean walkThread(IsolateThread thread, Pointer endSP, ParameterizedStackFrameVisitor visitor, Object data) {
+        assert thread.isNonNull();
         JavaStackWalk walk = StackValue.get(JavaStackWalk.class);
         if (initWalk(walk, thread)) {
             walk.setEndSP(endSP);
