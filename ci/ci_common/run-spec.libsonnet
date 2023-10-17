@@ -181,6 +181,7 @@ local examples   = (import "run-spec-examples.libsonnet").examples;
   // Generates a variants entry using a feature map.
   // See the example for a detailed explanation.
   assert examples.generate_variants,
+  assert examples.generate_variants_exclude,
   generate_variants(variant_spec, feature_map, order=null):: {
     local SEE_ALSO = [$.run_job],
   } + _impl.generate_variants(variant_spec, feature_map, order=order),
