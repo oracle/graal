@@ -227,12 +227,14 @@ public final class OracleDBRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected CodePointSet getPredefinedCharClass(char c, boolean inCharClass) {
-        if (inCharClass) {
-            // OracleDB ignores \s \d \w inside character classes, and interprets them as literal
-            // characters instead
-            return '\\' < c ? CodePointSet.create('\\', '\\', c, c) : CodePointSet.create(c, c, '\\', '\\');
-        }
+    protected boolean isPredefCharClass(char c) {
+        // OracleDB ignores \s \d \w inside character classes, and interprets them as literal
+        // characters instead
+        return !inCharacterClass() && PREDEFINED_CHAR_CLASSES.get(c);
+    }
+
+    @Override
+    protected CodePointSet getPredefinedCharClass(char c) {
         CodePointSet cps = getPOSIXCharClass(c);
         if (isLowerCase(c)) {
             return cps;

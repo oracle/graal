@@ -253,12 +253,7 @@ public final class Constants {
                     HEX_CHARS
     };
 
-    public static final CodePointSet WORD_CHARS_UNICODE_SETS_IGNORE_CASE;
-
-    static {
-        CodePointSetAccumulator tmp = new CodePointSetAccumulator();
-        WORD_CHARS_UNICODE_SETS_IGNORE_CASE = CaseFoldData.simpleCaseFold(WORD_CHARS, tmp);
-    }
+    public static final CodePointSet WORD_CHARS_UNICODE_SETS_IGNORE_CASE = CaseFoldData.simpleCaseFold(WORD_CHARS, new CodePointSetAccumulator());
 
     public static final CodePointSet NON_WORD_CHARS_UNICODE_SETS_IGNORE_CASE = WORD_CHARS_UNICODE_SETS_IGNORE_CASE.createInverse(CaseFoldData.FOLDABLE_CHARACTERS,
                     new CompilationBuffer(Encodings.UTF_16));

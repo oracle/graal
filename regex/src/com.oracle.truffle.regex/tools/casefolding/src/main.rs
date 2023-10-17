@@ -50,11 +50,11 @@ use std::process::Command;
 use std::time::Instant;
 
 use csv::{Reader, StringRecord, Trim};
-use error_chain::error_chain;
+use error_chain::{bail, error_chain};
 use icu_collator::{CaseLevel, Collator, CollatorOptions, Strength};
 use icu_locid::Locale;
 use indicatif::ProgressIterator;
-use oracle::{Connection, Connector, Privilege};
+use oracle::{Connection, Connector, Privilege, Statement};
 use oracle::sql_type::OracleType;
 use reqwest::Url;
 
@@ -1287,24 +1287,55 @@ fn oracledb_generate_posix_char_classes() -> Result<()> {
 }
 
 fn oracledb_generate_tests() -> Result<()> {
-    fn count_groups(pattern: &str) -> i32 {
-        let mut par_open = 0;
-        let mut escaped = false;
-        let mut n = 1;
-        for c in pattern.chars() {
-            if !escaped {
-                if c == '(' {
-                    par_open += 1;
-                } else if c == ')' {
-                    if par_open > 0 {
-                        par_open -= 1;
-                        n += 1;
+    enum TestResult {
+        Match(Vec<i32>),
+        NoMatch,
+        SyntaxError(String),
+    }
+
+    fn run_test(statement: &mut Statement, pattern: &str, flags: &str, input: &str, from_index: i32) -> Result<TestResult> {
+        fn count_groups(pattern: &str) -> i32 {
+            let mut par_open = 0;
+            let mut escaped = false;
+            let mut n = 1;
+            for c in pattern.chars() {
+                if !escaped {
+                    if c == '(' {
+                        par_open += 1;
+                    } else if c == ')' {
+                        if par_open > 0 {
+                            par_open -= 1;
+                            n += 1;
+                        }
+                    }
+                }
+                escaped = c == '\\';
+            }
+            return min(n, 10);
+        }
+        let occurrence = 1;
+        let n_groups = count_groups(pattern);
+        let mut groups = vec![];
+        for i_group in 0..n_groups {
+            for start_or_end in [0, 1] {
+                // explicit type for flags string: the client library will set the data type of strings to NVARCHAR2, but REGEXP_INSTR only accepts VARCHAR or CHAR on the flags parameter
+                match statement.query_row_as::<i32>(&[&input, &pattern, &from_index, &occurrence, &start_or_end, &(&flags, &OracleType::Char(10)), &i_group]) {
+                    Ok(i) => {
+                        if i_group == 0 && i == 0 {
+                            return Ok(TestResult::NoMatch);
+                        }
+                        groups.push(i - 1);
+                    }
+                    Err(oracle::Error::OciError(e)) => {
+                        return Ok(TestResult::SyntaxError(e.message()[(e.message().find(": ").unwrap() + 2)..].to_string()));
+                    }
+                    Err(e) => {
+                        bail!(e);
                     }
                 }
             }
-            escaped = c == '\\';
         }
-        return min(n, 10);
+        return Ok(TestResult::Match(groups));
     }
 
     let conn = oracledb_connect()?;
@@ -1963,24 +1994,34 @@ fn oracledb_generate_tests() -> Result<()> {
         ("([[=a=]])\\1", "i", "\u{00e4}a"),
         ("([[=a=]])\\1", "i", "\u{00c4}a"),
         ("([[=a=]])\\1", "i", "\u{00c4}A"),
+        ("[[=a=]o]+", "i", "\u{00e4}O\u{00f6}"),
+        ("[[=a=]o]+", "i", "\u{00e4}O\u{00f6}"),
+        ("[[=\u{00df}=]o]+", "i", "s"),
+        ("[[=\u{00df}=]o]+", "i", "ss"),
+        ("[[=\u{00df}=]o]+", "", "s"),
+        ("[[=\u{00df}=]o]+", "", "ss"),
+        ("[\u{0132}]+", "", "ij"),
+        ("[\u{0132}]+", "i", "ij"),
+        ("[[=\u{0132}=]]+", "", "ij"),
+        ("[[=\u{0132}=]o]+", "", "ij"),
+        ("[[=\u{0132}=]o]+", "i", "ij"),
+        ("[\\s-r]+", "", "\\stu"),
+        ("[\\s-v]+", "", "\\stu"),
     ] {
         let from_index = 1;
-        let occurrence = 1;
-        let n_groups = count_groups(pattern);
-        let mut groups = vec![];
-        for i_group in 0..n_groups {
-            for start_or_end in [0, 1] {
-                // explicit type for flags string: the client library will set the data type of strings to NVARCHAR2, but REGEXP_INSTR only accepts VARCHAR or CHAR on the flags parameter
-                let i = statement.query_row_as::<i32>(&[&input, &pattern, &from_index, &occurrence, &start_or_end, &(&flags, &OracleType::Char(10)), &i_group])?;
-                groups.push(i - 1);
+        let e_pattern = java_string_escape(pattern);
+        let e_input = java_string_escape(input);
+        match run_test(&mut statement, &pattern, &flags, &input, from_index)? {
+            TestResult::Match(groups) => {
+                writeln!(out, "test(\"{}\", \"{}\", \"{}\", {}, true, {});", e_pattern, flags, e_input, from_index - 1, groups.iter().map(|v| format!("{}", v)).collect::<Vec<String>>().join(", "))?;
+            }
+            TestResult::NoMatch => {
+                writeln!(out, "test(\"{}\", \"{}\", \"{}\", {}, false);", e_pattern, flags, e_input, from_index - 1)?;
+            }
+            TestResult::SyntaxError(message) => {
+                writeln!(out, "expectSyntaxError(\"{}\", \"{}\", \"{}\");", e_pattern, flags, java_string_escape(message.as_str()))?;
             }
         }
-        let is_match = *groups.get(0).unwrap() >= 0;
-        write!(out, "test(\"{}\", \"{}\", \"{}\", {}, {}", java_string_escape(pattern), flags, java_string_escape(input), from_index - 1, is_match)?;
-        if is_match {
-            write!(out, ", {}", groups.iter().map(|v| format!("{}", v)).collect::<Vec<String>>().join(", "))?;
-        }
-        writeln!(out, ");")?;
     }
     insert_generated_code(Path::new(PATH_GRAAL_REPO).join(PATH_ORACLE_DB_TESTS).as_path(), &out)?;
     Ok(())

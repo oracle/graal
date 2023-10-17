@@ -55,7 +55,6 @@ import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexOptions;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.errors.JsErrorMessages;
@@ -219,9 +218,7 @@ public final class JSRegexParser implements RegexParser {
                     curCharClass.clear();
                     break;
                 case charClassAtom:
-                    ClassSetContents contents = ((Token.CharacterClassAtom) token).getContents();
-                    assert contents.isCodePointSetOnly();
-                    curCharClass.addSet(contents.getCodePointSet());
+                    curCharClass.addSet(((Token.CharacterClassAtom) token).getContents());
                     break;
                 case charClassEnd:
                     boolean wasSingleChar = !lexer.isCurCharClassInverted() && curCharClass.matchesSingleChar();
