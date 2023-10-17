@@ -1162,6 +1162,21 @@ public final class Engine implements AutoCloseable {
         }
 
         @Override
+        public Object toByteSequence(Object origin) {
+            return Engine.getImpl().asByteSequence(origin);
+        }
+
+        @Override
+        public int byteSequenceLength(Object origin) {
+            return ((ByteSequence) origin).length();
+        }
+
+        @Override
+        public byte byteSequenceByteAt(Object origin, int index) {
+            return ((ByteSequence) origin).byteAt(index);
+        }
+
+        @Override
         public boolean isInstrument(Object instrument) {
             return instrument instanceof Instrument;
         }
@@ -1604,6 +1619,11 @@ public final class Engine implements AutoCloseable {
         @Override
         public Class<?> getPolyglotExceptionClass() {
             return PolyglotException.class;
+        }
+
+        @Override
+        public Class<?> getByteSequenceClass() {
+            return ByteSequence.class;
         }
 
         @Override
@@ -2112,6 +2132,11 @@ public final class Engine implements AutoCloseable {
 
         @Override
         public FileSystem newNIOFileSystem(java.nio.file.FileSystem fileSystem) {
+            throw noPolyglotImplementationFound();
+        }
+
+        @Override
+        public ByteSequence asByteSequence(Object object) {
             throw noPolyglotImplementationFound();
         }
 

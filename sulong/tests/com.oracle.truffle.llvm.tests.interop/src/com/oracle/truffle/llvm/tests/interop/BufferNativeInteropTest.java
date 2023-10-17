@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates.
  *
  * All rights reserved.
  *
@@ -73,13 +73,14 @@ public class BufferNativeInteropTest extends InteropTestBase {
         Object next(Random rand);
     }
 
-    @Parameter public String type;
-    @Parameter(1) public int bytes;
-    @Parameter(2) public Object testValue;
-    @Parameter(3) public AsType conversion;
-    @Parameter(4) public Read read;
-    @Parameter(5) public Write<Object> write;
-    @Parameter(6) public NextRandom next;
+    @Parameter public String name;
+    @Parameter(1) public String type;
+    @Parameter(2) public int bytes;
+    @Parameter(3) public Object testValue;
+    @Parameter(4) public AsType conversion;
+    @Parameter(5) public Read read;
+    @Parameter(6) public Write<Object> write;
+    @Parameter(7) public NextRandom next;
 
     static byte nextByte(Random r) {
         byte[] b = new byte[1];
@@ -94,13 +95,18 @@ public class BufferNativeInteropTest extends InteropTestBase {
     @Parameters(name = "{0}")
     public static Collection<Object[]> allTypes() {
         return Arrays.asList(new Object[][]{
-                        {"i8", 1, (byte) 42, (AsType) Value::asByte, (Read) (v, bo, off) -> v.readBufferByte(off), (Write<Byte>) (v, bo, off, val) -> v.writeBufferByte(off, val),
+                        {"i8", "i8", 1, (byte) 42, (AsType) Value::asByte, (Read) (v, bo, off) -> v.readBufferByte(off), (Write<Byte>) (v, bo, off, val) -> v.writeBufferByte(off, val),
                                         (NextRandom) BufferNativeInteropTest::nextByte},
-                        {"i16", 2, (short) 43, (AsType) Value::asShort, (Read) Value::readBufferShort, (Write<Short>) Value::writeBufferShort, (NextRandom) BufferNativeInteropTest::nextShort},
-                        {"i32", 4, 44, (AsType) Value::asInt, (Read) Value::readBufferInt, (Write<Integer>) Value::writeBufferInt, (NextRandom) Random::nextInt},
-                        {"i64", 8, -42L, (AsType) Value::asLong, (Read) Value::readBufferLong, (Write<Long>) Value::writeBufferLong, (NextRandom) Random::nextLong},
-                        {"float", 4, -100.101F, (AsType) Value::asFloat, (Read) Value::readBufferFloat, (Write<Float>) Value::writeBufferFloat, (NextRandom) Random::nextFloat},
-                        {"double", 8, -200.202D, (AsType) Value::asDouble, (Read) Value::readBufferDouble, (Write<Double>) Value::writeBufferDouble, (NextRandom) Random::nextDouble},
+                        {"i16", "i16", 2, (short) 43, (AsType) Value::asShort, (Read) Value::readBufferShort, (Write<Short>) Value::writeBufferShort, (NextRandom) BufferNativeInteropTest::nextShort},
+                        {"i32", "i32", 4, 44, (AsType) Value::asInt, (Read) Value::readBufferInt, (Write<Integer>) Value::writeBufferInt, (NextRandom) Random::nextInt},
+                        {"i64", "i64", 8, -42L, (AsType) Value::asLong, (Read) Value::readBufferLong, (Write<Long>) Value::writeBufferLong, (NextRandom) Random::nextLong},
+                        {"i64BA", "i64", 8, -42L, (AsType) Value::asLong, (Read) (v, order, offset) -> {
+                            byte[] arr = new byte[8];
+                            v.readBuffer(offset, arr, 0, 8);
+                            return ByteBuffer.wrap(arr).order(order).getLong();
+                        }, (Write<Long>) Value::writeBufferLong, (NextRandom) Random::nextLong},
+                        {"float", "float", 4, -100.101F, (AsType) Value::asFloat, (Read) Value::readBufferFloat, (Write<Float>) Value::writeBufferFloat, (NextRandom) Random::nextFloat},
+                        {"double", "double", 8, -200.202D, (AsType) Value::asDouble, (Read) Value::readBufferDouble, (Write<Double>) Value::writeBufferDouble, (NextRandom) Random::nextDouble},
         });
     }
 

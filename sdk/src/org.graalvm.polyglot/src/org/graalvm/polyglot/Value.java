@@ -465,6 +465,55 @@ public final class Value extends AbstractValue {
     }
 
     /**
+     * Reads bytes from the receiver object into the specified byte array.
+     * <p>
+     * The access is <em>not</em> guaranteed to be atomic. Therefore, this message is <em>not</em>
+     * thread-safe.
+     * <p>
+     * Invoking this message does not cause any observable side-effects.
+     * <p>
+     * <b>Example</b> reading into an output stream using a 4k auxiliary byte array:
+     * 
+     * <pre>
+     * Value val = ...
+     * assert val.hasBufferElements();
+     * try (OutputStream out = ...) {
+     *     byte[] aux = new byte[4096];
+     *     long bufferSize = val.getBufferSize();
+     *     for (long offset = 0; offset < bufferSize; offset += aux.length) {
+     *         int bytesToRead = (int) Math.min(bufferSize - offset, aux.length);
+     *         val.readBuffer(offset, aux, 0, bytesToRead);
+     *         out.write(aux, 0, bytesToRead);
+     *     }
+     * }
+     * </pre>
+     *
+     * In case the goal is to read the whole contents into a single byte array, the easiest way is
+     * to do that through {@link org.graalvm.polyglot.io.ByteSequence}:
+     * 
+     * <pre>
+     * byte[] byteArray = val.as(ByteSequence.class).toByteArray();
+     * </pre>
+     * 
+     * @param byteOffset offset in the buffer to start reading from.
+     * @param destination byte array to write the read bytes into.
+     * @param destinationOffset offset in the destination array to start writing from.
+     * @param length number of bytes to read.
+     * @throws IndexOutOfBoundsException if and only if
+     *             <code>byteOffset < 0 || length < 0 || byteOffset + length > </code>{@link #getBufferSize()}<code> || destinationOffset < 0 || destinationOffset + length > destination.length</code>
+     * @throws UnsupportedOperationException if the value does not have {@link #hasBufferElements
+     *             buffer elements}.
+     * @throws IllegalStateException if the context is already closed.
+     * @throws PolyglotException if a guest language error occurred during execution.
+     * @since 24.0
+     */
+    public void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length) throws UnsupportedOperationException, IndexOutOfBoundsException {
+        Objects.requireNonNull(destination, "destination");
+        Objects.checkFromIndexSize(destinationOffset, length, destination.length);
+        dispatch.readBuffer(this.context, receiver, byteOffset, destination, destinationOffset, length);
+    }
+
+    /**
      * Writes the given byte at the given byte offset from the start of the buffer.
      * <p>
      * The access is <em>not</em> guaranteed to be atomic. Therefore, this method is <em>not</em>
