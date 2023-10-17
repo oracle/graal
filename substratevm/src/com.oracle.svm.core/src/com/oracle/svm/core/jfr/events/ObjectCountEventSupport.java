@@ -36,14 +36,14 @@ import com.oracle.svm.core.hub.LayoutEncoding;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.JfrEvent;
 import com.oracle.svm.core.jfr.SubstrateJVM;
-import com.oracle.svm.core.jfr.utils.PointerArray;
-import com.oracle.svm.core.jfr.utils.PointerArrayAccess;
 import com.oracle.svm.core.thread.VMOperation;
+
+import com.oracle.svm.core.c.NonmovableArray;
+import com.oracle.svm.core.c.NonmovableArrays;
 
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
-import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.struct.RawField;
 import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
@@ -74,25 +74,21 @@ public class ObjectCountEventSupport {
     }
 
     private static void emitEvents0(UnsignedWord gcId, long startTicks, GCCause cause) {
-        PointerArray objectCounts = StackValue.get(PointerArray.class);
+        int initialCapacity = ImageSingletons.lookup(DynamicHubSupport.class).getMaxTypeId();
+        NonmovableArray<ObjectCountData> objectCounts = NonmovableArrays.createWordArray(initialCapacity);
         try {
-            int initialCapacity = ImageSingletons.lookup(DynamicHubSupport.class).getMaxTypeId();
-            if (!PointerArrayAccess.initialize(objectCounts, initialCapacity)) {
-                return;
-            }
-
             long totalSize = visitObjects(objectCounts);
 
-            for (int i = 0; i < objectCounts.getSize(); i++) {
+            for (int i = 0; i < initialCapacity; i++) {
                 emitForTypeId(i, objectCounts, gcId, startTicks, totalSize, cause);
             }
         } finally {
-            PointerArrayAccess.freeData(objectCounts);
+            NonmovableArrays.releaseUnmanagedArray(objectCounts);
         }
     }
 
-    private static void emitForTypeId(int typeId, PointerArray objectCounts, UnsignedWord gcId, long startTicks, long totalSize, GCCause cause) {
-        ObjectCountData objectCountData = (ObjectCountData) PointerArrayAccess.get(objectCounts, typeId);
+    private static void emitForTypeId(int typeId, NonmovableArray<ObjectCountData> objectCounts, UnsignedWord gcId, long startTicks, long totalSize, GCCause cause) {
+        ObjectCountData objectCountData = NonmovableArrays.getWord(objectCounts, typeId);
         if (objectCountData.isNonNull() && objectCountData.getSize() / (double) totalSize > CUTOFF_PERCENTAGE) {
             assert objectCountData.getSize() > 0 && objectCountData.getTraceId() > 0 && objectCountData.getSize() > 0;
             if (GCCause.JfrObjectCount.equals(cause)) {
@@ -102,14 +98,14 @@ public class ObjectCountEventSupport {
         }
     }
 
-    private static long visitObjects(PointerArray objectCounts) {
+    private static long visitObjects(NonmovableArray<ObjectCountData> objectCounts) {
         assert VMOperation.isGCInProgress();
         objectCountVisitor.initialize(objectCounts);
         Heap.getHeap().walkImageHeapObjects(objectCountVisitor);
         return objectCountVisitor.getTotalSize();
     }
 
-    private static ObjectCountData initializeObjectCountData(PointerArray pointerArray, int idx, Object obj) {
+    private static ObjectCountData initializeObjectCountData(NonmovableArray<ObjectCountData> objectCounts, int idx, Object obj) {
         ObjectCountData objectCountData = ImageSingletons.lookup(UnmanagedMemorySupport.class).malloc(SizeOf.unsigned(ObjectCountData.class));
         if (objectCountData.isNull()) {
             return WordFactory.nullPointer();
@@ -117,7 +113,7 @@ public class ObjectCountEventSupport {
         objectCountData.setCount(0);
         objectCountData.setSize(0);
         objectCountData.setTraceId(getTraceId(obj.getClass()));
-        PointerArrayAccess.write(pointerArray, idx, objectCountData);
+        NonmovableArrays.setWord(objectCounts, idx, objectCountData);
         return objectCountData;
     }
 
@@ -132,14 +128,14 @@ public class ObjectCountEventSupport {
     }
 
     private static class ObjectCountVisitor implements ObjectVisitor {
-        private PointerArray objectCounts;
+        private NonmovableArray<ObjectCountData> objectCounts;
         private long totalSize;
 
         @Platforms(HOSTED_ONLY.class)
         ObjectCountVisitor() {
         }
 
-        public void initialize(PointerArray objectCounts) {
+        public void initialize(NonmovableArray<ObjectCountData> objectCounts) {
             this.objectCounts = objectCounts;
             this.totalSize = 0;
         }
@@ -149,10 +145,10 @@ public class ObjectCountEventSupport {
             assert VMOperation.isGCInProgress();
             DynamicHub hub = DynamicHub.fromClass(obj.getClass());
             int typeId = hub.getTypeID();
-            assert typeId < objectCounts.getSize();
+            assert typeId < NonmovableArrays.lengthOf(objectCounts);
 
             // Create an ObjectCountData for this typeID if one doesn't already exist
-            ObjectCountData objectCountData = objectCounts.getData().addressOf(typeId).read();
+            ObjectCountData objectCountData = NonmovableArrays.getWord(objectCounts, typeId);
             if (objectCountData.isNull()) {
                 objectCountData = initializeObjectCountData(objectCounts, typeId, obj);
                 if (objectCountData.isNull()) {
