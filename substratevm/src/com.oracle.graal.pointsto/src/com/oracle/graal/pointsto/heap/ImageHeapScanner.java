@@ -511,7 +511,7 @@ public abstract class ImageHeapScanner {
 
     protected ValueSupplier<JavaConstant> readHostedFieldValue(AnalysisField field, JavaConstant receiver) {
         // Wrap the hosted constant into a substrate constant
-        JavaConstant value = universe.fromHosted(hostedConstantReflection.readFieldValue(field.wrapped, receiver));
+        JavaConstant value = universe.fromHosted(constantReflection.readFieldValue(field, receiver));
         return ValueSupplier.eagerValue(value);
     }
 
