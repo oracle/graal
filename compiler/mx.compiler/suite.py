@@ -441,6 +441,7 @@ suite = {
         "JAVA_ALLOCATION_INSTRUMENTER",
       ],
       "testDistribution" : True,
+      "unittestConfig": "graal",
       "maven": False,
     },
     "GRAAL_TEST_PREVIEW_FEATURE" : {
@@ -454,6 +455,7 @@ suite = {
       "exclude" : [
       ],
       "testDistribution" : True,
+      "unittestConfig": "graal",
       "maven": False,
     },
 
@@ -621,6 +623,7 @@ suite = {
       "exclude" : [
         "mx:JUNIT",
       ],
+      "unittestConfig": "graal",
       "maven": False,
     },
   },

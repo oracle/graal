@@ -188,8 +188,8 @@ def _open_module_exports_args():
 
 class TruffleUnittestConfig(mx_unittest.MxUnittestConfig):
 
-    def __init__(self):
-        super(TruffleUnittestConfig, self).__init__('truffle')
+    def __init__(self, name='truffle'):
+        super(TruffleUnittestConfig, self).__init__(name)
 
     def processDeps(self, deps):
         # A workaround to include the TRUFFLE_NFI_PANAMA dependency in the TRUFFLE_TEST.
