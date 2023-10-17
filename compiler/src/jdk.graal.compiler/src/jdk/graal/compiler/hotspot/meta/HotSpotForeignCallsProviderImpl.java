@@ -26,23 +26,29 @@ package jdk.graal.compiler.hotspot.meta;
 
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCall;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.JavaCallee;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.DESTROYS_ALL_CALLER_SAVE_REGISTERS;
 import static jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect.KILLS_NO_REGISTERS;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.MARK_WORD_LOCATION;
 import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.function.BiConsumer;
 
-import jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkage.RegisterEffect;
 import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl;
 import jdk.graal.compiler.hotspot.HotSpotGraalRuntimeProvider;
+import jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition;
 import jdk.graal.compiler.hotspot.stubs.ForeignCallStub;
 import jdk.graal.compiler.hotspot.stubs.InvokeJavaMethodStub;
 import jdk.graal.compiler.hotspot.stubs.Stub;
@@ -65,20 +71,15 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     public static final LocationIdentity[] NO_LOCATIONS = {};
 
-    public static final HotSpotForeignCallDescriptor OSR_MIGRATION_END = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, NO_LOCATIONS, "OSR_migration_end", void.class, long.class);
-    public static final HotSpotForeignCallDescriptor IDENTITY_HASHCODE = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, HotSpotReplacementsUtil.MARK_WORD_LOCATION, "identity_hashcode", int.class,
+    public static final HotSpotForeignCallDescriptor OSR_MIGRATION_END = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS, "OSR_migration_end", void.class, long.class);
+    public static final HotSpotForeignCallDescriptor IDENTITY_HASHCODE = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, MARK_WORD_LOCATION, "identity_hashcode", int.class,
                     Object.class);
-    public static final HotSpotForeignCallDescriptor VERIFY_OOP = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS, "verify_oop", Object.class,
+    public static final HotSpotForeignCallDescriptor VERIFY_OOP = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "verify_oop", Object.class,
                     Object.class);
-    public static final HotSpotForeignCallDescriptor LOAD_AND_CLEAR_EXCEPTION = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "load_and_clear_exception", Object.class,
+    public static final HotSpotForeignCallDescriptor LOAD_AND_CLEAR_EXCEPTION = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, any(), "load_and_clear_exception", Object.class,
                     Word.class);
 
-    public static final HotSpotForeignCallDescriptor TEST_DEOPTIMIZE_CALL_INT = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, any(), "test_deoptimize_call_int", int.class, int.class);
+    public static final HotSpotForeignCallDescriptor TEST_DEOPTIMIZE_CALL_INT = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, any(), "test_deoptimize_call_int", int.class, int.class);
 
     protected final HotSpotJVMCIRuntime jvmciRuntime;
     protected final HotSpotGraalRuntimeProvider runtime;
@@ -149,11 +150,11 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
 
     public HotSpotForeignCallLinkage registerStubCall(
                     ForeignCallSignature signature,
-                    HotSpotForeignCallDescriptor.Transition transition,
-                    HotSpotForeignCallDescriptor.Reexecutability reexecutability,
+                    Transition transition,
+                    CallSideEffect callSideEffect,
                     RegisterEffect effect,
                     LocationIdentity... killedLocations) {
-        HotSpotForeignCallDescriptor descriptor = new HotSpotForeignCallDescriptor(signature, transition, reexecutability, killedLocations);
+        HotSpotForeignCallDescriptor descriptor = new HotSpotForeignCallDescriptor(signature, transition, callSideEffect, killedLocations);
         signatureMap.put(signature, descriptor);
         return registerStubCall(descriptor, effect);
     }
@@ -175,7 +176,7 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
             throw new IllegalArgumentException("address must be non-zero");
         }
         Class<?> resultType = descriptor.getResultType();
-        GraalError.guarantee(descriptor.getTransition() != HotSpotForeignCallDescriptor.Transition.SAFEPOINT || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType),
+        GraalError.guarantee(descriptor.getTransition() != SAFEPOINT || resultType.isPrimitive() || Word.class.isAssignableFrom(resultType),
                         "non-leaf foreign calls must return objects in thread local storage: %s", descriptor);
         return register(HotSpotForeignCallLinkageImpl.create(metaAccess,
                         codeCache,
@@ -274,10 +275,9 @@ public abstract class HotSpotForeignCallsProviderImpl implements HotSpotForeignC
         return descriptor;
     }
 
-    HotSpotForeignCallDescriptor createDescriptor(ForeignCallSignature signature, HotSpotForeignCallDescriptor.Transition transition, HotSpotForeignCallDescriptor.Reexecutability reexecutability,
-                    LocationIdentity... killLocations) {
+    HotSpotForeignCallDescriptor createDescriptor(ForeignCallSignature signature, Transition transition, CallSideEffect callSideEffect, LocationIdentity... killLocations) {
         GraalError.guarantee(!signatureMap.containsKey(signature), "%s", signature);
-        HotSpotForeignCallDescriptor descriptor = new HotSpotForeignCallDescriptor(signature, transition, reexecutability, killLocations);
+        HotSpotForeignCallDescriptor descriptor = new HotSpotForeignCallDescriptor(signature, transition, callSideEffect, killLocations);
         signatureMap.put(signature, descriptor);
         return descriptor;
     }

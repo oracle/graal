@@ -25,6 +25,7 @@
  */
 package jdk.graal.compiler.replacements;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_512;
@@ -63,7 +64,7 @@ public final class StringUTF16CompressNode extends MemoryKillStubIntrinsicNode {
     private static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte)};
 
     public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("stringUTF16Compress", int.class, new Class<?>[]{Pointer.class, Pointer.class, int.class},
-                    false, KILLED_LOCATIONS, false, false);
+                    HAS_SIDE_EFFECT, KILLED_LOCATIONS, false, false);
 
     /** pointer to src[srcOff]. */
     @Input private ValueNode src;

@@ -27,6 +27,8 @@ package jdk.graal.compiler.hotspot.meta;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static jdk.vm.ci.services.Services.IS_BUILDING_NATIVE_IMAGE;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.core.target.Backend.ARITHMETIC_DREM;
 import static jdk.graal.compiler.core.target.Backend.ARITHMETIC_FREM;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.BASE64_DECODE_BLOCK;
@@ -70,6 +72,19 @@ import static jdk.graal.compiler.hotspot.HotSpotHostBackend.DEOPT_BLOB_UNPACK_WI
 import static jdk.graal.compiler.hotspot.HotSpotHostBackend.ENABLE_STACK_RESERVED_ZONE;
 import static jdk.graal.compiler.hotspot.HotSpotHostBackend.POLLING_PAGE_RETURN_HANDLER;
 import static jdk.graal.compiler.hotspot.HotSpotHostBackend.THROW_DELAYED_STACKOVERFLOW_ERROR;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotAllocationSnippets.DYNAMIC_NEW_INSTANCE;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotAllocationSnippets.DYNAMIC_NEW_INSTANCE_OR_NULL;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets.G1WBPOSTCALL;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets.G1WBPRECALL;
+import static jdk.graal.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets.VALIDATE_OBJECT;
+import static jdk.graal.compiler.hotspot.replacements.Log.LOG_OBJECT;
+import static jdk.graal.compiler.hotspot.replacements.Log.LOG_PRIMITIVE;
+import static jdk.graal.compiler.hotspot.replacements.Log.LOG_PRINTF;
+import static jdk.graal.compiler.hotspot.replacements.MonitorSnippets.MONITORENTER;
+import static jdk.graal.compiler.hotspot.replacements.MonitorSnippets.MONITOREXIT;
 import static jdk.graal.compiler.hotspot.stubs.ExceptionHandlerStub.EXCEPTION_HANDLER_FOR_PC;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.VM_MESSAGE_C;
 import static jdk.graal.compiler.hotspot.stubs.UnwindExceptionToCallerStub.EXCEPTION_HANDLER_FOR_RETURN_ADDRESS;
@@ -86,10 +101,6 @@ import static org.graalvm.word.LocationIdentity.any;
 
 import java.util.EnumMap;
 
-import jdk.graal.compiler.hotspot.replacements.HotSpotAllocationSnippets;
-import jdk.graal.compiler.hotspot.replacements.HotSpotG1WriteBarrierSnippets;
-import jdk.graal.compiler.hotspot.replacements.Log;
-import jdk.graal.compiler.hotspot.replacements.MonitorSnippets;
 import org.graalvm.collections.EconomicMap;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
@@ -153,43 +164,32 @@ import jdk.vm.ci.meta.ResolvedJavaMethod;
  */
 public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCallsProviderImpl implements ArrayCopyForeignCalls {
 
-    public static final HotSpotForeignCallDescriptor JAVA_TIME_MILLIS = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS, "javaTimeMillis", long.class);
-    public static final HotSpotForeignCallDescriptor JAVA_TIME_NANOS = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS, "javaTimeNanos", long.class);
+    public static final HotSpotForeignCallDescriptor JAVA_TIME_MILLIS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "javaTimeMillis", long.class);
+    public static final HotSpotForeignCallDescriptor JAVA_TIME_NANOS = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, NO_SIDE_EFFECT, NO_LOCATIONS, "javaTimeNanos", long.class);
 
-    public static final HotSpotForeignCallDescriptor NOTIFY = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "object_notify", int.class, Word.class, Object.class);
-    public static final HotSpotForeignCallDescriptor NOTIFY_ALL = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any(), "object_notifyAll", int.class, Word.class, Object.class);
+    public static final HotSpotForeignCallDescriptor NOTIFY = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "object_notify", int.class, Word.class, Object.class);
+    public static final HotSpotForeignCallDescriptor NOTIFY_ALL = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, any(), "object_notifyAll", int.class, Word.class, Object.class);
 
-    public static final HotSpotForeignCallDescriptor INVOKE_STATIC_METHOD_ONE_ARG = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                    HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS,
+    public static final HotSpotForeignCallDescriptor INVOKE_STATIC_METHOD_ONE_ARG = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS,
                     "JVMCIRuntime::invoke_static_method_one_arg", long.class, Word.class, Word.class, long.class);
 
-    public static final HotSpotForeignCallDescriptor NMETHOD_ENTRY_BARRIER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, NO_LOCATIONS, "nmethod_entry_barrier", void.class);
+    public static final HotSpotForeignCallDescriptor NMETHOD_ENTRY_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS, "nmethod_entry_barrier", void.class);
 
     /*
      * Functions from ZBarrierSetRuntime. The weak_ prefix refers to AS_NO_KEEPALIVE while the extra
      * word before oop_field part refers to java.lang.Reference subclass and corresponds to
      * ON_WEAK_OOP_REF/ON_PHANTOM_OOP_REF in HotSpot decorator terminology.
      */
-    public static final HotSpotForeignCallDescriptor Z_FIELD_BARRIER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, NO_LOCATIONS, "load_barrier_on_oop_field_preloaded",
+    public static final HotSpotForeignCallDescriptor Z_FIELD_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS, "load_barrier_on_oop_field_preloaded",
                     long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor Z_REFERENCE_GET_BARRIER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, NO_LOCATIONS,
+    public static final HotSpotForeignCallDescriptor Z_REFERENCE_GET_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
                     "load_barrier_on_weak_oop_field_preloaded",
                     long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor Z_WEAK_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, NO_LOCATIONS,
+    public static final HotSpotForeignCallDescriptor Z_WEAK_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
                     "weak_load_barrier_on_weak_oop_field_preloaded", long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor Z_PHANTOM_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, NO_LOCATIONS,
+    public static final HotSpotForeignCallDescriptor Z_PHANTOM_REFERS_TO_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS,
                     "weak_load_barrier_on_phantom_oop_field_preloaded", long.class, long.class, long.class);
-    public static final HotSpotForeignCallDescriptor Z_ARRAY_BARRIER = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO,
-                    HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, NO_LOCATIONS, "load_barrier_on_oop_array",
+    public static final HotSpotForeignCallDescriptor Z_ARRAY_BARRIER = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, NO_LOCATIONS, "load_barrier_on_oop_array",
                     void.class, long.class, long.class);
 
     /**
@@ -226,8 +226,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         public static HotSpotForeignCallDescriptor createStubCallDescriptor(JavaKind kind) {
             String name = kind.isObject() ? "objectReturnsObject" : kind.getJavaName() + "Returns" + capitalize(kind.getJavaName());
             Class<?> javaClass = kind.isObject() ? Object.class : kind.toJavaClass();
-            return new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.SAFEPOINT, HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS, name, javaClass,
-                            javaClass);
+            return new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, name, javaClass, javaClass);
         }
 
         static boolean booleanReturnsBoolean(boolean arg) {
@@ -361,8 +360,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         boolean killAny = killedLocation.isAny();
         boolean killInit = killedLocation.isInit();
         String name = kind + (aligned ? "Aligned" : "") + (disjoint ? "Disjoint" : "") + (uninit ? "Uninit" : "") + "Arraycopy" + (killInit ? "KillInit" : killAny ? "KillAny" : "");
-        HotSpotForeignCallDescriptor desc = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO, HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE,
-                        killedLocation, name, void.class, Word.class, Word.class, Word.class);
+        HotSpotForeignCallDescriptor desc = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, killedLocation, name, void.class, Word.class, Word.class, Word.class);
         registerForeignCall(desc, routine, NativeCall);
         return desc;
     }
@@ -377,8 +375,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         // c_rarg4 - oop ckval (super_klass)
         // return: 0 = success, n = number of copied elements xor'd with -1.
         LocationIdentity killed = NamedLocationIdentity.any();
-        HotSpotForeignCallDescriptor desc = new HotSpotForeignCallDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO, HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE,
-                        killed, name, int.class, Word.class, Word.class, Word.class, Word.class,
+        HotSpotForeignCallDescriptor desc = new HotSpotForeignCallDescriptor(LEAF_NO_VZERO, HAS_SIDE_EFFECT, killed, name, int.class, Word.class, Word.class, Word.class, Word.class,
                         Word.class);
         registerForeignCall(desc, routine, NativeCall);
         checkcastArraycopyDescriptors[uninit ? 1 : 0] = desc;
@@ -450,10 +447,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
         registerMathStubs(c, providers, options);
 
-        registerForeignCall(createDescriptor(ARITHMETIC_FREM, HotSpotForeignCallDescriptor.Transition.LEAF, HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS), c.fremAddress,
-                        NativeCall);
-        registerForeignCall(createDescriptor(ARITHMETIC_DREM, HotSpotForeignCallDescriptor.Transition.LEAF, HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS), c.dremAddress,
-                        NativeCall);
+        registerForeignCall(createDescriptor(ARITHMETIC_FREM, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), c.fremAddress, NativeCall);
+        registerForeignCall(createDescriptor(ARITHMETIC_DREM, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), c.dremAddress, NativeCall);
 
         registerForeignCall(LOAD_AND_CLEAR_EXCEPTION, c.loadAndClearExceptionAddress, NativeCall);
 
@@ -467,13 +462,13 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         linkForeignCall(options, providers, NEW_INSTANCE, c.newInstanceAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, NEW_ARRAY, c.newArrayAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, NEW_MULTI_ARRAY, c.newMultiArrayAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers, HotSpotAllocationSnippets.DYNAMIC_NEW_INSTANCE, c.dynamicNewInstanceAddress, PREPEND_THREAD);
+        linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE, c.dynamicNewInstanceAddress, PREPEND_THREAD);
 
         if (c.areNullAllocationStubsAvailable()) {
             linkForeignCall(options, providers, NEW_INSTANCE_OR_NULL, c.newInstanceOrNullAddress, PREPEND_THREAD);
             linkForeignCall(options, providers, NEW_ARRAY_OR_NULL, c.newArrayOrNullAddress, PREPEND_THREAD);
             linkForeignCall(options, providers, NEW_MULTI_ARRAY_OR_NULL, c.newMultiArrayOrNullAddress, PREPEND_THREAD);
-            linkForeignCall(options, providers, HotSpotAllocationSnippets.DYNAMIC_NEW_INSTANCE_OR_NULL, c.dynamicNewInstanceOrNullAddress, PREPEND_THREAD);
+            linkForeignCall(options, providers, DYNAMIC_NEW_INSTANCE_OR_NULL, c.dynamicNewInstanceOrNullAddress, PREPEND_THREAD);
         }
 
         if (c.supportJVMTIVThreadNotification()) {
@@ -490,39 +485,29 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
         EnumMap<BytecodeExceptionKind, ForeignCallSignature> exceptionRuntimeCalls = DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls;
         link(new ArrayStoreExceptionStub(options, providers,
-                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.ARRAY_STORE), HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                                        HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.ARRAY_STORE), SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new ClassCastExceptionStub(options, providers,
-                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.CLASS_CAST), HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                                        HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.CLASS_CAST), SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new NullPointerExceptionStub(options, providers,
-                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.NULL_POINTER), HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                                        HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.NULL_POINTER), SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new OutOfBoundsExceptionStub(options, providers,
-                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.OUT_OF_BOUNDS), HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                                        HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.OUT_OF_BOUNDS), SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new NegativeArraySizeExceptionStub(options, providers,
-                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE), HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                                        HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.NEGATIVE_ARRAY_SIZE), SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new DivisionByZeroExceptionStub(options, providers,
-                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.DIVISION_BY_ZERO), HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                                        HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.DIVISION_BY_ZERO), SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new IntegerExactOverflowExceptionStub(options, providers,
-                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW), HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                                        HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.INTEGER_EXACT_OVERFLOW), SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new LongExactOverflowExceptionStub(options, providers,
-                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.LONG_EXACT_OVERFLOW), HotSpotForeignCallDescriptor.Transition.SAFEPOINT,
-                                        HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+                        registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.LONG_EXACT_OVERFLOW), SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
         link(new IllegalArgumentExceptionArgumentIsNotAnArrayStub(options, providers,
                         registerStubCall(exceptionRuntimeCalls.get(BytecodeExceptionKind.ILLEGAL_ARGUMENT_EXCEPTION_ARGUMENT_IS_NOT_AN_ARRAY),
-                                        HotSpotForeignCallDescriptor.Transition.SAFEPOINT, HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
+                                        SAFEPOINT, HAS_SIDE_EFFECT, DESTROYS_ALL_CALLER_SAVE_REGISTERS, any())));
 
         linkForeignCall(options, providers, IDENTITY_HASHCODE, c.identityHashCodeAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers,
-                        createDescriptor(REGISTER_FINALIZER, HotSpotForeignCallDescriptor.Transition.SAFEPOINT, HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE, any()),
-                        c.registerFinalizerAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers, MonitorSnippets.MONITORENTER, c.monitorenterAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers, MonitorSnippets.MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD);
+        linkForeignCall(options, providers, createDescriptor(REGISTER_FINALIZER, SAFEPOINT, HAS_SIDE_EFFECT, any()), c.registerFinalizerAddress, PREPEND_THREAD);
+        linkForeignCall(options, providers, MONITORENTER, c.monitorenterAddress, PREPEND_THREAD);
+        linkForeignCall(options, providers, MONITOREXIT, c.monitorexitAddress, PREPEND_THREAD);
         registerForeignCall(NOTIFY, c.notifyAddress, NativeCall);
         registerForeignCall(NOTIFY_ALL, c.notifyAllAddress, NativeCall);
 
@@ -548,14 +533,14 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
             register(Z_ARRAY_BARRIER.getSignature());
         }
 
-        linkForeignCall(options, providers, Log.LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers, Log.LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers, Log.LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD);
+        linkForeignCall(options, providers, LOG_PRINTF, c.logPrintfAddress, PREPEND_THREAD);
+        linkForeignCall(options, providers, LOG_OBJECT, c.logObjectAddress, PREPEND_THREAD);
+        linkForeignCall(options, providers, LOG_PRIMITIVE, c.logPrimitiveAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, VM_ERROR, c.vmErrorAddress, PREPEND_THREAD);
         linkForeignCall(options, providers, OSR_MIGRATION_END, c.osrMigrationEndAddress, DONT_PREPEND_THREAD);
-        linkForeignCall(options, providers, HotSpotG1WriteBarrierSnippets.G1WBPRECALL, c.writeBarrierPreAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers, HotSpotG1WriteBarrierSnippets.G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD);
-        linkForeignCall(options, providers, HotSpotG1WriteBarrierSnippets.VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD);
+        linkForeignCall(options, providers, G1WBPRECALL, c.writeBarrierPreAddress, PREPEND_THREAD);
+        linkForeignCall(options, providers, G1WBPOSTCALL, c.writeBarrierPostAddress, PREPEND_THREAD);
+        linkForeignCall(options, providers, VALIDATE_OBJECT, c.validateObject, PREPEND_THREAD);
 
         linkForeignCall(options, providers, TEST_DEOPTIMIZE_CALL_INT, c.testDeoptimizeCallInt, PREPEND_THREAD);
 
@@ -573,10 +558,8 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
         registerCheckcastArraycopyDescriptor(true, c.checkcastArraycopyUninit);
         registerCheckcastArraycopyDescriptor(false, c.checkcastArraycopy);
 
-        registerForeignCall(createDescriptor(GENERIC_ARRAYCOPY, HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO, HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE,
-                        NamedLocationIdentity.any()), c.genericArraycopy, NativeCall);
-        registerForeignCall(createDescriptor(UNSAFE_ARRAYCOPY, HotSpotForeignCallDescriptor.Transition.LEAF_NO_VZERO, HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE,
-                        NamedLocationIdentity.any()), c.unsafeArraycopy, NativeCall);
+        registerForeignCall(createDescriptor(GENERIC_ARRAYCOPY, LEAF_NO_VZERO, HAS_SIDE_EFFECT, NamedLocationIdentity.any()), c.genericArraycopy, NativeCall);
+        registerForeignCall(createDescriptor(UNSAFE_ARRAYCOPY, LEAF_NO_VZERO, HAS_SIDE_EFFECT, NamedLocationIdentity.any()), c.unsafeArraycopy, NativeCall);
 
         if (c.md5ImplCompressMultiBlock != 0L) {
             registerForeignCall(MD5_IMPL_COMPRESS_MB, c.md5ImplCompressMultiBlock, NativeCall);
@@ -643,20 +626,13 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
     @SuppressWarnings("unused")
     protected void registerMathStubs(GraalHotSpotVMConfig hotSpotVMConfig, HotSpotProviders providers, OptionValues options) {
-        registerForeignCall(createDescriptor(SIN.foreignCallSignature, HotSpotForeignCallDescriptor.Transition.LEAF, HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS),
-                        hotSpotVMConfig.arithmeticSinAddress, NativeCall);
-        registerForeignCall(createDescriptor(COS.foreignCallSignature, HotSpotForeignCallDescriptor.Transition.LEAF, HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS),
-                        hotSpotVMConfig.arithmeticCosAddress, NativeCall);
-        registerForeignCall(createDescriptor(TAN.foreignCallSignature, HotSpotForeignCallDescriptor.Transition.LEAF, HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS),
-                        hotSpotVMConfig.arithmeticTanAddress, NativeCall);
-        registerForeignCall(createDescriptor(EXP.foreignCallSignature, HotSpotForeignCallDescriptor.Transition.LEAF, HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS),
-                        hotSpotVMConfig.arithmeticExpAddress, NativeCall);
-        registerForeignCall(createDescriptor(LOG.foreignCallSignature, HotSpotForeignCallDescriptor.Transition.LEAF, HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS),
-                        hotSpotVMConfig.arithmeticLogAddress, NativeCall);
-        registerForeignCall(createDescriptor(LOG10.foreignCallSignature, HotSpotForeignCallDescriptor.Transition.LEAF, HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS),
-                        hotSpotVMConfig.arithmeticLog10Address, NativeCall);
-        registerForeignCall(createDescriptor(POW.foreignCallSignature, HotSpotForeignCallDescriptor.Transition.LEAF, HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, NO_LOCATIONS),
-                        hotSpotVMConfig.arithmeticPowAddress, NativeCall);
+        registerForeignCall(createDescriptor(SIN.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticSinAddress, NativeCall);
+        registerForeignCall(createDescriptor(COS.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticCosAddress, NativeCall);
+        registerForeignCall(createDescriptor(TAN.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticTanAddress, NativeCall);
+        registerForeignCall(createDescriptor(EXP.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticExpAddress, NativeCall);
+        registerForeignCall(createDescriptor(LOG.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticLogAddress, NativeCall);
+        registerForeignCall(createDescriptor(LOG10.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticLog10Address, NativeCall);
+        registerForeignCall(createDescriptor(POW.foreignCallSignature, LEAF, NO_SIDE_EFFECT, NO_LOCATIONS), hotSpotVMConfig.arithmeticPowAddress, NativeCall);
     }
 
     private void registerSnippetStubs(HotSpotProviders providers, OptionValues options) {
@@ -693,10 +669,7 @@ public abstract class HotSpotHostForeignCallsProvider extends HotSpotForeignCall
 
     protected <A extends SnippetStub> void linkSnippetStubs(HotSpotProviders providers, OptionValues options, SnippetStubConstructor<A> constructor, ForeignCallDescriptor... stubs) {
         for (ForeignCallDescriptor stub : stubs) {
-            HotSpotForeignCallDescriptor.Reexecutability reexecutability = stub.isReexecutable() ? HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE
-                            : HotSpotForeignCallDescriptor.Reexecutability.NOT_REEXECUTABLE;
-            link(constructor.apply(options, providers,
-                            registerStubCall(stub.getSignature(), HotSpotForeignCallDescriptor.Transition.LEAF, reexecutability, COMPUTES_REGISTERS_KILLED, stub.getKilledLocations())));
+            link(constructor.apply(options, providers, registerStubCall(stub.getSignature(), LEAF, stub.getSideEffect(), COMPUTES_REGISTERS_KILLED, stub.getKilledLocations())));
         }
     }
 }

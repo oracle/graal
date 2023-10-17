@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.jdk;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 
@@ -82,7 +83,7 @@ import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
 public final class SubstrateObjectCloneSnippets extends SubstrateTemplates implements Snippets {
-    private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", true, LocationIdentity.any());
+    private static final SubstrateForeignCallDescriptor CLONE = SnippetRuntime.findForeignCall(SubstrateObjectCloneSnippets.class, "doClone", NO_SIDE_EFFECT, LocationIdentity.any());
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{CLONE};
 
     public static void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {

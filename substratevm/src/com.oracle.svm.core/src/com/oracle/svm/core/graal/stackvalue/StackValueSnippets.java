@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_SLOW_PATH_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
@@ -60,8 +61,8 @@ final class StackValueSnippets extends SubstrateTemplates implements Snippets {
     private static final String EXCEPTION_MESSAGE = "StackValue must not be used in a virtual thread unless the method is annotated @" + Uninterruptible.class.getSimpleName() + '.';
     private static final IllegalThreadStateException CACHED_EXCEPTION = new IllegalThreadStateException(EXCEPTION_MESSAGE + ' ' + ImplicitExceptions.NO_STACK_MSG);
 
-    static final SnippetRuntime.SubstrateForeignCallDescriptor THROW_CACHED_EXCEPTION = SnippetRuntime.findForeignCall(StackValueSnippets.class, "throwCachedException", true);
-    static final SnippetRuntime.SubstrateForeignCallDescriptor THROW_NEW_EXCEPTION = SnippetRuntime.findForeignCall(StackValueSnippets.class, "throwNewException", true);
+    static final SnippetRuntime.SubstrateForeignCallDescriptor THROW_CACHED_EXCEPTION = SnippetRuntime.findForeignCall(StackValueSnippets.class, "throwCachedException", NO_SIDE_EFFECT);
+    static final SnippetRuntime.SubstrateForeignCallDescriptor THROW_NEW_EXCEPTION = SnippetRuntime.findForeignCall(StackValueSnippets.class, "throwNewException", NO_SIDE_EFFECT);
     static final SnippetRuntime.SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SnippetRuntime.SubstrateForeignCallDescriptor[]{THROW_CACHED_EXCEPTION, THROW_NEW_EXCEPTION};
 
     @Snippet

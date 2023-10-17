@@ -26,6 +26,7 @@ package com.oracle.svm.core.monitor;
 
 import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateReprofile;
 import static jdk.vm.ci.meta.DeoptimizationReason.NullCheckException;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
 import java.util.Map;
 
@@ -76,10 +77,10 @@ import jdk.vm.ci.meta.SpeculationLog;
  */
 public class MonitorSnippets extends SubstrateTemplates implements Snippets {
 
-    protected static final SubstrateForeignCallDescriptor SLOW_PATH_MONITOR_ENTER = SnippetRuntime.findForeignCall(MultiThreadedMonitorSupport.class, "slowPathMonitorEnter", false,
-                    LocationIdentity.any());
-    protected static final SubstrateForeignCallDescriptor SLOW_PATH_MONITOR_EXIT = SnippetRuntime.findForeignCall(MultiThreadedMonitorSupport.class, "slowPathMonitorExit", false,
-                    LocationIdentity.any());
+    protected static final SubstrateForeignCallDescriptor SLOW_PATH_MONITOR_ENTER = SnippetRuntime.findForeignCall(MultiThreadedMonitorSupport.class, "slowPathMonitorEnter",
+                    HAS_SIDE_EFFECT, LocationIdentity.any());
+    protected static final SubstrateForeignCallDescriptor SLOW_PATH_MONITOR_EXIT = SnippetRuntime.findForeignCall(MultiThreadedMonitorSupport.class, "slowPathMonitorExit",
+                    HAS_SIDE_EFFECT, LocationIdentity.any());
 
     protected static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{SLOW_PATH_MONITOR_ENTER, SLOW_PATH_MONITOR_EXIT};
 

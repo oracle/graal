@@ -24,6 +24,7 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.nodes.PiArrayNode.piArrayCastToSnippetReplaceeStamp;
 import static jdk.graal.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
@@ -115,9 +116,9 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                     AllocationCounter.COUNT_FIELD, AllocationCounter.SIZE_FIELD};
     public static final LocationIdentity[] GC_LOCATIONS = new LocationIdentity[]{TLAB_TOP_IDENTITY, TLAB_END_IDENTITY, IdentityHashCodeSupport.IDENTITY_HASHCODE_SALT_LOCATION};
 
-    private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "newMultiArrayStub", true);
-    private static final SubstrateForeignCallDescriptor INSTANCE_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "instanceHubErrorStub", true);
-    private static final SubstrateForeignCallDescriptor ARRAY_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "arrayHubErrorStub", true);
+    private static final SubstrateForeignCallDescriptor NEW_MULTI_ARRAY = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "newMultiArrayStub", NO_SIDE_EFFECT);
+    private static final SubstrateForeignCallDescriptor INSTANCE_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "instanceHubErrorStub", NO_SIDE_EFFECT);
+    private static final SubstrateForeignCallDescriptor ARRAY_HUB_ERROR = SnippetRuntime.findForeignCall(SubstrateAllocationSnippets.class, "arrayHubErrorStub", NO_SIDE_EFFECT);
     private static final SubstrateForeignCallDescriptor[] FOREIGN_CALLS = new SubstrateForeignCallDescriptor[]{NEW_MULTI_ARRAY, INSTANCE_HUB_ERROR, ARRAY_HUB_ERROR};
 
     public void registerForeignCalls(SubstrateForeignCallsProvider foreignCalls) {

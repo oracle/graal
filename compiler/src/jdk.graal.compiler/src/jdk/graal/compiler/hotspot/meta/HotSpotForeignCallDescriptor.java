@@ -73,30 +73,10 @@ public class HotSpotForeignCallDescriptor extends ForeignCallDescriptor {
         SAFEPOINT,
     }
 
-    /**
-     * Constants specifying when a foreign call or stub call is re-executable.
-     */
-    public enum Reexecutability {
-        /**
-         * Denotes a call that cannot be re-executed. If an exception is raised, the call is
-         * deoptimized and the exception is passed on to be dispatched. If the call can throw an
-         * exception it needs to have a precise frame state.
-         */
-        NOT_REEXECUTABLE,
-
-        /**
-         * Denotes a call that can always be re-executed. If an exception is raised by the call it
-         * may be cleared, compiled code deoptimized and reexecuted. Since the call has no side
-         * effects it is assumed that the same exception will be thrown.
-         */
-        REEXECUTABLE
-    }
-
     private final Transition transition;
-    private final Reexecutability reexecutability;
 
     public HotSpotForeignCallDescriptor(Transition transition,
-                    Reexecutability reexecutability,
+                    CallSideEffect callSideEffect,
                     LocationIdentity[] killedLocations,
                     String name,
                     Class<?> resultType,
@@ -104,39 +84,37 @@ public class HotSpotForeignCallDescriptor extends ForeignCallDescriptor {
         super(name,
                         resultType,
                         argumentTypes,
-                        reexecutability == Reexecutability.REEXECUTABLE,
+                        callSideEffect,
                         killedLocations,
                         transition == SAFEPOINT,
                         transition == SAFEPOINT);
         this.transition = transition;
-        this.reexecutability = reexecutability;
     }
 
-    public HotSpotForeignCallDescriptor(Transition transition, Reexecutability reexecutability, LocationIdentity killedLocation, String name, Class<?> resultType, Class<?>... argumentTypes) {
-        this(transition, reexecutability, killedLocation == null ? HotSpotForeignCallsProviderImpl.NO_LOCATIONS : new LocationIdentity[]{killedLocation}, name, resultType, argumentTypes);
+    public HotSpotForeignCallDescriptor(Transition transition, CallSideEffect callSideEffect, LocationIdentity killedLocation, String name, Class<?> resultType, Class<?>... argumentTypes) {
+        this(transition, callSideEffect, killedLocation == null ? HotSpotForeignCallsProviderImpl.NO_LOCATIONS : new LocationIdentity[]{killedLocation}, name, resultType, argumentTypes);
     }
 
-    public HotSpotForeignCallDescriptor(ForeignCallSignature signature, Transition transition, Reexecutability reexecutability, LocationIdentity[] killedLocations) {
-        this(transition, reexecutability, killedLocations, signature.getName(), signature.getResultType(), signature.getArgumentTypes());
+    public HotSpotForeignCallDescriptor(ForeignCallSignature signature, Transition transition, CallSideEffect callSideEffect, LocationIdentity[] killedLocations) {
+        this(transition, callSideEffect, killedLocations, signature.getName(), signature.getResultType(), signature.getArgumentTypes());
     }
 
     public Transition getTransition() {
         return transition;
     }
 
-    public Reexecutability getReexecutability() {
-        return reexecutability;
+    public CallSideEffect getCallSideEffect() {
+        return callSideEffect;
     }
 
     @Override
     public String toString() {
         return "HotSpotForeignCallDescriptor{" + signature +
-                        ", isReexecutable=" + isReexecutable +
+                        ", callSideEffect=" + callSideEffect +
                         ", canDeoptimize=" + canDeoptimize +
                         ", isGuaranteedSafepoint=" + isGuaranteedSafepoint +
                         ", killedLocations=" + Arrays.toString(killedLocations) +
                         ", transition=" + transition +
-                        ", reexecutability=" + reexecutability +
                         '}';
     }
 }

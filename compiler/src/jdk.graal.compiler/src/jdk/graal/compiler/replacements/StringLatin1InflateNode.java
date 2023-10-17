@@ -25,6 +25,7 @@
  */
 package jdk.graal.compiler.replacements;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_512;
@@ -61,7 +62,7 @@ public final class StringLatin1InflateNode extends MemoryKillStubIntrinsicNode {
 
     public static final LocationIdentity[] KILLED_LOCATIONS_BYTE_CHAR = {NamedLocationIdentity.getArrayLocation(JavaKind.Byte), NamedLocationIdentity.getArrayLocation(JavaKind.Char)};
     public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("stringLatin1Inflate", void.class, new Class<?>[]{Pointer.class, Pointer.class, int.class},
-                    false, KILLED_LOCATIONS_BYTE_CHAR, false, false);
+                    HAS_SIDE_EFFECT, KILLED_LOCATIONS_BYTE_CHAR, false, false);
 
     /** pointer to src[srcOff]. */
     @Input private ValueNode src;

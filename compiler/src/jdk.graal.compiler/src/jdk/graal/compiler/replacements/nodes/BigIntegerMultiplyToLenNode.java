@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+
 import java.util.EnumSet;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -48,13 +50,8 @@ public class BigIntegerMultiplyToLenNode extends MemoryKillStubIntrinsicNode {
     public static final NodeClass<BigIntegerMultiplyToLenNode> TYPE = NodeClass.create(BigIntegerMultiplyToLenNode.class);
     public static final LocationIdentity[] KILLED_LOCATIONS = {NamedLocationIdentity.getArrayLocation(JavaKind.Int)};
 
-    public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("multiplyToLen",
-                    void.class,
-                    new Class<?>[]{Pointer.class, int.class, Pointer.class, int.class, Pointer.class, int.class},
-                    false,
-                    KILLED_LOCATIONS,
-                    false,
-                    false);
+    public static final ForeignCallDescriptor STUB = new ForeignCallDescriptor("multiplyToLen", void.class,
+                    new Class<?>[]{Pointer.class, int.class, Pointer.class, int.class, Pointer.class, int.class}, HAS_SIDE_EFFECT, KILLED_LOCATIONS, false, false);
 
     @Input protected ValueNode x;
     @Input protected ValueNode xlen;

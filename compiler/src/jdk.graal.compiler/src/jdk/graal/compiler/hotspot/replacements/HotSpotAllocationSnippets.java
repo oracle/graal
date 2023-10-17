@@ -28,6 +28,7 @@ import static jdk.vm.ci.meta.DeoptimizationAction.InvalidateRecompile;
 import static jdk.vm.ci.meta.DeoptimizationAction.None;
 import static jdk.vm.ci.meta.DeoptimizationReason.RuntimeConstraint;
 import static jdk.graal.compiler.core.common.GraalOptions.MinimalBulkZeroingSize;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_OPTIONVALUES;
 import static jdk.graal.compiler.hotspot.GraalHotSpotVMConfig.INJECTED_VMCONFIG;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_ARRAY;
@@ -36,7 +37,6 @@ import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_INSTANCE;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_INSTANCE_OR_NULL;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY;
 import static jdk.graal.compiler.hotspot.HotSpotBackend.NEW_MULTI_ARRAY_OR_NULL;
-import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallsProviderImpl.NO_LOCATIONS;
 import static jdk.graal.compiler.hotspot.replacements.HotSpotReplacementsUtil.CLASS_ARRAY_KLASS_LOCATION;
@@ -130,9 +130,10 @@ import jdk.vm.ci.meta.ResolvedJavaType;
 
 public class HotSpotAllocationSnippets extends AllocationSnippets {
     /** New dynamic array stub that throws an {@link OutOfMemoryError} on allocation failure. */
-    public static final HotSpotForeignCallDescriptor DYNAMIC_NEW_INSTANCE = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "dynamic_new_instance", Object.class, Class.class);
+    public static final HotSpotForeignCallDescriptor DYNAMIC_NEW_INSTANCE = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, "dynamic_new_instance", Object.class,
+                    Class.class);
     /** New dynamic array stub that returns null on allocation failure. */
-    public static final HotSpotForeignCallDescriptor DYNAMIC_NEW_INSTANCE_OR_NULL = new HotSpotForeignCallDescriptor(SAFEPOINT, REEXECUTABLE, NO_LOCATIONS, "dynamic_new_instance_or_null",
+    public static final HotSpotForeignCallDescriptor DYNAMIC_NEW_INSTANCE_OR_NULL = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, NO_LOCATIONS, "dynamic_new_instance_or_null",
                     Object.class, Class.class);
 
     private final GraalHotSpotVMConfig config;

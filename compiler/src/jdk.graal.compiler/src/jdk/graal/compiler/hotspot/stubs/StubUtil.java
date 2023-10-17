@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.LEAF;
 import static jdk.graal.compiler.replacements.nodes.CStringConstant.cstring;
 
 import java.lang.reflect.Method;
@@ -52,14 +54,13 @@ import org.graalvm.word.WordFactory;
  */
 public class StubUtil {
 
-    public static final HotSpotForeignCallDescriptor VM_MESSAGE_C = newDescriptor(HotSpotForeignCallDescriptor.Transition.LEAF, HotSpotForeignCallDescriptor.Reexecutability.REEXECUTABLE, null,
-                    StubUtil.class, "vmMessageC", void.class, boolean.class, Word.class, long.class,
+    public static final HotSpotForeignCallDescriptor VM_MESSAGE_C = newDescriptor(LEAF, NO_SIDE_EFFECT, null, StubUtil.class, "vmMessageC", void.class, boolean.class, Word.class, long.class,
                     long.class, long.class);
 
-    public static HotSpotForeignCallDescriptor newDescriptor(HotSpotForeignCallDescriptor.Transition safepoint, HotSpotForeignCallDescriptor.Reexecutability reexecutable,
+    public static HotSpotForeignCallDescriptor newDescriptor(HotSpotForeignCallDescriptor.Transition safepoint, ForeignCallDescriptor.CallSideEffect call,
                     LocationIdentity killLocation,
                     Class<?> stubClass, String name, Class<?> resultType, Class<?>... argumentTypes) {
-        HotSpotForeignCallDescriptor d = new HotSpotForeignCallDescriptor(safepoint, reexecutable, killLocation, name, resultType, argumentTypes);
+        HotSpotForeignCallDescriptor d = new HotSpotForeignCallDescriptor(safepoint, call, killLocation, name, resultType, argumentTypes);
         assert descriptorFor(stubClass, name, resultType, argumentTypes);
         return d;
     }

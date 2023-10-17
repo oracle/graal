@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
@@ -62,7 +63,8 @@ public final class EncodeArrayNode extends MemoryKillStubIntrinsicNode {
     public static final ForeignCallDescriptor[] STUBS = {STUB_ASCII, STUB_LATIN_1};
 
     private static ForeignCallDescriptor foreignCallDescriptor(String name) {
-        return new ForeignCallDescriptor(name, int.class, new Class<?>[]{Pointer.class, Pointer.class, int.class}, false, KILLED_LOCATIONS, false, false);
+        return new ForeignCallDescriptor(name, int.class, new Class<?>[]{Pointer.class, Pointer.class, int.class}, HAS_SIDE_EFFECT, KILLED_LOCATIONS, false,
+                        false);
     }
 
     @Input protected ValueNode src;

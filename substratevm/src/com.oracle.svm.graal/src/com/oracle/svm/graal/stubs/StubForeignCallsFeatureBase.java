@@ -101,10 +101,10 @@ public class StubForeignCallsFeatureBase implements InternalFeature {
                 Set<?> minimumFeatures = getMinimumRequiredFeatures(call);
                 boolean generateBaseline = buildtimeCPUFeatures.containsAll(minimumFeatures) || isJITCompilationEnabled && !minimumFeatures.equals(runtimeCheckedCPUFeatures);
                 if (generateBaseline) {
-                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName(), call.isReexecutable()));
+                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName(), call.getSideEffect()));
                 }
                 if (generateRuntimeChecked) {
-                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, call.isReexecutable()));
+                    ret.add(SnippetRuntime.findForeignCall(stubsHolder, call.getName() + Stubs.RUNTIME_CHECKED_CPU_FEATURES_NAME_SUFFIX, call.getSideEffect()));
                 }
             }
             return ret.toArray(new SnippetRuntime.SubstrateForeignCallDescriptor[0]);

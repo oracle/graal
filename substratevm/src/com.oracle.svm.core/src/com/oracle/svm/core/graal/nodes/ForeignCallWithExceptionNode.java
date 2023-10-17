@@ -94,7 +94,7 @@ public class ForeignCallWithExceptionNode extends WithExceptionNode implements F
 
     @Override
     public boolean hasSideEffect() {
-        return !descriptor.isReexecutable();
+        return descriptor.getSideEffect() == ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
     }
 
     @Override

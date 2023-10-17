@@ -28,6 +28,7 @@ import static jdk.vm.ci.amd64.AMD64.CPUFeature.AES;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE2;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSE3;
 import static jdk.vm.ci.amd64.AMD64.CPUFeature.SSSE3;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
 
 import java.util.EnumSet;
 
@@ -71,14 +72,14 @@ public class AESNode extends MemoryKillStubIntrinsicNode {
     public static final ForeignCallDescriptor STUB_ENCRYPT = new ForeignCallDescriptor("aesEncrypt",
                     void.class,
                     new Class<?>[]{Pointer.class, Pointer.class, Pointer.class},
-                    false,
+                    HAS_SIDE_EFFECT,
                     KILLED_LOCATIONS,
                     false,
                     false);
     public static final ForeignCallDescriptor STUB_DECRYPT = new ForeignCallDescriptor("aesDecrypt",
                     void.class,
                     new Class<?>[]{Pointer.class, Pointer.class, Pointer.class},
-                    false,
+                    HAS_SIDE_EFFECT,
                     KILLED_LOCATIONS,
                     false,
                     false);

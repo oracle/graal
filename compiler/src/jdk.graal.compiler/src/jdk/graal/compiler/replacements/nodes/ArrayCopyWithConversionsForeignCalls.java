@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.nodes.ValueNode;
@@ -56,7 +58,7 @@ public final class ArrayCopyWithConversionsForeignCalls {
     }
 
     private static ForeignCallDescriptor foreignCallDescriptor(String name, Class<?>... argTypes) {
-        return new ForeignCallDescriptor(name, void.class, argTypes, false, ArrayCopyWithConversionsNode.KILLED_LOCATIONS, false, false);
+        return new ForeignCallDescriptor(name, void.class, argTypes, HAS_SIDE_EFFECT, ArrayCopyWithConversionsNode.KILLED_LOCATIONS, false, false);
     }
 
     public static ForeignCallDescriptor getStub(ArrayCopyWithConversionsNode node) {

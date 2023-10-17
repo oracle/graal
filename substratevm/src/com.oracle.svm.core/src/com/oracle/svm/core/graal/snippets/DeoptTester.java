@@ -24,6 +24,8 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+
 import java.util.HashSet;
 import java.util.Set;
 
@@ -66,7 +68,7 @@ public class DeoptTester {
         public static final HostedOptionKey<Boolean> DeoptimizeAll = new HostedOptionKey<>(false);
     }
 
-    public static final SubstrateForeignCallDescriptor DEOPTTEST = SnippetRuntime.findForeignCall(DeoptTester.class, "deoptTest", false, LocationIdentity.any());
+    public static final SubstrateForeignCallDescriptor DEOPTTEST = SnippetRuntime.findForeignCall(DeoptTester.class, "deoptTest", HAS_SIDE_EFFECT, LocationIdentity.any());
 
     private static final Set<Long> handledPCs = new HashSet<>();
 

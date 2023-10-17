@@ -27,6 +27,7 @@ package com.oracle.svm.core.identityhashcode;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -50,7 +51,7 @@ import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescripto
 final class SubstrateIdentityHashCodeSnippets extends IdentityHashCodeSnippets {
 
     static final SubstrateForeignCallDescriptor GENERATE_IDENTITY_HASH_CODE = SnippetRuntime.findForeignCall(
-                    IdentityHashCodeSupport.class, "generateIdentityHashCode", true, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
+                    IdentityHashCodeSupport.class, "generateIdentityHashCode", NO_SIDE_EFFECT, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);
 
     static Templates createTemplates(OptionValues options, Providers providers) {
         return new Templates(new SubstrateIdentityHashCodeSnippets(), options, providers, IdentityHashCodeSupport.IDENTITY_HASHCODE_LOCATION);

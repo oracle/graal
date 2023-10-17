@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
+
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import org.graalvm.word.LocationIdentity;
 
@@ -32,6 +34,6 @@ public final class ForeignCalls {
     public static final LocationIdentity[] NO_LOCATIONS = {};
 
     public static ForeignCallDescriptor pureFunctionForeignCallDescriptor(String name, Class<?> resultType, Class<?>... argTypes) {
-        return new ForeignCallDescriptor(name, resultType, argTypes, true, NO_LOCATIONS, false, false);
+        return new ForeignCallDescriptor(name, resultType, argTypes, NO_SIDE_EFFECT, NO_LOCATIONS, false, false);
     }
 }

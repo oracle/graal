@@ -24,6 +24,8 @@
  */
 package jdk.graal.compiler.replacements.nodes;
 
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+
 import java.util.EnumSet;
 
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
@@ -59,14 +61,14 @@ public class CipherBlockChainingAESNode extends MemoryKillStubIntrinsicNode {
     public static final ForeignCallDescriptor STUB_ENCRYPT = new ForeignCallDescriptor("cbcAESEncrypt",
                     int.class,
                     new Class<?>[]{Pointer.class, Pointer.class, Pointer.class, Pointer.class, int.class},
-                    false,
+                    HAS_SIDE_EFFECT,
                     KILLED_LOCATIONS,
                     false,
                     false);
     public static final ForeignCallDescriptor STUB_DECRYPT = new ForeignCallDescriptor("cbcAESDecrypt",
                     int.class,
                     new Class<?>[]{Pointer.class, Pointer.class, Pointer.class, Pointer.class, int.class},
-                    false,
+                    HAS_SIDE_EFFECT,
                     KILLED_LOCATIONS,
                     false,
                     false);
