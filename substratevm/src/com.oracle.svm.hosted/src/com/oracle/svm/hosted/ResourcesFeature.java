@@ -268,7 +268,8 @@ public final class ResourcesFeature implements InternalFeature {
                 if (!resourcePackage.isEmpty()) {
                     // if processing resource package, make sure that module exports that package
                     if (module.getPackages().contains(resourcePackage)) {
-                        ModuleSupport.accessModuleByClass(ModuleSupport.Access.EXPORT, ResourcesFeature.class, module, resourcePackage);
+                        // Use Access.OPEN to find ALL resources within resource package
+                        ModuleSupport.accessModuleByClass(ModuleSupport.Access.OPEN, ResourcesFeature.class, module, resourcePackage);
                     }
                 }
 
@@ -446,7 +447,7 @@ public final class ResourcesFeature implements InternalFeature {
                                 });
             }
             ResourcePattern[] excludePatterns = compilePatterns(excludedResourcePatterns);
-            ResourceCollectorImpl collector = new ResourceCollectorImpl(includePatterns, excludePatterns);
+            ResourceCollectorImpl collector = new ResourceCollectorImpl(includePatterns, excludePatterns, beforeAnalysisAccess);
             try {
                 collector.prepareProgressReporter();
                 ImageSingletons.lookup(ClassLoaderSupport.class).collectResources(collector);
@@ -468,15 +469,17 @@ public final class ResourcesFeature implements InternalFeature {
         private static final int WATCHDOG_RESET_AFTER_EVERY_N_RESOURCES = 1000;
         private static final int WATCHDOG_INITIAL_WARNING_AFTER_N_SECONDS = 60;
         private static final int WATCHDOG_WARNING_AFTER_EVERY_N_SECONDS = 20;
+        private final FeatureImpl.BeforeAnalysisAccessImpl access;
         private final LongAdder reachedResourceEntries;
         private boolean initialReport;
         private volatile String currentlyProcessedEntry;
         ScheduledExecutorService scheduledExecutor;
 
-        private ResourceCollectorImpl(Set<CompiledConditionalPattern> includePatterns, ResourcePattern[] excludePatterns) {
+        private ResourceCollectorImpl(Set<CompiledConditionalPattern> includePatterns, ResourcePattern[] excludePatterns, FeatureImpl.BeforeAnalysisAccessImpl access) {
             this.includePatterns = includePatterns;
             this.excludePatterns = excludePatterns;
 
+            this.access = access;
             this.reachedResourceEntries = new LongAdder();
             this.initialReport = true;
             this.currentlyProcessedEntry = null;
