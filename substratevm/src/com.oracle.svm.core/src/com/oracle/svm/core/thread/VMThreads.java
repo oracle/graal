@@ -888,13 +888,13 @@ public abstract class VMThreads {
          * The thread won't freeze at a safepoint, and will actively prevent the VM from reaching a
          * safepoint (regardless of the thread status).
          */
-        static final int PREVENT_VM_FROM_REACHING_SAFEPOINT = 1;
+        public static final int PREVENT_VM_FROM_REACHING_SAFEPOINT = 1;
 
         /**
          * The thread won't freeze at a safepoint and the safepoint handling will ignore the thread.
          * So, the VM will be able to reach a safepoint regardless of the status of this thread.
          */
-        static final int THREAD_CRASHED = 2;
+        public static final int THREAD_CRASHED = 2;
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
         public static boolean ignoresSafepoints() {
@@ -943,6 +943,11 @@ public abstract class VMThreads {
         public static void markThreadAsCrashed() {
             // It would be nice if we could retire the TLAB here but that wouldn't work reliably.
             safepointBehaviorTL.setVolatile(THREAD_CRASHED);
+        }
+
+        @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
+        public static boolean isCrashedThread(IsolateThread thread) {
+            return safepointBehaviorTL.getVolatile(thread) == THREAD_CRASHED;
         }
 
         @Uninterruptible(reason = "Called from uninterruptible code.", mayBeInlined = true)
