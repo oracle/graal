@@ -58,7 +58,8 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
     private final ConcurrentHashMap<Pair<TypeFlow<?>, TypeFlow<?>>, Boolean> interflows = new ConcurrentHashMap<>();
 
     /**
-     * Saves for each virtual invocation the receiver typeflow before it may have been replaced during saturation.
+     * Saves for each virtual invocation the receiver typeflow before it may have been replaced
+     * during saturation.
      */
     private final ConcurrentHashMap<AbstractVirtualInvokeTypeFlow, TypeFlow<?>> originalInvokeReceivers = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<Pair<CausalityEvent, TypeFlow<?>>, HashSet<AnalysisType>> flowingFromHeap = new ConcurrentHashMap<>();
@@ -99,7 +100,8 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
             return;
         }
 
-        assert getContext().currentlySaturatingDepth == 0 || to.isContextInsensitive() || from instanceof ActualReturnTypeFlow && to instanceof ActualReturnTypeFlow || to instanceof ActualParameterTypeFlow;
+        assert getContext().currentlySaturatingDepth == 0 || to.isContextInsensitive() || from instanceof ActualReturnTypeFlow && to instanceof ActualReturnTypeFlow ||
+                        to instanceof ActualParameterTypeFlow;
         interflows.put(Pair.create(from, to), Boolean.TRUE);
     }
 
@@ -138,7 +140,8 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
         flowingFromHeap.keySet().stream().map(Pair::getLeft).forEach(callback);
 
         // TODO: Unsure about this - whether it is necessary and whether it is correct/complete
-        originalInvokeReceivers.keySet().stream().map(InvokeTypeFlow::getTargetMethod).flatMap(targetMethod -> Arrays.stream(targetMethod.getImplementations())).map(CausalityEvents.MethodImplementationInvoked::create).forEach(callback);
+        originalInvokeReceivers.keySet().stream().map(InvokeTypeFlow::getTargetMethod).flatMap(targetMethod -> Arrays.stream(targetMethod.getImplementations()))
+                        .map(CausalityEvents.MethodImplementationInvoked::create).forEach(callback);
 
         forEachTypeflow(tf -> {
             if (tf != null) {
@@ -195,10 +198,10 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
     private static CausalityEvent getContainingEvent(TypeFlow<?> f) {
         if (f.getSource() instanceof BytecodePosition pos) {
             /*
-             * For some reason the BytecodePosition assigned to a TypeFlow isn't always what you would expect from browsing the code.
-             * We query AnalysisMethod.isInlined() in order to improve implausible sources.
-             * Incorrect sources that are not corrected will lead to underapproximation in the Causality Graph.
-             * TODO: Fix the underlying problem
+             * For some reason the BytecodePosition assigned to a TypeFlow isn't always what you
+             * would expect from browsing the code. We query AnalysisMethod.isInlined() in order to
+             * improve implausible sources. Incorrect sources that are not corrected will lead to
+             * underapproximation in the Causality Graph. TODO: Fix the underlying problem
              */
             if (f instanceof FilterTypeFlow || f instanceof NullCheckTypeFlow) {
                 pos = takePlausibleFramesFromBottom(chopUnwindFrames(pos));
@@ -237,8 +240,8 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
     }
 
     /**
-     * In order to save calls to {@link AnalysisType#resolveConcreteMethod(ResolvedJavaMethod)}, we precompute the mapping
-     * Type -> Implementation.
+     * In order to save calls to {@link AnalysisType#resolveConcreteMethod(ResolvedJavaMethod)}, we
+     * precompute the mapping Type -> Implementation.
      */
     private static Map<AnalysisMethod, TypeState> collectImplementationWithTypes(PointsToAnalysis bb, AnalysisMethod baseMethod) {
         Map<AnalysisMethod, TypeState> result = new HashMap<>();
@@ -286,7 +289,8 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
                     continue;
                 }
 
-                var calleeList = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(implementationWithTypes.getKey()), targetMethod, e.getKey().getCallerMultiMethodKey(), e.getKey());
+                var calleeList = bb.getHostVM().getMultiMethodAnalysisPolicy().determineCallees(bb, PointsToAnalysis.assertPointsToAnalysisMethod(implementationWithTypes.getKey()), targetMethod,
+                                e.getKey().getCallerMultiMethodKey(), e.getKey());
                 for (PointsToAnalysisMethod callee : calleeList) {
                     assert callee.getTypeFlow().getMethod().equals(callee);
 
@@ -324,26 +328,23 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
                 if (invokeFlow.isContextInsensitive()) {
                     // Root invocation
                     Graph.FlowNode rootCallFlow = new Graph.FlowNode(
-                            "Root call to " + invokeFlow.getTargetMethod(),
-                            CausalityEvents.RootMethodRegistration.create(invokeFlow.getTargetMethod()),
-                            bb.getAllInstantiatedTypeFlow().getState());
+                                    "Root call to " + invokeFlow.getTargetMethod(),
+                                    CausalityEvents.RootMethodRegistration.create(invokeFlow.getTargetMethod()),
+                                    bb.getAllInstantiatedTypeFlow().getState());
 
                     g.add(new Graph.FlowEdge(
-                            flowMapper.apply(invokeFlow.getTargetMethod().getDeclaringClass().instantiatedTypes),
-                            rootCallFlow
-                    ));
+                                    flowMapper.apply(invokeFlow.getTargetMethod().getDeclaringClass().instantiatedTypes),
+                                    rootCallFlow));
                     g.add(new Graph.FlowEdge(
-                            rootCallFlow,
-                            invocationFlowNode
-                    ));
-                } else  {
+                                    rootCallFlow,
+                                    invocationFlowNode));
+                } else {
                     assert receiver != null;
                     Graph.FlowNode receiverNode = flowMapper.apply(receiver);
                     if (receiverNode != null) {
                         g.add(new Graph.FlowEdge(
-                                receiverNode,
-                                invocationFlowNode
-                        ));
+                                        receiverNode,
+                                        invocationFlowNode));
                     }
                 }
             }
@@ -387,9 +388,11 @@ class TypeflowImpl extends BasicImpl<TypeflowImpl.ThreadContext> {
 
             // The causality-query implementation saturates at 20 types.
             // Saturation will happen even if the types don't pass the filter
-            // Therefore, as soon as a typeflow connected to the source (represented by null) allows for more than 20 types,
+            // Therefore, as soon as a typeflow connected to the source (represented by null) allows
+            // for more than 20 types,
             // These will be added to allInstantiated immeadiatly.
-            // In practice this only shows in big projects and rarely (e.g. 3 times in 170MB spring-petclinic)
+            // In practice this only shows in big projects and rarely (e.g. 3 times in 170MB
+            // spring-petclinic)
             // Therefore we simply employ this quick fix:
             var typeIter = e.getValue().iterator();
             while (typeIter.hasNext()) {

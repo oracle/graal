@@ -337,10 +337,10 @@ public class MethodTypeFlowBuilder {
                     AnalysisMethod frameStateMethod = (AnalysisMethod) node.getMethod();
                     if (frameStateMethod != null) {
                         /*
-                         * All types referenced in (possibly inlined) frame states must be reachable,
-                         * because these classes will be reachable from stack walking metadata. This
-                         * metadata is only constructed after AOT compilation, so the image heap
-                         * scanning during static analysis does not see these classes.
+                         * All types referenced in (possibly inlined) frame states must be
+                         * reachable, because these classes will be reachable from stack walking
+                         * metadata. This metadata is only constructed after AOT compilation, so the
+                         * image heap scanning during static analysis does not see these classes.
                          */
                         frameStateMethod.getDeclaringClass().registerAsReachable(AbstractAnalysisEngine.syntheticSourcePosition(node, method));
                     }

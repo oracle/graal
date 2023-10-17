@@ -24,26 +24,6 @@
  */
 package com.oracle.graal.pointsto.reports.causality;
 
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.flow.AccessFieldTypeFlow;
-import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
-import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
-import com.oracle.graal.pointsto.flow.ConstantTypeFlow;
-import com.oracle.graal.pointsto.flow.FieldTypeFlow;
-import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
-import com.oracle.graal.pointsto.flow.FormalReceiverTypeFlow;
-import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow;
-import com.oracle.graal.pointsto.flow.SourceTypeFlow;
-import com.oracle.graal.pointsto.flow.TypeFlow;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
-import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.svm.util.ClassUtil;
-import org.graalvm.collections.Pair;
-
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintStream;
@@ -70,6 +50,27 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
+
+import org.graalvm.collections.Pair;
+
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.flow.AccessFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.AllInstantiatedTypeFlow;
+import com.oracle.graal.pointsto.flow.ArrayElementsTypeFlow;
+import com.oracle.graal.pointsto.flow.ConstantTypeFlow;
+import com.oracle.graal.pointsto.flow.FieldTypeFlow;
+import com.oracle.graal.pointsto.flow.FormalParamTypeFlow;
+import com.oracle.graal.pointsto.flow.FormalReceiverTypeFlow;
+import com.oracle.graal.pointsto.flow.NewInstanceTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow;
+import com.oracle.graal.pointsto.flow.SourceTypeFlow;
+import com.oracle.graal.pointsto.flow.TypeFlow;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.svm.util.ClassUtil;
 
 class Graph {
     abstract static class Node implements Comparable<Node> {
@@ -99,8 +100,9 @@ class Graph {
             this.filter = filter;
         }
 
-        // If this returns true, the "containing" MethodNode is to be interpreted as a method made reachable through this flow,
-        // instead of a method needing to be reachable for this flow to be reachable
+        // If this returns true, the "containing" MethodNode is to be interpreted as a method made
+        // reachable through this flow, instead of a method needing to be reachable for this flow to
+        // be reachable
         public boolean makesContainingReachable() {
             return false;
         }
@@ -178,10 +180,7 @@ class Graph {
                 return false;
             }
             HyperEdge that = (HyperEdge) o;
-            return to.equals(that.to) && (
-                    (from1.equals(that.from1) && from2.equals(that.from2))
-                 || (from1.equals(that.from2) && from2.equals(that.from1))
-            );
+            return to.equals(that.to) && ((from1.equals(that.from1) && from2.equals(that.from2)) || (from1.equals(that.from2) && from2.equals(that.from1)));
         }
 
         @Override
@@ -262,7 +261,8 @@ class Graph {
             if (f instanceof NewInstanceTypeFlow || f instanceof SourceTypeFlow || f instanceof ConstantTypeFlow) {
                 return TypeState.forExactType(bb, f.getDeclaredType(), false);
             } else if (f instanceof FormalReceiverTypeFlow) {
-                // No saturation happens here, therefore we can use all flowing types as empirical filter
+                // No saturation happens here, therefore we can use all flowing types as empirical
+                // filter
                 return f.getState();
             } else {
                 return f.filter(bb, bb.getAllInstantiatedTypeFlow().getState());
@@ -294,7 +294,6 @@ class Graph {
     public void add(FlowEdge e) {
         interflows.add(e);
     }
-
 
     private static <T> HashMap<T, Integer> inverse(T[] arr, int startIndex) {
         HashMap<T, Integer> idMap = new HashMap<>();
@@ -329,8 +328,8 @@ class Graph {
     }
 
     private static void collectNodesLeadingSomewhere(
-            BitSet neededNodes,
-            int[][] backwardAdj) {
+                    BitSet neededNodes,
+                    int[][] backwardAdj) {
 
         Queue<Integer> worklist = new ArrayDeque<>(neededNodes.cardinality());
         neededNodes.stream().forEach(worklist::add);
@@ -457,13 +456,13 @@ class Graph {
 
         var neededAbstractNodes = collectNeededAbstractNodes();
         CausalityEvent[] methodsSorted = filterType(CausalityEvent.class, neededAbstractNodes.stream())
-            .map(reason -> Pair.create(reason.toString(bb.getMetaAccess()), reason))
-            .sorted(Comparator.comparing(Pair::getLeft))
-            .map(Pair::getRight)
-            .toArray(CausalityEvent[]::new);
+                        .map(reason -> Pair.create(reason.toString(bb.getMetaAccess()), reason))
+                        .sorted(Comparator.comparing(Pair::getLeft))
+                        .map(Pair::getRight)
+                        .toArray(CausalityEvent[]::new);
         FlowNode[] flowsSorted = filterType(FlowNode.class, neededAbstractNodes.stream())
-                .sorted()
-                .toArray(FlowNode[]::new);
+                        .sorted()
+                        .toArray(FlowNode[]::new);
 
         HashMap<CausalityEvent, Integer> methodIdMap = inverse(methodsSorted, 1);
         HashMap<FlowNode, Integer> flowIdMap = inverse(flowsSorted, 1);
@@ -655,11 +654,11 @@ class Graph {
         }
     }
 
-
     private static Map<AnalysisType, Integer> makeDenseTypeIdMap(BigBang bb, Predicate<AnalysisType> shouldBeIncluded) {
         ArrayList<AnalysisType> typesInPreorder = new ArrayList<>();
 
-        // Execute inorder-tree-traversal on subclass hierarchy in order to have hierarchy subtrees in one contiguous id range
+        // Execute inorder-tree-traversal on subclass hierarchy in order to have hierarchy subtrees
+        // in one contiguous id range
         Deque<AnalysisType> worklist = new ArrayDeque<>();
         worklist.add(bb.getUniverse().objectType());
 

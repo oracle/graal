@@ -372,10 +372,9 @@ public class AnalysisUniverse implements Universe {
             AnalysisType declaringType = lookup(field.getDeclaringClass());
 
             /*
-             * This registration is hard to fully trace.
-             * If we get here during method parsing, a root reason is given.
-             * Otherwise, we violate the principle of conservative reasoning in order
-             * to get usable results.
+             * This registration is hard to fully trace. If we get here during method parsing, a
+             * root reason is given. Otherwise, we violate the principle of conservative reasoning
+             * in order to get usable results.
              */
             CausalityEvent event = CausalityExport.getCause();
             try (var ignored = CausalityExport.setCause(event != null ? event : CausalityEvents.Ignored)) {

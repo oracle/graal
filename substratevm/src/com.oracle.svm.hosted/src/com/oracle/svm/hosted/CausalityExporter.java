@@ -50,8 +50,8 @@ import java.util.zip.ZipOutputStream;
 public class CausalityExporter implements InternalFeature {
 
     public final Path targetPath = NativeImageGenerator
-            .generatedFiles(HostedOptionValues.singleton())
-            .resolve(SubstrateOptions.Name.getValue() + ".cg.zip");
+                    .generatedFiles(HostedOptionValues.singleton())
+                    .resolve(SubstrateOptions.Name.getValue() + ".cg.zip");
 
     private ZipOutputStream zip;
 
@@ -73,7 +73,8 @@ public class CausalityExporter implements InternalFeature {
             System.err.println("Causality Export should be run until the compiling phase in order to get code size information!");
         }
 
-        // The activation had to be done outside of this feature in order to be able to log feature registrations themselves.
+        // The activation had to be done outside of this feature in order to be able to log feature
+        // registrations themselves.
     }
 
     @Override

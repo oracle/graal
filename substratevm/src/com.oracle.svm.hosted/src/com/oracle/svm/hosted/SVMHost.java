@@ -425,8 +425,8 @@ public class SVMHost extends HostVM {
 
         try (var ignored = CausalityExport.overwriteCause(CausalityEvents.TypeReachable.create(type), CausalityExport.HeapTracing.Full)) {
             return new DynamicHub(javaClass, className, computeHubType(type), computeReferenceType(type), superHub, componentHub, sourceFileName, modifiers, hubClassLoader,
-                    isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, simpleBinaryName,
-                    getDeclaringClass(javaClass), getSignature(javaClass));
+                            isHidden, isRecord, nestHost, assertionStatus, type.hasDefaultMethods(), type.declaresDefaultMethods(), isSealed, isVMInternal, isLambdaFormHidden, simpleBinaryName,
+                            getDeclaringClass(javaClass), getSignature(javaClass));
         }
     }
 

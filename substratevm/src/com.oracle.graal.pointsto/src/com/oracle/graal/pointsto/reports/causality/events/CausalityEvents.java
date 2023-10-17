@@ -47,7 +47,8 @@ import java.util.function.Function;
 import static org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 public final class CausalityEvents {
-    private CausalityEvents() { }
+    private CausalityEvents() {
+    }
 
     public interface EventFactory<T> {
         CausalityEvent create(T data);
@@ -66,8 +67,6 @@ public final class CausalityEvents {
 
         CausalityEvent create(AnalysisMethod m);
     }
-
-
 
     private static class InterningEventFactory<TData> implements EventFactory<TData> {
         private final ConcurrentHashMap<TData, CausalityEvent> internedEvents = new ConcurrentHashMap<>();
@@ -102,7 +101,8 @@ public final class CausalityEvents {
             return create(new Key(signature, isVirtual));
         }
 
-        public record Key(Signature signature, boolean isVirtual) {}
+        public record Key(Signature signature, boolean isVirtual) {
+        }
     }
 
     private static final class InterningCodeEventFactory extends InterningEventFactory<InterningCodeEventFactory.InlinedMethods> implements CodeEventFactory {
@@ -148,11 +148,9 @@ public final class CausalityEvents {
 
         @Override
         public CausalityEvent create(AnalysisMethod m) {
-            return create(new InlinedMethods(new AnalysisMethod[] {m}));
+            return create(new InlinedMethods(new AnalysisMethod[]{m}));
         }
     }
-
-
 
     private static class DummyEventFactory<T> implements EventFactory<T> {
         public CausalityEvent create(T data) {
@@ -184,8 +182,6 @@ public final class CausalityEvents {
             return null;
         }
     }
-
-
 
     private static <T> EventFactory<T> factory(Function<T, CausalityEvent> constructor) {
         if (CausalityExport.isEnabled()) {
@@ -225,9 +221,12 @@ public final class CausalityEvents {
     public static final EventFactory<Class<?>> HeapObjectClass = factory(HeapObjectClass::new);
     public static final EventFactory<org.graalvm.nativeimage.hosted.Feature> Feature = factory(Feature::new);
     public static final CodeEventFactory InlinedMethodCode = CausalityExport.isEnabled() ? new InterningCodeEventFactory() : new DummyCodeEventFactory();
-    public static final EventFactory2<BiConsumer<DuringAnalysisAccess, Executable>, AnalysisMethod> OverrideReachableNotificationCallbackInvocation = factory(OverrideReachableNotificationCallbackInvocation::new);
-    public static final EventFactory2<BiConsumer<DuringAnalysisAccess, Class<?>>, AnalysisType> SubtypeReachableNotificationCallbackInvocation = factory(SubtypeReachableNotificationCallbackInvocation::new);
-    public static final JniCallVariantWrapperEventFactory JniCallVariantWrapper = CausalityExport.isEnabled() ? new InterningJniCallVariantWrapperEventFactory() : new DummyJniCallVariantWrapperEventFactory();
+    public static final EventFactory2<BiConsumer<DuringAnalysisAccess, Executable>, AnalysisMethod> OverrideReachableNotificationCallbackInvocation = factory(
+                    OverrideReachableNotificationCallbackInvocation::new);
+    public static final EventFactory2<BiConsumer<DuringAnalysisAccess, Class<?>>, AnalysisType> SubtypeReachableNotificationCallbackInvocation = factory(
+                    SubtypeReachableNotificationCallbackInvocation::new);
+    public static final JniCallVariantWrapperEventFactory JniCallVariantWrapper = CausalityExport.isEnabled() ? new InterningJniCallVariantWrapperEventFactory()
+                    : new DummyJniCallVariantWrapperEventFactory();
     public static final EventFactory<AnnotatedElement> JNIRegistration = factory(JNIRegistration::new);
     public static final EventFactory<AnnotatedElement> ReflectionRegistration = factory(ReflectionRegistration::new);
     public static final EventFactory<AnnotatedElement> ReflectionObjectInHeap = factory(ReflectionObjectInHeap::new);

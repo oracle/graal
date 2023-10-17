@@ -171,14 +171,14 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     public void register(ConfigurationCondition condition, boolean unsafeInstantiated, Class<?> clazz) {
         checkNotSealed();
         register(analysisUniverse -> registerConditionalConfiguration(condition,
-                () -> {
-                    CausalityExport.registerEvent(CausalityEvents.ReflectionRegistration.create(clazz));
-                    analysisUniverse.getBigbang().postTask(debug -> {
-                        try (var ignored = CausalityExport.setCause(CausalityEvents.ReflectionRegistration.create(clazz))) {
-                            registerClass(clazz, unsafeInstantiated);
-                        }
-                    });
-                }));
+                        () -> {
+                            CausalityExport.registerEvent(CausalityEvents.ReflectionRegistration.create(clazz));
+                            analysisUniverse.getBigbang().postTask(debug -> {
+                                try (var ignored = CausalityExport.setCause(CausalityEvents.ReflectionRegistration.create(clazz))) {
+                                    registerClass(clazz, unsafeInstantiated);
+                                }
+                            });
+                        }));
     }
 
     @Override

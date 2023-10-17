@@ -39,7 +39,8 @@ import jdk.vm.ci.meta.JavaConstant;
 import java.util.zip.ZipOutputStream;
 
 public final class CausalityExport {
-    private CausalityExport() { }
+    private CausalityExport() {
+    }
 
     public enum ActivationLevel {
         DISABLED,

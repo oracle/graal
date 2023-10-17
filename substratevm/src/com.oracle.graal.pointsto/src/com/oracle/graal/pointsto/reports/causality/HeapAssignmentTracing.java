@@ -63,5 +63,6 @@ public class HeapAssignmentTracing {
     public void setCause(Object cause, boolean recordHeapAssignments) {
     }
 
-    public void dispose() { }
+    public void dispose() {
+    }
 }

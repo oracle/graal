@@ -268,8 +268,7 @@ public abstract class ImageHeapScanner {
                     cause = CausalityEvents.Ignored;
                 }
 
-                CausalityEvent typeObjectInHeap =
-                        (asObject(constant) instanceof Class<?> ? CausalityEvents.HeapObjectClass : CausalityEvents.HeapObjectDynamicHub)
+                CausalityEvent typeObjectInHeap = (asObject(constant) instanceof Class<?> ? CausalityEvents.HeapObjectClass : CausalityEvents.HeapObjectDynamicHub)
                                 .create(typeFromClassConstant.getJavaClass());
                 CausalityExport.registerEdge(cause, typeObjectInHeap);
 

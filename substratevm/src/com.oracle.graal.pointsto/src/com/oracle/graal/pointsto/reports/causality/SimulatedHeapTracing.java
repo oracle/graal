@@ -148,17 +148,23 @@ public class SimulatedHeapTracing {
 
     public static final SimulatedHeapTracing instance = CausalityExport.isEnabled() ? new Impl() : new SimulatedHeapTracing();
 
-    public void traceAllocation(CausalityEvent cause, ImageHeapInstance instance, AnalysisType type) { }
+    public void traceAllocation(CausalityEvent cause, ImageHeapInstance instance, AnalysisType type) {
+    }
 
-    public void traceAllocation(CausalityEvent cause, ImageHeapArray array) { }
+    public void traceAllocation(CausalityEvent cause, ImageHeapArray array) {
+    }
 
-    public void traceWrite(CausalityEvent cause, ImageHeapInstance instance, AnalysisField field) { }
+    public void traceWrite(CausalityEvent cause, ImageHeapInstance instance, AnalysisField field) {
+    }
 
-    public void traceWrite(CausalityEvent cause, ImageHeapArray array, int position) { }
+    public void traceWrite(CausalityEvent cause, ImageHeapArray array, int position) {
+    }
 
-    public void traceWrite(CausalityEvent cause, AnalysisField field) { }
+    public void traceWrite(CausalityEvent cause, AnalysisField field) {
+    }
 
-    public void traceClone(CausalityEvent cause, ImageHeapConstant original, ImageHeapConstant cloned) { }
+    public void traceClone(CausalityEvent cause, ImageHeapConstant original, ImageHeapConstant cloned) {
+    }
 
     public CausalityEvent getHeapObjectCreator(ImageHeapConstant constant) {
         throw new UnsupportedOperationException();

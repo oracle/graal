@@ -24,8 +24,6 @@
  */
 package com.oracle.svm.core.util.json;
 
-import org.graalvm.collections.EconomicMap;
-
 import java.io.IOException;
 import java.io.Writer;
 import java.nio.charset.StandardCharsets;

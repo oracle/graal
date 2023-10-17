@@ -27,7 +27,6 @@ package com.oracle.graal.pointsto.reports.causality.events;
 public final class HeapObjectDynamicHub extends CausalityEvent {
     public final Class<?> forClass;
 
-
     HeapObjectDynamicHub(Class<?> forClass) {
         this.forClass = forClass;
     }

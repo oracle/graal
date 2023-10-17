@@ -24,6 +24,19 @@
  */
 package com.oracle.graal.pointsto.reports.causality;
 
+import java.util.ArrayDeque;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Deque;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Consumer;
+import java.util.function.Supplier;
+import java.util.stream.Collectors;
+
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -41,20 +54,8 @@ import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.graal.pointsto.reports.causality.events.Feature;
 import com.oracle.graal.pointsto.reports.causality.events.InlinedMethodCode;
 import com.oracle.graal.pointsto.util.AnalysisError;
-import jdk.vm.ci.meta.JavaConstant;
 
-import java.util.ArrayDeque;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.Deque;
-import java.util.HashSet;
-import java.util.IdentityHashMap;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
+import jdk.vm.ci.meta.JavaConstant;
 
 class BasicImpl<TContext extends BasicImpl.ThreadContext> extends CausalityImplementation {
     private final ConcurrentHashMap<Graph.DirectEdge, Boolean> directEdges = new ConcurrentHashMap<>();
@@ -156,17 +157,17 @@ class BasicImpl<TContext extends BasicImpl.ThreadContext> extends CausalityImple
         }
 
         CausalityEvent callerEvent = callingMethod != null
-                ? CausalityEvents.InlinedMethodCode.create(callingMethod) /* TODO: Take inlining into account */
-                : CausalityEvents.RootMethodRegistration.create(invocation.getTargetMethod());
+                        // TODO: Take inlining into account
+                        ? CausalityEvents.InlinedMethodCode.create(callingMethod)
+                        : CausalityEvents.RootMethodRegistration.create(invocation.getTargetMethod());
 
         registerEdge(
-                callerEvent,
-                CausalityEvents.VirtualMethodInvoked.create(invocation.getTargetMethod()));
+                        callerEvent,
+                        CausalityEvents.VirtualMethodInvoked.create(invocation.getTargetMethod()));
         registerConjunctiveEdge(
-                CausalityEvents.VirtualMethodInvoked.create(invocation.getTargetMethod()),
-                CausalityEvents.TypeInstantiated.create(concreteTargetType),
-                CausalityEvents.MethodImplementationInvoked.create(concreteTargetMethod)
-        );
+                        CausalityEvents.VirtualMethodInvoked.create(invocation.getTargetMethod()),
+                        CausalityEvents.TypeInstantiated.create(concreteTargetType),
+                        CausalityEvents.MethodImplementationInvoked.create(concreteTargetMethod));
     }
 
     private static CausalityEvent getEventForHeapReason(Object customReason, Object o) {
@@ -335,14 +336,14 @@ class BasicImpl<TContext extends BasicImpl.ThreadContext> extends CausalityImple
         }
 
         addEdgesForBuildTimeClassInitializers(
-                bb,
-                initialBuildTimeClinits,
-                directEdges.stream()
-                        .map(e -> e.to)
-                        .filter(e -> e instanceof BuildTimeClassInitialization)
-                        .map(e -> (BuildTimeClassInitialization) e)
-                        .collect(Collectors.toSet()),
-                g);
+                        bb,
+                        initialBuildTimeClinits,
+                        directEdges.stream()
+                                        .map(e -> e.to)
+                                        .filter(e -> e instanceof BuildTimeClassInitialization)
+                                        .map(e -> (BuildTimeClassInitialization) e)
+                                        .collect(Collectors.toSet()),
+                        g);
 
         for (var e : allCodeEvents) {
             g.add(new Graph.DirectEdge(e, CausalityEvents.MethodGraphParsed.create(e.context[0])));
@@ -361,7 +362,8 @@ class BasicImpl<TContext extends BasicImpl.ThreadContext> extends CausalityImple
         return g;
     }
 
-    private static void addEdgesForBuildTimeClassInitializers(PointsToAnalysis bb, Set<BuildTimeClassInitialization> initialBuildTimeClinits, Set<BuildTimeClassInitialization> buildTimeClinitsWithReason, Graph g) {
+    private static void addEdgesForBuildTimeClassInitializers(PointsToAnalysis bb, Set<BuildTimeClassInitialization> initialBuildTimeClinits,
+                    Set<BuildTimeClassInitialization> buildTimeClinitsWithReason, Graph g) {
         Set<BuildTimeClassInitialization> visitedBuildTimeClinits = new HashSet<>();
 
         for (var initialInit : initialBuildTimeClinits) {

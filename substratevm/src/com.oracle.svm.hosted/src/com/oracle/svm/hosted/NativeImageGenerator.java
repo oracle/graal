@@ -58,10 +58,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
-import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
-import com.oracle.graal.pointsto.reports.causality.CausalityExport;
-import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
-import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.MapCursor;
@@ -164,7 +160,11 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
+import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -899,12 +899,13 @@ public class NativeImageGenerator {
                 MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
 
                 if (AnalysisReportsOptions.PrintCausalityGraph.getValue(options)) {
-                    // This cannot be done in the "CausalityExporter"-Feature since Feature-registration should already
-                    // be logged by CausalityExport...
+                    /**
+                     * This cannot be done in the "CausalityExporter"-Feature since
+                     * Feature-registration should already be logged by CausalityExport...
+                     */
                     CausalityExport.activate(AnalysisReportsOptions.CausalityGraphWithTypeflow.getValue(options)
-                            ? CausalityExport.ActivationLevel.ENABLED
-                            : CausalityExport.ActivationLevel.ENABLED_WITHOUT_TYPEFLOW
-                    );
+                                    ? CausalityExport.ActivationLevel.ENABLED
+                                    : CausalityExport.ActivationLevel.ENABLED_WITHOUT_TYPEFLOW);
                 }
 
                 ClassLoaderSupportImpl classLoaderSupport = new ClassLoaderSupportImpl(loader.classLoaderSupport);
@@ -1134,7 +1135,7 @@ public class NativeImageGenerator {
          * good example.
          */
         try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods");
-             var ignored2 = CausalityExport.setCause(CausalityEvents.InitialRegistration)) {
+                        var ignored2 = CausalityExport.setCause(CausalityEvents.InitialRegistration)) {
             bb.registerTypeAsInHeap(bb.addRootClass(Object.class, false, false), "root class");
             bb.addRootField(DynamicHub.class, "vtable");
             bb.registerTypeAsInHeap(bb.addRootClass(String.class, false, false), "root class");
@@ -1201,9 +1202,9 @@ public class NativeImageGenerator {
         if (bb instanceof NativeImagePointsToAnalysis pointsToAnalysis) {
             for (StructuredGraph graph : snippetGraphs) {
                 CausalityEvent snippetRegistrationEvent = CausalityEvents.MethodSnippet.create((AnalysisMethod) graph.method());
-                    CausalityExport.registerEvent(snippetRegistrationEvent);
-                    CausalityExport.registerEdge(snippetRegistrationEvent, CausalityEvents.InlinedMethodCode.create((AnalysisMethod) graph.method()));
-                    HostedConfiguration.instance().registerUsedElements(pointsToAnalysis, graph, false);
+                CausalityExport.registerEvent(snippetRegistrationEvent);
+                CausalityExport.registerEdge(snippetRegistrationEvent, CausalityEvents.InlinedMethodCode.create((AnalysisMethod) graph.method()));
+                HostedConfiguration.instance().registerUsedElements(pointsToAnalysis, graph, false);
             }
         } else if (bb instanceof NativeImageReachabilityAnalysisEngine reachabilityAnalysis) {
             for (StructuredGraph graph : snippetGraphs) {

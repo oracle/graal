@@ -71,10 +71,9 @@ import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 @SuppressWarnings("unused")
 public class ReachabilityExporter implements InternalFeature {
 
-    public final Path reachabilityJsonPath =
-            NativeImageGenerator
-            .generatedFiles(HostedOptionValues.singleton())
-            .resolve(SubstrateOptions.Name.getValue() + "." + SubstrateOptions.REACHABILITY_FILE_NAME);
+    public final Path reachabilityJsonPath = NativeImageGenerator
+                    .generatedFiles(HostedOptionValues.singleton())
+                    .resolve(SubstrateOptions.Name.getValue() + "." + SubstrateOptions.REACHABILITY_FILE_NAME);
 
     private static class Export {
         private static class Method {
@@ -85,8 +84,8 @@ public class ReachabilityExporter implements InternalFeature {
             public final int codeSize;
 
             Method(AnalysisMethod m, Function<AnalysisMethod, Integer> compilations,
-                          Map<AnalysisMethod, Executable> reflectionExecutables, Set<AnalysisMethod> jniMethods,
-                          AnalysisMethod mainMethod) {
+                            Map<AnalysisMethod, Executable> reflectionExecutables, Set<AnalysisMethod> jniMethods,
+                            AnalysisMethod mainMethod) {
                 Integer codeSize = compilations.apply(m);
                 this.codeSize = codeSize != null ? codeSize : 0;
                 reflection = reflectionExecutables.containsKey(m);
@@ -307,17 +306,17 @@ public class ReachabilityExporter implements InternalFeature {
             Map<AnalysisField, java.lang.reflect.Field> reflectionFields = reflectionHostedSupport.getReflectionFields();
             JNIAccessFeature jniAccessFeature = JNIAccessFeature.singleton();
             Set<AnalysisMethod> jniMethods = Arrays.stream(jniAccessFeature.getRegisteredMethods())
-                    .map(universe::lookup)
-                    .collect(Collectors.toSet());
+                            .map(universe::lookup)
+                            .collect(Collectors.toSet());
             AnalysisMethod mainMethod = getMainMethod(universe);
             Set<AnalysisType> jniTypes = Arrays.stream(jniAccessFeature.getRegisteredClasses())
-                    .map(universe.getBigbang().getMetaAccess()::optionalLookupJavaType)
-                    .filter(Optional::isPresent).map(Optional::get)
-                    .collect(Collectors.toSet());
+                            .map(universe.getBigbang().getMetaAccess()::optionalLookupJavaType)
+                            .filter(Optional::isPresent).map(Optional::get)
+                            .collect(Collectors.toSet());
             Set<AnalysisType> reflectionTypes = Arrays.stream(ClassForNameSupport.getSuccessfullyRegisteredClasses())
-                    .map(universe.getBigbang().getMetaAccess()::optionalLookupJavaType)
-                    .filter(Optional::isPresent).map(Optional::get)
-                    .collect(Collectors.toSet());
+                            .map(universe.getBigbang().getMetaAccess()::optionalLookupJavaType)
+                            .filter(Optional::isPresent).map(Optional::get)
+                            .collect(Collectors.toSet());
 
             Path buildPath = NativeImageGenerator.generatedFiles(HostedOptionValues.singleton());
             Path targetPath = buildPath.resolve(SubstrateOptions.REACHABILITY_FILE_NAME);
@@ -344,7 +343,9 @@ public class ReachabilityExporter implements InternalFeature {
         }
 
         public void write(JsonWriter writer) throws IOException {
-            writer.print(topLevelOrigins.values().stream().sorted(Comparator.comparing((TopLevelOrigin tlo) -> tlo.path != null ? tlo.path : "").thenComparing(tlo -> tlo.module != null ? tlo.module : "")).map(TopLevelOrigin::serialize).toArray());
+            writer.print(topLevelOrigins.values().stream()
+                            .sorted(Comparator.comparing((TopLevelOrigin tlo) -> tlo.path != null ? tlo.path : "").thenComparing(tlo -> tlo.module != null ? tlo.module : ""))
+                            .map(TopLevelOrigin::serialize).toArray());
         }
 
         private Type getType(AnalysisType type, Map<Class<?>, InitKind> classInitKinds, Set<AnalysisType> reflectionTypes, Set<AnalysisType> jniTypes) {

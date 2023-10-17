@@ -40,8 +40,6 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
-import com.oracle.graal.pointsto.reports.causality.CausalityExport;
-import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableMapCursor;
@@ -62,6 +60,8 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -426,7 +426,8 @@ public class JNIAccessFeature implements Feature {
                 wrappers.forEach(wrapper -> {
                     AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
                     access.getBigBang().addRootMethod(analysisWrapper, true, "Registerd in " + JNIAccessFeature.class);
-                    analysisWrapper.registerAsEntryPoint(unpublished); // ensures C calling convention
+                    // ensures C calling convention
+                    analysisWrapper.registerAsEntryPoint(unpublished);
                 });
                 return new JNIJavaCallVariantWrapperGroup(varargs, array, valist);
             }
