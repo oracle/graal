@@ -671,6 +671,7 @@ suite = {
             "requiresConcealed": {
                 "java.base": [
                     "jdk.internal.loader",
+                    "jdk.internal.reflect",
                     "jdk.internal.foreign",
                     "jdk.internal.foreign.abi",
                     "jdk.internal.foreign.abi.x64",
@@ -701,6 +702,7 @@ suite = {
             ],
             "requiresConcealed": {
                 "java.base": [
+                    "jdk.internal.foreign",
                     "jdk.internal.foreign.abi",
                 ],
                 "jdk.internal.vm.ci" : [

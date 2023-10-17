@@ -509,9 +509,6 @@ public final class ModuleLayerFeature implements InternalFeature {
                         .stream()
                         .collect(Collectors.toMap(m -> m, m -> moduleLayerFeatureUtils.getRuntimeModuleForHostedModule(m, false)));
 
-        Module builderModule = ModuleLayerFeatureUtils.getBuilderModule();
-        assert builderModule != null;
-
         for (Map.Entry<Module, Module> modulesPair : modulePairs.entrySet()) {
             Module hosted = modulesPair.getKey();
             Module runtime = modulesPair.getValue();

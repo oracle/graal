@@ -225,6 +225,10 @@ public class PosixUtils {
         }
     }
 
+    public static boolean dlclose(PointerBase handle) {
+        return Dlfcn.dlclose(handle) == 0;
+    }
+
     public static <T extends PointerBase> T dlsym(PointerBase handle, String name) {
         try (CCharPointerHolder namePin = CTypeConversion.toCString(name)) {
             CCharPointer namePtr = namePin.get();
