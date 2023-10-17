@@ -430,7 +430,7 @@ public final class PythonRegexLexer extends RegexLexer {
     }
 
     @Override
-    protected CodePointSet getPredefinedCharClass(char c, boolean inCharClass) {
+    protected CodePointSet getPredefinedCharClass(char c) {
         if (getLocalFlags().isUnicode(mode)) {
             return UNICODE_CHAR_CLASS_SETS.get(c);
         }

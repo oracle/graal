@@ -51,7 +51,6 @@ import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Range;
 import com.oracle.truffle.regex.charset.RangesBuffer;
 import com.oracle.truffle.regex.charset.SortedListOfRanges;
-import com.oracle.truffle.regex.tregex.buffer.IntRangesBuffer;
 import com.oracle.truffle.regex.tregex.string.Encodings;
 
 public class CaseFoldData {
@@ -207,7 +206,8 @@ public class CaseFoldData {
                     break;
                 case DIRECT_MAPPING:
                     CodePointSet set = directMappings[ranges[tblEntryIndex * 4 + 3]];
-                    codePointSet.addSet(set.createIntersection(Encodings.UTF_8.getFullSet(), new IntRangesBuffer()));
+                    assert set.getMax() <= Character.MAX_CODE_POINT : "CaseFoldEquivalenceTable is currently used for single-character mappings only";
+                    codePointSet.addSet(set);
                     break;
                 case ALTERNATING_UL:
                     int loUL = Math.min(((intersectionLo - 1) ^ 1) + 1, ((intersectionHi - 1) ^ 1) + 1);
@@ -229,9 +229,8 @@ public class CaseFoldData {
         }
 
         private static void addRange(CodePointSetAccumulator codePointSet, int lo, int hi) {
-            if (lo < 0x11_0000) {
-                codePointSet.addRange(lo, Math.min(hi, 0x10_ffff));
-            }
+            assert lo <= Character.MAX_CODE_POINT : "CaseFoldEquivalenceTable is currently used for single-character mappings only";
+            codePointSet.addRange(lo, hi);
         }
 
         boolean equalsIgnoreCase(int codePointA, int codePointB) {

@@ -879,6 +879,19 @@ public class OracleDBTests extends RegexTestBase {
         test("([[=a=]])\\1", "i", "\u00e4a", 0, false);
         test("([[=a=]])\\1", "i", "\u00c4a", 0, false);
         test("([[=a=]])\\1", "i", "\u00c4A", 0, false);
+        test("[[=a=]o]+", "i", "\u00e4O\u00f6", 0, true, 0, 2);
+        test("[[=a=]o]+", "i", "\u00e4O\u00f6", 0, true, 0, 2);
+        test("[[=\u00df=]o]+", "i", "s", 0, false);
+        test("[[=\u00df=]o]+", "i", "ss", 0, true, 0, 2);
+        test("[[=\u00df=]o]+", "", "s", 0, false);
+        test("[[=\u00df=]o]+", "", "ss", 0, true, 0, 2);
+        test("[\u0132]+", "", "ij", 0, false);
+        test("[\u0132]+", "i", "ij", 0, false);
+        test("[[=\u0132=]]+", "", "ij", 0, true, 0, 2);
+        test("[[=\u0132=]o]+", "", "ij", 0, true, 0, 2);
+        test("[[=\u0132=]o]+", "i", "ij", 0, true, 0, 2);
+        expectSyntaxError("[\\s-r]+", "", "invalid range in regular expression");
+        test("[\\s-v]+", "", "\\stu", 0, true, 0, 4);
         /* GENERATED CODE END - KEEP THIS MARKER FOR AUTOMATIC UPDATES */
     }
 }

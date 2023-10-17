@@ -66,7 +66,7 @@ import com.oracle.truffle.regex.util.TBitSet;
 
 public abstract class RegexLexer {
 
-    private static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'S', 'W', 'd', 's', 'w');
+    protected static final TBitSet PREDEFINED_CHAR_CLASSES = TBitSet.valueOf('D', 'S', 'W', 'd', 's', 'w');
     protected static final TBitSet DEFAULT_WHITESPACE = TBitSet.valueOf('\t', '\n', '\u000b', '\f', '\r', ' ');
     public final RegexSource source;
     /**
@@ -247,13 +247,21 @@ public abstract class RegexLexer {
     protected abstract int getMaxBackReferenceDigits();
 
     /**
+     * Returns {@code true} iff the given character is a predefined character class when preceded
+     * with a backslash (e.g. \d).
+     */
+    protected boolean isPredefCharClass(char c) {
+        return PREDEFINED_CHAR_CLASSES.get(c);
+    }
+
+    /**
      * Returns the CodePointSet associated with the given predefined character class (e.g.
      * {@code \d}).
      * <p>
      * Note that the CodePointSet returned by this function has already been case-folded and
      * negated.
      */
-    protected abstract CodePointSet getPredefinedCharClass(char c, boolean inCharClass);
+    protected abstract CodePointSet getPredefinedCharClass(char c);
 
     /**
      * The maximum value allowed while parsing bounded quantifiers. Larger values will cause a call
@@ -750,9 +758,7 @@ public abstract class RegexLexer {
             curCharClass.clear();
             curCharClass.addSet(codePointSet);
             boolean wasSingleChar = curCharClass.matchesSingleChar();
-            if (featureEnabledIgnoreCase()) {
-                caseFoldUnfold(curCharClass);
-            }
+            caseFoldUnfold(curCharClass);
             return Token.createCharClass(curCharClass.toCodePointSet(), wasSingleChar);
         } else {
             return Token.createCharClass(codePointSet);
@@ -768,7 +774,8 @@ public abstract class RegexLexer {
                 curCharClassStartIndex = -1;
                 return Token.createCharacterClassEnd();
             }
-            return Token.createCharacterClassAtom(parseCharClassAtom(c));
+            ClassSetContents atom = parseCharClassAtom(c);
+            return Token.createCharacterClassAtom(atom.getCodePointSet(), atom.isPosixCollationEquivalenceClass());
         }
         switch (c) {
             case '.':
@@ -849,7 +856,7 @@ public abstract class RegexLexer {
         // the case-folding step in the `charClass` method and call `Token::createCharClass`
         // directly.
         if (isPredefCharClass(c)) {
-            return Token.createCharClass(getPredefinedCharClass(c, false));
+            return Token.createCharClass(getPredefinedCharClass(c));
         } else if (featureEnabledUnicodePropertyEscapes() && (c == 'p' || c == 'P')) {
             ClassSetContents unicodePropertyContents = parseUnicodeCharacterProperty(c == 'P');
             if (featureEnabledClassSetExpressions()) {
@@ -1185,7 +1192,7 @@ public abstract class RegexLexer {
 
     private ClassSetContents parseEscapeCharClass(char c) throws RegexSyntaxException {
         if (isPredefCharClass(c)) {
-            return ClassSetContents.createCharacterClass(getPredefinedCharClass(c, true));
+            return ClassSetContents.createCharacterClass(getPredefinedCharClass(c));
         } else if (featureEnabledUnicodePropertyEscapes() && (c == 'p' || c == 'P')) {
             return parseUnicodeCharacterProperty(c == 'P');
         } else {
@@ -1466,10 +1473,6 @@ public abstract class RegexLexer {
 
     public RegexSyntaxException syntaxError(String msg) {
         return RegexSyntaxException.createPattern(source, msg, getLastAtomPosition());
-    }
-
-    private static boolean isPredefCharClass(char c) {
-        return PREDEFINED_CHAR_CLASSES.get(c);
     }
 
     public static boolean isDecimalDigit(int c) {

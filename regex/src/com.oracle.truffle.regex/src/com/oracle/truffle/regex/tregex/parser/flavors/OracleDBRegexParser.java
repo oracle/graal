@@ -51,7 +51,6 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.errors.OracleDBErrorMessages;
@@ -213,12 +212,11 @@ public final class OracleDBRegexParser implements RegexParser {
                     curCharClassPosixEquivalenceClasses.clear();
                     break;
                 case charClassAtom:
-                    ClassSetContents contents = ((Token.CharacterClassAtom) token).getContents();
-                    assert contents.isCodePointSetOnly();
-                    if (contents.isPosixCollationEquivalenceClass()) {
-                        curCharClassPosixEquivalenceClasses.addSet(contents.getCodePointSet());
+                    CodePointSet contents = ((Token.CharacterClassAtom) token).getContents();
+                    if (((Token.CharacterClassAtom) token).isPosixCollationEquivalenceClass()) {
+                        curCharClassPosixEquivalenceClasses.addSet(contents);
                     } else {
-                        curCharClass.addSet(contents.getCodePointSet());
+                        curCharClass.addSet(contents);
                     }
                     break;
                 case charClassEnd:
@@ -249,7 +247,8 @@ public final class OracleDBRegexParser implements RegexParser {
         }
         if (flags.isIgnoreCase()) {
             List<Pair<Integer, int[]>> multiCodePointExpansions = MultiCharacterCaseFolding.caseClosureMultiCodePoint(CaseFoldData.CaseFoldAlgorithm.OracleDB, curCharClass);
-            List<Pair<Integer, int[]>> multiCodePointExpansionsPEC = MultiCharacterCaseFolding.caseClosureMultiCodePoint(CaseFoldData.CaseFoldAlgorithm.OracleDB, curCharClassPosixEquivalenceClasses);
+            List<Pair<Integer, int[]>> multiCodePointExpansionsPEC = MultiCharacterCaseFolding.caseClosureMultiCodePoint(CaseFoldData.CaseFoldAlgorithm.OracleDBAI,
+                            curCharClassPosixEquivalenceClasses);
             if (!multiCodePointExpansions.isEmpty() || !multiCodePointExpansionsPEC.isEmpty()) {
                 astBuilder.pushGroup();
                 astBuilder.addCharClass(curCharClass.toCodePointSet());
@@ -260,7 +259,8 @@ public final class OracleDBRegexParser implements RegexParser {
                 astBuilder.addCharClass(curCharClass.toCodePointSet(), wasSingleChar);
             }
         } else if (!curCharClassPosixEquivalenceClasses.isEmpty()) {
-            List<Pair<Integer, int[]>> multiCodePointExpansionsPEC = MultiCharacterCaseFolding.caseClosureMultiCodePoint(CaseFoldData.CaseFoldAlgorithm.OracleDB, curCharClassPosixEquivalenceClasses);
+            List<Pair<Integer, int[]>> multiCodePointExpansionsPEC = MultiCharacterCaseFolding.caseClosureMultiCodePoint(CaseFoldData.CaseFoldAlgorithm.OracleDBAI,
+                            curCharClassPosixEquivalenceClasses);
             if (!multiCodePointExpansionsPEC.isEmpty()) {
                 astBuilder.pushGroup();
                 astBuilder.addCharClass(curCharClass.toCodePointSet());

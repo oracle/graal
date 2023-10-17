@@ -50,7 +50,6 @@ import com.oracle.truffle.regex.RegexFlags;
 import com.oracle.truffle.regex.RegexLanguage;
 import com.oracle.truffle.regex.RegexSource;
 import com.oracle.truffle.regex.RegexSyntaxException;
-import com.oracle.truffle.regex.charset.ClassSetContents;
 import com.oracle.truffle.regex.charset.CodePointSet;
 import com.oracle.truffle.regex.charset.CodePointSetAccumulator;
 import com.oracle.truffle.regex.charset.Constants;
@@ -163,7 +162,7 @@ public final class PythonRegexParser implements RegexParser {
                         break;
                     }
                     if (getLocalFlags().isUnicode(mode)) {
-                        astBuilder.addWordBoundaryAssertion(lexer.getPredefinedCharClass('w', false), lexer.getPredefinedCharClass('W', false));
+                        astBuilder.addWordBoundaryAssertion(lexer.getPredefinedCharClass('w'), lexer.getPredefinedCharClass('W'));
                     } else if (getLocalFlags().isLocale()) {
                         astBuilder.addWordBoundaryAssertion(lexer.getLocaleData().getWordCharacters(), lexer.getLocaleData().getNonWordCharacters());
                     } else {
@@ -179,7 +178,7 @@ public final class PythonRegexParser implements RegexParser {
                         break;
                     }
                     if (getLocalFlags().isUnicode(mode)) {
-                        astBuilder.addWordNonBoundaryAssertionPython(lexer.getPredefinedCharClass('w', false), lexer.getPredefinedCharClass('W', false));
+                        astBuilder.addWordNonBoundaryAssertionPython(lexer.getPredefinedCharClass('w'), lexer.getPredefinedCharClass('W'));
                     } else if (getLocalFlags().isLocale()) {
                         astBuilder.addWordNonBoundaryAssertionPython(lexer.getLocaleData().getWordCharacters(), lexer.getLocaleData().getNonWordCharacters());
                     } else {
@@ -241,9 +240,7 @@ public final class PythonRegexParser implements RegexParser {
                     curCharClass.clear();
                     break;
                 case charClassAtom:
-                    ClassSetContents contents = ((Token.CharacterClassAtom) token).getContents();
-                    assert contents.isCodePointSetOnly();
-                    curCharClass.addSet(contents.getCodePointSet());
+                    curCharClass.addSet(((Token.CharacterClassAtom) token).getContents());
                     break;
                 case charClassEnd:
                     boolean wasSingleChar = !lexer.isCurCharClassInverted() && curCharClass.matchesSingleChar();
