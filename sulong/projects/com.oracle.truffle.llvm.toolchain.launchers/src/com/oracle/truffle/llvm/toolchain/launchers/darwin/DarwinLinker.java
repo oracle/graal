@@ -44,11 +44,10 @@ import java.util.List;
 
 public final class DarwinLinker extends Driver {
 
-    public static final String LD = "/usr/bin/ld";
-    public static final String LD_NAME = "ld";
+    public static final String LD_NAME = "ld.lld";
 
     private DarwinLinker() {
-        super(LD, false);
+        super(LD_NAME);
     }
 
     public static List<String> getLinkerFlags() {
@@ -86,7 +85,7 @@ public final class DarwinLinker extends Driver {
                     String newOutput = tempDir.resolve("temp.out").toString();
                     List<String> newUserArgs = newUserArgs(userArgs, newOutput, linkerOptionPrefix, outputFlagPos);
                     driver.runDriverReturn(sulongArgs, newUserArgs, verb, hlp, earlyexit);
-                    String bcFile = newOutput + ".lto.bc";
+                    String bcFile = newOutput + ".0.5.precodegen.bc";
                     if (Files.exists(Paths.get(bcFile))) {
                         sulongArgs.add(linkerOptionPrefix + "-sectcreate");
                         sulongArgs.add(linkerOptionPrefix + "__LLVM");
