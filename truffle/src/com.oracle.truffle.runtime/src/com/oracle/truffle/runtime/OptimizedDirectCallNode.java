@@ -45,6 +45,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives;
+import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.NodeInfo;
 
@@ -145,12 +146,7 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
 
     @Override
     public boolean isCallTargetCloningAllowed() {
-        return getCallTarget().getRootNode().isCloningAllowed();
-    }
-
-    @Override
-    public OptimizedCallTarget getCallTarget() {
-        return (OptimizedCallTarget) this.callTarget;
+        return ((RootCallTarget) getCallTarget()).getRootNode().isCloningAllowed();
     }
 
     public int getCallCount() {
@@ -172,6 +168,10 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             return currentCallTarget;
         }
         return null;
+    }
+
+    public OptimizedCallTarget getOptimizedCallTarget() {
+        return (OptimizedCallTarget) getCallTarget();
     }
 
     /**
@@ -207,9 +207,9 @@ public final class OptimizedDirectCallNode extends DirectCallNode {
             }
 
             assert isCallTargetCloningAllowed();
-            OptimizedCallTarget currentTarget = getCallTarget();
+            OptimizedCallTarget currentTarget = (OptimizedCallTarget) getCallTarget();
 
-            OptimizedCallTarget splitTarget = getCallTarget().cloneUninitialized();
+            OptimizedCallTarget splitTarget = currentTarget.cloneUninitialized();
             currentTarget.removeDirectCallNode(this);
             splitTarget.addDirectCallNode(this);
             assert splitTarget.getCallSiteForSplit() == this;

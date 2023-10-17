@@ -42,7 +42,6 @@ package com.oracle.truffle.api.nodes;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.Truffle;
 
 /**
  * Represents an indirect call to a {@link CallTarget}. Indirect calls are calls for which the
@@ -63,6 +62,7 @@ public abstract class IndirectCallNode extends Node {
      * @since 0.8 or earlier
      */
     protected IndirectCallNode() {
+        super();
     }
 
     /**
@@ -75,9 +75,13 @@ public abstract class IndirectCallNode extends Node {
      */
     public abstract Object call(CallTarget target, Object... arguments);
 
-    /** @since 0.8 or earlier */
+    /**
+     * Creates cached indirect call node using bytecode index <code>-1</code>.
+     *
+     * @since 0.8 or earlier
+     */
     public static IndirectCallNode create() {
-        return Truffle.getRuntime().createIndirectCallNode();
+        return NodeAccessor.RUNTIME.createIndirectCallNode();
     }
 
     private static final IndirectCallNode UNCACHED = new IndirectCallNode() {

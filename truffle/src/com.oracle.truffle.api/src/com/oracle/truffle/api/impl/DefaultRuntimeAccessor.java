@@ -57,6 +57,8 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.BlockNode;
 import com.oracle.truffle.api.nodes.BlockNode.ElementExecutor;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
+import com.oracle.truffle.api.nodes.DirectCallNode;
+import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RootNode;
 
@@ -94,6 +96,16 @@ final class DefaultRuntimeAccessor extends Accessor {
         @Override
         public boolean isLoaded(CallTarget callTarget) {
             return ((DefaultCallTarget) callTarget).isLoaded();
+        }
+
+        @Override
+        public DirectCallNode createDirectCallNode(CallTarget target) {
+            return new DefaultDirectCallNode(target);
+        }
+
+        @Override
+        public IndirectCallNode createIndirectCallNode() {
+            return new DefaultIndirectCallNode();
         }
 
         @Override

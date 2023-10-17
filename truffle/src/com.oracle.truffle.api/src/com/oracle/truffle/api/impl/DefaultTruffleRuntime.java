@@ -42,7 +42,6 @@ package com.oracle.truffle.api.impl;
 
 import java.io.Closeable;
 import java.util.Iterator;
-import java.util.Objects;
 import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
@@ -57,8 +56,6 @@ import com.oracle.truffle.api.frame.FrameInstance;
 import com.oracle.truffle.api.frame.FrameInstanceVisitor;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.RepeatingNode;
@@ -124,17 +121,6 @@ public final class DefaultTruffleRuntime implements TruffleRuntime {
     @Override
     public String getName() {
         return "Interpreted";
-    }
-
-    @Override
-    public DirectCallNode createDirectCallNode(CallTarget target) {
-        Objects.requireNonNull(target);
-        return new DefaultDirectCallNode(target);
-    }
-
-    @Override
-    public IndirectCallNode createIndirectCallNode() {
-        return new DefaultIndirectCallNode();
     }
 
     @Override
