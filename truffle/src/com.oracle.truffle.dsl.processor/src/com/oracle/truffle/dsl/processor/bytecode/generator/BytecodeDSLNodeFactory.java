@@ -137,7 +137,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     // The top-level class that subclasses the node annotated with @GenerateBytecode.
     // All of the definitions that follow are nested inside of this class.
-    private final CodeTypeElement operationNodeGen;
+    private final CodeTypeElement bytecodeNodeGen;
 
     // The builder class invoked by the language parser to generate the bytecode.
     private final CodeTypeElement builder = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
@@ -176,9 +176,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     public BytecodeDSLNodeFactory(BytecodeDSLModel model) {
         this.model = model;
-        operationNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.getName(), model.templateType.asType());
-        emptyObjectArray = addField(operationNodeGen, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
-        fastAccess = addField(operationNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.FastAccess, "ACCESS");
+        bytecodeNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.getName(), model.templateType.asType());
+        emptyObjectArray = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), Object[].class, "EMPTY_ARRAY", "new Object[0]");
+        fastAccess = addField(bytecodeNodeGen, Set.of(PRIVATE, STATIC, FINAL), types.FastAccess, "ACCESS");
         fastAccess.setInit(createFastAccessFieldInitializer());
 
         if (model.enableYield) {
@@ -192,10 +192,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     public CodeTypeElement create() {
         // Print a summary of the model in a docstring at the start.
-        operationNodeGen.createDocBuilder().startDoc().lines(model.pp()).end();
+        bytecodeNodeGen.createDocBuilder().startDoc().lines(model.pp()).end();
 
         // Define constants for accessing the frame.
-        operationNodeGen.addAll(createFrameLayoutConstants());
+        bytecodeNodeGen.addAll(createFrameLayoutConstants());
 
         // Define internal state of the root node.
         List<CodeVariableElement> finalFields = new ArrayList<>();
@@ -210,70 +210,70 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         if (model.enableTracing) {
             finalFields.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean[].class), "basicBlockBoundary")));
         }
-        operationNodeGen.addAll(finalFields);
+        bytecodeNodeGen.addAll(finalFields);
 
-        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), arrayOf(types.Node), "cachedNodes")));
-        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), arrayOf(context.getType(int.class)), "branchProfiles")));
-        operationNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, VOLATILE), context.getType(int[].class), "sourceInfo")));
+        bytecodeNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), arrayOf(types.Node), "cachedNodes")));
+        bytecodeNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE), arrayOf(context.getType(int.class)), "branchProfiles")));
+        bytecodeNodeGen.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, VOLATILE), context.getType(int[].class), "sourceInfo")));
         if (model.enableUncachedInterpreter) {
-            operationNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "uncachedExecuteCount")).createInitBuilder().string("16");
+            bytecodeNodeGen.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "uncachedExecuteCount")).createInitBuilder().string("16");
         }
 
         // Define the interpreter implementations.
         if (model.enableUncachedInterpreter) {
-            operationNodeGen.add(new ContinueAtFactory(InterpreterTier.UNCACHED).create());
-            operationNodeGen.add(createUncachedInterpreterThreshold());
+            bytecodeNodeGen.add(new ContinueAtFactory(InterpreterTier.UNCACHED).create());
+            bytecodeNodeGen.add(createUncachedInterpreterThreshold());
         }
-        operationNodeGen.addAll(createInterpreterTiers());
-        operationNodeGen.add(createCurrentTierField());
-        operationNodeGen.add(new ContinueAtFactory(InterpreterTier.CACHED).create());
-        operationNodeGen.add(new ContinueAtFactory(InterpreterTier.INSTRUMENTED).create());
+        bytecodeNodeGen.addAll(createInterpreterTiers());
+        bytecodeNodeGen.add(createCurrentTierField());
+        bytecodeNodeGen.add(new ContinueAtFactory(InterpreterTier.CACHED).create());
+        bytecodeNodeGen.add(new ContinueAtFactory(InterpreterTier.INSTRUMENTED).create());
 
         // Define the builder class.
-        operationNodeGen.add(new BuilderFactory().create());
+        bytecodeNodeGen.add(new BuilderFactory().create());
 
         // Define implementations for the public classes that Truffle interpreters interact with.
-        operationNodeGen.add(new BytecodeNodesImplFactory().create());
-        operationNodeGen.add(new BytecodeLocalImplFactory().create());
-        operationNodeGen.add(new BytecodeLabelImplFactory().create());
+        bytecodeNodeGen.add(new BytecodeNodesImplFactory().create());
+        bytecodeNodeGen.add(new BytecodeLocalImplFactory().create());
+        bytecodeNodeGen.add(new BytecodeLabelImplFactory().create());
 
         // Define helper classes containing the constants for instructions and operations.
-        operationNodeGen.add(new InstructionConstantsFactory().create());
-        operationNodeGen.add(new OperationsConstantsFactory().create());
+        bytecodeNodeGen.add(new InstructionConstantsFactory().create());
+        bytecodeNodeGen.add(new OperationsConstantsFactory().create());
 
         // Define the classes that model instruction data (e.g., cache data, continuation data).
-        operationNodeGen.add(new BoxableInterfaceFactory().create());
+        bytecodeNodeGen.add(new BoxableInterfaceFactory().create());
 
         // Define the classes that implement continuations (yield).
         if (model.enableYield) {
-            operationNodeGen.add(new ContinuationRootNodeImplFactory().create());
-            operationNodeGen.add(new ContinuationLocationImplFactory().create());
+            bytecodeNodeGen.add(new ContinuationRootNodeImplFactory().create());
+            bytecodeNodeGen.add(new ContinuationLocationImplFactory().create());
         }
 
         // Define the generated node's constructor.
-        operationNodeGen.add(createConstructor(finalFields));
+        bytecodeNodeGen.add(createConstructor(finalFields));
 
         // Define the execute method.
-        operationNodeGen.add(createExecute());
+        bytecodeNodeGen.add(createExecute());
 
         // Define a continueAt method.
         // This method delegates to the current tier's continueAt, handling the case where
         // the tier changes.
-        operationNodeGen.add(createContinueAt());
+        bytecodeNodeGen.add(createContinueAt());
 
         // Define the members required to support OSR.
-        operationNodeGen.addAll(new OSRMembersFactory().create());
+        bytecodeNodeGen.addAll(new OSRMembersFactory().create());
 
         // Define a loop counter class to track how many back-edges have been taken.
-        operationNodeGen.add(createLoopCounter());
+        bytecodeNodeGen.add(createLoopCounter());
 
         // Define the static method to create a root node.
-        operationNodeGen.add(createCreate());
+        bytecodeNodeGen.add(createCreate());
 
         // Define serialization methods and helper fields.
         if (model.enableSerialization) {
-            operationNodeGen.add(createSerialize());
-            operationNodeGen.add(createDeserialize());
+            bytecodeNodeGen.add(createSerialize());
+            bytecodeNodeGen.add(createDeserialize());
 
             // Our serialized representation encodes Tags as shorts.
             // Construct mappings to/from these shorts for serialization/deserialization.
@@ -284,51 +284,51 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                                                 arrayOf(generic(context.getDeclaredType(Class.class), types.Tag))),
                                 "TAG_MASK_TO_TAGS");
                 classToTag.createInitBuilder().string("new ConcurrentHashMap<>()");
-                operationNodeGen.add(classToTag);
+                bytecodeNodeGen.add(classToTag);
                 CodeExecutableElement classToTagMethod = createMapTagMaskToTagsArray();
-                operationNodeGen.add(classToTagMethod);
+                bytecodeNodeGen.add(classToTagMethod);
 
-                CodeExecutableElement initializeTagIndexToClass = operationNodeGen.add(createInitializeTagIndexToClass());
+                CodeExecutableElement initializeTagIndexToClass = bytecodeNodeGen.add(createInitializeTagIndexToClass());
                 CodeVariableElement tagToClass = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), generic(context.getDeclaredType(ClassValue.class), context.getType(Short.class)),
                                 "CLASS_TO_TAG_MASK");
                 tagToClass.createInitBuilder().startStaticCall(initializeTagIndexToClass).end();
-                operationNodeGen.add(tagToClass);
+                bytecodeNodeGen.add(tagToClass);
             }
         }
 
         // Generate a {@link @TracingConfiguration} annotation, if tracing is enabled.
         if (model.enableTracing) {
-            operationNodeGen.addAnnotationMirror(createTracingMetadata());
+            bytecodeNodeGen.addAnnotationMirror(createTracingMetadata());
         }
 
         // Define the method to change between interpreters.
-        operationNodeGen.add(createChangeInterpreters());
+        bytecodeNodeGen.add(createChangeInterpreters());
 
         // Define a helper method for throwing exceptions silently.
-        operationNodeGen.add(createSneakyThrow());
+        bytecodeNodeGen.add(createSneakyThrow());
 
         // Define methods for introspecting the bytecode and source.
-        operationNodeGen.add(createGetIntrospectionData());
-        operationNodeGen.add(createGetSourceSection());
-        operationNodeGen.add(createGetSourceSectionAtBci());
+        bytecodeNodeGen.add(createGetIntrospectionData());
+        bytecodeNodeGen.add(createGetSourceSection());
+        bytecodeNodeGen.add(createGetSourceSectionAtBci());
 
         // Define methods for cloning the root node.
-        operationNodeGen.add(createCloneUninitializedSupported());
-        operationNodeGen.add(createCloneUninitialized());
+        bytecodeNodeGen.add(createCloneUninitializedSupported());
+        bytecodeNodeGen.add(createCloneUninitialized());
 
         // Define helpers for variadic accesses.
-        operationNodeGen.add(createReadVariadic());
-        operationNodeGen.add(createMergeVariadic());
+        bytecodeNodeGen.add(createReadVariadic());
+        bytecodeNodeGen.add(createMergeVariadic());
 
         // Define helpers for locals.
-        operationNodeGen.add(createGetLocals());
-        operationNodeGen.add(createGetLocalNames());
-        operationNodeGen.add(createGetLocalInfos());
-        operationNodeGen.addAll(createCopyLocals());
+        bytecodeNodeGen.add(createGetLocals());
+        bytecodeNodeGen.add(createGetLocalNames());
+        bytecodeNodeGen.add(createGetLocalInfos());
+        bytecodeNodeGen.addAll(createCopyLocals());
 
         // Define helpers for bci lookups.
-        operationNodeGen.add(createFindBciOfOperationNode());
-        operationNodeGen.add(createReadBciFromFrame());
+        bytecodeNodeGen.add(createFindBciOfOperationNode());
+        bytecodeNodeGen.add(createReadBciFromFrame());
 
         // Define the generated Node classes for custom instructions.
         StaticConstants consts = new StaticConstants();
@@ -338,7 +338,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
 
             NodeConstants nodeConsts = new NodeConstants();
-            BytecodeDSLNodeGeneratorPlugs plugs = new BytecodeDSLNodeGeneratorPlugs(context, operationNodeGen.asType(), model, instr);
+            BytecodeDSLNodeGeneratorPlugs plugs = new BytecodeDSLNodeGeneratorPlugs(context, bytecodeNodeGen.asType(), model, instr);
             FlatNodeGenFactory factory = new FlatNodeGenFactory(context, GeneratorMode.DEFAULT, instr.nodeData, consts, nodeConsts, plugs);
 
             CodeTypeElement el = new CodeTypeElement(Set.of(PRIVATE, STATIC, FINAL), ElementKind.CLASS, null, cachedDataClassName(instr));
@@ -348,20 +348,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             new CustomInstructionPostProcessor().process(el);
 
             nodeConsts.prependToClass(el);
-            operationNodeGen.add(el);
+            bytecodeNodeGen.add(el);
         }
-        consts.addElementsTo(operationNodeGen);
+        consts.addElementsTo(bytecodeNodeGen);
 
         // Define helpers for obtaining and initializing the cached nodes.
-        operationNodeGen.add(createGetCachedNodes());
-        operationNodeGen.add(createInitializeCachedNodes());
-        operationNodeGen.add(createCreateCachedNodes());
+        bytecodeNodeGen.add(createGetCachedNodes());
+        bytecodeNodeGen.add(createInitializeCachedNodes());
+        bytecodeNodeGen.add(createCreateCachedNodes());
 
         // Define helpers for obtaining and initializing branch profiles.
-        operationNodeGen.add(createGetBranchProfiles());
-        operationNodeGen.add(createInitializeBranchProfiles());
+        bytecodeNodeGen.add(createGetBranchProfiles());
+        bytecodeNodeGen.add(createInitializeBranchProfiles());
 
-        return operationNodeGen;
+        return bytecodeNodeGen;
     }
 
     private CodeExecutableElement createMapTagMaskToTagsArray() {
@@ -478,7 +478,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         CodeTreeBuilder b = ex.createBuilder();
 
-        b.declaration(operationNodeGen.asType(), "clone", cast(operationNodeGen.asType(), "this.copy()"));
+        b.declaration(bytecodeNodeGen.asType(), "clone", cast(bytecodeNodeGen.asType(), "this.copy()"));
 
         // The base copy method performs a shallow copy of all fields.
         // Some fields should be manually reinitialized to default values.
@@ -588,7 +588,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     }
 
     private CodeExecutableElement createConstructor(List<CodeVariableElement> finalFields) {
-        CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, operationNodeGen.getSimpleName().toString());
+        CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, bytecodeNodeGen.getSimpleName().toString());
         ctor.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
         ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
 
@@ -1348,7 +1348,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         final CodeVariableElement codeCreateObject = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_OBJECT", "-4");
         final CodeVariableElement codeEndSerialize = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END", "-5");
 
-        final CodeVariableElement builtNodes = addField(serializationState, Set.of(PRIVATE, FINAL), generic(ArrayList.class, operationNodeGen.asType()), "builtNodes");
+        final CodeVariableElement builtNodes = addField(serializationState, Set.of(PRIVATE, FINAL), generic(ArrayList.class, bytecodeNodeGen.asType()), "builtNodes");
         final CodeVariableElement buffer = addField(serializationState, Set.of(PRIVATE, FINAL), DataOutput.class, "buffer");
         final CodeVariableElement callback = addField(serializationState, Set.of(PRIVATE, FINAL), types.BytecodeSerializer, "callback");
         final CodeExecutableElement constructor = serializationState.add(createConstructorUsingFields(Set.of(), serializationState, null));
@@ -1393,7 +1393,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
             b.startStatement();
             b.string("buffer.writeChar((");
-            b.cast(operationNodeGen.asType()).string("node).buildIndex)");
+            b.cast(bytecodeNodeGen.asType()).string("node).buildIndex)");
             b.end();
 
             return ex;
@@ -1689,10 +1689,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         class DeserializerContextImplFactory {
             private CodeTypeElement create() {
-                deserializerContextImpl.setEnclosingElement(operationNodeGen);
+                deserializerContextImpl.setEnclosingElement(bytecodeNodeGen);
                 deserializerContextImpl.getImplements().add(types.BytecodeDeserializer_DeserializerContext);
 
-                deserializerContextImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, operationNodeGen.asType()), "builtNodes"));
+                deserializerContextImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, bytecodeNodeGen.asType()), "builtNodes"));
                 deserializerContextImpl.add(createConstructorUsingFields(Set.of(PRIVATE), deserializerContextImpl));
 
                 deserializerContextImpl.add(createReadBytecodeNode());
@@ -1714,7 +1714,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeTypeElement create() {
             builder.setSuperClass(types.BytecodeBuilder);
-            builder.setEnclosingElement(operationNodeGen);
+            builder.setEnclosingElement(bytecodeNodeGen);
 
             builder.add(uninitialized);
             uninitialized.createInitBuilder().string(-1).end();
@@ -1731,7 +1731,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean.class), "isReparse"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withSource"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(boolean.class), "withInstrumentation"));
-            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, operationNodeGen.asType()), "builtNodes"));
+            builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, bytecodeNodeGen.asType()), "builtNodes"));
 
             builder.add(new CodeVariableElement(Set.of(PRIVATE), context.getType(int.class), "buildIndex"));
             builder.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), generic(ArrayList.class, types.Source), "sources"));
@@ -1806,7 +1806,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("short[][] nodeIndices = new short[builtNodes.size()][]");
             b.startFor().string("int i = 0; i < nodeIndices.length; i ++").end().startBlock();
 
-            b.declaration(operationNodeGen.asType(), "node", "builtNodes.get(i)");
+            b.declaration(bytecodeNodeGen.asType(), "node", "builtNodes.get(i)");
 
             b.statement("short[] indices = nodeIndices[i] = new short[" + model.serializedFields.size() + "]");
 
@@ -1859,7 +1859,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.statement("ArrayList<BytecodeLocal> locals = new ArrayList<>()");
             b.statement("ArrayList<BytecodeLabel> labels = new ArrayList<>()");
             b.declaration(type(DataInput.class), "buffer", "bufferSupplier.get()");
-            b.declaration(generic(context.getDeclaredType(ArrayList.class), operationNodeGen.asType()), "builtNodes", "new ArrayList<>()");
+            b.declaration(generic(context.getDeclaredType(ArrayList.class), bytecodeNodeGen.asType()), "builtNodes", "new ArrayList<>()");
 
             b.startStatement();
             b.type(types.BytecodeDeserializer_DeserializerContext);
@@ -1890,7 +1890,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.startCase().staticReference(serializationElements.codeEndSerialize).end().startBlock();
 
             b.startFor().string("int i = 0; i < builtNodes.size(); i++").end().startBlock();
-            b.declaration(operationNodeGen.asType(), "node", "builtNodes.get(i)");
+            b.declaration(bytecodeNodeGen.asType(), "node", "builtNodes.get(i)");
 
             for (int i = 0; i < model.serializedFields.size(); i++) {
                 VariableElement var = model.serializedFields.get(i);
@@ -1978,7 +1978,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.startStatement();
                         b.type(model.getTemplateType().asType()).string(" node = ").string("end" + operation.name + "()");
                         b.end();
-                        b.startStatement().startCall("builtNodes.add").startGroup().cast(operationNodeGen.asType()).string("node").end().end().end();
+                        b.startStatement().startCall("builtNodes.add").startGroup().cast(bytecodeNodeGen.asType()).string("node").end().end().end();
                     } else {
                         b.statement("end", operation.name, "()");
                     }
@@ -2015,7 +2015,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startIf().string("!isReparse").end().startBlock();
-            b.startStatement().string("nodes.setNodes(builtNodes.toArray(new ").type(operationNodeGen.asType()).string("[0]))").end();
+            b.startStatement().string("nodes.setNodes(builtNodes.toArray(new ").type(bytecodeNodeGen.asType()).string("[0]))").end();
             b.end();
 
             b.startIf().string("withSource").end().startBlock();
@@ -2697,7 +2697,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.startIf().string("serialization != null").end().startBlock();
                 serializationWrapException(b, () -> {
                     CodeTreeBuilder constructorCallBuilder = CodeTreeBuilder.createBuilder();
-                    constructorCallBuilder.startNew(operationNodeGen.asType());
+                    constructorCallBuilder.startNew(bytecodeNodeGen.asType());
                     constructorCallBuilder.string("serialization.language");
                     constructorCallBuilder.startStaticCall(types.FrameDescriptor, "newBuilder").end();
                     constructorCallBuilder.string("null"); // BytecodeNodesImpl
@@ -2709,7 +2709,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     constructorCallBuilder.string("0"); // numConditionalBranches
                     constructorCallBuilder.string("buildIndex++");
                     constructorCallBuilder.end();
-                    b.declaration(operationNodeGen.asType(), "node", constructorCallBuilder.build());
+                    b.declaration(bytecodeNodeGen.asType(), "node", constructorCallBuilder.build());
 
                     serializationElements.writeShort(b, serializationElements.codeEnd[rootOperation.id]);
                     b.statement("builtNodes.add(node)");
@@ -2722,7 +2722,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.tree(createOperationConstant(rootOperation));
             b.end(2);
 
-            b.declaration(operationNodeGen.asType(), "result", (CodeTree) null);
+            b.declaration(bytecodeNodeGen.asType(), "result", (CodeTree) null);
             b.startIf().string("isReparse").end().startBlock(); // {
             b.statement("result = builtNodes.get(buildIndex)");
 
@@ -2743,7 +2743,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.staticReference(types.FrameSlotKind, "Illegal");
             b.end(2);
 
-            b.startAssign("result").startNew(operationNodeGen.asType());
+            b.startAssign("result").startNew(bytecodeNodeGen.asType());
             b.string("language");
             b.string("frameDescriptorBuilder");
             b.string("nodes"); // BytecodeNodesImpl
@@ -3964,7 +3964,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     class BytecodeNodesImplFactory {
         private CodeTypeElement create() {
             bytecodeNodesImpl.setSuperClass(generic(types.BytecodeNodes, model.templateType.asType()));
-            bytecodeNodesImpl.setEnclosingElement(operationNodeGen);
+            bytecodeNodesImpl.setEnclosingElement(bytecodeNodeGen);
 
             bytecodeNodesImpl.add(createConstructor());
             bytecodeNodesImpl.add(createReparseImpl());
@@ -3997,7 +3997,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             b.startFor().type(model.templateType.asType()).string(" node : nodes").end().startBlock();
             b.startStatement().startCall("builder.builtNodes.add");
-            b.startGroup().cast(operationNodeGen.asType()).string("node").end();
+            b.startGroup().cast(bytecodeNodeGen.asType()).string("node").end();
             b.end(2);
             b.end(2);
 
@@ -4009,7 +4009,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createSetNodes() {
-            return GeneratorUtils.createSetter(Set.of(), new CodeVariableElement(arrayOf(operationNodeGen.asType()), "nodes"));
+            return GeneratorUtils.createSetter(Set.of(), new CodeVariableElement(arrayOf(bytecodeNodeGen.asType()), "nodes"));
         }
 
         private CodeExecutableElement createSetSources() {
@@ -4068,7 +4068,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE, STATIC, FINAL), context.getType(int.class), "continueAt");
             ex.addAnnotationMirror(new CodeAnnotationMirror(types.HostCompilerDirectives_BytecodeInterpreterSwitch));
-            ex.addParameter(new CodeVariableElement(operationNodeGen.asType(), "$this"));
+            ex.addParameter(new CodeVariableElement(bytecodeNodeGen.asType(), "$this"));
             ex.addParameter(new CodeVariableElement(types.VirtualFrame, "frame"));
             if (model.enableYield) {
                 ex.addParameter(new CodeVariableElement(types.VirtualFrame, "localFrame"));
@@ -4102,7 +4102,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.declaration(context.getType(boolean[].class), "basicBlockBoundary", "$this.basicBlockBoundary");
 
                 b.declaration(types.ExecutionTracer, "tracer",
-                                CodeTreeBuilder.createBuilder().startStaticCall(types.ExecutionTracer, "get").typeLiteral(operationNodeGen.asType()).end());
+                                CodeTreeBuilder.createBuilder().startStaticCall(types.ExecutionTracer, "get").typeLiteral(bytecodeNodeGen.asType()).end());
 
                 b.statement("tracer.startRoot($this)");
 
@@ -4484,13 +4484,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
             /**
              * These additional parameters mirror the parameters declared in
-             * {@link OperationNodeGeneratorPlugs#additionalArguments()}. When one is updated, the
+             * {@link BytecodeDSLNodeGeneratorPlugs#additionalArguments()}. When one is updated, the
              * other should be kept in sync.
              */
             // we forward parameters with the same name when we call the helper, so save them here.
             List<CodeVariableElement> extraParams = new ArrayList<>();
             extraParams.addAll(List.of(
-                            new CodeVariableElement(operationNodeGen.asType(), "$this"),
+                            new CodeVariableElement(bytecodeNodeGen.asType(), "$this"),
                             new CodeVariableElement(context.getType(short[].class), "bc"),
                             new CodeVariableElement(context.getType(int.class), "bci"),
                             new CodeVariableElement(context.getType(int.class), "sp")));
@@ -4672,6 +4672,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             result.addAll(createMetadataMembers());
             result.addAll(createStoreAndRestoreParentFrameMethods());
 
+            bytecodeNodeGen.getImplements().add(types.BytecodeOSRNode);
+
             return result;
         }
 
@@ -4722,7 +4724,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     class BytecodeLocalImplFactory {
         private CodeTypeElement create() {
             bytecodeLocalImpl.setSuperClass(generic(types.BytecodeLocal, model.templateType.asType()));
-            bytecodeLocalImpl.setEnclosingElement(operationNodeGen);
+            bytecodeLocalImpl.setEnclosingElement(bytecodeNodeGen);
 
             bytecodeLocalImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "index"));
 
@@ -4735,7 +4737,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     class BytecodeLabelImplFactory {
         private CodeTypeElement create() {
             bytecodeLabelImpl.setSuperClass(generic(types.BytecodeLabel, model.templateType.asType()));
-            bytecodeLabelImpl.setEnclosingElement(operationNodeGen);
+            bytecodeLabelImpl.setEnclosingElement(bytecodeNodeGen);
 
             bytecodeLabelImpl.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "id"));
             bytecodeLabelImpl.add(new CodeVariableElement(context.getType(int.class), "bci"));
@@ -4781,11 +4783,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
     class ContinuationRootNodeImplFactory {
         private CodeTypeElement create() {
-            continuationRootNodeImpl.setEnclosingElement(operationNodeGen);
+            continuationRootNodeImpl.setEnclosingElement(bytecodeNodeGen);
             continuationRootNodeImpl.setSuperClass(types.RootNode);
             continuationRootNodeImpl.getImplements().add(types.ContinuationRootNode);
 
-            continuationRootNodeImpl.add(new CodeVariableElement(Set.of(FINAL), operationNodeGen.asType(), "root"));
+            continuationRootNodeImpl.add(new CodeVariableElement(Set.of(FINAL), bytecodeNodeGen.asType(), "root"));
             continuationRootNodeImpl.add(new CodeVariableElement(Set.of(FINAL), context.getType(int.class), "target"));
             continuationRootNodeImpl.add(GeneratorUtils.createConstructorUsingFields(
                             Set.of(), continuationRootNodeImpl,
@@ -4856,7 +4858,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     class ContinuationLocationImplFactory {
         private CodeTypeElement create() {
 
-            continuationLocationImpl.setEnclosingElement(operationNodeGen);
+            continuationLocationImpl.setEnclosingElement(bytecodeNodeGen);
             continuationLocationImpl.setSuperClass(types.ContinuationLocation);
 
             continuationLocationImpl.add(new CodeVariableElement(Set.of(FINAL), context.getType(int.class), "entry"));
@@ -5147,7 +5149,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private final TruffleTypes types = context.getTypes();
 
         private final BytecodeDSLModel model;
-        private final CodeTypeElement operationNodeGen;
+        private final CodeTypeElement bytecodeNodeGen;
 
         private final CodeTypeElement builder = new CodeTypeElement(Set.of(PUBLIC, STATIC, FINAL), ElementKind.CLASS, null, "Builder");
         private final DeclaredType operationBuilderType = new GeneratedTypeMirror("", builder.getSimpleName().toString(), builder.asType());
@@ -5156,20 +5158,20 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         public ErrorFactory(BytecodeDSLModel model) {
             assert model.hasErrors();
             this.model = model;
-            this.operationNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.getName(), model.templateType.asType());
+            this.bytecodeNodeGen = GeneratorUtils.createClass(model.templateType, null, Set.of(PUBLIC, FINAL), model.getName(), model.templateType.asType());
         }
 
         public CodeTypeElement create() {
-            operationNodeGen.add(createExecute());
-            operationNodeGen.add(createConstructor());
-            operationNodeGen.add(createCreate());
+            bytecodeNodeGen.add(createExecute());
+            bytecodeNodeGen.add(createConstructor());
+            bytecodeNodeGen.add(createCreate());
             if (model.enableSerialization) {
-                operationNodeGen.add(createSerialize());
-                operationNodeGen.add(createDeserialize());
+                bytecodeNodeGen.add(createSerialize());
+                bytecodeNodeGen.add(createDeserialize());
             }
 
-            operationNodeGen.add(new BuilderFactory().create());
-            return operationNodeGen;
+            bytecodeNodeGen.add(new BuilderFactory().create());
+            return bytecodeNodeGen;
         }
 
         private CodeExecutableElement createExecute() {
@@ -5180,7 +5182,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
 
         private CodeExecutableElement createConstructor() {
-            CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, operationNodeGen.getSimpleName().toString());
+            CodeExecutableElement ctor = new CodeExecutableElement(Set.of(PRIVATE), null, bytecodeNodeGen.getSimpleName().toString());
             ctor.addParameter(new CodeVariableElement(types.TruffleLanguage, "language"));
             ctor.addParameter(new CodeVariableElement(types.FrameDescriptor_Builder, "builder"));
             CodeTreeBuilder b = ctor.getBuilder();
@@ -5239,7 +5241,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private final class BuilderFactory {
             private CodeTypeElement create() {
                 builder.setSuperClass(types.BytecodeBuilder);
-                builder.setEnclosingElement(operationNodeGen);
+                builder.setEnclosingElement(bytecodeNodeGen);
                 mergeSuppressWarnings(builder, "all");
 
                 builder.add(createMethodStub(new CodeExecutableElement(Set.of(PUBLIC), types.BytecodeLocal, "createLocal")));
