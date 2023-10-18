@@ -56,6 +56,11 @@ local devkits = graal_common.devkits;
 
   # JS
   js_windows_common: {
+    # derive VS version from devkit package name
+    local devkit_version = std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(super.packages))[0],
+    environment+: {
+      DEVKIT_VERSION: devkit_version,
+    },
     downloads+: {
       NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
     },
