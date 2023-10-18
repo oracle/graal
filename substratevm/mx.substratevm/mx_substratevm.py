@@ -1337,6 +1337,8 @@ libgraal_build_args = [
 ] if mx.get_arch() == 'aarch64' else []) + ([
    # Build libgraal with 'Full RELRO' to prevent GOT overwriting exploits on Linux (GR-46838)
    '-H:NativeLinkerOption=-Wl,-z,relro,-z,now',
+   # Ensure shared library name in binary does not use fully qualified build-path (GR-46837)
+   '-H:NativeLinkerOption=-Wl,-soname=libjvmcicompiler.so',
 ] if mx.is_linux() else []))
 
 libgraal = mx_sdk_vm.GraalVmJreComponent(
