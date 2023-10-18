@@ -144,6 +144,7 @@ public class BytecodeDSLCodeGenerator extends CodeTypeElementFactory<BytecodeDSL
             modifiers.add(Modifier.ABSTRACT);
             CodeExecutableElement interfaceMethod = new CodeExecutableElement(modifiers, method.getReturnType(), method.getSimpleName().toString());
             method.getParameters().forEach(param -> interfaceMethod.addParameter(param));
+            interfaceMethod.setVarArgs(method.isVarArgs());
             abstractBuilderClass.add(interfaceMethod);
         }
 

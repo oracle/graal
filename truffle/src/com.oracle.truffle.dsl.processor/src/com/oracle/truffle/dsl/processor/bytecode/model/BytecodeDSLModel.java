@@ -64,6 +64,7 @@ import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.Immediat
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
 import com.oracle.truffle.dsl.processor.java.ElementUtils;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.ArrayCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.DeclaredCodeTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.WildcardTypeMirror;
 import com.oracle.truffle.dsl.processor.model.MessageContainer;
@@ -272,8 +273,9 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         operation(OperationKind.INSTRUMENT_TAG, "Tag") //
                         .setNumChildren(1) //
                         .setTransparent(true) //
-                        .setOperationArgumentTypes(generic(context.getDeclaredType(Class.class), new WildcardTypeMirror(types.Tag, null))) //
-                        .setOperationArgumentNames("tag");
+                        .setOperationArgumentVarArgs(true) //
+                        .setOperationArgumentTypes(array(context.getDeclaredType(Class.class))) //
+                        .setOperationArgumentNames("tags");
 
         popVariadicInstruction = new InstructionModel[9];
         for (int i = 0; i <= 8; i++) {
@@ -282,6 +284,10 @@ public class BytecodeDSLModel extends Template implements PrettyPrintable {
         }
         mergeVariadicInstruction = instruction(InstructionKind.MERGE_VARIADIC, "merge.variadic");
         storeNullInstruction = instruction(InstructionKind.STORE_NULL, "store.variadic_end");
+    }
+
+    private static TypeMirror array(TypeMirror el) {
+        return new ArrayCodeTypeMirror(el);
     }
 
     private static TypeMirror generic(DeclaredType el, TypeMirror... args) {

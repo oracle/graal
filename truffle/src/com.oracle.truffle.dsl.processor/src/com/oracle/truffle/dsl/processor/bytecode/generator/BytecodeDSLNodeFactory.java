@@ -45,6 +45,7 @@ import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.createInitializedVariable;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.generic;
 import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.type;
+import static com.oracle.truffle.dsl.processor.bytecode.generator.ElementHelpers.wildcard;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.addOverride;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createConstructorUsingFields;
 import static com.oracle.truffle.dsl.processor.generator.GeneratorUtils.createNeverPartOfCompilation;
@@ -71,6 +72,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -91,12 +93,12 @@ import com.oracle.truffle.dsl.processor.ProcessorContext;
 import com.oracle.truffle.dsl.processor.TruffleTypes;
 import com.oracle.truffle.dsl.processor.bytecode.model.BytecodeDSLModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
-import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.ImmediateKind;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionImmediate;
 import com.oracle.truffle.dsl.processor.bytecode.model.InstructionModel.InstructionKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel;
 import com.oracle.truffle.dsl.processor.bytecode.model.OperationModel.OperationKind;
+import com.oracle.truffle.dsl.processor.bytecode.model.ShortCircuitInstructionModel;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory;
 import com.oracle.truffle.dsl.processor.generator.FlatNodeGenFactory.GeneratorMode;
 import com.oracle.truffle.dsl.processor.generator.GeneratorUtils;
@@ -276,15 +278,19 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             // Our serialized representation encodes Tags as shorts.
             // Construct mappings to/from these shorts for serialization/deserialization.
             if (!model.getProvidedTags().isEmpty()) {
-                CodeExecutableElement initializeClassToTagIndex = operationNodeGen.add(createInitializeClassToTagIndex());
-                CodeVariableElement classToTag = compFinal(1,
-                                new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), arrayOf(generic(context.getDeclaredType(Class.class), types.Tag)), "TAG_INDEX_TO_CLASS"));
-                classToTag.createInitBuilder().startStaticCall(initializeClassToTagIndex).end();
+                CodeVariableElement classToTag = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL),
+                                generic(ConcurrentHashMap.class,
+                                                type(Integer.class),
+                                                arrayOf(generic(context.getDeclaredType(Class.class), types.Tag))),
+                                "TAG_MASK_TO_TAGS");
+                classToTag.createInitBuilder().string("new ConcurrentHashMap<>()");
                 operationNodeGen.add(classToTag);
+                CodeExecutableElement classToTagMethod = createMapTagMaskToTagsArray();
+                operationNodeGen.add(classToTagMethod);
 
                 CodeExecutableElement initializeTagIndexToClass = operationNodeGen.add(createInitializeTagIndexToClass());
                 CodeVariableElement tagToClass = new CodeVariableElement(Set.of(PRIVATE, STATIC, FINAL), generic(context.getDeclaredType(ClassValue.class), context.getType(Short.class)),
-                                "CLASS_TO_TAG_INDEX");
+                                "CLASS_TO_TAG_MASK");
                 tagToClass.createInitBuilder().startStaticCall(initializeTagIndexToClass).end();
                 operationNodeGen.add(tagToClass);
             }
@@ -356,6 +362,24 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         operationNodeGen.add(createInitializeBranchProfiles());
 
         return operationNodeGen;
+    }
+
+    private CodeExecutableElement createMapTagMaskToTagsArray() {
+        TypeMirror tagClass = generic(context.getDeclaredType(Class.class), wildcard(types.Tag, null));
+        CodeExecutableElement classToTagMethod = new CodeExecutableElement(Set.of(PRIVATE, STATIC), arrayOf(generic(context.getDeclaredType(Class.class), types.Tag)), "mapTagMaskToTagsArray");
+        classToTagMethod.addParameter(new CodeVariableElement(type(int.class), "tagMask"));
+        CodeTreeBuilder b = classToTagMethod.createBuilder();
+
+        b.startStatement().type(generic(ArrayList.class, tagClass)).string(" tags = ").startNew("ArrayList<>").end().end();
+        int index = 0;
+        for (TypeMirror tag : model.getProvidedTags()) {
+            b.startIf().string("(tagMask & ").string(1 << index).string(") != 0").end().startBlock();
+            b.startStatement().startCall("tags", "add").typeLiteral(tag).end().end();
+            b.end();
+            index++;
+        }
+        b.statement("return tags.toArray(new Class[tags.size()])");
+        return classToTagMethod;
     }
 
     private List<CodeVariableElement> createFrameLayoutConstants() {
@@ -758,34 +782,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return ex;
     }
 
-    private CodeExecutableElement createInitializeClassToTagIndex() {
-        ArrayType rawArray = arrayOf(context.getType(Class.class));
-        ArrayType genericArray = arrayOf(generic(context.getDeclaredType(Class.class), types.Tag));
-        CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), genericArray, "initializeClassToTagIndex");
-        CodeTreeBuilder b = method.createBuilder();
-
-        b.startReturn();
-        b.cast(genericArray);
-        b.startNewArray(rawArray, null);
-
-        for (TypeMirror tagClass : model.getProvidedTags()) {
-            b.typeLiteral(tagClass);
-        }
-
-        b.end();
-        b.end();
-
-        mergeSuppressWarnings(method, "unchecked");
-
-        return method;
-    }
-
     private CodeExecutableElement createInitializeTagIndexToClass() {
         DeclaredType classValue = context.getDeclaredType(ClassValue.class);
         TypeMirror classValueType = generic(classValue, context.getType(Short.class));
 
         CodeExecutableElement method = new CodeExecutableElement(Set.of(PRIVATE, STATIC), classValueType,
-                        "initializeTagIndexToClass");
+                        "initializeTagMaskToClass");
         CodeTreeBuilder b = method.createBuilder();
 
         b.startStatement();
@@ -798,11 +800,12 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             elseIf = b.startIf(elseIf);
             b.string("type == ").typeLiteral(tagClass);
             b.end().startBlock();
-            b.startReturn().string(index).end();
+            b.startReturn().string(1 << index).end();
             b.end();
             index++;
         }
-        b.startReturn().string(-1).end();
+        b.startThrow().startNew(type(IllegalArgumentException.class)).startCall("String.format").doubleQuote(
+                        "Invalid tag specified. Tag '%s' not provided by language '" + ElementUtils.getQualifiedName(model.languageClass) + "'.").string("type.getName()").end().end().end();
 
         b.end();
 
@@ -1938,7 +1941,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
                         b.statement("int ", argumentName, " = buffer.readInt()");
                     } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
-                        b.startStatement().type(argType).string(" ", argumentName, " = TAG_INDEX_TO_CLASS[buffer.readShort()]").end();
+
+                        b.startStatement().type(argType).string(" ", argumentName, " = TAG_MASK_TO_TAGS.computeIfAbsent(buffer.readInt(), (v) -> mapTagMaskToTagsArray(v))").end();
                     } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
                         b.startStatement().type(argType).string(" ", argumentName, " = ");
                         if (!ElementUtils.isObject(argType)) {
@@ -2233,6 +2237,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             for (CodeVariableElement param : operation.getOperationArguments()) {
                 ex.addParameter(param);
             }
+            ex.setVarArgs(operation.operationArgumentVarArgs);
+
             CodeTreeBuilder b = ex.createBuilder();
 
             if (operation.kind == OperationKind.INSTRUMENT_TAG) {
@@ -2399,7 +2405,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
                         serializationElements.writeInt(after, argumentName);
                     } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
-                        serializationElements.writeShort(after, "CLASS_TO_TAG_INDEX.get(" + operation.getOperationArgumentName(0) + ")");
+
+                        after.declaration("int", "tagMask", "0");
+                        after.startFor().string("Class<?> tag : ").string(operation.getOperationArgumentName(0)).end().startBlock();
+                        after.statement("tagMask |= CLASS_TO_TAG_MASK.get(tag)");
+                        after.end();
+
+                        serializationElements.writeInt(after, "tagMask");
                     } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
                         String index = argumentName + "_index";
                         b.statement("short ", index, " = ", "serialization.serializeObject(", argumentName, ")");
@@ -2872,6 +2884,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         private CodeExecutableElement createEmit(OperationModel operation) {
             CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC), context.getType(void.class), "emit" + operation.name);
+            ex.setVarArgs(operation.operationArgumentVarArgs);
 
             for (CodeVariableElement param : operation.getOperationArguments()) {
                 ex.addParameter(param);

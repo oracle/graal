@@ -56,6 +56,7 @@ import com.oracle.truffle.dsl.processor.java.model.CodeElement;
 import com.oracle.truffle.dsl.processor.java.model.CodeTree;
 import com.oracle.truffle.dsl.processor.java.model.CodeTreeBuilder;
 import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror;
+import com.oracle.truffle.dsl.processor.java.model.CodeTypeMirror.WildcardTypeMirror;
 import com.oracle.truffle.dsl.processor.java.model.CodeVariableElement;
 
 interface ElementHelpers {
@@ -94,6 +95,10 @@ interface ElementHelpers {
 
     static CodeTree tree(String s) {
         return CodeTreeBuilder.singleString(s);
+    }
+
+    static TypeMirror wildcard(TypeMirror extendsBounds, TypeMirror superbounds) {
+        return new WildcardTypeMirror(extendsBounds, superbounds);
     }
 
     static DeclaredType generic(TypeMirror type, TypeMirror genericType1) {

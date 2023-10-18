@@ -43,8 +43,9 @@ package com.oracle.truffle.api.bytecode.test.example;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.instrumentation.ProvidedTags;
 import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 
-@ProvidedTags(ExpressionTag.class)
+@ProvidedTags({ExpressionTag.class, StatementTag.class})
 @TruffleLanguage.Registration(id = BytecodeDSLExampleLanguage.ID)
 public class BytecodeDSLExampleLanguage extends TruffleLanguage<Object> {
     public static final String ID = "OperationsExampleLanguage";
