@@ -57,7 +57,6 @@ public final class ImageClassLoader {
      * This cannot be a HostedOption because the option parsing already relies on the list of loaded
      * classes.
      */
-    private static final int CLASS_LOADING_MAX_SCALING = 8;
     private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
 
     static {
@@ -87,20 +86,11 @@ public final class ImageClassLoader {
     }
 
     public void loadAllClasses() throws InterruptedException {
-        ForkJoinPool executor = new ForkJoinPool(Math.min(Runtime.getRuntime().availableProcessors(), CLASS_LOADING_MAX_SCALING)) {
-            @Override
-            public void execute(Runnable task) {
-                super.execute(() -> {
-                    task.run();
-                    watchdog.recordActivity();
-                });
-            }
-        };
+        ForkJoinPool executor = ForkJoinPool.commonPool();
         try {
             classLoaderSupport.loadAllClasses(executor, this);
         } finally {
-            executor.shutdown();
-            executor.awaitTermination(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
+            executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
         }
         classLoaderSupport.reportBuilderClassesInApplication();
     }
