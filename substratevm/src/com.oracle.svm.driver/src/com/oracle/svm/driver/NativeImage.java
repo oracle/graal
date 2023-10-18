@@ -587,8 +587,9 @@ public class NativeImage {
                 jars.addAll(getJars(libTruffleDir, "truffle-compiler"));
                 Path builderPath = rootDir.resolve(Paths.get("lib", "truffle", "builder"));
                 if (Files.exists(builderPath)) {
-                    jars.addAll(getJars(builderPath, "truffle-runtime-svm", "truffle-enterprise-svm"));
-                    if (libJvmciDir != null) {
+                    List<Path> truffleRuntimeSVMJars = getJars(builderPath, "truffle-runtime-svm", "truffle-enterprise-svm");
+                    jars.addAll(truffleRuntimeSVMJars);
+                    if (libJvmciDir != null && !truffleRuntimeSVMJars.isEmpty()) {
                         // truffle-runtime-svm depends on polyglot, which is not part of non-jlinked
                         // JDKs
                         jars.addAll(getJars(libJvmciDir, "polyglot"));
