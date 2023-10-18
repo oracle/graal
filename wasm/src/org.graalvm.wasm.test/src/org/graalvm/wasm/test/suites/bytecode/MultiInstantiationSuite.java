@@ -509,9 +509,9 @@ public class MultiInstantiationSuite {
                                 return
                             )
                             (func (export "test") (result i32 i32 f64)
-                                i32.const 0
-                                i32.const 1
-                                f64.const 3.14
+                                i32.const 6
+                                i32.const 8
+                                f64.const 2.72
                                 return
                             )
                         )
@@ -549,9 +549,7 @@ public class MultiInstantiationSuite {
                 Value v2 = context.asValue(instance2);
                 Value main2 = v2.getMember("main");
                 Value result2 = main2.execute();
-                if (Boolean.FALSE) { // GR-49541
-                    Assert.assertEquals("Return value of main", List.of(42L, 0, 1, 3.14), List.copyOf(result2.as(List.class)));
-                }
+                Assert.assertEquals("Return value of main", List.of(42L, 6, 8, 2.72), List.copyOf(result2.as(List.class)));
             }));
         }
     }
