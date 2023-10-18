@@ -101,6 +101,7 @@ public class OperationModel implements PrettyPrintable {
 
     public InstructionModel instruction;
     public TypeMirror[] operationArgumentTypes = EMPTY_ARGUMENT_TYPES;
+    public boolean operationArgumentVarArgs = false;
     public String[] operationArgumentNames = EMPTY_ARGUMENT_NAMES;
 
     public OperationModel(BytecodeDSLModel parent, int id, OperationKind kind, String name) {
@@ -152,6 +153,11 @@ public class OperationModel implements PrettyPrintable {
 
     public OperationModel setInstruction(InstructionModel instruction) {
         this.instruction = instruction;
+        return this;
+    }
+
+    public OperationModel setOperationArgumentVarArgs(boolean varArgs) {
+        this.operationArgumentVarArgs = varArgs;
         return this;
     }
 

@@ -63,6 +63,8 @@ import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 
 @RunWith(Parameterized.class)
 public class BytecodeDSLExampleSerializationTest {
@@ -78,7 +80,6 @@ public class BytecodeDSLExampleSerializationTest {
     public void testSerialization() {
         byte[] byteArray = createByteArray();
         BytecodeDSLExample root = deserialize(byteArray);
-
         Assert.assertEquals(3L, root.getCallTarget().call());
     }
 
@@ -145,8 +146,12 @@ public class BytecodeDSLExampleSerializationTest {
 
                             b.beginReturn();
                             b.beginAddOperation();
+                            b.beginTag(ExpressionTag.class, StatementTag.class);
                             b.emitLoadConstant(1L);
+                            b.endTag();
+                            b.beginTag(ExpressionTag.class);
                             b.emitLoadConstant(2L);
+                            b.endTag();
                             b.endAddOperation();
                             b.endReturn();
 
