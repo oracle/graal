@@ -39,31 +39,26 @@
 # SOFTWARE.
 #
 
-from shutil import copytree
+import os
+import shutil
+
+def delete_directory(directory):
+  if os.path.exists(directory):
+      shutil.rmtree(directory)
+
+def copytree(src, dest):
+  delete_directory(dest)
+  shutil.copytree(src, dest)
 
 # Populate simplelanguage
-copytree("../src/com.oracle.truffle.sl/src/", "simplelanguage/language/src/main/java/")
+copytree("../src/com.oracle.truffle.sl/src/com", "simplelanguage/language/src/main/java/com")
+copytree("../src/com.oracle.truffle.sl/src/META-INF", "simplelanguage/language/src/main/java/META-INF")
 copytree("../src/com.oracle.truffle.sl.test/src/com/", "simplelanguage/language/src/test/java/com")
 copytree("../src/com.oracle.truffle.sl.test/src/tests", "simplelanguage/language/tests")
 copytree("../src/com.oracle.truffle.sl.launcher/src/com/", "simplelanguage/launcher/src/main/java/com")
-copytree("../src/com.oracle.truffle.sl.tck/src", "simplelanguage/tck/src")
-
-# Create simplelanguage module-info
-# GR-46339 Mx supports module-info in the project sources.
-module_info = """
-module org.graalvm.sl {
-  requires java.base;
-  requires java.logging;
-  requires jdk.unsupported;
-  requires org.antlr.antlr4.runtime;
-  requires org.graalvm.polyglot;
-  requires org.graalvm.truffle;
-  provides  com.oracle.truffle.api.provider.TruffleLanguageProvider with
-    com.oracle.truffle.sl.SLLanguageProvider;
-}
-"""
-with open('simplelanguage/language/src/main/java/module-info.java', 'w') as f:
-    f.write(module_info)
+copytree("../src/com.oracle.truffle.sl.tck/src/com", "simplelanguage/tck/src/test/java/com")
+delete_directory("simplelanguage/tck/src/test/resources/com/oracle/truffle/sl/tck/resources")
+copytree("../src/com.oracle.truffle.sl.tck/src/com/oracle/truffle/sl/tck/resources", "simplelanguage/tck/src/test/resources/com/oracle/truffle/sl/tck/resources")
 
 # Populate simpletool
 copytree("../src/com.oracle.truffle.st/src/com/", "simpletool/src/main/java/com")
