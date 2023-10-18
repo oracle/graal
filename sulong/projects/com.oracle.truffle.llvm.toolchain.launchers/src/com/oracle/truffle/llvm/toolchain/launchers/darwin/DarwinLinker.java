@@ -45,10 +45,10 @@ import java.util.List;
 public final class DarwinLinker extends Driver {
 
     public static final String LLD = "lld";
-    public static final String LD_NAME = "ld64.lld";
+    public static final String LD64_LLD = "ld64.lld";
 
     private DarwinLinker() {
-        super(LD_NAME);
+        super(LD64_LLD);
     }
 
     public static List<String> getLinkerFlags() {

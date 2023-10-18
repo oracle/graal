@@ -226,7 +226,7 @@ public abstract class ClangLikeBase extends Driver {
         } else if (os == OS.WINDOWS) {
             return WindowsLinker.LLD_LINK.equals(linker) || WindowsLinker.LLD_LINK_NO_EXE.equals(linker);
         } else if (os == OS.DARWIN) {
-            return DarwinLinker.LD_NAME.equals(linker) || DarwinLinker.LLD.equals(linker);
+            return DarwinLinker.LD64_LLD.equals(linker) || DarwinLinker.LLD.equals(linker);
         } else {
             return false;
         }
@@ -248,6 +248,7 @@ public abstract class ClangLikeBase extends Driver {
             sulongArgs.add("-Wl," + String.join(",", WindowsLinker.getLinkerFlags()));
         } else if (os == OS.DARWIN) {
             sulongArgs.add("-fuse-ld=lld");
+            sulongArgs.add("--ld-path=" + getLLVMExecutable(DarwinLinker.LD64_LLD));
             sulongArgs.add("-Wl," + String.join(",", DarwinLinker.getLinkerFlags()));
         }
     }
