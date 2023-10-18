@@ -283,4 +283,8 @@ public abstract class WasmCase {
             Assert.fail("Test was not expected to return a value.");
         }
     }
+
+    public boolean isSkipped() {
+        return options().getProperty("skip-on-windows", "false").equals("true") && System.getProperty("os.arch", "").contains("Windows");
+    }
 }
