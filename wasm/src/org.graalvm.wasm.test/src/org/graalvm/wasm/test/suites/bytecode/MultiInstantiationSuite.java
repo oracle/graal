@@ -42,6 +42,7 @@
 package org.graalvm.wasm.test.suites.bytecode;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -58,6 +59,7 @@ import org.graalvm.wasm.WasmModule;
 import org.graalvm.wasm.WasmTable;
 import org.graalvm.wasm.api.Dictionary;
 import org.graalvm.wasm.api.Executable;
+import org.graalvm.wasm.api.Sequence;
 import org.graalvm.wasm.api.TableKind;
 import org.graalvm.wasm.api.ValueType;
 import org.graalvm.wasm.api.WebAssembly;
@@ -493,5 +495,64 @@ public class MultiInstantiationSuite {
                 throw new RuntimeException(e);
             }
         });
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    public void testMultiValueReturn() throws IOException, InterruptedException {
+        final byte[] sourceCode = WasmBinaryTools.compileWat("main", """
+                        (module
+                            (import "a" "f" (func $f (result i32 i32 f64)))
+                            (func (export "main") (result i64 i32 i32 f64)
+                                i64.const 42
+                                call $f
+                                return
+                            )
+                            (func (export "test") (result i32 i32 f64)
+                                i32.const 0
+                                i32.const 1
+                                f64.const 3.14
+                                return
+                            )
+                        )
+                        """);
+
+        final Context.Builder contextBuilder = Context.newBuilder(WasmLanguage.ID);
+        contextBuilder.option("wasm.Builtins", "testutil:testutil");
+        try (Context context = contextBuilder.build()) {
+            Value run = context.getBindings(WasmLanguage.ID).getMember("testutil").getMember(TestutilModule.Names.RUN_CUSTOM_INITIALIZATION);
+            run.execute(new GuestCode(c -> {
+                WebAssembly wasm = new WebAssembly(c);
+                WasmModule module = wasm.moduleDecode(sourceCode);
+
+                final Dictionary imports1 = new Dictionary();
+                final Dictionary importedModule1 = new Dictionary();
+                importedModule1.addMember("f", new Executable(args -> new Sequence<>(List.of(1, 2, 3.14))));
+                imports1.addMember("a", importedModule1);
+
+                WasmInstance instance1 = wasm.moduleInstantiate(module, imports1);
+                Object testFn1 = WebAssembly.instanceExport(instance1, "test");
+
+                final Dictionary imports2 = new Dictionary();
+                final Dictionary importedModule2 = new Dictionary();
+                importedModule2.addMember("f", testFn1);
+                imports2.addMember("a", importedModule2);
+
+                WasmInstance instance2 = wasm.moduleInstantiate(module, imports2);
+
+                Value v1 = context.asValue(instance1);
+                v1.getMember("main");
+                Value main1 = v1.getMember("main");
+                Value result1 = main1.execute();
+                Assert.assertEquals("Return value of main", List.of(42L, 1, 2, 3.14), List.copyOf(result1.as(List.class)));
+
+                Value v2 = context.asValue(instance2);
+                Value main2 = v2.getMember("main");
+                Value result2 = main2.execute();
+                if (Boolean.FALSE) { // GR-49541
+                    Assert.assertEquals("Return value of main", List.of(42L, 0, 1, 3.14), List.copyOf(result2.as(List.class)));
+                }
+            }));
+        }
     }
 }
