@@ -80,6 +80,7 @@ import java.util.stream.Stream;
 import javax.lang.model.element.Element;
 import javax.lang.model.element.ElementKind;
 import javax.lang.model.element.ExecutableElement;
+import javax.lang.model.element.Modifier;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.element.VariableElement;
@@ -1520,6 +1521,123 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             }
         }
 
+        class OperationDataClassesFactory {
+            private List<CodeTypeElement> create() {
+                List<CodeTypeElement> result = new ArrayList<>();
+
+                result.add(createDataClass("RootData",
+                                field(types.TruffleLanguage, "language").asFinal(),
+                                field(context.getType(boolean.class), "mayFallThrough").withInitializer("true")));
+
+                result.add(createDataClass("TransparentOperationData",
+                                field(context.getType(boolean.class), "producedValue"),
+                                field(context.getType(int.class), "childBci")));
+
+                result.add(createDataClass("IfThenData",
+                                field(context.getType(int.class), "falseBranchFixupBci")));
+
+                result.add(createDataClass("IfThenElseData",
+                                field(context.getType(int.class), "falseBranchFixupBci"),
+                                field(context.getType(int.class), "endBranchFixupBci")));
+
+                result.add(createDataClass("WhileData",
+                                field(context.getType(int.class), "whileStartBci").asFinal(),
+                                field(context.getType(int.class), "endBranchFixupBci")));
+
+                result.add(createDataClass("TryCatchData",
+                                field(context.getType(int.class), "tryStartBci").asFinal(),
+                                field(context.getType(int.class), "startStackHeight").asFinal(),
+                                field(context.getType(int.class), "exceptionLocalIndex").asFinal(),
+                                field(context.getType(int.class), "tryEndBci"),
+                                field(context.getType(int.class), "catchStartBci"),
+                                field(context.getType(int.class), "endBranchFixupBci")));
+
+                result.add(createDataClass("FinallyTryData",
+                                field(types.BytecodeLocal, "exceptionLocal").asFinal(),
+                                field(context.getDeclaredType(Object.class), "finallyTryContext").asFinal()));
+
+                result.add(
+                                createDataClass("CustomOperationData",
+                                                field(arrayOf(context.getType(int.class)), "childBcis").asFinal(),
+                                                field(arrayOf(context.getDeclaredType(Object.class)), "locals").asFinal().asVarArgs()));
+
+                result.add(createDataClass("CustomShortCircuitOperationData",
+                                field(context.getType(int.class), "childBci"),
+                                field(generic(List.class, Integer.class), "branchFixupBcis").withInitializer("new ArrayList<>(4)")));
+
+                return result;
+            }
+
+            private static final class DataClassField {
+                final TypeMirror type;
+                final String name;
+                boolean isFinal;
+                boolean isVarArgs;
+                // if null, field is taken as constructor parameter
+                String initializer;
+
+                DataClassField(TypeMirror type, String name) {
+                    this.type = type;
+                    this.name = name;
+                }
+
+                DataClassField asFinal() {
+                    this.isFinal = true;
+                    return this;
+                }
+
+                DataClassField asVarArgs() {
+                    this.isVarArgs = true;
+                    return this;
+                }
+
+                DataClassField withInitializer(String newInitializer) {
+                    this.initializer = newInitializer;
+                    return this;
+                }
+
+                CodeVariableElement toCodeVariableElement() {
+                    Set<Modifier> mods = isFinal ? Set.of(FINAL) : Set.of();
+                    return new CodeVariableElement(mods, type, name);
+                }
+            }
+
+            private DataClassField field(TypeMirror type, String name) {
+                return new DataClassField(type, name);
+            }
+
+            private CodeTypeElement createDataClass(String name, DataClassField... fields) {
+                CodeTypeElement result = new CodeTypeElement(Set.of(Modifier.STATIC, Modifier.FINAL), ElementKind.CLASS, null, name);
+
+                Set<String> ignoreFields = new HashSet<>();
+                boolean isVarArgs = false;
+                for (DataClassField field : fields) {
+                    if (field.initializer != null) {
+                        ignoreFields.add(field.name);
+                    }
+                    isVarArgs = isVarArgs || field.isVarArgs;
+
+                    result.add(field.toCodeVariableElement());
+                }
+                CodeExecutableElement ctor = createConstructorUsingFields(Set.of(), result, null, ignoreFields);
+
+                // Append custom initializers.
+                CodeTreeBuilder b = ctor.appendBuilder();
+                for (DataClassField field : fields) {
+                    if (field.initializer != null) {
+                        b.startAssign("this." + field.name);
+                        b.string(field.initializer);
+                        b.end();
+                    }
+                }
+                ctor.setVarArgs(isVarArgs);
+
+                result.add(ctor);
+
+                return result;
+            }
+        }
+
         class OperationStackEntryFactory {
             private CodeTypeElement create() {
                 List<CodeVariableElement> fields = List.of(
@@ -1720,6 +1838,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             uninitialized.createInitBuilder().string(-1).end();
 
             builder.add(new SavedStateFactory().create());
+            builder.addAll(new OperationDataClassesFactory().create());
             builder.add(new OperationStackEntryFactory().create());
             builder.add(new FinallyTryContextFactory().create());
             builder.add(new ConstantPoolFactory().create());
@@ -2485,13 +2604,14 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             };
         }
 
-        // For type-safety, we use data classes to manage operation state during building. These
-        // data classes are declared in BytecodeSupport.
+        /**
+         * For type-safety, we use data classes to manage operation state during building. These
+         * data classes are generated by {@link OperationDataClassesFactory}.
+         */
         private CodeTree createOperationData(String dataClassName, String... args) {
             CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
 
-            CodeTree typeTree = CodeTreeBuilder.createBuilder().staticReference(types.BytecodeSupport, dataClassName).build();
-            b.startNew(typeTree);
+            b.startNew(dataClassName);
             for (String arg : args) {
                 b.string(arg);
             }
@@ -2798,7 +2918,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         private void emitCastOperationData(CodeTreeBuilder b, String dataClassName, String operationSp) {
             b.startIf();
             b.string("!(operationStack[" + operationSp + "].data instanceof ");
-            b.staticReference(types.BytecodeSupport, dataClassName);
+            b.string(dataClassName);
             b.string(" operationData)");
             b.end().startBlock();
             emitThrowAssertionError(b, "\"Data class " + dataClassName + " expected, but was \" + operationStack[operationSp].data");
