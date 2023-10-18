@@ -775,7 +775,6 @@ suite = {
           "org.graalvm.maven.downloader",
         ],
       },
-      "defaultBuild": False,
       "mainClass": "org.graalvm.maven.downloader.Main",
       "dependencies": [
         "org.graalvm.maven.downloader",
@@ -783,7 +782,12 @@ suite = {
       "distDependencies": [
         "sdk:NATIVEIMAGE",
       ],
-      "maven": False,
+      "allowsJavadocWarnings": True,
+      "noMavenJavadoc": True,
+      "description" : "Helpers to download maven artifacts without maven.",
+      "maven": {
+        "tag": ["default", "public"],
+      },
     },
 
     "SDK_TEST" : {

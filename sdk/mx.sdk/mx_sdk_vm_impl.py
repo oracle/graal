@@ -3333,9 +3333,6 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
         else:
             _exe_paths = _dist.find_source_location('dependency:' + NativeLibraryLauncherProject.library_launcher_project_name(self.language_library_config, for_jvm_standalone=False))
             _exe_dirs = set([dirname(p) for p in _exe_paths])
-        if len(_exe_dirs) > 1:
-            mx.abort("If multiple launcher targets are specified they need to be in the same directory: {}".format(_exe_dirs))
-        _exe_dir = _exe_dirs.pop()
         _dynamic_cflags = [
             ('/std:c++17' if mx.is_windows() else '-std=c++17'),
             '-DCP_SEP=' + os.pathsep,
@@ -3356,8 +3353,10 @@ class NativeLibraryLauncherProject(mx_native.DefaultNativeProject):
                 return path
 
         def escaped_relpath(path):
-            relative = relpath(path, start=_exe_dir)
-            return escaped_path(relative)
+            relative = {relpath(path, start=_exe_dir) for _exe_dir in _exe_dirs}
+            if len(relative) > 1:
+                mx.abort("If multiple launcher targets are specified they need to be in directories agreeing on all relative paths: {} relative to {} lead to {}".format(_exe_dirs, path, relative))
+            return escaped_path(relative.pop())
 
         _graalvm_home = _get_graalvm_archive_path("")
 
