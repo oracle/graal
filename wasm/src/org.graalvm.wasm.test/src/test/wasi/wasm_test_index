@@ -16,6 +16,7 @@ path_filestat_set_times-file
 path_link-file
 path_open-existing-file
 path_remove_directory
+path_rename-file
 path_symlink-file
 random_get
 sched_yield
