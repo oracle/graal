@@ -77,7 +77,7 @@ The most-specific tag is unique and always points to the same image, while the l
 
 3. To verify, start the container and enter the Bash session:
     ```bash
-    docker run -it --rm ghcr.io/graalvm/native-image-community:17 bash
+    docker run -it --rm --entrypoint /bin/bash ghcr.io/graalvm/native-image-community:17
     ```
 
 	To check the version of GraalVM and its installed location, run the `env` command from the Bash prompt:

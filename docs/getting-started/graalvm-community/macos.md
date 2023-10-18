@@ -9,7 +9,7 @@ permalink: /docs/getting-started/macos/
 
 GraalVM is available for macOS on x64 and AArch64 architectures.
 
-Note that on macOS the JDK installation path is: _/Library/Java/JavaVirtualMachines/<graalvm>/Contents/Home_.
+Note that on macOS the JDK installation path is: <em>/Library/Java/JavaVirtualMachines/&lt;graalvm&gt;/Contents/Home</em>.
 
 Follow these steps to install GraalVM: 
 
