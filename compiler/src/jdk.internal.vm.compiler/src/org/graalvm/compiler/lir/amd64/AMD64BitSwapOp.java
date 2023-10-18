@@ -44,7 +44,7 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/83d92672d4c2637fc37ddd873533c85a9b083904/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L5743-L5825",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/0a3a925ad88921d387aa851157f54ac0054d347b/src/hotspot/cpu/x86/c2_MacroAssembler_x86.cpp#L5744-L5826",
           sha1 = "cb807f6ece0a42ba5abae88477e8899436d09a4e")
 // @formatter:on
 public final class AMD64BitSwapOp extends AMD64LIRInstruction {

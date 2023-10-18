@@ -305,6 +305,10 @@ public class HotSpotReplacementsUtil {
 
     public static final LocationIdentity JAVA_THREAD_SCOPED_VALUE_CACHE_LOCATION = NamedLocationIdentity.immutable("JavaThread::_scopedValueCache");
 
+    public static final LocationIdentity JAVA_THREAD_LOCK_STACK_TOP_LOCATION = NamedLocationIdentity.mutable("LockStack::_top");
+
+    public static final LocationIdentity JAVA_THREAD_LOCK_STACK_LOCATION = NamedLocationIdentity.mutable("JavaThread::_lock_stack");
+
     @Fold
     public static JavaKind getWordKind() {
         return runtime().getHostJVMCIBackend().getCodeCache().getTarget().wordJavaKind;
@@ -466,7 +470,17 @@ public class HotSpotReplacementsUtil {
 
     @Fold
     public static boolean useHeavyMonitors(@InjectedParameter GraalHotSpotVMConfig config) {
-        return config.useHeavyMonitors();
+        return config.lockingMode == config.lockingModeMonitor;
+    }
+
+    @Fold
+    public static boolean useStackLocking(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.lockingMode == config.lockingModeStack;
+    }
+
+    @Fold
+    public static boolean useLightweightLocking(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.lockingMode == config.lockingModeLightweight;
     }
 
     @Fold
@@ -482,6 +496,11 @@ public class HotSpotReplacementsUtil {
     @Fold
     public static int objectMonitorOwnerOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.objectMonitorOwner;
+    }
+
+    @Fold
+    public static long objectMonitorAnonymousOwner(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.objectMonitorAnonymousOwner;
     }
 
     @Fold
@@ -643,6 +662,21 @@ public class HotSpotReplacementsUtil {
     @Fold
     static int heldMonitorCountOffset(@InjectedParameter GraalHotSpotVMConfig config) {
         return config.threadHeldMonitorCountOffset;
+    }
+
+    @Fold
+    static int javaThreadLockStackTopOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.threadLockStackOffset + config.lockStackTopOffset;
+    }
+
+    @Fold
+    static int javaThreadLockStackEndOffset(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.lockStackEndOffset;
+    }
+
+    @Fold
+    static boolean isCAssertEnabled(@InjectedParameter GraalHotSpotVMConfig config) {
+        return config.cAssertions;
     }
 
     @Fold

@@ -308,7 +308,7 @@ public abstract class DefaultHotSpotLoweringProvider extends DefaultJavaLowering
         assert target == providers.getCodeCache().getTarget();
         instanceofSnippets = new InstanceOfSnippets.Templates(options, runtime, providers);
         allocationSnippets = allocationSnippetTemplates;
-        monitorSnippets = new MonitorSnippets.Templates(options, runtime, providers, config.useFastLocking);
+        monitorSnippets = new MonitorSnippets.Templates(options, runtime, providers, config);
         g1WriteBarrierSnippets = new HotSpotG1WriteBarrierSnippets.Templates(options, runtime, providers, config);
         serialWriteBarrierSnippets = new HotSpotSerialWriteBarrierSnippets.Templates(options, runtime, providers);
         exceptionObjectSnippets = new LoadExceptionObjectSnippets.Templates(options, providers);

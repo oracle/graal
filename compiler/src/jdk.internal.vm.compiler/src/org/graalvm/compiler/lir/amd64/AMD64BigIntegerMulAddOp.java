@@ -58,11 +58,11 @@ import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.Value;
 
 // @formatter:off
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/83d92672d4c2637fc37ddd873533c85a9b083904/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3192-L3244",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/0a3a925ad88921d387aa851157f54ac0054d347b/src/hotspot/cpu/x86/stubGenerator_x86_64.cpp#L3185-L3237",
           sha1 = "2f3b577fa7f0ced9cc2514af80d2c2833ab7caf2")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6988-L7022",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/0a3a925ad88921d387aa851157f54ac0054d347b/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L6989-L7023",
           sha1 = "e68b8c7bdb37d4bd1350c7e1219fdcb419d2618a")
-@SyncPort(from = "https://github.com/openjdk/jdk/blob/1fc726a8b34fcd41dae12a6d7c63232f9ccef3f4/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L7240-L7417",
+@SyncPort(from = "https://github.com/openjdk/jdk/blob/0a3a925ad88921d387aa851157f54ac0054d347b/src/hotspot/cpu/x86/macroAssembler_x86.cpp#L7241-L7418",
           sha1 = "d89ad721deb560178359f86e8c6c96ffc6530878")
 // @formatter:on
 public final class AMD64BigIntegerMulAddOp extends AMD64LIRInstruction {

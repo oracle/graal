@@ -120,17 +120,18 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int hugeMethodLimit = getFlag("HugeMethodLimit", Integer.class);
     public final boolean printInlining = getFlag("PrintInlining", Boolean.class);
     public final boolean inline = getFlag("Inline", Boolean.class);
-    public final boolean useFastLocking = getFlag("JVMCIUseFastLocking", Boolean.class, true, !(JDK >= 22 && JDK_BUILD >= 18));
-    private final boolean useHeavyMonitors = JDK < 22 && getFlag("UseHeavyMonitors", Boolean.class);
 
-    // Use only heavy monitors for locking
-    public static final int LM_MONITOR = 0;
-    // Legacy stack-locking, with monitors as 2nd tier
-    public static final int LM_LEGACY = 1;
-    // New lightweight locking, with monitors as 2nd tier
-    public static final int LM_LIGHTWEIGHT = 2;
-
+    // There are 3 available locking modes:
+    // LM_MONITOR uses only heavy monitors for locking;
+    // LM_LEGACY uses stack-locking, with monitors as 2nd tier;
+    // LM_LIGHTWEIGHT uses thread-local space for storing locked objects. This avoids the overload
+    // of the mark word.
     public final int lockingMode = getFlag("LockingMode", Integer.class);
+
+    public final int lockingModeMonitor = getConstant("LockingMode::LM_MONITOR", Integer.class, 0, JDK >= 22 && JDK_BUILD >= 18);
+    public final int lockingModeStack = getConstant("LockingMode::LM_LEGACY", Integer.class, 1, JDK >= 22 && JDK_BUILD >= 18);
+    public final int lockingModeLightweight = getConstant("LockingMode::LM_LIGHTWEIGHT", Integer.class, 2, JDK >= 22 && JDK_BUILD >= 18);
+
     public final boolean foldStableValues = getFlag("FoldStableValues", Boolean.class);
     public final int maxVectorSize = getFlag("MaxVectorSize", Integer.class);
 
@@ -347,6 +348,8 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public final int objectMonitorCxq = getFieldOffset("ObjectMonitor::_cxq", Integer.class, "ObjectWaiter*");
     public final int objectMonitorEntryList = getFieldOffset("ObjectMonitor::_EntryList", Integer.class, "ObjectWaiter*");
     public final int objectMonitorSucc = getFieldOffset("ObjectMonitor::_succ", Integer.class, "JavaThread*");
+
+    public final long objectMonitorAnonymousOwner = getConstant("ObjectMonitor::ANONYMOUS_OWNER", Long.class, 1L, JDK >= 22 && JDK_BUILD >= 18);
 
     public final int markWordNoHashInPlace = getConstant("markWord::no_hash_in_place", Integer.class);
     public final int markWordNoLockInPlace = getConstant("markWord::no_lock_in_place", Integer.class);
@@ -594,6 +597,9 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     // Tracking of the number of monitors held by the current thread. This is used by loom but in
     // JDK 20 was enabled by default to ensure it was correctly implemented.
     public final int threadHeldMonitorCountOffset = getFieldOffset("JavaThread::_held_monitor_count", Integer.class, JDK >= 22 ? "intx" : "int64_t");
+    public final int threadLockStackOffset = getFieldOffset("JavaThread::_lock_stack", Integer.class, "LockStack", -1, JDK >= 22 && JDK_BUILD >= 18);
+    public final int lockStackTopOffset = getFieldOffset("LockStack::_top", Integer.class, "uint32_t", -1, JDK >= 22 && JDK_BUILD >= 18);
+    public final int lockStackEndOffset = getConstant("LockStack::_end_offset", Integer.class, -1, JDK >= 22 && JDK_BUILD >= 18);
 
     public final long throwAndPostJvmtiExceptionAddress = getAddress("JVMCIRuntime::throw_and_post_jvmti_exception");
     public final long throwKlassExternalNameExceptionAddress = getAddress("JVMCIRuntime::throw_klass_external_name_exception");
@@ -691,20 +697,5 @@ public class GraalHotSpotVMConfig extends GraalHotSpotVMConfigAccess {
     public boolean supportsMethodHandleDeoptimizationEntry() {
         return HotSpotMarkId.DEOPT_MH_HANDLER_ENTRY.isAvailable() && VMINTRINSIC_FIRST_MH_SIG_POLY != -1 && VMINTRINSIC_LAST_MH_SIG_POLY != -1 && VMINTRINSIC_INVOKE_GENERIC != -1 &&
                         VMINTRINSIC_COMPILED_LAMBDA_FORM != -1;
-    }
-
-    /**
-     * Whether Heavy monitors should be used. The {@code LockingMode} flag was introduced in JDK 21.
-     * In JDK 22, the legacy {@code UseHeavyMonitors} was removed.
-     *
-     * @see <a href=
-     *      "https://github.com/openjdk/jdk/commit/3301fb1e8ad11d7de01a052e0a2d6178a7579ba6">JDK-8315869:
-     *      UseHeavyMonitors not used</a>
-     * @see <a href=
-     *      "https://github.com/openjdk/jdk/commit/7f6358a8b53a35a87c9413c68f8fe6c5fdec0caf">JDK-8291555:
-     *      Implement alternative fast-locking scheme</a>
-     */
-    public boolean useHeavyMonitors() {
-        return useHeavyMonitors || lockingMode == LM_MONITOR;
     }
 }
