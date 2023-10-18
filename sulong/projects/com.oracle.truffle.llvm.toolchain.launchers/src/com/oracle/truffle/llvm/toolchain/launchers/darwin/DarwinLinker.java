@@ -44,7 +44,8 @@ import java.util.List;
 
 public final class DarwinLinker extends Driver {
 
-    public static final String LD_NAME = "ld.lld";
+    public static final String LLD = "lld";
+    public static final String LD_NAME = "ld64.lld";
 
     private DarwinLinker() {
         super(LD_NAME);

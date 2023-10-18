@@ -226,7 +226,7 @@ public abstract class ClangLikeBase extends Driver {
         } else if (os == OS.WINDOWS) {
             return WindowsLinker.LLD_LINK.equals(linker) || WindowsLinker.LLD_LINK_NO_EXE.equals(linker);
         } else if (os == OS.DARWIN) {
-            return DarwinLinker.LD_NAME.equals(linker);
+            return DarwinLinker.LD_NAME.equals(linker) || DarwinLinker.LLD.equals(linker);
         } else {
             return false;
         }
