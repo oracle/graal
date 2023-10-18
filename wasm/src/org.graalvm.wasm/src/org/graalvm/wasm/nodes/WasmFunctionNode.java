@@ -2164,15 +2164,49 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
 
     private int executeAtomic(VirtualFrame frame, int stackPointer, int opcode, WasmMemory memory, long memOffset, int indexType64) {
         switch (opcode) {
-            case Bytecode.ATOMIC_NOTIFY, Bytecode.ATOMIC_I32_RMW_ADD, Bytecode.ATOMIC_I64_RMW_ADD, Bytecode.ATOMIC_I32_RMW8_U_ADD, Bytecode.ATOMIC_I32_RMW16_U_ADD, Bytecode.ATOMIC_I64_RMW8_U_ADD,
-                            Bytecode.ATOMIC_I64_RMW16_U_ADD, Bytecode.ATOMIC_I64_RMW32_U_ADD, Bytecode.ATOMIC_I32_RMW_SUB, Bytecode.ATOMIC_I64_RMW_SUB, Bytecode.ATOMIC_I32_RMW8_U_SUB,
-                            Bytecode.ATOMIC_I32_RMW16_U_SUB, Bytecode.ATOMIC_I64_RMW8_U_SUB, Bytecode.ATOMIC_I64_RMW16_U_SUB, Bytecode.ATOMIC_I64_RMW32_U_SUB, Bytecode.ATOMIC_I32_RMW_AND,
-                            Bytecode.ATOMIC_I64_RMW_AND, Bytecode.ATOMIC_I32_RMW8_U_AND, Bytecode.ATOMIC_I32_RMW16_U_AND, Bytecode.ATOMIC_I64_RMW8_U_AND, Bytecode.ATOMIC_I64_RMW16_U_AND,
-                            Bytecode.ATOMIC_I64_RMW32_U_AND, Bytecode.ATOMIC_I32_RMW_OR, Bytecode.ATOMIC_I64_RMW_OR, Bytecode.ATOMIC_I32_RMW8_U_OR, Bytecode.ATOMIC_I32_RMW16_U_OR,
-                            Bytecode.ATOMIC_I64_RMW8_U_OR, Bytecode.ATOMIC_I64_RMW16_U_OR, Bytecode.ATOMIC_I64_RMW32_U_OR, Bytecode.ATOMIC_I32_RMW_XOR, Bytecode.ATOMIC_I64_RMW_XOR,
-                            Bytecode.ATOMIC_I32_RMW8_U_XOR, Bytecode.ATOMIC_I32_RMW16_U_XOR, Bytecode.ATOMIC_I64_RMW8_U_XOR, Bytecode.ATOMIC_I64_RMW16_U_XOR, Bytecode.ATOMIC_I64_RMW32_U_XOR,
-                            Bytecode.ATOMIC_I32_RMW_XCHG, Bytecode.ATOMIC_I64_RMW_XCHG, Bytecode.ATOMIC_I32_RMW8_U_XCHG, Bytecode.ATOMIC_I32_RMW16_U_XCHG, Bytecode.ATOMIC_I64_RMW8_U_XCHG,
-                            Bytecode.ATOMIC_I64_RMW16_U_XCHG, Bytecode.ATOMIC_I64_RMW32_U_XCHG: {
+            case Bytecode.ATOMIC_NOTIFY:
+            case Bytecode.ATOMIC_I32_RMW_ADD:
+            case Bytecode.ATOMIC_I64_RMW_ADD:
+            case Bytecode.ATOMIC_I32_RMW8_U_ADD:
+            case Bytecode.ATOMIC_I32_RMW16_U_ADD:
+            case Bytecode.ATOMIC_I64_RMW8_U_ADD:
+            case Bytecode.ATOMIC_I64_RMW16_U_ADD:
+            case Bytecode.ATOMIC_I64_RMW32_U_ADD:
+            case Bytecode.ATOMIC_I32_RMW_SUB:
+            case Bytecode.ATOMIC_I64_RMW_SUB:
+            case Bytecode.ATOMIC_I32_RMW8_U_SUB:
+            case Bytecode.ATOMIC_I32_RMW16_U_SUB:
+            case Bytecode.ATOMIC_I64_RMW8_U_SUB:
+            case Bytecode.ATOMIC_I64_RMW16_U_SUB:
+            case Bytecode.ATOMIC_I64_RMW32_U_SUB:
+            case Bytecode.ATOMIC_I32_RMW_AND:
+            case Bytecode.ATOMIC_I64_RMW_AND:
+            case Bytecode.ATOMIC_I32_RMW8_U_AND:
+            case Bytecode.ATOMIC_I32_RMW16_U_AND:
+            case Bytecode.ATOMIC_I64_RMW8_U_AND:
+            case Bytecode.ATOMIC_I64_RMW16_U_AND:
+            case Bytecode.ATOMIC_I64_RMW32_U_AND:
+            case Bytecode.ATOMIC_I32_RMW_OR:
+            case Bytecode.ATOMIC_I64_RMW_OR:
+            case Bytecode.ATOMIC_I32_RMW8_U_OR:
+            case Bytecode.ATOMIC_I32_RMW16_U_OR:
+            case Bytecode.ATOMIC_I64_RMW8_U_OR:
+            case Bytecode.ATOMIC_I64_RMW16_U_OR:
+            case Bytecode.ATOMIC_I64_RMW32_U_OR:
+            case Bytecode.ATOMIC_I32_RMW_XOR:
+            case Bytecode.ATOMIC_I64_RMW_XOR:
+            case Bytecode.ATOMIC_I32_RMW8_U_XOR:
+            case Bytecode.ATOMIC_I32_RMW16_U_XOR:
+            case Bytecode.ATOMIC_I64_RMW8_U_XOR:
+            case Bytecode.ATOMIC_I64_RMW16_U_XOR:
+            case Bytecode.ATOMIC_I64_RMW32_U_XOR:
+            case Bytecode.ATOMIC_I32_RMW_XCHG:
+            case Bytecode.ATOMIC_I64_RMW_XCHG:
+            case Bytecode.ATOMIC_I32_RMW8_U_XCHG:
+            case Bytecode.ATOMIC_I32_RMW16_U_XCHG:
+            case Bytecode.ATOMIC_I64_RMW8_U_XCHG:
+            case Bytecode.ATOMIC_I64_RMW16_U_XCHG:
+            case Bytecode.ATOMIC_I64_RMW32_U_XCHG: {
                 final long baseAddress;
                 if (indexType64 == 0) {
                     baseAddress = popInt(frame, stackPointer - 2);
@@ -2184,8 +2218,14 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 return 1;
             }
             case Bytecode.ATOMIC_WAIT32:
-            case Bytecode.ATOMIC_WAIT64, Bytecode.ATOMIC_I32_RMW_CMPXCHG, Bytecode.ATOMIC_I64_RMW_CMPXCHG, Bytecode.ATOMIC_I32_RMW8_U_CMPXCHG, Bytecode.ATOMIC_I32_RMW16_U_CMPXCHG,
-                            Bytecode.ATOMIC_I64_RMW8_U_CMPXCHG, Bytecode.ATOMIC_I64_RMW16_U_CMPXCHG, Bytecode.ATOMIC_I64_RMW32_U_CMPXCHG: {
+            case Bytecode.ATOMIC_WAIT64:
+            case Bytecode.ATOMIC_I32_RMW_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW_CMPXCHG:
+            case Bytecode.ATOMIC_I32_RMW8_U_CMPXCHG:
+            case Bytecode.ATOMIC_I32_RMW16_U_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW8_U_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW16_U_CMPXCHG:
+            case Bytecode.ATOMIC_I64_RMW32_U_CMPXCHG: {
                 final long baseAddress;
                 if (indexType64 == 0) {
                     baseAddress = popInt(frame, stackPointer - 3);
