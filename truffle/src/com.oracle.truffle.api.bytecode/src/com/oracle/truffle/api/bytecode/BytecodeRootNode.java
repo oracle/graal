@@ -46,6 +46,7 @@ import java.util.Set;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.introspection.ExceptionHandler;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
+import com.oracle.truffle.api.bytecode.introspection.SourceInformation;
 import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.Frame;
@@ -56,6 +57,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.SourceSection;
 
 /**
@@ -405,21 +407,34 @@ public interface BytecodeRootNode extends BytecodeOSRNode, BytecodeIntrospection
      * @return a string representation of the bytecode
      */
     default String dump() {
-        StringBuilder sb = new StringBuilder();
         BytecodeIntrospection id = getIntrospectionData();
-
-        for (Instruction i : id.getInstructions()) {
-            sb.append(i.toString()).append('\n');
-        }
-
-        List<ExceptionHandler> handlers = id.getExceptionHandlers();
-        if (handlers.size() > 0) {
-            sb.append("Exception handlers:\n");
-            for (ExceptionHandler eh : handlers) {
-                sb.append("  ").append(eh.toString()).append('\n');
-            }
-        }
-
-        return sb.toString();
+        List<Instruction> instructions = id.getInstructions();
+        List<ExceptionHandler> exceptions = id.getExceptionHandlers();
+        List<SourceInformation> sourceInformation = id.getSourceInformation();
+        return String.format("""
+                        %s(name=%s)[
+                            instructions(%s) = %s
+                            exceptionHandlers(%s) = %s
+                            sourceInformation(%s) = %s
+                        ]""",
+                        getClass().getSimpleName(),
+                        ((RootNode) this).getQualifiedName(),
+                        instructions.size(),
+                        formatList(instructions),
+                        exceptions.size(),
+                        formatList(exceptions),
+                        sourceInformation != null ? sourceInformation.size() : "-",
+                        formatList(sourceInformation));
     }
+
+    private static String formatList(List<? extends Object> list) {
+        if (list == null) {
+            return "Not Available";
+        } else if (list.isEmpty()) {
+            return "Empty";
+        }
+        String sep = "\n        ";
+        return sep + String.join(sep, list.stream().map(element -> element.toString()).toArray(String[]::new));
+    }
+
 }
