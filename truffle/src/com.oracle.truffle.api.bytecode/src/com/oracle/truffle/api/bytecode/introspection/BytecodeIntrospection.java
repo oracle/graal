@@ -86,4 +86,35 @@ public final class BytecodeIntrospection {
         }
         return Arrays.stream((Object[]) data[3]).map(x -> new SourceInformation((Object[]) x)).collect(Collectors.toUnmodifiableList());
     }
+
+    @Override
+    public String toString() {
+        List<Instruction> instructions = getInstructions();
+        List<ExceptionHandler> exceptions = getExceptionHandlers();
+        List<SourceInformation> sourceInformation = getSourceInformation();
+        return String.format("""
+                        BytecodeIntrospection[
+                            instructions(%s) = %s
+                            exceptionHandlers(%s) = %s
+                            sourceInformation(%s) = %s
+                        ]""",
+                        instructions.size(),
+                        formatList(instructions),
+                        exceptions.size(),
+                        formatList(exceptions),
+                        sourceInformation != null ? sourceInformation.size() : "-",
+                        formatList(sourceInformation));
+
+    }
+
+    private static String formatList(List<? extends Object> list) {
+        if (list == null) {
+            return "Not Available";
+        } else if (list.isEmpty()) {
+            return "Empty";
+        }
+        String sep = "\n        ";
+        return sep + String.join(sep, list.stream().map(element -> element.toString()).toArray(String[]::new));
+    }
+
 }
