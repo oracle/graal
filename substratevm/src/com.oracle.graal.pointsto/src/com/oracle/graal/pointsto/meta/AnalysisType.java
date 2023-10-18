@@ -40,6 +40,9 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.debug.GraalError;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 import org.graalvm.word.WordBase;
@@ -484,9 +487,16 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      *            {@link com.oracle.graal.pointsto.ObjectScanner.ScanReason}, or a {@link String}
      *            describing why this type was manually marked as in-heap
      */
+    @SuppressWarnings("try")
     public boolean registerAsInHeap(Object reason) {
         assert isValidReason(reason) : "Registering a type as in-heap needs to provide a valid reason.";
-        registerAsReachable(reason);
+        var inHeap = CausalityEvents.TypeInHeap.create(this);
+        var instantiated = CausalityEvents.TypeInstantiated.create(this);
+        CausalityExport.registerEvent(inHeap);
+        CausalityExport.registerEdge(inHeap, instantiated);
+        try (var ignored = CausalityExport.overwriteCause(instantiated)) {
+            registerAsReachable(reason);
+        }
         if (AtomicUtils.atomicSet(this, reason, isInHeapUpdater)) {
             onInstantiated(UsageKind.InHeap);
             return true;
@@ -499,9 +509,13 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
      *            {@link com.oracle.graal.pointsto.ObjectScanner.ScanReason}, or a {@link String}
      *            describing why this type was manually marked as allocated
      */
+    @SuppressWarnings("try")
     public boolean registerAsAllocated(Object reason) {
         assert isValidReason(reason) : "Registering a type as allocated needs to provide a valid reason.";
-        registerAsReachable(reason);
+        CausalityExport.registerEvent(CausalityEvents.TypeInstantiated.create(this));
+        try (var ignored = CausalityExport.overwriteCause(CausalityEvents.TypeInstantiated.create(this))) {
+            registerAsReachable(reason);
+        }
         if (AtomicUtils.atomicSet(this, reason, isAllocatedUpdater)) {
             onInstantiated(UsageKind.Allocated);
             return true;
@@ -557,9 +571,15 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
 
     public boolean registerAsReachable(Object reason) {
         assert isValidReason(reason) : "Registering a type as reachable needs to provide a valid reason.";
+        CausalityExport.registerEvent(CausalityEvents.TypeReachable.create(this));
         if (!AtomicUtils.isSet(this, isReachableUpdater)) {
             /* Mark this type and all its super types as reachable. */
-            forAllSuperTypes(type -> AtomicUtils.atomicSetAndRun(type, reason, isReachableUpdater, type::onReachable));
+            forAllSuperTypes(type -> {
+                if (type != this) {
+                    CausalityExport.registerEdge(CausalityEvents.TypeReachable.create(this), CausalityEvents.TypeReachable.create(type));
+                }
+                AtomicUtils.atomicSetAndRun(type, reason, isReachableUpdater, type::onReachable);
+            });
             return true;
         }
         return false;
@@ -605,10 +625,17 @@ public abstract class AnalysisType extends AnalysisElement implements WrappedJav
         return ConcurrentLightHashMap.getOrDefault(this, overrideReachableNotificationsUpdater, method, Collections.emptySet());
     }
 
+    @SuppressWarnings("try")
     public void registerInstantiatedCallback(Consumer<DuringAnalysisAccess> callback) {
+        CausalityEvent eventForRegistration = CausalityExport.getCause();
+        CausalityEvent callbackEvent = CausalityEvents.ReachabilityNotificationCallback.create(callback);
+        CausalityExport.registerConjunctiveEdge(eventForRegistration, CausalityEvents.TypeInstantiated.create(this), callbackEvent);
+
         if (this.isInstantiated()) {
-            /* If the type is already instantiated just trigger the callback. */
-            callback.accept(universe.getConcurrentAnalysisAccess());
+            try (var ignored = CausalityExport.overwriteCause(callbackEvent)) {
+                /* If the type is already instantiated just trigger the callback. */
+                callback.accept(universe.getConcurrentAnalysisAccess());
+            }
         } else {
             ElementNotification notification = new ElementNotification(callback);
             ConcurrentLightHashSet.addElement(this, instantiatedNotificationsUpdater, notification);

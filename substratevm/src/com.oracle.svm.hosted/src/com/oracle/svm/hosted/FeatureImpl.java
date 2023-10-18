@@ -45,6 +45,8 @@ import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.collections.Pair;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.phases.util.Providers;
@@ -270,11 +272,15 @@ public class FeatureImpl {
         }
 
         public void ensureInitialized(String className) {
+            Class<?> clazz;
+
             try {
-                imageClassLoader.forName(className, true);
+                clazz = imageClassLoader.forName(className, true);
             } catch (ClassNotFoundException e) {
                 throw VMError.shouldNotReachHere(e);
             }
+
+            CausalityExport.registerEvent(CausalityEvents.BuildTimeClassInitialization.create(clazz));
         }
     }
 

@@ -34,6 +34,8 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
+import org.graalvm.collections.EconomicMap;
+
 public class JsonWriter implements AutoCloseable {
     private final Writer writer;
 
@@ -93,6 +95,10 @@ public class JsonWriter implements AutoCloseable {
             printIterator(it);
         } else if (value instanceof List list) {
             printIterator(list.iterator());
+        } else if (value instanceof EconomicMap map) {
+            printMap(map);
+        } else if (value instanceof Object[] array) {
+            printArray(array);
         } else {
             quote(value);
         }
@@ -116,6 +122,37 @@ public class JsonWriter implements AutoCloseable {
             }
         }
         append('}');
+    }
+
+    private void printMap(EconomicMap<String, Object> map) throws IOException {
+        if (map.isEmpty()) {
+            append("{}");
+            return;
+        }
+        append('{');
+        Iterator<String> keySetIter = map.getKeys().iterator();
+        while (keySetIter.hasNext()) {
+            String key = keySetIter.next();
+            Object value = map.get(key);
+            quote(key).append(':');
+            print(value);
+            if (keySetIter.hasNext()) {
+                append(',');
+            }
+        }
+        append('}');
+    }
+
+    private void printArray(Object[] array) throws IOException {
+        append('[');
+        for (int i = 0; i < array.length; i++) {
+            Object e = array[i];
+            print(e);
+            if (i < array.length - 1) {
+                append(',');
+            }
+        }
+        append(']');
     }
 
     private void printIterator(Iterator<?> iter) throws IOException {

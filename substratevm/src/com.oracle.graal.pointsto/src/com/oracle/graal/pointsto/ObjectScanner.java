@@ -34,6 +34,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.word.WordBase;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -408,10 +410,15 @@ public class ObjectScanner {
      * using the constant as a receiver. If the constant has an array class then it scans the array
      * element constants.
      */
+    @SuppressWarnings("try")
     private void doScan(WorklistEntry entry) {
         try {
             AnalysisType type = bb.getMetaAccess().lookupJavaType(entry.constant);
-            type.registerAsReachable(entry.reason);
+            var inHeap = CausalityEvents.TypeInHeap.create(type);
+            CausalityExport.registerEdgeFromHeapObject(bb, entry.constant, entry.reason, inHeap);
+            try (var ignored = CausalityExport.setCause(inHeap)) {
+                type.registerAsReachable(entry.reason);
+            }
 
             if (type.isInstanceClass()) {
                 /* Scan constant's instance fields. */
@@ -488,6 +495,10 @@ public class ObjectScanner {
 
         public ScanReason getPrevious() {
             return previous;
+        }
+
+        public JavaConstant getConstant() {
+            return constant;
         }
 
         @SuppressWarnings("unused")
@@ -638,6 +649,10 @@ public class ObjectScanner {
             this.idx = idx;
         }
 
+        public int getIndex() {
+            return idx;
+        }
+
         @Override
         public String toString(BigBang bb) {
             return "indexing into array " + asString(bb, constant) + (idx != -1 ? " at index " + idx : "");
@@ -663,6 +678,10 @@ public class ObjectScanner {
 
         public AnalysisMethod getMethod() {
             return (AnalysisMethod) position.getMethod();
+        }
+
+        public BytecodePosition getPosition() {
+            return position;
         }
 
         @Override

@@ -31,6 +31,9 @@ import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
+import jdk.vm.ci.code.BytecodePosition;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.bytecode.BytecodeProvider;
 import org.graalvm.compiler.debug.GraalError;
@@ -381,6 +384,7 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
     }
 
     @Override
+    @SuppressWarnings("try")
     protected void finishInlining(MethodScope is) {
         InlineBeforeAnalysisMethodScope inlineScope = cast(is);
         InlineBeforeAnalysisMethodScope callerScope = cast(inlineScope.caller);
@@ -425,7 +429,18 @@ public class InlineBeforeAnalysisGraphDecoder extends PEGraphDecoder {
         NodeSourcePosition callerBytecodePosition = callerScope.getCallerNodeSourcePosition();
         Object reason = callerBytecodePosition != null ? callerBytecodePosition : callerScope.method;
         reason = reason == null ? graph.method() : reason;
-        ((AnalysisMethod) invokeData.callTarget.targetMethod()).registerAsInlined(reason);
+
+        // Lies a bit about the inline context, since getCallerNodeSourcePosition() may drop the top
+        // frame...
+        // But it lies consistent with the NodeSourcePosition as observed in MethodTypeFlowBuilder
+        var callerScopeEvent = CausalityEvents.InlinedMethodCode.create(inlineScope.getCallerNodeSourcePosition()); // createEventForInlinedMethodCode(callerScope);
+        var inlineScopeEvent = CausalityEvents.InlinedMethodCode.create(
+                        new BytecodePosition(inlineScope.getCallerNodeSourcePosition(),
+                                        invokeData.callTarget.targetMethod(), jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI)); // createEventForInlinedMethodCode(inlineScope);
+        CausalityExport.registerEdge(callerScopeEvent, inlineScopeEvent);
+        try (var ignored = CausalityExport.overwriteCause(callerScopeEvent)) {
+            ((AnalysisMethod) invokeData.callTarget.targetMethod()).registerAsInlined(reason);
+        }
 
         super.finishInlining(inlineScope);
     }

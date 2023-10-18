@@ -44,7 +44,9 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.debug.Indent;
@@ -305,6 +307,8 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
         int paramCount = signature.getParameterCount(!isStatic);
         PointsToAnalysisMethod originalPTAMethod = assertPointsToAnalysisMethod(aMethod);
 
+        CausalityExport.registerEvent(CausalityEvents.RootMethodRegistration.create(aMethod));
+
         if (isStatic) {
             /*
              * For static methods trigger analysis in the empty context. This will trigger parsing
@@ -312,6 +316,7 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * initialized with the corresponding parameter declared type.
              */
             Consumer<PointsToAnalysisMethod> triggerStaticMethodFlow = (pointsToMethod) -> {
+                CausalityExport.registerEvent(CausalityEvents.MethodImplementationInvoked.create(pointsToMethod));
                 postTask(() -> {
                     pointsToMethod.registerAsDirectRootMethod(reason);
                     pointsToMethod.registerAsImplementationInvoked(reason.toString());
@@ -357,6 +362,9 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
              * (currently) used for runtime compilation; in this use case, all necessary linking
              * will be done during callee resolution.
              */
+            if (invokeSpecial) {
+                CausalityExport.registerEvent(CausalityEvents.MethodReachable.create(originalPTAMethod));
+            }
             postTask(() -> {
                 if (invokeSpecial) {
                     originalPTAMethod.registerAsDirectRootMethod(reason);

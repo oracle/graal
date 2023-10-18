@@ -28,6 +28,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.reports.causality.SimulatedHeapTracing;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.compiler.debug.DebugContext;
@@ -520,6 +522,7 @@ public class SimulateClassInitializerSupport {
             if (field.isStatic() && field.getDeclaringClass().equals(clusterMember.type)) {
                 var constantValue = storeFieldNode.value().asJavaConstant();
                 if (constantValue != null) {
+                    SimulatedHeapTracing.instance.traceWrite(CausalityEvents.BuildTimeClassInitialization.create(clusterMember.type.getJavaClass()), field);
                     clusterMember.staticFieldValues.put(field, constantValue);
                     return;
                 }

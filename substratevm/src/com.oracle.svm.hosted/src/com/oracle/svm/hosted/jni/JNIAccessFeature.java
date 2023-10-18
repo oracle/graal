@@ -38,6 +38,7 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
@@ -59,6 +60,8 @@ import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.svm.core.config.ObjectLayout;
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFile;
@@ -203,13 +206,21 @@ public class JNIAccessFeature implements Feature {
         public void register(ConfigurationCondition condition, boolean unsafeAllocated, Class<?> clazz) {
             assert !unsafeAllocated : "unsafeAllocated can be only set via Unsafe.allocateInstance, not via JNI.";
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> newClasses.add(clazz));
+            registerConditionalConfiguration(condition, () -> {
+                CausalityExport.registerEvent(CausalityEvents.JNIRegistration.create(clazz));
+                newClasses.add(clazz);
+            });
         }
 
         @Override
         public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... methods) {
             abortIfSealed();
-            registerConditionalConfiguration(condition, () -> newMethods.addAll(Arrays.asList(methods)));
+            registerConditionalConfiguration(condition, () -> {
+                for (Executable m : methods) {
+                    CausalityExport.registerEvent(CausalityEvents.JNIRegistration.create(m));
+                }
+                newMethods.addAll(Arrays.asList(methods));
+            });
         }
 
         @Override
@@ -220,6 +231,7 @@ public class JNIAccessFeature implements Feature {
 
         private void registerFields(boolean finalIsWritable, Field[] fields) {
             for (Field field : fields) {
+                CausalityExport.registerEvent(CausalityEvents.JNIRegistration.create(field));
                 boolean writable = finalIsWritable || !Modifier.isFinal(field.getModifiers());
                 newFields.put(field, writable);
             }
@@ -304,6 +316,7 @@ public class JNIAccessFeature implements Feature {
     }
 
     @Override
+    @SuppressWarnings("try")
     public void duringAnalysis(DuringAnalysisAccess a) {
         getConditionalConfigurationRegistry().flushConditionalConfiguration(a);
         DuringAnalysisAccessImpl access = (DuringAnalysisAccessImpl) a;
@@ -312,17 +325,23 @@ public class JNIAccessFeature implements Feature {
         }
 
         for (Class<?> clazz : newClasses) {
-            addClass(clazz, access);
+            try (var ignored = CausalityExport.setCause(CausalityEvents.JNIRegistration.create(clazz))) {
+                addClass(clazz, access);
+            }
         }
         newClasses.clear();
 
         for (Executable method : newMethods) {
-            addMethod(method, access);
+            try (var ignored = CausalityExport.setCause(CausalityEvents.JNIRegistration.create(method))) {
+                addMethod(method, access);
+            }
         }
         newMethods.clear();
 
         newFields.forEach((field, writable) -> {
-            addField(field, writable, access);
+            try (var ignored = CausalityExport.setCause(CausalityEvents.JNIRegistration.create(field))) {
+                addField(field, writable, access);
+            }
         });
         newFields.clear();
 
@@ -350,6 +369,7 @@ public class JNIAccessFeature implements Feature {
         });
     }
 
+    @SuppressWarnings("try")
     private void addMethod(Executable method, DuringAnalysisAccessImpl access) {
         if (SubstitutionReflectivityFilter.shouldExclude(method, access.getMetaAccess(), access.getUniverse())) {
             return;
@@ -390,22 +410,27 @@ public class JNIAccessFeature implements Feature {
         });
     }
 
+    @SuppressWarnings("try")
     private JNIJavaCallVariantWrapperGroup createJavaCallVariantWrappers(DuringAnalysisAccessImpl access, SimpleSignature wrapperSignature, boolean nonVirtual) {
         var map = nonVirtual ? nonvirtualCallVariantWrappers : callVariantWrappers;
+        CausalityExport.registerEvent(CausalityEvents.JniCallVariantWrapper.create(wrapperSignature, !nonVirtual));
         return map.computeIfAbsent(wrapperSignature, signature -> {
-            MetaAccessProvider originalMetaAccess = access.getUniverse().getOriginalMetaAccess();
-            WordTypes wordTypes = access.getBigBang().getWordTypes();
-            var varargs = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.VARARGS, nonVirtual, originalMetaAccess, wordTypes);
-            var array = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.ARRAY, nonVirtual, originalMetaAccess, wordTypes);
-            var valist = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.VA_LIST, nonVirtual, originalMetaAccess, wordTypes);
-            Stream<JNIJavaCallVariantWrapperMethod> wrappers = Stream.of(varargs, array, valist);
-            CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
-            wrappers.forEach(wrapper -> {
-                AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
-                access.getBigBang().addRootMethod(analysisWrapper, true, "Registerd in " + JNIAccessFeature.class);
-                analysisWrapper.registerAsEntryPoint(unpublished); // ensures C calling convention
-            });
-            return new JNIJavaCallVariantWrapperGroup(varargs, array, valist);
+            try (var ignored = CausalityExport.overwriteCause(CausalityEvents.JniCallVariantWrapper.create(wrapperSignature, !nonVirtual))) {
+                MetaAccessProvider originalMetaAccess = access.getUniverse().getOriginalMetaAccess();
+                WordTypes wordTypes = access.getBigBang().getWordTypes();
+                var varargs = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.VARARGS, nonVirtual, originalMetaAccess, wordTypes);
+                var array = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.ARRAY, nonVirtual, originalMetaAccess, wordTypes);
+                var valist = new JNIJavaCallVariantWrapperMethod(signature, CallVariant.VA_LIST, nonVirtual, originalMetaAccess, wordTypes);
+                Stream<JNIJavaCallVariantWrapperMethod> wrappers = Stream.of(varargs, array, valist);
+                CEntryPointData unpublished = CEntryPointData.createCustomUnpublished();
+                wrappers.forEach(wrapper -> {
+                    AnalysisMethod analysisWrapper = access.getUniverse().lookup(wrapper);
+                    access.getBigBang().addRootMethod(analysisWrapper, true, "Registerd in " + JNIAccessFeature.class);
+                    // ensures C calling convention
+                    analysisWrapper.registerAsEntryPoint(unpublished);
+                });
+                return new JNIJavaCallVariantWrapperGroup(varargs, array, valist);
+            }
         });
     }
 
@@ -621,5 +646,13 @@ public class JNIAccessFeature implements Feature {
              */
             return false;
         }
+    }
+
+    public ResolvedJavaMethod[] getRegisteredMethods() {
+        return calledJavaMethods.stream().map(cjm -> cjm.targetMethod).toArray(ResolvedJavaMethod[]::new);
+    }
+
+    public Class<?>[] getRegisteredClasses() {
+        return StreamSupport.stream(JNIReflectionDictionary.singleton().getClasses().spliterator(), false).map(JNIAccessibleClass::getClassObject).toArray(Class<?>[]::new);
     }
 }

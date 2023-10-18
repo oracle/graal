@@ -31,6 +31,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
+import com.oracle.graal.pointsto.reports.causality.events.UnknownHeapObject;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
@@ -104,30 +108,37 @@ public abstract class ImageHeapScanner {
         hostedSnippetReflection = GraalAccess.getOriginalProviders().getSnippetReflection();
     }
 
+    @SuppressWarnings("try")
     public void scanEmbeddedRoot(JavaConstant root, BytecodePosition position) {
         if (isNonNullObjectConstant(root)) {
             EmbeddedRootScan reason = new EmbeddedRootScan(position, root);
-            ImageHeapConstant value = getOrCreateImageHeapConstant(root, reason);
+            ImageHeapConstant value;
+            try (var ignored = CausalityExport.resetCause()) {
+                value = getOrCreateImageHeapConstant(root, reason);
+            }
             markReachable(value, reason);
         }
     }
 
+    @SuppressWarnings("try")
     public void onFieldRead(AnalysisField field) {
         assert field.isRead() : field;
-        /* Check if the value is available before accessing it. */
-        FieldScan reason = new FieldScan(field);
-        AnalysisType declaringClass = field.getDeclaringClass();
-        if (field.isStatic()) {
-            if (isValueAvailable(field)) {
-                JavaConstant fieldValue = declaringClass.getOrComputeData().readFieldValue(field);
-                markReachable(fieldValue, reason);
-                notifyAnalysis(field, null, fieldValue, reason);
-            } else if (field.canBeNull()) {
-                notifyAnalysis(field, null, JavaConstant.NULL_POINTER, reason);
+        try (var ignored = CausalityExport.resetCause()) {
+            /* Check if the value is available before accessing it. */
+            FieldScan reason = new FieldScan(field);
+            AnalysisType declaringClass = field.getDeclaringClass();
+            if (field.isStatic()) {
+                if (isValueAvailable(field)) {
+                    JavaConstant fieldValue = declaringClass.getOrComputeData().readFieldValue(field);
+                    markReachable(fieldValue, reason);
+                    notifyAnalysis(field, null, fieldValue, reason);
+                } else if (field.canBeNull()) {
+                    notifyAnalysis(field, null, JavaConstant.NULL_POINTER, reason);
+                }
+            } else {
+                /* Trigger field scanning for the already processed objects. */
+                postTask(() -> onInstanceFieldRead(field, declaringClass, reason));
             }
-        } else {
-            /* Trigger field scanning for the already processed objects. */
-            postTask(() -> onInstanceFieldRead(field, declaringClass, reason));
         }
     }
 
@@ -213,6 +224,7 @@ public abstract class ImageHeapScanner {
      * Create the ImageHeapConstant object wrapper, capture the hosted state of fields and arrays,
      * and install a future that can process them.
      */
+    @SuppressWarnings("try")
     protected ImageHeapConstant createImageHeapObject(JavaConstant constant, ScanReason reason) {
         assert constant.getJavaKind() == JavaKind.Object && !constant.isNull() : constant;
 
@@ -244,7 +256,25 @@ public abstract class ImageHeapScanner {
             newImageHeapConstant = createImageHeapInstance(constant, type, reason);
             AnalysisType typeFromClassConstant = (AnalysisType) constantReflection.asJavaType(constant);
             if (typeFromClassConstant != null) {
-                typeFromClassConstant.registerAsReachable(reason);
+                CausalityEvent cause = null;
+                if (reason instanceof FieldScan fs) {
+                    cause = CausalityExport.getHeapFieldAssigner(bb, fs.getConstant(), fs.getField(), constant);
+                } else if (reason instanceof ArrayScan as) {
+                    cause = CausalityExport.getHeapArrayAssigner(bb, as.getConstant(), as.getIndex(), constant);
+                }
+
+                if (cause == null || cause instanceof UnknownHeapObject) {
+                    // Objects created by the analysis itself would add too many types as roots...
+                    cause = CausalityEvents.Ignored;
+                }
+
+                CausalityEvent typeObjectInHeap = (asObject(constant) instanceof Class<?> ? CausalityEvents.HeapObjectClass : CausalityEvents.HeapObjectDynamicHub)
+                                .create(typeFromClassConstant.getJavaClass());
+                CausalityExport.registerEdge(cause, typeObjectInHeap);
+
+                try (var ignored = CausalityExport.setCause(typeObjectInHeap)) {
+                    typeFromClassConstant.registerAsReachable(reason);
+                }
             }
         }
         return newImageHeapConstant;
@@ -265,9 +295,14 @@ public abstract class ImageHeapScanner {
         return array;
     }
 
+    @SuppressWarnings("try")
     private ImageHeapInstance createImageHeapInstance(JavaConstant constant, AnalysisType type, ScanReason reason) {
         /* We are about to query the type's fields, the type must be marked as reachable. */
-        type.registerAsReachable(reason);
+        var inHeap = CausalityEvents.TypeInHeap.create(type);
+        CausalityExport.registerEdgeFromHeapObject(bb, constant, reason, inHeap);
+        try (var ignored = CausalityExport.setCause(inHeap)) {
+            type.registerAsReachable(reason);
+        }
         ResolvedJavaField[] instanceFields = type.getInstanceFields(true);
         ImageHeapInstance instance = new ImageHeapInstance(type, constant, instanceFields.length);
         for (ResolvedJavaField javaField : instanceFields) {
@@ -468,11 +503,16 @@ public abstract class ImageHeapScanner {
         return imageHeapConstant;
     }
 
+    @SuppressWarnings("try")
     protected void onObjectReachable(ImageHeapConstant imageHeapConstant, ScanReason reason, Consumer<ScanReason> onAnalysisModified) {
         AnalysisType objectType = metaAccess.lookupJavaType(imageHeapConstant);
         imageHeap.addReachableObject(objectType, imageHeapConstant);
 
-        markTypeInstantiated(objectType, reason);
+        var inHeap = CausalityEvents.TypeInHeap.create(objectType);
+        CausalityExport.registerEdgeFromHeapObject(bb, imageHeapConstant, reason, inHeap);
+        try (var ignored = CausalityExport.setCause(inHeap)) {
+            markTypeInstantiated(objectType, reason);
+        }
         if (imageHeapConstant instanceof ImageHeapObjectArray imageHeapArray) {
             AnalysisType arrayType = (AnalysisType) imageHeapArray.getType(metaAccess);
             for (int idx = 0; idx < imageHeapArray.getLength(); idx++) {
@@ -592,8 +632,11 @@ public abstract class ImageHeapScanner {
     /**
      * Add the object to the image heap and, if the object is a collection, rescan its elements.
      */
+    @SuppressWarnings("try")
     public void rescanObject(Object object) {
-        rescanObject(object, OtherReason.RESCAN);
+        try (var ignored = CausalityExport.resetCause()) {
+            rescanObject(object, OtherReason.RESCAN);
+        }
     }
 
     /**
@@ -690,11 +733,14 @@ public abstract class ImageHeapScanner {
      * schedule new tasks, because that would be treated as "the analysis has not finished yet". So
      * in that case we execute the task directly.
      */
+    @SuppressWarnings("try")
     private void maybeRunInExecutor(CompletionExecutor.DebugContextRunnable task) {
-        if (bb.executorIsStarted()) {
-            bb.postTask(task);
-        } else {
-            task.run(null);
+        try (var ignored = CausalityExport.resetCause()) {
+            if (bb.executorIsStarted()) {
+                bb.postTask(task);
+            } else {
+                task.run(null);
+            }
         }
     }
 

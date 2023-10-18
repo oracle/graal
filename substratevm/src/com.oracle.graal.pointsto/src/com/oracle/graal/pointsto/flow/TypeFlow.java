@@ -28,6 +28,7 @@ import java.util.Collection;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import org.graalvm.compiler.graph.Node;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
@@ -309,6 +310,7 @@ public abstract class TypeFlow<T> {
     }
 
     /* Add state and notify inputs of the result. */
+    @SuppressWarnings("try")
     public boolean addState(PointsToAnalysis bb, TypeState add, boolean postFlow) {
         PointsToStats.registerTypeFlowUpdate(bb, this, add);
 
@@ -329,7 +331,9 @@ public abstract class TypeFlow<T> {
         assert checkTypeState(bb, before, after);
 
         if (checkSaturated(bb, after)) {
-            onSaturated(bb);
+            try (var ignored = CausalityExport.setSaturationHappening()) {
+                onSaturated(bb);
+            }
         } else if (postFlow) {
             bb.postFlow(this);
         }
@@ -378,12 +382,17 @@ public abstract class TypeFlow<T> {
         return addUse(bb, use, true);
     }
 
+    @SuppressWarnings("try")
     public boolean addUse(PointsToAnalysis bb, TypeFlow<?> use, boolean propagateTypeState) {
+        CausalityExport.registerTypeFlowEdge(this, use);
+
         if (isSaturated() && propagateTypeState) {
             /* Register input. */
             registerInput(bb, use);
             /* Let the use know that this flow is already saturated. */
-            notifyUseOfSaturation(bb, use);
+            try (var ignored = CausalityExport.setSaturationHappening()) {
+                notifyUseOfSaturation(bb, use);
+            }
             return false;
         }
         if (doAddUse(bb, use)) {
@@ -395,7 +404,9 @@ public abstract class TypeFlow<T> {
                      * use would have missed the saturated signal. Let the use know that this flow
                      * became saturated.
                      */
-                    notifyUseOfSaturation(bb, use);
+                    try (var ignored = CausalityExport.setSaturationHappening()) {
+                        notifyUseOfSaturation(bb, use);
+                    }
                     /* And unlink the use. */
                     removeUse(use);
                     return false;
@@ -453,19 +464,24 @@ public abstract class TypeFlow<T> {
         addObserver(bb, observer, true);
     }
 
+    @SuppressWarnings("try")
     public boolean addObserver(PointsToAnalysis bb, TypeFlow<?> observer, boolean triggerUpdate) {
         if (isSaturated() && triggerUpdate) {
             /* Register observee. */
             registerObservee(bb, observer);
             /* Let the observer know that this flow is already saturated. */
-            notifyObserverOfSaturation(bb, observer);
+            try (var ignored = CausalityExport.setSaturationHappening()) {
+                notifyObserverOfSaturation(bb, observer);
+            }
             return false;
         }
         if (doAddObserver(bb, observer)) {
             if (triggerUpdate) {
                 if (isSaturated()) {
                     /* This flow is already saturated, notify the observer. */
-                    notifyObserverOfSaturation(bb, observer);
+                    try (var ignored = CausalityExport.setSaturationHappening()) {
+                        notifyObserverOfSaturation(bb, observer);
+                    }
                     removeObserver(observer);
                     return false;
                 } else if (!this.state.isEmpty()) {

@@ -25,6 +25,7 @@
 package com.oracle.graal.pointsto.flow;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.typestate.TypeState;
 
@@ -49,6 +50,7 @@ public class FrozenFieldFilterTypeFlow extends TypeFlow<AnalysisField> {
         super(field, field.getType());
         this.unsafeSink = unsafeSink;
         this.source.getInstanceFieldFlow().addObserver(bb, this);
+        CausalityExport.registerTypeFlowEdge(this.source.getInstanceFieldFlow(), this);
     }
 
     @Override

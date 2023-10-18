@@ -63,6 +63,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.RuntimeProxyCreation;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
@@ -165,10 +167,18 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void register(ConfigurationCondition condition, boolean unsafeInstantiated, Class<?> clazz) {
         checkNotSealed();
         register(analysisUniverse -> registerConditionalConfiguration(condition,
-                        () -> analysisUniverse.getBigbang().postTask(debug -> registerClass(clazz, unsafeInstantiated))));
+                        () -> {
+                            CausalityExport.registerEvent(CausalityEvents.ReflectionRegistration.create(clazz));
+                            analysisUniverse.getBigbang().postTask(debug -> {
+                                try (var ignored = CausalityExport.setCause(CausalityEvents.ReflectionRegistration.create(clazz))) {
+                                    registerClass(clazz, unsafeInstantiated);
+                                }
+                            });
+                        }));
     }
 
     @Override
@@ -268,11 +278,17 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void register(ConfigurationCondition condition, boolean queriedOnly, Executable... executables) {
         checkNotSealed();
         register(analysisUniverse -> registerConditionalConfiguration(condition, () -> {
             for (Executable executable : executables) {
-                analysisUniverse.getBigbang().postTask(debug -> registerMethod(queriedOnly, executable));
+                CausalityExport.registerEvent(CausalityEvents.ReflectionRegistration.create(executable));
+                analysisUniverse.getBigbang().postTask(debug -> {
+                    try (var ignored = CausalityExport.setCause(CausalityEvents.ReflectionRegistration.create(executable))) {
+                        registerMethod(queriedOnly, executable);
+                    }
+                });
             }
         }));
     }
@@ -401,10 +417,16 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
         registerInternal(condition, fields);
     }
 
+    @SuppressWarnings("try")
     private void registerInternal(ConfigurationCondition condition, Field... fields) {
         register(analysisUniverse -> registerConditionalConfiguration(condition, () -> {
             for (Field field : fields) {
-                analysisUniverse.getBigbang().postTask(debug -> registerField(field));
+                CausalityExport.registerEvent(CausalityEvents.ReflectionRegistration.create(field));
+                analysisUniverse.getBigbang().postTask(debug -> {
+                    try (var ignored = CausalityExport.setCause(CausalityEvents.ReflectionRegistration.create(field))) {
+                        registerField(field);
+                    }
+                });
             }
         }));
     }
@@ -960,12 +982,15 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void registerHeapDynamicHub(Object object, ScanReason reason) {
         assert !sealed;
         DynamicHub hub = (DynamicHub) object;
         Class<?> javaClass = hub.getHostedJavaClass();
         if (heapDynamicHubs.add(hub) && !SubstitutionReflectivityFilter.shouldExclude(javaClass, metaAccess, universe)) {
-            registerTypesForClass(metaAccess.lookupJavaType(javaClass), javaClass);
+            try (var ignored = CausalityExport.setCause(CausalityEvents.TypeReachable.create(metaAccess.lookupJavaType(javaClass)))) {
+                registerTypesForClass(metaAccess.lookupJavaType(javaClass), javaClass);
+            }
         }
     }
 
@@ -976,25 +1001,39 @@ public class ReflectionDataBuilder extends ConditionalConfigurationRegistry impl
     }
 
     @Override
+    @SuppressWarnings("try")
     public void registerHeapReflectionField(Field reflectField, ScanReason reason) {
         assert !sealed;
-        AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
-        if (heapFields.put(analysisField, reflectField) == null && !SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
-            registerTypesForField(analysisField, reflectField);
-            if (analysisField.getDeclaringClass().isAnnotation()) {
-                processAnnotationField(reflectField);
+        var inHeap = CausalityEvents.ReflectionObjectInHeap.create(reflectField);
+        var reflRegistration = CausalityEvents.ReflectionRegistration.create(reflectField);
+        CausalityExport.registerEdgeFromHeapObject(reflectField, reason, inHeap);
+        CausalityExport.registerEdge(inHeap, reflRegistration);
+        try (var ignored = CausalityExport.setCause(reflRegistration)) {
+            AnalysisField analysisField = metaAccess.lookupJavaField(reflectField);
+            if (heapFields.put(analysisField, reflectField) == null && !SubstitutionReflectivityFilter.shouldExclude(reflectField, metaAccess, universe)) {
+                registerTypesForField(analysisField, reflectField);
+                if (analysisField.getDeclaringClass().isAnnotation()) {
+                    processAnnotationField(reflectField);
+                }
             }
         }
     }
 
     @Override
+    @SuppressWarnings("try")
     public void registerHeapReflectionExecutable(Executable reflectExecutable, ScanReason reason) {
         assert !sealed;
-        AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
-        if (heapMethods.put(analysisMethod, reflectExecutable) == null && !SubstitutionReflectivityFilter.shouldExclude(reflectExecutable, metaAccess, universe)) {
-            registerTypesForMethod(analysisMethod, reflectExecutable);
-            if (reflectExecutable instanceof Method && reflectExecutable.getDeclaringClass().isAnnotation()) {
-                processAnnotationMethod(false, (Method) reflectExecutable);
+        var inHeap = CausalityEvents.ReflectionObjectInHeap.create(reflectExecutable);
+        var reflRegistration = CausalityEvents.ReflectionRegistration.create(reflectExecutable);
+        CausalityExport.registerEdgeFromHeapObject(reflectExecutable, reason, inHeap);
+        CausalityExport.registerEdge(inHeap, reflRegistration);
+        try (var ignored = CausalityExport.setCause(reflRegistration)) {
+            AnalysisMethod analysisMethod = metaAccess.lookupJavaMethod(reflectExecutable);
+            if (heapMethods.put(analysisMethod, reflectExecutable) == null && !SubstitutionReflectivityFilter.shouldExclude(reflectExecutable, metaAccess, universe)) {
+                registerTypesForMethod(analysisMethod, reflectExecutable);
+                if (reflectExecutable instanceof Method && reflectExecutable.getDeclaringClass().isAnnotation()) {
+                    processAnnotationMethod(false, (Method) reflectExecutable);
+                }
             }
         }
     }

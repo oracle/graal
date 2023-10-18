@@ -36,6 +36,8 @@ import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.util.ImageHeapMap;
 import com.oracle.svm.core.util.VMError;
 
+import java.util.stream.StreamSupport;
+
 @AutomaticallyRegisteredImageSingleton
 public final class ClassForNameSupport {
 
@@ -127,5 +129,9 @@ public final class ClassForNameSupport {
 
     public static int count() {
         return singleton().knownClasses.size();
+    }
+
+    public static Class<?>[] getSuccessfullyRegisteredClasses() {
+        return StreamSupport.stream(singleton().knownClasses.getValues().spliterator(), false).filter(o -> o instanceof Class<?>).toArray(Class<?>[]::new);
     }
 }

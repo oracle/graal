@@ -160,7 +160,11 @@ import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisFactory;
 import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
 import com.oracle.graal.pointsto.reports.AnalysisReporter;
+import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
 import com.oracle.graal.pointsto.reports.ReportUtils;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import com.oracle.graal.pointsto.typestate.DefaultAnalysisPolicy;
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.GraalAccess;
@@ -787,7 +791,11 @@ public class NativeImageGenerator {
             try (Indent ignored1 = debug.logAndIndent("process analysis initializers")) {
                 BeforeAnalysisAccessImpl config = new BeforeAnalysisAccessImpl(featureHandler, loader, bb, nativeLibraries, debug);
                 ServiceCatalogSupport.singleton().enableServiceCatalogMapTransformer(config);
-                featureHandler.forEachFeature(feature -> feature.beforeAnalysis(config));
+                featureHandler.forEachFeature(feature -> {
+                    try (var ignored2 = CausalityExport.setCause(CausalityEvents.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
+                        feature.beforeAnalysis(config);
+                    }
+                });
                 ServiceCatalogSupport.singleton().seal();
                 bb.getHostVM().getClassInitializationSupport().setConfigurationSealed(true);
             }
@@ -800,7 +808,11 @@ public class NativeImageGenerator {
                     bb.runAnalysis(debug, (universe) -> {
                         try (StopTimer t2 = TimerCollection.createTimerAndStart(TimerCollection.Registry.FEATURES)) {
                             bb.getHostVM().notifyClassReachabilityListener(universe, config);
-                            featureHandler.forEachFeature(feature -> feature.duringAnalysis(config));
+                            featureHandler.forEachFeature(feature -> {
+                                try (var ignored2 = CausalityExport.setCause(CausalityEvents.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
+                                    feature.duringAnalysis(config);
+                                }
+                            });
                         }
                         return !config.getAndResetRequireAnalysisIteration();
                     });
@@ -886,6 +898,16 @@ public class NativeImageGenerator {
                 Providers originalProviders = GraalAccess.getOriginalProviders();
                 MetaAccessProvider originalMetaAccess = originalProviders.getMetaAccess();
 
+                if (AnalysisReportsOptions.PrintCausalityGraph.getValue(options)) {
+                    /**
+                     * This cannot be done in the "CausalityExporter"-Feature since
+                     * Feature-registration should already be logged by CausalityExport...
+                     */
+                    CausalityExport.activate(AnalysisReportsOptions.CausalityGraphWithTypeflow.getValue(options)
+                                    ? CausalityExport.ActivationLevel.ENABLED
+                                    : CausalityExport.ActivationLevel.ENABLED_WITHOUT_TYPEFLOW);
+                }
+
                 ClassLoaderSupportImpl classLoaderSupport = new ClassLoaderSupportImpl(loader.classLoaderSupport);
                 ImageSingletons.add(ClassLoaderSupport.class, classLoaderSupport);
                 ImageSingletons.add(LinkAtBuildTimeSupport.class, new LinkAtBuildTimeSupport(loader, classLoaderSupport));
@@ -912,7 +934,11 @@ public class NativeImageGenerator {
 
                 featureHandler.registerFeatures(loader, debug);
                 AfterRegistrationAccessImpl access = new AfterRegistrationAccessImpl(featureHandler, loader, originalMetaAccess, mainEntryPoint, debug);
-                featureHandler.forEachFeature(feature -> feature.afterRegistration(access));
+                featureHandler.forEachFeature(feature -> {
+                    try (var ignored0 = CausalityExport.setCause(CausalityEvents.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
+                        feature.afterRegistration(access);
+                    }
+                });
                 setDefaultLibCIfMissing();
                 if (!Pair.<Method, CEntryPointData> empty().equals(access.getMainEntryPoint())) {
                     setAndVerifyMainEntryPoint(access, entryPoints);
@@ -979,7 +1005,11 @@ public class NativeImageGenerator {
                                 debug);
                 try (Indent ignored2 = debug.logAndIndent("process startup initializers")) {
                     FeatureImpl.DuringSetupAccessImpl config = new FeatureImpl.DuringSetupAccessImpl(featureHandler, loader, bb, debug);
-                    featureHandler.forEachFeature(feature -> feature.duringSetup(config));
+                    featureHandler.forEachFeature(feature -> {
+                        try (var ignored0 = CausalityExport.setCause(CausalityEvents.Feature.create(feature), CausalityExport.HeapTracing.Allocations)) {
+                            feature.duringSetup(config);
+                        }
+                    });
                 }
 
                 initializeBigBang(bb, options, featureHandler, nativeLibraries, debug, aMetaAccess, aUniverse.getSubstitutions(), loader, true,
@@ -1104,7 +1134,8 @@ public class NativeImageGenerator {
          * allocations of these classes seen during the static analysis. The heap chunks are one
          * good example.
          */
-        try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods")) {
+        try (Indent ignored = debug.logAndIndent("add initial classes/fields/methods");
+                        var ignored2 = CausalityExport.setCause(CausalityEvents.InitialRegistration)) {
             bb.registerTypeAsInHeap(bb.addRootClass(Object.class, false, false), "root class");
             bb.addRootField(DynamicHub.class, "vtable");
             bb.registerTypeAsInHeap(bb.addRootClass(String.class, false, false), "root class");
@@ -1170,6 +1201,9 @@ public class NativeImageGenerator {
         Collection<StructuredGraph> snippetGraphs = replacements.getSnippetGraphs(GraalOptions.TrackNodeSourcePosition.getValue(options), options);
         if (bb instanceof NativeImagePointsToAnalysis pointsToAnalysis) {
             for (StructuredGraph graph : snippetGraphs) {
+                CausalityEvent snippetRegistrationEvent = CausalityEvents.MethodSnippet.create((AnalysisMethod) graph.method());
+                CausalityExport.registerEvent(snippetRegistrationEvent);
+                CausalityExport.registerEdge(snippetRegistrationEvent, CausalityEvents.InlinedMethodCode.create((AnalysisMethod) graph.method()));
                 HostedConfiguration.instance().registerUsedElements(pointsToAnalysis, graph, false);
             }
         } else if (bb instanceof NativeImageReachabilityAnalysisEngine reachabilityAnalysis) {

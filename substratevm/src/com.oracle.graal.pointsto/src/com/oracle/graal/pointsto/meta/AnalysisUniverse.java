@@ -37,6 +37,9 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
@@ -345,6 +348,7 @@ public class AnalysisUniverse implements Universe {
     }
 
     @Override
+    @SuppressWarnings("try")
     public JavaField lookupAllowUnresolved(JavaField rawField) {
         if (rawField == null) {
             return null;
@@ -366,7 +370,16 @@ public class AnalysisUniverse implements Universe {
              * it during constant folding.
              */
             AnalysisType declaringType = lookup(field.getDeclaringClass());
-            declaringType.registerAsReachable(field);
+
+            /*
+             * This registration is hard to fully trace. If we get here during method parsing, a
+             * root reason is given. Otherwise, we violate the principle of conservative reasoning
+             * in order to get usable results.
+             */
+            CausalityEvent event = CausalityExport.getCause();
+            try (var ignored = CausalityExport.setCause(event != null ? event : CausalityEvents.Ignored)) {
+                declaringType.registerAsReachable(field);
+            }
             declaringType.ensureOnTypeReachableTaskDone();
 
             /*
@@ -629,6 +642,7 @@ public class AnalysisUniverse implements Universe {
         for (Function<Object, Object> replacer : objectReplacers) {
             destination = replacer.apply(destination);
         }
+        CausalityExport.registerObjectReplacement(source, destination);
         return destination;
     }
 

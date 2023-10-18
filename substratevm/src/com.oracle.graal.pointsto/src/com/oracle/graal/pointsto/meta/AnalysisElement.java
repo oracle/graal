@@ -38,7 +38,10 @@ import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvent;
+import com.oracle.graal.pointsto.reports.causality.events.CausalityEvents;
 import org.graalvm.compiler.debug.GraalError;
+import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;
@@ -98,6 +101,14 @@ public abstract class AnalysisElement implements AnnotatedElement {
 
     public void registerReachabilityNotification(ElementNotification notification) {
         ConcurrentLightHashSet.addElement(this, reachableNotificationsUpdater, notification);
+        CausalityEvent eventForRegistration = CausalityExport.getCause();
+        CausalityEvent thisReachable = null;
+        if (this instanceof AnalysisMethod m) {
+            thisReachable = CausalityEvents.MethodReachable.create(m);
+        } else if (this instanceof AnalysisType t) {
+            thisReachable = CausalityEvents.TypeReachable.create(t);
+        }
+        CausalityExport.registerConjunctiveEdge(eventForRegistration, thisReachable, CausalityEvents.ReachabilityNotificationCallback.create(notification.callback));
     }
 
     public void notifyReachabilityCallback(AnalysisUniverse universe, ElementNotification notification) {
@@ -136,6 +147,7 @@ public abstract class AnalysisElement implements AnnotatedElement {
          * Notify the callback exactly once. Note that this callback can be shared by multiple
          * triggers, the one that triggers it is passed into triggeredElement for debugging.
          */
+        @SuppressWarnings("try")
         AnalysisFuture<Void> notifyCallback(AnalysisUniverse universe, AnalysisElement triggeredElement) {
             assert triggeredElement.isTriggered() : triggeredElement;
             var existing = notified.get();
@@ -144,7 +156,9 @@ public abstract class AnalysisElement implements AnnotatedElement {
             }
 
             AnalysisFuture<Void> newValue = new AnalysisFuture<>(() -> {
-                callback.accept(universe.getConcurrentAnalysisAccess());
+                try (var ignored = CausalityExport.overwriteCause(CausalityEvents.ReachabilityNotificationCallback.create(callback))) {
+                    callback.accept(universe.getConcurrentAnalysisAccess());
+                }
                 return null;
             });
 
@@ -167,11 +181,18 @@ public abstract class AnalysisElement implements AnnotatedElement {
         }
 
         /** Notify the callback exactly once for each reachable subtype. */
+        @SuppressWarnings("try")
         public AnalysisFuture<Void> notifyCallback(AnalysisUniverse universe, AnalysisType reachableSubtype) {
             assert reachableSubtype.isReachable() : reachableSubtype;
             return seenSubtypes.computeIfAbsent(reachableSubtype, k -> {
+                CausalityExport.registerConjunctiveEdge(
+                                CausalityEvents.SubtypeReachableNotificationCallback.create(callback),
+                                CausalityEvents.TypeReachable.create(reachableSubtype),
+                                CausalityEvents.SubtypeReachableNotificationCallbackInvocation.create(callback, reachableSubtype));
                 AnalysisFuture<Void> newValue = new AnalysisFuture<>(() -> {
-                    callback.accept(universe.getConcurrentAnalysisAccess(), reachableSubtype.getJavaClass());
+                    try (var ignored = CausalityExport.setCause(CausalityEvents.SubtypeReachableNotificationCallbackInvocation.create(callback, reachableSubtype))) {
+                        callback.accept(universe.getConcurrentAnalysisAccess(), reachableSubtype.getJavaClass());
+                    }
                     return null;
                 });
                 execute(universe, newValue);
@@ -189,13 +210,20 @@ public abstract class AnalysisElement implements AnnotatedElement {
         }
 
         /** Notify the callback exactly once for each reachable method override. */
+        @SuppressWarnings("try")
         public void notifyCallback(AnalysisUniverse universe, AnalysisMethod reachableOverride) {
             assert reachableOverride.isReachable() : reachableOverride;
             if (seenOverride.add(reachableOverride)) {
                 Executable javaMethod = reachableOverride.getJavaMethod();
                 if (javaMethod != null) {
+                    CausalityExport.registerConjunctiveEdge(
+                                    CausalityEvents.OverrideReachableNotificationCallback.create(callback),
+                                    CausalityEvents.MethodReachable.create(reachableOverride),
+                                    CausalityEvents.OverrideReachableNotificationCallbackInvocation.create(callback, reachableOverride));
                     execute(universe, () -> {
-                        callback.accept(universe.getConcurrentAnalysisAccess(), javaMethod);
+                        try (var ignored = CausalityExport.setCause(CausalityEvents.OverrideReachableNotificationCallbackInvocation.create(callback, reachableOverride))) {
+                            callback.accept(universe.getConcurrentAnalysisAccess(), javaMethod);
+                        }
                     });
                 }
             }
