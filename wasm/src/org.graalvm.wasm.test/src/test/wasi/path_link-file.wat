@@ -48,7 +48,7 @@
     (func (export "_main") (result i32) (local $ret i32)
         ;; Create a hard link
         (call $path_link
-            (i32.const 3) ;; pre-opeend "test" directory fd
+            (i32.const 3) ;; pre-opened "test" directory fd
             (i32.const 0) ;; lookup flags
             (i32.const 0) ;; pointer to "file.txt"
             (i32.const 8) ;; pointer length
