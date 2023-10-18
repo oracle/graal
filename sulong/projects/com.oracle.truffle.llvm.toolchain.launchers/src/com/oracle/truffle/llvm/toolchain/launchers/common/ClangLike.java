@@ -68,6 +68,10 @@ public class ClangLike extends ClangLikeBase {
             // set CMAKE_C_FLAGS or CMAKE_CXX_FLAGS instead
             super.getCompilerArgs(sulongArgs);
         }
+        if (tool == Tool.ClangXX) {
+            // for some reason `-lc++` does not pull in libc++abi, force it instead
+            sulongArgs.add("-lc++abi");
+        }
     }
 
     @Override
