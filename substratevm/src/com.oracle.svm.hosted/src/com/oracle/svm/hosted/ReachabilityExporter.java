@@ -345,7 +345,7 @@ public class ReachabilityExporter implements InternalFeature {
         public void write(JsonWriter writer) throws IOException {
             writer.print(topLevelOrigins.values().stream()
                             .sorted(Comparator.comparing((TopLevelOrigin tlo) -> tlo.path != null ? tlo.path : "").thenComparing(tlo -> tlo.module != null ? tlo.module : ""))
-                            .map(TopLevelOrigin::serialize).toArray());
+                            .map(TopLevelOrigin::serialize).iterator());
         }
 
         private Type getType(AnalysisType type, Map<Class<?>, InitKind> classInitKinds, Set<AnalysisType> reflectionTypes, Set<AnalysisType> jniTypes) {
