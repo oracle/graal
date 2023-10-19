@@ -98,10 +98,7 @@
     ],
   },
 
-  local truffle_gate = truffle_common + common.deps.eclipse + common.deps.jdt {
-    downloads+: {
-      EXTRA_JAVA_HOMES: common.jdks_data['oraclejdk21'],
-    },
+  local truffle_gate = truffle_common + common.deps.eclipse + common.deps.jdt + common.deps.spotbugs {
     name: 'gate-truffle-oraclejdk-' + self.jdk_name,
     run: [["mx", "--strict-compliance", "gate", "--strict-mode"]],
   },

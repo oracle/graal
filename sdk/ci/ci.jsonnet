@@ -2,10 +2,7 @@
   local common = import '../../ci/ci_common/common.jsonnet',
   local utils = import '../../ci/ci_common/common-utils.libsonnet',
 
-  local sdk_gate = {
-    downloads+: {
-      EXTRA_JAVA_HOMES: common.jdks_data['oraclejdk21'],
-    },
+  local sdk_gate = common.deps.spotbugs {
     name: 'gate-sdk-oracle' + self.jdk_name + '-' + self.os + '-' + self.arch,
     setup: [
       ["cd", "./sdk"],
