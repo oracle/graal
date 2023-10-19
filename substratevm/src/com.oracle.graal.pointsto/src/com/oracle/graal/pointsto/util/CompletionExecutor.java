@@ -65,6 +65,7 @@ public class CompletionExecutor {
 
     private final ForkJoinPool executorService;
 
+    private final DebugContext debug;
     private final BigBang bb;
     private Timing timing;
     private Object vmConfig;
@@ -81,7 +82,8 @@ public class CompletionExecutor {
         void print();
     }
 
-    public CompletionExecutor(BigBang bb) {
+    public CompletionExecutor(DebugContext debugContext, BigBang bb) {
+        this.debug = debugContext.areScopesEnabled() || debugContext.areMetricsEnabled() ? debugContext : null;
         this.bb = bb;
         executorService = ForkJoinPool.commonPool();
         state = new AtomicReference<>(State.UNUSED);
@@ -205,31 +207,37 @@ public class CompletionExecutor {
             lastPrint = System.nanoTime();
         }
 
-        while (true) {
-            assert state.get() == State.STARTED : state.get();
+        try {
+            while (true) {
+                assert state.get() == State.STARTED : state.get();
 
-            boolean quiescent = executorService.awaitQuiescence(100, TimeUnit.MILLISECONDS);
-            if (timing != null && !quiescent) {
-                long curTime = System.nanoTime();
-                if (curTime - lastPrint > timing.getPrintIntervalNanos()) {
-                    timing.print();
-                    lastPrint = curTime;
-                }
-            }
-
-            long completed = completedOperations.sum();
-            long posted = postedOperations.sum();
-            assert completed <= posted : completed + ", " + posted;
-            if (completed == posted && exceptions.isEmpty()) {
-                if (timing != null) {
-                    timing.print();
+                boolean quiescent = executorService.awaitQuiescence(100, TimeUnit.MILLISECONDS);
+                if (timing != null && !quiescent) {
+                    long curTime = System.nanoTime();
+                    if (curTime - lastPrint > timing.getPrintIntervalNanos()) {
+                        timing.print();
+                        lastPrint = curTime;
+                    }
                 }
 
-                return posted;
+                long completed = completedOperations.sum();
+                long posted = postedOperations.sum();
+                assert completed <= posted : completed + ", " + posted;
+                if (completed == posted && exceptions.isEmpty()) {
+                    if (timing != null) {
+                        timing.print();
+                    }
+
+                    return posted;
+                }
+                if (!exceptions.isEmpty()) {
+                    setState(State.UNUSED);
+                    throw new ParallelExecutionException(exceptions);
+                }
             }
-            if (!exceptions.isEmpty()) {
-                setState(State.UNUSED);
-                throw new ParallelExecutionException(exceptions);
+        } finally {
+            if (debug != null) {
+                debug.closeDumpHandlers(true);
             }
         }
     }

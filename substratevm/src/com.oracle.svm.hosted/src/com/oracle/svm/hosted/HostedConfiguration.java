@@ -172,8 +172,8 @@ public class HostedConfiguration {
         return new SVMHost(options, classLoader, classInitializationSupport, automaticSubstitutions, platform);
     }
 
-    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse,
-                    RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll, SnippetReflectionProvider aSnippetReflection) {
+    public CompileQueue createCompileQueue(DebugContext debug, FeatureHandler featureHandler, HostedUniverse hostedUniverse, RuntimeConfiguration runtimeConfiguration, boolean deoptimizeAll,
+                    SnippetReflectionProvider aSnippetReflection) {
 
         return new CompileQueue(debug, featureHandler, hostedUniverse, runtimeConfiguration, deoptimizeAll, aSnippetReflection);
     }

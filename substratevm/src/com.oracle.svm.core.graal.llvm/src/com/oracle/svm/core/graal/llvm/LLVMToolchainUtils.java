@@ -169,8 +169,8 @@ public class LLVMToolchainUtils {
     public static final class BatchExecutor {
         private CompletionExecutor executor;
 
-        public BatchExecutor(BigBang bb) {
-            this.executor = new CompletionExecutor(bb);
+        public BatchExecutor(DebugContext debug, BigBang bb) {
+            this.executor = new CompletionExecutor(debug, bb);
             executor.init();
         }
 

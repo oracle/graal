@@ -119,7 +119,7 @@ public class LLVMNativeImageCodeCache extends NativeImageCodeCache {
     @SuppressWarnings({"unused", "try"})
     public void layoutMethods(DebugContext debug, BigBang bb) {
         try (Indent indent = debug.logAndIndent("layout methods")) {
-            BatchExecutor executor = new BatchExecutor(bb);
+            BatchExecutor executor = new BatchExecutor(debug, bb);
             try (StopTimer t = TimerCollection.createTimerAndStart("(bitcode)")) {
                 writeBitcode(executor);
             }

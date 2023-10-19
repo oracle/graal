@@ -191,7 +191,7 @@ public class LLVMObjectFile extends ObjectFile {
 
         writeParts();
 
-        BatchExecutor batchExecutor = new BatchExecutor(bb);
+        BatchExecutor batchExecutor = new BatchExecutor(context, bb);
 
         compileBitcodeBatches(batchExecutor, context, numBatches);
 

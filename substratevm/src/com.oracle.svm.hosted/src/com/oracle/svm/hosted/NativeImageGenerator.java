@@ -574,9 +574,7 @@ public class NativeImageGenerator {
     }
 
     @SuppressWarnings("try")
-    protected void doRun(Map<Method, CEntryPointData> entryPoints,
-                    JavaMainSupport javaMainSupport, String imageName, NativeImageKind k,
-                    SubstitutionProcessor harnessSubstitutions) {
+    protected void doRun(Map<Method, CEntryPointData> entryPoints, JavaMainSupport javaMainSupport, String imageName, NativeImageKind k, SubstitutionProcessor harnessSubstitutions) {
         List<HostedMethod> hostedEntryPoints = new ArrayList<>();
 
         OptionValues options = HostedOptionValues.singleton();
@@ -676,7 +674,7 @@ public class NativeImageGenerator {
                                     ImageSingletons.lookup(TemporaryBuildDirectoryProvider.class).getTemporaryBuildDirectory());
                     codeCache.layoutConstants();
                     codeCache.layoutMethods(debug, bb);
-                    codeCache.buildRuntimeMetadata(bb.getSnippetReflectionProvider());
+                    codeCache.buildRuntimeMetadata(debug, bb.getSnippetReflectionProvider());
                 }
 
                 AfterCompilationAccessImpl config = new AfterCompilationAccessImpl(featureHandler, loader, aUniverse, hUniverse, compileQueue.getCompilations(), codeCache, heap, debug,
@@ -686,7 +684,7 @@ public class NativeImageGenerator {
             }
 
             /* Re-run shadow heap verification after compilation. */
-            aUniverse.getHeapVerifier().checkHeapSnapshot(hMetaAccess, "after compilation");
+            aUniverse.getHeapVerifier().checkHeapSnapshot(debug, hMetaAccess, "after compilation");
 
             CodeCacheProvider codeCacheProvider = runtimeConfiguration.getBackendForNormalMethod().getProviders().getCodeCache();
             reporter.printCreationStart();
@@ -705,7 +703,7 @@ public class NativeImageGenerator {
                         featureHandler.forEachFeature(feature -> feature.afterHeapLayout(config));
 
                         /* Re-run shadow heap verification after heap layout. */
-                        aUniverse.getHeapVerifier().checkHeapSnapshot(hMetaAccess, "after heap layout");
+                        aUniverse.getHeapVerifier().checkHeapSnapshot(debug, hMetaAccess, "after heap layout");
 
                         createAbstractImage(k, hostedEntryPoints, heap, hMetaAccess, codeCache);
 
@@ -925,7 +923,7 @@ public class NativeImageGenerator {
 
                 ImageSingletons.add(SimulateClassInitializerSupport.class, ((SVMHost) aUniverse.hostVM()).createSimulateClassInitializerSupport(aMetaAccess));
 
-                bb = createBigBang(options, aUniverse, aMetaAccess, aProviders, annotationSubstitutions);
+                bb = createBigBang(debug, options, aUniverse, aMetaAccess, aProviders, annotationSubstitutions);
                 aUniverse.setBigBang(bb);
 
                 /* Create the HeapScanner and install it into the universe. */
@@ -1201,7 +1199,7 @@ public class NativeImageGenerator {
         return aProviders;
     }
 
-    private static Inflation createBigBang(OptionValues options, AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedProviders aProviders,
+    private static Inflation createBigBang(DebugContext debug, OptionValues options, AnalysisUniverse aUniverse, AnalysisMetaAccess aMetaAccess, HostedProviders aProviders,
                     AnnotationSubstitutionProcessor annotationSubstitutionProcessor) {
         SnippetReflectionProvider snippetReflectionProvider = aProviders.getSnippetReflection();
         ConstantReflectionProvider constantReflectionProvider = aProviders.getConstantReflection();
@@ -1215,11 +1213,11 @@ public class NativeImageGenerator {
             } else {
                 reachabilityMethodProcessingHandler = new DirectMethodProcessingHandler();
             }
-            return new NativeImageReachabilityAnalysisEngine(options, aUniverse, aMetaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, annotationSubstitutionProcessor,
+            return new NativeImageReachabilityAnalysisEngine(options, aUniverse, aMetaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, annotationSubstitutionProcessor, debug,
                             ImageSingletons.lookup(TimerCollection.class), reachabilityMethodProcessingHandler);
         }
         return new NativeImagePointsToAnalysis(options, aUniverse, aMetaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, annotationSubstitutionProcessor,
-                        new SubstrateUnsupportedFeatures(), ImageSingletons.lookup(TimerCollection.class));
+                        new SubstrateUnsupportedFeatures(), debug, ImageSingletons.lookup(TimerCollection.class));
     }
 
     @SuppressWarnings("try")

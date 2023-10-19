@@ -100,7 +100,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
 
     @SuppressWarnings("this-escape")
     public AbstractAnalysisEngine(OptionValues options, AnalysisUniverse universe, HostVM hostVM, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures,
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, UnsupportedFeatures unsupportedFeatures, DebugContext debugContext,
                     TimerCollection timerCollection) {
         this.options = options;
         this.universe = universe;
@@ -109,7 +109,7 @@ public abstract class AbstractAnalysisEngine implements BigBang {
         this.metaAccess = metaAccess;
         this.analysisPolicy = universe.analysisPolicy();
         this.hostVM = hostVM;
-        this.executor = new CompletionExecutor(this);
+        this.executor = new CompletionExecutor(debugContext, this);
         this.unsupportedFeatures = unsupportedFeatures;
 
         this.processFeaturesTimer = timerCollection.get(TimerCollection.Registry.FEATURES);

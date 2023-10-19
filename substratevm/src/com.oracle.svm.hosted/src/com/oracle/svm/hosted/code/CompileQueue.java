@@ -367,7 +367,7 @@ public class CompileQueue {
         this.metaAccess = runtimeConfiguration.getProviders().getMetaAccess();
         this.deoptimizeAll = deoptimizeAll;
         this.dataCache = new ConcurrentHashMap<>();
-        this.executor = new CompletionExecutor(universe.getBigBang());
+        this.executor = new CompletionExecutor(debug, universe.getBigBang());
         this.featureHandler = featureHandler;
         this.snippetReflection = snippetReflection;
         this.graphTransplanter = createGraphTransplanter();

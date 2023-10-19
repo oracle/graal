@@ -36,6 +36,7 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.substitute.AnnotationSubstitutionProcessor;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.word.WordTypes;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -49,9 +50,9 @@ public class NativeImageReachabilityAnalysisEngine extends ReachabilityAnalysisE
 
     @SuppressWarnings("this-escape")
     public NativeImageReachabilityAnalysisEngine(OptionValues options, AnalysisUniverse universe, AnalysisMetaAccess metaAccess, SnippetReflectionProvider snippetReflectionProvider,
-                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, TimerCollection timerCollection,
-                    ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
-        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, new SubstrateUnsupportedFeatures(), timerCollection,
+                    ConstantReflectionProvider constantReflectionProvider, WordTypes wordTypes, AnnotationSubstitutionProcessor annotationSubstitutionProcessor, DebugContext debugContext,
+                    TimerCollection timerCollection, ReachabilityMethodProcessingHandler reachabilityMethodProcessingHandler) {
+        super(options, universe, universe.hostVM(), metaAccess, snippetReflectionProvider, constantReflectionProvider, wordTypes, new SubstrateUnsupportedFeatures(), debugContext, timerCollection,
                         reachabilityMethodProcessingHandler);
         this.annotationSubstitutionProcessor = annotationSubstitutionProcessor;
         this.strengthenGraalGraphs = SubstrateOptions.parseOnce();

@@ -29,10 +29,6 @@ import static com.oracle.graal.pointsto.ObjectScanner.ScanReason;
 import java.util.Objects;
 import java.util.function.Consumer;
 
-import jdk.graal.compiler.options.Option;
-import jdk.graal.compiler.options.OptionKey;
-import jdk.graal.compiler.options.OptionType;
-
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.ObjectScanner.ReusableSet;
@@ -45,6 +41,10 @@ import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.CompletionExecutor;
 import com.oracle.svm.util.LogUtils;
 
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 import jdk.vm.ci.meta.JavaConstant;
 
 public class HeapSnapshotVerifier {
@@ -73,8 +73,8 @@ public class HeapSnapshotVerifier {
         verbosity = Options.HeapVerifierVerbosity.getValue(bb.getOptions());
     }
 
-    public boolean checkHeapSnapshot(UniverseMetaAccess metaAccess, String stage) {
-        CompletionExecutor executor = new CompletionExecutor(bb);
+    public boolean checkHeapSnapshot(DebugContext debug, UniverseMetaAccess metaAccess, String stage) {
+        CompletionExecutor executor = new CompletionExecutor(debug, bb);
         executor.init();
         return checkHeapSnapshot(metaAccess, executor, stage, false);
     }
