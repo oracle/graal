@@ -30,6 +30,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.DebugCloseable;
 import org.graalvm.compiler.debug.DebugContext;
@@ -236,7 +237,7 @@ public class LoopFragmentInside extends LoopFragment {
                 opaqueUnrolledStrides.put(loop.loopBegin(), opaque);
             } else {
                 assert counted.getCounter().isConstantStride();
-                assert Math.addExact(counted.getCounter().constantStride(), counted.getCounter().constantStride()) == counted.getCounter().constantStride() * 2;
+                assert !strideAdditionOverflows(loop) : "Stride addition must not overflow";
                 ValueNode previousValue = opaque.getValue();
                 opaque.setValue(graph.addOrUniqueWithInputs(AddNode.add(counterStride, previousValue, NodeView.DEFAULT)));
                 GraphUtil.tryKillUnused(previousValue);
@@ -746,5 +747,16 @@ public class LoopFragmentInside extends LoopFragment {
             }
         }
         return newExit;
+    }
+
+    public static boolean strideAdditionOverflows(LoopEx loop) {
+        final int bits = ((IntegerStamp) loop.counted().getCounter().valueNode().stamp(NodeView.DEFAULT)).getBits();
+        long stride = loop.counted().getCounter().constantStride();
+        try {
+            NumUtil.addExact(stride, stride, bits);
+            return false;
+        } catch (ArithmeticException ae) {
+            return true;
+        }
     }
 }
