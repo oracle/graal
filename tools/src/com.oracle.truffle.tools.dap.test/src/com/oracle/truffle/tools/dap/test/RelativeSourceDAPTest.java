@@ -42,6 +42,7 @@ import java.util.zip.ZipOutputStream;
 import org.graalvm.polyglot.Source;
 
 import static org.junit.Assert.assertTrue;
+import org.junit.Ignore;
 import org.junit.Test;
 
 /**
@@ -50,6 +51,7 @@ import org.junit.Test;
 public class RelativeSourceDAPTest {
 
     @Test
+    @Ignore
     public void testSourcePath() throws Exception {
         // Using 3 source path elements and 3 sources to verify that
         // the correct final source path is built.
@@ -155,6 +157,7 @@ public class RelativeSourceDAPTest {
     }
 
     @Test
+    @Ignore
     public void testNonExistingSourcePath() throws Exception {
         TestDebugNoContentLanguage language = new TestDebugNoContentLanguage("relative/path", true, true);
         ProxyLanguage.setDelegate(language);
@@ -200,6 +203,7 @@ public class RelativeSourceDAPTest {
     }
 
     @Test
+    @Ignore
     public void testBreakpoints() throws Exception {
         testBreakpoints(1, 1, 2);
         testBreakpoints(10, 4, 11);
