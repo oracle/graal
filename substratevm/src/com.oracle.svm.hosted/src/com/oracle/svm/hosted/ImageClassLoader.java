@@ -41,6 +41,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+import com.oracle.svm.util.LogUtils;
 import org.graalvm.collections.EconomicSet;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.word.Word;
@@ -52,12 +53,6 @@ import com.oracle.svm.core.TypeResult;
 import com.oracle.svm.util.ReflectionUtil;
 
 public final class ImageClassLoader {
-
-    /*
-     * This cannot be a HostedOption because the option parsing already relies on the list of loaded
-     * classes.
-     */
-    private static final int CLASS_LOADING_TIMEOUT_IN_MINUTES = 10;
 
     static {
         /*
@@ -90,7 +85,14 @@ public final class ImageClassLoader {
         try {
             classLoaderSupport.loadAllClasses(executor, this);
         } finally {
-            executor.awaitQuiescence(CLASS_LOADING_TIMEOUT_IN_MINUTES, TimeUnit.MINUTES);
+            boolean isQuiescence = false;
+            while (!isQuiescence) {
+                isQuiescence = executor.awaitQuiescence(10, TimeUnit.MINUTES);
+                if (!isQuiescence) {
+                    LogUtils.warning("Class loading is slow. Waiting for tasks to complete...");
+                    /* DeadlockWatchdog should fail the build eventually. */
+                }
+            }
         }
         classLoaderSupport.reportBuilderClassesInApplication();
     }
