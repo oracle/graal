@@ -26,6 +26,7 @@ package org.graalvm.compiler.core.common;
 
 // JaCoCo Exclude
 
+import org.graalvm.compiler.debug.GraalError;
 import jdk.vm.ci.code.CodeUtil;
 
 /**
@@ -257,5 +258,15 @@ public class NumUtil {
             bytes[i] = (byte) val;
         }
         return bytes;
+    }
+
+    public static long addExact(long a, long b, int bits) {
+        if (bits == 32) {
+            return Math.addExact((int) a, (int) b);
+        } else if (bits == 64) {
+            return Math.addExact(a, b);
+        } else {
+            throw GraalError.shouldNotReachHere("Must be one of java's core datatypes int/long but is " + bits);
+        }
     }
 }

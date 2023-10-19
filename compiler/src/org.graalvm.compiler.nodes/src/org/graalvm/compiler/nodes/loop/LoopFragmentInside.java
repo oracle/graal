@@ -39,6 +39,7 @@ import org.graalvm.compiler.graph.Node;
 import org.graalvm.compiler.graph.NodeBitMap;
 import org.graalvm.compiler.graph.Position;
 import org.graalvm.compiler.graph.iterators.NodeIterable;
+import org.graalvm.compiler.loop.phases.LoopTransformations;
 import org.graalvm.compiler.nodeinfo.InputType;
 import org.graalvm.compiler.nodes.AbstractBeginNode;
 import org.graalvm.compiler.nodes.AbstractEndNode;
@@ -230,7 +231,7 @@ public class LoopFragmentInside extends LoopFragment {
                 opaqueUnrolledStrides.put(loop.loopBegin(), opaque);
             } else {
                 assert counted.getLimitCheckedIV().isConstantStride();
-                assert Math.addExact(counted.getLimitCheckedIV().constantStride(), counted.getLimitCheckedIV().constantStride()) == counted.getLimitCheckedIV().constantStride() * 2;
+                assert !LoopTransformations.strideAdditionOverflows(loop) : "Stride addition must not overflow";
                 ValueNode previousValue = opaque.getValue();
                 opaque.setValue(graph.addOrUniqueWithInputs(AddNode.add(counterStride, previousValue, NodeView.DEFAULT)));
                 GraphUtil.tryKillUnused(previousValue);
