@@ -161,6 +161,7 @@ extern char **environ;
 bool debug = false;
 bool relaunch = false;
 bool found_switch_to_jvm_flag = false;
+const char *svm_error = NULL;
 
 /* platform-independent environment setter, use empty value to clear */
 int setenv(std::string key, std::string value) {
@@ -549,9 +550,17 @@ void parse_vm_options(int argc, char **argv, std::string exeDir, JavaVMInitArgs 
 #endif
     }
 
-    vmInitArgs->options = new JavaVMOption[vmArgs.size()];
-    vmInitArgs->nOptions = vmArgs.size();
+    jint nOptions = jvmMode ? vmArgs.size() : 1 + vmArgs.size();
+    vmInitArgs->options = new JavaVMOption[nOptions];
+    vmInitArgs->nOptions = nOptions;
     JavaVMOption *curOpt = vmInitArgs->options;
+
+    if (!jvmMode) {
+        curOpt->optionString = strdup("_createvm_errorstr");
+        curOpt->extraInfo = &svm_error;
+        curOpt++;
+    }
+
     for(const auto& arg: vmArgs) {
         if (debug) {
             std::cout << "Setting VM argument " << arg << std::endl;
@@ -695,6 +704,11 @@ static int jvm_main_thread(int argc, char *argv[], std::string exeDir, bool jvmM
 
     int res = createVM(&vm, (void**)&env, &vmInitArgs);
     if (res != JNI_OK) {
+        if (svm_error != NULL) {
+            std::cerr << svm_error << std::endl;
+            free((void*) svm_error);
+            svm_error = NULL;
+        }
         std::cerr << "Creation of the VM failed." << std::endl;
         return -1;
     }
