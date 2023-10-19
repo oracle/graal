@@ -326,9 +326,9 @@ public abstract class BytecodeDSLExample extends RootNode implements BytecodeRoo
     @Operation
     public static final class CopyLocalsToFrame {
         @Specialization
-        public static Frame doSomeLocals(VirtualFrame frame, int length, @Bind("$root") BytecodeDSLExample rootNode) {
+        public static Frame doSomeLocals(VirtualFrame frame, long length, @Bind("$root") BytecodeDSLExample rootNode) {
             Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
-            rootNode.copyLocals(frame, newFrame, length);
+            rootNode.copyLocals(frame, newFrame, (int) length);
             return newFrame;
         }
 

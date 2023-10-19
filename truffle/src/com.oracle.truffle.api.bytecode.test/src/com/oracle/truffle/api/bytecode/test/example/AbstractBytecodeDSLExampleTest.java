@@ -40,7 +40,17 @@
  */
 package com.oracle.truffle.api.bytecode.test.example;
 
+import java.io.ByteArrayOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Supplier;
 
 import org.junit.Rule;
 import org.junit.rules.ExpectedException;
@@ -50,23 +60,203 @@ import org.junit.runners.Parameterized.Parameter;
 import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
+import com.oracle.truffle.api.bytecode.BytecodeRootNode;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
+import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
+import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
+import com.oracle.truffle.api.nodes.RootNode;
 
 @RunWith(Parameterized.class)
 public abstract class AbstractBytecodeDSLExampleTest {
     protected static final BytecodeDSLExampleLanguage LANGUAGE = null;
 
+    public static final BytecodeSerializer SERIALIZER = new BytecodeSerializer() {
+        public void serialize(SerializerContext context, DataOutput buffer, Object object) throws IOException {
+            if (object == null) {
+                buffer.writeByte(0);
+            } else if (object instanceof Long num) {
+                buffer.writeByte(1);
+                buffer.writeLong(num);
+            } else if (object instanceof String str) {
+                buffer.writeByte(2);
+                buffer.writeUTF(str);
+            } else if (object instanceof Boolean bool) {
+                buffer.writeByte(3);
+                buffer.writeBoolean(bool);
+            } else if (object.getClass().isArray()) {
+                buffer.writeByte(4);
+                if (object instanceof long[] longs) {
+                    buffer.writeByte(1);
+                    buffer.writeInt(longs.length);
+                    for (long num : longs) {
+                        serialize(context, buffer, num);
+                    }
+                } else {
+                    throw new AssertionError("Serializer does not handle array of type " + object.getClass());
+                }
+            } else if (object instanceof BytecodeDSLExample rootNode) {
+                buffer.writeByte(5);
+                context.writeBytecodeNode(buffer, rootNode);
+            } else {
+                throw new AssertionError("Serializer does not handle object " + object);
+            }
+        }
+    };
+
+    public static final BytecodeDeserializer DESERIALIZER = new BytecodeDeserializer() {
+        public Object deserialize(DeserializerContext context, DataInput buffer) throws IOException {
+            byte objectCode = buffer.readByte();
+            return switch (objectCode) {
+                case 0 -> null;
+                case 1 -> buffer.readLong();
+                case 2 -> buffer.readUTF();
+                case 3 -> buffer.readBoolean();
+                case 4 -> {
+                    byte arrayCode = buffer.readByte();
+                    yield switch (arrayCode) {
+                        case 1 -> {
+                            int length = buffer.readInt();
+                            long[] result = new long[length];
+                            for (int i = 0; i < length; i++) {
+                                result[i] = (long) deserialize(context, buffer);
+                            }
+                            yield result;
+                        }
+                        default -> throw new AssertionError("Deserializer does not handle array code " + arrayCode);
+                    };
+                }
+                case 5 -> context.readBytecodeNode(buffer);
+                default -> throw new AssertionError("Deserializer does not handle code " + objectCode);
+            };
+        }
+    };
+
     @Rule public ExpectedException thrown = ExpectedException.none();
 
-    @Parameters(name = "{0}")
-    public static List<Class<? extends BytecodeDSLExample>> getInterpreterClasses() {
-        return BytecodeDSLExampleCommon.allInterpreters();
+    @Parameters(name = "{0}_{1}")
+    public static List<Object[]> getParameters() {
+        List<Object[]> result = new ArrayList<>();
+        for (Class<?> interpreterClass : allInterpreters()) {
+            result.add(new Object[]{interpreterClass, false});
+            result.add(new Object[]{interpreterClass, true});
+        }
+        return result;
     }
 
     @Parameter(0) public Class<? extends BytecodeDSLExample> interpreterClass;
+    @Parameter(1) public Boolean testSerialize;
 
     public <T extends BytecodeDSLExampleBuilder> RootCallTarget parse(String rootName, BytecodeParser<T> builder) {
-        return BytecodeDSLExampleCommon.parse(interpreterClass, rootName, builder);
+        BytecodeRootNode rootNode = parseNode(interpreterClass, testSerialize, rootName, builder);
+        return ((RootNode) rootNode).getCallTarget();
+    }
+
+    public <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNode(String rootName, BytecodeParser<T> builder) {
+        return parseNode(interpreterClass, testSerialize, rootName, builder);
+    }
+
+    public <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNodeWithSource(String rootName, BytecodeParser<T> builder) {
+        return parseNodeWithSource(interpreterClass, testSerialize, rootName, builder);
+    }
+
+    public <T extends BytecodeDSLExampleBuilder> BytecodeNodes<BytecodeDSLExample> createNodes(BytecodeConfig config, BytecodeParser<T> builder) {
+        return createNodes(interpreterClass, testSerialize, config, builder);
+    }
+
+    /**
+     * Creates a root node using the given parameters.
+     *
+     * In order to parameterize tests over multiple different interpreter configurations
+     * ("variants"), we take the specific interpreterClass as input. Since interpreters are
+     * instantiated using a static {@code create} method, we must invoke this method using
+     * reflection.
+     */
+    @SuppressWarnings("unchecked")
+    public static <T extends BytecodeDSLExampleBuilder> BytecodeNodes<BytecodeDSLExample> createNodes(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize,
+                    BytecodeConfig config,
+                    BytecodeParser<T> builder) {
+        if (testSerialize) {
+            // Perform a serialize-deserialize round trip.
+            ByteArrayOutputStream output = new ByteArrayOutputStream();
+            invokeSerialize(interpreterClass, config, new DataOutputStream(output), SERIALIZER, builder);
+            byte[] byteArray = output.toByteArray();
+
+            Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(byteArray));
+            return invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
+        } else {
+            return invokeCreate(interpreterClass, config, builder);
+        }
+    }
+
+    public static <T extends BytecodeDSLExampleBuilder> RootCallTarget parse(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize, String rootName, BytecodeParser<T> builder) {
+        BytecodeRootNode rootNode = parseNode(interpreterClass, testSerialize, rootName, builder);
+        return ((RootNode) rootNode).getCallTarget();
+    }
+
+    public static <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNode(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize, String rootName,
+                    BytecodeParser<T> builder) {
+        BytecodeNodes<BytecodeDSLExample> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.DEFAULT, builder);
+        BytecodeDSLExample op = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        op.setName(rootName);
+        return op;
+    }
+
+    public static <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNodeWithSource(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize, String rootName,
+                    BytecodeParser<T> builder) {
+        BytecodeNodes<BytecodeDSLExample> nodes = createNodes(interpreterClass, testSerialize, BytecodeConfig.WITH_SOURCE, builder);
+        BytecodeDSLExample op = nodes.getNodes().get(nodes.getNodes().size() - 1);
+        op.setName(rootName);
+        return op;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T extends BytecodeDSLExample> BytecodeNodes<T> invokeCreate(Class<? extends BytecodeDSLExample> interpreterClass, BytecodeConfig config,
+                    BytecodeParser<? extends BytecodeDSLExampleBuilder> builder) {
+        try {
+            Method create = interpreterClass.getMethod("create", BytecodeConfig.class, BytecodeParser.class);
+            return (BytecodeNodes<T>) create.invoke(null, config, builder);
+        } catch (InvocationTargetException e) {
+            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
+            // get caught by the test harness.
+            throw new IllegalStateException(e.getCause());
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T extends BytecodeDSLExample> BytecodeNodes<T> invokeDeserialize(Class<? extends BytecodeDSLExample> interpreterClass, TruffleLanguage<?> language, BytecodeConfig config,
+                    Supplier<DataInput> input, BytecodeDeserializer callback) {
+        try {
+            Method deserialize = interpreterClass.getMethod("deserialize", TruffleLanguage.class, BytecodeConfig.class, Supplier.class, BytecodeDeserializer.class);
+            return (BytecodeNodes<T>) deserialize.invoke(null, language, config, input, callback);
+        } catch (InvocationTargetException e) {
+            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
+            // get caught by the test harness.
+            throw new IllegalStateException(e.getCause());
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T extends BytecodeDSLExampleBuilder> void invokeSerialize(Class<? extends BytecodeDSLExample> interpreterClass, BytecodeConfig config, DataOutput buffer,
+                    BytecodeSerializer callback,
+                    BytecodeParser<T> parser) {
+        try {
+            Method serialize = interpreterClass.getMethod("serialize", BytecodeConfig.class, DataOutput.class, BytecodeSerializer.class, BytecodeParser.class);
+            serialize.invoke(null, config, buffer, callback, parser);
+        } catch (InvocationTargetException e) {
+            // Exceptions thrown by the invoked method can be rethrown as runtime exceptions that
+            // get caught by the test harness.
+            throw new IllegalStateException(e.getCause());
+        } catch (Exception e) {
+            throw new AssertionError(e);
+        }
     }
 
     protected static void emitReturn(BytecodeDSLExampleBuilder b, long value) {
@@ -86,6 +276,15 @@ public abstract class AbstractBytecodeDSLExampleTest {
         b.beginThrowOperation();
         b.emitLoadConstant(value);
         b.endThrowOperation();
+    }
+
+    public static List<Class<? extends BytecodeDSLExample>> allInterpreters() {
+        return List.of(BytecodeDSLExampleBase.class, BytecodeDSLExampleUnsafe.class, BytecodeDSLExampleWithUncached.class, BytecodeDSLExampleWithBE.class, BytecodeDSLExampleWithOptimizations.class,
+                        BytecodeDSLExampleProduction.class);
+    }
+
+    public static boolean hasBE(Class<? extends BytecodeDSLExample> c) {
+        return c == BytecodeDSLExampleWithBE.class || c == BytecodeDSLExampleProduction.class;
     }
 
 }

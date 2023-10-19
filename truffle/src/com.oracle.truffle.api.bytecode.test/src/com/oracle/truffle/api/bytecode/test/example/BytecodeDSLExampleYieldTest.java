@@ -302,7 +302,7 @@ public class BytecodeDSLExampleYieldTest extends AbstractBytecodeDSLExampleTest 
 
     @Test
     public void testYieldGetSourceRootNode() {
-        BytecodeDSLExample rootNode = BytecodeDSLExampleCommon.parseNode(interpreterClass, "yieldGetSourceRootNode", b -> {
+        BytecodeDSLExample rootNode = parseNode("yieldGetSourceRootNode", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginYield();

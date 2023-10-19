@@ -1,6 +1,6 @@
 package org.graalvm.compiler.truffle.test.bytecode;
 
-import static com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleCommon.parseNode;
+import static com.oracle.truffle.api.bytecode.test.example.AbstractBytecodeDSLExampleTest.parseNode;
 
 import java.util.List;
 import java.util.function.Supplier;
@@ -15,6 +15,7 @@ import org.junit.runners.Parameterized.Parameters;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.BytecodeParser;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleBuilder;
+import com.oracle.truffle.api.bytecode.test.example.AbstractBytecodeDSLExampleTest;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExample;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleCommon;
 import com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleLanguage;
@@ -27,7 +28,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
 
     @Parameters(name = "{0}")
     public static List<Class<? extends BytecodeDSLExample>> getInterpreterClasses() {
-        return BytecodeDSLExampleCommon.allInterpreters();
+        return AbstractBytecodeDSLExampleTest.allInterpreters();
     }
 
     @Parameter(0) public Class<? extends BytecodeDSLExample> interpreterClass;
@@ -37,7 +38,7 @@ public class BytecodeDSLPartialEvaluationTest extends PartialEvaluationTest {
     }
 
     private static <T extends BytecodeDSLExampleBuilder> BytecodeDSLExample parseNodeForPE(Class<? extends BytecodeDSLExample> interpreterClass, String rootName, BytecodeParser<T> builder) {
-        BytecodeDSLExample result = parseNode(interpreterClass, rootName, builder);
+        BytecodeDSLExample result = parseNode(interpreterClass, false, rootName, builder);
         result.setUncachedInterpreterThreshold(0); // force interpreter to skip tier 0
         return result;
     }

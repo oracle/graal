@@ -40,10 +40,11 @@
  */
 package com.oracle.truffle.api.bytecode.test.example;
 
-import static com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleCommon.parseNodeWithSource;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assume.assumeFalse;
+import static org.junit.Assume.assumeTrue;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -51,8 +52,6 @@ import java.util.List;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.Truffle;
@@ -64,18 +63,22 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
 @RunWith(Parameterized.class)
-public class BytecodeDSLExampleFindBciTest {
-    protected static final BytecodeDSLExampleLanguage LANGUAGE = null;
-
-    @Parameters(name = "{0}")
-    public static List<Class<? extends BytecodeDSLExample>> getInterpreterClasses() {
-        return List.of(BytecodeDSLExampleBase.class, BytecodeDSLExampleWithUncached.class);
+public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTest {
+    public void assumeTestIsApplicable() {
+        // TODO: readBciFromFrame should not use the FastAccess field, because the frame may be a
+        // ReadOnlyFrame, which does not support Unsafe accesses.
+        assumeTrue(interpreterClass != BytecodeDSLExampleUnsafe.class && interpreterClass != BytecodeDSLExampleProduction.class);
+        // TODO: BytecodeRootNode#findBci does not handle ContinuationRootNodes properly. Since the
+        // API will change with GR-49484 (we'll need to generate code for each root node instead of
+        // using a static method) we can fix it then.
+        assumeTrue(interpreterClass != BytecodeDSLExampleWithUncached.class);
+        // TODO: we currently do not have a way to serialize Sources.
+        assumeFalse(testSerialize);
     }
-
-    @Parameter(0) public Class<? extends BytecodeDSLExample> interpreterClass;
 
     @Test
     public void testStacktrace() {
+        assumeTestIsApplicable();
         /**
          * @formatter:off
          * def baz(arg0) {
@@ -96,7 +99,7 @@ public class BytecodeDSLExampleFindBciTest {
         List<Integer> bytecodeIndices = new ArrayList<>();
 
         Source bazSource = Source.newBuilder("test", "<trace>; 4", "baz").build();
-        BytecodeDSLExample baz = parseNodeWithSource(interpreterClass, "baz", b -> {
+        BytecodeDSLExample baz = parseNodeWithSource("baz", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(bazSource);
 
@@ -128,7 +131,7 @@ public class BytecodeDSLExampleFindBciTest {
         });
 
         Source barSource = Source.newBuilder("test", "(1 + arg0) + baz()", "bar").build();
-        BytecodeDSLExample bar = parseNodeWithSource(interpreterClass, "bar", b -> {
+        BytecodeDSLExample bar = parseNodeWithSource("bar", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(barSource);
 
@@ -154,7 +157,7 @@ public class BytecodeDSLExampleFindBciTest {
         });
 
         Source fooSource = Source.newBuilder("test", "1 + bar(2)", "foo").build();
-        BytecodeDSLExample foo = parseNodeWithSource(interpreterClass, "foo", b -> {
+        BytecodeDSLExample foo = parseNodeWithSource("foo", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(fooSource);
 
@@ -207,6 +210,7 @@ public class BytecodeDSLExampleFindBciTest {
 
     @Test
     public void testStacktraceWithContinuation() {
+        assumeTestIsApplicable();
         /**
          * @formatter:off
          * def baz(arg0) {
@@ -237,7 +241,7 @@ public class BytecodeDSLExampleFindBciTest {
             }
         }.getCallTarget();
 
-        BytecodeDSLExample baz = parseNodeWithSource(interpreterClass, "baz", b -> {
+        BytecodeDSLExample baz = parseNodeWithSource("baz", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(bazSource);
             b.beginBlock();
@@ -270,7 +274,7 @@ public class BytecodeDSLExampleFindBciTest {
         });
 
         Source barSource = Source.newBuilder("test", "x = yield 1; baz(x)", "bar").build();
-        BytecodeDSLExample bar = parseNodeWithSource(BytecodeDSLExampleBase.class, "bar", b -> {
+        BytecodeDSLExample bar = parseNodeWithSource("bar", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(barSource);
             b.beginBlock();
@@ -297,7 +301,7 @@ public class BytecodeDSLExampleFindBciTest {
         });
 
         Source fooSource = Source.newBuilder("test", "c = bar(); continue(c, arg0)", "foo").build();
-        BytecodeDSLExample foo = parseNodeWithSource(BytecodeDSLExampleBase.class, "foo", b -> {
+        BytecodeDSLExample foo = parseNodeWithSource("foo", b -> {
             b.beginRoot(LANGUAGE);
             b.beginSource(fooSource);
             b.beginBlock();
