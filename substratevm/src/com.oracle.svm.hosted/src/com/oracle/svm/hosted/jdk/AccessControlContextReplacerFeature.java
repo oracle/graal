@@ -31,7 +31,7 @@ import java.security.ProtectionDomain;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;

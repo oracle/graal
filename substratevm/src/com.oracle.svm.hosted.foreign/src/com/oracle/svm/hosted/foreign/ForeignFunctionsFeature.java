@@ -35,8 +35,8 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

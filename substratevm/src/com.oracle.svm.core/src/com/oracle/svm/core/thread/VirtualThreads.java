@@ -27,7 +27,7 @@ package com.oracle.svm.core.thread;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadFactory;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.compiler.graal.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 

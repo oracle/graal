@@ -26,9 +26,9 @@
 
 package com.oracle.svm.core.monitor;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.FREQUENT_PROBABILITY;
+import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.probability;
 
 import java.util.concurrent.locks.ReentrantLock;
 

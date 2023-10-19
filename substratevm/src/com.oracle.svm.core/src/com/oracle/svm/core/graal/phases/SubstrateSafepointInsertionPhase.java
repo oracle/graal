@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.graal.phases;
 
-import org.graalvm.compiler.nodes.ReturnNode;
-import org.graalvm.compiler.nodes.SafepointNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.common.LoopSafepointInsertionPhase;
-import org.graalvm.compiler.phases.tiers.MidTierContext;
+import jdk.compiler.graal.nodes.ReturnNode;
+import jdk.compiler.graal.nodes.SafepointNode;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.phases.common.LoopSafepointInsertionPhase;
+import jdk.compiler.graal.phases.tiers.MidTierContext;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

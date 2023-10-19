@@ -26,7 +26,7 @@
 
 package com.oracle.objectfile.debugentry;
 
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.compiler.graal.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugHeaderTypeInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugTypeInfo;

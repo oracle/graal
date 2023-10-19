@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.truffle;
 
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilationIdentifier;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.truffle.TruffleCompilationIdentifier;
 
 import com.oracle.svm.core.graal.code.SubstrateCompilationIdentifier;
 import com.oracle.truffle.compiler.TruffleCompilable;

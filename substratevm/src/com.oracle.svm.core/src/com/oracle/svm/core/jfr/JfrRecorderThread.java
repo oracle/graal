@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.compiler.graal.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;

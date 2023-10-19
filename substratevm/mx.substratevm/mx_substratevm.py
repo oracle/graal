@@ -68,7 +68,7 @@ def graal_compiler_flags():
     def adjusted_exports(line):
         """
         Turns e.g.
-        --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.internal.vm.compiler,org.graalvm.nativeimage.builder
+        --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.compiler.graal,org.graalvm.nativeimage.builder
         into:
         --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=ALL-UNNAMED
         """
@@ -366,7 +366,7 @@ def truffle_unittest_task(extra_build_args=None):
     # White Box Truffle compilation tests that need access to compiler graphs.
     if '-Ob' not in extra_build_args:
         # GR-44492
-        native_unittest(['org.graalvm.compiler.truffle.test.ContextLookupCompilationTest'] + truffle_args(extra_build_args + svm_experimental_options(['-H:-SupportCompileInIsolates'])))
+        native_unittest(['jdk.compiler.graal.truffle.test.ContextLookupCompilationTest'] + truffle_args(extra_build_args + svm_experimental_options(['-H:-SupportCompileInIsolates'])))
 
 
 def truffle_context_pre_init_unittest_task(extra_build_args):
@@ -1279,10 +1279,10 @@ libgraal_jar_distributions = [
 
 libgraal_build_args = [
     ## Pass via JVM args opening up of packages needed for image builder early on
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.hotspot=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.options=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler=ALL-UNNAMED',
-    '-J--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.truffle.compiler.hotspot=ALL-UNNAMED',
+    '-J--add-exports=jdk.compiler.graal/jdk.compiler.graal.hotspot=ALL-UNNAMED',
+    '-J--add-exports=jdk.compiler.graal/jdk.compiler.graal.options=ALL-UNNAMED',
+    '-J--add-exports=jdk.compiler.graal/jdk.compiler.graal.truffle=ALL-UNNAMED',
+    '-J--add-exports=jdk.compiler.graal/jdk.compiler.graal.truffle.hotspot=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.jniutils/org.graalvm.jniutils=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot.libgraal=ALL-UNNAMED',
     '-J--add-exports=org.graalvm.truffle.compiler/com.oracle.truffle.compiler.hotspot=ALL-UNNAMED',
@@ -1297,7 +1297,7 @@ libgraal_build_args = [
     # TruffleLibGraalJVMCIServiceLocator needs access to JVMCIServiceLocator
     '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.services=ALL-UNNAMED',
 
-    '--initialize-at-build-time=org.graalvm.compiler,org.graalvm.libgraal,com.oracle.truffle',
+    '--initialize-at-build-time=jdk.compiler.graal,org.graalvm.libgraal,com.oracle.truffle',
 
     '-H:+ReportExceptionStackTraces',
 
@@ -1369,7 +1369,7 @@ libgraal = mx_sdk_vm.GraalVmJreComponent(
 mx_sdk_vm.register_graalvm_component(libgraal)
 
 def _native_image_configure_extra_jvm_args():
-    packages = ['jdk.internal.vm.compiler/org.graalvm.compiler.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.internal.vm.compiler/org.graalvm.compiler.core.common.util']
+    packages = ['jdk.compiler.graal/jdk.compiler.graal.phases.common', 'jdk.internal.vm.ci/jdk.vm.ci.meta', 'jdk.internal.vm.ci/jdk.vm.ci.services', 'jdk.compiler.graal/jdk.compiler.graal.core.common.util']
     args = ['--add-exports=' + packageName + '=ALL-UNNAMED' for packageName in packages]
     if not mx_sdk_vm.jdk_enables_jvmci_by_default(get_jdk()):
         args.extend(['-XX:+UnlockExperimentalVMOptions', '-XX:+EnableJVMCI'])

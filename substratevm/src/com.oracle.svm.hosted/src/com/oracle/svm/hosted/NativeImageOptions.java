@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.hosted;
 
-import static org.graalvm.compiler.options.OptionType.Debug;
-import static org.graalvm.compiler.options.OptionType.User;
+import static jdk.compiler.graal.options.OptionType.Debug;
+import static jdk.compiler.graal.options.OptionType.User;
 
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -33,11 +33,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionStability;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.serviceprovider.GraalServices;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionKey;
+import jdk.compiler.graal.options.OptionStability;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.serviceprovider.GraalServices;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.graal.pointsto.util.CompletionExecutor;

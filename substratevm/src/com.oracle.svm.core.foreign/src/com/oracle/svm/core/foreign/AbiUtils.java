@@ -40,9 +40,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.ReinterpretNode;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.calc.ReinterpretNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

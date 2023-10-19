@@ -56,10 +56,7 @@ import com.oracle.truffle.api.Option;
 /**
  * Truffle compilation options that can be configured per {@link Engine engine} instance. These
  * options are accessed by the Truffle runtime and not the Truffle compiler, unlike
- * org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions
- * <p>
- * They replace the deprecated {@code -Dgraal.} Truffle-related options declared in
- * org.graalvm.compiler.truffle.common.processor.Option
+ * jdk.compiler.graal.truffle.TruffleCompilerOptions
  */
 @Option.Group("engine")
 public final class OptimizedRuntimeOptions {
@@ -77,7 +74,7 @@ public final class OptimizedRuntimeOptions {
     /**
      * Actions to take upon an exception being raised during Truffle compilation. The actions are
      * with respect to what the user sees on the console. The enum constants and order are the same
-     * as defined in {@code org.graalvm.compiler.core.CompilationWrapper.ExceptionAction}.
+     * as defined in {@code jdk.compiler.graal.core.CompilationWrapper.ExceptionAction}.
      *
      * The actions are in ascending order of verbosity. Ordinal order is semantically significant!
      */

@@ -43,7 +43,7 @@ import org.junit.Before;
 
 import com.oracle.svm.core.jfr.JfrEvent;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
 
 import jdk.jfr.consumer.RecordedClass;
 import jdk.jfr.consumer.RecordedEvent;

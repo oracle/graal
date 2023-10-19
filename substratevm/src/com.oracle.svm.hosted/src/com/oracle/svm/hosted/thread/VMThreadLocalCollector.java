@@ -31,11 +31,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.nodes.PiNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.core.common.NumUtil;
+import jdk.compiler.graal.nodes.PiNode;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.threadlocal.FastThreadLocal;

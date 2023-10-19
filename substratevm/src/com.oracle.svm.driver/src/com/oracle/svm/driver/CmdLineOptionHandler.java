@@ -30,7 +30,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
-import org.graalvm.compiler.options.OptionType;
+import jdk.compiler.graal.options.OptionType;
 
 import com.oracle.svm.core.VM;
 import com.oracle.svm.core.option.OptionOrigin;

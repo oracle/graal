@@ -26,7 +26,7 @@ package com.oracle.svm.core.jdk;
 
 import java.util.function.BooleanSupplier;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
 
 @Deprecated(since = "24.0.0", forRemoval = true)
 public class JDK17OrEarlier implements BooleanSupplier {

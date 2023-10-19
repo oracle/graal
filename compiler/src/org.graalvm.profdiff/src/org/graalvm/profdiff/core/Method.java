@@ -29,7 +29,7 @@ import java.util.Comparator;
 import java.util.List;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.java.StableMethodNameFormatter;
+import jdk.compiler.graal.java.StableMethodNameFormatter;
 import org.graalvm.profdiff.core.inlining.InliningPath;
 import org.graalvm.profdiff.core.inlining.InliningTreeNode;
 import org.graalvm.profdiff.core.optimization.Optimization;

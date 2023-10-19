@@ -47,7 +47,7 @@ import jdk.jfr.Label;
 import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 
-@Name("org.graalvm.compiler.truffle.CompilationFailure")
+@Name("jdk.compiler.graal.truffle.CompilationFailure")
 @Category("Truffle Compiler")
 @Label("Compilation Failure")
 @Description("Truffe Compilation Failures")

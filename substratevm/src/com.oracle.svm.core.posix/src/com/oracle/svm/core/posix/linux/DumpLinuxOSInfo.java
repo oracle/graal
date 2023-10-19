@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.linux;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.compiler.graal.core.common.NumUtil;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.type.CCharPointer;
 import org.graalvm.word.Pointer;

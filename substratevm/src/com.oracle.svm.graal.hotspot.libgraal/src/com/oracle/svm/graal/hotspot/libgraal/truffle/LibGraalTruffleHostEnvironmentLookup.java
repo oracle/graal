@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.serviceprovider.GlobalAtomicLong;
-import org.graalvm.compiler.truffle.compiler.host.TruffleHostEnvironment;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.serviceprovider.GlobalAtomicLong;
+import jdk.compiler.graal.truffle.host.TruffleHostEnvironment;
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JObject;

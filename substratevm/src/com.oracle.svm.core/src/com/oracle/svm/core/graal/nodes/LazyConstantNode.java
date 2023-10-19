@@ -24,25 +24,25 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
+import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_1;
 
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.calc.FloatingNode;
-import org.graalvm.compiler.nodes.spi.Canonicalizable;
-import org.graalvm.compiler.nodes.spi.CanonicalizerTool;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
+import jdk.compiler.graal.core.common.type.Stamp;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.ConstantNode;
+import jdk.compiler.graal.nodes.NodeView;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.calc.FloatingNode;
+import jdk.compiler.graal.nodes.spi.Canonicalizable;
+import jdk.compiler.graal.nodes.spi.CanonicalizerTool;
+import jdk.compiler.graal.nodes.spi.CoreProviders;
+import jdk.compiler.graal.nodes.spi.Lowerable;
+import jdk.compiler.graal.nodes.spi.LoweringTool;
 
 import jdk.vm.ci.meta.JavaConstant;
 

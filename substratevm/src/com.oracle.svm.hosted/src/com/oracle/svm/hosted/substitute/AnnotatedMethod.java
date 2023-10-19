@@ -30,8 +30,8 @@ import java.lang.reflect.Executable;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.StructuredGraph;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.nodes.StructuredGraph;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;

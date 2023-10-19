@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_0;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_0;
+import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_0;
 
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.AbstractBeginNode;
-import org.graalvm.compiler.nodes.LoopExitNode;
-import org.graalvm.compiler.nodes.spi.ValueProxy;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.AbstractBeginNode;
+import jdk.compiler.graal.nodes.LoopExitNode;
+import jdk.compiler.graal.nodes.spi.ValueProxy;
 
 /**
  * This class is necessary to create a scheduling point between a {@link DeoptEntryNode} and a

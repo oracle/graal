@@ -1,0 +1,7 @@
+jdk.compiler.graal.replacements.processor.ReplacementsAnnotationProcessor
+jdk.compiler.graal.nodeinfo.processor.GraphNodeProcessor
+jdk.compiler.graal.lir.processor.IntrinsicStubProcessor
+jdk.compiler.graal.lir.processor.SyncPortProcessor
+jdk.compiler.graal.core.match.processor.MatchProcessor
+jdk.compiler.graal.options.processor.OptionProcessor
+jdk.compiler.graal.serviceprovider.processor.ServiceProviderProcessor

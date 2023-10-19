@@ -24,23 +24,24 @@
  */
 package com.oracle.svm.core.nodes;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static jdk.compiler.graal.nodeinfo.InputType.Memory;
+import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import java.util.Objects;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.memory.SingleMemoryKill;
-import org.graalvm.compiler.nodes.spi.Lowerable;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
+import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
+import jdk.compiler.graal.core.common.type.StampFactory;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.FixedWithNextNode;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.extended.FixedValueAnchorNode;
+import jdk.compiler.graal.nodes.extended.ForeignCallNode;
+import jdk.compiler.graal.nodes.memory.SingleMemoryKill;
+import jdk.compiler.graal.nodes.spi.Lowerable;
+import jdk.compiler.graal.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
 /**
@@ -52,8 +53,8 @@ import org.graalvm.word.LocationIdentity;
  * {@link CFunctionEpilogueNode}. This means that this node is executed while in native state. As
  * such, the capture function should be uninterruptible, and never transition to/from Java. Any
  * preprocessing on the arguments (e.g. unboxing a long, or retrieving them from a field) should be
- * done before the prologue; {@link org.graalvm.compiler.nodes.extended.FixedValueAnchorNode} can be
- * used to prevent the computations from floating in between the prologue/epilogue.
+ * done before the prologue; {@link FixedValueAnchorNode} can be used to prevent the computations
+ * from floating in between the prologue/epilogue.
  * <p>
  * You need to register the capture method for foreign call and may need to declare it as an
  * analysis root.

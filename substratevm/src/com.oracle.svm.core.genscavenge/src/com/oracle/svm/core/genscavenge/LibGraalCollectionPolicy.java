@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import org.graalvm.compiler.options.Option;
+import jdk.compiler.graal.options.Option;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 

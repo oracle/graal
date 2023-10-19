@@ -26,15 +26,15 @@ package com.oracle.svm.hosted;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.nodes.spi.SimplifierTool;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.nodes.ConstantNode;
+import jdk.compiler.graal.nodes.DeoptimizeNode;
+import jdk.compiler.graal.nodes.FixedNode;
+import jdk.compiler.graal.nodes.Invoke;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.extended.ForeignCallNode;
+import jdk.compiler.graal.nodes.spi.CoreProviders;
+import jdk.compiler.graal.nodes.spi.SimplifierTool;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.infrastructure.Universe;

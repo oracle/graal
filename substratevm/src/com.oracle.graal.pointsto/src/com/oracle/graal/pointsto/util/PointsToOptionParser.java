@@ -38,10 +38,10 @@ import java.util.Set;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionDescriptors;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
+import jdk.compiler.graal.options.OptionDescriptor;
+import jdk.compiler.graal.options.OptionDescriptors;
+import jdk.compiler.graal.options.OptionKey;
+import jdk.compiler.graal.options.OptionValues;
 
 import com.oracle.svm.common.option.CommonOptionParser;
 import com.oracle.svm.common.option.CommonOptionParser.BooleanOptionFormat;

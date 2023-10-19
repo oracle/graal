@@ -24,17 +24,17 @@
  */
 package com.oracle.svm.core.heap;
 
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
-import static org.graalvm.compiler.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.EXTREMELY_FAST_PATH_PROBABILITY;
+import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.probability;
 
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.word.BarrieredAccess;
-import org.graalvm.compiler.word.ObjectAccess;
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.core.common.SuppressFBWarnings;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.word.BarrieredAccess;
+import jdk.compiler.graal.word.ObjectAccess;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 

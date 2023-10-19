@@ -29,20 +29,20 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.Map;
 
-import org.graalvm.compiler.api.replacements.Snippet;
-import org.graalvm.compiler.api.replacements.Snippet.ConstantParameter;
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.UnreachableNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
-import org.graalvm.compiler.nodes.spi.LoweringTool.LoweringStage;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetTemplate;
-import org.graalvm.compiler.replacements.SnippetTemplate.Arguments;
-import org.graalvm.compiler.replacements.SnippetTemplate.SnippetInfo;
-import org.graalvm.compiler.replacements.Snippets;
+import jdk.compiler.graal.api.replacements.Snippet;
+import jdk.compiler.graal.api.replacements.Snippet.ConstantParameter;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.nodes.DeoptimizeNode;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.UnreachableNode;
+import jdk.compiler.graal.nodes.spi.LoweringTool;
+import jdk.compiler.graal.nodes.spi.LoweringTool.LoweringStage;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.phases.util.Providers;
+import jdk.compiler.graal.replacements.SnippetTemplate;
+import jdk.compiler.graal.replacements.SnippetTemplate.Arguments;
+import jdk.compiler.graal.replacements.SnippetTemplate.SnippetInfo;
+import jdk.compiler.graal.replacements.Snippets;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.deopt.DeoptimizationRuntime;

@@ -24,11 +24,11 @@
  */
 package com.oracle.graal.pointsto.nodes;
 
-import org.graalvm.compiler.core.common.type.ObjectStamp;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.replacements.nodes.BasicObjectCloneNode;
+import jdk.compiler.graal.core.common.type.ObjectStamp;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.FrameState;
+import jdk.compiler.graal.replacements.nodes.BasicObjectCloneNode;
 
 @NodeInfo
 public class AnalysisObjectCloneNode extends BasicObjectCloneNode {

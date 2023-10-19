@@ -28,8 +28,8 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.function.ObjIntConsumer;
 
-import org.graalvm.compiler.core.common.type.TypedConstant;
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.core.common.type.TypedConstant;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.WordBase;

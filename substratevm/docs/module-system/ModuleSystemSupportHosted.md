@@ -216,7 +216,7 @@ We are close to removing it:
 
 ⚠️ If an image-build uses builder-internal classes (e.g. as part of one of its NI `Feature` implementations) removing
 `USE_NATIVE_IMAGE_JAVA_PLATFORM_MODULE_SYSTEM=false` often requires adding `--add-exports=...` to the arguments of the VM
-that runs the image builder. E.g. often `--add-exports=jdk.internal.vm.compiler/org.graalvm.compiler.options=ALL-UNNAMED`
+that runs the image builder. E.g. often `--add-exports=jdk.compiler.graal/jdk.compiler.graal.options=ALL-UNNAMED`
 needs to be added because a NI Feature defines/uses something like
 ```text
 @Option //

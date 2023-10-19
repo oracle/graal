@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import org.graalvm.compiler.asm.amd64.AMD64Address;
-import org.graalvm.compiler.core.common.Stride;
-import org.graalvm.compiler.core.amd64.AMD64AddressNode;
-import org.graalvm.compiler.core.amd64.AMD64CompressAddressLowering;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.nodes.CompressionNode;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.compiler.graal.asm.amd64.AMD64Address;
+import jdk.compiler.graal.core.common.Stride;
+import jdk.compiler.graal.core.amd64.AMD64AddressNode;
+import jdk.compiler.graal.core.amd64.AMD64CompressAddressLowering;
+import jdk.compiler.graal.core.common.CompressEncoding;
+import jdk.compiler.graal.nodes.CompressionNode;
+import jdk.compiler.graal.nodes.ValueNode;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;

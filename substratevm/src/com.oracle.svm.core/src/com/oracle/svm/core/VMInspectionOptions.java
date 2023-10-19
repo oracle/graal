@@ -30,10 +30,10 @@ import java.util.List;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionKey;
+import jdk.compiler.graal.options.OptionType;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platform.WINDOWS;
 import org.graalvm.nativeimage.Platforms;

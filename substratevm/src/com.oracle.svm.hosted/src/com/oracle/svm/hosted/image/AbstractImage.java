@@ -28,7 +28,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.compiler.graal.debug.DebugContext;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.svm.core.LinkerInvocation;

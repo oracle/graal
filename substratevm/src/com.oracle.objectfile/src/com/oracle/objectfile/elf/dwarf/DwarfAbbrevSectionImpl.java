@@ -31,7 +31,7 @@ import com.oracle.objectfile.elf.dwarf.constants.DwarfForm;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfHasChildren;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfTag;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.compiler.graal.debug.DebugContext;
 import com.oracle.objectfile.elf.dwarf.DwarfDebugInfo.AbbrevCode;
 
 /**

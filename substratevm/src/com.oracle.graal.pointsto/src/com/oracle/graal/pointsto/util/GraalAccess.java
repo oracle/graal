@@ -26,12 +26,12 @@ package com.oracle.graal.pointsto.util;
 
 import java.util.Objects;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.api.runtime.GraalJVMCICompiler;
-import org.graalvm.compiler.api.runtime.GraalRuntime;
-import org.graalvm.compiler.core.target.Backend;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.runtime.RuntimeProvider;
+import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.api.runtime.GraalJVMCICompiler;
+import jdk.compiler.graal.api.runtime.GraalRuntime;
+import jdk.compiler.graal.core.target.Backend;
+import jdk.compiler.graal.phases.util.Providers;
+import jdk.compiler.graal.runtime.RuntimeProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

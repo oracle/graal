@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.graal.hosted.SubstrateProviders;

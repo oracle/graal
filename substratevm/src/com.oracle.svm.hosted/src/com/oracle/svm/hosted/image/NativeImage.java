@@ -50,12 +50,12 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.Indent;
+import jdk.compiler.graal.asm.aarch64.AArch64Assembler;
+import jdk.compiler.graal.code.CompilationResult;
+import jdk.compiler.graal.core.common.CompressEncoding;
+import jdk.compiler.graal.core.common.NumUtil;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.CHeader;
 import org.graalvm.nativeimage.c.CHeader.Header;

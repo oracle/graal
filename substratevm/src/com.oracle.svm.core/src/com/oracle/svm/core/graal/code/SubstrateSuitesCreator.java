@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import org.graalvm.compiler.java.DefaultSuitesCreator;
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.phases.tiers.CompilerConfiguration;
+import jdk.compiler.graal.java.DefaultSuitesCreator;
+import jdk.compiler.graal.java.GraphBuilderPhase;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.compiler.graal.phases.tiers.CompilerConfiguration;
 
 public class SubstrateSuitesCreator extends DefaultSuitesCreator {
 

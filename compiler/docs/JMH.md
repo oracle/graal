@@ -133,7 +133,7 @@ mx benchmark jmh-whitebox:* --results-file=results.json -- --jvm-config=graal-co
 
 The command above runs all *whitebox* benchmarks.
 That are all benchmark distributions that have either a dependency on a `GRAAL*` distribution,
-or include projects starting with `org.graalvm.compiler` in their distribution jar.
+or include projects starting with `jdk.compiler.graal` in their distribution jar.
 
 
 Refer to the [mx documentation][mx in-repo] for further information.

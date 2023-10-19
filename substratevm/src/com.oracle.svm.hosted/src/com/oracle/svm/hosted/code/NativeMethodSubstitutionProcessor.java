@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.hosted.code;
 
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.word.Word.Operation;
+import jdk.compiler.graal.graph.Node.NodeIntrinsic;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.compiler.graal.nodes.spi.Replacements;
+import jdk.compiler.graal.word.Word.Operation;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CConstant;
 import org.graalvm.nativeimage.c.function.CFunction;

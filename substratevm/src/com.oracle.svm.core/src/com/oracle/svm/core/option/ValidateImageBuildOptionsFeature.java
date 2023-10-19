@@ -25,7 +25,7 @@
 package com.oracle.svm.core.option;
 
 import org.graalvm.collections.UnmodifiableMapCursor;
-import org.graalvm.compiler.options.OptionKey;
+import jdk.compiler.graal.options.OptionKey;
 
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;

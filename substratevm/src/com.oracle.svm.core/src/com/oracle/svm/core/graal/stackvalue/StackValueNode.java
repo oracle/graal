@@ -24,22 +24,22 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
-import static org.graalvm.compiler.nodeinfo.InputType.Memory;
+import static jdk.compiler.graal.nodeinfo.InputType.Memory;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.PermanentBailoutException;
-import org.graalvm.compiler.core.common.calc.UnsignedMath;
-import org.graalvm.compiler.graph.IterableNodeType;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeCycles;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodeinfo.NodeSize;
-import org.graalvm.compiler.nodes.AbstractStateSplit;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.memory.MemoryAccess;
-import org.graalvm.compiler.nodes.memory.MemoryKill;
-import org.graalvm.compiler.nodes.spi.Lowerable;
+import jdk.compiler.graal.core.common.NumUtil;
+import jdk.compiler.graal.core.common.PermanentBailoutException;
+import jdk.compiler.graal.core.common.calc.UnsignedMath;
+import jdk.compiler.graal.graph.IterableNodeType;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.NodeCycles;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodeinfo.NodeSize;
+import jdk.compiler.graal.nodes.AbstractStateSplit;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.nodes.memory.MemoryAccess;
+import jdk.compiler.graal.nodes.memory.MemoryKill;
+import jdk.compiler.graal.nodes.spi.Lowerable;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.LocationIdentity;
 

@@ -30,12 +30,12 @@ import java.util.Optional;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.options.ModifiableOptionValues;
-import org.graalvm.compiler.options.OptionDescriptor;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.options.OptionsParser;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.options.ModifiableOptionValues;
+import jdk.compiler.graal.options.OptionDescriptor;
+import jdk.compiler.graal.options.OptionKey;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.options.OptionsParser;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.RuntimeOptions.Descriptor;
 import org.graalvm.nativeimage.impl.RuntimeOptionsSupport;
@@ -148,8 +148,8 @@ class RuntimeOptionsSupportImpl implements RuntimeOptionsSupport {
     }
 }
 
-@TargetClass(org.graalvm.compiler.options.OptionKey.class)
-final class Target_org_graalvm_compiler_options_OptionKey {
+@TargetClass(OptionKey.class)
+final class Target_jdk_compiler_graal_options_OptionKey {
 
     @AnnotateOriginal
     @RestrictHeapAccess(access = RestrictHeapAccess.Access.UNRESTRICTED, reason = "Static analysis imprecision makes all hashCode implementations reachable from this method")

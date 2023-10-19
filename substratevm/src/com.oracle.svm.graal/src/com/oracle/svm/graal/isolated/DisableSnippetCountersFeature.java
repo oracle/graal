@@ -24,15 +24,16 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.nodes.ConstantNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.replacements.SnippetCounter;
-import org.graalvm.compiler.replacements.SnippetIntegerHistogram;
+import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.hotspot.SymbolicSnippetEncoder;
+import jdk.compiler.graal.nodes.ConstantNode;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.nodes.graphbuilderconf.NodePlugin;
+import jdk.compiler.graal.phases.util.Providers;
+import jdk.compiler.graal.replacements.SnippetCounter;
+import jdk.compiler.graal.replacements.SnippetIntegerHistogram;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.SubstrateOptions;
@@ -44,7 +45,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaField;
 
 /**
- * Adapted from code of {@link org.graalvm.compiler.hotspot.SymbolicSnippetEncoder}.
+ * Adapted from code of {@link SymbolicSnippetEncoder}.
  */
 final class DisableSnippetCountersPlugin implements NodePlugin {
     private static final String snippetCounterName = 'L' + SnippetCounter.class.getName().replace('.', '/') + ';';

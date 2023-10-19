@@ -73,7 +73,7 @@ import org.junit.Test;
  *         at org.junit.runner.JUnitCore.run(JUnitCore.java:115)
  *         at com.oracle.mxtool.junit.MxJUnitWrapper.runRequest(MxJUnitWrapper.java:375)
  *         at com.oracle.mxtool.junit.MxJUnitWrapper.main(MxJUnitWrapper.java:230)
- * cause 0org.graalvm.compiler.debug.GraalError: org.graalvm.compiler.debug.GraalError: org.graalvm.compiler.debug.GraalError:
+ * cause 0jdk.compiler.graal.debug.GraalError: jdk.compiler.graal.debug.GraalError: jdk.compiler.graal.debug.GraalError:
  * should not reach here: Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable. java.lang.Object[]
  *         at com.oracle.graal.pointsto.util.AnalysisFuture.setException(AnalysisFuture.java:49)
  *         at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:269)
@@ -90,7 +90,7 @@ import org.junit.Test;
  *         at java.base/java.util.concurrent.ForkJoinPool.scan(ForkJoinPool.java:1655)
  *         at java.base/java.util.concurrent.ForkJoinPool.runWorker(ForkJoinPool.java:1622)
  *         at java.base/java.util.concurrent.ForkJoinWorkerThread.run(ForkJoinWorkerThread.java:165)
- * Caused by: org.graalvm.compiler.debug.GraalError: org.graalvm.compiler.debug.GraalError: should not reach here: Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable. java.lang.Object[]
+ * Caused by: jdk.compiler.graal.debug.GraalError: jdk.compiler.graal.debug.GraalError: should not reach here: Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable. java.lang.Object[]
  *         at com.oracle.graal.pointsto.util.AnalysisFuture.setException(AnalysisFuture.java:49)
  *         at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:269)
  *         at com.oracle.graal.pointsto.util.AnalysisFuture.ensureDone(AnalysisFuture.java:63)
@@ -99,8 +99,8 @@ import org.junit.Test;
  *         at com.oracle.graal.pointsto.heap.ImageHeapScanner.lambda$createImageHeapObjectArray$3(ImageHeapScanner.java:270)
  *         at java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)
  *         ... 13 more
- * Caused by: org.graalvm.compiler.debug.GraalError: should not reach here: Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable. java.lang.Object[]
- *         at jdk.internal.vm.compiler/org.graalvm.compiler.debug.GraalError.shouldNotReachHere(GraalError.java:57)
+ * Caused by: jdk.compiler.graal.debug.GraalError: should not reach here: Double wrapping of constant. Most likely, the reachability analysis code itself is seen as reachable. java.lang.Object[]
+ *         at jdk.compiler.graal/jdk.compiler.graal.debug.GraalError.shouldNotReachHere(GraalError.java:57)
  *         at com.oracle.graal.pointsto.heap.ImageHeapScanner.maybeReplace(ImageHeapScanner.java:307)
  *         at com.oracle.graal.pointsto.heap.ImageHeapScanner.createImageHeapObject(ImageHeapScanner.java:225)
  *         at com.oracle.graal.pointsto.heap.ImageHeapScanner.lambda$getOrCreateImageHeapConstant$2(ImageHeapScanner.java:205)

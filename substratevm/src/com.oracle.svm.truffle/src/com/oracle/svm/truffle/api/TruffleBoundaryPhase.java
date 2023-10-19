@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.nodes.DeoptimizeNode;
-import org.graalvm.compiler.nodes.FixedNode;
-import org.graalvm.compiler.nodes.Invoke;
-import org.graalvm.compiler.nodes.InvokeWithExceptionNode;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.java.ExceptionObjectNode;
-import org.graalvm.compiler.nodes.util.GraphUtil;
-import org.graalvm.compiler.phases.Phase;
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
+import jdk.compiler.graal.nodes.DeoptimizeNode;
+import jdk.compiler.graal.nodes.FixedNode;
+import jdk.compiler.graal.nodes.Invoke;
+import jdk.compiler.graal.nodes.InvokeWithExceptionNode;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.java.ExceptionObjectNode;
+import jdk.compiler.graal.nodes.util.GraphUtil;
+import jdk.compiler.graal.phases.Phase;
+import jdk.compiler.graal.truffle.PartialEvaluator;
 
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase.SubstrateBytecodeParser;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;

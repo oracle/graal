@@ -26,9 +26,9 @@ package com.oracle.graal.pointsto.phases;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.graphbuilderconf.ClassInitializationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.compiler.graal.nodes.FrameState;
+import jdk.compiler.graal.nodes.graphbuilderconf.ClassInitializationPlugin;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
 
 import jdk.vm.ci.meta.ConstantPool;
 import jdk.vm.ci.meta.ResolvedJavaType;

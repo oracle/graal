@@ -28,8 +28,8 @@ package com.oracle.objectfile.pecoff.cv;
 
 import com.oracle.objectfile.debugentry.DebugInfoBase;
 import com.oracle.objectfile.pecoff.PECoffMachine;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.debug.GraalError;
 
 import java.nio.ByteOrder;
 

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.compiler.graal.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

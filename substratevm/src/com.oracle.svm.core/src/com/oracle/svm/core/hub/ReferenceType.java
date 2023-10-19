@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.hub;
 
-import org.graalvm.compiler.core.common.NumUtil;
+import jdk.compiler.graal.core.common.NumUtil;
 
 import com.oracle.svm.core.util.DuplicatedInNativeCode;
 

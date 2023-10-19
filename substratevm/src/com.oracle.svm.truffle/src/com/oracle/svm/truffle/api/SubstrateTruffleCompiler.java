@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.truffle.api;
 
-import org.graalvm.compiler.truffle.compiler.PartialEvaluator;
-import org.graalvm.compiler.truffle.compiler.phases.TruffleTier;
+import jdk.compiler.graal.truffle.PartialEvaluator;
+import jdk.compiler.graal.truffle.phases.TruffleTier;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

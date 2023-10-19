@@ -53,7 +53,7 @@ import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfTag;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.compiler.graal.debug.DebugContext;
 
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;

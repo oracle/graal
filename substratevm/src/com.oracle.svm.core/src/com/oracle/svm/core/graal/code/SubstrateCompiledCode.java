@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import org.graalvm.compiler.code.CompilationResult;
+import jdk.compiler.graal.code.CompilationResult;
 
 import jdk.vm.ci.code.CompiledCode;
 

@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.graal.llvm.lowering;
 
-import org.graalvm.compiler.core.common.type.StampFactory;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.FrameState;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.java.LoadExceptionObjectNode;
-import org.graalvm.compiler.nodes.spi.LoweringTool;
+import jdk.compiler.graal.core.common.type.StampFactory;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.nodes.FixedWithNextNode;
+import jdk.compiler.graal.nodes.FrameState;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.java.LoadExceptionObjectNode;
+import jdk.compiler.graal.nodes.spi.LoweringTool;
 
 import com.oracle.svm.core.graal.nodes.ReadExceptionObjectNode;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;

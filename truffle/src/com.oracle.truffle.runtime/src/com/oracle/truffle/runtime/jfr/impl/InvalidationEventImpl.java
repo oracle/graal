@@ -48,7 +48,7 @@ import jdk.jfr.Label;
 import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 
-@Name("org.graalvm.compiler.truffle.AssumptionInvalidation")
+@Name("jdk.compiler.graal.truffle.AssumptionInvalidation")
 @Category("Truffle Compiler")
 @Label("Assumption Invalidation")
 @Description("Truffle Assumption Invalidation")

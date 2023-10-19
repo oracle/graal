@@ -26,8 +26,8 @@ package com.oracle.svm.hosted.reflect;
 
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeWriter;
-import org.graalvm.compiler.debug.GraalError;
+import jdk.compiler.graal.core.common.util.UnsafeArrayTypeWriter;
+import jdk.compiler.graal.debug.GraalError;
 
 import com.oracle.svm.core.code.CodeInfoEncoder.Encoders;
 import com.oracle.svm.hosted.annotation.AnnotationArrayValue;

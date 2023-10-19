@@ -25,10 +25,10 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
+import jdk.compiler.graal.asm.aarch64.AArch64MacroAssembler;
+import jdk.compiler.graal.lir.LIRInstructionClass;
+import jdk.compiler.graal.lir.aarch64.AArch64LIRInstruction;
+import jdk.compiler.graal.lir.asm.CompilationResultBuilder;
 
 import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 

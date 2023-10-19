@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.graal.snippets;
 
-import org.graalvm.compiler.core.common.spi.ForeignCallDescriptor;
-import org.graalvm.compiler.graph.Node.ConstantNodeParameter;
-import org.graalvm.compiler.graph.Node.NodeIntrinsic;
-import org.graalvm.compiler.nodes.BreakpointNode;
-import org.graalvm.compiler.nodes.extended.ForeignCallNode;
-import org.graalvm.compiler.nodes.extended.LoadHubNode;
-import org.graalvm.compiler.nodes.extended.LoadHubOrNullNode;
+import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
+import jdk.compiler.graal.graph.Node.ConstantNodeParameter;
+import jdk.compiler.graal.graph.Node.NodeIntrinsic;
+import jdk.compiler.graal.nodes.BreakpointNode;
+import jdk.compiler.graal.nodes.extended.ForeignCallNode;
+import jdk.compiler.graal.nodes.extended.LoadHubNode;
+import jdk.compiler.graal.nodes.extended.LoadHubOrNullNode;
 import org.graalvm.word.Pointer;
 
 import com.oracle.svm.core.hub.DynamicHub;

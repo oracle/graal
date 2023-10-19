@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.compiler.graal.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 

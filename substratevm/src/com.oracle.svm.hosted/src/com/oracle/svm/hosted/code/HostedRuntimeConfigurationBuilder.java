@@ -24,20 +24,20 @@
  */
 package com.oracle.svm.hosted.code;
 
-import org.graalvm.compiler.api.replacements.SnippetReflectionProvider;
-import org.graalvm.compiler.bytecode.BytecodeProvider;
-import org.graalvm.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
-import org.graalvm.compiler.core.common.spi.ConstantFieldProvider;
-import org.graalvm.compiler.core.common.spi.ForeignCallsProvider;
-import org.graalvm.compiler.core.common.spi.MetaAccessExtensionProvider;
-import org.graalvm.compiler.nodes.spi.LoopsDataProvider;
-import org.graalvm.compiler.nodes.spi.LoweringProvider;
-import org.graalvm.compiler.nodes.spi.PlatformConfigurationProvider;
-import org.graalvm.compiler.nodes.spi.Replacements;
-import org.graalvm.compiler.nodes.spi.StampProvider;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.util.Providers;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.compiler.graal.bytecode.BytecodeProvider;
+import jdk.compiler.graal.bytecode.ResolvedJavaMethodBytecodeProvider;
+import jdk.compiler.graal.core.common.spi.ConstantFieldProvider;
+import jdk.compiler.graal.core.common.spi.ForeignCallsProvider;
+import jdk.compiler.graal.core.common.spi.MetaAccessExtensionProvider;
+import jdk.compiler.graal.nodes.spi.LoopsDataProvider;
+import jdk.compiler.graal.nodes.spi.LoweringProvider;
+import jdk.compiler.graal.nodes.spi.PlatformConfigurationProvider;
+import jdk.compiler.graal.nodes.spi.Replacements;
+import jdk.compiler.graal.nodes.spi.StampProvider;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.phases.util.Providers;
+import jdk.compiler.graal.word.WordTypes;
 
 import com.oracle.graal.pointsto.heap.ImageHeapScanner;
 import com.oracle.graal.pointsto.meta.HostedProviders;

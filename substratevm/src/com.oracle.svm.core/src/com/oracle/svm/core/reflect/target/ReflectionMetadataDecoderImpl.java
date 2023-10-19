@@ -34,7 +34,7 @@ import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.util.UnsafeArrayTypeReader;
+import jdk.compiler.graal.core.common.util.UnsafeArrayTypeReader;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;

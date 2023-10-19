@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.graal.phases;
 
-import org.graalvm.compiler.graph.Node;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.java.StoreFieldNode;
-import org.graalvm.compiler.phases.Phase;
+import jdk.compiler.graal.graph.Node;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.java.StoreFieldNode;
+import jdk.compiler.graal.phases.Phase;
 
 import com.oracle.svm.core.meta.SharedField;
 

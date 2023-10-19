@@ -26,8 +26,8 @@
 
 package com.oracle.svm.common.option;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionKey;
 
 public class CommonOptions {
 

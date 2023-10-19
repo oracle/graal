@@ -24,12 +24,12 @@
  */
 package com.oracle.graal.pointsto.phases;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.GraphDecoder;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.printer.GraalDebugHandlersFactory;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.nodes.GraphDecoder;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionKey;
+import jdk.compiler.graal.printer.GraalDebugHandlersFactory;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;

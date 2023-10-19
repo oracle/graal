@@ -27,8 +27,8 @@ package com.oracle.svm.core.jni.access;
 import java.lang.reflect.Modifier;
 
 import org.graalvm.collections.EconomicSet;
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.compiler.word.BarrieredAccess;
+import jdk.compiler.graal.nodes.NamedLocationIdentity;
+import jdk.compiler.graal.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform.HOSTED_ONLY;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CodePointer;

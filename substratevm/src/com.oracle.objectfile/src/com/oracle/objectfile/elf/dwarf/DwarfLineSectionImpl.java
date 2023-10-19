@@ -33,7 +33,7 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfLineOpcode;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
-import org.graalvm.compiler.debug.DebugContext;
+import jdk.compiler.graal.debug.DebugContext;
 
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;

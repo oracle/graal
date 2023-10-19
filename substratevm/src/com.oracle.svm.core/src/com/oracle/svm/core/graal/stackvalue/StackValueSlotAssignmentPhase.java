@@ -27,8 +27,8 @@ package com.oracle.svm.core.graal.stackvalue;
 import java.util.HashMap;
 import java.util.Map;
 
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.phases.Phase;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.phases.Phase;
 
 import com.oracle.svm.core.graal.stackvalue.LoweredStackValueNode.StackSlotHolder;
 import com.oracle.svm.core.graal.stackvalue.StackValueNode.StackSlotIdentity;

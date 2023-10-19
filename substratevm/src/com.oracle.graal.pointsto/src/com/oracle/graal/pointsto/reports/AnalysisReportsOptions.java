@@ -27,9 +27,9 @@ package com.oracle.graal.pointsto.reports;
 import static com.oracle.graal.pointsto.api.PointstoOptions.TrackAccessChain;
 
 import org.graalvm.collections.EconomicMap;
-import org.graalvm.compiler.options.EnumOptionKey;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
+import jdk.compiler.graal.options.EnumOptionKey;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionKey;
 
 public class AnalysisReportsOptions {
 

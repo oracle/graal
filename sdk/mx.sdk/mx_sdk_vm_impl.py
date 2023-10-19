@@ -2247,7 +2247,7 @@ class GraalVmBashLauncherBuildTask(GraalVmNativeImageBuildTask):
 
         def _get_launcher_args():
             if not _jlink_libraries():
-                return '-J--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.internal.vm.compiler'
+                return '-J--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=jdk.compiler.graal'
             return ''
 
         def _get_add_exports():

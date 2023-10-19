@@ -26,7 +26,7 @@ package com.oracle.svm.graal.meta;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
-import org.graalvm.compiler.core.common.CompilationIdentifier;
+import jdk.compiler.graal.core.common.CompilationIdentifier;
 
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.code.CodeInfo;

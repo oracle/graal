@@ -24,22 +24,22 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import org.graalvm.compiler.core.common.BootstrapMethodIntrospection;
-import org.graalvm.compiler.java.BciBlockMapping;
-import org.graalvm.compiler.java.BytecodeParser;
-import org.graalvm.compiler.java.FrameStateBuilder;
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.graphbuilderconf.InvocationPlugin;
-import org.graalvm.compiler.nodes.graphbuilderconf.NodePlugin;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
-import org.graalvm.compiler.word.WordTypes;
+import jdk.compiler.graal.core.common.BootstrapMethodIntrospection;
+import jdk.compiler.graal.java.BciBlockMapping;
+import jdk.compiler.graal.java.BytecodeParser;
+import jdk.compiler.graal.java.FrameStateBuilder;
+import jdk.compiler.graal.java.GraphBuilderPhase;
+import jdk.compiler.graal.nodes.CallTargetNode.InvokeKind;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.compiler.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
+import jdk.compiler.graal.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.compiler.graal.nodes.graphbuilderconf.NodePlugin;
+import jdk.compiler.graal.nodes.spi.CoreProviders;
+import jdk.compiler.graal.phases.OptimisticOptimizations;
+import jdk.compiler.graal.word.WordTypes;
 
 import com.oracle.graal.pointsto.infrastructure.AnalysisConstantPool;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
@@ -101,7 +101,7 @@ public class AnalysisGraphBuilderPhase extends SharedGraphBuilderPhase {
              * access.
              */
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.ci", "jdk.vm.ci.meta");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.internal.vm.compiler", "org.graalvm.compiler.nodes");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, accessingClass, false, "jdk.compiler.graal", "jdk.compiler.graal.nodes");
             return super.applyInvocationPlugin(invokeKind, args, targetMethod, resultType, plugin);
         }
 

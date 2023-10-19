@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.util;
 
-import org.graalvm.compiler.core.common.util.AbstractTypeReader;
+import jdk.compiler.graal.core.common.util.AbstractTypeReader;
 
 import com.oracle.svm.core.c.NonmovableArray;
 

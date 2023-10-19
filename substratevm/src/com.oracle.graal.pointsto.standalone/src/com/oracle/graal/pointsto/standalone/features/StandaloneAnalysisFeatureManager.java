@@ -28,10 +28,10 @@ package com.oracle.graal.pointsto.standalone.features;
 
 import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.svm.util.ReflectionUtil;
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionKey;
-import org.graalvm.compiler.options.OptionType;
-import org.graalvm.compiler.options.OptionValues;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionKey;
+import jdk.compiler.graal.options.OptionType;
+import jdk.compiler.graal.options.OptionValues;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import java.util.ArrayList;

@@ -358,7 +358,7 @@ public final class PolyBenchLauncher extends AbstractLanguageLauncher {
     private EvalResult evalSource(Context context) {
         if (config.compileTheWorld) {
             try {
-                Class<?> ctwClass = Class.forName("org.graalvm.compiler.hotspot.test.CompileTheWorld");
+                Class<?> ctwClass = Class.forName("jdk.compiler.graal.hotspot.test.CompileTheWorld");
                 Method createMethod = ctwClass.getDeclaredMethod("create");
                 Method prepareMethod = ctwClass.getDeclaredMethod("prepare");
                 Object ctw = createMethod.invoke(null);

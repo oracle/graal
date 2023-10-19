@@ -27,8 +27,8 @@ package com.oracle.graal.pointsto.heap;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import org.graalvm.compiler.core.common.type.CompressibleConstant;
-import org.graalvm.compiler.core.common.type.TypedConstant;
+import jdk.compiler.graal.core.common.type.CompressibleConstant;
+import jdk.compiler.graal.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

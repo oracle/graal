@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import org.graalvm.compiler.core.common.memory.BarrierType;
-import org.graalvm.compiler.core.common.memory.MemoryOrderMode;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.memory.WriteNode;
-import org.graalvm.compiler.nodes.memory.address.AddressNode;
+import jdk.compiler.graal.core.common.memory.BarrierType;
+import jdk.compiler.graal.core.common.memory.MemoryOrderMode;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.memory.WriteNode;
+import jdk.compiler.graal.nodes.memory.address.AddressNode;
 import org.graalvm.word.LocationIdentity;
 
 /**

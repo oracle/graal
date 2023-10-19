@@ -30,7 +30,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.graalvm.compiler.nodes.OptimizationLogImpl;
+import jdk.compiler.graal.nodes.OptimizationLogImpl;
 import org.graalvm.profdiff.command.ExperimentMatcher;
 import org.graalvm.profdiff.core.CompilationFragment;
 import org.graalvm.profdiff.core.CompilationUnit;

@@ -29,7 +29,7 @@ package com.oracle.svm.core.jdk;
 import java.lang.reflect.Array;
 import java.util.Objects;
 
-import org.graalvm.compiler.word.BarrieredAccess;
+import jdk.compiler.graal.word.BarrieredAccess;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.SubstrateUtil;

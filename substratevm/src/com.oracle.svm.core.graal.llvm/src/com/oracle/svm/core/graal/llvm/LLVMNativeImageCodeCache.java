@@ -47,11 +47,11 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.compiler.code.CompilationResult;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.debug.Indent;
+import jdk.compiler.graal.code.CompilationResult;
+import jdk.compiler.graal.core.common.NumUtil;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.debug.Indent;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

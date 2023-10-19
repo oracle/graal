@@ -26,8 +26,8 @@ package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-import org.graalvm.compiler.debug.TTY;
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
+import jdk.compiler.graal.debug.TTY;
+import jdk.compiler.graal.serviceprovider.IsolateUtil;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.jniutils.NativeBridgeSupport;
 

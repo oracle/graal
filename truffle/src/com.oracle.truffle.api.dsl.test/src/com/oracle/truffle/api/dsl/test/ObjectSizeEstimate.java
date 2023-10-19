@@ -56,10 +56,6 @@ import org.graalvm.collections.Equivalence;
  * The methods {@link #getTotalBytes()} and {@link #getCompressedTotalBytes()} estimate the total
  * number of bytes occupied. The real number of bytes occupied may vary due to different alignment
  * or different header sizes on different virtual machines.
- *
- * This utility uses reflection and relies on {@link Modules} to open up classes. As such, the
- * caller must ensure this class has access to {@link Modules} (e.g.,
- * {@code --add-exports=java.base/jdk.internal.module=jdk.internal.vm.compiler}).
  */
 public final class ObjectSizeEstimate {
 

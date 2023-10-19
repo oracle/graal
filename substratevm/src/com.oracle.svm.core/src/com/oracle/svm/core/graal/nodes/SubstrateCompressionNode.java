@@ -24,19 +24,19 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_2;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_2;
+import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_2;
+import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_2;
 
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.type.CompressibleConstant;
-import org.graalvm.compiler.core.common.type.Stamp;
-import org.graalvm.compiler.debug.GraalError;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.CompressionNode;
-import org.graalvm.compiler.nodes.NodeView;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.ValueNode;
+import jdk.compiler.graal.core.common.CompressEncoding;
+import jdk.compiler.graal.core.common.type.CompressibleConstant;
+import jdk.compiler.graal.core.common.type.Stamp;
+import jdk.compiler.graal.debug.GraalError;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.CompressionNode;
+import jdk.compiler.graal.nodes.NodeView;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.ValueNode;
 
 import com.oracle.svm.core.meta.CompressedNullConstant;
 

@@ -31,7 +31,7 @@ import java.lang.reflect.Field;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
 
-import org.graalvm.compiler.core.common.type.TypedConstant;
+import jdk.compiler.graal.core.common.type.TypedConstant;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 

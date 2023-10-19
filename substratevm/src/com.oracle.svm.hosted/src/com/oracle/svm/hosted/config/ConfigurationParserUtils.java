@@ -39,7 +39,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.nativeimage.impl.ReflectionRegistry;
-import org.graalvm.util.json.JSONParserException;
+import jdk.compiler.graal.util.json.JSONParserException;
 
 import com.oracle.svm.core.configure.ConditionalElement;
 import com.oracle.svm.core.configure.ConfigurationFiles;

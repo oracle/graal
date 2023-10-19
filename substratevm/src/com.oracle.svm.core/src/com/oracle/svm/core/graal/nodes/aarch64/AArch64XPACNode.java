@@ -25,24 +25,24 @@
 package com.oracle.svm.core.graal.nodes.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static org.graalvm.compiler.lir.LIRInstruction.OperandFlag.REG;
-import static org.graalvm.compiler.nodeinfo.NodeCycles.CYCLES_1;
-import static org.graalvm.compiler.nodeinfo.NodeSize.SIZE_1;
+import static jdk.compiler.graal.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_1;
+import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_1;
 
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.core.common.LIRKind;
-import org.graalvm.compiler.graph.NodeClass;
-import org.graalvm.compiler.lir.LIRInstructionClass;
-import org.graalvm.compiler.lir.Opcode;
-import org.graalvm.compiler.lir.Variable;
-import org.graalvm.compiler.lir.aarch64.AArch64LIRInstruction;
-import org.graalvm.compiler.lir.asm.CompilationResultBuilder;
-import org.graalvm.compiler.lir.gen.LIRGeneratorTool;
-import org.graalvm.compiler.nodeinfo.NodeInfo;
-import org.graalvm.compiler.nodes.FixedWithNextNode;
-import org.graalvm.compiler.nodes.ValueNode;
-import org.graalvm.compiler.nodes.spi.LIRLowerable;
-import org.graalvm.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.compiler.graal.asm.aarch64.AArch64MacroAssembler;
+import jdk.compiler.graal.core.common.LIRKind;
+import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.lir.LIRInstructionClass;
+import jdk.compiler.graal.lir.Opcode;
+import jdk.compiler.graal.lir.Variable;
+import jdk.compiler.graal.lir.aarch64.AArch64LIRInstruction;
+import jdk.compiler.graal.lir.asm.CompilationResultBuilder;
+import jdk.compiler.graal.lir.gen.LIRGeneratorTool;
+import jdk.compiler.graal.nodeinfo.NodeInfo;
+import jdk.compiler.graal.nodes.FixedWithNextNode;
+import jdk.compiler.graal.nodes.ValueNode;
+import jdk.compiler.graal.nodes.spi.LIRLowerable;
+import jdk.compiler.graal.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.FrameAccess;

@@ -41,11 +41,11 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
 
-import org.graalvm.compiler.api.replacements.Fold;
-import org.graalvm.compiler.core.common.CompressEncoding;
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.core.common.type.CompressibleConstant;
-import org.graalvm.compiler.core.common.type.TypedConstant;
+import jdk.compiler.graal.api.replacements.Fold;
+import jdk.compiler.graal.core.common.CompressEncoding;
+import jdk.compiler.graal.core.common.NumUtil;
+import jdk.compiler.graal.core.common.type.CompressibleConstant;
+import jdk.compiler.graal.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 import org.graalvm.word.UnsignedWord;

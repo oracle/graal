@@ -27,8 +27,8 @@ package com.oracle.svm.hosted;
 import java.lang.reflect.Field;
 import java.util.Optional;
 
-import org.graalvm.compiler.options.Option;
-import org.graalvm.compiler.options.OptionType;
+import jdk.compiler.graal.options.Option;
+import jdk.compiler.graal.options.OptionType;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;

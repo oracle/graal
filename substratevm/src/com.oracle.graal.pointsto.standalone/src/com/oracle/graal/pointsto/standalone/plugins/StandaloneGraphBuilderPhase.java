@@ -26,11 +26,11 @@
 
 package com.oracle.graal.pointsto.standalone.plugins;
 
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.nodes.spi.CoreProviders;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
+import jdk.compiler.graal.java.GraphBuilderPhase;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.compiler.graal.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.compiler.graal.nodes.spi.CoreProviders;
+import jdk.compiler.graal.phases.OptimisticOptimizations;
 
 public class StandaloneGraphBuilderPhase extends GraphBuilderPhase.Instance {
     public StandaloneGraphBuilderPhase(CoreProviders providers, GraphBuilderConfiguration graphBuilderConfig, OptimisticOptimizations optimisticOpts, IntrinsicContext initialIntrinsicContext) {

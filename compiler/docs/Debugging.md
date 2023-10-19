@@ -38,7 +38,7 @@ In addition to IDE debugging, there is support for *printf* style debugging.
 The simplest is to place temporary usages of `System.out` where ever you need them.
 
 For more permanent logging statements, use the `log(...)` methods in
-[`DebugContext`](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/DebugContext.java).
+[`DebugContext`](../src/jdk.compiler.graal.debug/src/jdk/compiler/graal/debug/DebugContext.java).
 A (nestable) debug scope is entered via one of the `scope(...)` methods in that class. For example:
 
 ```java
@@ -54,9 +54,9 @@ try (Scope s = debug.scope("CodeInstall", method)) {
 
 The `debug.log` statement will send output to the console if `CodeInstall` is matched by the
 `-Dgraal.Log` option. The matching logic for this option is implemented in
-[DebugFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/DebugFilter.java#L31-L82)
+[DebugFilter](../src/jdk.compiler.graal/src/jdk/compiler/graal/debug/DebugFilter.java)
 and documented in the
-[Dump help message](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/doc-files/DumpHelp.txt). As
+[Dump help message](../src/jdk.compiler.graal/src/jdk/compiler/graal/debug/doc-files/DumpHelp.txt). As
 mentioned in the javadoc, the same matching logic also applies to the `-Dgraal.Dump`,
 `-Dgraal.Time`, `-Dgraal.Count` and `-Dgraal.TrackMemUse` options.
 
@@ -194,9 +194,9 @@ Specifying one of the debug scope options (i.e., `-Dgraal.Log`, `-Dgraal.Dump`, 
 interesting in compiler output related to a single or few methods. In this case, use the
 `-Dgraal.MethodFilter` option to specify a method filter. The matching logic for this option is
 described in
-[MethodFilter](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/MethodFilter.java#L33-L92)
+[MethodFilter](../src/jdk.compiler.graal/src/jdk/compiler/graal/debug/MethodFilter.java#L33-L92)
 and documented in the
-[MethodFilter help message](../src/org.graalvm.compiler.debug/src/org/graalvm/compiler/debug/doc-files/MethodFilterHelp.txt).
+[MethodFilter help message](../src/jdk.compiler.graal/src/jdk/compiler/graal/debug/doc-files/MethodFilterHelp.txt).
 
 ## Metric filtering
 
@@ -214,7 +214,7 @@ In addition to logging, there is support for generating (or dumping) more detail
 visualizations of certain compiler data structures. Currently, there is support for dumping:
 
 * HIR graphs (i.e., instances of
-  [Graph](../src/org.graalvm.compiler.graph/src/org/graalvm/compiler/graph/Graph.java)) to the
+  [Graph](../src/jdk.compiler.graal/src/jdk/compiler/graal/graph/Graph.java)) to the
   [Ideal Graph Visualizer (IGV)](../../docs/tools/ideal-graph-visualizer.md), and
 * LIR register allocation and generated code to the [C1Visualizer](https://github.com/zakkak/c1visualizer)
 
@@ -258,8 +258,8 @@ java version "1.8.0_212"
 Java(TM) SE Runtime Environment (build 1.8.0_212-b31)
 Java HotSpot(TM) 64-Bit Server VM (build 25.212-b31-jvmci-20-b01, mixed mode)
 > find dumps/1497910458736 -type f
-dumps/1497910458736/HotSpotCompilation-539[org.graalvm.compiler.graph.Node.updateUsages(Node, Node)].bgv
-dumps/1497910458736/HotSpotCompilation-539[org.graalvm.compiler.graph.Node.updateUsages(Node, Node)].cfg
+dumps/1497910458736/HotSpotCompilation-539[jdk.compiler.graal.graph.Node.updateUsages(Node, Node)].bgv
+dumps/1497910458736/HotSpotCompilation-539[jdk.compiler.graal.graph.Node.updateUsages(Node, Node)].cfg
 ```
 
 As you become familiar with the scope names used in the compiler, you can refine the `-Dgraal.Dump` option

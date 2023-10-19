@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.hosted.code;
 
-import org.graalvm.compiler.debug.DebugContext;
-import org.graalvm.compiler.nodes.CallTargetNode.InvokeKind;
-import org.graalvm.compiler.nodes.StructuredGraph;
-import org.graalvm.compiler.nodes.UnwindNode;
-import org.graalvm.compiler.nodes.java.AbstractNewObjectNode;
-import org.graalvm.compiler.nodes.java.NewInstanceNode;
+import jdk.compiler.graal.debug.DebugContext;
+import jdk.compiler.graal.nodes.CallTargetNode.InvokeKind;
+import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.compiler.graal.nodes.UnwindNode;
+import jdk.compiler.graal.nodes.java.AbstractNewObjectNode;
+import jdk.compiler.graal.nodes.java.NewInstanceNode;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.hosted.analysis.NativeImagePointsToAnalysis;

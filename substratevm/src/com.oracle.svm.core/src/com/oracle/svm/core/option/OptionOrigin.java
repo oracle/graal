@@ -37,7 +37,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import org.graalvm.compiler.core.common.SuppressFBWarnings;
+import jdk.compiler.graal.core.common.SuppressFBWarnings;
 
 import com.oracle.svm.core.util.VMError;
 

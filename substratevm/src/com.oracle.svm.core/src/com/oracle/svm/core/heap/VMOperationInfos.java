@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.Map.Entry;
 import java.util.Objects;
 
-import org.graalvm.compiler.api.replacements.Fold;
+import jdk.compiler.graal.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

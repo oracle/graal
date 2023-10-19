@@ -67,10 +67,10 @@ import javax.lang.model.type.TypeMirror;
 import javax.lang.model.util.ElementFilter;
 
 /**
- * Processor for the
- * {@code org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal} annotation that
- * generates code to push JNI arguments to the stack and make a JNI call corresponding to a
- * {@code org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id}. This helps
+ * Processor for the {@code jdk.compiler.graal.truffle.common.hotspot.libgraal.TruffleFromLibGraal}
+ * annotation that generates code to push JNI arguments to the stack and make a JNI call
+ * corresponding to a
+ * {@code jdk.compiler.graal.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id}. This helps
  * mitigate bugs where incorrect arguments are pushed for a JNI call. Given the low level nature of
  * {@code org.graalvm.nativeimage.StackValue}, it's very hard to use runtime assertion checking.
  */
@@ -81,8 +81,8 @@ public class TruffleFromLibGraalProcessor extends BaseProcessor {
 
     /**
      * Captures the info defined by a
-     * {@code org.graalvm.compiler.truffle.common.hotspot.libgraal.TruffleFromLibGraal.Id} enum
-     * constant. That is, a method name, return type and parameter types.
+     * {@code com.oracle.truffle.compiler.hotspot.libgraal.TruffleFromLibGraal.Id} enum constant.
+     * That is, a method name, return type and parameter types.
      */
     static class Id {
 

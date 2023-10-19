@@ -26,8 +26,8 @@ package com.oracle.svm.core.reflect;
 
 import java.lang.reflect.Executable;
 
-import org.graalvm.compiler.nodes.NamedLocationIdentity;
-import org.graalvm.compiler.word.BarrieredAccess;
+import jdk.compiler.graal.nodes.NamedLocationIdentity;
+import jdk.compiler.graal.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;

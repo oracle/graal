@@ -26,11 +26,11 @@ package com.oracle.svm.hosted.code.aarch64;
 
 import java.util.function.Consumer;
 
-import org.graalvm.compiler.asm.Assembler.CodeAnnotation;
-import org.graalvm.compiler.asm.aarch64.AArch64Assembler.SingleInstructionAnnotation;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler;
-import org.graalvm.compiler.asm.aarch64.AArch64MacroAssembler.MovSequenceAnnotation.MovAction;
-import org.graalvm.compiler.code.CompilationResult;
+import jdk.compiler.graal.asm.Assembler.CodeAnnotation;
+import jdk.compiler.graal.asm.aarch64.AArch64Assembler.SingleInstructionAnnotation;
+import jdk.compiler.graal.asm.aarch64.AArch64MacroAssembler;
+import jdk.compiler.graal.asm.aarch64.AArch64MacroAssembler.MovSequenceAnnotation.MovAction;
+import jdk.compiler.graal.code.CompilationResult;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

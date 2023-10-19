@@ -29,11 +29,11 @@ package com.oracle.graal.pointsto.standalone;
 import java.util.Comparator;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.graalvm.compiler.java.GraphBuilderPhase;
-import org.graalvm.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import org.graalvm.compiler.nodes.graphbuilderconf.IntrinsicContext;
-import org.graalvm.compiler.options.OptionValues;
-import org.graalvm.compiler.phases.OptimisticOptimizations;
+import jdk.compiler.graal.java.GraphBuilderPhase;
+import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.compiler.graal.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.compiler.graal.options.OptionValues;
+import jdk.compiler.graal.phases.OptimisticOptimizations;
 
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.meta.AnalysisType;

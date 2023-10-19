@@ -30,7 +30,7 @@ import static com.oracle.svm.core.thread.VirtualThreadHelper.asThread;
 import java.util.Locale;
 import java.util.concurrent.Executor;
 
-import org.graalvm.compiler.serviceprovider.JavaVersionUtil;
+import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.Uninterruptible;

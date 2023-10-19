@@ -50,12 +50,12 @@ import static org.graalvm.jniutils.JNIUtil.createHSString;
 
 import java.util.function.Supplier;
 
-import org.graalvm.compiler.hotspot.CompilationContext;
-import org.graalvm.compiler.hotspot.HotSpotGraalServices;
-import org.graalvm.compiler.serviceprovider.IsolateUtil;
-import org.graalvm.compiler.truffle.compiler.TruffleCompilerOptions;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilationSupport;
-import org.graalvm.compiler.truffle.compiler.hotspot.HotSpotTruffleCompilerImpl;
+import jdk.compiler.graal.hotspot.CompilationContext;
+import jdk.compiler.graal.hotspot.HotSpotGraalServices;
+import jdk.compiler.graal.serviceprovider.IsolateUtil;
+import jdk.compiler.graal.truffle.TruffleCompilerOptions;
+import jdk.compiler.graal.truffle.hotspot.HotSpotTruffleCompilationSupport;
+import jdk.compiler.graal.truffle.hotspot.HotSpotTruffleCompilerImpl;
 import org.graalvm.jniutils.JNI.JByteArray;
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.graal.meta;
 
-import org.graalvm.compiler.core.common.NumUtil;
-import org.graalvm.compiler.word.Word;
+import jdk.compiler.graal.core.common.NumUtil;
+import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
