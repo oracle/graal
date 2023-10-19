@@ -31,8 +31,10 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
+import org.graalvm.compiler.core.common.NumUtil;
 import org.graalvm.compiler.core.common.RetryableBailoutException;
 import org.graalvm.compiler.core.common.calc.CanonicalCondition;
+import org.graalvm.compiler.core.common.type.IntegerStamp;
 import org.graalvm.compiler.debug.DebugContext;
 import org.graalvm.compiler.graph.Graph.Mark;
 import org.graalvm.compiler.graph.Graph.NodeEventScope;
@@ -735,6 +737,17 @@ public abstract class LoopTransformations {
         return condition.hasMoreThanOneUsage();
     }
 
+    public static boolean strideAdditionOverflows(LoopEx loop) {
+        final int bits = ((IntegerStamp) loop.counted().getLimitCheckedIV().valueNode().stamp(NodeView.DEFAULT)).getBits();
+        long stride = loop.counted().getLimitCheckedIV().constantStride();
+        try {
+            NumUtil.addExact(stride, stride, bits);
+            return false;
+        } catch (ArithmeticException ae) {
+            return true;
+        }
+    }
+
     public static boolean isUnrollableLoop(LoopEx loop) {
         if (!loop.isCounted() || !loop.counted().getLimitCheckedIV().isConstantStride() || !loop.loop().getChildren().isEmpty() || loop.loopBegin().loopEnds().count() != 1 ||
                         loop.loopBegin().loopExits().count() > 1 || loop.counted().isInverted()) {
@@ -755,11 +768,8 @@ public abstract class LoopTransformations {
         if (countedLoopExitConditionHasMultipleUsages(loop)) {
             return false;
         }
-        long stride = loop.counted().getLimitCheckedIV().constantStride();
-        try {
-            Math.addExact(stride, stride);
-        } catch (ArithmeticException ae) {
-            condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s doubling the stride overflows %d", loopBegin, stride);
+        if (strideAdditionOverflows(loop)) {
+            condition.getDebug().log(DebugContext.VERBOSE_LEVEL, "isUnrollableLoop %s doubling the stride overflows %d", loopBegin, loop.counted().getLimitCheckedIV().constantStride());
             return false;
         }
         if (!loop.canDuplicateLoop()) {
