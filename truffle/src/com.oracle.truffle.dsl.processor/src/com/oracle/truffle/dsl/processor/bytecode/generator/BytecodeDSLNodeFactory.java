@@ -1155,7 +1155,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
 
         CodeTreeBuilder b = ex.createBuilder();
         if (model.needsBciSlot()) {
-            b.startReturn().string("ACCESS.getInt(frame, " + BCI_IDX + ")").end();
+            /*
+             * NB: we cannot use ACCESS here. The unsafe accessor expects the frame to be a
+             * FrameWithoutBoxing, but it can be a ReadOnlyFrame if it comes from a stack trace.
+             */
+            b.startReturn().string("frame.getInt(" + BCI_IDX + ")").end();
         } else {
             b.lineComment("The bci is not stored in the frame.");
             b.startReturn().string("-1").end();
