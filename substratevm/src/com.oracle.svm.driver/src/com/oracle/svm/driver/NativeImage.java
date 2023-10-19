@@ -268,8 +268,6 @@ public class NativeImage {
     final String oHInspectServerContentPath = oH(PointstoOptions.InspectServerContentPath);
     final String oHDeadlockWatchdogInterval = oH(SubstrateOptions.DeadlockWatchdogInterval);
 
-    static final String oHNumberOfThreads = oH(SubstrateOptions.NumberOfThreads);
-
     final Map<String, String> imageBuilderEnvironment = new HashMap<>();
     private final ArrayList<String> imageBuilderArgs = new ArrayList<>();
     private final LinkedHashSet<Path> imageBuilderModulePath = new LinkedHashSet<>();
@@ -1095,20 +1093,6 @@ public class NativeImage {
         }
         imageClasspath.addAll(customImageClasspath);
 
-        Integer maxNumberOfThreads = getMaxNumberOfThreads();
-        if (maxNumberOfThreads != null) {
-            if (maxNumberOfThreads >= 1) {
-                /*
-                 * maxNumberOfThreads - 1 because the main thread always helps to process tasks. In
-                 * single-threaded mode (parallelism=0 for common pool), only the main thread
-                 * processes tasks.
-                 */
-                imageBuilderJavaArgs.add("-Djava.util.concurrent.ForkJoinPool.common.parallelism=" + (maxNumberOfThreads - 1));
-            } else {
-                throw showError("The number of threads was set to " + maxNumberOfThreads + ". Please set the '--parallelism' option to at least 1.");
-            }
-        }
-
         /*
          * Work around "JDK-8315810: Reimplement
          * sun.reflect.ReflectionFactory::newConstructorForSerialization with method handles"
@@ -1357,20 +1341,6 @@ public class NativeImage {
             }
         }
         return result;
-    }
-
-    private Integer getMaxNumberOfThreads() {
-        String numberOfThreadsValue = getHostedOptionFinalArgumentValue(imageBuilderArgs, oHNumberOfThreads);
-        if (numberOfThreadsValue != null) {
-            try {
-                return Integer.parseInt(numberOfThreadsValue);
-            } catch (NumberFormatException e) {
-                /* Validated already by CommonOptionParser. */
-                throw VMError.shouldNotReachHere(e);
-            }
-        } else {
-            return null;
-        }
     }
 
     private boolean shouldAddCWDToCP() {

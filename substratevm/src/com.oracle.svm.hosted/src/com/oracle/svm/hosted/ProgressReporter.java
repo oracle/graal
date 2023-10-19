@@ -392,13 +392,13 @@ public class ProgressReporter {
             maxHeapSuffix = "set via '%s'".formatted(xmxValueOrNull);
         }
 
-        int maxNumberOfThreads = SubstrateOptions.NumberOfThreads.getValue();
+        int maxNumberOfThreads = NativeImageOptions.getActualNumberOfThreads();
         recordJsonMetric(ResourceUsageKey.PARALLELISM, maxNumberOfThreads);
         int availableProcessors = runtime.availableProcessors();
         recordJsonMetric(ResourceUsageKey.CPU_CORES_TOTAL, availableProcessors);
         String maxNumberOfThreadsSuffix = "determined at start";
-        if (SubstrateOptions.NumberOfThreads.hasBeenSet()) {
-            maxNumberOfThreadsSuffix = "set via '%s'".formatted(SubstrateOptionsParser.commandArgument(SubstrateOptions.NumberOfThreads, Integer.toString(maxNumberOfThreads)));
+        if (NativeImageOptions.NumberOfThreads.hasBeenSet()) {
+            maxNumberOfThreadsSuffix = "set via '%s'".formatted(SubstrateOptionsParser.commandArgument(NativeImageOptions.NumberOfThreads, Integer.toString(maxNumberOfThreads)));
         }
 
         l().printLineSeparator();
