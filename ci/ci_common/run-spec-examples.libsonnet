@@ -245,7 +245,7 @@ local r      = import "run-spec.libsonnet";
       };
       local _input = {
         "job": _impl.generate_variants({
-          // ! is a wildcard for selecting all feature values
+          // ! can be used to exclude individual values from all feature values
           "benchmarks:!specjbb2005:!jolden": {
             // run all benchmarks but specjbb2005 and jolden
             "linux": {
