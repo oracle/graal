@@ -151,7 +151,7 @@ local common_json = import "../common.json";
 
     local code_tools = {
       downloads+: if 'jdk_version' in self && self.jdk_version > 21 then {
-        EXTRA_JAVA_HOMES: jdks_data['oraclejdk21'],
+        TOOLS_JAVA_HOME: jdks_data['oraclejdk21'],
       } else {},
     },
     # GR-46676: ProGuard does not yet run on JDK 22
