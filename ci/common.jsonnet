@@ -26,7 +26,7 @@ local common_json = import "../common.json";
   local variants(name) = [name, name + "Debug", name + "-llvm"],
   # gets the JDK major version from a labsjdk version string (e.g., "ce-21+35-jvmci-23.1-b15" -> 21)
   local parse_labsjdk_version(jdk) =
-    if jdk.name == "jpg-jdk" then jdk.version else
+    if jdk.name == "jpg-jdk" then std.parseInt(jdk.version) else
     local version = jdk.version;
     assert std.startsWith(version, "ce-") || std.startsWith(version, "ee-") : "Unsupported labsjdk version: " + version;
     local number_prefix(str) =
@@ -148,6 +148,16 @@ local common_json = import "../common.json";
         LC_ALL: "en_US.UTF-8",
       } else {},
     },
+
+    local code_tools = {
+      downloads+: if 'jdk_version' in self && self.jdk_version > 21 then {
+        EXTRA_JAVA_HOMES: jdks_data['oraclejdk21'],
+      } else {},
+    },
+    # GR-46676: ProGuard does not yet run on JDK 22
+    proguard: code_tools,
+    # GR-49566: SpotBugs does not yet run on JDK 22
+    spotbugs: code_tools,
 
     sulong:: {
       packages+: {
