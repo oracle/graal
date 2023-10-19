@@ -65,13 +65,14 @@ import com.oracle.truffle.api.source.SourceSection;
 @RunWith(Parameterized.class)
 public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTest {
     public void assumeTestIsApplicable() {
-        // TODO: readBciFromFrame should not use the FastAccess field, because the frame may be a
-        // ReadOnlyFrame, which does not support Unsafe accesses.
-        assumeTrue(interpreterClass != BytecodeDSLExampleUnsafe.class && interpreterClass != BytecodeDSLExampleProduction.class);
-        // TODO: BytecodeRootNode#findBci does not handle ContinuationRootNodes properly. Since the
-        // API will change with GR-49484 (we'll need to generate code for each root node instead of
-        // using a static method) we can fix it then.
-        assumeTrue(interpreterClass != BytecodeDSLExampleWithUncached.class);
+        /*
+         * TODO: BytecodeRootNode#findBci does not check for ContinuationRootNodes in the uncached
+         * case. Since these nodes do not have a parent interface, we cannot distinguish them in the
+         * static method. We can wait until GR-49484 lands to fix this, since we'll need to generate
+         * a findBytecodeIndex method on the generated node anyway (and it can reference a specific
+         * ContinuationRootNode).
+         */
+        assumeTrue(interpreterClass != BytecodeDSLExampleWithUncached.class && interpreterClass != BytecodeDSLExampleProduction.class);
         // TODO: we currently do not have a way to serialize Sources.
         assumeFalse(testSerialize);
     }
