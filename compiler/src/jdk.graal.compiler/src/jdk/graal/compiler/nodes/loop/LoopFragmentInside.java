@@ -28,6 +28,20 @@ import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
 
+import org.graalvm.collections.EconomicMap;
+import org.graalvm.collections.Equivalence;
+
+import jdk.graal.compiler.core.common.type.IntegerStamp;
+import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Graph.DuplicationReplacement;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeBitMap;
+import jdk.graal.compiler.graph.Position;
+import jdk.graal.compiler.graph.iterators.NodeIterable;
+import jdk.graal.compiler.loop.phases.LoopTransformations;
+import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractEndNode;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
@@ -71,18 +85,6 @@ import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.memory.MemoryPhiNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.nodes.util.IntegerHelper;
-import org.graalvm.collections.EconomicMap;
-import org.graalvm.collections.Equivalence;
-import jdk.graal.compiler.core.common.type.IntegerStamp;
-import jdk.graal.compiler.debug.DebugCloseable;
-import jdk.graal.compiler.debug.DebugContext;
-import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.graph.Graph.DuplicationReplacement;
-import jdk.graal.compiler.graph.Node;
-import jdk.graal.compiler.graph.NodeBitMap;
-import jdk.graal.compiler.graph.Position;
-import jdk.graal.compiler.graph.iterators.NodeIterable;
-import jdk.graal.compiler.nodeinfo.InputType;
 
 public class LoopFragmentInside extends LoopFragment {
 
@@ -231,7 +233,7 @@ public class LoopFragmentInside extends LoopFragment {
                 opaqueUnrolledStrides.put(loop.loopBegin(), opaque);
             } else {
                 assert counted.getLimitCheckedIV().isConstantStride();
-                assert Math.addExact(counted.getLimitCheckedIV().constantStride(), counted.getLimitCheckedIV().constantStride()) == counted.getLimitCheckedIV().constantStride() * 2;
+                assert !LoopTransformations.strideAdditionOverflows(loop) : "Stride addition must not overflow";
                 ValueNode previousValue = opaque.getValue();
                 opaque.setValue(graph.addOrUniqueWithInputs(AddNode.add(counterStride, previousValue, NodeView.DEFAULT)));
                 GraphUtil.tryKillUnused(previousValue);
