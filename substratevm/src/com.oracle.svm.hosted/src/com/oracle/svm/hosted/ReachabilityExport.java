@@ -56,8 +56,6 @@ import com.oracle.svm.hosted.classinitialization.InitKind;
 import com.oracle.svm.hosted.jni.JNIAccessFeature;
 import com.oracle.svm.hosted.reflect.ReflectionHostedSupport;
 
-import jdk.vm.ci.meta.MetaUtil;
-
 public class ReachabilityExport {
     private static class Method {
         public final boolean reflection;
@@ -334,9 +332,6 @@ public class ReachabilityExport {
         assert tlo.isSystem == isSystemCode : "Class loader is expected to be the same for all classes of the module.";
         Package p = tlo.packages.computeIfAbsent(type.getJavaClass().getPackageName(), name -> new Package());
 
-        // TODO: Remove once name fix has been merged from main
-        String stableNameUnqualified = MetaUtil.internalNameToJava(type.getName(), false, false);
-
-        return p.types.computeIfAbsent(stableNameUnqualified, name -> new Type(type, classInitKinds, reflectionTypes, jniTypes));
+        return p.types.computeIfAbsent(type.toJavaName(false), name -> new Type(type, classInitKinds, reflectionTypes, jniTypes));
     }
 }
