@@ -24,8 +24,18 @@
  */
 package com.oracle.svm.hosted;
 
-import com.oracle.graal.pointsto.BigBang;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
 import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.reports.AnalysisReportsOptions;
 import com.oracle.graal.pointsto.reports.causality.CausalityExport;
 import com.oracle.svm.core.BuildArtifacts;
@@ -34,17 +44,7 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionValues;
 import com.oracle.svm.core.util.VMError;
-import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.Feature;
-
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
+import com.oracle.svm.core.util.json.JsonWriter;
 
 @AutomaticallyRegisteredFeature
 public class CausalityExporter implements InternalFeature {
@@ -54,13 +54,6 @@ public class CausalityExporter implements InternalFeature {
                     .resolve(SubstrateOptions.Name.getValue() + ".cg.zip");
 
     private ZipOutputStream zip;
-
-    @Override
-    public List<Class<? extends Feature>> getRequiredFeatures() {
-        ArrayList<Class<? extends Feature>> a = new ArrayList<>();
-        a.add(ReachabilityExporter.class);
-        return a;
-    }
 
     @Override
     public boolean isInConfiguration(IsInConfigurationAccess access) {
@@ -90,12 +83,12 @@ public class CausalityExporter implements InternalFeature {
 
     @Override
     public void afterAnalysis(AfterAnalysisAccess access) {
-        BigBang bb = ((FeatureImpl.AfterAnalysisAccessImpl) access).bb;
+        var accessImpl = (FeatureImpl.AfterAnalysisAccessImpl) access;
 
         try {
             try {
                 zip = new ZipOutputStream(new FileOutputStream(targetPath.toFile()));
-                CausalityExport.dump((PointsToAnalysis) bb, zip, AnalysisReportsOptions.CausalityGraphVerbose.getValue(HostedOptionValues.singleton()));
+                CausalityExport.dump((PointsToAnalysis) accessImpl.bb, zip, AnalysisReportsOptions.CausalityGraphVerbose.getValue(HostedOptionValues.singleton()));
             } catch (IOException ex) {
                 if (zip != null) {
                     zip.close();
@@ -109,23 +102,35 @@ public class CausalityExporter implements InternalFeature {
         }
 
         if (NativeImageOptions.ExitAfterAnalysis.getValue()) {
-            addReachabilityFileAndFinalize();
+            addReachabilityFileAndFinalize(new ReachabilityExport(accessImpl.getUniverse(), m -> 0));
         }
     }
 
     @Override
     public void afterCompilation(AfterCompilationAccess access) {
         if (zip != null) {
-            addReachabilityFileAndFinalize();
+            FeatureImpl.AfterCompilationAccessImpl accessImpl = (FeatureImpl.AfterCompilationAccessImpl) access;
+            Map<AnalysisMethod, Integer> compilations = new HashMap<>();
+            for (var pair : accessImpl.getCompilations().entrySet()) {
+                compilations.compute(pair.getKey().getWrapped(), (m, size) -> {
+                    if (size == null) {
+                        size = 0;
+                    }
+                    size += pair.getValue().result.getTargetCodeSize();
+                    return size;
+                });
+            }
+
+            addReachabilityFileAndFinalize(new ReachabilityExport(accessImpl.aUniverse, compilations::get));
         }
     }
 
-    private void addReachabilityFileAndFinalize() {
-        ReachabilityExporter reachabilityExporter = ImageSingletons.lookup(ReachabilityExporter.class);
-
+    private void addReachabilityFileAndFinalize(ReachabilityExport export) {
         try {
             zip.putNextEntry(new ZipEntry("reachability.json"));
-            Files.copy(reachabilityExporter.reachabilityJsonPath, zip);
+            try (JsonWriter writer = new JsonWriter(new OutputStreamWriter(zip))) {
+                export.write(writer);
+            }
         } catch (IOException ex) {
             throw VMError.shouldNotReachHere("Failed to create Causality Export: reachability.json", ex);
         } finally {
