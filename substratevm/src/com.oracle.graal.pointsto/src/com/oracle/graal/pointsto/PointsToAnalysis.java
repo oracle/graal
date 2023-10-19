@@ -37,8 +37,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Consumer;
@@ -75,7 +73,6 @@ import com.oracle.graal.pointsto.util.Timer.StopTimer;
 import com.oracle.graal.pointsto.util.TimerCollection;
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.util.ClassUtil;
-import com.oracle.svm.util.ImageGeneratorThreadMarker;
 
 import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import jdk.graal.compiler.debug.DebugContext;
@@ -721,23 +718,6 @@ public abstract class PointsToAnalysis extends AbstractAnalysisEngine {
             System.out.format("%5d %5d %5d  |", numParsedGraphs.get(), StreamSupport.stream(getAllInstantiatedTypes().spliterator(), false).count(), universe.getNextTypeId());
             super.print();
             System.out.println();
-        }
-    }
-
-    private static class SubstrateWorkerThread extends ForkJoinWorkerThread
-                    implements ImageGeneratorThreadMarker {
-        private final DebugContext debug;
-
-        SubstrateWorkerThread(ForkJoinPool pool, DebugContext debug) {
-            super(pool);
-            this.debug = debug;
-        }
-
-        @Override
-        protected void onTermination(Throwable exception) {
-            if (debug != null) {
-                debug.closeDumpHandlers(true);
-            }
         }
     }
 }
