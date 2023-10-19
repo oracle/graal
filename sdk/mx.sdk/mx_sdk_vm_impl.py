@@ -1230,7 +1230,7 @@ class SvmSupport(object):
             if not self.__class__.has_search_tool:
                 mx.abort(f"Searching for strings requires '{self.__class__.search_tool}' executable.")
             try:
-                strings_in_image = subprocess.check_output([self.__class__.search_tool, output_file], stderr=None, text=True).strip().split('\n')
+                strings_in_image = subprocess.check_output([self.__class__.search_tool, output_file], stderr=None).decode().strip().split('\n')
                 bad_strings = (output_directory, dirname(native_image_bin))
                 for entry in strings_in_image:
                     for bad_string in bad_strings:
