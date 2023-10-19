@@ -1213,7 +1213,7 @@ class SvmSupport(object):
     search_tool = 'strings'
     has_search_tool = shutil.which(search_tool) is not None
 
-    def native_image(self, build_args, output_file, allow_server=False, nonZeroIsFatal=True, out=None, err=None, find_bad_strings=False):
+    def native_image(self, build_args, output_file, out=None, err=None, find_bad_strings=False):
         assert self._svm_supported
         stage1 = get_stage1_graalvm_distribution()
         native_image_project_name = GraalVmLauncher.launcher_project_name(mx_sdk.LauncherConfig(mx.exe_suffix('native-image'), [], "", []), stage1=True)
@@ -1224,7 +1224,7 @@ class SvmSupport(object):
             '-H:Path=' + output_directory or ".",
         ])
 
-        retcode = mx.run(native_image_command, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err)
+        mx.run(native_image_command, nonZeroIsFatal=True, out=out, err=err)
 
         if find_bad_strings and not mx.is_windows():
             if not self.__class__.has_search_tool:
@@ -1239,8 +1239,6 @@ class SvmSupport(object):
 
             except subprocess.CalledProcessError:
                 mx.abort(f"Using '{self.__class__.search_tool}' to search for strings in native image {output_file} failed.")
-
-        return retcode
 
     def is_debug_supported(self):
         return self._debug_supported
