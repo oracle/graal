@@ -3985,7 +3985,12 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             pushResult(frame, stackPointer, resultType, result);
             return stackPointer + 1;
         } else {
-            extractMultiValueResult(frame, stackPointer, result, resultCount, function.typeIndex(), language);
+            final int functionTypeIndex = function.typeIndex();
+            if (!function.isImported() || result == WasmConstant.MULTI_VALUE) {
+                extractMultiValueResultInternal(frame, stackPointer, result, resultCount, functionTypeIndex, language);
+            } else {
+                extractMultiValueResultExternal(frame, stackPointer, result, resultCount, functionTypeIndex);
+            }
             return stackPointer + resultCount;
         }
     }
