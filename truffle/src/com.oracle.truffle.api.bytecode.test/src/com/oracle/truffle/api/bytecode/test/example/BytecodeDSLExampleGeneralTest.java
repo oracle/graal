@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.api.bytecode.test.example;
 
-import static com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleCommon.parseNode;
-import static com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleCommon.hasBE;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 
@@ -54,6 +52,8 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.bytecode.BytecodeLabel;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
 import com.oracle.truffle.api.bytecode.introspection.Instruction;
+import com.oracle.truffle.api.instrumentation.StandardTags.ExpressionTag;
+import com.oracle.truffle.api.instrumentation.StandardTags.StatementTag;
 import com.oracle.truffle.api.bytecode.introspection.BytecodeIntrospection;
 
 @RunWith(Parameterized.class)
@@ -900,7 +900,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
 
     @Test
     public void testIntrospectionData() {
-        BytecodeDSLExample node = parseNode(interpreterClass, "introspectionData", b -> {
+        BytecodeDSLExample node = parseNode("introspectionData", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -927,10 +927,32 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
     }
 
     @Test
+    public void testTags() {
+        RootCallTarget root = parse("tags", b -> {
+            b.beginRoot(null);
+
+            b.beginReturn();
+            b.beginAddOperation();
+            b.beginTag(ExpressionTag.class, StatementTag.class);
+            b.emitLoadConstant(1L);
+            b.endTag();
+            b.beginTag(ExpressionTag.class);
+            b.emitLoadConstant(2L);
+            b.endTag();
+            b.endAddOperation();
+            b.endReturn();
+
+            b.endRoot();
+        });
+
+        assertEquals(3L, root.call());
+    }
+
+    @Test
     public void testCloneUninitializedAdd() {
         // return arg0 + arg1;
 
-        BytecodeDSLExample node = parseNode(interpreterClass, "cloneUninitializedAdd", b -> {
+        BytecodeDSLExample node = parseNode("cloneUninitializedAdd", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -966,7 +988,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
 
     @Test
     public void testCloneUninitializedFields() {
-        BytecodeDSLExample node = parseNode(interpreterClass, "cloneUninitializedFields", b -> {
+        BytecodeDSLExample node = parseNode("cloneUninitializedFields", b -> {
             b.beginRoot(LANGUAGE);
             emitReturn(b, 0);
             b.endRoot();
@@ -979,7 +1001,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
     @Test
     @Ignore
     public void testDecisionQuicken() {
-        BytecodeDSLExample node = parseNode(interpreterClass, "decisionQuicken", b -> {
+        BytecodeDSLExample node = parseNode("decisionQuicken", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();
@@ -1008,7 +1030,7 @@ public class BytecodeDSLExampleGeneralTest extends AbstractBytecodeDSLExampleTes
     @Test
     @Ignore
     public void testDecisionSuperInstruction() {
-        BytecodeDSLExample node = parseNode(interpreterClass, "decisionSuperInstruction", b -> {
+        BytecodeDSLExample node = parseNode("decisionSuperInstruction", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginReturn();

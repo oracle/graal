@@ -40,29 +40,16 @@
  */
 package com.oracle.truffle.api.bytecode.test.example;
 
-import static com.oracle.truffle.api.bytecode.test.example.BytecodeDSLExampleCommon.parseNode;
 import static org.junit.Assert.assertArrayEquals;
-
-import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
-import org.junit.runners.Parameterized.Parameter;
-import org.junit.runners.Parameterized.Parameters;
 
 import com.oracle.truffle.api.frame.Frame;
 
 @RunWith(Parameterized.class)
-public class BytecodeDSLExampleCopyLocalsTest {
-    protected static final BytecodeDSLExampleLanguage LANGUAGE = null;
-
-    @Parameters(name = "{0}")
-    public static List<Class<? extends BytecodeDSLExample>> getInterpreterClasses() {
-        return BytecodeDSLExampleCommon.allInterpreters();
-    }
-
-    @Parameter(0) public Class<? extends BytecodeDSLExample> interpreterClass;
+public class BytecodeDSLExampleCopyLocalsTest extends AbstractBytecodeDSLExampleTest {
 
     @Test
     public void testCopyAllLocals() {
@@ -77,7 +64,7 @@ public class BytecodeDSLExampleCopyLocalsTest {
          * @formatter:on
          */
 
-        BytecodeDSLExample foo = parseNode(interpreterClass, "foo", b -> {
+        BytecodeDSLExample foo = parseNode("foo", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginBlock();
@@ -123,7 +110,7 @@ public class BytecodeDSLExampleCopyLocalsTest {
          * @formatter:on
          */
 
-        BytecodeDSLExample foo = parseNode(interpreterClass, "foo", b -> {
+        BytecodeDSLExample foo = parseNode("foo", b -> {
             b.beginRoot(LANGUAGE);
 
             b.beginBlock();
@@ -142,7 +129,7 @@ public class BytecodeDSLExampleCopyLocalsTest {
 
             b.beginReturn();
             b.beginCopyLocalsToFrame();
-            b.emitLoadConstant(2);
+            b.emitLoadConstant(2L);
             b.endCopyLocalsToFrame();
             b.endReturn();
 

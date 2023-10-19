@@ -2175,6 +2175,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     serializationElements.writeShort(b, serializationElements.codeCreateLocal);
                     // TODO: serialize slot, name, info
                 });
+                b.startReturn().startNew(bytecodeLocalImpl.asType()).string("numLocals++").end(2);
                 b.end();
             }
 
