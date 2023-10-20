@@ -27,7 +27,7 @@ Truffle host inlining leverages these properties and forces inlining during host
 The general assumption is that code important for runtime compilation is also important for interpreter execution.
 Whenever a PE boundary is detected, the host inlining phase no longer makes any inlining decisions and defers them to later inlining phases better suited for regular Java code.
 
-The source code for this phase can be found in [HostInliningPhase](../../compiler/src/jdk.compiler.graal/src/jdk/compiler/graal/truffle/host/HostInliningPhase.java).
+The source code for this phase can be found in [HostInliningPhase](https://github.com/oracle/graal/blob/master/compiler/src/jdk.compiler.graal/src/jdk/compiler/graal/truffle/host/HostInliningPhase.java).
 
 Truffle host inlining is applied when compiling a method annotated with `@HostCompilerDirectives.BytecodeInterpreterSwitch`.
 The maximum node cost for such methods can be configured using `-H:TruffleHostInliningByteCodeInterpreterBudget=100000` for native images and `-Dgraal.TruffleHostInliningByteCodeInterpreterBudget=100000` on HotSpot. 
@@ -374,4 +374,3 @@ RuntimeException invalidZeroArgument(int argument) {
 }
 
 ```
-
