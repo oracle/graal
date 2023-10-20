@@ -53,7 +53,7 @@ local graal_suite_root = root_ci.graal_suite_root;
   },
 
   windows_common:: {
-    packages+: $.devkits["windows-" + (if self.jdk_name == "jdk-latest" then "jdkLatest" else self.jdk_name)].packages,
+    packages+: $.devkits["windows-" + self.jdk_name].packages,
   },
 
   windows_amd64:: common.windows_amd64 + self.windows_common,
