@@ -34,15 +34,14 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
+import com.oracle.graal.pointsto.BigBang;
+
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugContext.Activation;
 import jdk.graal.compiler.debug.DebugContext.Description;
 import jdk.graal.compiler.debug.DebugContext.Scope;
 import jdk.graal.compiler.debug.DebugHandlersFactory;
 import jdk.graal.compiler.options.OptionValues;
-
-import com.oracle.graal.pointsto.BigBang;
-
 import jdk.vm.ci.common.JVMCIError;
 
 /**
@@ -62,8 +61,6 @@ public class CompletionExecutor {
     private final LongAdder completedOperations;
     private List<DebugContextRunnable> postedBeforeStart;
     private final CopyOnWriteArrayList<Throwable> exceptions = new CopyOnWriteArrayList<>();
-
-    private final ForkJoinPool executorService;
 
     private final DebugContext debug;
     private final BigBang bb;
@@ -85,7 +82,6 @@ public class CompletionExecutor {
     public CompletionExecutor(DebugContext debugContext, BigBang bb) {
         this.debug = debugContext.areScopesEnabled() || debugContext.areMetricsEnabled() ? debugContext : null;
         this.bb = bb;
-        executorService = ForkJoinPool.commonPool();
         state = new AtomicReference<>(State.UNUSED);
         postedOperations = new LongAdder();
         completedOperations = new LongAdder();
@@ -155,7 +151,7 @@ public class CompletionExecutor {
     }
 
     private void executeService(DebugContextRunnable command) {
-        executorService.execute(() -> executeCommand(command));
+        ForkJoinPool.commonPool().execute(() -> executeCommand(command));
     }
 
     @SuppressWarnings("try")
@@ -211,7 +207,7 @@ public class CompletionExecutor {
             while (true) {
                 assert state.get() == State.STARTED : state.get();
 
-                boolean quiescent = executorService.awaitQuiescence(100, TimeUnit.MILLISECONDS);
+                boolean quiescent = ForkJoinPool.commonPool().awaitQuiescence(100, TimeUnit.MILLISECONDS);
                 if (timing != null && !quiescent) {
                     long curTime = System.nanoTime();
                     if (curTime - lastPrint > timing.getPrintIntervalNanos()) {
@@ -247,7 +243,7 @@ public class CompletionExecutor {
     }
 
     public void shutdown() {
-        assert !executorService.hasQueuedSubmissions() : "There should be no queued submissions on shutdown.";
+        assert !ForkJoinPool.commonPool().hasQueuedSubmissions() : "There should be no queued submissions on shutdown.";
         assert completedOperations.sum() == postedOperations.sum() : "Posted operations (" + postedOperations.sum() + ") must match completed (" + completedOperations.sum() + ") operations";
         setState(State.UNUSED);
     }
