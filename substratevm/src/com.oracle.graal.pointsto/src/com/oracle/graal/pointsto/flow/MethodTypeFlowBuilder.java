@@ -34,8 +34,42 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import org.graalvm.nativeimage.AnnotationAccess;
+
+import com.oracle.graal.pointsto.AbstractAnalysisEngine;
+import com.oracle.graal.pointsto.ObjectScanner.EmbeddedRootScan;
+import com.oracle.graal.pointsto.PointsToAnalysis;
+import com.oracle.graal.pointsto.api.PointstoOptions;
+import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.MethodFlowsGraph.GraphKind;
+import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafeLoadTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafePartitionLoadTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.StoreIndexedTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafePartitionStoreTypeFlow;
+import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
+import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreStaticFieldTypeFlow;
+import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
+import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
+import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.graal.pointsto.meta.AnalysisType;
+import com.oracle.graal.pointsto.meta.HostedProviders;
+import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
+import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
+import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
+import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
+import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
+import com.oracle.graal.pointsto.results.StrengthenGraphs;
+import com.oracle.graal.pointsto.typestate.TypeState;
+import com.oracle.graal.pointsto.util.AnalysisError;
+import com.oracle.svm.common.meta.MultiMethod;
+
 import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
 import jdk.compiler.graal.core.common.spi.ForeignCallsProvider;
+import jdk.compiler.graal.core.common.type.AbstractObjectStamp;
 import jdk.compiler.graal.core.common.type.ObjectStamp;
 import jdk.compiler.graal.core.common.type.TypeReference;
 import jdk.compiler.graal.debug.DebugContext;
@@ -110,39 +144,6 @@ import jdk.compiler.graal.replacements.nodes.MacroInvokable;
 import jdk.compiler.graal.replacements.nodes.ObjectClone;
 import jdk.compiler.graal.replacements.nodes.UnaryMathIntrinsicNode;
 import jdk.compiler.graal.virtual.phases.ea.PartialEscapePhase;
-import org.graalvm.nativeimage.AnnotationAccess;
-
-import com.oracle.graal.pointsto.AbstractAnalysisEngine;
-import com.oracle.graal.pointsto.ObjectScanner.EmbeddedRootScan;
-import com.oracle.graal.pointsto.PointsToAnalysis;
-import com.oracle.graal.pointsto.api.PointstoOptions;
-import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadInstanceFieldTypeFlow;
-import com.oracle.graal.pointsto.flow.LoadFieldTypeFlow.LoadStaticFieldTypeFlow;
-import com.oracle.graal.pointsto.flow.MethodFlowsGraph.GraphKind;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.LoadIndexedTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafeLoadTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetLoadTypeFlow.UnsafePartitionLoadTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.StoreIndexedTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafePartitionStoreTypeFlow;
-import com.oracle.graal.pointsto.flow.OffsetStoreTypeFlow.UnsafeStoreTypeFlow;
-import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreInstanceFieldTypeFlow;
-import com.oracle.graal.pointsto.flow.StoreFieldTypeFlow.StoreStaticFieldTypeFlow;
-import com.oracle.graal.pointsto.flow.builder.TypeFlowBuilder;
-import com.oracle.graal.pointsto.flow.builder.TypeFlowGraphBuilder;
-import com.oracle.graal.pointsto.meta.AnalysisField;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.graal.pointsto.meta.AnalysisType;
-import com.oracle.graal.pointsto.meta.HostedProviders;
-import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.graal.pointsto.nodes.UnsafePartitionLoadNode;
-import com.oracle.graal.pointsto.nodes.UnsafePartitionStoreNode;
-import com.oracle.graal.pointsto.phases.InlineBeforeAnalysis;
-import com.oracle.graal.pointsto.results.StaticAnalysisResultsBuilder;
-import com.oracle.graal.pointsto.results.StrengthenGraphs;
-import com.oracle.graal.pointsto.typestate.TypeState;
-import com.oracle.graal.pointsto.util.AnalysisError;
-import com.oracle.svm.common.meta.MultiMethod;
-
 import jdk.vm.ci.code.BytecodePosition;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
@@ -1041,8 +1042,7 @@ public class MethodTypeFlowBuilder {
 
                 state.add(node, newArrayBuilder);
 
-            } else if (n instanceof LoadFieldNode) { // value = object.field
-                LoadFieldNode node = (LoadFieldNode) n;
+            } else if (n instanceof LoadFieldNode node) { // value = object.field
                 AnalysisField field = (AnalysisField) node.field();
                 assert field.isAccessed() : field;
                 if (node.getStackKind() == JavaKind.Object) {
@@ -1069,12 +1069,17 @@ public class MethodTypeFlowBuilder {
                     }
                     state.add(node, loadFieldBuilder);
                 }
+                if (node.object() != null) {
+                    processImplicitNonNull(node.object(), state);
+                }
 
-            } else if (n instanceof StoreFieldNode) { // object.field = value
-                processStoreField((StoreFieldNode) n, state);
+            } else if (n instanceof StoreFieldNode node) { // object.field = value
+                processStoreField(node, state);
+                if (node.object() != null) {
+                    processImplicitNonNull(node.object(), state);
+                }
 
-            } else if (n instanceof LoadIndexedNode) {
-                LoadIndexedNode node = (LoadIndexedNode) n;
+            } else if (n instanceof LoadIndexedNode node) {
                 TypeFlowBuilder<?> arrayBuilder = state.lookup(node.array());
                 if (node.getStackKind() == JavaKind.Object) {
                     AnalysisType type = (AnalysisType) StampTool.typeOrNull(node.array(), bb.getMetaAccess());
@@ -1092,9 +1097,11 @@ public class MethodTypeFlowBuilder {
                     loadIndexedBuilder.addObserverDependency(arrayBuilder);
                     state.add(node, loadIndexedBuilder);
                 }
+                processImplicitNonNull(node.array(), state);
 
-            } else if (n instanceof StoreIndexedNode) {
-                processStoreIndexed((StoreIndexedNode) n, state);
+            } else if (n instanceof StoreIndexedNode node) {
+                processStoreIndexed(node, state);
+                processImplicitNonNull(node.array(), state);
 
             } else if (n instanceof UnsafePartitionLoadNode) {
                 UnsafePartitionLoadNode node = (UnsafePartitionLoadNode) n;
@@ -1309,13 +1316,17 @@ public class MethodTypeFlowBuilder {
 
             } else if (n instanceof InvokeNode || n instanceof InvokeWithExceptionNode) {
                 Invoke invoke = (Invoke) n;
-                if (invoke.callTarget() instanceof MethodCallTargetNode) {
+                if (invoke.callTarget() instanceof MethodCallTargetNode target) {
                     guarantee(bb.strengthenGraalGraphs() || invoke.stateAfter().outerFrameState() == null,
                                     "Outer FrameState of %s must be null, but was %s. A non-null outer FrameState indicates that a method inlining has happened, but inlining should only happen after analysis.",
                                     invoke.stateAfter(), invoke.stateAfter().outerFrameState());
-                    MethodCallTargetNode target = (MethodCallTargetNode) invoke.callTarget();
 
-                    processMethodInvocation(state, invoke, target.invokeKind(), (PointsToAnalysisMethod) target.targetMethod(), target.arguments());
+                    var arguments = target.arguments();
+                    processMethodInvocation(state, invoke, target.invokeKind(), (PointsToAnalysisMethod) target.targetMethod(), arguments);
+
+                    if (target.invokeKind().hasReceiver()) {
+                        processImplicitNonNull(arguments.get(0), invoke.asNode(), state);
+                    }
                 }
 
             } else if (n instanceof ObjectClone) {
@@ -1342,7 +1353,7 @@ public class MethodTypeFlowBuilder {
                 monitorEntryBuilder.addUseDependency(objectBuilder);
                 /* Monitor enters must not be removed. */
                 typeFlowGraphBuilder.registerSinkBuilder(monitorEntryBuilder);
-            } else if (n instanceof MacroInvokable) {
+            } else if (n instanceof MacroInvokable node) {
                 /*
                  * Macro nodes can either be constant folded during compilation, or lowered back to
                  * invocations if constant folding is not possible. So the static analysis needs to
@@ -1351,8 +1362,10 @@ public class MethodTypeFlowBuilder {
                  * Note that some macro nodes, like for object cloning, are handled separately
                  * above.
                  */
-                MacroInvokable node = (MacroInvokable) n;
                 processMacroInvokable(state, node, true);
+                if (node.getInvokeKind().hasReceiver()) {
+                    processImplicitNonNull(node.getArgument(0), node.asNode(), state);
+                }
             }
         }
 
@@ -1762,5 +1775,28 @@ public class MethodTypeFlowBuilder {
 
     /** Hook for unsafe offset value checks. */
     protected void checkUnsafeOffset(@SuppressWarnings("unused") ValueNode base, @SuppressWarnings("unused") ValueNode offset) {
+    }
+
+    private void processImplicitNonNull(ValueNode node, TypeFlowsOfNodes state) {
+        processImplicitNonNull(node, node, state);
+    }
+
+    protected void processImplicitNonNull(ValueNode node, ValueNode source, TypeFlowsOfNodes state) {
+        assert node.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp : node;
+        if (!StampTool.isPointerNonNull(node)) {
+            TypeFlowBuilder<?> inputBuilder = state.lookup(node);
+            TypeFlowBuilder<?> nullCheckBuilder = TypeFlowBuilder.create(bb, source, NullCheckTypeFlow.class, () -> {
+                var inputFlow = inputBuilder.get();
+                if (inputFlow instanceof NullCheckTypeFlow nullCheck && nullCheck.isBlockingNull()) {
+                    // unnecessary to create redundant null type check
+                    return nullCheck;
+                }
+                NullCheckTypeFlow nullCheckFlow = new NullCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(source), inputFlow.getDeclaredType(), true);
+                flowsGraph.addMiscEntryFlow(nullCheckFlow);
+                return nullCheckFlow;
+            });
+            nullCheckBuilder.addUseDependency(inputBuilder);
+            state.update(node, nullCheckBuilder);
+        }
     }
 }

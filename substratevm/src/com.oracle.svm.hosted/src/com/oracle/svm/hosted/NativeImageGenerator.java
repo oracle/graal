@@ -674,7 +674,7 @@ public class NativeImageGenerator {
                 compileQueue = HostedConfiguration.instance().createCompileQueue(debug, featureHandler, hUniverse, runtimeConfiguration, DeoptTester.enabled(),
                                 bb.getSnippetReflectionProvider(), compilationExecutor);
                 if (ImageSingletons.contains(RuntimeCompilationSupport.class)) {
-                    ImageSingletons.lookup(RuntimeCompilationSupport.class).onCompileQueueCreation(hUniverse, compileQueue);
+                    ImageSingletons.lookup(RuntimeCompilationSupport.class).onCompileQueueCreation(bb, hUniverse, compileQueue);
                 }
                 compileQueue.finish(debug);
 

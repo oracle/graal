@@ -46,7 +46,6 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
-import jdk.compiler.graal.graph.NodeSourcePosition;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
@@ -58,6 +57,7 @@ import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.InvokeTypeFlow;
 import com.oracle.graal.pointsto.flow.MethodFlowsGraph;
 import com.oracle.graal.pointsto.infrastructure.GraphProvider;
+import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.AnalysisType;
@@ -82,10 +82,15 @@ import com.oracle.svm.hosted.FeatureImpl;
 import com.oracle.svm.hosted.HeapBreakdownProvider;
 import com.oracle.svm.hosted.RuntimeCompilationSupport;
 import com.oracle.svm.hosted.SVMHost;
+import com.oracle.svm.hosted.ameta.AnalysisConstantFieldProvider;
+import com.oracle.svm.hosted.ameta.AnalysisConstantReflectionProvider;
 import com.oracle.svm.hosted.analysis.SVMParsingSupport;
+import com.oracle.svm.hosted.classinitialization.ClassInitializationSupport;
 import com.oracle.svm.hosted.code.CompileQueue;
 import com.oracle.svm.hosted.code.DeoptimizationUtils;
 import com.oracle.svm.hosted.code.SubstrateCompilationDirectives;
+import com.oracle.svm.hosted.meta.HostedConstantFieldProvider;
+import com.oracle.svm.hosted.meta.HostedField;
 import com.oracle.svm.hosted.meta.HostedMethod;
 import com.oracle.svm.hosted.meta.HostedUniverse;
 import com.oracle.svm.hosted.nodes.DeoptProxyNode;
@@ -102,6 +107,7 @@ import jdk.compiler.graal.debug.DebugContext;
 import jdk.compiler.graal.debug.DebugHandlersFactory;
 import jdk.compiler.graal.debug.Indent;
 import jdk.compiler.graal.graph.NodeClass;
+import jdk.compiler.graal.graph.NodeSourcePosition;
 import jdk.compiler.graal.java.BytecodeParser;
 import jdk.compiler.graal.java.GraphBuilderPhase;
 import jdk.compiler.graal.loop.phases.ConvertDeoptimizeToGuardPhase;
@@ -124,6 +130,7 @@ import jdk.compiler.graal.phases.OptimisticOptimizations;
 import jdk.compiler.graal.phases.Phase;
 import jdk.compiler.graal.phases.PhaseSuite;
 import jdk.compiler.graal.phases.common.CanonicalizerPhase;
+import jdk.compiler.graal.phases.common.DominatorBasedGlobalValueNumberingPhase;
 import jdk.compiler.graal.phases.common.IterativeConditionalEliminationPhase;
 import jdk.compiler.graal.phases.tiers.HighTierContext;
 import jdk.compiler.graal.phases.util.Providers;
@@ -132,7 +139,10 @@ import jdk.compiler.graal.truffle.phases.DeoptimizeOnExceptionPhase;
 import jdk.compiler.graal.word.WordTypes;
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.BytecodePosition;
+import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
+import jdk.vm.ci.meta.MetaAccessProvider;
+import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
@@ -324,8 +334,10 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     private Map<RuntimeCompilationCandidate, CallTreeNode> runtimeCandidateCallTree = null;
     private Map<AnalysisMethod, CallTreeNode> runtimeCompiledMethodCallTree = null;
     private HostedProviders analysisProviders = null;
+    private HostedProviders runtimeCompilationProviders = null;
     private AllowInliningPredicate allowInliningPredicate = (builder, target) -> AllowInliningPredicate.InlineDecision.INLINING_DISALLOWED;
     private boolean allowInliningPredicateUpdated = false;
+    private Function<ConstantFieldProvider, ConstantFieldProvider> constantFieldProviderWrapper = Function.identity();
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -360,7 +372,8 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     @Override
     public void initializeAnalysisProviders(BigBang bb, Function<ConstantFieldProvider, ConstantFieldProvider> generator) {
         HostedProviders defaultProviders = bb.getProviders(ORIGINAL_METHOD);
-        HostedProviders customHostedProviders = (HostedProviders) defaultProviders.copyWith(generator.apply(defaultProviders.getConstantFieldProvider()));
+        HostedProviders customHostedProviders = defaultProviders.copyWith(generator.apply(defaultProviders.getConstantFieldProvider()));
+        constantFieldProviderWrapper = generator;
         customHostedProviders.setGraphBuilderPlugins(hostedProviders.getGraphBuilderPlugins());
         analysisProviders = customHostedProviders;
     }
@@ -579,20 +592,19 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
          */
         aMethod.setAnalyzedGraph(null);
 
-        CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
-        IterativeConditionalEliminationPhase conditionalElimination = new IterativeConditionalEliminationPhase(canonicalizer, true);
-        ConvertDeoptimizeToGuardPhase convertDeoptimizeToGuard = new ConvertDeoptimizeToGuardPhase(canonicalizer);
-
         try (DebugContext.Scope s = debug.scope("RuntimeOptimize", graph, method, this)) {
-            canonicalizer.apply(graph, hostedProviders);
+            CanonicalizerPhase canonicalizer = CanonicalizerPhase.create();
+            canonicalizer.apply(graph, runtimeCompilationProviders);
 
-            conditionalElimination.apply(graph, hostedProviders);
+            new DominatorBasedGlobalValueNumberingPhase(canonicalizer).apply(graph, runtimeCompilationProviders);
+
+            new IterativeConditionalEliminationPhase(canonicalizer, true).apply(graph, runtimeCompilationProviders);
 
             /*
              * ConvertDeoptimizeToGuardPhase was already executed after parsing, but optimizations
              * applied in between can provide new potential.
              */
-            convertDeoptimizeToGuard.apply(graph, hostedProviders);
+            new ConvertDeoptimizeToGuardPhase(canonicalizer).apply(graph, runtimeCompilationProviders);
 
             /*
              * More optimizations can be added here.
@@ -634,7 +646,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         for (var runtimeInfo : runtimeGraphs.entrySet()) {
             var graph = runtimeInfo.getValue();
             var method = runtimeInfo.getKey();
-            DebugContext debug = new DebugContext.Builder(graph.getOptions(), new GraalDebugHandlersFactory(hostedProviders.getSnippetReflection())).build();
+            DebugContext debug = new DebugContext.Builder(graph.getOptions(), new GraalDebugHandlersFactory(runtimeCompilationProviders.getSnippetReflection())).build();
             graph.resetDebug(debug);
             try (DebugContext.Scope s = debug.scope("Graph Encoding", graph);
                             DebugContext.Activation a = debug.activate()) {
@@ -660,12 +672,16 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
     }
 
     @Override
-    public void onCompileQueueCreation(HostedUniverse universe, CompileQueue compileQueue) {
+    public void onCompileQueueCreation(BigBang bb, HostedUniverse hUniverse, CompileQueue compileQueue) {
         /*
          * Start fresh with a new GraphEncoder, since we are going to optimize all graphs now that
          * the static analysis results are available.
          */
         graphEncoder = new GraphEncoder(ConfigurationValues.getTarget().arch);
+        assert runtimeCompilationProviders == null;
+        runtimeCompilationProviders = hostedProviders
+                        .copyWith(constantFieldProviderWrapper.apply(new RuntimeCompilationFieldProvider(hostedProviders.getMetaAccess(), hUniverse)))
+                        .copyWith(new RuntimeCompilationReflectionProvider(bb, hUniverse.hostVM().getClassInitializationSupport()));
 
         SubstrateCompilationDirectives.singleton().resetDeoptEntries();
         /*
@@ -674,7 +690,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         CompletionExecutor executor = compileQueue.getExecutor();
         try {
             compileQueue.runOnExecutor(() -> {
-                universe.getMethods().stream().map(method -> method.getMultiMethod(RUNTIME_COMPILED_METHOD)).filter(method -> {
+                hUniverse.getMethods().stream().map(method -> method.getMultiMethod(RUNTIME_COMPILED_METHOD)).filter(method -> {
                     if (method != null) {
                         AnalysisMethod aMethod = method.getWrapped();
                         return aMethod.isImplementationInvoked() && !invalidForRuntimeCompilation.containsKey(aMethod);
@@ -710,7 +726,7 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
             }
         };
 
-        universe.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(method -> {
+        hUniverse.getMethods().stream().map(method -> method.getMultiMethod(DEOPT_TARGET_METHOD)).filter(method -> {
             if (method != null) {
                 return compileQueue.isRegisteredDeoptTarget(method);
             }
@@ -1240,6 +1256,44 @@ public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeatur
         @Override
         public boolean insertPlaceholderParamAndReturnFlows(MultiMethod.MultiMethodKey multiMethodKey) {
             return multiMethodKey == DEOPT_TARGET_METHOD || multiMethodKey == RUNTIME_COMPILED_METHOD;
+        }
+    }
+
+    /**
+     * Since we perform runtime compilation after universe creation, we can leverage components of
+     * the hosted universe provider for identifying final fields.
+     */
+    private static class RuntimeCompilationFieldProvider extends AnalysisConstantFieldProvider {
+        final HostedUniverse hUniverse;
+
+        RuntimeCompilationFieldProvider(MetaAccessProvider metaAccess, HostedUniverse hUniverse) {
+            super(metaAccess, hUniverse.hostVM());
+            this.hUniverse = hUniverse;
+        }
+
+        @Override
+        public boolean isFinalField(ResolvedJavaField f, ConstantFieldTool<?> tool) {
+            HostedField hField = hUniverse.lookup(f);
+            if (HostedConstantFieldProvider.isFinalField(hField)) {
+                return true;
+            }
+            return super.isFinalField(f, tool);
+        }
+    }
+
+    private static class RuntimeCompilationReflectionProvider extends AnalysisConstantReflectionProvider {
+
+        RuntimeCompilationReflectionProvider(BigBang bb, ClassInitializationSupport classInitializationSupport) {
+            super(bb.getUniverse(), bb.getMetaAccess(), classInitializationSupport);
+        }
+
+        @Override
+        public JavaConstant readFieldValue(ResolvedJavaField field, JavaConstant receiver) {
+            /*
+             * We cannot fold simulated values during initial before-analysis graph creation;
+             * however, this runs after analysis has completed.
+             */
+            return readValue(metaAccess, (AnalysisField) field, receiver, true);
         }
     }
 
