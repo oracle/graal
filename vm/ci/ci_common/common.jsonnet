@@ -624,9 +624,9 @@ local devkits = graal_common.devkits;
             + self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', '--only', 'JS_ISOLATE,JS_ISOLATE_RESOURCES,TOOLS_COMMUNITY,LANGUAGES_COMMUNITY', remote_mvn_repo], extra_mx_args=['--suite', 'graal-js'])
         )
         + [
-          # resource bundle
+          # Maven bundle
           ['set-export', 'VERSION_STRING', self.mx_cmd_base(os, arch) + ['--quiet', 'graalvm-version']],
-          ['set-export', 'LOCAL_MAVEN_REPO_REL_PATH', 'maven-resource-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
+          ['set-export', 'LOCAL_MAVEN_REPO_REL_PATH', 'maven-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
           ['set-export', 'LOCAL_MAVEN_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REPO_REL_PATH}']],
         ]
         + (
@@ -642,8 +642,9 @@ local devkits = graal_common.devkits;
           if (dry_run) then
             [['echo', 'Skipping the archiving and the final maven deployment']]
           else [
-            ['set-export', 'MAVEN_RESOURCE_BUNDLE', '${LOCAL_MAVEN_REPO_REL_PATH}'],
-            ['mx', 'build', '--targets', 'MAVEN_RESOURCE_BUNDLE'],
+            ['set-export', 'MAVEN_BUNDLE_PATH', '${LOCAL_MAVEN_REPO_REL_PATH}'],
+            ['set-export', 'MAVEN_BUNDLE_ARTIFACT_ID', 'maven-bundle-' + vm.maven_deploy_base_functions.edition],
+            ['mx', 'build', '--targets', 'MAVEN_BUNDLE'],
             ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
           ]
         )
