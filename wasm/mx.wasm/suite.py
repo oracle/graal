@@ -42,7 +42,7 @@ suite = {
   "mxversion": "6.17.0",
   "name" : "wasm",
   "groupId" : "org.graalvm.wasm",
-  "version" : "23.0.2",
+  "version" : "23.0.3",
   "versionConflictResolution" : "latest",
   "url" : "http://graalvm.org/",
   "developer" : {
