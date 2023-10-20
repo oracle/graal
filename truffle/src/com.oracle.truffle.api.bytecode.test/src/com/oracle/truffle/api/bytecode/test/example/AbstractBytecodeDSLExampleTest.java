@@ -69,6 +69,7 @@ import com.oracle.truffle.api.bytecode.serialization.BytecodeDeserializer;
 import com.oracle.truffle.api.bytecode.serialization.BytecodeSerializer;
 import com.oracle.truffle.api.bytecode.serialization.SerializationUtils;
 import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.source.Source;
 
 @RunWith(Parameterized.class)
 public abstract class AbstractBytecodeDSLExampleTest {
@@ -101,6 +102,11 @@ public abstract class AbstractBytecodeDSLExampleTest {
             } else if (object instanceof BytecodeDSLExample rootNode) {
                 buffer.writeByte(5);
                 context.writeBytecodeNode(buffer, rootNode);
+            } else if (object instanceof Source source) {
+                buffer.writeByte(6);
+                buffer.writeUTF(source.getLanguage());
+                buffer.writeUTF(source.getName());
+                buffer.writeUTF(source.getCharacters().toString());
             } else {
                 throw new AssertionError("Serializer does not handle object " + object);
             }
@@ -130,6 +136,12 @@ public abstract class AbstractBytecodeDSLExampleTest {
                     };
                 }
                 case 5 -> context.readBytecodeNode(buffer);
+                case 6 -> {
+                    String language = buffer.readUTF();
+                    String name = buffer.readUTF();
+                    String characters = buffer.readUTF();
+                    yield Source.newBuilder(language, characters, name).build();
+                }
                 default -> throw new AssertionError("Deserializer does not handle code " + objectCode);
             };
         }

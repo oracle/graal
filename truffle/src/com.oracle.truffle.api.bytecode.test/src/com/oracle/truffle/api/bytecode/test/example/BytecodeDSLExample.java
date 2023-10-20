@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.api.bytecode.test.example;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CallTarget;
@@ -337,6 +338,19 @@ public abstract class BytecodeDSLExample extends RootNode implements BytecodeRoo
             Frame newFrame = Truffle.getRuntime().createMaterializedFrame(frame.getArguments(), frame.getFrameDescriptor());
             rootNode.copyLocals(frame, newFrame);
             return newFrame;
+        }
+    }
+
+    @Operation
+    public static final class CollectBcis {
+        @Specialization
+        public static List<Integer> perform() {
+            List<Integer> bytecodeIndices = new ArrayList<>();
+            Truffle.getRuntime().iterateFrames(f -> {
+                bytecodeIndices.add(BytecodeRootNode.findBci(f));
+                return null;
+            });
+            return bytecodeIndices;
         }
     }
 }
