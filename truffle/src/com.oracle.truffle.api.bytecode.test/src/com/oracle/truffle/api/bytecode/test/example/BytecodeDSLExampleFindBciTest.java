@@ -43,22 +43,17 @@ package com.oracle.truffle.api.bytecode.test.example;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertTrue;
-import static org.junit.Assume.assumeFalse;
 import static org.junit.Assume.assumeTrue;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.junit.runners.Parameterized;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.bytecode.BytecodeConfig;
 import com.oracle.truffle.api.bytecode.BytecodeLocal;
-import com.oracle.truffle.api.bytecode.BytecodeRootNode;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
+import com.oracle.truffle.api.bytecode.BytecodeNodes;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 
@@ -73,8 +68,6 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
          * ContinuationRootNode).
          */
         assumeTrue(interpreterClass != BytecodeDSLExampleWithUncached.class && interpreterClass != BytecodeDSLExampleProduction.class);
-        // TODO: we currently do not have a way to serialize Sources.
-        assumeFalse(testSerialize);
     }
 
     @Test
@@ -83,130 +76,158 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
         /**
          * @formatter:off
          * def baz(arg0) {
-         *   <trace>  // collects trace into frames
-         *   4
+         *   if (arg0) <trace1> else <trace2>  // directly returns a trace
          * }
          *
-         * def bar() {
-         *   (1 + arg0) + baz()
+         * def bar(arg0) {
+         *   baz(arg0)
          * }
          *
          * def foo(arg0) {
-         *   1 + bar(2)
+         *   c = bar(arg0);
+         *   c
          * }
          * @formatter:on
          */
 
-        List<Integer> bytecodeIndices = new ArrayList<>();
-
-        Source bazSource = Source.newBuilder("test", "<trace>; 4", "baz").build();
-        BytecodeDSLExample baz = parseNodeWithSource("baz", b -> {
+        Source bazSource = Source.newBuilder("test", "if (arg0) <trace1> else <trace2>", "baz").build();
+        Source barSource = Source.newBuilder("test", "baz(arg0)", "bar").build();
+        Source fooSource = Source.newBuilder("test", "c = bar(arg0); c", "foo").build();
+        BytecodeNodes<BytecodeDSLExample> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
+            // @formatter:off
+            // collectBcis
             b.beginRoot(LANGUAGE);
-            b.beginSource(bazSource);
+                b.beginReturn();
+                b.emitCollectBcis();
+                b.endReturn();
+            BytecodeDSLExample collectBcis = b.endRoot();
+            collectBcis.setName("collectBcis");
 
-            b.beginBlock();
+            // baz
+            b.beginRoot(LANGUAGE);
+                b.beginSource(bazSource);
+                b.beginBlock();
 
-            b.beginSourceSection(0, 7);
-            b.beginInvoke();
-            b.emitLoadConstant(new RootNode(LANGUAGE) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Truffle.getRuntime().iterateFrames(f -> {
-                        bytecodeIndices.add(BytecodeRootNode.findBci(f));
-                        return null;
-                    });
-                    return null;
-                }
-            }.getCallTarget());
-            b.endInvoke();
-            b.endSourceSection();
+                b.beginIfThenElse();
 
-            b.beginReturn();
-            b.emitLoadConstant(4L);
-            b.endReturn();
+                b.emitLoadArgument(0);
 
-            b.endBlock();
+                b.beginReturn();
+                b.beginSourceSection(10, 8);
+                b.beginInvoke();
+                b.emitLoadConstant(collectBcis);
+                b.endInvoke();
+                b.endSourceSection();
+                b.endReturn();
 
-            b.endSource();
-            b.endRoot();
+                b.beginReturn();
+                b.beginSourceSection(24, 8);
+                b.beginInvoke();
+                b.emitLoadConstant(collectBcis);
+                b.endInvoke();
+                b.endSourceSection();
+                b.endReturn();
+
+                b.endIfThenElse();
+
+                b.endBlock();
+                b.endSource();
+            BytecodeDSLExample baz = b.endRoot();
+            baz.setName("baz");
+
+            // bar
+            b.beginRoot(LANGUAGE);
+                b.beginSource(barSource);
+
+                b.beginReturn();
+
+                b.beginSourceSection(0, 9);
+                b.beginInvoke();
+                b.emitLoadConstant(baz);
+                b.emitLoadArgument(0);
+                b.endInvoke();
+                b.endSourceSection();
+
+                b.endReturn();
+
+                b.endSource();
+            BytecodeDSLExample bar = b.endRoot();
+            bar.setName("bar");
+
+            // foo
+            b.beginRoot(LANGUAGE);
+                b.beginSource(fooSource);
+                b.beginBlock();
+                BytecodeLocal c = b.createLocal();
+
+                b.beginSourceSection(0, 13);
+                b.beginStoreLocal(c);
+                b.beginSourceSection(4, 9);
+                b.beginInvoke();
+                b.emitLoadConstant(bar);
+                b.emitLoadArgument(0);
+                b.endInvoke();
+                b.endSourceSection();
+                b.endStoreLocal();
+                b.endSourceSection();
+
+                b.beginReturn();
+                b.beginSourceSection(15, 1);
+                b.emitLoadLocal(c);
+                b.endSourceSection();
+                b.endReturn();
+
+                b.endBlock();
+                b.endSource();
+            BytecodeDSLExample foo = b.endRoot();
+            foo.setName("foo");
         });
 
-        Source barSource = Source.newBuilder("test", "(1 + arg0) + baz()", "bar").build();
-        BytecodeDSLExample bar = parseNodeWithSource("bar", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginSource(barSource);
+        List<BytecodeDSLExample> nodeList = nodes.getNodes();
+        assert nodeList.size() == 4;
+        BytecodeDSLExample foo = nodeList.get(3);
+        assert foo.getName().equals("foo");
+        BytecodeDSLExample bar = nodeList.get(2);
+        assert bar.getName().equals("bar");
+        BytecodeDSLExample baz = nodeList.get(1);
+        assert baz.getName().equals("baz");
 
-            b.beginReturn();
-            b.beginAddOperation();
+        for (boolean fooArgument : List.of(true, false)) {
+            Object result = foo.getCallTarget().call(fooArgument);
+            assertTrue(result instanceof List<?>);
 
-            b.beginAddOperation();
-            b.emitLoadConstant(1L);
-            b.emitLoadArgument(0);
-            b.endAddOperation();
+            @SuppressWarnings("unchecked")
+            List<Integer> bytecodeIndices = (List<Integer>) result;
 
-            b.beginSourceSection(13, 5);
-            b.beginInvoke();
-            b.emitLoadConstant(baz);
-            b.endInvoke();
-            b.endSourceSection();
+            assertEquals(4, bytecodeIndices.size());
 
-            b.endAddOperation();
-            b.endReturn();
+            // skip the helper
 
-            b.endSource();
-            b.endRoot();
-        });
+            // baz
+            int bazBci = bytecodeIndices.get(1);
+            assertNotEquals(-1, bazBci);
+            SourceSection bazSourceSection = baz.getSourceSectionAtBci(bazBci);
+            assertEquals(bazSource, bazSourceSection.getSource());
+            if (fooArgument) {
+                assertEquals("<trace1>", bazSourceSection.getCharacters());
+            } else {
+                assertEquals("<trace2>", bazSourceSection.getCharacters());
+            }
 
-        Source fooSource = Source.newBuilder("test", "1 + bar(2)", "foo").build();
-        BytecodeDSLExample foo = parseNodeWithSource("foo", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginSource(fooSource);
+            // bar
+            int barBci = bytecodeIndices.get(2);
+            assertNotEquals(-1, barBci);
+            SourceSection barSourceSection = bar.getSourceSectionAtBci(barBci);
+            assertEquals(barSource, barSourceSection.getSource());
+            assertEquals("baz(arg0)", barSourceSection.getCharacters());
 
-            b.beginReturn();
-            b.beginAddOperation();
-
-            b.emitLoadConstant(1L);
-
-            b.beginSourceSection(4, 6);
-            b.beginInvoke();
-            b.emitLoadConstant(bar);
-            b.emitLoadConstant(2L);
-            b.endInvoke();
-            b.endSourceSection();
-
-            b.endAddOperation();
-            b.endReturn();
-
-            b.endSource();
-            b.endRoot();
-        });
-
-        assertEquals(8L, foo.getCallTarget().call());
-        assertEquals(4, bytecodeIndices.size());
-
-        // <anon>
-        assertEquals(-1, (int) bytecodeIndices.get(0));
-
-        // baz
-        int bazBci = bytecodeIndices.get(1);
-        assertNotEquals(-1, bazBci);
-        SourceSection bazSourceSection = baz.getSourceSectionAtBci(bazBci);
-        assertEquals(bazSource, bazSourceSection.getSource());
-        assertEquals("<trace>", bazSourceSection.getCharacters());
-
-        // bar
-        int barBci = bytecodeIndices.get(2);
-        assertNotEquals(-1, barBci);
-        SourceSection barSourceSection = bar.getSourceSectionAtBci(barBci);
-        assertEquals(barSource, barSourceSection.getSource());
-        assertEquals("baz()", barSourceSection.getCharacters());
-
-        // foo
-        int fooBci = bytecodeIndices.get(3);
-        assertNotEquals(-1, fooBci);
-        SourceSection fooSourceSection = foo.getSourceSectionAtBci(fooBci);
-        assertEquals(fooSource, fooSourceSection.getSource());
-        assertEquals("bar(2)", fooSourceSection.getCharacters());
+            // foo
+            int fooBci = bytecodeIndices.get(3);
+            assertNotEquals(-1, fooBci);
+            SourceSection fooSourceSection = foo.getSourceSectionAtBci(fooBci);
+            assertEquals(fooSource, fooSourceSection.getSource());
+            assertEquals("bar(arg0)", fooSourceSection.getCharacters());
+        }
     }
 
     @Test
@@ -230,104 +251,113 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
          * @formatter:on
          */
         Source bazSource = Source.newBuilder("test", "if (arg0) <trace1> else <trace2>", "baz").build();
-        CallTarget collectBcis = new RootNode(LANGUAGE) {
-            @Override
-            public Object execute(VirtualFrame frame) {
-                List<Integer> bytecodeIndices = new ArrayList<>();
-                Truffle.getRuntime().iterateFrames(f -> {
-                    bytecodeIndices.add(BytecodeRootNode.findBci(f));
-                    return null;
-                });
-                return bytecodeIndices;
-            }
-        }.getCallTarget();
-
-        BytecodeDSLExample baz = parseNodeWithSource("baz", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginSource(bazSource);
-            b.beginBlock();
-
-            b.beginIfThenElse();
-
-            b.emitLoadArgument(0);
-
-            b.beginReturn();
-            b.beginSourceSection(10, 8);
-            b.beginInvoke();
-            b.emitLoadConstant(collectBcis);
-            b.endInvoke();
-            b.endSourceSection();
-            b.endReturn();
-
-            b.beginReturn();
-            b.beginSourceSection(24, 8);
-            b.beginInvoke();
-            b.emitLoadConstant(collectBcis);
-            b.endInvoke();
-            b.endSourceSection();
-            b.endReturn();
-
-            b.endIfThenElse();
-
-            b.endBlock();
-            b.endSource();
-            b.endRoot();
-        });
-
         Source barSource = Source.newBuilder("test", "x = yield 1; baz(x)", "bar").build();
-        BytecodeDSLExample bar = parseNodeWithSource("bar", b -> {
-            b.beginRoot(LANGUAGE);
-            b.beginSource(barSource);
-            b.beginBlock();
-            BytecodeLocal x = b.createLocal();
-
-            b.beginStoreLocal(x);
-            b.beginYield();
-            b.emitLoadConstant(1);
-            b.endYield();
-            b.endStoreLocal();
-
-            b.beginReturn();
-            b.beginSourceSection(13, 6);
-            b.beginInvoke();
-            b.emitLoadConstant(baz);
-            b.emitLoadLocal(x);
-            b.endInvoke();
-            b.endSourceSection();
-            b.endReturn();
-
-            b.endBlock();
-            b.endSource();
-            b.endRoot();
-        });
-
         Source fooSource = Source.newBuilder("test", "c = bar(); continue(c, arg0)", "foo").build();
-        BytecodeDSLExample foo = parseNodeWithSource("foo", b -> {
+        BytecodeNodes<BytecodeDSLExample> nodes = createNodes(BytecodeConfig.WITH_SOURCE, b -> {
+            // @formatter:off
+            // collectBcis
             b.beginRoot(LANGUAGE);
-            b.beginSource(fooSource);
-            b.beginBlock();
+                b.beginReturn();
+                b.emitCollectBcis();
+                b.endReturn();
+            BytecodeDSLExample collectBcis = b.endRoot();
+            collectBcis.setName("collectBcis");
 
-            BytecodeLocal c = b.createLocal();
+            // baz
+            b.beginRoot(LANGUAGE);
+                b.beginSource(bazSource);
+                b.beginBlock();
 
-            b.beginStoreLocal(c);
-            b.beginInvoke();
-            b.emitLoadConstant(bar);
-            b.endInvoke();
-            b.endStoreLocal();
+                b.beginIfThenElse();
 
-            b.beginReturn();
-            b.beginSourceSection(11, 17);
-            b.beginContinue();
-            b.emitLoadLocal(c);
-            b.emitLoadArgument(0);
-            b.endContinue();
-            b.endSourceSection();
-            b.endReturn();
+                b.emitLoadArgument(0);
 
-            b.endBlock();
-            b.endSource();
-            b.endRoot();
+                b.beginReturn();
+                b.beginSourceSection(10, 8);
+                b.beginInvoke();
+                b.emitLoadConstant(collectBcis);
+                b.endInvoke();
+                b.endSourceSection();
+                b.endReturn();
+
+                b.beginReturn();
+                b.beginSourceSection(24, 8);
+                b.beginInvoke();
+                b.emitLoadConstant(collectBcis);
+                b.endInvoke();
+                b.endSourceSection();
+                b.endReturn();
+
+                b.endIfThenElse();
+
+                b.endBlock();
+                b.endSource();
+            BytecodeDSLExample baz = b.endRoot();
+            baz.setName("baz");
+
+            // bar
+            b.beginRoot(LANGUAGE);
+                b.beginSource(barSource);
+                b.beginBlock();
+                BytecodeLocal x = b.createLocal();
+
+                b.beginStoreLocal(x);
+                b.beginYield();
+                b.emitLoadConstant(1L);
+                b.endYield();
+                b.endStoreLocal();
+
+                b.beginReturn();
+                b.beginSourceSection(13, 6);
+                b.beginInvoke();
+                b.emitLoadConstant(baz);
+                b.emitLoadLocal(x);
+                b.endInvoke();
+                b.endSourceSection();
+                b.endReturn();
+
+                b.endBlock();
+                b.endSource();
+            BytecodeDSLExample bar = b.endRoot();
+            bar.setName("bar");
+
+            // foo
+            b.beginRoot(LANGUAGE);
+                b.beginSource(fooSource);
+                b.beginBlock();
+
+                BytecodeLocal c = b.createLocal();
+
+                b.beginStoreLocal(c);
+                b.beginInvoke();
+                b.emitLoadConstant(bar);
+                b.endInvoke();
+                b.endStoreLocal();
+
+                b.beginReturn();
+                b.beginSourceSection(11, 17);
+                b.beginContinue();
+                b.emitLoadLocal(c);
+                b.emitLoadArgument(0);
+                b.endContinue();
+                b.endSourceSection();
+                b.endReturn();
+
+                b.endBlock();
+                b.endSource();
+            BytecodeDSLExample foo = b.endRoot();
+            foo.setName("foo");
+            // @formatter:off
         });
+
+        List<BytecodeDSLExample> nodeList = nodes.getNodes();
+        assert nodeList.size() == 4;
+        BytecodeDSLExample foo = nodeList.get(3);
+        assert foo.getName().equals("foo");
+        BytecodeDSLExample bar = nodeList.get(2);
+        assert bar.getName().equals("bar");
+        BytecodeDSLExample baz = nodeList.get(1);
+        assert baz.getName().equals("baz");
 
         for (boolean continuationArgument : List.of(true, false)) {
             Object result = foo.getCallTarget().call(continuationArgument);
@@ -337,8 +367,7 @@ public class BytecodeDSLExampleFindBciTest extends AbstractBytecodeDSLExampleTes
             List<Integer> bytecodeIndices = (List<Integer>) result;
             assertEquals(4, bytecodeIndices.size());
 
-            // <anon>
-            assertEquals(-1, (int) bytecodeIndices.get(0));
+            // skip the helper
 
             // baz
             int bazBci = bytecodeIndices.get(1);
