@@ -1782,11 +1782,16 @@ public class MethodTypeFlowBuilder {
     }
 
     protected void processImplicitNonNull(ValueNode node, ValueNode source, TypeFlowsOfNodes state) {
-        assert node.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp;
+        assert node.stamp(NodeView.DEFAULT) instanceof AbstractObjectStamp : node;
         if (!StampTool.isPointerNonNull(node)) {
             TypeFlowBuilder<?> inputBuilder = state.lookup(node);
             TypeFlowBuilder<?> nullCheckBuilder = TypeFlowBuilder.create(bb, source, NullCheckTypeFlow.class, () -> {
-                NullCheckTypeFlow nullCheckFlow = new NullCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(source), inputBuilder.get().getDeclaredType(), true);
+                var inputFlow = inputBuilder.get();
+                if (inputFlow instanceof NullCheckTypeFlow nullCheck && nullCheck.isBlockingNull()) {
+                    // unnecessary to create redundant null type check
+                    return nullCheck;
+                }
+                NullCheckTypeFlow nullCheckFlow = new NullCheckTypeFlow(AbstractAnalysisEngine.sourcePosition(source), inputFlow.getDeclaredType(), true);
                 flowsGraph.addMiscEntryFlow(nullCheckFlow);
                 return nullCheckFlow;
             });
