@@ -630,23 +630,47 @@ local devkits = graal_common.devkits;
           ['set-export', 'LOCAL_MAVEN_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REPO_REL_PATH}']],
         ]
         + (
-          # locally deploy all relevant suites
+          if (vm.maven_deploy_base_functions.edition == 'ce') then
+            [['echo', 'Skipping the setting of the env variables for the Maven reduced bundle']]
+          else [
+            # Maven reduced bundle
+            ['set-export', 'LOCAL_MAVEN_REDUCED_REPO_REL_PATH', 'maven-reduced-bundle-' + vm.maven_deploy_base_functions.edition + '-${VERSION_STRING}'],
+            ['set-export', 'LOCAL_MAVEN_REDUCED_REPO_URL', ['mx', '--quiet', 'local-path-to-url', '${LOCAL_MAVEN_REDUCED_REPO_REL_PATH}']],
+          ]
+        )
+        + (
+          # Maven bundle - Locally deploy all relevant suites
           if (vm.maven_deploy_base_functions.edition == 'ce') then
             self.deploy_ce(os, arch, dry_run, [local_repo, '${LOCAL_MAVEN_REPO_URL}'])
           else
             self.deploy_ce(os, arch, dry_run, ['--dummy-javadoc', '--skip', 'JS_ISOLATE,JS_ISOLATE_RESOURCES,TOOLS_COMMUNITY,LANGUAGES_COMMUNITY', local_repo, '${LOCAL_MAVEN_REPO_URL}'])
             + self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', '--only', 'JS_ISOLATE,JS_ISOLATE_RESOURCES,TOOLS_COMMUNITY,LANGUAGES_COMMUNITY', local_repo, '${LOCAL_MAVEN_REPO_URL}'], extra_mx_args=['--suite', 'graal-js'])
             + self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', local_repo, '${LOCAL_MAVEN_REPO_URL}'])
+            # Maven reduced bundle
+            + self.deploy_ce(os, arch, dry_run, ['--dummy-javadoc', '--only', 'TRUFFLE_API,POLYGLOT,COLLECTIONS,NATIVEIMAGE,WORD,JS_COMMUNITY,GRAALJS,TREGEX,TRUFFLE_ICU4J,TRUFFLE_RUNTIME,JNIUTILS,TRUFFLE_COMPILER,NATIVEBRIDGE,INSIGHT_HEAP,INSIGHT,TRUFFLE_DSL_PROCESSOR', local_repo, '${LOCAL_MAVEN_REDUCED_REPO_URL}'])
+            + self.deploy_ee(os, arch, dry_run, ['--dummy-javadoc', '--only', 'JS_ENTERPRISE,TRUFFLE_ENTERPRISE,HEAP_LANGUAGE', local_repo, '${LOCAL_MAVEN_REDUCED_REPO_URL}'], extra_mx_args=['--suite', 'graal-js'])
         )
         + (
+          # Maven bundle
           if (dry_run) then
-            [['echo', 'Skipping the archiving and the final maven deployment']]
+            [['echo', 'Skipping the archiving and the final deployment of the Maven bundle']]
           else [
             ['set-export', 'MAVEN_BUNDLE_PATH', '${LOCAL_MAVEN_REPO_REL_PATH}'],
             ['set-export', 'MAVEN_BUNDLE_ARTIFACT_ID', 'maven-bundle-' + vm.maven_deploy_base_functions.edition],
             ['mx', 'build', '--targets', 'MAVEN_BUNDLE'],
             ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
           ]
+          + (
+            # Maven reduced bundled
+            if (vm.maven_deploy_base_functions.edition == 'ce') then
+              [['echo', 'Skipping the archiving and the final deployment of the reduced Maven bundle']]
+            else [
+              ['set-export', 'MAVEN_BUNDLE_PATH', '${LOCAL_MAVEN_REDUCED_REPO_REL_PATH}'],
+              ['set-export', 'MAVEN_BUNDLE_ARTIFACT_ID', 'maven-reduced-bundle-' + vm.maven_deploy_base_functions.edition],
+              ['mx', 'build', '--targets', 'MAVEN_BUNDLE'],
+              ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
+            ]
+          )
         )
       ) else (
         self.build(os, arch, build_args=['--targets=' + self.only_native_dists + ',{PLATFORM_DEPENDENT_LAYOUT_DIR_DISTRIBUTIONS}'])
