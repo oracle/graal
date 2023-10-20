@@ -50,9 +50,23 @@ public class OptionKey<T> {
 
     /**
      * Returns the descriptor for this option, if it has been set by
-     * {@link #setDescriptor(OptionDescriptor)}.
+     * {@link #setDescriptor(OptionDescriptor)}. As descriptors are loaded lazily, this method will
+     * return {@code null} if the descriptors have not been loaded. Use {@link #loadDescriptor}
+     * instead to ensure a non-null descriptor is returned if available.
      */
     public final OptionDescriptor getDescriptor() {
+        return descriptor;
+    }
+
+    /**
+     * Returns the descriptor for this option, triggering loading of descriptors if this descriptor
+     * is null. Note that it's still possible for this method to return null if this option does not
+     * have a descriptor created by a service loader.
+     */
+    public final OptionDescriptor loadDescriptor() {
+        if (descriptor == null) {
+            Lazy.init();
+        }
         return descriptor;
     }
 
