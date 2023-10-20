@@ -36,7 +36,7 @@ from os.path import join, isabs
 _suite = mx.suite('espresso')
 
 # JDK compiled with the Sulong toolchain.
-LLVM_JAVA_HOME = mx.get_env('LLVM_JAVA_HOME')
+ESPRESSO_LLVM_JAVA_HOME = mx.get_env('ESPRESSO_LLVM_JAVA_HOME') or mx.get_env('LLVM_JAVA_HOME')
 
 def _espresso_command(launcher, args):
     bin_dir = join(mx_sdk_vm.graalvm_home(fatalIfMissing=True), 'bin')
@@ -242,7 +242,7 @@ To rebuild the polyglot library:
     standalone=False,
 ))
 
-if LLVM_JAVA_HOME:
+if ESPRESSO_LLVM_JAVA_HOME:
     mx_sdk_vm.register_graalvm_component(mx_sdk_vm.GraalVmLanguage(
         suite=_suite,
         name='Java on Truffle LLVM Java libraries',
@@ -252,7 +252,7 @@ if LLVM_JAVA_HOME:
         truffle_jars=[],
         dir_name='java',
         installable_id='espresso-llvm',
-        extra_installable_qualifiers=mx_sdk_vm.extra_installable_qualifiers(jdk_home=LLVM_JAVA_HOME, ce_edition=['ce'], oracle_edition=['ee']),
+        extra_installable_qualifiers=mx_sdk_vm.extra_installable_qualifiers(jdk_home=ESPRESSO_LLVM_JAVA_HOME, ce_edition=['ce'], oracle_edition=['ee']),
         installable=True,
         dependencies=['Java on Truffle', 'LLVM Runtime Native'],
         support_distributions=['espresso:ESPRESSO_LLVM_SUPPORT'],
@@ -274,27 +274,27 @@ def mx_register_dynamic_suite_constituents(register_project, register_distributi
     :type register_distribution: (mx.Distribution) -> None
     """
 
-    if LLVM_JAVA_HOME:
+    if ESPRESSO_LLVM_JAVA_HOME:
         # Conditionally creates the ESPRESSO_LLVM_SUPPORT distribution if a Java home with LLVM bitcode is provided.
         lib_prefix = mx.add_lib_prefix('')
         lib_suffix = mx.add_lib_suffix('')
-        lib_path = join(LLVM_JAVA_HOME, 'lib')
-        libraries = [join(lib_path, name) for name in os.listdir(lib_path) if name.startswith(lib_prefix) and name.endswith(lib_suffix)]
         register_distribution(mx.LayoutTARDistribution(_suite, 'ESPRESSO_LLVM_SUPPORT', [], {
-            "lib/llvm/default/":
-                ["file:" + lib for lib in libraries] +
-                ["file:{}/release".format(LLVM_JAVA_HOME)],
-        }, None, True, _jdk_license(LLVM_JAVA_HOME)))
+            "lib/llvm/default/": [
+                f"dependency:LLVM_JAVA_HOME/lib/{lib_prefix}*{lib_suffix}",
+                "dependency:LLVM_JAVA_HOME/release"
+            ],
+        }, None, True, _jdk_license(ESPRESSO_LLVM_JAVA_HOME)))
         llvm_runtime_dir = {
             "source_type": "dependency",
             "dependency": "LLVM_JAVA_HOME",
             "path": "lib/<lib:*>",
         }
-        register_project(JavaHomeDependency(_suite, "LLVM_JAVA_HOME", LLVM_JAVA_HOME))
+        register_project(JavaHomeDependency(_suite, "LLVM_JAVA_HOME", ESPRESSO_LLVM_JAVA_HOME))
     else:
         llvm_runtime_dir = []
 
-    register_project(JavaHomeDependency(_suite, "JAVA_HOME", mx_sdk_vm.base_jdk().home))
+    ESPRESSO_JAVA_HOME = mx.get_env('ESPRESSO_JAVA_HOME') or mx_sdk_vm.base_jdk().home
+    register_project(JavaHomeDependency(_suite, "JAVA_HOME", ESPRESSO_JAVA_HOME))
     if mx.is_windows():
         platform_specific_excludes = [
             "bin/<exe:*>",
@@ -436,7 +436,7 @@ def register_espresso_envs(suite):
     # pylint: disable=line-too-long
     tools = ['cov', 'dap', 'ins', 'insight', 'insightheap', 'lsp', 'pro', 'truffle-json']
     _llvm_toolchain_wrappers = ['bgraalvm-native-clang', 'bgraalvm-native-clang-cl', 'bgraalvm-native-clang++', 'bgraalvm-native-flang', 'bgraalvm-native-ld', 'bgraalvm-native-binutil']
-    if LLVM_JAVA_HOME:
+    if ESPRESSO_LLVM_JAVA_HOME:
         mx_sdk_vm.register_vm_config('espresso-jvm',       ['java', 'ejvm'       , 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn'                                                    , 'elau'                                                                                                                                                ] + tools, suite, env_file='jvm-llvm')
         mx_sdk_vm.register_vm_config('espresso-jvm-ce',    ['java', 'ejvm'       , 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc'        , 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn'         , 'svm', 'svmt'         , 'svmsl'          , 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'] + _llvm_toolchain_wrappers + tools, suite, env_file='jvm-ce-llvm')
         mx_sdk_vm.register_vm_config('espresso-jvm-ee',    ['java', 'ejvm'       , 'ellvm', 'libpoly', 'nfi-libffi', 'nfi', 'sdk', 'sdkni', 'sdkc', 'sdkl', 'tfl', 'tfla', 'tflc', 'tfle', 'cmp', 'antlr4', 'llrc', 'llrlf', 'llrn', 'cmpee', 'svm', 'svmt', 'svmee', 'svmte', 'svmsl', 'tflllm', 'tflm', 'elau', 'lg', 'bespresso', 'sjavavm', 'spolyglot'] + _llvm_toolchain_wrappers + tools, suite, env_file='jvm-ee-llvm')
