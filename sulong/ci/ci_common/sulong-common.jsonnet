@@ -19,7 +19,7 @@ local sulong_deps = common.deps.sulong;
   build_template:: {
     targets: [],
     suite:: error "suite not set" + $.nameOrEmpty(self),
-    jdk:: error "jdk not set" + $.nameOrEmpty(self),
+    jdk_name:: error "jdk_name not set" + $.nameOrEmpty(self),
     os:: error "os not set" + $.nameOrEmpty(self),
     arch:: error "arch not set" + $.nameOrEmpty(self),
     job:: error "job not set" + $.nameOrEmpty(self),
@@ -28,19 +28,19 @@ local sulong_deps = common.deps.sulong;
     gen_name_componentes::
       assert std.isArray(self.targets) : "targets must be an array" + $.nameOrEmpty(self);
       assert isNonEmptyString(self.suite) : "suite must be a non-empty string" + $.nameOrEmpty(self);
-      assert isNonEmptyString(self.jdk) : "jdk must be a non-empty string" + $.nameOrEmpty(self);
+      assert isNonEmptyString(self.jdk_name) : "jdk_name must be a non-empty string" + $.nameOrEmpty(self);
       assert isNonEmptyString(self.os) : "os must be a non-empty string" + $.nameOrEmpty(self);
       assert isNonEmptyString(self.arch) : "arch must be a non-empty string" + $.nameOrEmpty(self);
       assert isNonEmptyString(self.job) : "job must be a non-empty string" + $.nameOrEmpty(self);
       assert std.isArray(self.bitcode_config) : "bitcode_config must be an array" + $.nameOrEmpty(self);
       assert std.isArray(self.sulong_config) : "sulong_config must be an array" + $.nameOrEmpty(self);
-      self.targets + [self.suite] + [self.job] + self.bitcode_config + self.sulong_config + [self.jdk] + [self.os] + [self.arch],
+      self.targets + [self.suite] + [self.job] + self.bitcode_config + self.sulong_config + [self.jdk_name] + [self.os] + [self.arch],
     gen_name:: std.join("-", self.gen_name_componentes),
   },
 
   defBuild(b):: {
     assert self.gen_name == self.name : "Name error. expected '%s', actual '%s'" % [self.gen_name, self.name],
-  } + $.build_template + b + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk, self.os, self.arch]} else {},
+  } + $.build_template + b + if std.objectHasAll(b, "description_text") then { description: "%s with %s on %s/%s" % [b.description_text, self.jdk_name, self.os, self.arch]} else {},
 
   # Generates an array of build specs for give build spec prototypes and platform configurations and applies the names array.
   # If any resulting build contains a hidden field "skipPlattform:: true", then that build is dropped from the result array.
@@ -82,7 +82,8 @@ local sulong_deps = common.deps.sulong;
   darwin_amd64:: darwin_amd64 + sulong_deps + { capabilities+: ["!darwin_sierra"] },
   darwin_aarch64:: darwin_aarch64 + sulong_deps,
   windows_amd64:: windows_amd64 + sulong_deps + {
-    packages+: common.devkits["windows-" + self.jdk].packages
+    local jdk = if self.jdk_name == "jdk-latest" then "jdkLatest" else self.jdk_name,
+    packages+: common.devkits["windows-" + jdk].packages
   },
 
   sulong_notifications:: {
@@ -104,10 +105,6 @@ local sulong_deps = common.deps.sulong;
   mxCommand:: {
     extra_mx_args+:: [],
     mx:: ["mx"] + self.extra_mx_args
-  },
-
-  mxStripJarsMixin:: {
-    extra_mx_args+: ["--strip-jars"],
   },
 
   mxStrictMixin:: {
@@ -158,7 +155,7 @@ local sulong_deps = common.deps.sulong;
     gateTags:: std.split(tags, ","),
   },
 
-  style:: common.deps.eclipse + common.deps.jdt + $.gateTags("style,fullbuild") + {
+  style:: common.deps.eclipse + common.deps.jdt + common.deps.spotbugs + $.gateTags("style,fullbuild") + {
     extra_gate_args+:: ["--strict-mode"],
   },
 
@@ -265,9 +262,7 @@ local sulong_deps = common.deps.sulong;
   },
 } + {
 
-  [std.strReplace(name, "-", "_")]: common[name] {
-    jdk: "jdk" + self.jdk_version,
-  }
+  [std.strReplace(name, "-", "_")]: common[name]
   for name in std.objectFieldsAll(common)
   if std.startsWith(name, "labsjdk")
 
