@@ -264,7 +264,7 @@ public abstract class NativeImageCodeCache {
     }
 
     public void buildRuntimeMetadata(SnippetReflectionProvider snippetReflectionProvider, ForkJoinPool threadPool) {
-        buildRuntimeMetadata(snippetReflectionProvider, threadPool, new MethodPointer(getFirstCompilation().getLeft()), WordFactory.signed(getCodeAreaSize()));
+        buildRuntimeMetadata(snippetReflectionProvider, threadPool, new MethodPointer(getFirstCompilation().getLeft(), true), WordFactory.signed(getCodeAreaSize()));
     }
 
     protected void buildRuntimeMetadata(SnippetReflectionProvider snippetReflection, ForkJoinPool threadPool, CFunctionPointer firstMethod, UnsignedWord codeSize) {

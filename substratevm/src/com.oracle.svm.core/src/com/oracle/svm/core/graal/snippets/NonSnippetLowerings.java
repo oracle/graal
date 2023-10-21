@@ -410,8 +410,7 @@ public abstract class NonSnippetLowerings {
                     hub = graph.unique(new LoadHubNode(runtimeConfig.getProviders().getStampProvider(), graph.addOrUnique(PiNode.create(receiver, nullCheck))));
                     AddressNode address = graph.unique(new OffsetAddressNode(hub, ConstantNode.forIntegerKind(FrameAccess.getWordKind(), vtableEntryOffset, graph)));
                     ReadNode entry = graph.add(new ReadNode(address, SubstrateBackend.getVTableIdentity(), FrameAccess.getWordStamp(), BarrierType.NONE, MemoryOrderMode.PLAIN));
-                    loweredCallTarget = graph.add(
-                                    new IndirectCallTargetNode(entry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind));
+                    loweredCallTarget = createIndirectCall(graph, callTarget, parameters, method, signature, callType, invokeKind, entry);
 
                     graph.addBeforeFixed(node, entry);
                 }
@@ -433,6 +432,11 @@ public abstract class NonSnippetLowerings {
                         CallingConvention.Type callType, InvokeKind invokeKind, SharedMethod targetMethod, FixedNode node) {
             return graph.add(new DirectCallTargetNode(parameters.toArray(ValueNode.EMPTY_ARRAY),
                             callTarget.returnStamp(), signature, targetMethod, callType, invokeKind));
+        }
+
+        protected IndirectCallTargetNode createIndirectCall(StructuredGraph graph, MethodCallTargetNode callTarget, NodeInputList<ValueNode> parameters, SharedMethod method, JavaType[] signature,
+                        CallingConvention.Type callType, InvokeKind invokeKind, ReadNode entry) {
+            return graph.add(new IndirectCallTargetNode(entry, parameters.toArray(new ValueNode[parameters.size()]), callTarget.returnStamp(), signature, method, callType, invokeKind));
         }
 
         private static CallTargetNode createUnreachableCallTarget(LoweringTool tool, FixedNode node, NodeInputList<ValueNode> parameters, StampPair returnStamp, JavaType[] signature,
