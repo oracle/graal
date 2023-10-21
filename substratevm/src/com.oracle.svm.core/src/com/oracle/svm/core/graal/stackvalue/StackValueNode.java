@@ -46,7 +46,6 @@ import org.graalvm.word.LocationIdentity;
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.Uninterruptible;
 import com.oracle.svm.core.config.ConfigurationValues;
-import com.oracle.svm.core.thread.VirtualThreads;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
@@ -153,7 +152,7 @@ public class StackValueNode extends AbstractStateSplit implements MemoryAccess, 
          * around in a caller, but these are difficult to ensure across multiple callers and
          * callees.
          */
-        boolean checkVirtualThread = disallowVirtualThread && VirtualThreads.isSupported() && !Uninterruptible.Utils.isUninterruptible(method);
+        boolean checkVirtualThread = disallowVirtualThread && !Uninterruptible.Utils.isUninterruptible(method);
         return create(sizeInBytes, slotIdentity, checkVirtualThread);
     }
 

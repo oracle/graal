@@ -30,7 +30,6 @@ import jdk.compiler.graal.nodes.extended.MembarNode;
 import jdk.compiler.graal.nodes.java.ArrayLengthNode;
 import jdk.compiler.graal.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.nativeimage.c.struct.RawStructure;
@@ -39,9 +38,9 @@ import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 
-import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.AlwaysInline;
 import com.oracle.svm.core.Uninterruptible;
+import com.oracle.svm.core.UnmanagedMemoryUtil;
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.code.CodeInfo;
 import com.oracle.svm.core.code.CodeInfoAccess;
@@ -58,9 +57,10 @@ import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.stack.JavaStackWalk;
 import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
-import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationInternals;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.Safepoint;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
@@ -107,39 +107,14 @@ public final class StoredContinuationAccess {
         return s.ip;
     }
 
-    public static int allocateToYield(Continuation c, Pointer baseSp, Pointer sp, CodePointer ip) {
-        assert sp.isNonNull() && ip.isNonNull();
-        return allocateFromStack(c, baseSp, sp, ip, WordFactory.nullPointer());
-    }
+    public static int allocateToYield(Target_jdk_internal_vm_Continuation c, Pointer baseSp, Pointer sp, CodePointer ip) {
+        assert baseSp.isNonNull() && sp.isNonNull() && ip.isNonNull();
 
-    public static int allocateToPreempt(Continuation c, Pointer baseSp, IsolateThread targetThread) {
-        return allocateFromStack(c, baseSp, WordFactory.nullPointer(), WordFactory.nullPointer(), targetThread);
-    }
-
-    private static int allocateFromStack(Continuation cont, Pointer baseSp, Pointer sp, CodePointer ip, IsolateThread targetThread) {
-        boolean yield = sp.isNonNull();
-        assert yield == ip.isNonNull() && yield == targetThread.isNull();
-        assert baseSp.isNonNull();
-
-        Pointer startSp = sp;
-        CodePointer startIp = ip;
-        if (!yield) {
-            PreemptVisitor visitor = new PreemptVisitor(baseSp);
-            JavaStackWalker.walkThread(targetThread, visitor);
-            if (visitor.preemptStatus != Continuation.FREEZE_OK) {
-                return visitor.preemptStatus;
-            }
-            startSp = visitor.leafSP;
-            startIp = visitor.leafIP;
-        }
-
-        VMError.guarantee(startSp.isNonNull());
-
-        int framesSize = UnsignedUtils.safeToInt(baseSp.subtract(startSp));
+        int framesSize = UnsignedUtils.safeToInt(baseSp.subtract(sp));
         StoredContinuation instance = allocate(framesSize);
-        fillUninterruptibly(instance, startIp, startSp, framesSize);
-        cont.stored = instance;
-        return Continuation.FREEZE_OK;
+        fillUninterruptibly(instance, ip, sp, framesSize);
+        ContinuationInternals.setStoredContinuation(c, instance);
+        return ContinuationSupport.FREEZE_OK;
     }
 
     @Uninterruptible(reason = "Prevent modifications to the stack while initializing instance and copying frames.")
@@ -300,7 +275,7 @@ public final class StoredContinuationAccess {
 
         Pointer leafSP;
         CodePointer leafIP;
-        int preemptStatus = Continuation.FREEZE_OK;
+        int preemptStatus = ContinuationSupport.FREEZE_OK;
 
         PreemptVisitor(Pointer endSP) {
             this.endSP = endSP;
@@ -315,7 +290,7 @@ public final class StoredContinuationAccess {
             FrameInfoQueryResult frameInfo = CodeInfoTable.lookupCodeInfoQueryResult(codeInfo, ip).getFrameInfo();
             if (frameInfo.getSourceClass().equals(StoredContinuationAccess.class) && frameInfo.getSourceMethodName().equals("allocateToYield")) {
                 // Continuation is already in the process of yielding, cancel preemption.
-                preemptStatus = Continuation.YIELDING;
+                preemptStatus = ContinuationSupport.FREEZE_YIELDING;
                 return false;
             }
 

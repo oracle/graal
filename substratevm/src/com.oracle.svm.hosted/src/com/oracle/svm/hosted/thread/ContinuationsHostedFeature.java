@@ -24,19 +24,22 @@
  */
 package com.oracle.svm.hosted.thread;
 
+import java.lang.reflect.Method;
 import java.util.List;
 
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
-import com.oracle.svm.core.thread.Continuation;
+import com.oracle.svm.core.thread.ContinuationInternals;
+import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.thread.ContinuationsFeature;
-import com.oracle.svm.hosted.FeatureImpl;
+import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
+import com.oracle.svm.hosted.FeatureImpl.BeforeAnalysisAccessImpl;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
-public class HostedContinuationsFeature implements InternalFeature {
+public class ContinuationsHostedFeature implements InternalFeature {
 
     @Override
     public List<Class<? extends Feature>> getRequiredFeatures() {
@@ -45,9 +48,10 @@ public class HostedContinuationsFeature implements InternalFeature {
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (Continuation.isSupported()) {
+        if (ContinuationSupport.isSupported()) {
             // limit the analysis optimizations performed on continuation return location
-            ((FeatureImpl.BeforeAnalysisAccessImpl) access).registerOpaqueMethodReturn(ReflectionUtil.lookupMethod(Continuation.class, "enter1", boolean.class));
+            Method opaqueReturnMethod = ReflectionUtil.lookupMethod(ContinuationInternals.class, "enterSpecial1", Target_jdk_internal_vm_Continuation.class, boolean.class);
+            ((BeforeAnalysisAccessImpl) access).registerOpaqueMethodReturn(opaqueReturnMethod);
         }
     }
 }

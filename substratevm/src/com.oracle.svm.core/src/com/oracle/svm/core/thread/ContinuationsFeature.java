@@ -26,9 +26,7 @@ package com.oracle.svm.core.thread;
 
 import java.lang.reflect.Field;
 
-import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
-import org.graalvm.nativeimage.hosted.RuntimeClassInitialization;
 
 import com.oracle.svm.core.SubstrateControlFlowIntegrity;
 import com.oracle.svm.core.SubstrateOptions;
@@ -37,57 +35,35 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.heap.StoredContinuation;
 import com.oracle.svm.core.heap.StoredContinuationAccess;
+import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.util.ReflectionUtil;
 
 @AutomaticallyRegisteredFeature
 public class ContinuationsFeature implements InternalFeature {
-    private boolean finishedRegistration = false;
+    private Boolean supported;
+
+    public static boolean isSupported() {
+        return ImageSingletons.lookup(ContinuationsFeature.class).supported;
+    }
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        final int firstLoomPreviewVersion = 19;
-        final int lastLoomPreviewVersion = 20;
-
-        boolean supportLoom = false;
-        if (JavaVersionUtil.JAVA_SPEC >= firstLoomPreviewVersion) {
-            boolean haveLoom;
-            if (JavaVersionUtil.JAVA_SPEC > lastLoomPreviewVersion) {
-                haveLoom = true;
-            } else {
-                try {
-                    haveLoom = (Boolean) Class.forName("jdk.internal.misc.PreviewFeatures")
-                                    .getDeclaredMethod("isEnabled").invoke(null);
-                } catch (ReflectiveOperationException e) {
-                    throw VMError.shouldNotReachHere(e);
-                }
-                if (!haveLoom) {
-                    // Defer: can get initialized and fail the image build despite substitution
-                    RuntimeClassInitialization.initializeAtRunTime("jdk.internal.vm.Continuation");
-                }
-            }
-            supportLoom = haveLoom && !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend() && !SubstrateControlFlowIntegrity.enabled();
+        /* If continuations are not supported, "virtual" threads are bound to platform threads. */
+        if (ContinuationSupport.Options.VMContinuations.getValue()) {
+            supported = !DeoptimizationSupport.enabled() && !SubstrateOptions.useLLVMBackend() && !SubstrateControlFlowIntegrity.enabled();
+            UserError.guarantee(supported || !ContinuationSupport.Options.VMContinuations.hasBeenSet(),
+                            "Continuation support has been explicitly enabled with option %s but is not available " +
+                                            "because of the runtime compilation, LLVM backend, or control flow integrity features.",
+                            ContinuationSupport.Options.VMContinuations.getName());
+        } else {
+            supported = false;
         }
-
-        /*
-         * Note: missing support for Loom due to preview features being off, runtime compilation, or
-         * the LLVM backend is reported at runtime to allow probing without failing the image build.
-         */
-        if (supportLoom) {
-            LoomVirtualThreads vt = new LoomVirtualThreads();
-            ImageSingletons.add(VirtualThreads.class, vt);
-            ImageSingletons.add(LoomVirtualThreads.class, vt); // for simpler check in LoomSupport
-        }
-        finishedRegistration = true;
-    }
-
-    boolean hasFinishedRegistration() {
-        return finishedRegistration;
     }
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
-        if (Continuation.isSupported()) {
+        if (isSupported()) {
             if (!ImageSingletons.contains(ContinuationSupport.class)) {
                 ImageSingletons.add(ContinuationSupport.class, new ContinuationSupport());
             }
@@ -98,20 +74,16 @@ public class ContinuationsFeature implements InternalFeature {
             access.registerReachabilityHandler(a -> access.registerAsInHeap(StoredContinuation.class),
                             ReflectionUtil.lookupMethod(StoredContinuationAccess.class, "allocate", int.class));
         } else {
-            access.registerReachabilityHandler(a -> abortIfUnsupported(), StoredContinuationAccess.class);
+            access.registerReachabilityHandler(a -> VMError.shouldNotReachHere("Virtual threads internals are reachable but support is not available or active."), StoredContinuationAccess.class);
         }
     }
 
     @Override
     public void beforeCompilation(BeforeCompilationAccess access) {
-        if (Continuation.isSupported()) {
+        if (isSupported()) {
             Field ipField = ReflectionUtil.lookupField(StoredContinuation.class, "ip");
             long offset = access.objectFieldOffset(ipField);
             ContinuationSupport.singleton().setIPOffset(offset);
         }
-    }
-
-    static void abortIfUnsupported() {
-        VMError.guarantee(Continuation.isSupported(), "Virtual threads internals are reachable but support is not available or active.");
     }
 }

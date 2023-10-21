@@ -102,7 +102,6 @@ import com.oracle.svm.core.reflect.MissingReflectionRegistrationUtils;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
-import com.oracle.svm.core.thread.Continuation;
 import com.oracle.svm.core.thread.ContinuationSupport;
 import com.oracle.svm.core.util.VMError;
 
@@ -600,7 +599,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
                             ALLOCATION_LOCATIONS);
 
             SnippetInfo allocateStoredContinuationSnippet = null;
-            if (Continuation.isSupported()) {
+            if (ContinuationSupport.isSupported()) {
                 allocateStoredContinuationSnippet = snippet(providers,
                                 SubstrateAllocationSnippets.class,
                                 "allocateStoredContinuation",
@@ -634,7 +633,7 @@ public class SubstrateAllocationSnippets extends AllocationSnippets {
             lowerings.put(NewMultiArrayNode.class, new NewMultiArrayLowering());
             lowerings.put(ValidateNewInstanceClassNode.class, new ValidateNewInstanceClassLowering());
 
-            if (Continuation.isSupported()) {
+            if (ContinuationSupport.isSupported()) {
                 lowerings.put(NewStoredContinuationNode.class, new NewStoredContinuationLowering());
             }
             if (Pod.RuntimeSupport.isPresent()) {

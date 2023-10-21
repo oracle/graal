@@ -61,11 +61,8 @@ import com.oracle.svm.core.stack.JavaStackWalker;
 import com.oracle.svm.core.stack.StackFrameVisitor;
 import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.JavaVMOperation;
-import com.oracle.svm.core.thread.LoomSupport;
-import com.oracle.svm.core.thread.PlatformThreads;
 import com.oracle.svm.core.thread.Target_jdk_internal_vm_Continuation;
 import com.oracle.svm.core.thread.VMOperation;
-import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -104,10 +101,7 @@ public class StackTraceUtils {
     @NeverInline("Potentially starting a stack walk in the caller frame")
     public static StackTraceElement[] getStackTraceAtSafepoint(Thread thread) {
         assert VMOperation.isInProgressAtSafepoint();
-        if (VirtualThreads.isSupported()) { // NOTE: also for platform threads!
-            return VirtualThreads.singleton().getVirtualOrPlatformThreadStackTraceAtSafepoint(thread, readCallerStackPointer());
-        }
-        return PlatformThreads.getStackTraceAtSafepoint(thread, readCallerStackPointer());
+        return JavaThreads.getStackTraceAtSafepoint(thread, readCallerStackPointer());
     }
 
     public static StackTraceElement[] getThreadStackTraceAtSafepoint(IsolateThread isolateThread, Pointer endSP) {
@@ -186,7 +180,7 @@ public class StackTraceUtils {
             return false;
         }
 
-        if (LoomSupport.isEnabled() && clazz == Target_jdk_internal_vm_Continuation.class) {
+        if (clazz == Target_jdk_internal_vm_Continuation.class) {
             String name = frameInfo.getSourceMethodName();
             if (name.startsWith("enter") || name.startsWith("yield")) {
                 return false;

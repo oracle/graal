@@ -51,9 +51,9 @@ import com.oracle.svm.core.jfr.events.JavaMonitorInflateEvent;
 import com.oracle.svm.core.monitor.JavaMonitorQueuedSynchronizer.JavaMonitorConditionObject;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.StackOverflowCheck;
+import com.oracle.svm.core.thread.JavaThreads;
 import com.oracle.svm.core.thread.ThreadStatus;
 import com.oracle.svm.core.thread.VMOperationControl;
-import com.oracle.svm.core.thread.VirtualThreads;
 import com.oracle.svm.core.util.VMError;
 
 import jdk.internal.misc.Unsafe;
@@ -358,8 +358,7 @@ public class MultiThreadedMonitorSupport extends MonitorSupport {
          * clear the virtual thread interrupt.
          */
         long compensation = -1;
-        boolean pinned = VirtualThreads.isSupported() &&
-                        VirtualThreads.singleton().isVirtual(Thread.currentThread()) && VirtualThreads.singleton().isCurrentPinned();
+        boolean pinned = JavaThreads.isCurrentThreadVirtualAndPinned();
         if (pinned) {
             compensation = Target_jdk_internal_misc_Blocker.begin();
         }

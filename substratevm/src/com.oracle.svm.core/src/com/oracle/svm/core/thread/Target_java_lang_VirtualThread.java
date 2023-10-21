@@ -28,7 +28,6 @@ import static com.oracle.svm.core.thread.VirtualThreadHelper.asTarget;
 import static com.oracle.svm.core.thread.VirtualThreadHelper.asThread;
 
 import java.util.Locale;
-import java.util.concurrent.Executor;
 
 import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
 
@@ -40,15 +39,14 @@ import com.oracle.svm.core.annotate.Delete;
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;
 import com.oracle.svm.core.annotate.TargetElement;
-import com.oracle.svm.core.jdk.JDK21OrEarlier;
-import com.oracle.svm.core.jdk.LoomJDK;
+import com.oracle.svm.core.jdk.JDK22OrLater;
 import com.oracle.svm.core.jfr.HasJfrSupport;
 import com.oracle.svm.core.jfr.SubstrateJVM;
 import com.oracle.svm.core.monitor.MonitorInflationCause;
 import com.oracle.svm.core.monitor.MonitorSupport;
 import com.oracle.svm.core.util.VMError;
 
-@TargetClass(className = "java.lang.VirtualThread", onlyWith = LoomJDK.class)
+@TargetClass(className = "java.lang.VirtualThread")
 public final class Target_java_lang_VirtualThread {
     // Checkstyle: stop
     @Alias static int NEW;
@@ -60,12 +58,10 @@ public final class Target_java_lang_VirtualThread {
     @Alias static int PINNED;
     @Alias static int YIELDING;
     @Alias static int TERMINATED;
-    @Alias //
-    @TargetElement(onlyWith = JDK21OrEarlier.class) //
-    static int RUNNABLE_SUSPENDED;
-    @Alias //
-    @TargetElement(onlyWith = JDK21OrEarlier.class) //
-    static int PARKED_SUSPENDED;
+    @Alias static int SUSPENDED;
+    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PARKING;
+    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PARKED;
+    @TargetElement(onlyWith = JDK22OrLater.class) @Alias static int TIMED_PINNED;
     @Alias static Target_jdk_internal_vm_ContinuationScope VTHREAD_SCOPE;
     // Checkstyle: resume
 
@@ -103,8 +99,6 @@ public final class Target_java_lang_VirtualThread {
         // unimplemented (GR-45392)
     }
 
-    @Alias Executor scheduler;
-
     @Alias volatile Thread carrierThread;
 
     @Alias volatile Target_sun_nio_ch_Interruptible nioBlocker;
@@ -113,9 +107,6 @@ public final class Target_java_lang_VirtualThread {
 
     @Alias
     public static native Target_jdk_internal_vm_ContinuationScope continuationScope();
-
-    @Alias
-    native boolean joinNanos(long nanos) throws InterruptedException;
 
     @Delete
     native StackTraceElement[] asyncGetStackTrace();
@@ -126,17 +117,17 @@ public final class Target_java_lang_VirtualThread {
     @Substitute
     boolean getAndClearInterrupt() {
         assert Thread.currentThread() == SubstrateUtil.cast(this, Object.class);
-        Object token = VirtualThreadHelper.acquireInterruptLockMaybeSwitch(this);
-        try {
-            boolean oldValue = interrupted;
-            if (oldValue) {
+        boolean oldValue = interrupted;
+        if (oldValue) {
+            Object token = VirtualThreadHelper.acquireInterruptLockMaybeSwitch(this);
+            try {
                 interrupted = false;
+                asTarget(carrierThread).clearInterrupt();
+            } finally {
+                VirtualThreadHelper.releaseInterruptLockMaybeSwitchBack(this, token);
             }
-            asTarget(carrierThread).clearInterrupt();
-            return oldValue;
-        } finally {
-            VirtualThreadHelper.releaseInterruptLockMaybeSwitchBack(this, token);
         }
+        return oldValue;
     }
 
     @Alias
@@ -187,7 +178,7 @@ public final class Target_java_lang_VirtualThread {
 
     @Substitute
     Thread.State threadState() {
-        int state = state();
+        int state = state() & ~SUSPENDED;
         if (state == NEW) {
             return Thread.State.NEW;
         } else if (state == STARTED) {
@@ -196,7 +187,7 @@ public final class Target_java_lang_VirtualThread {
             } else {
                 return Thread.State.RUNNABLE;
             }
-        } else if (state == RUNNABLE || (JavaVersionUtil.JAVA_SPEC <= 21 && state == RUNNABLE_SUSPENDED)) {
+        } else if (state == RUNNABLE) {
             return Thread.State.RUNNABLE;
         } else if (state == RUNNING) {
             Object token = VirtualThreadHelper.acquireInterruptLockMaybeSwitch(this);
@@ -211,7 +202,7 @@ public final class Target_java_lang_VirtualThread {
             return Thread.State.RUNNABLE;
         } else if (state == PARKING || state == YIELDING) {
             return Thread.State.RUNNABLE;
-        } else if (state == PARKED || (JavaVersionUtil.JAVA_SPEC <= 21 && state == PARKED_SUSPENDED) || state == PINNED) {
+        } else if (state == PARKED || state == PINNED) {
             int parkedThreadStatus = MonitorSupport.singleton().getParkedThreadStatus(asThread(this), false);
             switch (parkedThreadStatus) {
                 case ThreadStatus.BLOCKED_ON_MONITOR_ENTER:
@@ -224,6 +215,12 @@ public final class Target_java_lang_VirtualThread {
             }
         } else if (state == TERMINATED) {
             return Thread.State.TERMINATED;
+        } else if (JavaVersionUtil.JAVA_SPEC >= 22) {
+            if (state == TIMED_PARKING) {
+                return Thread.State.RUNNABLE;
+            } else if (state == TIMED_PARKED || state == TIMED_PINNED) {
+                return Thread.State.TIMED_WAITING;
+            }
         }
         throw new InternalError();
     }
@@ -310,7 +307,7 @@ final class VirtualThreadHelper {
              * thread might never get unparked, in which case both threads are stuck.
              */
             Thread carrier = self.carrierThread;
-            PlatformThreads.setCurrentThread(carrier, carrier);
+            JavaThreads.setCurrentThread(carrier, carrier);
             token = self;
         }
         Object lock = asTarget(self).interruptLock;
@@ -326,7 +323,7 @@ final class VirtualThreadHelper {
             assert token == self;
             Thread carrier = asVTarget(token).carrierThread;
             assert Thread.currentThread() == carrier;
-            PlatformThreads.setCurrentThread(carrier, asThread(token));
+            JavaThreads.setCurrentThread(carrier, asThread(token));
         }
     }
 

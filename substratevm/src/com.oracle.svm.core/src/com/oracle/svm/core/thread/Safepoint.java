@@ -65,12 +65,10 @@ import com.oracle.svm.core.nodes.CodeSynchronizationNode;
 import com.oracle.svm.core.nodes.SafepointCheckNode;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.option.RuntimeOptionKey;
-import com.oracle.svm.core.snippets.KnownIntrinsics;
 import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.snippets.SubstrateForeignCallTarget;
 import com.oracle.svm.core.stack.JavaFrameAnchors;
-import com.oracle.svm.core.thread.VMThreads.ActionOnExitSafepointSupport;
 import com.oracle.svm.core.thread.VMThreads.ActionOnTransitionToJavaSupport;
 import com.oracle.svm.core.thread.VMThreads.SafepointBehavior;
 import com.oracle.svm.core.thread.VMThreads.StatusSupport;
@@ -435,20 +433,6 @@ public final class Safepoint {
              * Substrate VM).
              */
             VMError.shouldNotReachHere(ex);
-        }
-
-        exitSlowPathCheck();
-    }
-
-    @Uninterruptible(reason = "Must not contain safepoint checks")
-    private static void exitSlowPathCheck() {
-        if (ActionOnExitSafepointSupport.isActionPending()) {
-            if (LoomSupport.isEnabled() && ActionOnExitSafepointSupport.isSwitchStackPending()) {
-                ActionOnExitSafepointSupport.clearActions();
-                KnownIntrinsics.farReturn(0, ActionOnExitSafepointSupport.getSwitchStackSP(), ActionOnExitSafepointSupport.getSwitchStackIP(), false);
-            } else {
-                assert false : "Unexpected action pending.";
-            }
         }
     }
 
