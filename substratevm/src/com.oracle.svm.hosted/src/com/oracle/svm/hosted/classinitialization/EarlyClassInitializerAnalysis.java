@@ -24,40 +24,40 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import static jdk.compiler.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
+import static jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo.createStandardInlineInfo;
 
 import java.lang.reflect.Proxy;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import jdk.compiler.graal.core.common.GraalBailoutException;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.DebugContext.Builder;
-import jdk.compiler.graal.graph.Graph;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.java.BytecodeParser;
-import jdk.compiler.graal.java.GraphBuilderPhase;
-import jdk.compiler.graal.nodes.FrameState;
-import jdk.compiler.graal.nodes.GraphState.GuardsStage;
-import jdk.compiler.graal.nodes.GraphState.StageFlag;
-import jdk.compiler.graal.nodes.Invoke;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.extended.UnsafeAccessNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.graphbuilderconf.InlineInvokePlugin;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.compiler.graal.nodes.java.AccessFieldNode;
-import jdk.compiler.graal.nodes.java.AccessMonitorNode;
-import jdk.compiler.graal.nodes.java.NewArrayNode;
-import jdk.compiler.graal.nodes.java.NewMultiArrayNode;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.OptimisticOptimizations;
-import jdk.compiler.graal.phases.tiers.HighTierContext;
-import jdk.compiler.graal.phases.util.Providers;
+import jdk.graal.compiler.core.common.GraalBailoutException;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Builder;
+import jdk.graal.compiler.graph.Graph;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.GraphState.GuardsStage;
+import jdk.graal.compiler.nodes.GraphState.StageFlag;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.UnsafeAccessNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.java.AccessFieldNode;
+import jdk.graal.compiler.nodes.java.AccessMonitorNode;
+import jdk.graal.compiler.nodes.java.NewArrayNode;
+import jdk.graal.compiler.nodes.java.NewMultiArrayNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 

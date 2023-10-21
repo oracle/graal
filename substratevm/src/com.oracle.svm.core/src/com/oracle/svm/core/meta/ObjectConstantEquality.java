@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.meta;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.truffle.nodes.ObjectLocationIdentity;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.truffle.nodes.ObjectLocationIdentity;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import jdk.vm.ci.meta.ConstantReflectionProvider;

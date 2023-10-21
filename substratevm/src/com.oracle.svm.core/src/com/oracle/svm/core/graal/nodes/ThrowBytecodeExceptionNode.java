@@ -24,24 +24,24 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static jdk.compiler.graal.nodeinfo.InputType.State;
-import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_2;
-import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_2;
+import static jdk.graal.compiler.nodeinfo.InputType.State;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_2;
 
 import java.util.List;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.graph.NodeInputList;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.ControlSinkNode;
-import jdk.compiler.graal.nodes.FrameState;
-import jdk.compiler.graal.nodes.UnwindNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.extended.BytecodeExceptionNode;
-import jdk.compiler.graal.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
-import jdk.compiler.graal.nodes.spi.Lowerable;
-import jdk.compiler.graal.nodes.spi.NodeWithState;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.graph.NodeInputList;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ControlSinkNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.UnwindNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode.BytecodeExceptionKind;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.NodeWithState;
 
 /**
  * Throw an implicit exception. In contrast to {@link BytecodeExceptionNode}, this node does not

@@ -27,12 +27,12 @@ package com.oracle.svm.hosted.code;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
-import jdk.compiler.graal.core.common.CompilationIdentifier;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.GraphDecoder;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.options.OptionValues;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.GraphDecoder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.svm.common.meta.MultiMethod;

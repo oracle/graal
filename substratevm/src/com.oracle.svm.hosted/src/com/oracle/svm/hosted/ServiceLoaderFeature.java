@@ -33,8 +33,8 @@ import java.util.ServiceLoader;
 import java.util.Set;
 import java.util.stream.Collectors;
 
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 import org.graalvm.nativeimage.hosted.RuntimeReflection;
 import org.graalvm.nativeimage.hosted.RuntimeResourceAccess;
 
@@ -92,11 +92,11 @@ public class ServiceLoaderFeature implements InternalFeature {
                     "sun.util.locale.provider.LocaleDataMetaInfo", // see LocaleSubstitutions
                     /* Graal hotspot-specific services */
                     "jdk.vm.ci.hotspot.HotSpotJVMCIBackendFactory",
-                    "jdk.compiler.graal.hotspot.CompilerConfigurationFactory",
-                    "jdk.compiler.graal.hotspot.HotSpotBackendFactory",
-                    "jdk.compiler.graal.hotspot.meta.DefaultHotSpotLoweringProvider$Extensions",
-                    "jdk.compiler.graal.hotspot.meta.HotSpotInvocationPluginProvider",
-                    "jdk.compiler.graal.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory");
+                    "jdk.graal.compiler.hotspot.CompilerConfigurationFactory",
+                    "jdk.graal.compiler.hotspot.HotSpotBackendFactory",
+                    "jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider$Extensions",
+                    "jdk.graal.compiler.hotspot.meta.HotSpotInvocationPluginProvider",
+                    "jdk.graal.compiler.truffle.hotspot.TruffleCallBoundaryInstrumentationFactory");
 
     // NOTE: Platform class had to be added to this list since our analysis discovers that
     // Platform.includedIn is reachable regardless of fact that it is constant folded at
@@ -112,7 +112,7 @@ public class ServiceLoaderFeature implements InternalFeature {
 
     private static final Set<String> SKIPPED_PROVIDERS = Set.of(
                     /* Graal hotspot-specific service-providers */
-                    "jdk.compiler.graal.hotspot.meta.HotSpotDisassemblerProvider",
+                    "jdk.graal.compiler.hotspot.meta.HotSpotDisassemblerProvider",
                     /* Skip console providers until GR-44085 is fixed */
                     "jdk.internal.org.jline.JdkConsoleProviderImpl", "jdk.jshell.execution.impl.ConsoleImpl$ConsoleProviderImpl");
 

@@ -60,7 +60,7 @@ import static com.oracle.objectfile.pecoff.cv.CVTypeConstants.T_UINT8;
 
 import java.util.ArrayList;
 
-import jdk.compiler.graal.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 
 /*
  * CV Type Record format (little-endian):

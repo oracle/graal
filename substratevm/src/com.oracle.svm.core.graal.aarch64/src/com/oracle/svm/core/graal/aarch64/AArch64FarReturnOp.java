@@ -26,17 +26,17 @@ package com.oracle.svm.core.graal.aarch64;
 
 import static com.oracle.svm.core.graal.aarch64.SubstrateAArch64RegisterConfig.fp;
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.compiler.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static jdk.compiler.graal.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import jdk.compiler.graal.asm.Label;
-import jdk.compiler.graal.asm.aarch64.AArch64Address;
-import jdk.compiler.graal.asm.aarch64.AArch64Assembler;
-import jdk.compiler.graal.asm.aarch64.AArch64MacroAssembler;
-import jdk.compiler.graal.lir.LIRInstructionClass;
-import jdk.compiler.graal.lir.Opcode;
-import jdk.compiler.graal.lir.aarch64.AArch64BlockEndOp;
-import jdk.compiler.graal.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.asm.Label;
+import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.aarch64.AArch64BlockEndOp;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;

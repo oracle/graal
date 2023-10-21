@@ -27,8 +27,8 @@ package com.oracle.svm.hosted.image;
 import java.util.List;
 import java.util.function.Function;
 
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 

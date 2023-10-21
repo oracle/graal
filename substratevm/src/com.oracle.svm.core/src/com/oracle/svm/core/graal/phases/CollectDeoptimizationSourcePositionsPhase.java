@@ -27,12 +27,12 @@ package com.oracle.svm.core.graal.phases;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.compiler.graal.graph.NodeSourcePosition;
-import jdk.compiler.graal.nodes.DeoptimizeNode;
-import jdk.compiler.graal.nodes.DynamicDeoptimizeNode;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.phases.Phase;
-import jdk.compiler.graal.phases.common.DeoptimizationGroupingPhase;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.DeoptimizeNode;
+import jdk.graal.compiler.nodes.DynamicDeoptimizeNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.phases.Phase;
+import jdk.graal.compiler.phases.common.DeoptimizationGroupingPhase;
 
 import com.oracle.svm.core.graal.nodes.DeoptSourcePositionInfoNode;
 

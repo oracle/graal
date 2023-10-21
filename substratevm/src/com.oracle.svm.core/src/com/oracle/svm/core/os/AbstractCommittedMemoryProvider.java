@@ -32,7 +32,7 @@ import static org.graalvm.word.WordFactory.nullPointer;
 
 import java.util.EnumSet;
 
-import jdk.compiler.graal.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.UnsignedWord;

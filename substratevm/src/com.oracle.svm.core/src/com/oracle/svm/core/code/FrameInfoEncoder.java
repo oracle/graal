@@ -38,13 +38,13 @@ import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
-import jdk.compiler.graal.code.CompilationResult;
-import jdk.compiler.graal.core.common.LIRKind;
-import jdk.compiler.graal.core.common.NumUtil;
-import jdk.compiler.graal.core.common.type.CompressibleConstant;
-import jdk.compiler.graal.core.common.util.FrequencyEncoder;
-import jdk.compiler.graal.core.common.util.TypeConversion;
-import jdk.compiler.graal.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.util.FrequencyEncoder;
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CalleeSavedRegisters;

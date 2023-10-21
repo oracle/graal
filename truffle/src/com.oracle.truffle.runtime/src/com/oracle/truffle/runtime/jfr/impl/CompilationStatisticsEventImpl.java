@@ -53,7 +53,7 @@ import jdk.jfr.StackTrace;
 import jdk.jfr.Timespan;
 import jdk.jfr.Unsigned;
 
-@Name("jdk.compiler.graal.truffle.CompilerStatistics")
+@Name("jdk.graal.compiler.truffle.CompilerStatistics")
 @Category("Truffle Compiler")
 @Label("Compiler Statistics")
 @Description("Truffe Compiler Statistics")

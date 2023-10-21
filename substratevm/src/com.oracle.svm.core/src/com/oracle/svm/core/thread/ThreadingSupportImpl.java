@@ -29,8 +29,8 @@ import static com.oracle.svm.core.thread.ThreadingSupportImpl.Options.SupportRec
 
 import java.util.concurrent.TimeUnit;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.options.Option;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Threading.RecurringCallback;

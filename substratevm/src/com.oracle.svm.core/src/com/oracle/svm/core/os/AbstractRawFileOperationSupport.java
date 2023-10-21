@@ -26,8 +26,8 @@ package com.oracle.svm.core.os;
 
 import java.io.File;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

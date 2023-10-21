@@ -24,24 +24,24 @@
  */
 package com.oracle.svm.core;
 
-import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_0;
-import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_1;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import java.util.Objects;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.calc.FloatingNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import jdk.compiler.graal.nodes.spi.Lowerable;
-import jdk.compiler.graal.nodes.spi.LoweringTool;
-import jdk.compiler.graal.phases.util.Providers;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

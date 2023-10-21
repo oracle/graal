@@ -28,10 +28,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.DebugContext.Builder;
-import jdk.compiler.graal.debug.Indent;
-import jdk.compiler.graal.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Builder;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 
 import com.oracle.graal.pointsto.util.GraalAccess;
 import com.oracle.objectfile.ObjectFile;

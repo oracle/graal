@@ -26,22 +26,22 @@ package com.oracle.svm.graal.meta;
 
 import java.util.function.Function;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.bytecode.BytecodeProvider;
-import jdk.compiler.graal.bytecode.ResolvedJavaMethodBytecodeProvider;
-import jdk.compiler.graal.core.common.spi.ConstantFieldProvider;
-import jdk.compiler.graal.core.common.spi.ForeignCallsProvider;
-import jdk.compiler.graal.core.common.spi.MetaAccessExtensionProvider;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.spi.LoopsDataProvider;
-import jdk.compiler.graal.nodes.spi.LoweringProvider;
-import jdk.compiler.graal.nodes.spi.PlatformConfigurationProvider;
-import jdk.compiler.graal.nodes.spi.Replacements;
-import jdk.compiler.graal.nodes.spi.StampProvider;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.replacements.ReplacementsImpl;
-import jdk.compiler.graal.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.bytecode.ResolvedJavaMethodBytecodeProvider;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
+import jdk.graal.compiler.nodes.spi.LoweringProvider;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
+import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.nodes.spi.StampProvider;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.ReplacementsImpl;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;

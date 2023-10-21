@@ -28,8 +28,8 @@ import java.lang.reflect.Array;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import jdk.compiler.graal.nodes.java.ArrayLengthNode;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

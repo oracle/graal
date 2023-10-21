@@ -26,14 +26,14 @@ package com.oracle.svm.core.graal.jdk;
 
 import java.util.Map;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.replacements.arraycopy.ArrayCopySnippets;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.arraycopy.ArrayCopySnippets;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.feature.InternalFeature;

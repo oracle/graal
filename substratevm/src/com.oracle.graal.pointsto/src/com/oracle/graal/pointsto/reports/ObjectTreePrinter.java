@@ -41,7 +41,7 @@ import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
-import jdk.compiler.graal.options.OptionValues;
+import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;

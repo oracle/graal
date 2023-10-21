@@ -28,11 +28,11 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.nio.ByteBuffer;
 
-import jdk.compiler.graal.code.DataSection.Data;
-import jdk.compiler.graal.code.DataSection.Patches;
-import jdk.compiler.graal.core.common.type.CompressibleConstant;
-import jdk.compiler.graal.core.common.type.TypedConstant;
-import jdk.compiler.graal.lir.asm.DataBuilder;
+import jdk.graal.compiler.code.DataSection.Data;
+import jdk.graal.compiler.code.DataSection.Patches;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.lir.asm.DataBuilder;
 
 import com.oracle.svm.core.FrameAccess;
 import com.oracle.svm.core.SubstrateOptions;

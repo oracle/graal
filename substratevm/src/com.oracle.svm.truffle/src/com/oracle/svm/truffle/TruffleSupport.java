@@ -28,14 +28,14 @@ import java.lang.reflect.Method;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.truffle.EconomyPartialEvaluatorConfiguration;
-import jdk.compiler.graal.truffle.PartialEvaluatorConfiguration;
-import jdk.compiler.graal.truffle.TruffleCompilerConfiguration;
-import jdk.compiler.graal.truffle.TruffleCompilerImpl;
-import jdk.compiler.graal.truffle.TruffleTierConfiguration;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.truffle.EconomyPartialEvaluatorConfiguration;
+import jdk.graal.compiler.truffle.PartialEvaluatorConfiguration;
+import jdk.graal.compiler.truffle.TruffleCompilerConfiguration;
+import jdk.graal.compiler.truffle.TruffleCompilerImpl;
+import jdk.graal.compiler.truffle.TruffleTierConfiguration;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;

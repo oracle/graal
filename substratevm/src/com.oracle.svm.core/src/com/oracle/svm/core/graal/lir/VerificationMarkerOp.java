@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.graal.lir;
 
-import jdk.compiler.graal.lir.LIRInstruction;
-import jdk.compiler.graal.lir.LIRInstructionClass;
-import jdk.compiler.graal.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 public final class VerificationMarkerOp extends LIRInstruction {
     public static final LIRInstructionClass<VerificationMarkerOp> TYPE = LIRInstructionClass.create(VerificationMarkerOp.class);

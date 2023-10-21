@@ -160,8 +160,8 @@ The `--engine.CompilationStatistics` command prints statistics on compilations a
     Compilations                : 2763
       Success                   : 2743
       Temporary Bailouts        : 17
-        jdk.compiler.graal.core.common.CancellationBailoutException: Compilation cancelled.: 16
-        jdk.compiler.graal.core.common.RetryableBailoutException: Assumption invalidated while compiling code: IsolatedObjectConstant[Object]: 1
+        jdk.graal.compiler.core.common.CancellationBailoutException: Compilation cancelled.: 16
+        jdk.graal.compiler.core.common.RetryableBailoutException: Assumption invalidated while compiling code: IsolatedObjectConstant[Object]: 1
       Permanent Bailouts        : 0
       Failed                    : 0
       Interrupted               : 3

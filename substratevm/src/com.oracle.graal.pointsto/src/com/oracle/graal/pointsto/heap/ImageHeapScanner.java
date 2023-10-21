@@ -33,10 +33,10 @@ import java.util.function.Consumer;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.core.common.SuppressFBWarnings;
-import jdk.compiler.graal.core.common.type.TypedConstant;
-import jdk.compiler.graal.debug.GraalError;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.core.common.type.TypedConstant;
+import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;

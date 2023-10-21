@@ -87,8 +87,8 @@ def _unittest_config_participant(config):
 mx_unittest.add_config_participant(_unittest_config_participant)
 
 def _get_CountUppercase_vmargs():
-    cp = mx.project("jdk.compiler.graal.test").classpath_repr()
-    return ['-cp', cp, 'jdk.compiler.graal.test.CountUppercase']
+    cp = mx.project("jdk.graal.compiler.test").classpath_repr()
+    return ['-cp', cp, 'jdk.graal.compiler.test.CountUppercase']
 
 def _check_compiler_log(compiler_log_file, expectations, extra_check=None, extra_log_files=None):
     """
@@ -372,7 +372,7 @@ def _test_libgraal_CompilationTimeout_JIT():
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations)
         if vm_can_exit:
-            # jdk.compiler.graal.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
+            # jdk.graal.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
             if exit_code != 84:
                 mx.abort(f'expected process to exit with 84 (indicating a stuck compilation) instead of {exit_code}')
         elif exit_code != 0:
@@ -418,7 +418,7 @@ def _test_libgraal_CompilationTimeout_Truffle(extra_vm_arguments):
         expectations = ['detected long running compilation'] + (['a stuck compilation'] if vm_can_exit else [])
         _check_compiler_log(compiler_log_file, expectations, extra_log_files=[truffle_log_file])
         if vm_can_exit:
-            # jdk.compiler.graal.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
+            # jdk.graal.compiler.core.CompilationWatchDog.EventHandler.STUCK_COMPILATION_EXIT_CODE
             if exit_code != 84:
                 mx.abort(f'expected process to exit with 84 (indicating a stuck compilation) instead of {exit_code}')
         elif exit_code != 0:

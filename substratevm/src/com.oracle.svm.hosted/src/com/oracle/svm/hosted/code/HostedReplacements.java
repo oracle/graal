@@ -26,12 +26,12 @@ package com.oracle.svm.hosted.code;
 
 import java.util.IdentityHashMap;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.bytecode.BytecodeProvider;
-import jdk.compiler.graal.java.BytecodeParser;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;
 import com.oracle.graal.pointsto.meta.HostedProviders;

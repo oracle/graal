@@ -30,14 +30,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.core.common.type.StampPair;
-import jdk.compiler.graal.nodes.CallTargetNode.InvokeKind;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.InvokeWithExceptionNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 
 import com.oracle.svm.core.graal.nodes.LoweredDeadEndNode;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;

@@ -24,25 +24,25 @@
  */
 package com.oracle.svm.core.graal.jdk;
 
-import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
-import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_UNKNOWN;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_UNKNOWN;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_UNKNOWN;
 
 import java.util.Map;
 
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.InputType;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.java.ArrayLengthNode;
-import jdk.compiler.graal.nodes.spi.Lowerable;
-import jdk.compiler.graal.nodes.spi.LoweringTool;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.replacements.Snippets;
-import jdk.compiler.graal.replacements.arraycopy.ArrayCopyNode;
-import jdk.compiler.graal.replacements.nodes.BasicArrayCopyNode;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.replacements.arraycopy.ArrayCopyNode;
+import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.JavaMemoryUtil;

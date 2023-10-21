@@ -32,8 +32,8 @@ import com.oracle.svm.core.heap.UnknownObjectField;
 import com.oracle.svm.core.util.UnsignedUtils;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

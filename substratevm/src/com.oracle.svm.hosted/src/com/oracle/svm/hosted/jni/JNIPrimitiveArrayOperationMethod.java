@@ -28,12 +28,12 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.java.FrameStateBuilder;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.MergeNode;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.ValueNode;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint.FatalExceptionHandler;
 import org.graalvm.nativeimage.c.function.CEntryPoint.Publish;
 import org.graalvm.nativeimage.c.type.CCharPointer;

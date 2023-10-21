@@ -24,7 +24,7 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.heap.ImageHeap;

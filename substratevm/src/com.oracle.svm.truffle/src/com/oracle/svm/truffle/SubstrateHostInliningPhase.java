@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.truffle;
 
-import jdk.compiler.graal.core.common.CompilationIdentifier;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.phases.common.CanonicalizerPhase;
-import jdk.compiler.graal.phases.tiers.HighTierContext;
-import jdk.compiler.graal.truffle.host.TruffleHostEnvironment;
-import jdk.compiler.graal.truffle.host.HostInliningPhase;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.truffle.host.HostInliningPhase;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

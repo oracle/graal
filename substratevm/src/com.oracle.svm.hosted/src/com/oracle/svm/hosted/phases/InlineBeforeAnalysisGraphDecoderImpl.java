@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisField;

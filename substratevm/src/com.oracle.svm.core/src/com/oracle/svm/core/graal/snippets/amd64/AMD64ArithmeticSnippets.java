@@ -26,9 +26,9 @@ package com.oracle.svm.core.graal.snippets.amd64;
 
 import java.util.Map;
 
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 
 import com.oracle.svm.core.graal.snippets.ArithmeticSnippets;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;

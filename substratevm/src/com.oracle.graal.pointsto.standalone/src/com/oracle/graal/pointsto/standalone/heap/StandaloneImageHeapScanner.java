@@ -26,7 +26,7 @@
 
 package com.oracle.graal.pointsto.standalone.heap;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanningObserver;

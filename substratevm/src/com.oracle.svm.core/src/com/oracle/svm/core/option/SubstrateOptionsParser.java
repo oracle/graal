@@ -33,9 +33,9 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.compiler.graal.options.OptionDescriptor;
-import jdk.compiler.graal.options.OptionDescriptors;
-import jdk.compiler.graal.options.OptionKey;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

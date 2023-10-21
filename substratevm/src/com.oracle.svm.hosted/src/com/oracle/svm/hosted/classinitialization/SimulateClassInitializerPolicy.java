@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.classinitialization;
 
-import jdk.compiler.graal.graph.NodeSourcePosition;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.AnnotationAccess;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
@@ -36,12 +36,12 @@ import com.oracle.svm.hosted.SVMHost;
 import com.oracle.svm.hosted.phases.ConstantFoldLoadFieldPlugin;
 import com.oracle.svm.hosted.phases.InlineBeforeAnalysisPolicyUtils;
 
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.graphbuilderconf.InlineInvokePlugin;
-import jdk.compiler.graal.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**

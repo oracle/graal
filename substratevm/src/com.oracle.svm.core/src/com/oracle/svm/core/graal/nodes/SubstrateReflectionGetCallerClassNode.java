@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.replacements.nodes.ReflectionGetCallerClassNode;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.replacements.nodes.ReflectionGetCallerClassNode;
 
 import com.oracle.svm.core.jdk.StackTraceUtils;
 

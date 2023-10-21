@@ -28,7 +28,7 @@ package com.oracle.objectfile.debugentry;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.compiler.graal.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;

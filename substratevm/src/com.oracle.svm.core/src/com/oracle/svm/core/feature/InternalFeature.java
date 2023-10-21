@@ -26,12 +26,12 @@ package com.oracle.svm.core.feature;
 
 import java.util.Map;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.tiers.Suites;
-import jdk.compiler.graal.phases.util.Providers;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.svm.core.ParsingReason;

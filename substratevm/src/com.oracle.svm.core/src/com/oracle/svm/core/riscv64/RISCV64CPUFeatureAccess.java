@@ -30,7 +30,7 @@ import java.util.AbstractCollection;
 import java.util.ArrayList;
 import java.util.EnumSet;
 
-import jdk.compiler.graal.core.riscv64.RISCV64ReflectionUtil;
+import jdk.graal.compiler.core.riscv64.RISCV64ReflectionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.StackValue;

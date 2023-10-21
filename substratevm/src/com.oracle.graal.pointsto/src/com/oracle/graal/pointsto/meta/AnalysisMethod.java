@@ -44,15 +44,15 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.graph.NodeSourcePosition;
-import jdk.compiler.graal.java.BytecodeParser.BytecodeParserError;
-import jdk.compiler.graal.java.StableMethodNameFormatter;
-import jdk.compiler.graal.nodes.EncodedGraph;
-import jdk.compiler.graal.nodes.EncodedGraph.EncodedNodeReference;
-import jdk.compiler.graal.nodes.GraphDecoder;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.BytecodeParser.BytecodeParserError;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
+import jdk.graal.compiler.nodes.EncodedGraph;
+import jdk.graal.compiler.nodes.EncodedGraph.EncodedNodeReference;
+import jdk.graal.compiler.nodes.GraphDecoder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;
 
 import com.oracle.graal.pointsto.BigBang;

@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_0;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.graph.NodeInputList;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodeinfo.NodeSize;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.ValueNode;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.graph.NodeInputList;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

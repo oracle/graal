@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.truffle.isolated;
 
-import jdk.compiler.graal.core.common.CompilationIdentifier;
-import jdk.compiler.graal.truffle.TruffleCompilationIdentifier;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.truffle.TruffleCompilationIdentifier;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 
 import com.oracle.svm.graal.isolated.ClientHandle;

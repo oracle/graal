@@ -24,18 +24,18 @@
  */
 package com.oracle.graal.pointsto.meta;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.core.common.spi.ConstantFieldProvider;
-import jdk.compiler.graal.core.common.spi.ForeignCallsProvider;
-import jdk.compiler.graal.core.common.spi.MetaAccessExtensionProvider;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.compiler.graal.nodes.spi.LoopsDataProvider;
-import jdk.compiler.graal.nodes.spi.LoweringProvider;
-import jdk.compiler.graal.nodes.spi.PlatformConfigurationProvider;
-import jdk.compiler.graal.nodes.spi.Replacements;
-import jdk.compiler.graal.nodes.spi.StampProvider;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
+import jdk.graal.compiler.nodes.spi.LoweringProvider;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
+import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.nodes.spi.StampProvider;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.word.WordTypes;
 
 import jdk.vm.ci.code.CodeCacheProvider;
 import jdk.vm.ci.meta.ConstantReflectionProvider;

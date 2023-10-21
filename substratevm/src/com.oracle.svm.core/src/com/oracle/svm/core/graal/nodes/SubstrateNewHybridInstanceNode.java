@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.core.common.type.TypeReference;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.java.AbstractNewArrayNode;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.AbstractNewArrayNode;
 
 import com.oracle.svm.core.hub.Hybrid;
 

@@ -26,10 +26,10 @@ package com.oracle.svm.graal.amd64;
 
 import java.util.EnumSet;
 
-import jdk.compiler.graal.asm.amd64.AMD64MacroAssembler;
-import jdk.compiler.graal.lir.LIRInstructionClass;
-import jdk.compiler.graal.lir.amd64.AMD64LIRInstruction;
-import jdk.compiler.graal.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

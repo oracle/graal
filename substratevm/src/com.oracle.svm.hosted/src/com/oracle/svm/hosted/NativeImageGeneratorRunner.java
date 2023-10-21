@@ -47,10 +47,10 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import jdk.compiler.graal.core.riscv64.ShadowedRISCV64;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.core.riscv64.ShadowedRISCV64;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.type.CCharPointerPointer;
@@ -229,7 +229,7 @@ public class NativeImageGeneratorRunner {
                 if (potentialNeedModule.getName().equals("jdk.internal.vm.ci") || /* JVMCI */
                                 /* graal */
                                 potentialNeedModule.getName().startsWith("org.graalvm.") ||
-                                potentialNeedModule.getName().startsWith("jdk.compiler.graal") ||
+                                potentialNeedModule.getName().startsWith("jdk.graal.compiler") ||
                                 /* enterprise graal */
                                 potentialNeedModule.getName().startsWith("com.oracle.graal.") ||
                                 /* exclude all truffle modules */
@@ -743,8 +743,8 @@ public class NativeImageGeneratorRunner {
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.polyglot");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "org.graalvm.truffle");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.ci");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.compiler.graal");
-            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "jdk.compiler.graal.management");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.graal.compiler");
+            ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "jdk.graal.compiler.management");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, true, "com.oracle.graal.graal_enterprise");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.loader");
             ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");

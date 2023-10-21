@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.truffle.api;
 
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.truffle.PostPartialEvaluationSuite;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.truffle.PostPartialEvaluationSuite;
 
 import com.oracle.svm.core.graal.phases.DeadStoreRemovalPhase;
 

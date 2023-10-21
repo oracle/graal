@@ -27,8 +27,8 @@ package com.oracle.svm.core.code;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.compiler.graal.code.CompilationResult;
-import jdk.compiler.graal.debug.DebugContext;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.debug.DebugContext;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jfr;
 
-import jdk.compiler.graal.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import jdk.compiler.graal.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

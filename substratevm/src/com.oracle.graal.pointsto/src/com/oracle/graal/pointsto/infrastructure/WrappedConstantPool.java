@@ -31,9 +31,9 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import jdk.compiler.graal.core.common.BootstrapMethodIntrospection;
-import jdk.compiler.graal.debug.GraalError;
-import jdk.compiler.graal.serviceprovider.GraalServices;
+import jdk.graal.compiler.core.common.BootstrapMethodIntrospection;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.serviceprovider.GraalServices;
 
 import com.oracle.graal.pointsto.constraints.UnresolvedElementException;
 import com.oracle.svm.util.ReflectionUtil;

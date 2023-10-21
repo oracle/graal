@@ -35,11 +35,11 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
-import jdk.compiler.graal.code.CompilationResult;
-import jdk.compiler.graal.code.CompilationResult.CodeAnnotation;
-import jdk.compiler.graal.core.common.NumUtil;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.Indent;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.CompilationResult.CodeAnnotation;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.ObjectFile;

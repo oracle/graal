@@ -41,7 +41,7 @@ import java.util.stream.Stream;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.Profdiff;
-import jdk.compiler.graal.util.json.JSONFormatter;
+import jdk.graal.compiler.util.json.JSONFormatter;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;

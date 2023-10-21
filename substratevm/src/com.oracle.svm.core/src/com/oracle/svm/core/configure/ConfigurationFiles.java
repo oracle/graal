@@ -34,9 +34,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionStability;
-import jdk.compiler.graal.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionType;
 
 import com.oracle.svm.core.option.BundleMember;
 import com.oracle.svm.core.option.HostedOptionKey;

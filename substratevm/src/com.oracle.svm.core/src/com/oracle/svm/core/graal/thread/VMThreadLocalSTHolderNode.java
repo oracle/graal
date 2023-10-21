@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.core.graal.thread;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.core.common.LIRKind;
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.NodeCycles;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodeinfo.NodeSize;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.NodeView;
-import jdk.compiler.graal.nodes.spi.LIRLowerable;
-import jdk.compiler.graal.nodes.spi.NodeLIRBuilderTool;
-import jdk.compiler.graal.phases.util.Providers;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.threadlocal.VMThreadLocalInfo;

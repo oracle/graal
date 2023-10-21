@@ -26,8 +26,8 @@
 package com.oracle.svm.core.code;
 
 import com.oracle.svm.core.Uninterruptible;
-import jdk.compiler.graal.core.common.util.AbstractTypeReader;
-import jdk.compiler.graal.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.core.common.util.AbstractTypeReader;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 
 import com.oracle.svm.core.c.NonmovableArray;
 import com.oracle.svm.core.c.NonmovableArrays;

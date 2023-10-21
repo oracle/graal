@@ -46,8 +46,8 @@ import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.phases.util.Providers;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.hosted.Feature;
 import org.graalvm.nativeimage.hosted.Feature.DuringAnalysisAccess;

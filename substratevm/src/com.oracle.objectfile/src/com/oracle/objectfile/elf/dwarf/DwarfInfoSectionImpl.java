@@ -42,7 +42,7 @@ import com.oracle.objectfile.elf.dwarf.constants.DwarfLanguage;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
 import org.graalvm.collections.EconomicSet;
-import jdk.compiler.graal.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debugentry.ArrayTypeEntry;
 import com.oracle.objectfile.debugentry.ClassEntry;

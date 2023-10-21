@@ -26,11 +26,11 @@ package com.oracle.svm.core.heap.dump;
 
 import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.core.common.NumUtil;
-import jdk.compiler.graal.nodes.java.ArrayLengthNode;
-import jdk.compiler.graal.word.ObjectAccess;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;

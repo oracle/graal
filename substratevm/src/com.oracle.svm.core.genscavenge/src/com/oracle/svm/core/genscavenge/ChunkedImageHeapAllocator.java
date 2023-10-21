@@ -27,7 +27,7 @@ package com.oracle.svm.core.genscavenge;
 import java.util.ArrayList;
 import java.util.List;
 
-import jdk.compiler.graal.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;
 

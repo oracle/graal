@@ -35,21 +35,21 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import jdk.compiler.graal.core.common.spi.ForeignCallSignature;
-import jdk.compiler.graal.core.target.Backend;
-import jdk.compiler.graal.debug.GlobalMetrics;
-import jdk.compiler.graal.hotspot.CompilationContext;
-import jdk.compiler.graal.hotspot.CompilationTask;
-import jdk.compiler.graal.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
-import jdk.compiler.graal.hotspot.HotSpotGraalCompiler;
-import jdk.compiler.graal.hotspot.HotSpotGraalRuntime;
-import jdk.compiler.graal.hotspot.HotSpotGraalServices;
-import jdk.compiler.graal.hotspot.ProfileReplaySupport;
-import jdk.compiler.graal.hotspot.stubs.Stub;
-import jdk.compiler.graal.options.OptionDescriptors;
-import jdk.compiler.graal.options.OptionKey;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.options.OptionsParser;
+import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
+import jdk.graal.compiler.core.target.Backend;
+import jdk.graal.compiler.debug.GlobalMetrics;
+import jdk.graal.compiler.hotspot.CompilationContext;
+import jdk.graal.compiler.hotspot.CompilationTask;
+import jdk.graal.compiler.hotspot.HotSpotForeignCallLinkageImpl.CodeInfo;
+import jdk.graal.compiler.hotspot.HotSpotGraalCompiler;
+import jdk.graal.compiler.hotspot.HotSpotGraalRuntime;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
+import jdk.graal.compiler.hotspot.ProfileReplaySupport;
+import jdk.graal.compiler.hotspot.stubs.Stub;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.options.OptionsParser;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNIMethodScope;
 import org.graalvm.nativeimage.UnmanagedMemory;
@@ -60,7 +60,7 @@ import org.graalvm.nativeimage.c.struct.RawStructure;
 import org.graalvm.nativeimage.c.struct.SizeOf;
 import org.graalvm.nativeimage.c.type.CIntPointer;
 import org.graalvm.nativeimage.c.type.CTypeConversion;
-import jdk.compiler.graal.util.OptionsEncoder;
+import jdk.graal.compiler.util.OptionsEncoder;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 import org.graalvm.word.WordFactory;
@@ -239,7 +239,7 @@ public final class LibGraalEntryPoints {
     }
 
     @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_jdk_compiler_graal_hotspot_test_LibGraalCompilerTest_hashConstantOopFields", include = LibGraalFeature.IsEnabled.class)
+    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_test_LibGraalCompilerTest_hashConstantOopFields", include = LibGraalFeature.IsEnabled.class)
     private static long hashConstantOopFields(JNIEnv jniEnv,
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThread,
@@ -300,7 +300,7 @@ public final class LibGraalEntryPoints {
 
     /**
      * The implementation of
-     * {@code jdk.compiler.graal.hotspot.test.CompileTheWorld.compileMethodInLibgraal()}.
+     * {@code jdk.graal.compiler.hotspot.test.CompileTheWorld.compileMethodInLibgraal()}.
      *
      * @param methodHandle the method to be compiled. This is a handle to a
      *            {@link HotSpotResolvedJavaMethod} in HotSpot's heap. A value of 0L can be passed
@@ -335,7 +335,7 @@ public final class LibGraalEntryPoints {
      * @return a handle to a {@link InstalledCode} in HotSpot's heap or 0 if compilation failed
      */
     @SuppressWarnings({"unused", "try"})
-    @CEntryPoint(name = "Java_jdk_compiler_graal_hotspot_test_CompileTheWorld_compileMethodInLibgraal", include = LibGraalFeature.IsEnabled.class)
+    @CEntryPoint(name = "Java_jdk_graal_compiler_hotspot_test_CompileTheWorld_compileMethodInLibgraal", include = LibGraalFeature.IsEnabled.class)
     private static long compileMethod(JNIEnv jniEnv,
                     PointerBase jclass,
                     @CEntryPoint.IsolateThreadContext long isolateThread,

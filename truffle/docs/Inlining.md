@@ -58,7 +58,7 @@ The following sections explain the states in which calls in the call tree can be
 
 ### Call Tree States
 
-[Nodes](../../compiler/src/jdk.compiler.graal/src/jdk/compiler/graal/truffle/phases/inlining/CallNode.java) in the inline [call tree](../../compiler/src/jdk.compiler.graal/src/jdk/compiler/graal/truffle/phases/inlining/CallTree.java)
+[Nodes](../../compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/truffle/phases/inlining/CallNode.java) in the inline [call tree](../../compiler/src/jdk.graal.compiler/src/jdk/graal/compiler/truffle/phases/inlining/CallTree.java)
 represent *calls* to particular targets.
 This means that if one target calls another twice, we will see this as two nodes despite it being the same call target.
 

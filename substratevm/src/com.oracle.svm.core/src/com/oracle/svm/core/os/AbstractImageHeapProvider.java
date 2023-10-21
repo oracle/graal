@@ -27,7 +27,7 @@ package com.oracle.svm.core.os;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_BEGIN;
 import static com.oracle.svm.core.Isolates.IMAGE_HEAP_END;
 
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.UnsignedWord;
 
 import com.oracle.svm.core.Uninterruptible;

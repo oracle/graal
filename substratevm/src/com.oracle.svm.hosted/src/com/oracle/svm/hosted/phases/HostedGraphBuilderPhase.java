@@ -24,20 +24,20 @@
  */
 package com.oracle.svm.hosted.phases;
 
-import jdk.compiler.graal.core.common.type.StampPair;
-import jdk.compiler.graal.java.BytecodeParser;
-import jdk.compiler.graal.java.FrameStateBuilder;
-import jdk.compiler.graal.java.GraphBuilderPhase;
-import jdk.compiler.graal.nodes.CallTargetNode.InvokeKind;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.compiler.graal.nodes.graphbuilderconf.IntrinsicContext;
-import jdk.compiler.graal.nodes.java.MethodCallTargetNode;
-import jdk.compiler.graal.nodes.spi.CoreProviders;
-import jdk.compiler.graal.phases.OptimisticOptimizations;
-import jdk.compiler.graal.word.WordTypes;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.java.BytecodeParser;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.results.StaticAnalysisResults;
 import com.oracle.svm.core.nodes.SubstrateMethodCallTargetNode;

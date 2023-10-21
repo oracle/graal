@@ -26,7 +26,7 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.Containers.Options.UseContainerSupport;
 
-import jdk.compiler.graal.options.Option;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
 
 import com.oracle.svm.core.jdk.Jvm;

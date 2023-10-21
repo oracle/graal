@@ -32,7 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import jdk.compiler.graal.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.ParameterNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.TypeFlow;

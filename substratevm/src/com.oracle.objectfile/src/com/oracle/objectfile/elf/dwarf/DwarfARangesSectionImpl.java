@@ -31,7 +31,7 @@ import java.util.Map;
 import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfVersion;
-import jdk.compiler.graal.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.LayoutDecision;
 import com.oracle.objectfile.LayoutDecisionMap;

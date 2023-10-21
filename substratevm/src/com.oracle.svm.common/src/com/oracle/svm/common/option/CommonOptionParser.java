@@ -41,12 +41,12 @@ import java.util.function.Predicate;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import jdk.compiler.graal.options.EnumMultiOptionKey;
-import jdk.compiler.graal.options.OptionDescriptor;
-import jdk.compiler.graal.options.OptionDescriptors;
-import jdk.compiler.graal.options.OptionKey;
-import jdk.compiler.graal.options.OptionType;
-import jdk.compiler.graal.options.OptionsParser;
+import jdk.graal.compiler.options.EnumMultiOptionKey;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.options.OptionsParser;
 
 import com.oracle.svm.util.ClassUtil;
 import com.oracle.svm.util.StringUtil;

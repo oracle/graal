@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.compiler.graal.api.directives.GraalDirectives;
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.replacements.ReplacementsUtil;
-import jdk.compiler.graal.word.ObjectAccess;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;

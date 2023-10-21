@@ -26,10 +26,10 @@ package com.oracle.svm.core.graal.lir;
 
 import java.util.List;
 
-import jdk.compiler.graal.graph.NodeSourcePosition;
-import jdk.compiler.graal.lir.LIRInstruction;
-import jdk.compiler.graal.lir.LIRInstructionClass;
-import jdk.compiler.graal.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 import com.oracle.svm.core.graal.code.SubstrateCompilationResult;
 

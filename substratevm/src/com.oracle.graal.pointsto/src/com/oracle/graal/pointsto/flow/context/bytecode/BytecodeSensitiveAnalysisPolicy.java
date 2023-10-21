@@ -30,7 +30,7 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.BitSet;
 
-import jdk.compiler.graal.options.OptionValues;
+import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.AnalysisPolicy;
 import com.oracle.graal.pointsto.BigBang;

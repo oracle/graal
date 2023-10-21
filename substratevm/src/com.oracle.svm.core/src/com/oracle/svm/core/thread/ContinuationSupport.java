@@ -41,9 +41,9 @@ import com.oracle.svm.core.heap.StoredContinuationAccess;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.core.snippets.KnownIntrinsics;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionType;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 public class ContinuationSupport {
     static final class Options {

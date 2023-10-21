@@ -26,8 +26,8 @@ package com.oracle.graal.pointsto;
 
 import java.util.BitSet;
 
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.replacements.nodes.BasicArrayCopyNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
 
 import com.oracle.graal.pointsto.api.PointstoOptions;
 import com.oracle.graal.pointsto.flow.AbstractSpecialInvokeTypeFlow;

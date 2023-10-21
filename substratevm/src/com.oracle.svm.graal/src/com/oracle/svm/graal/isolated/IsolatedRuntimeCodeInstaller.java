@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.graal.isolated;
 
-import jdk.compiler.graal.code.CompilationResult;
-import jdk.compiler.graal.core.common.CompilationIdentifier;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.UnmanagedMemory;
 import org.graalvm.nativeimage.c.function.CEntryPoint;

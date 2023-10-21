@@ -69,8 +69,8 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.compiler.graal.options.OptionKey;
-import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.ProcessProperties;
 
@@ -537,7 +537,7 @@ public class NativeImage {
                 if (!modulePathBuild && line.startsWith("--add-exports=")) {
                     /*-
                      * Turns e.g.
-                     * --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.compiler.graal,org.graalvm.nativeimage.builder
+                     * --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=jdk.graal.compiler,org.graalvm.nativeimage.builder
                      * into:
                      * --add-exports=jdk.internal.vm.ci/jdk.vm.ci.code.stack=ALL-UNNAMED
                      */

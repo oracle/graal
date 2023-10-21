@@ -48,8 +48,8 @@ import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageInfo;
 import org.graalvm.nativeimage.ImageSingletons;

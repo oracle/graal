@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core;
 
-import jdk.compiler.graal.word.BarrieredAccess;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;
 import org.graalvm.word.WordFactory;

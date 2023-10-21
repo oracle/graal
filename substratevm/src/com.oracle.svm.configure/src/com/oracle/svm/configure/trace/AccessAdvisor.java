@@ -26,8 +26,8 @@ package com.oracle.svm.configure.trace;
 
 import java.util.regex.Pattern;
 
-import jdk.compiler.graal.java.LambdaUtils;
-import jdk.compiler.graal.phases.common.LazyValue;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.phases.common.LazyValue;
 
 import com.oracle.svm.configure.filters.ConfigurationFilter;
 import com.oracle.svm.configure.filters.HierarchyFilterNode;
@@ -127,7 +127,7 @@ public final class AccessAdvisor {
     private static void excludeInaccessiblePackages(HierarchyFilterNode rootNode) {
         rootNode.addOrGetChildren("com.oracle.graal.**", ConfigurationFilter.Inclusion.Exclude);
         rootNode.addOrGetChildren("com.oracle.truffle.**", ConfigurationFilter.Inclusion.Exclude);
-        rootNode.addOrGetChildren("jdk.compiler.graal.**", ConfigurationFilter.Inclusion.Exclude);
+        rootNode.addOrGetChildren("jdk.graal.compiler.**", ConfigurationFilter.Inclusion.Exclude);
         rootNode.addOrGetChildren("org.graalvm.compiler.**", ConfigurationFilter.Inclusion.Exclude);
         rootNode.addOrGetChildren("org.graalvm.libgraal.**", ConfigurationFilter.Inclusion.Exclude);
     }

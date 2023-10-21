@@ -24,18 +24,18 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static jdk.compiler.graal.nodeinfo.InputType.Memory;
-import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_8;
-import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_8;
+import static jdk.graal.compiler.nodeinfo.InputType.Memory;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.memory.SingleMemoryKill;
-import jdk.compiler.graal.nodes.spi.Lowerable;
-import jdk.compiler.graal.nodes.spi.LoweringTool;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;

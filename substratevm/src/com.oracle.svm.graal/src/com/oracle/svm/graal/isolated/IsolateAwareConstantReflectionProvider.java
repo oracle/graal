@@ -26,7 +26,7 @@ package com.oracle.svm.graal.isolated;
 
 import java.lang.reflect.Array;
 
-import jdk.compiler.graal.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.CompressEncoding;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.word.WordFactory;

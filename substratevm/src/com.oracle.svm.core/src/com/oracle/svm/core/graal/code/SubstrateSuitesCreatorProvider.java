@@ -25,10 +25,10 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import jdk.compiler.graal.core.phases.CommunityCompilerConfiguration;
-import jdk.compiler.graal.core.phases.EconomyCompilerConfiguration;
-import jdk.compiler.graal.phases.tiers.CompilerConfiguration;
-import jdk.compiler.graal.phases.tiers.SuitesCreator;
+import jdk.graal.compiler.core.phases.CommunityCompilerConfiguration;
+import jdk.graal.compiler.core.phases.EconomyCompilerConfiguration;
+import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
+import jdk.graal.compiler.phases.tiers.SuitesCreator;
 
 import com.oracle.svm.core.SubstrateOptions;
 

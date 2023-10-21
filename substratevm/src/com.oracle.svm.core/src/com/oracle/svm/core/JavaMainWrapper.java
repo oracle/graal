@@ -35,7 +35,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;

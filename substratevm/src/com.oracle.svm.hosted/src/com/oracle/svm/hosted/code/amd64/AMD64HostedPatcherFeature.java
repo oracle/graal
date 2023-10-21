@@ -26,10 +26,10 @@ package com.oracle.svm.hosted.code.amd64;
 
 import java.util.function.Consumer;
 
-import jdk.compiler.graal.asm.Assembler;
-import jdk.compiler.graal.asm.amd64.AMD64BaseAssembler.AddressDisplacementAnnotation;
-import jdk.compiler.graal.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
-import jdk.compiler.graal.code.CompilationResult;
+import jdk.graal.compiler.asm.Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.AddressDisplacementAnnotation;
+import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandDataAnnotation;
+import jdk.graal.compiler.code.CompilationResult;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

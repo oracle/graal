@@ -35,12 +35,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.DebugContext.Activation;
-import jdk.compiler.graal.debug.DebugContext.Description;
-import jdk.compiler.graal.debug.DebugContext.Scope;
-import jdk.compiler.graal.debug.DebugHandlersFactory;
-import jdk.compiler.graal.options.OptionValues;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext.Activation;
+import jdk.graal.compiler.debug.DebugContext.Description;
+import jdk.graal.compiler.debug.DebugContext.Scope;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.graal.pointsto.BigBang;
 

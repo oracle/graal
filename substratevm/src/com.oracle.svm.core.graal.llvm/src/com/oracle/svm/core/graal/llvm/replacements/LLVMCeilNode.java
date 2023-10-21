@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.graal.llvm.replacements;
 
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.NodeCycles;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodeinfo.NodeSize;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.ValueNode;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
 
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;

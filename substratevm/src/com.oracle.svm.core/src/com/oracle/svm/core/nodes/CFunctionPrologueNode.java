@@ -24,20 +24,20 @@
  */
 package com.oracle.svm.core.nodes;
 
-import static jdk.compiler.graal.nodeinfo.InputType.Memory;
-import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_8;
-import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_8;
+import static jdk.graal.compiler.nodeinfo.InputType.Memory;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_8;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.InvokeNode;
-import jdk.compiler.graal.nodes.InvokeWithExceptionNode;
-import jdk.compiler.graal.nodes.debug.ControlFlowAnchored;
-import jdk.compiler.graal.nodes.memory.SingleMemoryKill;
-import jdk.compiler.graal.nodes.spi.Lowerable;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.InvokeNode;
+import jdk.graal.compiler.nodes.InvokeWithExceptionNode;
+import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
+import jdk.graal.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.stack.JavaFrameAnchor;

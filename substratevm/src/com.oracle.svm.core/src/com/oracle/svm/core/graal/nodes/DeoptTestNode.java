@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.InputType;
-import jdk.compiler.graal.nodeinfo.NodeCycles;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodeinfo.NodeSize;
-import jdk.compiler.graal.nodes.AbstractStateSplit;
-import jdk.compiler.graal.nodes.DeoptimizingNode;
-import jdk.compiler.graal.nodes.memory.SingleMemoryKill;
-import jdk.compiler.graal.nodes.spi.Lowerable;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.AbstractStateSplit;
+import jdk.graal.compiler.nodes.DeoptimizingNode;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
+import jdk.graal.compiler.nodes.spi.Lowerable;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.graal.snippets.DeoptTester;

@@ -26,18 +26,18 @@ package com.oracle.svm.hosted.code;
 
 import java.util.BitSet;
 
-import jdk.compiler.graal.bytecode.BytecodeProvider;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.graph.NodeSourcePosition;
-import jdk.compiler.graal.java.GraphBuilderPhase.Instance;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.compiler.graal.nodes.graphbuilderconf.IntrinsicContext;
-import jdk.compiler.graal.phases.OptimisticOptimizations;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.replacements.ReplacementsImpl;
-import jdk.compiler.graal.replacements.ReplacementsImpl.GraphMaker;
-import jdk.compiler.graal.word.WordTypes;
+import jdk.graal.compiler.bytecode.BytecodeProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.GraphBuilderPhase.Instance;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext;
+import jdk.graal.compiler.phases.OptimisticOptimizations;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.ReplacementsImpl;
+import jdk.graal.compiler.replacements.ReplacementsImpl.GraphMaker;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.svm.hosted.phases.SubstrateGraphBuilderPhase;
 

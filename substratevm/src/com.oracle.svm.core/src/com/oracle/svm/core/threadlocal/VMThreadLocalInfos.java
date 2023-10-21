@@ -26,8 +26,8 @@ package com.oracle.svm.core.threadlocal;
 
 import java.util.Collection;
 
-import jdk.compiler.graal.word.ObjectAccess;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;

@@ -30,7 +30,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 
-import jdk.compiler.graal.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.svm.util.ReflectionUtil;
 

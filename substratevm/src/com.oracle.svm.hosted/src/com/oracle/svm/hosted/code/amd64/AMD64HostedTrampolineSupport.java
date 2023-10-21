@@ -26,11 +26,11 @@ package com.oracle.svm.hosted.code.amd64;
 
 import java.util.function.Consumer;
 
-import jdk.compiler.graal.asm.Assembler;
-import jdk.compiler.graal.asm.amd64.AMD64Assembler;
-import jdk.compiler.graal.asm.amd64.AMD64MacroAssembler;
-import jdk.compiler.graal.code.CompilationResult;
-import jdk.compiler.graal.core.common.NumUtil;
+import jdk.graal.compiler.asm.Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

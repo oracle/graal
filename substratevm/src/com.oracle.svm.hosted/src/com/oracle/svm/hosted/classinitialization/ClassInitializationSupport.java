@@ -37,7 +37,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicSet;
-import jdk.compiler.graal.java.LambdaUtils;
+import jdk.graal.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.impl.RuntimeClassInitializationSupport;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;

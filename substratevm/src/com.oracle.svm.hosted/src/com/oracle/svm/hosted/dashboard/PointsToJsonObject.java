@@ -36,8 +36,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.compiler.graal.graphio.GraphOutput;
-import jdk.compiler.graal.graphio.GraphStructure;
+import jdk.graal.compiler.graphio.GraphOutput;
+import jdk.graal.compiler.graphio.GraphStructure;
 import org.graalvm.nativeimage.hosted.Feature.OnAnalysisExitAccess;
 
 import com.oracle.graal.pointsto.BigBang;

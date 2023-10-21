@@ -27,10 +27,10 @@ package com.oracle.svm.core.graal.meta;
 import java.util.Collection;
 import java.util.EnumMap;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.debug.DebugHandlersFactory;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

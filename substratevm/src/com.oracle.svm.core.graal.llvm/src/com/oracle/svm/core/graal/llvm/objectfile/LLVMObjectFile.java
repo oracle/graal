@@ -45,7 +45,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
-import jdk.compiler.graal.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.objectfile.BasicProgbitsSectionImpl;

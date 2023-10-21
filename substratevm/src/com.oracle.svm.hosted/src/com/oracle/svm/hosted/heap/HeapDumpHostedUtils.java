@@ -27,8 +27,8 @@ package com.oracle.svm.hosted.heap;
 import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 
-import jdk.compiler.graal.core.common.util.TypeConversion;
-import jdk.compiler.graal.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

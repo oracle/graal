@@ -29,12 +29,12 @@ import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.svm.util.ClassUtil;
 
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.nodes.GraphDecoder;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionKey;
-import jdk.compiler.graal.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.GraphDecoder;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
 
 /**
  * Inlining before the static analysis improves the precision of the analysis especially when

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import jdk.compiler.graal.core.common.CompressEncoding;
-import jdk.compiler.graal.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.meta.SubstrateMemoryAccessProvider;

@@ -27,13 +27,13 @@ package com.oracle.svm.hosted.substitute;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.java.FrameStateBuilder;
-import jdk.compiler.graal.nodes.CallTargetNode.InvokeKind;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.UnwindNode;
-import jdk.compiler.graal.nodes.ValueNode;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.java.FrameStateBuilder;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.UnwindNode;
+import jdk.graal.compiler.nodes.ValueNode;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 import com.oracle.svm.core.annotate.Delete;

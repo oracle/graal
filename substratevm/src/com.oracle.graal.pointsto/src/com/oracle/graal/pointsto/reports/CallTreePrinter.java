@@ -57,7 +57,7 @@ import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.compiler.graal.java.LambdaUtils;
+import jdk.graal.compiler.java.LambdaUtils;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;

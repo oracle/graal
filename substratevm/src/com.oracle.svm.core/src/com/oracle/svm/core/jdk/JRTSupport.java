@@ -37,8 +37,8 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BooleanSupplier;
 
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 import com.oracle.svm.core.annotate.Alias;
 import com.oracle.svm.core.annotate.Delete;

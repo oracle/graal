@@ -26,7 +26,7 @@ package com.oracle.svm.core.posix.riscv64;
 
 import static com.oracle.svm.core.RegisterDumper.dumpReg;
 
-import jdk.compiler.graal.core.riscv64.ShadowedRISCV64;
+import jdk.graal.compiler.core.riscv64.ShadowedRISCV64;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.PointerBase;

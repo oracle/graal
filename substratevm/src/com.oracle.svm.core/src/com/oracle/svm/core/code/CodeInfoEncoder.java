@@ -31,12 +31,12 @@ import java.util.TreeMap;
 
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import jdk.compiler.graal.code.CompilationResult;
-import jdk.compiler.graal.core.common.NumUtil;
-import jdk.compiler.graal.core.common.util.FrequencyEncoder;
-import jdk.compiler.graal.core.common.util.TypeConversion;
-import jdk.compiler.graal.core.common.util.UnsafeArrayTypeWriter;
-import jdk.compiler.graal.options.Option;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.util.FrequencyEncoder;
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;

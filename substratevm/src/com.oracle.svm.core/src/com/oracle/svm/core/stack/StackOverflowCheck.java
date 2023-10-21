@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.stack;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.options.Option;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.word.UnsignedWord;

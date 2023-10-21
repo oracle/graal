@@ -26,7 +26,7 @@
 
 package com.oracle.graal.pointsto.standalone;
 
-import static jdk.compiler.graal.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
+import static jdk.graal.compiler.replacements.StandardGraphBuilderPlugins.registerInvocationPlugins;
 
 import java.io.File;
 import java.lang.reflect.Method;
@@ -39,15 +39,15 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.Indent;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.printer.GraalDebugHandlersFactory;
-import jdk.compiler.graal.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.printer.GraalDebugHandlersFactory;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.AnalysisObjectScanningObserver;
@@ -90,8 +90,8 @@ public final class PointsToAnalyzer {
 
     static {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.internal.vm.ci");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.compiler.graal");
-        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.compiler.graal.management");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.graal.compiler");
+        ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "jdk.graal.compiler.management");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.loader");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "jdk.internal.misc");
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.OPEN, null, false, "java.base", "sun.text.spi");

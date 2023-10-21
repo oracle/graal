@@ -29,8 +29,8 @@ import static com.oracle.svm.core.heap.RestrictHeapAccess.Access.NO_ALLOCATION;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.options.Option;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;

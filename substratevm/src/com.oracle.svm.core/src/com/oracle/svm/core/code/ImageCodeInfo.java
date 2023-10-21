@@ -26,7 +26,7 @@ package com.oracle.svm.core.code;
 
 import java.util.List;
 
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

@@ -24,29 +24,29 @@
  */
 package com.oracle.svm.graal;
 
-import static jdk.compiler.graal.graph.Node.ConstantNodeParameter;
+import static jdk.graal.compiler.graph.Node.ConstantNodeParameter;
 
 import java.util.Arrays;
 import java.util.EnumSet;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.debug.GraalError;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.lir.gen.LIRGenerator;
-import jdk.compiler.graal.nodeinfo.NodeCycles;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodeinfo.NodeSize;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.compiler.graal.nodes.spi.LIRLowerable;
-import jdk.compiler.graal.nodes.spi.NodeLIRBuilderTool;
-import jdk.compiler.graal.phases.util.Providers;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.LIRGenerator;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.phases.util.Providers;
 
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.core.config.ConfigurationValues;

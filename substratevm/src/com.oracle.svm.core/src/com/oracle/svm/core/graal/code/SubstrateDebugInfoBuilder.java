@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.graal.code;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.core.common.spi.MetaAccessExtensionProvider;
-import jdk.compiler.graal.core.gen.DebugInfoBuilder;
-import jdk.compiler.graal.nodes.FrameState;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.spi.NodeValueMap;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.core.gen.DebugInfoBuilder;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.NodeValueMap;
 
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;

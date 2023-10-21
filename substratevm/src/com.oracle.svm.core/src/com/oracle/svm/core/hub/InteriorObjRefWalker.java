@@ -26,8 +26,8 @@ package com.oracle.svm.core.hub;
 
 import java.util.function.IntConsumer;
 
-import jdk.compiler.graal.nodes.java.ArrayLengthNode;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.WordFactory;
 

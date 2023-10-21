@@ -24,13 +24,13 @@
  */
 package com.oracle.graal.pointsto.phases;
 
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.graph.NodeSourcePosition;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
-import jdk.compiler.graal.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.util.AnalysisError;

@@ -27,8 +27,8 @@ package com.oracle.svm.core.jfr;
 import java.lang.reflect.Field;
 import java.util.List;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.core.common.NumUtil;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;

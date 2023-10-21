@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.riscv64;
 
-import jdk.compiler.graal.core.riscv64.ShadowedRISCV64;
+import jdk.graal.compiler.core.riscv64.ShadowedRISCV64;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

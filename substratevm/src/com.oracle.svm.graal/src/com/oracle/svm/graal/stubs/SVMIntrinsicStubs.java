@@ -24,33 +24,33 @@
  */
 package com.oracle.svm.graal.stubs;
 
-import jdk.compiler.graal.lir.GeneratedStubsHolder;
-import jdk.compiler.graal.replacements.StringLatin1InflateNode;
-import jdk.compiler.graal.replacements.StringUTF16CompressNode;
-import jdk.compiler.graal.replacements.nodes.AESNode;
-import jdk.compiler.graal.replacements.nodes.ArrayCompareToNode;
-import jdk.compiler.graal.replacements.nodes.ArrayCopyWithConversionsNode;
-import jdk.compiler.graal.replacements.nodes.ArrayEqualsNode;
-import jdk.compiler.graal.replacements.nodes.ArrayIndexOfNode;
-import jdk.compiler.graal.replacements.nodes.ArrayRegionCompareToNode;
-import jdk.compiler.graal.replacements.nodes.ArrayRegionEqualsNode;
-import jdk.compiler.graal.replacements.nodes.ArrayRegionEqualsWithMaskNode;
-import jdk.compiler.graal.replacements.nodes.BigIntegerMulAddNode;
-import jdk.compiler.graal.replacements.nodes.BigIntegerMultiplyToLenNode;
-import jdk.compiler.graal.replacements.nodes.BigIntegerSquareToLenNode;
-import jdk.compiler.graal.replacements.nodes.CalcStringAttributesNode;
-import jdk.compiler.graal.replacements.nodes.CipherBlockChainingAESNode;
-import jdk.compiler.graal.replacements.nodes.CountPositivesNode;
-import jdk.compiler.graal.replacements.nodes.CounterModeAESNode;
-import jdk.compiler.graal.replacements.nodes.EncodeArrayNode;
-import jdk.compiler.graal.replacements.nodes.GHASHProcessBlocksNode;
-import jdk.compiler.graal.replacements.nodes.MessageDigestNode.MD5Node;
-import jdk.compiler.graal.replacements.nodes.MessageDigestNode.SHA1Node;
-import jdk.compiler.graal.replacements.nodes.MessageDigestNode.SHA256Node;
-import jdk.compiler.graal.replacements.nodes.MessageDigestNode.SHA3Node;
-import jdk.compiler.graal.replacements.nodes.MessageDigestNode.SHA512Node;
-import jdk.compiler.graal.replacements.nodes.VectorizedHashCodeNode;
-import jdk.compiler.graal.replacements.nodes.VectorizedMismatchNode;
+import jdk.graal.compiler.lir.GeneratedStubsHolder;
+import jdk.graal.compiler.replacements.StringLatin1InflateNode;
+import jdk.graal.compiler.replacements.StringUTF16CompressNode;
+import jdk.graal.compiler.replacements.nodes.AESNode;
+import jdk.graal.compiler.replacements.nodes.ArrayCompareToNode;
+import jdk.graal.compiler.replacements.nodes.ArrayCopyWithConversionsNode;
+import jdk.graal.compiler.replacements.nodes.ArrayEqualsNode;
+import jdk.graal.compiler.replacements.nodes.ArrayIndexOfNode;
+import jdk.graal.compiler.replacements.nodes.ArrayRegionCompareToNode;
+import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
+import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsWithMaskNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMulAddNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerMultiplyToLenNode;
+import jdk.graal.compiler.replacements.nodes.BigIntegerSquareToLenNode;
+import jdk.graal.compiler.replacements.nodes.CalcStringAttributesNode;
+import jdk.graal.compiler.replacements.nodes.CipherBlockChainingAESNode;
+import jdk.graal.compiler.replacements.nodes.CountPositivesNode;
+import jdk.graal.compiler.replacements.nodes.CounterModeAESNode;
+import jdk.graal.compiler.replacements.nodes.EncodeArrayNode;
+import jdk.graal.compiler.replacements.nodes.GHASHProcessBlocksNode;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.MD5Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA1Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA256Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA3Node;
+import jdk.graal.compiler.replacements.nodes.MessageDigestNode.SHA512Node;
+import jdk.graal.compiler.replacements.nodes.VectorizedHashCodeNode;
+import jdk.graal.compiler.replacements.nodes.VectorizedMismatchNode;
 
 @GeneratedStubsHolder(targetVM = "substrate", sources = {
                 ArrayIndexOfNode.class,

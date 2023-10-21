@@ -26,7 +26,7 @@ package com.oracle.svm.truffle;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import static java.nio.file.StandardCopyOption.REPLACE_EXISTING;
-import static jdk.compiler.graal.options.OptionType.User;
+import static jdk.graal.compiler.options.OptionType.User;
 
 import java.io.IOException;
 import java.lang.annotation.Annotation;
@@ -60,23 +60,23 @@ import java.util.function.Function;
 import java.util.stream.Stream;
 
 import org.graalvm.collections.Pair;
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionStability;
-import jdk.compiler.graal.phases.tiers.Suites;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.truffle.host.InjectImmutableFrameFieldsPhase;
-import jdk.compiler.graal.truffle.host.TruffleHostEnvironment;
-import jdk.compiler.graal.truffle.substitutions.TruffleInvocationPlugins;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInlineOnlyInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin.RequiredInvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.truffle.host.InjectImmutableFrameFieldsPhase;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.truffle.substitutions.TruffleInvocationPlugins;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.home.impl.DefaultHomeFinder;
 import org.graalvm.nativeimage.AnnotationAccess;
@@ -1343,9 +1343,9 @@ final class Target_java_lang_ProcessBuilder_Redirect {
  * If allowProcess() is disabled at build time, then we ensure ObjdumpDisassemblerProvider does not
  * try to invoke the nonexistent ProcessBuilder.
  */
-@TargetClass(className = "jdk.compiler.graal.code.ObjdumpDisassemblerProvider", onlyWith = {
+@TargetClass(className = "jdk.graal.compiler.code.ObjdumpDisassemblerProvider", onlyWith = {
                 TruffleBaseFeature.IsEnabled.class, TruffleBaseFeature.IsCreateProcessDisabled.class})
-final class Target_jdk_compiler_graal_code_ObjdumpDisassemblerProvider {
+final class Target_jdk_graal_compiler_code_ObjdumpDisassemblerProvider {
 
     @Substitute
     @SuppressWarnings("unused")

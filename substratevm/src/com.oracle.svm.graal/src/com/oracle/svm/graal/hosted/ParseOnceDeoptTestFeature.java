@@ -32,9 +32,9 @@ import java.util.List;
 import java.util.function.Function;
 import java.util.function.Supplier;
 
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 

@@ -32,8 +32,8 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Type;
 
-import jdk.compiler.graal.api.replacements.Snippet;
-import jdk.compiler.graal.core.common.util.TypeConversion;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.util.TypeConversion;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.function.CEntryPoint;

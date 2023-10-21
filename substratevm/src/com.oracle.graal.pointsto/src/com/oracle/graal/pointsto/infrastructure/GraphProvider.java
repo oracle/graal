@@ -24,8 +24,8 @@
  */
 package com.oracle.graal.pointsto.infrastructure;
 
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.StructuredGraph;
 
 import com.oracle.graal.pointsto.meta.HostedProviders;
 

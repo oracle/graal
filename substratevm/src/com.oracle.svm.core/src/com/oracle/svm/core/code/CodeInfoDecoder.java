@@ -26,9 +26,9 @@ package com.oracle.svm.core.code;
 
 import static com.oracle.svm.core.util.VMError.shouldNotReachHereUnexpectedInput;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.core.common.util.TypeConversion;
-import jdk.compiler.graal.options.Option;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

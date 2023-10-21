@@ -27,22 +27,22 @@ package com.oracle.svm.core.graal.llvm.replacements;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugin;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins.Registration;
-import jdk.compiler.graal.nodes.spi.Replacements;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.replacements.TargetGraphBuilderPlugins;
-import jdk.compiler.graal.replacements.nodes.BinaryMathIntrinsicNode;
-import jdk.compiler.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import jdk.compiler.graal.replacements.nodes.BitCountNode;
-import jdk.compiler.graal.replacements.nodes.FusedMultiplyAddNode;
-import jdk.compiler.graal.replacements.nodes.UnaryMathIntrinsicNode;
-import jdk.compiler.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration.Plugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugin;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins.Registration;
+import jdk.graal.compiler.nodes.spi.Replacements;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.replacements.TargetGraphBuilderPlugins;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import jdk.graal.compiler.replacements.nodes.BitCountNode;
+import jdk.graal.compiler.replacements.nodes.FusedMultiplyAddNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 
 import com.oracle.svm.core.graal.llvm.replacements.LLVMIntrinsicNode.LLVMIntrinsicOperation;
 

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.genscavenge;
 
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.PinnedObject;
 import org.graalvm.nativeimage.impl.PinnedObjectSupport;
 import org.graalvm.word.Pointer;

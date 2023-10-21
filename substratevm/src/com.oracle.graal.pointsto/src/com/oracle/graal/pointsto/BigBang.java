@@ -28,11 +28,11 @@ import java.io.PrintWriter;
 import java.util.List;
 import java.util.function.Function;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.DebugHandlersFactory;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatures;

@@ -26,7 +26,7 @@ package com.oracle.svm.core.reflect.target;
 
 import java.util.function.Function;
 
-import jdk.compiler.graal.serviceprovider.JavaVersionUtil;
+import jdk.graal.compiler.serviceprovider.JavaVersionUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

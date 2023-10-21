@@ -3,8 +3,8 @@
 This changelog summarizes newly introduced optimizations and other compiler related changes.
 
 ## GraalVM for JDK 22 (Internal Version 24.0.0)
-* (GR-48318): The Graal module has been renamed from `jdk.internal.vm.compiler` to `jdk.compiler.graal`.
-  Likewise, the compiler packages moved into the `jdk.compiler.graal` namespace.
+* (GR-49610): The Graal module has been renamed from `jdk.internal.vm.compiler` to `jdk.graal.compiler`.
+  Likewise, the compiler packages moved into the `jdk.graal.compiler` namespace.
   These renamings were done in preparation for [Project Galahad](https://openjdk.org/projects/galahad/).
 
 ## GraalVM for JDK 21 (Internal Version 23.1.0)

@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
-import jdk.compiler.graal.core.common.memory.BarrierType;
-import jdk.compiler.graal.core.common.type.Stamp;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.extended.RawStoreNode;
-import jdk.compiler.graal.nodes.gc.BarrierSet;
-import jdk.compiler.graal.nodes.memory.FixedAccessNode;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.nodes.gc.BarrierSet;
+import jdk.graal.compiler.nodes.memory.FixedAccessNode;
 import org.graalvm.word.LocationIdentity;
 
 import jdk.vm.ci.meta.JavaKind;

@@ -26,12 +26,12 @@ package com.oracle.svm.hosted.cenum;
 
 import java.lang.reflect.Modifier;
 
-import jdk.compiler.graal.core.common.type.Stamp;
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.nodes.NodeView;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.ValueNode;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.c.constant.CEnumLookup;
 import org.graalvm.nativeimage.c.constant.CEnumValue;
 

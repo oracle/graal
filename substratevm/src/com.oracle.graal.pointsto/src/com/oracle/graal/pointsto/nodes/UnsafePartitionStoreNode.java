@@ -24,11 +24,11 @@
  */
 package com.oracle.graal.pointsto.nodes;
 
-import jdk.compiler.graal.core.common.memory.MemoryOrderMode;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.extended.RawStoreNode;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.RawStoreNode;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.util.UnsafePartitionKind;

@@ -26,8 +26,8 @@ package com.oracle.svm.core.genscavenge;
 
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.nodes.PauseNode;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.nodes.PauseNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.UnsignedWord;

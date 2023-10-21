@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.hosted.code;
 
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.nodes.FrameState;
-import jdk.compiler.graal.nodes.FullInfopointNode;
-import jdk.compiler.graal.nodes.ParameterNode;
-import jdk.compiler.graal.nodes.StartNode;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.extended.ValueAnchorNode;
-import jdk.compiler.graal.nodes.java.MethodCallTargetNode;
-import jdk.compiler.graal.nodes.spi.ValueProxy;
-import jdk.compiler.graal.replacements.nodes.MethodHandleWithExceptionNode;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.FullInfopointNode;
+import jdk.graal.compiler.nodes.ParameterNode;
+import jdk.graal.compiler.nodes.StartNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.ValueAnchorNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.ValueProxy;
+import jdk.graal.compiler.replacements.nodes.MethodHandleWithExceptionNode;
 
 import com.oracle.svm.core.SubstrateOptions;
 

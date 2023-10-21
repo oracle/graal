@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.truffle.api;
 
-import jdk.compiler.graal.truffle.AbstractTruffleCompilationSupport;
+import jdk.graal.compiler.truffle.AbstractTruffleCompilationSupport;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

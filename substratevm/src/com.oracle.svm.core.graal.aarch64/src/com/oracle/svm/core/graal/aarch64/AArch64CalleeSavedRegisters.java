@@ -34,10 +34,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.asm.aarch64.AArch64Address;
-import jdk.compiler.graal.asm.aarch64.AArch64MacroAssembler;
-import jdk.compiler.graal.core.common.NumUtil;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

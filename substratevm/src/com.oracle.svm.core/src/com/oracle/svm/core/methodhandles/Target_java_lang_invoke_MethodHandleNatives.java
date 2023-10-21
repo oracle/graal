@@ -38,7 +38,7 @@ import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 
-import jdk.compiler.graal.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 import com.oracle.svm.core.SubstrateUtil;

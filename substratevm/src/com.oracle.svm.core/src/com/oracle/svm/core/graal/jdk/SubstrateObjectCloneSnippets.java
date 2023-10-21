@@ -24,35 +24,35 @@
  */
 package com.oracle.svm.core.graal.jdk;
 
-import static jdk.compiler.graal.nodes.PiNode.piCastToSnippetReplaceeStamp;
-import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
+import static jdk.graal.compiler.nodes.PiNode.piCastToSnippetReplaceeStamp;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.FAST_PATH_PROBABILITY;
 
 import java.util.Map;
 
-import jdk.compiler.graal.api.replacements.Snippet;
-import jdk.compiler.graal.core.common.NumUtil;
-import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.graph.Node.ConstantNodeParameter;
-import jdk.compiler.graal.graph.Node.NodeIntrinsic;
-import jdk.compiler.graal.nodes.GraphState;
-import jdk.compiler.graal.nodes.NodeView;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.extended.BranchProbabilityNode;
-import jdk.compiler.graal.nodes.extended.ForeignCallNode;
-import jdk.compiler.graal.nodes.java.ArrayLengthNode;
-import jdk.compiler.graal.nodes.spi.LoweringTool;
-import jdk.compiler.graal.nodes.spi.VirtualizerTool;
-import jdk.compiler.graal.nodes.virtual.VirtualObjectNode;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.replacements.SnippetTemplate;
-import jdk.compiler.graal.replacements.SnippetTemplate.Arguments;
-import jdk.compiler.graal.replacements.SnippetTemplate.SnippetInfo;
-import jdk.compiler.graal.replacements.Snippets;
-import jdk.compiler.graal.replacements.nodes.ObjectClone;
-import jdk.compiler.graal.word.BarrieredAccess;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.GraphState;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.VirtualizerTool;
+import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.replacements.nodes.ObjectClone;
+import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.word.LocationIdentity;
 import org.graalvm.word.WordFactory;
 

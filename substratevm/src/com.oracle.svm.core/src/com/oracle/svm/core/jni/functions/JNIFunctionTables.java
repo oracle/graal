@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.jni.functions;
 
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;

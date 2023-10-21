@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.heap;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.core.common.CompressEncoding;
-import jdk.compiler.graal.word.BarrieredAccess;
-import jdk.compiler.graal.word.ObjectAccess;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.CompressEncoding;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.UnsignedWord;

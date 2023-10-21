@@ -35,8 +35,8 @@ import com.oracle.svm.core.snippets.SnippetRuntime;
 import com.oracle.svm.core.snippets.SnippetRuntime.SubstrateForeignCallDescriptor;
 import com.oracle.svm.core.thread.ContinuationSupport;
 
-import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.word.Word;
 
 public class GenScavengeAllocationSupport implements GCAllocationSupport {
     private static final SubstrateForeignCallDescriptor SLOW_NEW_INSTANCE = SnippetRuntime.findForeignCall(ThreadLocalAllocation.class, "slowPathNewInstance", true);

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import jdk.compiler.graal.core.common.spi.JavaConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.JavaConstantFieldProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

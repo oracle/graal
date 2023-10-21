@@ -32,9 +32,9 @@ import com.oracle.graal.pointsto.util.AnalysisError;
 import jdk.vm.ci.meta.MetaAccessProvider;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.DebugOptions;
-import jdk.compiler.graal.debug.MethodFilter;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugOptions;
+import jdk.graal.compiler.debug.MethodFilter;
 
 import java.io.BufferedReader;
 import java.io.File;

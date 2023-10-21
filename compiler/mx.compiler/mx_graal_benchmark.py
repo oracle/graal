@@ -517,7 +517,7 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
     def whitebox_dependency(dist):
         return itertools.chain(
             (dep.name.startswith('GRAAL') for dep in dist.deps),
-            (dep.name.startswith('jdk.compiler.graal') for dep in dist.archived_deps())
+            (dep.name.startswith('jdk.graal.compiler') for dep in dist.archived_deps())
         )
 
     def filter_distribution(self, dist):
@@ -533,7 +533,7 @@ class JMHDistWhiteboxBenchmarkSuite(mx_benchmark.JMHDistBenchmarkSuite, JMHJarBa
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.runtime=ALL-UNNAMED',
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.meta=ALL-UNNAMED',
                  '--add-exports=jdk.internal.vm.ci/jdk.vm.ci.code=ALL-UNNAMED',
-                 '--add-exports=jdk.compiler.graal/jdk.compiler.graal.graph=ALL-UNNAMED',
+                 '--add-exports=jdk.graal.compiler/jdk.graal.compiler.graph=ALL-UNNAMED',
                  '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.benchmark=ALL-UNNAMED',
                  '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.debug=ALL-UNNAMED',
                  '--add-exports=org.graalvm.truffle/com.oracle.truffle.api.library=ALL-UNNAMED',

@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import jdk.compiler.graal.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 import com.oracle.svm.core.jdk.localization.LocalizationSupport;
 

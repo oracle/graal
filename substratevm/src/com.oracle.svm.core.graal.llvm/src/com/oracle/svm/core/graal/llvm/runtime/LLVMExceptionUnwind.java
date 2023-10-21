@@ -28,7 +28,7 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.function.BooleanSupplier;
 
-import jdk.compiler.graal.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.CContext;

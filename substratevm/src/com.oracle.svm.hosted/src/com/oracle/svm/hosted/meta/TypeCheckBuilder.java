@@ -38,7 +38,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.compiler.graal.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;

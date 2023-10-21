@@ -33,7 +33,7 @@ import java.util.Set;
 import java.util.SortedMap;
 import java.util.TreeMap;
 
-import jdk.compiler.graal.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;

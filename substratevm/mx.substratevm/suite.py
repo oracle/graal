@@ -1413,7 +1413,7 @@ suite = {
                 "exports" : [
                     "com.oracle.svm.hosted                        to java.base",
                     """* to org.graalvm.nativeimage.base,
-                            jdk.compiler.graal,
+                            jdk.graal.compiler,
                             org.graalvm.nativeimage.driver,
                             org.graalvm.nativeimage.configure,
                             org.graalvm.nativeimage.librarysupport,
@@ -1433,13 +1433,13 @@ suite = {
                             com.oracle.truffle.enterprise.svm""",
                 ],
                 "opens" : [
-                    "com.oracle.svm.core                          to jdk.compiler.graal",
-                    "com.oracle.svm.core.nodes                    to jdk.compiler.graal",
-                    "com.oracle.svm.core.graal.nodes              to jdk.compiler.graal",
-                    "com.oracle.svm.core.graal.snippets           to jdk.compiler.graal",
-                    "com.oracle.svm.hosted.fieldfolding           to jdk.compiler.graal",
-                    "com.oracle.svm.hosted.phases                 to jdk.compiler.graal",
-                    "com.oracle.svm.hosted.reflect                to jdk.compiler.graal",
+                    "com.oracle.svm.core                          to jdk.graal.compiler",
+                    "com.oracle.svm.core.nodes                    to jdk.graal.compiler",
+                    "com.oracle.svm.core.graal.nodes              to jdk.graal.compiler",
+                    "com.oracle.svm.core.graal.snippets           to jdk.graal.compiler",
+                    "com.oracle.svm.hosted.fieldfolding           to jdk.graal.compiler",
+                    "com.oracle.svm.hosted.phases                 to jdk.graal.compiler",
+                    "com.oracle.svm.hosted.reflect                to jdk.graal.compiler",
                 ],
                 "requires": [
                     "java.management",
@@ -1447,7 +1447,7 @@ suite = {
                 ],
                 "uses" : [
                     "org.graalvm.nativeimage.Platform",
-                    "jdk.compiler.graal.options.OptionDescriptors",
+                    "jdk.graal.compiler.options.OptionDescriptors",
                     "com.oracle.svm.hosted.NativeImageClassLoaderPostProcessing",
                     "java.util.spi.ResourceBundleControlProvider",
                     "com.oracle.svm.core.feature.AutomaticallyRegisteredFeatureServiceRegistration",
@@ -1621,12 +1621,12 @@ suite = {
                     "* to org.graalvm.truffle.runtime.svm,com.oracle.truffle.enterprise.svm",
                 ],
                 "opens" : [
-                    "com.oracle.svm.truffle to org.graalvm.nativeimage.builder,jdk.compiler.graal",
-                    "com.oracle.svm.truffle.nfi to org.graalvm.nativeimage.builder,jdk.compiler.graal",
-                    "com.oracle.svm.truffle.nfi.windows to org.graalvm.nativeimage.builder,jdk.compiler.graal",
-                    "com.oracle.svm.truffle.nfi.posix to org.graalvm.nativeimage.builder,jdk.compiler.graal",
-                    "com.oracle.svm.truffle.api to org.graalvm.nativeimage.builder,jdk.compiler.graal",
-                    "com.oracle.svm.truffle.isolated to org.graalvm.nativeimage.builder,jdk.compiler.graal",
+                    "com.oracle.svm.truffle to org.graalvm.nativeimage.builder,jdk.graal.compiler",
+                    "com.oracle.svm.truffle.nfi to org.graalvm.nativeimage.builder,jdk.graal.compiler",
+                    "com.oracle.svm.truffle.nfi.windows to org.graalvm.nativeimage.builder,jdk.graal.compiler",
+                    "com.oracle.svm.truffle.nfi.posix to org.graalvm.nativeimage.builder,jdk.graal.compiler",
+                    "com.oracle.svm.truffle.api to org.graalvm.nativeimage.builder,jdk.graal.compiler",
+                    "com.oracle.svm.truffle.isolated to org.graalvm.nativeimage.builder,jdk.graal.compiler",
                 ],
                 "requires": [
                     "java.management",
@@ -1751,7 +1751,7 @@ suite = {
                 "com.oracle.svm.driver.metainf",
               ],
               "uses" : [
-                "jdk.compiler.graal.options.OptionDescriptors",
+                "jdk.graal.compiler.options.OptionDescriptors",
               ],
               "requires" : [
                 "org.graalvm.nativeimage.builder",
@@ -1946,8 +1946,8 @@ suite = {
                         "jdk.vm.ci.code",
                         "jdk.vm.ci.runtime",
                     ],
-                    "jdk.compiler.graal" : [
-                        "jdk.compiler.graal.options"
+                    "jdk.graal.compiler" : [
+                        "jdk.graal.compiler.options"
                     ]
                 }
             },

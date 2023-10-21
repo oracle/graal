@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap;
 
-import jdk.compiler.graal.nodes.gc.BarrierSet;
+import jdk.graal.compiler.nodes.gc.BarrierSet;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
 

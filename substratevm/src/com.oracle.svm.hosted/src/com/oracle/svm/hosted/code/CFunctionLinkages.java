@@ -27,8 +27,8 @@ package com.oracle.svm.hosted.code;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.compiler.graal.graph.Node.NodeIntrinsic;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CFunction;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;

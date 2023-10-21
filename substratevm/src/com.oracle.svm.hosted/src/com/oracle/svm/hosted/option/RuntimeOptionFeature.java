@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.hosted.option;
 
-import jdk.compiler.graal.options.OptionDescriptor;
-import jdk.compiler.graal.options.OptionGroup;
-import jdk.compiler.graal.options.OptionKey;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionGroup;
+import jdk.graal.compiler.options.OptionKey;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.feature.InternalFeature;

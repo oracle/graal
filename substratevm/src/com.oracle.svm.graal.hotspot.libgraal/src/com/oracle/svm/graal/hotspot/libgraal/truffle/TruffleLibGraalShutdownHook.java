@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
-import jdk.compiler.graal.serviceprovider.IsolateUtil;
-import jdk.compiler.graal.serviceprovider.ServiceProvider;
+import jdk.graal.compiler.serviceprovider.IsolateUtil;
+import jdk.graal.compiler.serviceprovider.ServiceProvider;
 import org.graalvm.jniutils.JNI.JClass;
 import org.graalvm.jniutils.JNI.JNIEnv;
 import org.graalvm.jniutils.JNI.JavaVM;

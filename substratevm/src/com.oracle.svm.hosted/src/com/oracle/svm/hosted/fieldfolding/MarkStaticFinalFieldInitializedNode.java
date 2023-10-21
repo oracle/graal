@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.hosted.fieldfolding;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.NodeCycles;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodeinfo.NodeSize;
-import jdk.compiler.graal.nodes.AbstractStateSplit;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.java.StoreIndexedNode;
-import jdk.compiler.graal.nodes.spi.Simplifiable;
-import jdk.compiler.graal.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.AbstractStateSplit;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.java.StoreIndexedNode;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.svm.hosted.code.AnalysisToHostedGraphTransplanter;

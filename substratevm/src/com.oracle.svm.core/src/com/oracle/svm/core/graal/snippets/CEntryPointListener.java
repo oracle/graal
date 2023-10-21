@@ -26,7 +26,7 @@ package com.oracle.svm.core.graal.snippets;
 
 import com.oracle.svm.core.Uninterruptible;
 
-import jdk.compiler.graal.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 public interface CEntryPointListener {

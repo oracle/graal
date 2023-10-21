@@ -26,7 +26,7 @@
 
 package com.oracle.svm.core.jfr.events;
 
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.StackValue;
 
 import com.oracle.svm.core.Uninterruptible;

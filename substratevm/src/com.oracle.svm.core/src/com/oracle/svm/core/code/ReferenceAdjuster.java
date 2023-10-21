@@ -26,7 +26,7 @@ package com.oracle.svm.core.code;
 
 import java.nio.ByteOrder;
 
-import jdk.compiler.graal.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.word.Pointer;
 import org.graalvm.word.PointerBase;
 

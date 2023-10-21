@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import jdk.compiler.graal.nodes.FixedNodeInterface;
-import jdk.compiler.graal.nodes.StateSplit;
-import jdk.compiler.graal.nodes.debug.ControlFlowAnchored;
-import jdk.compiler.graal.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.FixedNodeInterface;
+import jdk.graal.compiler.nodes.StateSplit;
+import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
 
 public interface DeoptEntrySupport extends LIRLowerable, ControlFlowAnchored, FixedNodeInterface, StateSplit {
 

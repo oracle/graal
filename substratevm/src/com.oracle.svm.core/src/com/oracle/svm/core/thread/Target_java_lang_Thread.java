@@ -31,8 +31,8 @@ import java.security.AccessControlContext;
 import java.util.Map;
 import java.util.Objects;
 
-import jdk.compiler.graal.api.directives.GraalDirectives;
-import jdk.compiler.graal.replacements.ReplacementsUtil;
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.impl.InternalPlatform;

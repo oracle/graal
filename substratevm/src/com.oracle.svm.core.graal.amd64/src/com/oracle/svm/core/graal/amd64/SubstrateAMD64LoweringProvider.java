@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import jdk.compiler.graal.core.amd64.AMD64LoweringProviderMixin;
-import jdk.compiler.graal.core.common.spi.ForeignCallsProvider;
-import jdk.compiler.graal.core.common.spi.MetaAccessExtensionProvider;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.nodes.calc.RemNode;
-import jdk.compiler.graal.nodes.spi.LoweringTool;
-import jdk.compiler.graal.nodes.spi.PlatformConfigurationProvider;
+import jdk.graal.compiler.core.amd64.AMD64LoweringProviderMixin;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.calc.RemNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;

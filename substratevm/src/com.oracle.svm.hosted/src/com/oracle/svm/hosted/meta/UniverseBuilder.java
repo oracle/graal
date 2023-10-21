@@ -45,9 +45,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.Pair;
-import jdk.compiler.graal.core.common.NumUtil;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.Indent;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CEntryPointLiteral;
 import org.graalvm.nativeimage.c.function.CFunction;

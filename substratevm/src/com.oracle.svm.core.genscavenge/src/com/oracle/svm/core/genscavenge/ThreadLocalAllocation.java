@@ -27,9 +27,9 @@ package com.oracle.svm.core.genscavenge;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_END_IDENTITY;
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.TLAB_TOP_IDENTITY;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.replacements.AllocationSnippets.FillContent;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.AllocationSnippets.FillContent;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;

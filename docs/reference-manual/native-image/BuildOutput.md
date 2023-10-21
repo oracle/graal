@@ -57,7 +57,7 @@ Top 10 origins of code area:            Top 10 object types in image heap:
   27.06kB jdk.internal.vm.ci             250.83kB java.util.HashMap$Node
   23.44kB org.graalvm.sdk                196.52kB java.lang.Object[]
   11.42kB jdk.proxy2                     182.77kB java.lang.String[]
-   8.07kB jdk.compiler.graal             154.26kB byte[] for embedded resources
+   8.07kB jdk.graal.compiler             154.26kB byte[] for embedded resources
    1.39kB for 2 more packages              1.38MB for 884 more object types
 --------------------------------------------------------------------------------
 Recommendations:
