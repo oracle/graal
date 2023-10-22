@@ -24,17 +24,17 @@
  */
 package com.oracle.graal.pointsto.phases;
 
+import com.oracle.graal.pointsto.BigBang;
+import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
+import com.oracle.graal.pointsto.meta.AnalysisMethod;
+import com.oracle.svm.util.ClassUtil;
+
 import jdk.compiler.graal.debug.DebugContext;
 import jdk.compiler.graal.nodes.GraphDecoder;
 import jdk.compiler.graal.nodes.StructuredGraph;
 import jdk.compiler.graal.options.Option;
 import jdk.compiler.graal.options.OptionKey;
 import jdk.compiler.graal.printer.GraalDebugHandlersFactory;
-
-import com.oracle.graal.pointsto.BigBang;
-import com.oracle.graal.pointsto.flow.AnalysisParsedGraph;
-import com.oracle.graal.pointsto.meta.AnalysisMethod;
-import com.oracle.svm.util.ClassUtil;
 
 /**
  * Inlining before the static analysis improves the precision of the analysis especially when
@@ -54,7 +54,7 @@ import com.oracle.svm.util.ClassUtil;
 public class InlineBeforeAnalysis {
 
     public static class Options {
-        @Option(help = "Inline methods before static analysis")//
+        @Option(help = "Deprecated, option no longer has any effect", deprecated = true, deprecationMessage = "It no longer has any effect, and no replacement is available")//
         public static final OptionKey<Boolean> InlineBeforeAnalysis = new OptionKey<>(true);
     }
 
@@ -71,7 +71,7 @@ public class InlineBeforeAnalysis {
 
         try (DebugContext.Scope s = debug.scope("InlineBeforeAnalysis", result)) {
 
-            if (bb.strengthenGraalGraphs() && Options.InlineBeforeAnalysis.getValue(bb.getOptions())) {
+            if (bb.strengthenGraalGraphs()) {
                 InlineBeforeAnalysisGraphDecoder decoder = bb.getHostVM().createInlineBeforeAnalysisGraphDecoder(bb, method, result);
                 decoder.decode(method);
             } else {

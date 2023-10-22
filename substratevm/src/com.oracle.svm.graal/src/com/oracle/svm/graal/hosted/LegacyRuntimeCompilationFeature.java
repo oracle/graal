@@ -74,7 +74,6 @@ import com.oracle.graal.pointsto.infrastructure.GraphProvider;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;
 import com.oracle.graal.pointsto.meta.PointsToAnalysisMethod;
-import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.util.VMError;
 import com.oracle.svm.graal.GraalSupport;
@@ -195,7 +194,7 @@ public class LegacyRuntimeCompilationFeature extends RuntimeCompilationFeature i
 
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
-        VMError.guarantee(!SubstrateOptions.ParseOnceJIT.getValue(), "This feature is only supported when ParseOnceJIT is not set");
+        VMError.shouldNotReachHere("GR-48579: dead code that will be deleted later");
 
         ImageSingletons.add(RuntimeCompilationFeature.class, this);
     }

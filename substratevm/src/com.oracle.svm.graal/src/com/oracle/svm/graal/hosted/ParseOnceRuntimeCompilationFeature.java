@@ -146,10 +146,6 @@ import jdk.vm.ci.meta.ResolvedJavaField;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 
-/**
- * Runtime compilation strategy used when {@link com.oracle.svm.core.SubstrateOptions#ParseOnceJIT}
- * is enabled.
- */
 public class ParseOnceRuntimeCompilationFeature extends RuntimeCompilationFeature implements Feature, RuntimeCompilationSupport {
 
     public static class Options {
