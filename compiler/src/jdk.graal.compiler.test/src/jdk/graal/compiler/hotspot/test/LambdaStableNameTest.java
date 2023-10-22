@@ -56,19 +56,20 @@ public class LambdaStableNameTest {
 
     @Test
     public void checkStableLamdaNameForRunnableAndAutoCloseable() {
-        Runnable r = this::checkStableLamdaNameForRunnableAndAutoCloseable;
+        String s = "a string";
+        Runnable r = s::hashCode;
         ResolvedJavaType rType = JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaType(r.getClass());
 
         String name = findStableLambdaName(rType);
         assertLambdaName(name);
 
-        AutoCloseable ac = this::checkStableLamdaNameForRunnableAndAutoCloseable;
+        AutoCloseable ac = s::hashCode;
         ResolvedJavaType acType = JVMCI.getRuntime().getHostJVMCIBackend().getMetaAccess().lookupJavaType(ac.getClass());
         String acName = findStableLambdaName(acType);
         assertEquals("Both stable lambda names are the same as they reference the same method", name, acName);
 
         String myName = Type.getInternalName(getClass());
-        assertEquals("The name known in 19.3 version is computed", "L" + myName + "$$Lambda$b3eecdea57538cc530ec63a3f2a3564b121557a6;", name);
+        assertEquals("The name known in 19.3 version is computed", "L" + myName + "$$Lambda$0a7a1b7da3e20b4eff3f548c6ba3e47a0c3be612;", name);
     }
 
     private static void assertLambdaName(String name) {
