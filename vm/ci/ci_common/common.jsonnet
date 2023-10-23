@@ -576,9 +576,7 @@ local devkits = graal_common.devkits;
     mvn_args: ['maven-deploy', '--tags=public', '--all-distribution-types', '--validate=full', '--version-suite=vm'],
     mvn_args_only_native: self.mvn_args + ['--all-suites', '--only', self.only_native_dists],
 
-    main_platform:: 'linux-amd64',
-    other_platforms:: ['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64'],
-    is_main_platform(os, arch):: os + '-' + arch == self.main_platform,
+    compose_platform(os, arch):: os + '-' + arch,
 
     deploy_ce(os, arch, dry_run, extra_args, extra_mx_args=[]):: [
       self.mx_cmd_base(os, arch)
@@ -609,12 +607,12 @@ local devkits = graal_common.devkits;
       + extra_args,
     ],
 
-    run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo)::
-      if (self.is_main_platform(os, arch)) then (
+    run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform, other_platforms)::
+      if (self.compose_platform(os, arch) == main_platform) then (
         [
-          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name(platform)] for platform in self.other_platforms
+          self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name(platform)] for platform in other_platforms
         ]
-        + self.build(os, arch, mx_args=['--multi-platform-layout-directories=' + std.join(',', [self.main_platform] + self.other_platforms)], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}'])  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
+        + self.build(os, arch, mx_args=['--multi-platform-layout-directories=' + std.join(',', [main_platform] + other_platforms)], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}'])  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
         + (
           # remotely deploy only the suites that are defined in the current repository, to avoid duplicated deployments
           if (vm.maven_deploy_base_functions.edition == 'ce') then
@@ -683,15 +681,15 @@ local devkits = graal_common.devkits;
         + [self.mx_cmd_base(os, arch) + ['archive-pd-layouts', self.pd_layouts_archive_name(os + '-' + arch)]]
       ),
 
-    base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo):: {
-      run: $.maven_deploy_base_functions.run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo),
-    } + if (self.is_main_platform(os, arch)) then {
+    base_object(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform='linux-amd64', other_platforms=['linux-aarch64', 'darwin-amd64', 'darwin-aarch64', 'windows-amd64'],):: {
+      run: $.maven_deploy_base_functions.run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform, other_platforms),
+    } + if (self.compose_platform(os, arch) == main_platform) then {
        requireArtifacts+: [
          {
            name: $.maven_deploy_base_functions.pd_layouts_artifact_name(platform, dry_run),
            dir: vm.vm_dir,
            autoExtract: true,
-         } for platform in $.maven_deploy_base_functions.other_platforms
+         } for platform in other_platforms
        ],
      }
     else {
