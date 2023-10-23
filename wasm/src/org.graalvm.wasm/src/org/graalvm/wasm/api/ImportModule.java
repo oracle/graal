@@ -84,12 +84,14 @@ public class ImportModule extends BuiltinModule {
             final String functionName = entry.getKey();
             final Pair<WasmFunction, Object> info = entry.getValue();
             final WasmFunction function = info.getLeft();
+            final Object executable = info.getRight();
             final SymbolTable.FunctionType type = function.type();
-            if (info.getRight() instanceof WasmFunctionInstance) {
-                defineExportedFunction(instance, functionName, type.paramTypes(), type.resultTypes(), (WasmFunctionInstance) info.getRight());
+            if (executable instanceof WasmFunctionInstance) {
+                defineExportedFunction(instance, functionName, type.paramTypes(), type.resultTypes(), (WasmFunctionInstance) executable);
             } else {
-                var executableWrapper = new ExecuteInParentContextNode(context.language(), module, info.getRight());
+                var executableWrapper = new ExecuteInParentContextNode(context.language(), module, executable, function.resultCount());
                 WasmFunction exported = defineFunction(context, module, functionName, type.paramTypes(), type.resultTypes(), executableWrapper);
+                executableWrapper.setFunctionTypeIndex(exported.index());
                 instance.setTarget(exported.index(), executableWrapper.getCallTarget());
             }
         }
