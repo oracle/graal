@@ -91,9 +91,6 @@ import com.oracle.truffle.api.HostCompilerDirectives.BytecodeInterpreterSwitch;
 import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.nodes.BytecodeOSRNode;
 import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
@@ -3986,11 +3983,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
             return stackPointer + 1;
         } else {
             final int functionTypeIndex = function.typeIndex();
-            if (!function.isImported() || result == WasmConstant.MULTI_VALUE) {
-                extractMultiValueResultInternal(frame, stackPointer, result, resultCount, functionTypeIndex, language);
-            } else {
-                extractMultiValueResultExternal(frame, stackPointer, result, resultCount, functionTypeIndex);
-            }
+            extractMultiValueResult(frame, stackPointer, result, resultCount, functionTypeIndex, language);
             return stackPointer + resultCount;
         }
     }
@@ -4025,24 +4018,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
     }
 
     /**
-     * Extracts the multi value from the multi-value stack of the context or an external source. The
-     * result values are put onto the value stack.
-     *
-     * @param frame The current frame.
-     * @param stackPointer The current stack pointer.
-     * @param result The result of the function call.
-     * @param resultCount The expected number or result values.
-     * @param functionTypeIndex The function type index of the called function.
-     */
-    private void extractMultiValueResult(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex, WasmLanguage language) {
-        if (result == WasmConstant.MULTI_VALUE) {
-            extractMultiValueResultInternal(frame, stackPointer, result, resultCount, functionTypeIndex, language);
-        } else {
-            extractMultiValueResultExternal(frame, stackPointer, result, resultCount, functionTypeIndex);
-        }
-    }
-
-    /**
      * Extracts the multi-value result from the multi-value stack of the context. The result values
      * are put onto the value stack.
      *
@@ -4053,7 +4028,7 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
      * @param functionTypeIndex The function type index of the called function.
      */
     @ExplodeLoop
-    private void extractMultiValueResultInternal(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex, WasmLanguage language) {
+    private void extractMultiValueResult(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex, WasmLanguage language) {
         CompilerAsserts.partialEvaluationConstant(resultCount);
         assert result == WasmConstant.MULTI_VALUE : result;
         final var multiValueStack = language.multiValueStack();
@@ -4073,53 +4048,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                     throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
                 }
             }
-        }
-    }
-
-    /**
-     * Extracts the multi-value result from an external source via interop. The result values are
-     * put onto the value stack.
-     *
-     * @param frame The current frame.
-     * @param stackPointer The current stack pointer.
-     * @param result The result of the function call.
-     * @param resultCount The expected number or result values.
-     * @param functionTypeIndex The function type index of the called function.
-     */
-    @ExplodeLoop
-    private void extractMultiValueResultExternal(VirtualFrame frame, int stackPointer, Object result, int resultCount, int functionTypeIndex) {
-        CompilerAsserts.partialEvaluationConstant(resultCount);
-        // Multi-value is provided by an external source
-        final InteropLibrary lib = InteropLibrary.getUncached();
-        if (!lib.hasArrayElements(result)) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.UNSUPPORTED_MULTI_VALUE_TYPE);
-        }
-        try {
-            final int size = (int) lib.getArraySize(result);
-            if (size != resultCount) {
-                enterErrorBranch();
-                throw WasmException.create(Failure.INVALID_MULTI_VALUE_ARITY);
-            }
-            for (int i = 0; i < resultCount; i++) {
-                byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
-                CompilerAsserts.partialEvaluationConstant(resultType);
-                Object value = lib.readArrayElement(result, i);
-                switch (resultType) {
-                    case WasmType.I32_TYPE -> pushInt(frame, stackPointer + i, lib.asInt(value));
-                    case WasmType.I64_TYPE -> pushLong(frame, stackPointer + i, lib.asLong(value));
-                    case WasmType.F32_TYPE -> pushFloat(frame, stackPointer + i, lib.asFloat(value));
-                    case WasmType.F64_TYPE -> pushDouble(frame, stackPointer + i, lib.asDouble(value));
-                    case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> pushReference(frame, stackPointer + i, value);
-                    default -> {
-                        enterErrorBranch();
-                        throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
-                    }
-                }
-            }
-        } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-            enterErrorBranch();
-            throw WasmException.create(Failure.INVALID_TYPE_IN_MULTI_VALUE);
         }
     }
 }
