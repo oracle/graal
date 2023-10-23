@@ -197,7 +197,7 @@ public class SubstrateCompilationDirectives {
     public boolean registerDeoptEntry(FrameState state, ResolvedJavaMethod method) {
         assert deoptInfoModifiable();
         assert state.bci >= 0;
-        long encodedBci = FrameInfoEncoder.encodeBci(state.bci, state.duringCall(), state.rethrowException());
+        long encodedBci = FrameInfoEncoder.encodeBci(state.bci, state.getStackState());
 
         Map<Long, DeoptSourceFrameInfo> sourceFrameInfoMap = deoptEntries.computeIfAbsent(toAnalysisMethod(method), m -> new ConcurrentHashMap<>());
 
@@ -231,22 +231,22 @@ public class SubstrateCompilationDirectives {
         deoptEntries.computeIfAbsent(toAnalysisMethod(method), m -> new ConcurrentHashMap<>());
     }
 
-    public boolean isDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
+    public boolean isDeoptEntry(MultiMethod method, int bci, FrameState.StackState stackState) {
         assert deoptInfoQueryable();
 
         if (method instanceof HostedMethod && ((HostedMethod) method).getMultiMethod(MultiMethod.ORIGINAL_METHOD).compilationInfo.canDeoptForTesting()) {
             return true;
         }
 
-        return isRegisteredDeoptEntry(method, bci, duringCall, rethrowException);
+        return isRegisteredDeoptEntry(method, bci, stackState);
     }
 
-    public boolean isRegisteredDeoptEntry(MultiMethod method, int bci, boolean duringCall, boolean rethrowException) {
+    public boolean isRegisteredDeoptEntry(MultiMethod method, int bci, FrameState.StackState stackState) {
         assert deoptInfoQueryable();
         Map<Long, DeoptSourceFrameInfo> bciMap = deoptEntries.get(toAnalysisMethod((ResolvedJavaMethod) method));
         assert bciMap != null : "can only query for deopt entries for methods registered as deopt targets";
 
-        long encodedBci = FrameInfoEncoder.encodeBci(bci, duringCall, rethrowException);
+        long encodedBci = FrameInfoEncoder.encodeBci(bci, stackState);
         return bciMap.containsKey(encodedBci);
     }
 

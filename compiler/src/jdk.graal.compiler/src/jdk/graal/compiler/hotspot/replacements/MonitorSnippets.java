@@ -81,6 +81,11 @@ import static org.graalvm.word.WordFactory.zero;
 import java.util.List;
 import java.util.Objects;
 
+import org.graalvm.word.LocationIdentity;
+import org.graalvm.word.Pointer;
+import org.graalvm.word.WordBase;
+import org.graalvm.word.WordFactory;
+
 import jdk.graal.compiler.api.replacements.Fold;
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -127,11 +132,6 @@ import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
 import jdk.graal.compiler.replacements.Snippets;
 import jdk.graal.compiler.replacements.nodes.CStringConstant;
 import jdk.graal.compiler.word.Word;
-import org.graalvm.word.LocationIdentity;
-import org.graalvm.word.Pointer;
-import org.graalvm.word.WordBase;
-import org.graalvm.word.WordFactory;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.JavaType;
@@ -807,8 +807,8 @@ public class MonitorSnippets implements Snippets {
                         callTarget = graph.add(new MethodCallTargetNode(InvokeKind.Static, checkCounter.getMethod(), new ValueNode[]{errMsg}, returnStamp, null));
                         invoke = graph.add(new InvokeNode(callTarget, 0));
                         Bytecode code = new ResolvedJavaMethodBytecode(graph.method());
-                        FrameState stateAfter = new FrameState(null, code, BytecodeFrame.AFTER_BCI, ValueNode.EMPTY_ARRAY, ValueNode.EMPTY_ARRAY, 0, null, null, ValueNode.EMPTY_ARRAY, null, false,
-                                        false);
+                        FrameState stateAfter = new FrameState(null, code, BytecodeFrame.AFTER_BCI, ValueNode.EMPTY_ARRAY, ValueNode.EMPTY_ARRAY, 0, null, null, ValueNode.EMPTY_ARRAY, null,
+                                        FrameState.StackState.BeforePop);
                         invoke.setStateAfter(graph.add(stateAfter));
                         graph.addBeforeFixed(ret, invoke);
 

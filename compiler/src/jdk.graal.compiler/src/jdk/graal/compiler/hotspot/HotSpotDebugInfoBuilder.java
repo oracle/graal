@@ -32,11 +32,11 @@ import java.util.List;
 import jdk.graal.compiler.bytecode.Bytecodes;
 import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
 import jdk.graal.compiler.core.gen.DebugInfoBuilder;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.GraalGraphError;
 import jdk.graal.compiler.graph.NodeSourcePosition;
 import jdk.graal.compiler.hotspot.meta.DefaultHotSpotLoweringProvider;
 import jdk.graal.compiler.lir.VirtualStackSlot;
-import jdk.graal.compiler.nodeinfo.Verbosity;
 import jdk.graal.compiler.nodes.DeoptimizeNode;
 import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.nodes.FullInfopointNode;
@@ -94,43 +94,106 @@ public class HotSpotDebugInfoBuilder extends DebugInfoBuilder {
     }
 
     @Override
-    protected boolean verifyFrameState(NodeWithState node, FrameState topState) {
+    protected void verifyFrameState(NodeWithState node, FrameState topState) {
         if (node instanceof FullInfopointNode) {
-            return true;
+            return;
         }
-        if (node instanceof ForeignCall) {
-            ForeignCall call = (ForeignCall) node;
-            ForeignCallDescriptor descriptor = call.getDescriptor();
-            if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor.getSignature())) {
-                return true;
-            }
-        }
+
         FrameState current = topState;
         while (current != null) {
             assert current.getMethod() instanceof HotSpotResolvedJavaMethod : current;
             current = current.outerFrameState();
         }
+
+        if (node instanceof ForeignCall) {
+            ForeignCall call = (ForeignCall) node;
+            ForeignCallDescriptor descriptor = call.getDescriptor();
+            if (DefaultHotSpotLoweringProvider.RuntimeCalls.runtimeCalls.containsValue(descriptor.getSignature())) {
+                // This case is special because we can't use rethrowException. This path must be
+                // marked as reexecutable so it doesn't fail some internal asserts even though the
+                // actual deopt is done with Unpack_exception which overrides the reexectuable flag
+                GraalError.guarantee(topState.getStackState() == FrameState.StackState.BeforePop && topState.bci >= 0 && topState.stackSize() == 0, "invalid state %s for bytecode exception %s",
+                                topState, descriptor.getSignature());
+                GraalError.guarantee(!topState.getStackState().duringCall, "must be not duringCall to set reexecute bit");
+                return;
+            }
+        }
         // There are many properties of FrameStates which could be validated though it's complicated
         // by some of the idiomatic ways that they are used. This check specifically tries to catch
         // cases where a FrameState that's constructed for reexecution has an incorrect stack depth
         // at invokes.
-        if (topState.bci >= 0 && !topState.duringCall() && !topState.rethrowException()) {
+        if (topState.bci >= 0) {
             ResolvedJavaMethod m = topState.getMethod();
             int opcode = m.getCode()[topState.bci] & 0xff;
-            if (opcode == Bytecodes.INVOKEVIRTUAL || opcode == Bytecodes.INVOKEINTERFACE) {
-                assert topState.stackSize() > 0 : "expected non-empty stack: " + topState;
-            } else {
-                int stackEffect = Bytecodes.stackEffectOf(opcode);
-                if (stackEffect < 0) {
-                    assert topState.stackSize() >= -stackEffect : "opcode " + opcode + " (" + Bytecodes.nameOf(opcode) + ") stack effect " + stackEffect + ": expected at least " + (-stackEffect) +
-                                    " stack depth : " + topState;
-                }
+            int stackEffect = Bytecodes.stackEffectOf(opcode);
+            switch (topState.getStackState()) {
+                case BeforePop:
+                    if (opcode == Bytecodes.INVOKEVIRTUAL || opcode == Bytecodes.INVOKEINTERFACE) {
+                        GraalError.guarantee(topState.stackSize() > 0, "expected non-empty stack: %s", topState);
+                    } else {
+                        if (stackEffect < 0) {
+                            GraalError.guarantee(topState.stackSize() >= -stackEffect, "opcode %d (%s) stack effect %d: expected at least %d stack depth : %s", opcode, Bytecodes.nameOf(opcode),
+                                            stackEffect, -stackEffect, topState);
+                        }
+                    }
+                    break;
+                case AfterPop:
+                    GraalError.guarantee(!shouldReexecute(opcode), "hotspot says this must deopt with reexecute: %s %s", Bytecodes.nameOf(opcode), topState);
+                    break;
+                case Rethrow:
+                    GraalError.guarantee(topState.stackSize() == 1, "rethrow frame states should have a single value on the top of stack: %s", topState);
+                    break;
+            }
+            if (node instanceof DeoptimizeNode) {
+                // The FrameState must either have the arguments to the current bytecode on the top
+                // of
+                // stack or it must be a rethrow
+                GraalError.guarantee(topState.getStackState() != FrameState.StackState.AfterPop || stackEffect >= 0, "must be executable state %S", topState);
             }
         }
-        if (node instanceof DeoptimizeNode) {
-            assert !topState.duringCall() : topState.toString(Verbosity.Debugger);
+    }
+
+    /**
+     * Returns true for bytecodes that are required to be reexecuted according to HotSpot. Copied
+     * {@code AbstractInterpreter::bytecode_should_reexecute} in
+     * src/hotspot/share/interpreter/abstractInterpreter.cpp.
+     */
+    boolean shouldReexecute(int code) {
+        switch (code) {
+            case Bytecodes.LOOKUPSWITCH:
+            case Bytecodes.TABLESWITCH:
+            case Bytecodes.LCMP:
+            case Bytecodes.FCMPL:
+            case Bytecodes.FCMPG:
+            case Bytecodes.DCMPL:
+            case Bytecodes.DCMPG:
+            case Bytecodes.IFNULL:
+            case Bytecodes.IFNONNULL:
+            case Bytecodes.GOTO:
+            case Bytecodes.GOTO_W:
+            case Bytecodes.IFEQ:
+            case Bytecodes.IFNE:
+            case Bytecodes.IFLT:
+            case Bytecodes.IFGE:
+            case Bytecodes.IFGT:
+            case Bytecodes.IFLE:
+            case Bytecodes.IF_ICMPEQ:
+            case Bytecodes.IF_ICMPNE:
+            case Bytecodes.IF_ICMPLT:
+            case Bytecodes.IF_ICMPGE:
+            case Bytecodes.IF_ICMPGT:
+            case Bytecodes.IF_ICMPLE:
+            case Bytecodes.IF_ACMPEQ:
+            case Bytecodes.IF_ACMPNE:
+            case Bytecodes.GETFIELD:
+            case Bytecodes.PUTFIELD:
+            case Bytecodes.GETSTATIC:
+            case Bytecodes.PUTSTATIC:
+            case Bytecodes.AASTORE:
+            case Bytecodes.ATHROW:
+                return true;
         }
-        return true;
+        return false;
     }
 
     @Override

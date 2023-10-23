@@ -218,9 +218,7 @@ public final class BytecodeExceptionNode extends AbstractMemoryCheckpoint implem
      * Create a new stateDuring for use by a foreign call.
      */
     public FrameState createStateDuring() {
-        boolean rethrowException = false;
-        boolean duringCall = true;
-        FrameState stateDuring = stateAfter.duplicateModified(graph(), stateAfter.bci, duringCall, rethrowException, JavaKind.Object,
+        FrameState stateDuring = stateAfter.duplicateModified(graph(), stateAfter.bci, FrameState.StackState.AfterPop, JavaKind.Object,
                         null, null, null);
         /*
          * FrameStates attached to bytecode exception nodes are not a valid deoptimization state

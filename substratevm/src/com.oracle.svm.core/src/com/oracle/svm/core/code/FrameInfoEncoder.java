@@ -45,6 +45,7 @@ import jdk.graal.compiler.core.common.type.CompressibleConstant;
 import jdk.graal.compiler.core.common.util.FrequencyEncoder;
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.nodes.FrameState;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.CalleeSavedRegisters;
@@ -500,7 +501,7 @@ public class FrameInfoEncoder {
 
     protected FrameData addDefaultDebugInfo(ResolvedJavaMethod method, int totalFrameSize) {
         FrameData data = new FrameData(null, totalFrameSize, null, true);
-        data.frame.encodedBci = FrameInfoEncoder.encodeBci(0, false, false);
+        data.frame.encodedBci = FrameInfoEncoder.encodeBci(0, FrameState.StackState.BeforePop);
         customization.fillSourceFields(method, data.frame);
         // invalidate source line number
         data.frame.sourceLineNumber = -1;
@@ -550,7 +551,7 @@ public class FrameInfoEncoder {
             initializeFrameInfo(frameInfo.caller, data, frame.caller(), false, needLocalValues);
         }
         frameInfo.virtualObjects = data.virtualObjects;
-        frameInfo.encodedBci = encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
+        frameInfo.encodedBci = encodeBci(frame.getBCI(), FrameState.StackState.of(frame));
         frameInfo.isDeoptEntry = isDeoptEntry;
 
         ValueInfo[] valueInfos = null;
@@ -996,10 +997,10 @@ public class FrameInfoEncoder {
     /**
      * Encodes the BCI and the duringCall- and rethrowException flags into a single value.
      */
-    public static long encodeBci(int bci, boolean duringCall, boolean rethrowException) {
+    public static long encodeBci(int bci, FrameState.StackState stackState) {
         long result = (((long) bci + FrameInfoDecoder.ENCODED_BCI_ADDEND) << FrameInfoDecoder.ENCODED_BCI_SHIFT) |
-                        (duringCall ? FrameInfoDecoder.ENCODED_BCI_DURING_CALL_MASK : 0) |
-                        (rethrowException ? FrameInfoDecoder.ENCODED_BCI_RETHROW_EXCEPTION_MASK : 0);
+                        (stackState.duringCall ? FrameInfoDecoder.ENCODED_BCI_DURING_CALL_MASK : 0) |
+                        (stackState.rethrowException ? FrameInfoDecoder.ENCODED_BCI_RETHROW_EXCEPTION_MASK : 0);
         VMError.guarantee(result >= 0, "encoded bci is stored as an unsigned value");
         VMError.guarantee(result != FrameInfoDecoder.ENCODED_BCI_NO_CALLER, "Encoding must not return marker value");
         return result;

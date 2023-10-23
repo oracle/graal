@@ -36,6 +36,7 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.util.FrequencyEncoder;
 import jdk.graal.compiler.core.common.util.TypeConversion;
 import jdk.graal.compiler.core.common.util.UnsafeArrayTypeWriter;
+import jdk.graal.compiler.nodes.FrameState;
 import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.Pointer;
@@ -217,7 +218,7 @@ public class CodeInfoEncoder {
                     entry.frameData = frameInfoEncoder.addDebugInfo(method, compilation, infopoint, totalFrameSize);
                     if (entry.frameData != null && entry.frameData.frame.isDeoptEntry) {
                         BytecodeFrame frame = debugInfo.frame();
-                        long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), frame.duringCall, frame.rethrowException);
+                        long encodedBci = FrameInfoEncoder.encodeBci(frame.getBCI(), FrameState.StackState.of(frame));
                         added = deoptEntryBcis.add(encodedBci);
                         if (!added) {
                             throw VMError.shouldNotReachHere(String.format("Encoding two deopt entries at same encoded bci: %s (bci %s)%nmethod: %s",
