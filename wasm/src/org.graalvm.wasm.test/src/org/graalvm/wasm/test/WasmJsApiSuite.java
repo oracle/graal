@@ -613,7 +613,7 @@ public class WasmJsApiSuite {
                 final Object b = WebAssembly.instanceExport(instance, "b");
                 lib.execute(writeTable, a, 0, f);
                 final Object readValue = lib.execute(readTable, b, 0);
-                Assert.assertEquals("Written function should correspond ro read function", 42, lib.asInt(lib.execute(readValue)));
+                Assert.assertEquals("Written function should correspond to read function", 42, lib.asInt(lib.execute(readValue)));
             } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException | ArityException e) {
                 throw new RuntimeException(e);
             }
@@ -1293,21 +1293,15 @@ public class WasmJsApiSuite {
                         """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final WasmFunctionInstance func = new WasmFunctionInstance(context, new RootNode(context.language()) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    return 0;
-                }
-            }.getCallTarget());
-            final WasmFunctionInstance f = new WasmFunctionInstance(context, new RootNode(context.language()) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    final Object[] result = new Object[2];
-                    result[0] = func;
-                    result[1] = "foo";
-                    return InteropArray.create(result);
-                }
-            }.getCallTarget());
+            final var func = new Executable((args) -> {
+                return 0;
+            });
+            final var f = new Executable((args) -> {
+                final Object[] result = new Object[2];
+                result[0] = func;
+                result[1] = "foo";
+                return InteropArray.create(result);
+            });
             final Dictionary importObject = Dictionary.create(new Object[]{"m", Dictionary.create(new Object[]{"f", f})});
             final WasmInstance instance = moduleInstantiate(wasm, source, importObject);
             final Object main = WebAssembly.instanceExport(instance, "main");
@@ -1633,13 +1627,10 @@ public class WasmJsApiSuite {
 
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    final Object[] arr = {1, 2, 3};
-                    return InteropArray.create(arr);
-                }
-            }.getCallTarget());
+            final Object f = new Executable((args) -> {
+                final Object[] arr = {1, 2, 3};
+                return InteropArray.create(arr);
+            });
             final Dictionary d = new Dictionary();
             d.addMember("m", Dictionary.create(new Object[]{
                             "f", f
@@ -1671,12 +1662,9 @@ public class WasmJsApiSuite {
                         """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    return 0;
-                }
-            }.getCallTarget());
+            final Object f = new Executable((args) -> {
+                return 0;
+            });
             final Dictionary d = new Dictionary();
             d.addMember("m", Dictionary.create(new Object[]{
                             "f", f
@@ -1712,12 +1700,9 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
 
-            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    return InteropArray.create(new Object[]{1, 2});
-                }
-            }.getCallTarget());
+            final Object f = new Executable((args) -> {
+                return InteropArray.create(new Object[]{1, 2});
+            });
             final Dictionary d = new Dictionary();
             d.addMember("m", Dictionary.create(new Object[]{
                             "f", f
@@ -1753,12 +1738,9 @@ public class WasmJsApiSuite {
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
 
-            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    return InteropArray.create(new Object[]{0, 1.1, 2});
-                }
-            }.getCallTarget());
+            final Object f = new Executable((args) -> {
+                return InteropArray.create(new Object[]{0, 1.1, 2});
+            });
             final Dictionary d = new Dictionary();
             d.addMember("m", Dictionary.create(new Object[]{
                             "f", f
@@ -1818,13 +1800,10 @@ public class WasmJsApiSuite {
                         """);
         runTest(context -> {
             final WebAssembly wasm = new WebAssembly(context);
-            final Object f = new WasmFunctionInstance(context, new RootNode(context.language()) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    final Object[] arr = {1, 2, 3};
-                    return InteropArray.create(arr);
-                }
-            }.getCallTarget());
+            final Object f = new Executable((args) -> {
+                final Object[] arr = {1, 2, 3};
+                return InteropArray.create(arr);
+            });
             final Dictionary d = new Dictionary();
             d.addMember("m", Dictionary.create(new Object[]{
                             "f", f
