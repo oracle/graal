@@ -120,4 +120,8 @@ public final class LoadDependencyNode extends LLVMNode {
             return loadNative.getCallTarget();
         }
     }
+
+    public String getLibraryName(){
+        return libraryName;
+    }
 }

@@ -51,6 +51,7 @@ import com.oracle.truffle.llvm.runtime.LLVMScope;
 import com.oracle.truffle.llvm.runtime.LLVMScopeChain;
 import com.oracle.truffle.llvm.runtime.LLVMSymbol;
 import com.oracle.truffle.llvm.runtime.LLVMUnsupportedException;
+import com.oracle.truffle.llvm.runtime.LibraryLocator;
 import com.oracle.truffle.llvm.runtime.SulongLibrary;
 import com.oracle.truffle.llvm.runtime.SulongLibrary.CachedMainFunction;
 import com.oracle.truffle.llvm.runtime.except.LLVMParserException;
@@ -276,9 +277,33 @@ public final class LoadModulesNode extends LLVMRootNode {
             }
 
             /*
+             * Depenedencies need to be constructed before scoping building to ensure libraries are not garbage collected
+             * early.
+             */
+            if (LLVMLoadingPhase.BUILD_DEPENDENCY.isActive(phase) && !context.isLibraryAlreadyLoaded(bitcodeID)) {
+                int id = bitcodeID.getId();
+                if (!visited.get(id)) {
+                    visited.set(id);
+                    for (LoadDependencyNode libraryDependency : libraryDependencies) {
+                        CallTarget lib = libraryDependency.execute();
+                        if (lib != null) {
+                            if (LibraryLocator.loggingEnabled()) {
+                                LibraryLocator.traceStaticInits(context, "building library dependency", libraryDependency.getLibraryName());
+                            }
+                            callDependencies.call(lib, LLVMLoadingPhase.BUILD_DEPENDENCY, visited, dependencies);
+                        }
+                    }
+                    dependencies.add(this.getCallTarget());
+                }
+            }
+
+            /*
              * The scope is built in parsing order, which requires breadth-first with a que.
              */
             if (LLVMLoadingPhase.BUILD_SCOPES.isActive(phase)) {
+                if (LLVMLoadingPhase.ALL == phase) {
+                    visited.clear();
+                }
                 int id = bitcodeID.getId();
                 if (!visited.get(id)) {
                     visited.set(id);
@@ -302,6 +327,9 @@ public final class LoadModulesNode extends LLVMRootNode {
                     }
 
                     for (int i = 0; i < libraryDependencies.length; i++) {
+                        if (LibraryLocator.loggingEnabled()) {
+                            LibraryLocator.traceStaticInits(context, "building scope", libraryDependencies[i].getLibraryName());
+                        }
                         CallTarget callTarget = libraryDependencies[i].execute();
                         if (callTarget != null) {
                             queAdd(que, callTarget);
@@ -328,24 +356,6 @@ public final class LoadModulesNode extends LLVMRootNode {
                     return headResultScopeChain;
                 } else {
                     return headLocalScopeChain;
-                }
-            }
-
-            if (LLVMLoadingPhase.BUILD_DEPENDENCY.isActive(phase)) {
-                if (LLVMLoadingPhase.ALL == phase) {
-                    visited.clear();
-                }
-
-                int id = bitcodeID.getId();
-                if (!visited.get(id)) {
-                    visited.set(id);
-                    for (LoadDependencyNode libraryDependency : libraryDependencies) {
-                        CallTarget lib = libraryDependency.execute();
-                        if (lib != null) {
-                            callDependencies.call(lib, LLVMLoadingPhase.BUILD_DEPENDENCY, visited, dependencies);
-                        }
-                    }
-                    dependencies.add(this.getCallTarget());
                 }
             }
 

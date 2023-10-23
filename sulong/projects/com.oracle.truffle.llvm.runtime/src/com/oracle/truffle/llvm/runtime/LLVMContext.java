@@ -816,7 +816,7 @@ public final class LLVMContext {
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
                 //exception.enter();)
 
-                loaderLogger.log(Level.FINEST, "stack trace:");
+                loaderLogger.log(Level.FINEST, "********************stack trace:***********************");
                 loaderLogger.log(Level.FINEST, Arrays.toString(e.getStackTrace()));
                 loaderLogger.log(Level.FINEST, "symbol is: " + symbol.getName());
                 loaderLogger.log(Level.FINEST, "id is: " + id);
@@ -860,6 +860,14 @@ public final class LLVMContext {
                 return symbolDynamicStorage[id][index];
             } catch (ArrayIndexOutOfBoundsException | NullPointerException e) {
                 //exception.enter();
+
+                loaderLogger.log(Level.FINEST, "********************stack trace:***********************");
+                loaderLogger.log(Level.FINEST, Arrays.toString(e.getStackTrace()));
+                loaderLogger.log(Level.FINEST, "symbol is: " + symbol.getName());
+                loaderLogger.log(Level.FINEST, "id is: " + id);
+                loaderLogger.log(Level.FINEST, "id name is: " + bitcodeID.getName());
+                loaderLogger.log(Level.FINEST, "index is: " + index);
+
                 System.out.println("symbol is: " + symbol.getName());
                 System.out.println("id is: " + id);
                 System.out.println("id name is: " + bitcodeID.getName());

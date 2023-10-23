@@ -29,15 +29,15 @@
  */
 package com.oracle.truffle.llvm.runtime;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.logging.Level;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.Source.SourceBuilder;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.logging.Level;
 
 /**
  * Encapsulates logic for locating libraries.
@@ -120,9 +120,9 @@ public abstract class LibraryLocator {
         }
     }
 
-    public static void traceParseBitcode(LLVMContext context, Object path) {
+    public static void traceParseBitcode(LLVMContext context, Object path, IDGenerater.BitcodeID bitcodeID) {
         if (loggingEnabled()) {
-            traceLoader(context, "parse bitcode=%s", path);
+            traceLoader(context, "parse bitcode=%s (bitcode id=%s)", path, bitcodeID);
         }
     }
 
