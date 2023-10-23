@@ -607,7 +607,7 @@ local devkits = graal_common.devkits;
       + extra_args,
     ],
 
-    run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform, other_platforms)::
+    run_block(os, arch, dry_run, remote_mvn_repo, remote_non_mvn_repo, local_repo, main_platform, other_platforms, mvn_artifacts=true, mvn_bundle=true, mvn_reduced_bundle=true)::
       local restore_layouts_snippet =
         [self.mx_cmd_base(os, arch) + ['restore-pd-layouts', self.pd_layouts_archive_name(platform)] for platform in other_platforms]
         + self.build(os, arch, mx_args=['--multi-platform-layout-directories=' + std.join(',', [main_platform] + other_platforms)], build_args=['--targets={MAVEN_TAG_DISTRIBUTIONS:public}']);  # `self.only_native_dists` are in `{MAVEN_TAG_DISTRIBUTIONS:public}`
@@ -678,9 +678,24 @@ local devkits = graal_common.devkits;
 
       if (self.compose_platform(os, arch) == main_platform) then (
         restore_layouts_snippet
-        + mvn_artifacts_snippet
-        + mvn_bundle_snippet
-        + mvn_reduced_bundle_snippet
+        + (
+          if (mvn_artifacts) then
+            mvn_artifacts_snippet
+          else
+            [['echo', 'Skipping Maven artifacts']]
+        )
+        + (
+          if (mvn_bundle) then
+            mvn_bundle_snippet
+          else
+            [['echo', 'Skipping Maven bundle']]
+        )
+        + (
+          if (mvn_reduced_bundle) then
+            mvn_reduced_bundle_snippet
+          else
+          [['echo', 'Skipping reduced Maven bundle']]
+        )
       ) else (
         self.build(os, arch, build_args=['--targets=' + self.only_native_dists + ',{PLATFORM_DEPENDENT_LAYOUT_DIR_DISTRIBUTIONS}'])
         + (
