@@ -24,31 +24,31 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_8;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_8;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.InputType;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodeinfo.NodeSize;
-import jdk.compiler.graal.nodes.AbstractMergeNode;
-import jdk.compiler.graal.nodes.DeoptimizingFixedWithNextNode;
-import jdk.compiler.graal.nodes.DeoptimizingNode.DeoptBefore;
-import jdk.compiler.graal.nodes.EndNode;
-import jdk.compiler.graal.nodes.FixedNode;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.IfNode;
-import jdk.compiler.graal.nodes.MergeNode;
-import jdk.compiler.graal.nodes.ReturnNode;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.extended.FixedValueAnchorNode;
-import jdk.compiler.graal.nodes.java.InstanceOfDynamicNode;
-import jdk.compiler.graal.nodes.memory.SingleMemoryKill;
-import jdk.compiler.graal.nodes.spi.Lowerable;
-import jdk.compiler.graal.nodes.spi.Simplifiable;
-import jdk.compiler.graal.nodes.spi.SimplifierTool;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.AbstractMergeNode;
+import jdk.graal.compiler.nodes.DeoptimizingFixedWithNextNode;
+import jdk.graal.compiler.nodes.DeoptimizingNode.DeoptBefore;
+import jdk.graal.compiler.nodes.EndNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.ReturnNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.FixedValueAnchorNode;
+import jdk.graal.compiler.nodes.java.InstanceOfDynamicNode;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
+import jdk.graal.compiler.nodes.spi.Lowerable;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.c.function.CEntryPointActions;

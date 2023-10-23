@@ -37,9 +37,9 @@ import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import jdk.compiler.graal.graph.Node.NodeIntrinsic;
-import jdk.compiler.graal.java.LambdaUtils;
-import jdk.compiler.graal.nodes.BreakpointNode;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.nodes.BreakpointNode;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.type.CCharPointer;

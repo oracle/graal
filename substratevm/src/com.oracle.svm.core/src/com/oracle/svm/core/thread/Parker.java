@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.thread;
 
-import jdk.compiler.graal.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.Uninterruptible;

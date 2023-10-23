@@ -1034,7 +1034,7 @@ public abstract class OptimizedTruffleRuntime implements TruffleRuntime, Truffle
         } else {
             ServiceLoader<T> runtimeLoader = ServiceLoader.load(service, runtimeClassLoader);
             /*
-             * The Graal module (i.e., jdk.compiler.graal) is loaded by the platform class loader.
+             * The Graal module (i.e., jdk.graal.compiler) is loaded by the platform class loader.
              * Its module dependencies such as Truffle are supplied via --module-path which means
              * they are loaded by the app class loader. As such, we need to search the app class
              * loader path as well.

@@ -24,9 +24,9 @@
  */
 package com.oracle.graal.pointsto.phases;
 
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.graphbuilderconf.InlineInvokePlugin;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin;
 
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 

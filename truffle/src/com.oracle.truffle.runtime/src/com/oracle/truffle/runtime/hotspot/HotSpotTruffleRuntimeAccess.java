@@ -117,7 +117,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
         } else {
             // try jar graal
             try {
-                Module compilerModule = layer.findModule("jdk.compiler.graal").or(() -> layer.findModule("jdk.internal.vm.compiler")).orElse(null);
+                Module compilerModule = layer.findModule("jdk.graal.compiler").or(() -> layer.findModule("jdk.internal.vm.compiler")).orElse(null);
                 if (compilerModule == null) {
                     // jargraal compiler module not found -> fallback to default runtime
                     return new DefaultTruffleRuntime(
@@ -145,7 +145,7 @@ public final class HotSpotTruffleRuntimeAccess implements TruffleRuntimeAccess {
      */
     private static String getTruffleGraalHotSpotPackage(Module compilerModule) {
         String[] history = {
-                        "jdk.compiler.graal.truffle.hotspot",
+                        "jdk.graal.compiler.truffle.hotspot",
                         "org.graalvm.compiler.truffle.compiler.hotspot"
         };
         Set<String> packages = compilerModule.getPackages();

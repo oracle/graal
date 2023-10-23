@@ -33,7 +33,7 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.compiler.graal.core.common.type.TypedConstant;
+import jdk.graal.compiler.core.common.type.TypedConstant;
 
 import com.oracle.graal.pointsto.heap.ImageHeapConstant;
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;

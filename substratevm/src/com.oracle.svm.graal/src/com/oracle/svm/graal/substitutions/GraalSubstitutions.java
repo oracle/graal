@@ -35,43 +35,43 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.oracle.svm.graal.GraalSupport;
-import jdk.compiler.graal.core.match.MatchRuleRegistry;
-import jdk.compiler.graal.debug.KeyRegistry;
-import jdk.compiler.graal.debug.TTY;
-import jdk.compiler.graal.nodes.NamedLocationIdentity;
-import jdk.compiler.graal.nodes.graphbuilderconf.InvocationPlugins;
-import jdk.compiler.graal.phases.common.inlining.info.elem.InlineableGraph;
-import jdk.compiler.graal.phases.common.inlining.walker.ComputeInliningRelevance;
-import jdk.compiler.graal.replacements.nodes.BinaryMathIntrinsicNode;
-import jdk.compiler.graal.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.core.match.MatchRuleRegistry;
+import jdk.graal.compiler.debug.KeyRegistry;
+import jdk.graal.compiler.debug.TTY;
+import jdk.graal.compiler.nodes.NamedLocationIdentity;
+import jdk.graal.compiler.nodes.graphbuilderconf.InvocationPlugins;
+import jdk.graal.compiler.phases.common.inlining.info.elem.InlineableGraph;
+import jdk.graal.compiler.phases.common.inlining.walker.ComputeInliningRelevance;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
-import jdk.compiler.graal.core.common.CompilationIdentifier;
-import jdk.compiler.graal.core.common.SuppressFBWarnings;
-import jdk.compiler.graal.core.gen.NodeLIRBuilder;
-import jdk.compiler.graal.core.match.MatchStatement;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.DebugHandlersFactory;
-import jdk.compiler.graal.debug.MetricKey;
-import jdk.compiler.graal.debug.TimeSource;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.lir.CompositeValue;
-import jdk.compiler.graal.lir.CompositeValueClass;
-import jdk.compiler.graal.lir.LIRInstruction;
-import jdk.compiler.graal.lir.LIRInstructionClass;
-import jdk.compiler.graal.lir.gen.ArithmeticLIRGeneratorTool;
-import jdk.compiler.graal.lir.phases.LIRPhase;
-import jdk.compiler.graal.nodes.Invoke;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.spi.NodeLIRBuilderTool;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.BasePhase;
-import jdk.compiler.graal.phases.common.CanonicalizerPhase;
-import jdk.compiler.graal.phases.tiers.HighTierContext;
-import jdk.compiler.graal.printer.NoDeadCodeVerifyHandler;
-import jdk.compiler.graal.serviceprovider.GlobalAtomicLong;
+import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.core.gen.NodeLIRBuilder;
+import jdk.graal.compiler.core.match.MatchStatement;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugHandlersFactory;
+import jdk.graal.compiler.debug.MetricKey;
+import jdk.graal.compiler.debug.TimeSource;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.CompositeValue;
+import jdk.graal.compiler.lir.CompositeValueClass;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
+import jdk.graal.compiler.lir.phases.LIRPhase;
+import jdk.graal.compiler.nodes.Invoke;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.CanonicalizerPhase;
+import jdk.graal.compiler.phases.tiers.HighTierContext;
+import jdk.graal.compiler.printer.NoDeadCodeVerifyHandler;
+import jdk.graal.compiler.serviceprovider.GlobalAtomicLong;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.FieldValueTransformer;
@@ -103,7 +103,7 @@ import jdk.vm.ci.code.TargetDescription;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 @TargetClass(value = InvocationPlugins.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
-final class Target_jdk_compiler_graal_nodes_graphbuilderconf_InvocationPlugins {
+final class Target_jdk_graal_compiler_nodes_graphbuilderconf_InvocationPlugins {
 
     @Alias//
     private List<Runnable> deferredRegistrations = new ArrayList<>();
@@ -118,7 +118,7 @@ final class Target_jdk_compiler_graal_nodes_graphbuilderconf_InvocationPlugins {
 
 @TargetClass(value = InlineableGraph.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"unused"})
-final class Target_jdk_compiler_graal_phases_common_inlining_info_elem_InlineableGraph {
+final class Target_jdk_graal_compiler_phases_common_inlining_info_elem_InlineableGraph {
 
     @Substitute
     private static StructuredGraph parseBytecodes(ResolvedJavaMethod method, HighTierContext context, CanonicalizerPhase canonicalizer, StructuredGraph caller, boolean trackNodeSourcePosition) {
@@ -132,7 +132,7 @@ final class Target_jdk_compiler_graal_phases_common_inlining_info_elem_Inlineabl
 
 @TargetClass(value = ComputeInliningRelevance.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"static-method", "unused"})
-final class Target_jdk_compiler_graal_phases_common_inlining_walker_ComputeInliningRelevance {
+final class Target_jdk_graal_compiler_phases_common_inlining_walker_ComputeInliningRelevance {
 
     @Substitute
     private void compute() {
@@ -149,11 +149,11 @@ final class Target_jdk_compiler_graal_phases_common_inlining_walker_ComputeInlin
 }
 
 @TargetClass(value = DebugContext.class, innerClass = "Invariants", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_debug_DebugContext_Invariants {
+final class Target_jdk_graal_compiler_debug_DebugContext_Invariants {
 }
 
 @TargetClass(value = DebugContext.class, innerClass = "Immutable", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_debug_DebugContext_Immutable {
+final class Target_jdk_graal_compiler_debug_DebugContext_Immutable {
     static class ClearImmutableCache implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
@@ -179,11 +179,11 @@ final class Target_jdk_compiler_graal_debug_DebugContext_Immutable {
      */
     @Alias//
     @RecomputeFieldValue(kind = Custom, declClass = ClearImmutableCache.class)//
-    private static Target_jdk_compiler_graal_debug_DebugContext_Immutable[] CACHE;
+    private static Target_jdk_graal_compiler_debug_DebugContext_Immutable[] CACHE;
 }
 
 @TargetClass(value = DebugHandlersFactory.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_debug_DebugHandlersFactory {
+final class Target_jdk_graal_compiler_debug_DebugHandlersFactory {
     static class CachedFactories implements FieldValueTransformer {
         @Override
         public Object transform(Object receiver, Object originalValue) {
@@ -201,7 +201,7 @@ final class Target_jdk_compiler_graal_debug_DebugHandlersFactory {
 }
 
 @TargetClass(value = TimeSource.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_debug_TimeSource {
+final class Target_jdk_graal_compiler_debug_TimeSource {
     // Checkstyle: stop
     @Alias//
     @RecomputeFieldValue(kind = FromAlias)//
@@ -210,15 +210,15 @@ final class Target_jdk_compiler_graal_debug_TimeSource {
 }
 
 @TargetClass(value = TTY.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
-final class Target_jdk_compiler_graal_debug_TTY {
+final class Target_jdk_graal_compiler_debug_TTY {
 
     @Alias//
     @RecomputeFieldValue(kind = FromAlias)//
     private static PrintStream out = Log.logStream();
 }
 
-@TargetClass(className = "jdk.compiler.graal.serviceprovider.IsolateUtil", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_serviceprovider_IsolateUtil {
+@TargetClass(className = "jdk.graal.compiler.serviceprovider.IsolateUtil", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_serviceprovider_IsolateUtil {
 
     @Substitute
     public static long getIsolateAddress() {
@@ -239,8 +239,8 @@ class GlobalAtomicLongAddressProvider implements FieldValueTransformer {
     }
 }
 
-@TargetClass(className = "jdk.compiler.graal.serviceprovider.GlobalAtomicLong", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_serviceprovider_GlobalAtomicLong {
+@TargetClass(className = "jdk.graal.compiler.serviceprovider.GlobalAtomicLong", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
+final class Target_jdk_graal_compiler_serviceprovider_GlobalAtomicLong {
 
     @Inject//
     @RecomputeFieldValue(kind = Kind.Custom, declClass = GlobalAtomicLongAddressProvider.class) //
@@ -272,7 +272,7 @@ final class Target_jdk_compiler_graal_serviceprovider_GlobalAtomicLong {
  */
 
 @TargetClass(value = KeyRegistry.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_debug_KeyRegistry {
+final class Target_jdk_graal_compiler_debug_KeyRegistry {
 
     @Alias//
     @RecomputeFieldValue(kind = FromAlias)//
@@ -284,7 +284,7 @@ final class Target_jdk_compiler_graal_debug_KeyRegistry {
 }
 
 @TargetClass(value = MatchRuleRegistry.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_core_match_MatchRuleRegistry {
+final class Target_jdk_graal_compiler_core_match_MatchRuleRegistry {
 
     @Substitute
     public static EconomicMap<Class<? extends Node>, List<MatchStatement>> lookup(Class<? extends NodeLIRBuilder> theClass, @SuppressWarnings("unused") OptionValues options,
@@ -299,7 +299,7 @@ final class Target_jdk_compiler_graal_core_match_MatchRuleRegistry {
 
 @TargetClass(value = BinaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"unused", "static-method"})
-final class Target_jdk_compiler_graal_replacements_nodes_BinaryMathIntrinsicNode {
+final class Target_jdk_graal_compiler_replacements_nodes_BinaryMathIntrinsicNode {
 
     /*
      * The node is lowered to a foreign call, the LIR generation is only used for the compilation of
@@ -315,7 +315,7 @@ final class Target_jdk_compiler_graal_replacements_nodes_BinaryMathIntrinsicNode
 
 @TargetClass(value = UnaryMathIntrinsicNode.class, onlyWith = RuntimeCompilationFeature.IsEnabledAndNotLibgraal.class)
 @SuppressWarnings({"unused", "static-method"})
-final class Target_jdk_compiler_graal_replacements_nodes_UnaryMathIntrinsicNode {
+final class Target_jdk_graal_compiler_replacements_nodes_UnaryMathIntrinsicNode {
 
     @Substitute
     void generate(NodeLIRBuilderTool nodeValueMap, ArithmeticLIRGeneratorTool gen) {
@@ -324,7 +324,7 @@ final class Target_jdk_compiler_graal_replacements_nodes_UnaryMathIntrinsicNode 
 }
 
 @TargetClass(value = BasePhase.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_phases_BasePhase {
+final class Target_jdk_graal_compiler_phases_BasePhase {
 
     @Substitute
     static BasePhase.BasePhaseStatistics getBasePhaseStatistics(Class<?> clazz) {
@@ -337,7 +337,7 @@ final class Target_jdk_compiler_graal_phases_BasePhase {
 }
 
 @TargetClass(value = LIRPhase.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_lir_phases_LIRPhase {
+final class Target_jdk_graal_compiler_lir_phases_LIRPhase {
 
     @Substitute
     static LIRPhase.LIRPhaseStatistics getLIRPhaseStatistics(Class<?> clazz) {
@@ -350,7 +350,7 @@ final class Target_jdk_compiler_graal_lir_phases_LIRPhase {
 }
 
 @TargetClass(value = NodeClass.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_graph_NodeClass {
+final class Target_jdk_graal_compiler_graph_NodeClass {
 
     @Alias//
     @RecomputeFieldValue(kind = RecomputeFieldValue.Kind.Custom, declClass = FieldsOffsetsFeature.InputsIterationMaskRecomputation.class)//
@@ -382,7 +382,7 @@ final class Target_jdk_compiler_graal_graph_NodeClass {
 }
 
 @TargetClass(value = LIRInstructionClass.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_lir_LIRInstructionClass {
+final class Target_jdk_graal_compiler_lir_LIRInstructionClass {
 
     @Substitute
     @SuppressWarnings("unlikely-arg-type")
@@ -397,7 +397,7 @@ final class Target_jdk_compiler_graal_lir_LIRInstructionClass {
 }
 
 @TargetClass(value = CompositeValueClass.class, onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_lir_CompositeValueClass {
+final class Target_jdk_graal_compiler_lir_CompositeValueClass {
 
     @Substitute
     @SuppressWarnings("unlikely-arg-type")
@@ -412,14 +412,14 @@ final class Target_jdk_compiler_graal_lir_CompositeValueClass {
 }
 
 @TargetClass(value = NoDeadCodeVerifyHandler.class)
-final class Target_jdk_compiler_graal_printer_NoDeadCodeVerifyHandler {
+final class Target_jdk_graal_compiler_printer_NoDeadCodeVerifyHandler {
     @Alias//
     @RecomputeFieldValue(kind = Kind.NewInstance, declClass = ConcurrentHashMap.class)//
     private static Map<String, Boolean> discovered;
 }
 
 @TargetClass(value = NamedLocationIdentity.class, innerClass = "DB", onlyWith = RuntimeCompilationFeature.IsEnabled.class)
-final class Target_jdk_compiler_graal_nodes_NamedLocationIdentity_DB {
+final class Target_jdk_graal_compiler_nodes_NamedLocationIdentity_DB {
     @Alias//
     @RecomputeFieldValue(kind = FromAlias, declClass = EconomicMap.class)//
     private static EconomicSet<String> map = EconomicSet.create(Equivalence.DEFAULT);

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.graal.hotspot.libgraal.truffle;
 
-import jdk.compiler.graal.truffle.host.TruffleHostEnvironment;
+import jdk.graal.compiler.truffle.host.TruffleHostEnvironment;
 import org.graalvm.jniutils.NativeBridgeSupport;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;

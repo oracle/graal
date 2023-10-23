@@ -51,11 +51,11 @@ import java.util.stream.Collectors;
 
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.collections.Pair;
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.code.CompilationResult;
-import jdk.compiler.graal.code.DataSection;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.options.Option;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.code.DataSection;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;

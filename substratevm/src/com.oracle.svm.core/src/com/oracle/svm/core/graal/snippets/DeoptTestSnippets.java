@@ -28,15 +28,15 @@ import static com.oracle.svm.core.graal.snippets.SubstrateIntrinsics.runtimeCall
 
 import java.util.Map;
 
-import jdk.compiler.graal.api.replacements.Snippet;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.nodes.spi.LoweringTool;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.replacements.SnippetTemplate;
-import jdk.compiler.graal.replacements.SnippetTemplate.Arguments;
-import jdk.compiler.graal.replacements.SnippetTemplate.SnippetInfo;
-import jdk.compiler.graal.replacements.Snippets;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
 
 import com.oracle.svm.core.graal.nodes.DeoptTestNode;
 

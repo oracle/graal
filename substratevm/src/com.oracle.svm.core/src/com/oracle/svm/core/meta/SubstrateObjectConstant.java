@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.meta;
 
-import jdk.compiler.graal.core.common.type.CompressibleConstant;
-import jdk.compiler.graal.core.common.type.TypedConstant;
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.type.TypedConstant;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.hub.DynamicHub;

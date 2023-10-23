@@ -30,7 +30,7 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
-import jdk.compiler.graal.nodes.OptimizationLogImpl;
+import jdk.graal.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.profdiff.core.CompilationUnit;
 import org.graalvm.profdiff.core.ExperimentId;
 import org.graalvm.profdiff.core.Method;

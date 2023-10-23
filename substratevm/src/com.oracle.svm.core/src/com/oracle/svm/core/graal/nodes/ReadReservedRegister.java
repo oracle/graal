@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.ValueNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
 
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.ReservedRegisters;

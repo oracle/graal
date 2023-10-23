@@ -27,14 +27,14 @@ package com.oracle.svm.hosted.phases;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.compiler.graal.core.common.cfg.BasicBlock;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.lir.LIR;
-import jdk.compiler.graal.lir.LIRFrameState;
-import jdk.compiler.graal.lir.LIRInstruction;
-import jdk.compiler.graal.lir.framemap.FrameMap;
-import jdk.compiler.graal.lir.gen.LIRGenerationResult;
-import jdk.compiler.graal.lir.phases.FinalCodeAnalysisPhase;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.framemap.FrameMap;
+import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.lir.phases.FinalCodeAnalysisPhase;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.graal.lir.DeoptEntryOp;

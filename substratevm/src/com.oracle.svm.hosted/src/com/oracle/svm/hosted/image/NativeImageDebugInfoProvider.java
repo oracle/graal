@@ -44,10 +44,10 @@ import java.util.stream.Stream;
 
 import com.oracle.svm.hosted.DeadlockWatchdog;
 import org.graalvm.collections.EconomicMap;
-import jdk.compiler.graal.code.CompilationResult;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.graph.NodeSourcePosition;
-import jdk.compiler.graal.java.StableMethodNameFormatter;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.java.StableMethodNameFormatter;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.struct.CPointerTo;
 import org.graalvm.nativeimage.c.struct.RawPointerTo;

@@ -36,7 +36,7 @@ import com.oracle.objectfile.debugentry.range.SubRange;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
 import org.graalvm.collections.EconomicMap;
-import jdk.compiler.graal.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFieldInfo;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider.DebugFrameSizeChange;

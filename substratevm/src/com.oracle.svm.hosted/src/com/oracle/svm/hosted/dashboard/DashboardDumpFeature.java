@@ -34,8 +34,8 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
 
-import jdk.compiler.graal.graphio.GraphOutput;
-import jdk.compiler.graal.graphio.GraphStructure;
+import jdk.graal.compiler.graphio.GraphOutput;
+import jdk.graal.compiler.graphio.GraphStructure;
 
 import com.oracle.graal.pointsto.reports.ReportUtils;
 import com.oracle.svm.core.SubstrateOptions;

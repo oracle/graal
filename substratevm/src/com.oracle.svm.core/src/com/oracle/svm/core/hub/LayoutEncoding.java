@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.hub;
 
-import jdk.compiler.graal.core.common.calc.UnsignedMath;
-import jdk.compiler.graal.nodes.java.ArrayLengthNode;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.nodes.java.ArrayLengthNode;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;

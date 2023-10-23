@@ -25,8 +25,8 @@
 package com.oracle.svm.hosted.dashboard;
 
 import com.oracle.svm.core.option.HostedOptionKey;
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 class DashboardOptions {
 

@@ -29,11 +29,11 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 import java.util.HashMap;
 import java.util.Map;
 
-import jdk.compiler.graal.core.common.LIRKind;
-import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
-import jdk.compiler.graal.core.common.spi.ForeignCallSignature;
-import jdk.compiler.graal.replacements.arraycopy.ArrayCopyForeignCalls;
-import jdk.compiler.graal.replacements.arraycopy.ArrayCopyLookup;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.core.common.spi.ForeignCallSignature;
+import jdk.graal.compiler.replacements.arraycopy.ArrayCopyForeignCalls;
+import jdk.graal.compiler.replacements.arraycopy.ArrayCopyLookup;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.LocationIdentity;

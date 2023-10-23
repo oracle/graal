@@ -42,10 +42,10 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.BooleanSupplier;
 import java.util.stream.Stream;
 
-import jdk.compiler.graal.replacements.nodes.BinaryMathIntrinsicNode;
-import jdk.compiler.graal.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
-import jdk.compiler.graal.replacements.nodes.UnaryMathIntrinsicNode;
-import jdk.compiler.graal.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.BinaryMathIntrinsicNode.BinaryOperation;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode;
+import jdk.graal.compiler.replacements.nodes.UnaryMathIntrinsicNode.UnaryOperation;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

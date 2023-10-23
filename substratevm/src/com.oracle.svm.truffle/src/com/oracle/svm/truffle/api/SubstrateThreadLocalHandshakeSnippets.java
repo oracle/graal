@@ -25,27 +25,27 @@
 package com.oracle.svm.truffle.api;
 
 import static com.oracle.svm.core.graal.snippets.SubstrateAllocationSnippets.GC_LOCATIONS;
-import static jdk.compiler.graal.replacements.SnippetTemplate.DEFAULT_REPLACER;
+import static jdk.graal.compiler.replacements.SnippetTemplate.DEFAULT_REPLACER;
 
 import java.util.Arrays;
 import java.util.Map;
 
-import jdk.compiler.graal.api.replacements.Snippet;
-import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.graph.Node.ConstantNodeParameter;
-import jdk.compiler.graal.graph.Node.NodeIntrinsic;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.extended.BranchProbabilityNode;
-import jdk.compiler.graal.nodes.extended.ForeignCallNode;
-import jdk.compiler.graal.nodes.spi.LoweringTool;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.replacements.SnippetTemplate;
-import jdk.compiler.graal.replacements.SnippetTemplate.Arguments;
-import jdk.compiler.graal.replacements.SnippetTemplate.SnippetInfo;
-import jdk.compiler.graal.replacements.Snippets;
-import jdk.compiler.graal.truffle.nodes.TruffleSafepointNode;
+import jdk.graal.compiler.api.replacements.Snippet;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.SnippetTemplate;
+import jdk.graal.compiler.replacements.SnippetTemplate.Arguments;
+import jdk.graal.compiler.replacements.SnippetTemplate.SnippetInfo;
+import jdk.graal.compiler.replacements.Snippets;
+import jdk.graal.compiler.truffle.nodes.TruffleSafepointNode;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.graal.snippets.NodeLoweringProvider;

@@ -29,8 +29,8 @@ import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 
-import jdk.compiler.graal.serviceprovider.GraalServices;
-import jdk.compiler.graal.serviceprovider.UnencodedSpeculationReason;
+import jdk.graal.compiler.serviceprovider.GraalServices;
+import jdk.graal.compiler.serviceprovider.UnencodedSpeculationReason;
 import org.junit.Assert;
 import org.junit.Test;
 

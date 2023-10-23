@@ -25,24 +25,24 @@
 package com.oracle.svm.core.graal.nodes.aarch64;
 
 import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.compiler.graal.lir.LIRInstruction.OperandFlag.REG;
-import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_1;
-import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_1;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import jdk.compiler.graal.asm.aarch64.AArch64MacroAssembler;
-import jdk.compiler.graal.core.common.LIRKind;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.lir.LIRInstructionClass;
-import jdk.compiler.graal.lir.Opcode;
-import jdk.compiler.graal.lir.Variable;
-import jdk.compiler.graal.lir.aarch64.AArch64LIRInstruction;
-import jdk.compiler.graal.lir.asm.CompilationResultBuilder;
-import jdk.compiler.graal.lir.gen.LIRGeneratorTool;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.spi.LIRLowerable;
-import jdk.compiler.graal.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.Variable;
+import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.FrameAccess;

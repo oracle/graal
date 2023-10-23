@@ -31,7 +31,7 @@ import com.oracle.objectfile.debugentry.range.Range;
 import com.oracle.objectfile.debuginfo.DebugInfoProvider;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfFrameValue;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import jdk.compiler.graal.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import java.util.List;
 

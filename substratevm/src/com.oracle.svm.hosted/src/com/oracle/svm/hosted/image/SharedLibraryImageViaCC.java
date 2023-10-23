@@ -30,7 +30,7 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.concurrent.ForkJoinPool;
 
-import jdk.compiler.graal.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.svm.core.LinkerInvocation;
 import com.oracle.svm.core.util.VMError;

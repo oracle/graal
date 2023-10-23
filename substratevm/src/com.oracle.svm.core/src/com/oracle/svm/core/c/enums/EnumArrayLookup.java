@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.c.enums;
 
-import jdk.compiler.graal.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
 
 public class EnumArrayLookup extends EnumRuntimeData {
 

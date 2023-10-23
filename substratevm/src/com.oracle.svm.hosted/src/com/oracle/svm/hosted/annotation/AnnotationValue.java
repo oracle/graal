@@ -35,7 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.BiConsumer;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 
 import jdk.internal.reflect.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;

@@ -33,8 +33,8 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.GraalError;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.util.CompletionExecutor;

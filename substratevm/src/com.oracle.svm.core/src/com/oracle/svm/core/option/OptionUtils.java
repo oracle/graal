@@ -31,7 +31,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-import jdk.compiler.graal.options.OptionKey;
+import jdk.graal.compiler.options.OptionKey;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.util.UserError;

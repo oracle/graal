@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.ameta;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

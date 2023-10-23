@@ -30,7 +30,7 @@ import static com.oracle.svm.core.posix.PosixSubstrateSigprofHandler.Options.Sig
 
 import java.util.List;
 
-import jdk.compiler.graal.options.Option;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

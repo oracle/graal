@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.nodes;
 
-import jdk.compiler.graal.core.common.type.StampPair;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
 
 import jdk.vm.ci.meta.JavaMethodProfile;
 import jdk.vm.ci.meta.JavaTypeProfile;

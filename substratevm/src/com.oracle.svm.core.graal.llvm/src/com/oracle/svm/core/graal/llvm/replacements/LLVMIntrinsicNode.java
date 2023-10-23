@@ -24,12 +24,12 @@
  */
 package com.oracle.svm.core.graal.llvm.replacements;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodes.spi.Canonicalizable;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.calc.FloatingNode;
-import jdk.compiler.graal.nodes.spi.ArithmeticLIRLowerable;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodes.spi.Canonicalizable;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
 
 import jdk.vm.ci.meta.JavaKind;
 

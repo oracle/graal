@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.graal.hosted;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.core.common.spi.ConstantFieldProvider;
-import jdk.compiler.graal.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.svm.graal.GraalSupport;

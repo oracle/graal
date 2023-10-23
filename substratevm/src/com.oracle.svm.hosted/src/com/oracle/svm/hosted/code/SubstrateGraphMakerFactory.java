@@ -25,9 +25,9 @@
 package com.oracle.svm.hosted.code;
 
 import jdk.vm.ci.meta.MetaAccessProvider;
-import jdk.compiler.graal.replacements.ReplacementsImpl;
-import jdk.compiler.graal.replacements.ReplacementsImpl.GraphMaker;
-import jdk.compiler.graal.word.WordTypes;
+import jdk.graal.compiler.replacements.ReplacementsImpl;
+import jdk.graal.compiler.replacements.ReplacementsImpl.GraphMaker;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.svm.core.graal.meta.SubstrateReplacements;
 

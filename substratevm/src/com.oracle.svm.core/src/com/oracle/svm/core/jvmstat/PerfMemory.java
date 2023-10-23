@@ -29,7 +29,7 @@ import static com.oracle.svm.core.jvmstat.PerfManager.Options.PerfDataMemoryMapp
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;

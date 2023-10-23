@@ -37,8 +37,8 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.nodes.EncodedGraph.EncodedNodeReference;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.EncodedGraph.EncodedNodeReference;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;

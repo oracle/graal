@@ -36,7 +36,7 @@ import java.util.Map;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
-import jdk.compiler.graal.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.debugentry.range.PrimaryRange;
 import com.oracle.objectfile.debugentry.range.Range;

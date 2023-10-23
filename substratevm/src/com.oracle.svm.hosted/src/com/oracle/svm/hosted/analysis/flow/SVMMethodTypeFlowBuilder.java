@@ -25,17 +25,17 @@
 
 package com.oracle.svm.hosted.analysis.flow;
 
-import jdk.compiler.graal.core.common.type.ObjectStamp;
-import jdk.compiler.graal.core.common.type.Stamp;
-import jdk.compiler.graal.debug.GraalError;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.nodes.CallTargetNode.InvokeKind;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.FixedNode;
-import jdk.compiler.graal.nodes.NodeView;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.CallTargetNode.InvokeKind;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.FixedNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 
 import com.oracle.graal.pointsto.AbstractAnalysisEngine;
 import com.oracle.graal.pointsto.PointsToAnalysis;

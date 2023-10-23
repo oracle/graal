@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.graal.meta;
 
-import jdk.compiler.graal.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.CompressEncoding;
 
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;

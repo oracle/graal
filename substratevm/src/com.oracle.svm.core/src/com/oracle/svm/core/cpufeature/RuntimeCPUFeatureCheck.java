@@ -28,8 +28,8 @@ import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Set;
 
-import jdk.compiler.graal.graph.Node.ConstantNodeParameter;
-import jdk.compiler.graal.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
 
 import com.oracle.svm.core.jdk.RuntimeSupport;
 

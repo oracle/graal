@@ -49,9 +49,9 @@ import com.oracle.svm.core.threadlocal.FastThreadLocalFactory;
 import com.oracle.svm.core.threadlocal.FastThreadLocalLong;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.compiler.graal.api.directives.GraalDirectives;
-import jdk.compiler.graal.core.common.SuppressFBWarnings;
-import jdk.compiler.graal.replacements.ReplacementsUtil;
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
 
 /**
  * Implements operations on {@linkplain Target_java_lang_Thread Java threads}, which are on a higher

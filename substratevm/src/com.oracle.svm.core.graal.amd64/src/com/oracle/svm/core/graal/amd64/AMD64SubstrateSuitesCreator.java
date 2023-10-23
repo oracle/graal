@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import jdk.compiler.graal.core.amd64.AMD64SuitesCreator;
-import jdk.compiler.graal.java.GraphBuilderPhase;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderConfiguration;
-import jdk.compiler.graal.phases.tiers.CompilerConfiguration;
+import jdk.graal.compiler.core.amd64.AMD64SuitesCreator;
+import jdk.graal.compiler.java.GraphBuilderPhase;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderConfiguration;
+import jdk.graal.compiler.phases.tiers.CompilerConfiguration;
 
 public class AMD64SubstrateSuitesCreator extends AMD64SuitesCreator {
 

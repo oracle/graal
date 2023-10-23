@@ -32,11 +32,11 @@ import java.lang.reflect.Array;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
 
-import jdk.compiler.graal.core.common.NumUtil;
-import jdk.compiler.graal.core.common.util.TypeConversion;
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.word.BarrieredAccess;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.util.TypeConversion;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.word.BarrieredAccess;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.c.function.CodePointer;

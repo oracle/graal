@@ -27,9 +27,9 @@ package com.oracle.svm.hosted.code;
 import java.lang.reflect.AnnotatedElement;
 import java.util.List;
 
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.nativeimage.c.function.CEntryPoint;
 import org.graalvm.nativeimage.c.function.CFunctionPointer;
 

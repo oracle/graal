@@ -28,7 +28,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.compiler.graal.java.LambdaUtils;
+import jdk.graal.compiler.java.LambdaUtils;
 
 import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.svm.core.SubstrateUtil;

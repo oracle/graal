@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.heap.dump;
 
-import jdk.compiler.graal.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 

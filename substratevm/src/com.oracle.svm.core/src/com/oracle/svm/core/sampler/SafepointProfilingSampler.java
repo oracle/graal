@@ -34,7 +34,7 @@ import java.util.LongSummaryStatistics;
 import java.util.concurrent.TimeUnit;
 
 import org.graalvm.collections.LockFreePrefixTree;
-import jdk.compiler.graal.options.Option;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.Threading;

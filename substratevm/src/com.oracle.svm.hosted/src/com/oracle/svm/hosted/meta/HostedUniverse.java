@@ -38,8 +38,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.nodes.StructuredGraph;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.nodes.StructuredGraph;
 import org.graalvm.nativeimage.hosted.Feature;
 
 import com.oracle.graal.pointsto.BigBang;

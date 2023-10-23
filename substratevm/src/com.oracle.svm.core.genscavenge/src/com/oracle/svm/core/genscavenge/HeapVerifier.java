@@ -26,7 +26,7 @@ package com.oracle.svm.core.genscavenge;
 
 import java.lang.ref.Reference;
 
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.word.Pointer;

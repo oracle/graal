@@ -31,9 +31,9 @@ import java.io.IOException;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 import org.graalvm.collections.UnmodifiableMapCursor;
-import jdk.compiler.graal.options.OptionKey;
-import jdk.compiler.graal.util.TypedDataInputStream;
-import jdk.compiler.graal.util.TypedDataOutputStream;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.util.TypedDataInputStream;
+import jdk.graal.compiler.util.TypedDataOutputStream;
 import org.graalvm.word.WordFactory;
 
 final class OptionValuesEncoder {

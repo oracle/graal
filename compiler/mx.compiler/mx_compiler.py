@@ -106,7 +106,7 @@ class JavaLangRuntimeVersion(mx.Comparable):
         cached = JavaLangRuntimeVersion._cmp_cache.get(key, None)
         if cached is not None:
             return cached
-        source_path = join(_suite.dir, 'src', 'jdk.compiler.graal', 'src', 'org', 'graalvm', 'compiler',
+        source_path = join(_suite.dir, 'src', 'jdk.graal.compiler', 'src', 'jdk', 'graal', 'compiler',
                            'hotspot',
                            'JVMCIVersionCompare.java')
         out = mx.OutputCapture()
@@ -155,7 +155,7 @@ def _check_jvmci_version(jdk):
 
 @mx.command(_suite.name, 'jvmci-version-check')
 def _run_jvmci_version_check(args=None, jdk=jdk, **kwargs):
-    source_path = join(_suite.dir, 'src', 'jdk.compiler.graal', 'src', 'jdk', 'compiler', 'graal', 'hotspot',
+    source_path = join(_suite.dir, 'src', 'jdk.graal.compiler', 'src', 'jdk', 'graal', 'compiler', 'hotspot',
                        'JVMCIVersionCheck.java')
     return mx.run([jdk.java, '-Xlog:disable', source_path] + (args or []), **kwargs)
 
@@ -164,7 +164,7 @@ if os.environ.get('JVMCI_VERSION_CHECK', None) != 'ignore':
     _check_jvmci_version(jdk)
 
 mx_gate.add_jacoco_includes(['org.graalvm.*'])
-mx_gate.add_jacoco_includes(['jdk.compiler.graal.*'])
+mx_gate.add_jacoco_includes(['jdk.graal.compiler.*'])
 mx_gate.add_jacoco_excludes(['com.oracle.truffle'])
 mx_gate.add_jacoco_excluded_annotations(['@Snippet', '@ClassSubstitution', '@ExcludeFromJacocoInstrumentation'])
 
@@ -227,7 +227,7 @@ def _ctw_system_properties_suffix():
     out.data = 'System properties for CTW:\n\n'
     args = ['-XX:+EnableJVMCI'] + _ctw_jvmci_export_args()
     cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
-    args.extend(['-cp', cp, '-DCompileTheWorld.Help=true', 'jdk.compiler.graal.hotspot.test.CompileTheWorld'])
+    args.extend(['-cp', cp, '-DCompileTheWorld.Help=true', 'jdk.graal.compiler.hotspot.test.CompileTheWorld'])
     run_java(args, out=out, addDefaultArgs=False)
     return out.data
 
@@ -280,7 +280,7 @@ def ctw(args, extraVMarguments=None):
             vmargs.append('-DCompileTheWorld.Classpath=' + cp)
         cp = _remove_redundant_entries(mx.classpath('GRAAL_TEST', jdk=jdk))
         vmargs.extend(_ctw_jvmci_export_args() + ['-cp', cp])
-        mainClassAndArgs = ['jdk.compiler.graal.hotspot.test.CompileTheWorld']
+        mainClassAndArgs = ['jdk.graal.compiler.hotspot.test.CompileTheWorld']
 
     run_vm(vmargs + mainClassAndArgs)
 
@@ -467,7 +467,7 @@ def _check_forbidden_imports(projects, package_substrings, exceptions=None):
 def compiler_gate_runner(suites, unit_test_runs, bootstrap_tests, tasks, extraVMarguments=None, extraUnitTestArguments=None):
     with Task('CheckForbiddenImports:Compiler', tasks, tags=['style']) as t:
         # Ensure HotSpot-independent compiler classes do not import HotSpot-specific classes
-        if t: _check_forbidden_imports([mx.project('jdk.compiler.graal')], ('hotspot', 'libgraal'))
+        if t: _check_forbidden_imports([mx.project('jdk.graal.compiler')], ('hotspot', 'libgraal'))
 
     with Task('JDK_java_base_test', tasks, tags=['javabasetest'], report=True) as t:
         if t: java_base_unittest(_remove_empty_entries(extraVMarguments) + [])
@@ -783,7 +783,7 @@ def _unittest_config_participant(config):
         # for the junit harness which uses reflection to find @Test methods. In addition, the
         # tests widely use JVMCI classes so JVMCI needs to also export all its packages to
         # ALL-UNNAMED.
-        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.compiler.graal,ALL-UNNAMED'])
+        mainClassArgs.extend(['-JUnitOpenPackages', 'jdk.internal.vm.ci/*=org.graalvm.truffle.runtime,jdk.graal.compiler,ALL-UNNAMED'])
 
         limited_modules = None
         for arg in vmArgs:
@@ -1051,7 +1051,7 @@ def collate_metrics(args):
         if not filename.endswith('.csv'):
             mx.abort('Cannot collate metrics from non-CSV files: ' + filename)
 
-        # Keep in sync with jdk.compiler.graal.debug.GlobalMetrics.print(OptionValues)
+        # Keep in sync with jdk.graal.compiler.debug.GlobalMetrics.print(OptionValues)
         abs_filename = join(os.getcwd(), filename)
         directory = dirname(abs_filename)
         rootname = basename(filename)[0:-len('.csv')]
@@ -1279,7 +1279,7 @@ class GraalArchiveParticipant:
                 else:
                     version = None
                 provider = arcname[:-len('.class'):].replace('/', '.')
-                service = 'jdk.compiler.graal.options.OptionDescriptors'
+                service = 'jdk.graal.compiler.options.OptionDescriptors'
                 add_serviceprovider(service, provider, version)
         return False
 
@@ -1364,7 +1364,7 @@ def phaseplan_fuzz_jtt_tests(args, extraVMarguments=None, extraUnitTestArguments
             target_tests.append(arg)
             args.remove(arg)
     if not target_tests:
-        target_tests = ['jdk.compiler.graal.jtt.']
+        target_tests = ['jdk.graal.compiler.jtt.']
 
     for test in target_tests:
         UnitTestRun("Fuzz phase plan for tests matching substring " + test, [], tags=GraalTags.unittest + GraalTags.phaseplan_fuzz_jtt_tests).\

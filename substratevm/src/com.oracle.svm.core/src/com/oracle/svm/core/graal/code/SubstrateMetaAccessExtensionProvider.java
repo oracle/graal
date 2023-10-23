@@ -25,7 +25,7 @@
 
 package com.oracle.svm.core.graal.code;
 
-import jdk.compiler.graal.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
 
 import com.oracle.svm.core.meta.SharedMethod;
 import com.oracle.svm.core.meta.SharedType;

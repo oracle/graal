@@ -27,8 +27,8 @@ package com.oracle.svm.core.jvmstat;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 
-import jdk.compiler.graal.core.common.NumUtil;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import jdk.vm.ci.meta.JavaKind;

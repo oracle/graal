@@ -24,13 +24,13 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import jdk.compiler.graal.asm.aarch64.AArch64Address;
-import jdk.compiler.graal.asm.aarch64.AArch64Assembler;
-import jdk.compiler.graal.asm.aarch64.AArch64MacroAssembler;
-import jdk.compiler.graal.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
-import jdk.compiler.graal.lir.LIRInstructionClass;
-import jdk.compiler.graal.lir.aarch64.AArch64LIRInstruction;
-import jdk.compiler.graal.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.asm.aarch64.AArch64Address;
+import jdk.graal.compiler.asm.aarch64.AArch64Assembler;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
+import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.aarch64.AArch64LIRInstruction;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 import com.oracle.svm.core.ReservedRegisters;
 import com.oracle.svm.core.SubstrateOptions;

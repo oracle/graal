@@ -29,9 +29,9 @@ import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Function;
 
-import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
-import jdk.compiler.graal.debug.GraalError;
-import jdk.compiler.graal.replacements.nodes.ArrayRegionEqualsNode;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.replacements.nodes.ArrayRegionEqualsNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

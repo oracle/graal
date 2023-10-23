@@ -26,9 +26,9 @@ package com.oracle.svm.graal.hosted;
 
 import java.util.function.Function;
 
-import jdk.compiler.graal.nodes.spi.LoopsDataProvider;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
+import jdk.graal.compiler.nodes.spi.LoopsDataProvider;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 
 import com.oracle.graal.pointsto.infrastructure.UniverseMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;

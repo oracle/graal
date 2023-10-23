@@ -24,21 +24,21 @@
  */
 package com.oracle.svm.core.graal.word;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.core.common.memory.BarrierType;
-import jdk.compiler.graal.core.common.memory.MemoryOrderMode;
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.debug.GraalError;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.extended.GuardingNode;
-import jdk.compiler.graal.nodes.gc.BarrierSet;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.memory.FixedAccessNode;
-import jdk.compiler.graal.nodes.memory.ReadNode;
-import jdk.compiler.graal.nodes.memory.address.AddressNode;
-import jdk.compiler.graal.word.WordOperationPlugin;
-import jdk.compiler.graal.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.gc.BarrierSet;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.memory.FixedAccessNode;
+import jdk.graal.compiler.nodes.memory.ReadNode;
+import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.word.WordOperationPlugin;
+import jdk.graal.compiler.word.WordTypes;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.word.LocationIdentity;
 

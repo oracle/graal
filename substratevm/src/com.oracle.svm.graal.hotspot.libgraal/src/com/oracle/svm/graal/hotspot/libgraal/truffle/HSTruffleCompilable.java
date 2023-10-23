@@ -57,8 +57,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.function.Supplier;
 
-import jdk.compiler.graal.debug.GraalError;
-import jdk.compiler.graal.hotspot.HotSpotGraalServices;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.hotspot.HotSpotGraalServices;
 import org.graalvm.jniutils.HSObject;
 import org.graalvm.jniutils.JNI;
 import org.graalvm.jniutils.JNI.JNIEnv;

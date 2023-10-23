@@ -30,8 +30,8 @@ import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;
 import com.oracle.svm.core.option.HostedOptionKey;
 import com.oracle.svm.hosted.FeatureImpl;
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionType;
 
 import java.io.File;
 import java.io.PrintWriter;

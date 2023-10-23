@@ -26,19 +26,19 @@ package com.oracle.svm.hosted.fieldfolding;
 
 import java.util.Arrays;
 
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.EndNode;
-import jdk.compiler.graal.nodes.IfNode;
-import jdk.compiler.graal.nodes.LogicNode;
-import jdk.compiler.graal.nodes.MergeNode;
-import jdk.compiler.graal.nodes.NodeView;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.ValuePhiNode;
-import jdk.compiler.graal.nodes.calc.IntegerEqualsNode;
-import jdk.compiler.graal.nodes.extended.BranchProbabilityNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.graphbuilderconf.NodePlugin;
-import jdk.compiler.graal.nodes.type.StampTool;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.EndNode;
+import jdk.graal.compiler.nodes.IfNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.MergeNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.ValuePhiNode;
+import jdk.graal.compiler.nodes.calc.IntegerEqualsNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.nodes.type.StampTool;
 
 import com.oracle.graal.pointsto.meta.AnalysisField;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;

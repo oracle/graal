@@ -52,7 +52,7 @@ import jdk.jfr.Name;
 import jdk.jfr.StackTrace;
 import jdk.jfr.Unsigned;
 
-@Name("jdk.compiler.graal.truffle.Compilation")
+@Name("jdk.graal.compiler.truffle.Compilation")
 @Category("Truffle Compiler")
 @Label("Compilation")
 @Description("Truffe Compilation")

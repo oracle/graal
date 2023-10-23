@@ -29,7 +29,7 @@ import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.List;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
 
 import jdk.internal.reflect.ConstantPool;
 import jdk.vm.ci.meta.JavaConstant;

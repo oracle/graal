@@ -29,7 +29,7 @@ import java.util.List;
 import java.util.function.Supplier;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.compiler.graal.nodes.OptimizationLogImpl;
+import jdk.graal.compiler.nodes.OptimizationLogImpl;
 import org.graalvm.profdiff.core.OptimizationContextTree;
 import org.graalvm.profdiff.core.OptimizationContextTreeNode;
 import org.graalvm.profdiff.core.OptionValues;

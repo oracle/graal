@@ -27,16 +27,16 @@ package com.oracle.svm.core.graal.stackvalue;
 import java.util.ListIterator;
 import java.util.Map;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.BasePhase;
-import jdk.compiler.graal.phases.common.FrameStateAssignmentPhase;
-import jdk.compiler.graal.phases.common.LoweringPhase;
-import jdk.compiler.graal.phases.tiers.LowTierContext;
-import jdk.compiler.graal.phases.tiers.MidTierContext;
-import jdk.compiler.graal.phases.tiers.Suites;
-import jdk.compiler.graal.phases.util.Providers;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.BasePhase;
+import jdk.graal.compiler.phases.common.FrameStateAssignmentPhase;
+import jdk.graal.compiler.phases.common.LoweringPhase;
+import jdk.graal.compiler.phases.tiers.LowTierContext;
+import jdk.graal.compiler.phases.tiers.MidTierContext;
+import jdk.graal.compiler.phases.tiers.Suites;
+import jdk.graal.compiler.phases.util.Providers;
 
 import com.oracle.svm.core.feature.AutomaticallyRegisteredFeature;
 import com.oracle.svm.core.feature.InternalFeature;

@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.code;
 
-import jdk.compiler.graal.graph.NodeSourcePosition;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 import org.graalvm.nativeimage.c.function.CodePointer;
 
 import com.oracle.svm.core.Uninterruptible;

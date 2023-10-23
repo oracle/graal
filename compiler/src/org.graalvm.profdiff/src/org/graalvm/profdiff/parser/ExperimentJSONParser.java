@@ -29,8 +29,8 @@ import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.profdiff.core.ExperimentId;
-import jdk.compiler.graal.util.json.JSONParser;
-import jdk.compiler.graal.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JSONParser;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 /**
  * A wrapper around {@link JSONParser}, which aids the parsing of the Java representation of a JSON

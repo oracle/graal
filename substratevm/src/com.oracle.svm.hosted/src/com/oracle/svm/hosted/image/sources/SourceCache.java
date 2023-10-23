@@ -39,7 +39,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-import jdk.compiler.graal.options.Option;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.svm.core.SubstrateOptions;
@@ -75,7 +75,7 @@ public class SourceCache {
          */
         private static final String[] specialRootModules = {
                         "jdk.internal.vm.ci",
-                        "jdk.compiler.graal",
+                        "jdk.graal.compiler",
         };
 
         /**

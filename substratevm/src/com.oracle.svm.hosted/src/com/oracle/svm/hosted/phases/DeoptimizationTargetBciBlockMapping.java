@@ -27,13 +27,13 @@ package com.oracle.svm.hosted.phases;
 import java.util.HashSet;
 import java.util.Set;
 
-import jdk.compiler.graal.bytecode.Bytecode;
-import jdk.compiler.graal.bytecode.BytecodeStream;
-import jdk.compiler.graal.core.common.PermanentBailoutException;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.GraalError;
-import jdk.compiler.graal.java.BciBlockMapping;
-import jdk.compiler.graal.options.OptionValues;
+import jdk.graal.compiler.bytecode.Bytecode;
+import jdk.graal.compiler.bytecode.BytecodeStream;
+import jdk.graal.compiler.core.common.PermanentBailoutException;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.java.BciBlockMapping;
+import jdk.graal.compiler.options.OptionValues;
 
 import com.oracle.svm.common.meta.MultiMethod;
 import com.oracle.svm.core.code.FrameInfoEncoder;

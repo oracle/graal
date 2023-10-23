@@ -39,10 +39,10 @@ import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 import org.graalvm.collections.Pair;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.java.LambdaUtils;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.java.LambdaUtils;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
 import org.graalvm.nativeimage.impl.clinit.ClassInitializationTracking;
 
 import com.oracle.graal.pointsto.constraints.UnsupportedFeatureException;
@@ -99,7 +99,7 @@ public class ClassInitializationFeature implements InternalFeature {
         initializationSupport.initializeAtBuildTime("com.oracle.objectfile", NATIVE_IMAGE_CLASS_REASON);
 
         initializationSupport.initializeAtBuildTime("org.graalvm.collections", NATIVE_IMAGE_CLASS_REASON);
-        initializationSupport.initializeAtBuildTime("jdk.compiler.graal", NATIVE_IMAGE_CLASS_REASON);
+        initializationSupport.initializeAtBuildTime("jdk.graal.compiler", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.word", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.nativeimage", NATIVE_IMAGE_CLASS_REASON);
         initializationSupport.initializeAtBuildTime("org.graalvm.nativebridge", NATIVE_IMAGE_CLASS_REASON);

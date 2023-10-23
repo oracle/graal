@@ -23,7 +23,7 @@
  * questions.
  */
 /**
- * This package contains micro benchmarks outside the jdk.compiler.graal namespace so that they will
+ * This package contains micro benchmarks outside the jdk.graal.compiler namespace so that they will
  * be subject to Graal compilation even if {@code -Dgraal.CompileGraalWithC1Only=true}.
  */
 package micro.benchmarks;

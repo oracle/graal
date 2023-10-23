@@ -29,12 +29,12 @@ import com.oracle.graal.pointsto.phases.InlineBeforeAnalysisPolicy;
 import com.oracle.svm.core.ParsingReason;
 import com.oracle.svm.hosted.SVMHost;
 
-import jdk.compiler.graal.graph.NodeSourcePosition;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
-import jdk.compiler.graal.nodes.graphbuilderconf.NodePlugin;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.graphbuilderconf.InlineInvokePlugin.InlineInfo;
+import jdk.graal.compiler.nodes.graphbuilderconf.NodePlugin;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**

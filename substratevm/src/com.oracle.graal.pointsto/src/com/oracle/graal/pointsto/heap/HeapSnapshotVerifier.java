@@ -30,9 +30,9 @@ import java.util.Objects;
 import java.util.concurrent.ForkJoinPool;
 import java.util.function.Consumer;
 
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionKey;
-import jdk.compiler.graal.options.OptionType;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionType;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.ObjectScanner;

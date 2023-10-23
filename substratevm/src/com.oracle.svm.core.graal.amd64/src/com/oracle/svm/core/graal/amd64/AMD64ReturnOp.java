@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.core.graal.amd64;
 
-import static jdk.compiler.graal.lir.LIRInstruction.OperandFlag.ILLEGAL;
-import static jdk.compiler.graal.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
+import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
 
-import jdk.compiler.graal.asm.amd64.AMD64MacroAssembler;
-import jdk.compiler.graal.lir.LIRInstructionClass;
-import jdk.compiler.graal.lir.Opcode;
-import jdk.compiler.graal.lir.StandardOp;
-import jdk.compiler.graal.lir.amd64.AMD64BlockEndOp;
-import jdk.compiler.graal.lir.asm.CompilationResultBuilder;
+import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
+import jdk.graal.compiler.lir.LIRInstructionClass;
+import jdk.graal.compiler.lir.Opcode;
+import jdk.graal.compiler.lir.StandardOp;
+import jdk.graal.compiler.lir.amd64.AMD64BlockEndOp;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 
 import jdk.vm.ci.meta.Value;
 

@@ -38,7 +38,7 @@ import com.oracle.objectfile.debugentry.ClassEntry;
 import com.oracle.objectfile.debugentry.range.SubRange;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfExpressionOpcode;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import jdk.compiler.graal.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 import com.oracle.objectfile.BuildDependency;
 import com.oracle.objectfile.LayoutDecision;

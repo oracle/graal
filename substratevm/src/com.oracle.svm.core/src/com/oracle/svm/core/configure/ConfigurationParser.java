@@ -41,8 +41,8 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
-import jdk.compiler.graal.util.json.JSONParser;
-import jdk.compiler.graal.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JSONParser;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.JavaNetSubstitutions;

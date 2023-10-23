@@ -28,7 +28,7 @@ package com.oracle.objectfile.elf.dwarf;
 
 import com.oracle.objectfile.debugentry.StringEntry;
 import com.oracle.objectfile.elf.dwarf.constants.DwarfSectionName;
-import jdk.compiler.graal.debug.DebugContext;
+import jdk.graal.compiler.debug.DebugContext;
 
 /**
  * Generator for debug_str section.

@@ -1,7 +1,7 @@
 # Compilation plan fuzzing
 This page covers the creation and usage of fuzzed compilation plans instead of the usual phase orderings specified by the different `CompilerConfiguration`s.
 ## Abstraction design
-The following design can be found in the package `jdk.compiler.graal.core.phases.fuzzing`.
+The following design can be found in the package `jdk.graal.compiler.core.phases.fuzzing`.
 ### Diagram
 ```
                                                                              Suites  >  FuzzedSuites

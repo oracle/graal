@@ -51,7 +51,7 @@ import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 import jdk.vm.ci.meta.ResolvedJavaType;
-import jdk.compiler.graal.core.common.CompressEncoding;
+import jdk.graal.compiler.core.common.CompressEncoding;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.word.WordBase;
 

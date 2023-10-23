@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.core.common.type.Stamp;
-import jdk.compiler.graal.core.common.type.StampFactory;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.core.common.type.StampFactory;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.function.CodePointer;
 import org.graalvm.word.Pointer;

@@ -24,9 +24,9 @@
  */
 package com.oracle.svm.core.config;
 
-import jdk.compiler.graal.api.directives.GraalDirectives;
-import jdk.compiler.graal.core.common.NumUtil;
-import jdk.compiler.graal.replacements.ReplacementsUtil;
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
 import org.graalvm.nativeimage.AnnotationAccess;
 import org.graalvm.nativeimage.c.constant.CEnum;
 import org.graalvm.word.WordBase;

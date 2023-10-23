@@ -27,8 +27,8 @@ package com.oracle.svm.core.log;
 
 import java.nio.charset.StandardCharsets;
 
-import jdk.compiler.graal.core.common.calc.UnsignedMath;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.core.common.calc.UnsignedMath;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.LogHandler;
 import org.graalvm.nativeimage.c.type.CCharPointer;

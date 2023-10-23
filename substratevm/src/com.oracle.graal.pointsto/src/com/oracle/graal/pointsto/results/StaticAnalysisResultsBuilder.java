@@ -29,8 +29,8 @@ import java.util.Comparator;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.graph.NodeSourcePosition;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeSourcePosition;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.api.PointstoOptions;

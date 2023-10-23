@@ -28,10 +28,10 @@ import static com.oracle.svm.core.util.VMError.shouldNotReachHere;
 
 import java.util.List;
 
-import jdk.compiler.graal.nodes.FixedGuardNode;
-import jdk.compiler.graal.nodes.GuardNode;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.phases.Phase;
+import jdk.graal.compiler.nodes.FixedGuardNode;
+import jdk.graal.compiler.nodes.GuardNode;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.phases.Phase;
 
 public class VerifyNoGuardsPhase extends Phase {
 

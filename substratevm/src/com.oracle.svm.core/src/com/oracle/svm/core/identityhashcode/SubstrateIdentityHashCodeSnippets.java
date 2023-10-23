@@ -24,20 +24,20 @@
  */
 package com.oracle.svm.core.identityhashcode;
 
-import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
-import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
-import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
-import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.probability;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.NOT_FREQUENT_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.SLOW_PATH_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.probability;
 
-import jdk.compiler.graal.core.common.spi.ForeignCallDescriptor;
-import jdk.compiler.graal.graph.Node.ConstantNodeParameter;
-import jdk.compiler.graal.graph.Node.NodeIntrinsic;
-import jdk.compiler.graal.nodes.extended.ForeignCallNode;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.phases.util.Providers;
-import jdk.compiler.graal.replacements.IdentityHashCodeSnippets;
-import jdk.compiler.graal.word.ObjectAccess;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.core.common.spi.ForeignCallDescriptor;
+import jdk.graal.compiler.graph.Node.ConstantNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsic;
+import jdk.graal.compiler.nodes.extended.ForeignCallNode;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.phases.util.Providers;
+import jdk.graal.compiler.replacements.IdentityHashCodeSnippets;
+import jdk.graal.compiler.word.ObjectAccess;
+import jdk.graal.compiler.word.Word;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 import com.oracle.svm.core.config.ObjectLayout;

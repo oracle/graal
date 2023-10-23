@@ -26,8 +26,8 @@ package com.oracle.svm.core.thread;
 
 import static com.oracle.svm.core.SubstrateOptions.MultiThreaded;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.IsolateThread;

@@ -32,7 +32,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.compiler.graal.java.LambdaUtils;
+import jdk.graal.compiler.java.LambdaUtils;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
 

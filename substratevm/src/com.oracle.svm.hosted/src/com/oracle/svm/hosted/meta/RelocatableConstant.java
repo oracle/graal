@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.hosted.meta;
 
-import jdk.compiler.graal.core.common.type.TypedConstant;
+import jdk.graal.compiler.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.c.function.RelocatedPointer;
 
 import jdk.vm.ci.meta.JavaConstant;

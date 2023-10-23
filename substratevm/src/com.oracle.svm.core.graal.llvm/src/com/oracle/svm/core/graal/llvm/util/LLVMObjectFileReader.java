@@ -37,9 +37,9 @@ import java.util.Map;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 
-import jdk.compiler.graal.code.CompilationResult;
-import jdk.compiler.graal.core.common.NumUtil;
-import jdk.compiler.graal.debug.GraalError;
+import jdk.graal.compiler.code.CompilationResult;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.GraalError;
 
 import com.oracle.objectfile.ObjectFile;
 import com.oracle.objectfile.SectionName;

@@ -29,7 +29,7 @@ import com.oracle.graal.pointsto.meta.AnalysisType;
 import com.oracle.graal.pointsto.typestate.TypeState;
 import com.oracle.graal.pointsto.util.AnalysisError;
 
-import jdk.compiler.graal.replacements.nodes.BasicArrayCopyNode;
+import jdk.graal.compiler.replacements.nodes.BasicArrayCopyNode;
 import jdk.vm.ci.code.BytecodePosition;
 
 /**

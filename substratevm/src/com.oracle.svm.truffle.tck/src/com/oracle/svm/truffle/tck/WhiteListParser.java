@@ -37,7 +37,7 @@ import java.util.function.Predicate;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.MapCursor;
 import org.graalvm.nativeimage.Platforms;
-import jdk.compiler.graal.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 import com.oracle.graal.pointsto.BigBang;
 import com.oracle.graal.pointsto.meta.AnalysisMethod;

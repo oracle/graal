@@ -24,22 +24,22 @@
  */
 package com.oracle.svm.core.graal.nodes;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.core.gen.NodeLIRBuilder;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.lir.LabelRef;
-import jdk.compiler.graal.nodeinfo.InputType;
-import jdk.compiler.graal.nodeinfo.NodeCycles;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodeinfo.NodeSize;
-import jdk.compiler.graal.nodes.AbstractBeginNode;
-import jdk.compiler.graal.nodes.DeoptimizingNode;
-import jdk.compiler.graal.nodes.FrameState;
-import jdk.compiler.graal.nodes.UnreachableBeginNode;
-import jdk.compiler.graal.nodes.WithExceptionNode;
-import jdk.compiler.graal.nodes.debug.ControlFlowAnchored;
-import jdk.compiler.graal.nodes.memory.SingleMemoryKill;
-import jdk.compiler.graal.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.gen.NodeLIRBuilder;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.LabelRef;
+import jdk.graal.compiler.nodeinfo.InputType;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.AbstractBeginNode;
+import jdk.graal.compiler.nodes.DeoptimizingNode;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.UnreachableBeginNode;
+import jdk.graal.compiler.nodes.WithExceptionNode;
+import jdk.graal.compiler.nodes.debug.ControlFlowAnchored;
+import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.LocationIdentity;
 
 import com.oracle.svm.core.graal.lir.DeoptEntryOp;

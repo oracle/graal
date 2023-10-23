@@ -24,11 +24,11 @@
  */
 package com.oracle.svm.core.graal.phases;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.core.common.type.StampPair;
-import jdk.compiler.graal.core.common.type.TypeReference;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderTool;
-import jdk.compiler.graal.nodes.graphbuilderconf.TypePlugin;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderTool;
+import jdk.graal.compiler.nodes.graphbuilderconf.TypePlugin;
 
 import com.oracle.svm.core.meta.SharedType;
 

@@ -25,11 +25,11 @@
 package com.oracle.graal.pointsto.api;
 
 import static jdk.vm.ci.common.JVMCIError.shouldNotReachHere;
-import static jdk.compiler.graal.options.OptionType.Expert;
+import static jdk.graal.compiler.options.OptionType.Expert;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionKey;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
 
 public class PointstoOptions {
 

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.genscavenge.graal;
 
-import jdk.compiler.graal.core.common.memory.BarrierType;
-import jdk.compiler.graal.nodes.gc.CardTableBarrierSet;
+import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.nodes.gc.CardTableBarrierSet;
 
 import com.oracle.svm.core.StaticFieldsSupport;
 

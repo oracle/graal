@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.truffle;
 
-import jdk.compiler.graal.core.common.spi.ConstantFieldProvider;
+import jdk.graal.compiler.core.common.spi.ConstantFieldProvider;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

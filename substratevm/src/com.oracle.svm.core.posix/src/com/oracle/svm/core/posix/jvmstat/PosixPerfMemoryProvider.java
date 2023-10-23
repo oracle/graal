@@ -41,7 +41,7 @@ import static com.oracle.svm.core.posix.headers.Unistd._SC_GETPW_R_SIZE_MAX;
 
 import java.nio.ByteBuffer;
 
-import jdk.compiler.graal.core.common.NumUtil;
+import jdk.graal.compiler.core.common.NumUtil;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

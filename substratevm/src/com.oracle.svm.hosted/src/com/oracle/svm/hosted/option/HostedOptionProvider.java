@@ -25,7 +25,7 @@
 package com.oracle.svm.hosted.option;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.compiler.graal.options.OptionKey;
+import jdk.graal.compiler.options.OptionKey;
 
 public interface HostedOptionProvider {
     EconomicMap<OptionKey<?>, Object> getHostedValues();

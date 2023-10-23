@@ -31,12 +31,12 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
-import jdk.compiler.graal.core.common.cfg.BasicBlock;
-import jdk.compiler.graal.lir.LIR;
-import jdk.compiler.graal.lir.LIRFrameState;
-import jdk.compiler.graal.lir.LIRInstruction;
-import jdk.compiler.graal.lir.gen.LIRGenerationResult;
-import jdk.compiler.graal.lir.phases.FinalCodeAnalysisPhase;
+import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.lir.LIR;
+import jdk.graal.compiler.lir.LIRFrameState;
+import jdk.graal.compiler.lir.LIRInstruction;
+import jdk.graal.compiler.lir.gen.LIRGenerationResult;
+import jdk.graal.compiler.lir.phases.FinalCodeAnalysisPhase;
 
 import com.oracle.svm.core.SubstrateOptions;
 import com.oracle.svm.core.graal.snippets.CFunctionSnippets;

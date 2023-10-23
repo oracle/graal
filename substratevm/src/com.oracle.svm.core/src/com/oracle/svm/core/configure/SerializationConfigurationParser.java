@@ -33,7 +33,7 @@ import java.util.List;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.nativeimage.impl.ConfigurationCondition;
 import org.graalvm.nativeimage.impl.RuntimeSerializationSupport;
-import jdk.compiler.graal.util.json.JSONParserException;
+import jdk.graal.compiler.util.json.JSONParserException;
 
 public class SerializationConfigurationParser extends ConfigurationParser {
 

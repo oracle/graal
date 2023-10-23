@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.util;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.core.common.util.UnsafeArrayTypeReader;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.util.UnsafeArrayTypeReader;
 
 import com.oracle.svm.core.config.ConfigurationValues;
 

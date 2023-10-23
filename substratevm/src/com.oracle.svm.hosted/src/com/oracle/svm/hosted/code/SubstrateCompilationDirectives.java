@@ -28,9 +28,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-import jdk.compiler.graal.debug.Assertions;
-import jdk.compiler.graal.nodes.FrameState;
-import jdk.compiler.graal.nodes.ValueNode;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.nodes.FrameState;
+import jdk.graal.compiler.nodes.ValueNode;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;

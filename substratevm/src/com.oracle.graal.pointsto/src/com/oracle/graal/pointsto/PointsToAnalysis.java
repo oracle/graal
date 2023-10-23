@@ -44,14 +44,14 @@ import java.util.concurrent.atomic.AtomicLongArray;
 import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.core.common.SuppressFBWarnings;
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.debug.Indent;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.graph.NodeList;
-import jdk.compiler.graal.options.OptionValues;
-import jdk.compiler.graal.word.WordTypes;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.debug.Indent;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.graph.NodeList;
+import jdk.graal.compiler.options.OptionValues;
+import jdk.graal.compiler.word.WordTypes;
 
 import com.oracle.graal.pointsto.api.HostVM;
 import com.oracle.graal.pointsto.api.PointstoOptions;

@@ -29,9 +29,9 @@ import java.util.Collection;
 import java.util.Deque;
 import java.util.Map;
 
-import jdk.compiler.graal.debug.DebugContext;
-import jdk.compiler.graal.graph.NodeSourcePosition;
-import jdk.compiler.graal.options.Option;
+import jdk.graal.compiler.debug.DebugContext;
+import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.options.Option;
 import org.graalvm.nativeimage.ImageSingletons;
 
 import com.oracle.graal.pointsto.meta.AnalysisMethod;

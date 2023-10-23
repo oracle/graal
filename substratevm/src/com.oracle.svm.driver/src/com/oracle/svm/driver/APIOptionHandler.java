@@ -45,9 +45,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.graalvm.collections.EconomicMap;
-import jdk.compiler.graal.options.OptionDescriptor;
-import jdk.compiler.graal.options.OptionDescriptors;
-import jdk.compiler.graal.options.OptionStability;
+import jdk.graal.compiler.options.OptionDescriptor;
+import jdk.graal.compiler.options.OptionDescriptors;
+import jdk.graal.compiler.options.OptionStability;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.hosted.Feature;
 
@@ -621,7 +621,7 @@ final class APIOptionFeature implements Feature {
     @Override
     public void afterRegistration(AfterRegistrationAccess access) {
         ModuleSupport.accessPackagesToClass(ModuleSupport.Access.EXPORT, APIOptionFeature.class, true,
-                        "jdk.compiler.graal", "jdk.compiler.graal.options");
+                        "jdk.graal.compiler", "jdk.graal.compiler.options");
     }
 
     @Override

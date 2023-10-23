@@ -24,10 +24,10 @@
  */
 package com.oracle.svm.core.thread;
 
-import jdk.compiler.graal.api.directives.GraalDirectives;
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.replacements.ReplacementsUtil;
-import jdk.compiler.graal.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.api.directives.GraalDirectives;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.ReplacementsUtil;
+import jdk.graal.compiler.replacements.nodes.AssertionNode;
 import org.graalvm.nativeimage.CurrentIsolate;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Isolate;

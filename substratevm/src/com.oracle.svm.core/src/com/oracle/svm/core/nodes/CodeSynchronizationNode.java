@@ -25,14 +25,14 @@
  */
 package com.oracle.svm.core.nodes;
 
-import static jdk.compiler.graal.nodeinfo.NodeCycles.CYCLES_1;
-import static jdk.compiler.graal.nodeinfo.NodeSize.SIZE_1;
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
-import jdk.compiler.graal.core.common.type.StampFactory;
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.FixedWithNextNode;
-import jdk.compiler.graal.nodes.spi.Lowerable;
+import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.FixedWithNextNode;
+import jdk.graal.compiler.nodes.spi.Lowerable;
 
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public class CodeSynchronizationNode extends FixedWithNextNode implements Lowerable {

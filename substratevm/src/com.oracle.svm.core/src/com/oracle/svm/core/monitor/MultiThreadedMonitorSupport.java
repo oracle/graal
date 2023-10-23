@@ -33,8 +33,8 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.LockSupport;
 import java.util.concurrent.locks.ReentrantLock;
 
-import jdk.compiler.graal.core.common.SuppressFBWarnings;
-import jdk.compiler.graal.word.BarrieredAccess;
+import jdk.graal.compiler.core.common.SuppressFBWarnings;
+import jdk.graal.compiler.word.BarrieredAccess;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 

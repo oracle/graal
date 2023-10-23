@@ -29,7 +29,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.function.Supplier;
 
-import jdk.compiler.graal.phases.common.LazyValue;
+import jdk.graal.compiler.phases.common.LazyValue;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.flow.TypeFlow;

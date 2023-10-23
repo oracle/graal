@@ -26,10 +26,10 @@ package com.oracle.svm.core;
 
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.Immutable;
 import static com.oracle.svm.core.option.RuntimeOptionKey.RuntimeOptionKeyFlag.RelevantForCompilationIsolates;
-import static jdk.compiler.graal.core.common.SpectrePHTMitigations.None;
-import static jdk.compiler.graal.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
-import static jdk.compiler.graal.options.OptionType.Expert;
-import static jdk.compiler.graal.options.OptionType.User;
+import static jdk.graal.compiler.core.common.SpectrePHTMitigations.None;
+import static jdk.graal.compiler.core.common.SpectrePHTMitigations.Options.SpectrePHTBarriers;
+import static jdk.graal.compiler.options.OptionType.Expert;
+import static jdk.graal.compiler.options.OptionType.User;
 
 import java.nio.file.InvalidPathException;
 import java.nio.file.Path;
@@ -62,13 +62,13 @@ import com.oracle.svm.util.LogUtils;
 import com.oracle.svm.util.ModuleSupport;
 import com.oracle.svm.util.ReflectionUtil;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.core.common.GraalOptions;
-import jdk.compiler.graal.options.Option;
-import jdk.compiler.graal.options.OptionKey;
-import jdk.compiler.graal.options.OptionStability;
-import jdk.compiler.graal.options.OptionType;
-import jdk.compiler.graal.options.OptionValues;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.options.Option;
+import jdk.graal.compiler.options.OptionKey;
+import jdk.graal.compiler.options.OptionStability;
+import jdk.graal.compiler.options.OptionType;
+import jdk.graal.compiler.options.OptionValues;
 import jdk.internal.misc.Unsafe;
 
 public class SubstrateOptions {

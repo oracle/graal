@@ -24,16 +24,16 @@
  */
 package com.oracle.svm.core.graal.llvm.lowering;
 
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.lir.gen.LIRGeneratorTool;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodes.NodeView;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.memory.address.AddressNode;
-import jdk.compiler.graal.nodes.spi.LIRLowerable;
-import jdk.compiler.graal.nodes.spi.NodeLIRBuilderTool;
-import jdk.compiler.graal.phases.common.AddressLoweringByNodePhase;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.memory.address.AddressNode;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.phases.common.AddressLoweringByNodePhase;
 
 import jdk.vm.ci.meta.Value;
 import jdk.vm.ci.meta.ValueKind;

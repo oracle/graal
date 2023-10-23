@@ -26,7 +26,7 @@ package com.oracle.svm.hosted.classinitialization;
 
 import java.lang.reflect.Proxy;
 
-import jdk.compiler.graal.java.LambdaUtils;
+import jdk.graal.compiler.java.LambdaUtils;
 
 import com.oracle.graal.pointsto.meta.AnalysisMetaAccess;
 import com.oracle.graal.pointsto.meta.AnalysisUniverse;

@@ -24,8 +24,8 @@
  */
 package com.oracle.svm.core.collections;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.c.type.WordPointer;
 import org.graalvm.nativeimage.impl.UnmanagedMemorySupport;

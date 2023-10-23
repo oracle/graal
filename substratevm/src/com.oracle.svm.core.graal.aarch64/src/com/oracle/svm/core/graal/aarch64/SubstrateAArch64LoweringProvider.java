@@ -24,15 +24,15 @@
  */
 package com.oracle.svm.core.graal.aarch64;
 
-import jdk.compiler.graal.core.aarch64.AArch64LoweringProviderMixin;
-import jdk.compiler.graal.core.common.spi.ForeignCallsProvider;
-import jdk.compiler.graal.core.common.spi.MetaAccessExtensionProvider;
-import jdk.compiler.graal.debug.DebugCloseable;
-import jdk.compiler.graal.graph.Node;
-import jdk.compiler.graal.nodes.StructuredGraph;
-import jdk.compiler.graal.nodes.calc.FloatConvertNode;
-import jdk.compiler.graal.nodes.spi.LoweringTool;
-import jdk.compiler.graal.nodes.spi.PlatformConfigurationProvider;
+import jdk.graal.compiler.core.aarch64.AArch64LoweringProviderMixin;
+import jdk.graal.compiler.core.common.spi.ForeignCallsProvider;
+import jdk.graal.compiler.core.common.spi.MetaAccessExtensionProvider;
+import jdk.graal.compiler.debug.DebugCloseable;
+import jdk.graal.compiler.graph.Node;
+import jdk.graal.compiler.nodes.StructuredGraph;
+import jdk.graal.compiler.nodes.calc.FloatConvertNode;
+import jdk.graal.compiler.nodes.spi.LoweringTool;
+import jdk.graal.compiler.nodes.spi.PlatformConfigurationProvider;
 
 import com.oracle.svm.core.graal.meta.SubstrateBasicLoweringProvider;
 import com.oracle.svm.core.graal.nodes.aarch64.AArch64ISBNode;

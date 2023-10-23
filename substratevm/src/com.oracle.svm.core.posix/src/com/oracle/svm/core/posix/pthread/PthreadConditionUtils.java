@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.posix.pthread;
 
-import jdk.compiler.graal.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.Fold;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.StackValue;
 import org.graalvm.word.WordFactory;

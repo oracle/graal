@@ -26,9 +26,9 @@ package com.oracle.svm.core.genscavenge.remset;
 
 import java.util.List;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.replacements.nodes.AssertionNode;
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.replacements.nodes.AssertionNode;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 import org.graalvm.nativeimage.c.struct.SizeOf;

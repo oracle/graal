@@ -26,7 +26,7 @@ package com.oracle.svm.core;
 
 import java.util.function.BooleanSupplier;
 
-import jdk.compiler.graal.word.Word;
+import jdk.graal.compiler.word.Word;
 import org.graalvm.nativeimage.IsolateThread;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

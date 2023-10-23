@@ -24,7 +24,7 @@
  */
 package com.oracle.svm.core.cpufeature;
 
-import static jdk.compiler.graal.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
+import static jdk.graal.compiler.nodes.extended.BranchProbabilityNode.LIKELY_PROBABILITY;
 
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -32,23 +32,23 @@ import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Set;
 
-import jdk.compiler.graal.api.replacements.Fold;
-import jdk.compiler.graal.api.replacements.SnippetReflectionProvider;
-import jdk.compiler.graal.core.common.NumUtil;
-import jdk.compiler.graal.core.riscv64.RISCV64ReflectionUtil;
-import jdk.compiler.graal.core.riscv64.ShadowedRISCV64;
-import jdk.compiler.graal.debug.GraalError;
-import jdk.compiler.graal.graph.Node.InjectedNodeParameter;
-import jdk.compiler.graal.graph.Node.NodeIntrinsicFactory;
-import jdk.compiler.graal.nodes.ConstantNode;
-import jdk.compiler.graal.nodes.LogicNode;
-import jdk.compiler.graal.nodes.NodeView;
-import jdk.compiler.graal.nodes.ValueNode;
-import jdk.compiler.graal.nodes.calc.ConditionalNode;
-import jdk.compiler.graal.nodes.calc.IntegerTestNode;
-import jdk.compiler.graal.nodes.extended.BranchProbabilityNode;
-import jdk.compiler.graal.nodes.graphbuilderconf.GraphBuilderContext;
-import jdk.compiler.graal.nodes.java.LoadFieldNode;
+import jdk.graal.compiler.api.replacements.Fold;
+import jdk.graal.compiler.api.replacements.SnippetReflectionProvider;
+import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.riscv64.RISCV64ReflectionUtil;
+import jdk.graal.compiler.core.riscv64.ShadowedRISCV64;
+import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.graph.Node.InjectedNodeParameter;
+import jdk.graal.compiler.graph.Node.NodeIntrinsicFactory;
+import jdk.graal.compiler.nodes.ConstantNode;
+import jdk.graal.compiler.nodes.LogicNode;
+import jdk.graal.compiler.nodes.NodeView;
+import jdk.graal.compiler.nodes.ValueNode;
+import jdk.graal.compiler.nodes.calc.ConditionalNode;
+import jdk.graal.compiler.nodes.calc.IntegerTestNode;
+import jdk.graal.compiler.nodes.extended.BranchProbabilityNode;
+import jdk.graal.compiler.nodes.graphbuilderconf.GraphBuilderContext;
+import jdk.graal.compiler.nodes.java.LoadFieldNode;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;

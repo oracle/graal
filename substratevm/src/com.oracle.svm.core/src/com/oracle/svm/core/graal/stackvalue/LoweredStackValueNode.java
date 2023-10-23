@@ -24,14 +24,14 @@
  */
 package com.oracle.svm.core.graal.stackvalue;
 
-import jdk.compiler.graal.graph.NodeClass;
-import jdk.compiler.graal.lir.ConstantValue;
-import jdk.compiler.graal.lir.VirtualStackSlot;
-import jdk.compiler.graal.nodeinfo.NodeCycles;
-import jdk.compiler.graal.nodeinfo.NodeInfo;
-import jdk.compiler.graal.nodeinfo.NodeSize;
-import jdk.compiler.graal.nodes.spi.LIRLowerable;
-import jdk.compiler.graal.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.lir.ConstantValue;
+import jdk.graal.compiler.lir.VirtualStackSlot;
+import jdk.graal.compiler.nodeinfo.NodeCycles;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodeinfo.NodeSize;
+import jdk.graal.compiler.nodes.spi.LIRLowerable;
+import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import org.graalvm.word.WordBase;
 
 import com.oracle.svm.core.FrameAccess;

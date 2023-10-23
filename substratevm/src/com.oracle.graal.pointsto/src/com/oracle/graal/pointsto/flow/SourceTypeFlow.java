@@ -24,8 +24,8 @@
  */
 package com.oracle.graal.pointsto.flow;
 
-import jdk.compiler.graal.nodes.extended.BytecodeExceptionNode;
-import jdk.compiler.graal.nodes.extended.JavaReadNode;
+import jdk.graal.compiler.nodes.extended.BytecodeExceptionNode;
+import jdk.graal.compiler.nodes.extended.JavaReadNode;
 
 import com.oracle.graal.pointsto.PointsToAnalysis;
 import com.oracle.graal.pointsto.meta.AnalysisType;
