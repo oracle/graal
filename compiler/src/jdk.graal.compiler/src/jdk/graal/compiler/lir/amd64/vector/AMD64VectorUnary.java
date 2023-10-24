@@ -30,9 +30,9 @@ import static jdk.vm.ci.code.ValueUtil.isRegister;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.EvexRMIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRROp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMConvertOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRVMOp;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRROp;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.EVEXPrefixConfig;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
@@ -47,7 +47,6 @@ import jdk.graal.compiler.lir.amd64.AMD64AddressValue;
 import jdk.graal.compiler.lir.amd64.AMD64LIRInstruction;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -80,15 +79,15 @@ public class AMD64VectorUnary {
         }
     }
 
-    public static final class AVXOpMaskUnaryOp extends AMD64VectorInstruction {
-        public static final LIRInstructionClass<AVXOpMaskUnaryOp> TYPE = LIRInstructionClass.create(AVXOpMaskUnaryOp.class);
+    public static final class AVXRegisterOnlyUnaryOp extends AMD64VectorInstruction {
+        public static final LIRInstructionClass<AVXRegisterOnlyUnaryOp> TYPE = LIRInstructionClass.create(AVXRegisterOnlyUnaryOp.class);
 
         @Opcode private final VexRROp opcode;
 
-        @Def({REG}) protected AllocatableValue result;
-        @Use({REG}) protected AllocatableValue input;
+        @Def({OperandFlag.REG}) protected AllocatableValue result;
+        @Use({OperandFlag.REG}) protected AllocatableValue input;
 
-        public AVXOpMaskUnaryOp(VexRROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
+        public AVXRegisterOnlyUnaryOp(VexRROp opcode, AVXKind.AVXSize size, AllocatableValue result, AllocatableValue input) {
             super(TYPE, size);
             this.opcode = opcode;
             this.result = result;

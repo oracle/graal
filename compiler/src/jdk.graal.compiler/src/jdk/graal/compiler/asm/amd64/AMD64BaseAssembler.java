@@ -71,8 +71,8 @@ import java.util.EnumSet;
 public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
 
     /**
-     * Check if a meaningful subset of AVX512 extensions is supported. If this check is true, AVX512
-     * instructions should be used over SSE/AVX instructions.
+     * If this check is false, AVX512 support is absent or incomplete, and it makes little sense to
+     * try to use AVX512 over SSE/AVX instructions.
      *
      * @param features feature set to check compatibility against
      */
@@ -81,13 +81,6 @@ public abstract class AMD64BaseAssembler extends Assembler<CPUFeature> {
                         features.contains(CPUFeature.AVX512BW) &&
                         features.contains(CPUFeature.AVX512VL) &&
                         features.contains(CPUFeature.AVX512DQ);
-    }
-
-    /**
-     * Check used inside AMD64BaseAssembler which uses getFeatures().
-     */
-    public boolean supportsFullAVX512() {
-        return supportsFullAVX512(getFeatures());
     }
 
     /**

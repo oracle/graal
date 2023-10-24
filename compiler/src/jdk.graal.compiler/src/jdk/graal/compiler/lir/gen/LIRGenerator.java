@@ -466,7 +466,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
 
     public abstract void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
 
-    public abstract void emitOpMaskTestBranch(Value left, boolean invertLeft, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
+    public abstract void emitOpMaskTestBranch(Value left, boolean negateLeft, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
 
     public abstract void emitOpMaskOrTestBranch(Value left, Value right, boolean allZeros, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability);
 
@@ -476,7 +476,7 @@ public abstract class LIRGenerator implements LIRGeneratorTool {
     @Override
     public abstract Variable emitIntegerTestMove(Value leftVal, Value right, Value trueValue, Value falseValue);
 
-    public abstract Variable emitOpMaskTestMove(Value leftVal, boolean invertLeft, Value right, Value trueValue, Value falseValue);
+    public abstract Variable emitOpMaskTestMove(Value leftVal, boolean negateLeft, Value right, Value trueValue, Value falseValue);
 
     public abstract Variable emitOpMaskOrTestMove(Value leftVal, Value right, boolean allZeros, Value trueValue, Value falseValue);
 

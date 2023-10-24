@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.nodes.calc;
 
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -32,13 +35,11 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.vm.ci.meta.TriState;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
-
 /**
- * This node will perform a "test" operation on its arguments similar to
- * {@link OpMaskTestNode} but using bitwise OR on its inputs instead
- * of AND. The field "allZeros" selects if the operation tests for all ones or all zeros.
+ * This node will perform a "test" operation on its arguments similar to {@link OpMaskTestNode} but
+ * using bitwise OR on its inputs instead of AND. If {@code allZeros} is set, the result of this
+ * operation will be true if {@code (x | y) == 0}, else the result will be true if
+ * {@code (x | y) == -1} where -1 is an integer value with all bits set.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public class OpMaskOrTestNode extends BinaryOpLogicNode {

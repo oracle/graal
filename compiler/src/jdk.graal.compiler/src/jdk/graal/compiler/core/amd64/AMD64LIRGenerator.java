@@ -25,9 +25,6 @@
 
 package jdk.graal.compiler.core.amd64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.BYTE;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.PD;
@@ -40,29 +37,33 @@ import static jdk.graal.compiler.lir.LIRValueUtil.asJavaConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.isConstantValue;
 import static jdk.graal.compiler.lir.LIRValueUtil.isIntConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.isJavaConstant;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isAllocatableValue;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
 
 import java.util.EnumSet;
 
 import jdk.graal.compiler.asm.amd64.AMD64Assembler;
-import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRROp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64BinaryArithmetic;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64MIOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.AMD64RMOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.SSEOp;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRMOp;
+import jdk.graal.compiler.asm.amd64.AMD64Assembler.VexRROp;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AVXKind;
 import jdk.graal.compiler.asm.amd64.AVXKind.AVXSize;
-import jdk.graal.compiler.core.common.calc.Condition;
-import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
-import jdk.graal.compiler.core.common.spi.LIRKindTool;
-import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.Stride;
+import jdk.graal.compiler.core.common.calc.Condition;
 import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.spi.ForeignCallLinkage;
+import jdk.graal.compiler.core.common.spi.LIRKindTool;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -131,14 +132,13 @@ import jdk.graal.compiler.lir.amd64.AMD64VectorizedMismatchOp;
 import jdk.graal.compiler.lir.amd64.AMD64ZapRegistersOp;
 import jdk.graal.compiler.lir.amd64.AMD64ZapStackOp;
 import jdk.graal.compiler.lir.amd64.AMD64ZeroMemoryOp;
+import jdk.graal.compiler.lir.amd64.vector.AMD64OpMaskCompareOp;
 import jdk.graal.compiler.lir.amd64.vector.AMD64VectorCompareOp;
 import jdk.graal.compiler.lir.gen.BarrierSetLIRGenerator;
 import jdk.graal.compiler.lir.gen.LIRGenerationResult;
 import jdk.graal.compiler.lir.gen.LIRGenerator;
 import jdk.graal.compiler.lir.gen.MoveFactory;
 import jdk.graal.compiler.phases.util.Providers;
-import jdk.graal.compiler.debug.Assertions;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64.CPUFeature;
 import jdk.vm.ci.amd64.AMD64Kind;
@@ -448,7 +448,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     @Override
     public void emitIntegerTestBranch(Value left, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
         if (left.getPlatformKind().getVectorLength() > 1) {
-            append(new AMD64VectorCompareOp(VexRMOp.VPTEST, getRegisterSize(left), asAllocatable(left), asAllocatable(right)));
+            append(new AMD64OpMaskCompareOp(VexRMOp.VPTEST, getRegisterSize(left), asAllocatable(left), asAllocatable(right)));
             append(new BranchOp(Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
         } else {
             assert ((AMD64Kind) left.getPlatformKind()).isInteger();
@@ -466,10 +466,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOpMaskTestBranch(Value left, boolean invertLeft, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
+    public void emitOpMaskTestBranch(Value left, boolean negateLeft, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
         emitOpMaskTest(left, right);
         // we can implicitly invert the left value by branching on BT instead of EQ
-        append(new BranchOp(invertLeft ? Condition.BT : Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
+        append(new BranchOp(negateLeft ? Condition.BT : Condition.EQ, trueDestination, falseDestination, trueDestinationProbability));
     }
 
     @Override
@@ -584,10 +584,10 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitOpMaskTestMove(Value left, boolean invertLeft, Value right, Value trueValue, Value falseValue) {
+    public Variable emitOpMaskTestMove(Value left, boolean negateLeft, Value right, Value trueValue, Value falseValue) {
         emitOpMaskTest(left, right);
         // we can implicitly invert the left value by moving on BT instead of EQ
-        return emitCondMoveOp(invertLeft ? Condition.BT : Condition.EQ, asAllocatable(trueValue), asAllocatable(falseValue), false, false);
+        return emitCondMoveOp(negateLeft ? Condition.BT : Condition.EQ, asAllocatable(trueValue), asAllocatable(falseValue), false, false);
     }
 
     @Override
@@ -613,7 +613,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             case MASK64 -> VexRROp.KTESTQ;
             default -> throw GraalError.shouldNotReachHere("emitting opmask test for unknown mask kind " + a.getPlatformKind().name());
         };
-        append(new AMD64VectorCompareOp(op, getRegisterSize(a), asAllocatable(a), asAllocatable(b)));
+        append(new AMD64OpMaskCompareOp(op, getRegisterSize(a), asAllocatable(a), asAllocatable(b)));
     }
 
     private void emitOpMaskOrTest(Value a, Value b) {
@@ -630,7 +630,7 @@ public abstract class AMD64LIRGenerator extends LIRGenerator {
             case MASK64 -> VexRROp.KORTESTQ;
             default -> throw GraalError.shouldNotReachHere("emitting opmask test for unknown mask kind " + a.getPlatformKind().name());
         };
-        append(new AMD64VectorCompareOp(op, getRegisterSize(a), asAllocatable(a), asAllocatable(b)));
+        append(new AMD64OpMaskCompareOp(op, getRegisterSize(a), asAllocatable(a), asAllocatable(b)));
     }
 
     /**

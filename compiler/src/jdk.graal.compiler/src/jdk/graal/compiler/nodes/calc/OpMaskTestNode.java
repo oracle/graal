@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * This code is free software; you can redistribute it and/or modify it
@@ -24,6 +24,9 @@
  */
 package jdk.graal.compiler.nodes.calc;
 
+import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
+import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
+
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -32,12 +35,14 @@ import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.vm.ci.meta.TriState;
 
-import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_1;
-import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
-
 /**
- * This node will perform a "test" operation on its arguments similar to
- * {@link org.graalvm.compiler.nodes.calc.IntegerTestNode}.
+ * This node will perform a "test" operation on its arguments similar to {@link IntegerTestNode},
+ * but using vector op-masks instead of integers. If {@code invertX} is set, the result of this
+ * operation is true if {@code (!x & y) == 0}, else the result is true if {@code (x & y) == 0}.
+ * <p/>
+ * The feature of inverting the left operand stems from the fact that this instruction is modeled
+ * after the KTEST instruction defined in AVX512. KTEST sets the ZF if {@code (x & y) == 0} and the
+ * CF if {@code (!x & y) == 0}. The field {@code invertX} selects the flag to jump on.
  */
 @NodeInfo(cycles = CYCLES_1, size = SIZE_1)
 public class OpMaskTestNode extends BinaryOpLogicNode {

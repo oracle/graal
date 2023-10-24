@@ -304,7 +304,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public void emitOpMaskTestBranch(Value left, boolean invertLeft, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability) {
+    public void emitOpMaskTestBranch(Value left, boolean negateLeft, Value right, LabelRef trueDestination, LabelRef falseDestination, double trueSuccessorProbability) {
         throw GraalError.unsupportedArchitecture(target().arch);
     }
 
@@ -541,7 +541,7 @@ public abstract class AArch64LIRGenerator extends LIRGenerator {
     }
 
     @Override
-    public Variable emitOpMaskTestMove(Value leftVal, boolean invertLeft, Value right, Value trueValue, Value falseValue) {
+    public Variable emitOpMaskTestMove(Value leftVal, boolean negateLeft, Value right, Value trueValue, Value falseValue) {
         throw GraalError.unsupportedArchitecture(target().arch);
     }
 
