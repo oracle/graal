@@ -168,7 +168,11 @@ public final class WasmFunctionInstance extends EmbedderDataHolder implements Tr
                 case WasmType.I64_TYPE -> primitiveMultiValueStack[i];
                 case WasmType.F32_TYPE -> Float.intBitsToFloat((int) primitiveMultiValueStack[i]);
                 case WasmType.F64_TYPE -> Double.longBitsToDouble(primitiveMultiValueStack[i]);
-                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> referenceMultiValueStack[i];
+                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> {
+                    Object ref = referenceMultiValueStack[i];
+                    referenceMultiValueStack[i] = null;
+                    yield ref;
+                }
                 default -> throw WasmException.create(Failure.UNSPECIFIED_INTERNAL);
             };
         }

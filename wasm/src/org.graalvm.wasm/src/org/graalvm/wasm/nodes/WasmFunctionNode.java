@@ -4033,7 +4033,6 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
         assert result == WasmConstant.MULTI_VALUE : result;
         final var multiValueStack = language.multiValueStack();
         final long[] primitiveMultiValueStack = multiValueStack.primitiveStack();
-        final Object[] referenceMultiValueStack = multiValueStack.referenceStack();
         for (int i = 0; i < resultCount; i++) {
             final byte resultType = module.symbolTable().functionTypeResultTypeAt(functionTypeIndex, i);
             CompilerAsserts.partialEvaluationConstant(resultType);
@@ -4042,7 +4041,11 @@ public final class WasmFunctionNode extends Node implements BytecodeOSRNode {
                 case WasmType.I64_TYPE -> pushLong(frame, stackPointer + i, primitiveMultiValueStack[i]);
                 case WasmType.F32_TYPE -> pushFloat(frame, stackPointer + i, Float.intBitsToFloat((int) primitiveMultiValueStack[i]));
                 case WasmType.F64_TYPE -> pushDouble(frame, stackPointer + i, Double.longBitsToDouble(primitiveMultiValueStack[i]));
-                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> pushReference(frame, stackPointer + i, referenceMultiValueStack[i]);
+                case WasmType.FUNCREF_TYPE, WasmType.EXTERNREF_TYPE -> {
+                    final Object[] referenceMultiValueStack = multiValueStack.referenceStack();
+                    pushReference(frame, stackPointer + i, referenceMultiValueStack[i]);
+                    referenceMultiValueStack[i] = null;
+                }
                 default -> {
                     enterErrorBranch();
                     throw WasmException.format(Failure.UNSPECIFIED_TRAP, this, "Unknown result type: %d", resultType);
