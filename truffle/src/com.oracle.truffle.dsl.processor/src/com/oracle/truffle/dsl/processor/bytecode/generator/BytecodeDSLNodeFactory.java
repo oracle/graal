@@ -70,6 +70,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -757,7 +758,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     private CodeExecutableElement createCreate() {
         CodeExecutableElement ex = new CodeExecutableElement(Set.of(PUBLIC, STATIC), generic(types.BytecodeNodes, model.templateType.asType()), "create");
         ex.addParameter(new CodeVariableElement(types.BytecodeConfig, "config"));
-        ex.addParameter(new CodeVariableElement(generic(types.BytecodeParser, builder.asType()), "generator"));
+        ex.addParameter(new CodeVariableElement(parserType, "generator"));
 
         CodeTreeBuilder b = ex.getBuilder();
 
@@ -823,9 +824,9 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         CodeTreeBuilder init = CodeTreeBuilder.createBuilder();
         init.startNew(operationBuilderType);
         init.startGroup();
-        init.cast(bytecodeNodesImpl.asType());
-        init.string("create(config, parser)");
-        init.end();
+        init.startNew(bytecodeNodesImpl.asType());
+        init.string("parser");
+        init.end(2);
         init.string("false");
         init.string("config");
         init.end();
@@ -1352,7 +1353,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         final CodeVariableElement codeCreateObject = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$CREATE_OBJECT", "-4");
         final CodeVariableElement codeEndSerialize = addField(serializationState, Set.of(PRIVATE, STATIC, FINAL), short.class, "CODE_$END", "-5");
 
-        final CodeVariableElement builtNodes = addField(serializationState, Set.of(PRIVATE, FINAL), generic(ArrayList.class, bytecodeNodeGen.asType()), "builtNodes");
         final CodeVariableElement buffer = addField(serializationState, Set.of(PRIVATE, FINAL), DataOutput.class, "buffer");
         final CodeVariableElement callback = addField(serializationState, Set.of(PRIVATE, FINAL), types.BytecodeSerializer, "callback");
         final CodeExecutableElement constructor = serializationState.add(createConstructorUsingFields(Set.of(), serializationState, null));
@@ -1919,23 +1919,22 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             method.addThrownType(context.getType(IOException.class));
             CodeTreeBuilder b = method.createBuilder();
 
-            b.statement("this.serialization = new SerializationState(builtNodes, buffer, callback)");
+            b.statement("this.serialization = new SerializationState(buffer, callback)");
 
             b.startTryBlock();
 
+            b.lineComment("1. Serialize the root nodes and their constants.");
             b.startStatement().startCall(castParser(method, "nodes.getParser()"), "parse").string("this").end(2);
 
-            b.statement("short[][] nodeIndices = new short[builtNodes.size()][]");
-            b.startFor().string("int i = 0; i < nodeIndices.length; i ++").end().startBlock();
-
+            b.lineComment("2. Serialize the fields stored on each root node.");
+            b.statement("short[][] nodeFields = new short[builtNodes.size()][]");
+            b.startFor().string("int i = 0; i < nodeFields.length; i ++").end().startBlock();
             b.declaration(bytecodeNodeGen.asType(), "node", "builtNodes.get(i)");
-
-            b.statement("short[] indices = nodeIndices[i] = new short[" + model.serializedFields.size() + "]");
-
+            b.statement("short[] fields = nodeFields[i] = new short[" + model.serializedFields.size() + "]");
             for (int i = 0; i < model.serializedFields.size(); i++) {
                 VariableElement var = model.serializedFields.get(i);
                 b.startStatement();
-                b.string("indices[").string(i).string("] = ");
+                b.string("fields[").string(i).string("] = ");
                 b.startCall("serialization.serializeObject");
                 b.startGroup();
                 b.string("node.").string(var.getSimpleName().toString());
@@ -1943,16 +1942,15 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.end();
                 b.end();
             }
-
-            b.end(); // node for
-
+            b.end();
             serializationElements.writeShort(b, serializationElements.codeEndSerialize);
 
-            b.startFor().string("int i = 0; i < nodeIndices.length; i++").end().startBlock();
-            b.statement("short[] indices = nodeIndices[i]");
+            b.lineComment("3. Encode the constant pool indices for each root node's fields.");
+            b.startFor().string("int i = 0; i < nodeFields.length; i++").end().startBlock();
+            b.statement("short[] fields = nodeFields[i]");
 
             for (int i = 0; i < model.serializedFields.size(); i++) {
-                serializationElements.writeShort(b, "indices[" + i + "]");
+                serializationElements.writeShort(b, "fields[" + i + "]");
             }
             b.end();
 
@@ -4998,6 +4996,8 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             continuationLocationImpl.add(createValidateArgument());
             continuationLocationImpl.add(createGetRootNode());
             continuationLocationImpl.add(createToString());
+            continuationLocationImpl.add(createHashCode());
+            continuationLocationImpl.add(createEquals());
 
             return continuationLocationImpl;
         }
@@ -5028,6 +5028,30 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             CodeTreeBuilder b = ex.createBuilder();
 
             b.startReturn().string("String.format(\"ContinuationLocation [index=%d, sp=%d, bci=%04x]\", entry, sp, bci)").end();
+
+            return ex;
+        }
+
+        private CodeExecutableElement createHashCode() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(Object.class), "hashCode");
+            ex.getModifiers().remove(Modifier.NATIVE);
+            ex.getAnnotationMirrors().clear(); // @IntrinsicCandidate
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startReturn().startStaticCall(context.getDeclaredType(Objects.class), "hash");
+            b.string("entry");
+            b.string("bci");
+            b.string("sp");
+            b.end(2);
+
+            return ex;
+        }
+
+        private CodeExecutableElement createEquals() {
+            CodeExecutableElement ex = GeneratorUtils.overrideImplement(context.getDeclaredType(Object.class), "equals");
+            CodeTreeBuilder b = ex.createBuilder();
+
+            b.startReturn().string("obj instanceof ").type(continuationLocationImpl.asType()).string(" other && this.entry == other.entry && this.bci == other.bci && this.sp == other.sp").end();
 
             return ex;
         }
@@ -5181,7 +5205,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
     private CodeTree castParser(CodeExecutableElement ex, String parser) {
         CodeTreeBuilder b = CodeTreeBuilder.createBuilder();
         b.startParantheses();
-        b.cast(generic(types.BytecodeParser, builder.asType()));
+        b.cast(parserType);
         b.string(parser);
         b.end();
         mergeSuppressWarnings(ex, "unchecked");

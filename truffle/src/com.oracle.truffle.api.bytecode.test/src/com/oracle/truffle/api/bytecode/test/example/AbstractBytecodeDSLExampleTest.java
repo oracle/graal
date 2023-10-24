@@ -40,11 +40,16 @@
  */
 package com.oracle.truffle.api.bytecode.test.example;
 
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.fail;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
@@ -191,17 +196,19 @@ public abstract class AbstractBytecodeDSLExampleTest {
     public static <T extends BytecodeDSLExampleBuilder> BytecodeNodes<BytecodeDSLExample> createNodes(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize,
                     BytecodeConfig config,
                     BytecodeParser<T> builder) {
+
+        BytecodeNodes<BytecodeDSLExample> result = invokeCreate(interpreterClass, config, builder);
         if (testSerialize) {
             // Perform a serialize-deserialize round trip.
             ByteArrayOutputStream output = new ByteArrayOutputStream();
             invokeSerialize(interpreterClass, config, new DataOutputStream(output), SERIALIZER, builder);
-            byte[] byteArray = output.toByteArray();
+            Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(output.toByteArray()));
+            BytecodeNodes<BytecodeDSLExample> deserialized = invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
 
-            Supplier<DataInput> input = () -> SerializationUtils.createDataInput(ByteBuffer.wrap(byteArray));
-            return invokeDeserialize(interpreterClass, LANGUAGE, config, input, DESERIALIZER);
-        } else {
-            return invokeCreate(interpreterClass, config, builder);
+            assertBytecodeNodesEqual(result, deserialized);
+            return deserialized;
         }
+        return result;
     }
 
     public static <T extends BytecodeDSLExampleBuilder> RootCallTarget parse(Class<? extends BytecodeDSLExample> interpreterClass, boolean testSerialize, String rootName, BytecodeParser<T> builder) {
@@ -269,6 +276,50 @@ public abstract class AbstractBytecodeDSLExampleTest {
         } catch (Exception e) {
             throw new AssertionError(e);
         }
+    }
+
+    private static void assertBytecodeNodesEqual(BytecodeNodes<BytecodeDSLExample> expectedBytecodeNodes, BytecodeNodes<BytecodeDSLExample> actualBytecodeNodes) {
+        List<BytecodeDSLExample> expectedNodes = expectedBytecodeNodes.getNodes();
+        List<BytecodeDSLExample> actualNodes = actualBytecodeNodes.getNodes();
+        assertEquals(expectedNodes.size(), actualNodes.size());
+        for (int i = 0; i < expectedNodes.size(); i++) {
+            BytecodeDSLExample expectedNode = expectedNodes.get(i);
+            BytecodeDSLExample actualNode = actualNodes.get(i);
+
+            assertEquals(expectedNode.name, actualNode.name);
+            assertArrayEquals((short[]) readField(expectedNode, "bc"), (short[]) readField(actualNode, "bc"));
+            assertConstantsEqual((Object[]) readField(expectedNode, "constants"), (Object[]) readField(actualNode, "constants"));
+            assertArrayEquals((int[]) readField(expectedNode, "handlers"), (int[]) readField(actualNode, "handlers"));
+        }
+    }
+
+    private static void assertConstantsEqual(Object[] expectedConstants, Object[] actualConstants) {
+        assertEquals(expectedConstants.length, actualConstants.length);
+        for (int i = 0; i < expectedConstants.length; i++) {
+            Object expected = expectedConstants[i];
+            Object actual = actualConstants[i];
+
+            if (expected instanceof BytecodeDSLExample expectedRoot && actual instanceof BytecodeDSLExample actualRoot) {
+                // We don't implement equals for root nodes (that's what we're trying to test). Make
+                // sure it's at least the same name.
+                assertEquals(expectedRoot.name, actualRoot.name);
+            } else if (expected instanceof long[] expectedLongs && actual instanceof long[] actualLongs) {
+                assertArrayEquals(expectedLongs, actualLongs);
+            } else {
+                assertEquals(expected, actual);
+            }
+        }
+    }
+
+    private static Object readField(BytecodeDSLExample node, String name) {
+        try {
+            Field field = node.getClass().getDeclaredField(name);
+            field.setAccessible(true);
+            return field.get(node);
+        } catch (ReflectiveOperationException ex) {
+            fail("Failed to access interpreter field " + name + " with introspection.");
+        }
+        throw new AssertionError("unreachable");
     }
 
     protected static void emitReturn(BytecodeDSLExampleBuilder b, long value) {
