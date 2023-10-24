@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.DebugVerifyHandler;
 import jdk.graal.compiler.debug.GraalError;
@@ -72,7 +73,7 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
             List<Node> before = graph.getNodes().snapshot();
             new DeadCodeEliminationPhase().run(graph);
             List<Node> after = graph.getNodes().snapshot();
-            assert after.size() <= before.size();
+            assert after.size() <= before.size() : Assertions.errorMessageContext("after", after, "before", before);
             if (before.size() != after.size()) {
                 if (discovered.put(format, Boolean.TRUE) == null) {
                     before.removeAll(after);
@@ -83,7 +84,7 @@ public class NoDeadCodeVerifyHandler implements DebugVerifyHandler {
                     } else if (Options.NDCV.getValue(options) == VERBOSE) {
                         error.printStackTrace(System.out);
                     } else {
-                        assert Options.NDCV.getValue(options) == FATAL;
+                        assert Options.NDCV.getValue(options) == FATAL : "Must be fatal at that point";
                         throw error;
                     }
                 }

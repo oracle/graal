@@ -27,9 +27,12 @@ package jdk.graal.compiler.nodes.java;
 import static jdk.graal.compiler.nodeinfo.InputType.Memory;
 import static jdk.graal.compiler.nodeinfo.InputType.State;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.memory.BarrierType;
 import jdk.graal.compiler.core.common.memory.MemoryOrderMode;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.nodeinfo.InputType;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -42,7 +45,6 @@ import jdk.graal.compiler.nodes.memory.LIRLowerableAccess;
 import jdk.graal.compiler.nodes.memory.OrderedMemoryAccess;
 import jdk.graal.compiler.nodes.memory.SingleMemoryKill;
 import jdk.graal.compiler.nodes.memory.address.AddressNode;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * Low-level atomic compare-and-swap operation.
@@ -88,7 +90,7 @@ public abstract class AbstractCompareAndSwapNode extends FixedAccessNode impleme
     public AbstractCompareAndSwapNode(NodeClass<? extends AbstractCompareAndSwapNode> c, AddressNode address, LocationIdentity location, ValueNode expectedValue, ValueNode newValue,
                     BarrierType barrierType, Stamp stamp, MemoryOrderMode memoryOrder) {
         super(c, address, location, stamp, barrierType);
-        assert expectedValue.getStackKind() == newValue.getStackKind();
+        assert expectedValue.getStackKind() == newValue.getStackKind() : Assertions.errorMessageContext("c", c, "adr", address, "loc", location, "expected", expectedValue, "newVal", newValue);
         this.expectedValue = expectedValue;
         this.newValue = newValue;
         this.memoryOrder = memoryOrder;

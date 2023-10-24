@@ -32,6 +32,7 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -50,6 +51,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
+
+import org.graalvm.word.LocationIdentity;
+import org.junit.Assert;
+import org.junit.Assume;
+import org.junit.Test;
 
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.api.replacements.Snippet.ConstantParameter;
@@ -98,11 +104,6 @@ import jdk.graal.compiler.phases.tiers.HighTierContext;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.runtime.RuntimeProvider;
 import jdk.graal.compiler.test.AddExports;
-import org.graalvm.word.LocationIdentity;
-import org.junit.Assert;
-import org.junit.Assume;
-import org.junit.Test;
-
 import jdk.internal.misc.Unsafe;
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.code.Register;
@@ -218,6 +219,18 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 return false;
             }
             return true;
+        }
+
+        public URL getAssertionExcludeListFile() {
+            return null;
+        }
+
+        /**
+         * Indicates if a return value of {@code null} from {@link #getAssertionExcludeListFile()}
+         * indicates that assertion checking should be skipped all together.
+         */
+        public boolean missingAssertionExcludeListIsSkip() {
+            return false;
         }
     }
 
@@ -339,6 +352,13 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyPluginFrameState());
         verifiers.add(new VerifyGraphUniqueUsages());
         verifiers.add(new VerifyEndlessLoops());
+        VerifyAssertionUsage assertionUsages = null;
+        boolean checkAssertions = tool.getAssertionExcludeListFile() == null ? !tool.missingAssertionExcludeListIsSkip() : true;
+
+        if (checkAssertions) {
+            assertionUsages = new VerifyAssertionUsage(tool, metaAccess);
+            verifiers.add(assertionUsages);
+        }
 
         loadVerifiers(verifiers);
 
@@ -443,6 +463,15 @@ public class CheckGraalInvariants extends GraalCompilerTest {
                 } catch (Throwable e) {
                     errors.add(e.getMessage());
                 }
+            }
+        }
+
+        if (assertionUsages != null) {
+            assert checkAssertions;
+            try {
+                assertionUsages.postProcess();
+            } catch (Throwable e) {
+                errors.add(e.getMessage());
             }
         }
 

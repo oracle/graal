@@ -157,7 +157,7 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
         for (Node node : graph.getNodes().filter(OptimizeExtendsPhase::isExtendNode)) {
             IntegerConvertNode<?> extend = (IntegerConvertNode<?>) node;
             origNumExtends++;
-            assert extend.getInputBits() < extend.getResultBits();
+            assert extend.getInputBits() < extend.getResultBits() : Assertions.errorMessage(extend);
             // record use of this node
             defsWithExtends.add(extend.getValue());
         }
@@ -204,7 +204,7 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
                     hasRedundantExtends |= maxZeroExtend != UNSET;
                     maxZeroExtend = Integer.max(maxZeroExtend, resultBits);
                 } else {
-                    assert use instanceof SignExtendNode;
+                    assert use instanceof SignExtendNode : Assertions.errorMessageContext("use", use);
                     hasRedundantExtends |= maxSignExtend != UNSET;
                     maxSignExtend = Integer.max(maxSignExtend, resultBits);
                 }
@@ -290,7 +290,7 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
                 // append a narrow to replacement if necessary
                 int resultBits = use.getResultBits();
                 if (resultBits != replacementBits) {
-                    assert replacementBits > resultBits;
+                    assert replacementBits > resultBits : replacementBits + " " + resultBits;
                     replacement = graph.addOrUnique(new NarrowNode(replacement, replacementBits, resultBits));
                 }
 
@@ -316,7 +316,7 @@ public class OptimizeExtendsPhase extends BasePhase<LowTierContext> {
              * less than or equal to the number of extends in the original graph.
              */
             int numExtends = graph.getNodes().filter(OptimizeExtendsPhase::isExtendNode).count();
-            assert numExtends <= origNumExtends;
+            assert numExtends <= origNumExtends : numExtends + " " + origNumExtends;
         }
     }
 

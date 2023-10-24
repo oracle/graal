@@ -30,8 +30,8 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -39,11 +39,11 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.calc.TernaryNode;
 import jdk.graal.compiler.nodes.spi.ArithmeticLIRLowerable;
+import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-
+import jdk.graal.compiler.serviceprovider.GraalServices;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
-import jdk.graal.compiler.serviceprovider.GraalServices;
 
 @NodeInfo(cycles = CYCLES_2, size = SIZE_1)
 public final class FusedMultiplyAddNode extends TernaryNode implements ArithmeticLIRLowerable {
@@ -85,7 +85,7 @@ public final class FusedMultiplyAddNode extends TernaryNode implements Arithmeti
                 }
             } else {
                 double result = GraalServices.fma(constantX.asDouble(), constantY.asDouble(), constantZ.asDouble());
-                assert stampX.getStackKind() == JavaKind.Double;
+                assert stampX.getStackKind() == JavaKind.Double : Assertions.errorMessage(stampX, stampY, stampZ);
                 if (Double.isNaN(result)) {
                     return StampFactory.forFloat(JavaKind.Double, Double.NaN, Double.NaN, false);
                 } else {
@@ -106,7 +106,7 @@ public final class FusedMultiplyAddNode extends TernaryNode implements Arithmeti
             if (forX.getStackKind() == JavaKind.Float) {
                 return ConstantNode.forFloat(GraalServices.fma(constantX.asFloat(), constantY.asFloat(), constantZ.asFloat()));
             } else {
-                assert forX.getStackKind() == JavaKind.Double;
+                assert forX.getStackKind() == JavaKind.Double : Assertions.errorMessage(forX, forY, forZ);
                 return ConstantNode.forDouble(GraalServices.fma(constantX.asDouble(), constantY.asDouble(), constantZ.asDouble()));
             }
         }

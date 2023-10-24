@@ -24,6 +24,7 @@
  */
 package jdk.graal.compiler.lir;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.StackSlot;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -54,7 +55,7 @@ public class CastValue extends AllocatableValue {
         super(kind);
         AllocatableValue inner = underlyingValue;
         while (inner instanceof CastValue) {
-            assert kind.getPlatformKind().getSizeInBytes() <= inner.getPlatformKind().getSizeInBytes();
+            assert kind.getPlatformKind().getSizeInBytes() <= inner.getPlatformKind().getSizeInBytes() : Assertions.errorMessageContext("kind", kind, "inner", inner);
             inner = ((CastValue) inner).underlyingValue;
         }
         assert kind.getPlatformKind().getSizeInBytes() <= inner.getPlatformKind().getSizeInBytes() : "can't cast " + inner + " " + inner.getPlatformKind() + " to larger kind " +

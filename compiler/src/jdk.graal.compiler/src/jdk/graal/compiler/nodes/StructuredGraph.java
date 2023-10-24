@@ -36,22 +36,16 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
-import jdk.graal.compiler.nodes.cfg.HIRBlock;
-import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
-import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
-import jdk.graal.compiler.nodes.spi.ProfileProvider;
-import jdk.graal.compiler.nodes.spi.ResolvedJavaMethodProfileProvider;
-import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
-import jdk.graal.compiler.nodes.util.GraphUtil;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 import org.graalvm.collections.UnmodifiableEconomicMap;
+
 import jdk.graal.compiler.api.replacements.Snippet;
 import jdk.graal.compiler.core.common.CancellationBailoutException;
 import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.GraalOptions;
 import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.JavaMethodContext;
@@ -60,9 +54,17 @@ import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeMap;
 import jdk.graal.compiler.graph.NodeSourcePosition;
+import jdk.graal.compiler.nodes.GraphState.StageFlag;
 import jdk.graal.compiler.nodes.calc.FloatingNode;
+import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
+import jdk.graal.compiler.nodes.cfg.HIRBlock;
+import jdk.graal.compiler.nodes.java.ExceptionObjectNode;
+import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.ProfileProvider;
+import jdk.graal.compiler.nodes.spi.ResolvedJavaMethodProfileProvider;
+import jdk.graal.compiler.nodes.spi.VirtualizableAllocation;
+import jdk.graal.compiler.nodes.util.GraphUtil;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Assumptions.Assumption;
@@ -872,7 +874,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         FixedNode next = node.next();
         node.setNext(newNode);
         if (next != null) {
-            assert newNode instanceof FixedWithNextNode;
+            assert newNode instanceof FixedWithNextNode : Assertions.errorMessage(node, newNode);
             FixedWithNextNode newFixedWithNext = (FixedWithNextNode) newNode;
             assert newFixedWithNext.next() == null;
             newFixedWithNext.setNext(next);
@@ -884,7 +886,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
         assert node != null && newNode != null && node.isAlive() && newNode.isAlive() : "cannot add " + newNode + " before " + node;
         assert node.predecessor() != null && node.predecessor() instanceof FixedWithNextNode : "cannot add " + newNode + " before " + node;
         assert newNode.next() == null : newNode;
-        assert !(node instanceof AbstractMergeNode);
+        assert !(node instanceof AbstractMergeNode) : Assertions.errorMessageContext("node", node);
         FixedWithNextNode pred = (FixedWithNextNode) node.predecessor();
         pred.setNext(newNode);
         newNode.setNext(node);
@@ -913,10 +915,10 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @SuppressWarnings("static-method")
     public void reduceTrivialMerge(AbstractMergeNode merge, boolean forKillCFG) {
-        assert merge.forwardEndCount() == 1;
+        assert merge.forwardEndCount() == 1 : Assertions.errorMessageContext("merge", merge);
         assert !(merge instanceof LoopBeginNode) || ((LoopBeginNode) merge).loopEnds().isEmpty();
         for (PhiNode phi : merge.phis().snapshot()) {
-            assert phi.valueCount() == 1;
+            assert phi.valueCount() == 1 : Assertions.errorMessage(merge, phi);
             ValueNode singleValue = phi.valueAt(0);
             if (phi.hasUsages()) {
                 phi.replaceAtUsagesAndDelete(singleValue);
@@ -1149,7 +1151,7 @@ public final class StructuredGraph extends Graph implements JavaMethodContext {
 
     @Override
     protected void afterRegister(Node node) {
-        assert !graphState.isAfterStage(GraphState.StageFlag.VALUE_PROXY_REMOVAL) || !(node instanceof ValueProxyNode);
+        assert !graphState.isAfterStage(StageFlag.VALUE_PROXY_REMOVAL) || !(node instanceof ValueProxyNode) : Assertions.errorMessage(graphState, node);
         if (inliningLog != null && node instanceof Invokable) {
             ((Invokable) node).updateInliningLogAfterRegister(this);
         }

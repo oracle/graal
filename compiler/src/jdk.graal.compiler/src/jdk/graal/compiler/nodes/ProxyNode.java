@@ -28,18 +28,20 @@ import static jdk.graal.compiler.nodeinfo.InputType.Association;
 import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_0;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_0;
 
+import org.graalvm.word.LocationIdentity;
+
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.Node.ValueNumberable;
 import jdk.graal.compiler.graph.NodeClass;
+import jdk.graal.compiler.nodeinfo.NodeInfo;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
 import jdk.graal.compiler.nodes.memory.MemoryKill;
 import jdk.graal.compiler.nodes.spi.Canonicalizable;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Proxy;
-import jdk.graal.compiler.nodeinfo.NodeInfo;
-import jdk.graal.compiler.nodes.calc.FloatingNode;
-import org.graalvm.word.LocationIdentity;
 
 /**
  * A proxy is inserted at loop exits for any value that is created inside the loop (i.e. was not
@@ -75,7 +77,7 @@ public abstract class ProxyNode extends FloatingNode implements Proxy, ValueNumb
 
     @Override
     public boolean verify() {
-        assert !(value() instanceof ProxyNode) || ((ProxyNode) value()).loopExit != loopExit;
+        assert !(value() instanceof ProxyNode) || ((ProxyNode) value()).loopExit != loopExit : Assertions.errorMessageContext("this", this, "value", value());
         return super.verify();
     }
 

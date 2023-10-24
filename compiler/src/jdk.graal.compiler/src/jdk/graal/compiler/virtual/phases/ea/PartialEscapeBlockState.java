@@ -28,6 +28,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -216,7 +217,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                     if (otherAllocation instanceof FixedWithNextNode) {
                         graph.addBeforeFixed(fixed, (FixedWithNextNode) otherAllocation);
                     } else {
-                        assert otherAllocation instanceof FloatingNode;
+                        assert otherAllocation instanceof FloatingNode : Assertions.errorMessage(otherAllocation, fixed, virtual, materializeEffects);
                     }
                 }
                 if (!objects.isEmpty()) {
@@ -242,7 +243,7 @@ public abstract class PartialEscapeBlockState<T extends PartialEscapeBlockState<
                     }
                     commit.getEnsureVirtual().addAll(ensureVirtual);
 
-                    assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.getUsageCount();
+                    assert commit.usages().filter(AllocatedObjectNode.class).count() == commit.getUsageCount() : Assertions.errorMessage(commit, commit.usages(), commit.getUsageCount());
                     List<AllocatedObjectNode> materializedValues = commit.usages().filter(AllocatedObjectNode.class).snapshot();
                     for (int i = 0; i < commit.getValues().size(); i++) {
                         if (materializedValues.contains(commit.getValues().get(i))) {

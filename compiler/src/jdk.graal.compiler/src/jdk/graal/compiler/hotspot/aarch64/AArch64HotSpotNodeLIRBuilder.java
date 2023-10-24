@@ -76,8 +76,8 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
     @SuppressWarnings("this-escape")
     public AArch64HotSpotNodeLIRBuilder(StructuredGraph graph, LIRGeneratorTool gen, AArch64NodeMatchRules nodeMatchRules) {
         super(graph, gen, nodeMatchRules);
-        assert gen instanceof AArch64HotSpotLIRGenerator;
-        assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder;
+        assert gen instanceof AArch64HotSpotLIRGenerator : gen;
+        assert getDebugInfoBuilder() instanceof HotSpotDebugInfoBuilder : getDebugInfoBuilder();
         ((AArch64HotSpotLIRGenerator) gen).setDebugInfoBuilder(((HotSpotDebugInfoBuilder) getDebugInfoBuilder()));
     }
 
@@ -147,7 +147,7 @@ public class AArch64HotSpotNodeLIRBuilder extends AArch64NodeLIRBuilder implemen
         AllocatableValue handler = gen.asAllocatable(operand(handlerInCallerPc));
         ForeignCallLinkage linkage = gen.getForeignCalls().lookupForeignCall(HotSpotBackend.EXCEPTION_HANDLER_IN_CALLER);
         CallingConvention outgoingCc = linkage.getOutgoingCallingConvention();
-        assert outgoingCc.getArgumentCount() == 2;
+        assert outgoingCc.getArgumentCount() == 2 : outgoingCc;
         RegisterValue exceptionFixed = (RegisterValue) outgoingCc.getArgument(0);
         RegisterValue exceptionPcFixed = (RegisterValue) outgoingCc.getArgument(1);
         gen.emitMove(exceptionFixed, operand(exception));

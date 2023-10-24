@@ -70,7 +70,8 @@ public final class LIRInsertionBuffer {
      */
     public void init(List<LIRInstruction> newLir) {
         assert !initialized() : "already initialized";
-        assert indexAndCountSize == 0 && ops.size() == 0;
+        assert indexAndCountSize == 0 : indexAndCountSize;
+        assert ops.size() == 0 : ops;
         this.lir = newLir;
     }
 

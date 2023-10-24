@@ -71,7 +71,7 @@ public class AMD64SignExtendOp extends AMD64LIRInstruction {
         if (size == DWORD) {
             masm.cdql();
         } else {
-            assert size == QWORD;
+            assert size == QWORD : size;
             masm.cdqq();
         }
     }

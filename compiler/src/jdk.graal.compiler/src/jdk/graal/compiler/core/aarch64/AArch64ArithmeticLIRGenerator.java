@@ -129,18 +129,18 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitMulHigh(Value a, Value b) {
-        assert isNumericInteger(a.getPlatformKind());
+        assert assertIsNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.SMULH, true, a, b);
     }
 
     @Override
     public Value emitUMulHigh(Value a, Value b) {
-        assert isNumericInteger(a.getPlatformKind());
+        assert assertIsNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.UMULH, true, a, b);
     }
 
     public Value emitMNeg(Value a, Value b) {
-        assert isNumericInteger(a.getPlatformKind()) && isNumericInteger(b.getPlatformKind());
+        assert isNumericInteger(a.getPlatformKind()) && isNumericInteger(b.getPlatformKind()) : a + " " + b;
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.MNEG, true, a, b);
     }
 
@@ -170,38 +170,38 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitUDiv(Value a, Value b, LIRFrameState state) {
-        assert isNumericInteger(a.getPlatformKind());
+        assert assertIsNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.UDIV, false, asAllocatable(a), asAllocatable(b));
     }
 
     @Override
     public Value emitURem(Value a, Value b, LIRFrameState state) {
-        assert isNumericInteger(a.getPlatformKind());
+        assert assertIsNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.UREM, false, asAllocatable(a), asAllocatable(b));
     }
 
     @Override
     public Value emitAnd(Value a, Value b) {
-        assert isNumericInteger(a.getPlatformKind());
+        assert assertIsNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.AND, true, a, b);
     }
 
     @Override
     public Value emitOr(Value a, Value b) {
-        assert isNumericInteger(a.getPlatformKind());
+        assert assertIsNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.OR, true, a, b);
     }
 
     @Override
     public Value emitXor(Value a, Value b) {
-        assert isNumericInteger(a.getPlatformKind());
+        assert assertIsNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.XOR, true, a, b);
     }
 
     @Override
     public Value emitXorFP(Value a, Value b) {
         assert (a.getPlatformKind() == AArch64Kind.SINGLE || a.getPlatformKind() == AArch64Kind.DOUBLE) &&
-                        a.getPlatformKind() == b.getPlatformKind();
+                        a.getPlatformKind() == b.getPlatformKind() : a + " " + b;
 
         /*
          * Use the ASIMD XOR instruction to perform this operation. This requires casting the
@@ -225,19 +225,19 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitShl(Value a, Value b) {
-        assert isNumericInteger(a.getPlatformKind());
+        assert assertIsNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.LSL, false, a, b);
     }
 
     @Override
     public Value emitShr(Value a, Value b) {
-        assert isNumericInteger(a.getPlatformKind());
+        assert assertIsNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.ASR, false, a, b);
     }
 
     @Override
     public Value emitUShr(Value a, Value b) {
-        assert isNumericInteger(a.getPlatformKind());
+        assert assertIsNumericInteger(a.getPlatformKind());
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.LSR, false, a, b);
     }
 
@@ -259,21 +259,22 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     }
 
     protected Value emitMultiplyAddSub(AArch64ArithmeticOp op, Value a, Value b, Value c) {
-        assert a.getPlatformKind() == b.getPlatformKind();
+
+        assert a.getPlatformKind() == b.getPlatformKind() : "Kind must match a=" + a + " b=" + b;
         Variable result;
         if (op == AArch64ArithmeticOp.SMADDL || op == AArch64ArithmeticOp.SMSUBL) {
             // For signed multiply int and then add/sub long.
-            assert a.getPlatformKind() != c.getPlatformKind();
+            assert a.getPlatformKind() != c.getPlatformKind() : a + " " + c;
             result = getLIRGen().newVariable(LIRKind.combine(c));
         } else {
-            assert a.getPlatformKind() == c.getPlatformKind();
+            assert a.getPlatformKind() == c.getPlatformKind() : a + " " + c;
             if (op == AArch64ArithmeticOp.FMADD) {
                 // For floating-point Math.fma intrinsic.
-                assert a.getPlatformKind() == AArch64Kind.SINGLE || a.getPlatformKind() == AArch64Kind.DOUBLE;
+                assert a.getPlatformKind() == AArch64Kind.SINGLE || a.getPlatformKind() == AArch64Kind.DOUBLE : a;
             } else {
                 // For int/long multiply add or sub.
-                assert op == AArch64ArithmeticOp.MADD || op == AArch64ArithmeticOp.MSUB;
-                assert isNumericInteger(a.getPlatformKind());
+                assert op == AArch64ArithmeticOp.MADD || op == AArch64ArithmeticOp.MSUB : op;
+                assert assertIsNumericInteger(a.getPlatformKind());
             }
             result = getLIRGen().newVariable(LIRKind.combine(a, b, c));
         }
@@ -326,7 +327,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
          */
         if (inputVal.getPlatformKind() == AArch64Kind.QWORD && toBits <= 32) {
             LIRKind resultKind = getLIRKindForBitSize(toBits, inputVal);
-            assert resultKind.getPlatformKind() == AArch64Kind.DWORD;
+            assert resultKind.getPlatformKind() == AArch64Kind.DWORD : resultKind;
             return new CastValue(resultKind, asAllocatable(inputVal));
         } else {
             return inputVal;
@@ -335,7 +336,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitZeroExtend(Value inputVal, int fromBits, int toBits) {
-        assert fromBits <= toBits && toBits <= 64;
+        assert fromBits <= toBits && toBits <= 64 : fromBits + " " + toBits;
         if (fromBits == toBits) {
             return inputVal;
         }
@@ -347,7 +348,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitSignExtend(Value inputVal, int fromBits, int toBits) {
-        assert fromBits <= toBits && toBits <= 64;
+        assert fromBits <= toBits && toBits <= 64 : fromBits + " " + toBits;
         LIRKind resultKind = getLIRKindForBitSize(toBits, inputVal);
         if (fromBits == toBits) {
             return inputVal;
@@ -378,7 +379,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
         /*
          * AArch64 general-purpose operations are either 32 or 64 bits.
          */
-        assert bitSize <= 64;
+        assert bitSize <= 64 : bitSize + " " + inputValue;
         if (bitSize <= 32) {
             return LIRKind.combine(inputValue).changeType(AArch64Kind.DWORD);
         } else {
@@ -470,7 +471,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitNot(Value input) {
-        assert isNumericInteger(input.getPlatformKind());
+        assert assertIsNumericInteger(input.getPlatformKind());
         return emitUnary(AArch64ArithmeticOp.NOT, input);
     }
 
@@ -481,31 +482,31 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
 
     @Override
     public Value emitMathMax(Value a, Value b) {
-        assert a.getPlatformKind() == b.getPlatformKind();
+        assert a.getPlatformKind() == b.getPlatformKind() : "Kind must match a=" + a + " b=" + b;
         assert a.getPlatformKind() == AArch64Kind.DOUBLE ||
-                        a.getPlatformKind() == AArch64Kind.SINGLE;
+                        a.getPlatformKind() == AArch64Kind.SINGLE : a;
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.FMAX, true, a, b);
     }
 
     @Override
     public Value emitMathMin(Value a, Value b) {
-        assert a.getPlatformKind() == b.getPlatformKind();
+        assert a.getPlatformKind() == b.getPlatformKind() : "Kind must match a=" + a + " b=" + b;
         assert a.getPlatformKind() == AArch64Kind.DOUBLE ||
-                        a.getPlatformKind() == AArch64Kind.SINGLE;
+                        a.getPlatformKind() == AArch64Kind.SINGLE : a;
         return emitBinary(LIRKind.combine(a, b), AArch64ArithmeticOp.FMIN, true, a, b);
     }
 
     @Override
     public Value emitMathSqrt(Value input) {
         assert input.getPlatformKind() == AArch64Kind.DOUBLE ||
-                        input.getPlatformKind() == AArch64Kind.SINGLE;
+                        input.getPlatformKind() == AArch64Kind.SINGLE : input;
         return emitUnary(AArch64ArithmeticOp.FSQRT, input);
     }
 
     @Override
     public Value emitMathSignum(Value input) {
         assert input.getPlatformKind() == AArch64Kind.DOUBLE ||
-                        input.getPlatformKind() == AArch64Kind.SINGLE;
+                        input.getPlatformKind() == AArch64Kind.SINGLE : input;
         Variable result = getLIRGen().newVariable(input.getValueKind());
         getLIRGen().append(new AArch64MathSignumOp(getLIRGen(), result, asAllocatable(input)));
         return result;
@@ -514,7 +515,7 @@ public class AArch64ArithmeticLIRGenerator extends ArithmeticLIRGenerator implem
     @Override
     public Value emitMathCopySign(Value magnitude, Value sign) {
         assert magnitude.getPlatformKind() == AArch64Kind.DOUBLE ||
-                        magnitude.getPlatformKind() == AArch64Kind.SINGLE;
+                        magnitude.getPlatformKind() == AArch64Kind.SINGLE : magnitude;
         Variable result = getLIRGen().newVariable(magnitude.getValueKind());
         getLIRGen().append(new AArch64MathCopySignOp(result, asAllocatable(magnitude), asAllocatable(sign)));
         return result;

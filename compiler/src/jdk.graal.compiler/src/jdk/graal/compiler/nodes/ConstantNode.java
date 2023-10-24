@@ -35,6 +35,7 @@ import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -44,12 +45,11 @@ import jdk.graal.compiler.lir.ConstantValue;
 import jdk.graal.compiler.lir.gen.LIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodeinfo.Verbosity;
+import jdk.graal.compiler.nodes.calc.FloatingNode;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.spi.ArrayLengthProvider;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
-import jdk.graal.compiler.nodes.calc.FloatingNode;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -72,7 +72,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
     private final boolean isDefaultStable;
 
     private static ConstantNode createPrimitive(JavaConstant value) {
-        assert value.getJavaKind() != JavaKind.Object;
+        assert value.getJavaKind() != JavaKind.Object : value;
         return new ConstantNode(value, StampFactory.forConstant(value));
     }
 
@@ -135,7 +135,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
      * Replaces this node at its usages with another node.
      */
     public void replace(StructuredGraph graph, Node replacement) {
-        assert graph == graph();
+        assert graph == graph() : Assertions.errorMessageContext("graph", graph, "this.graph", this.graph());
         replaceAtUsagesAndDelete(replacement);
     }
 
@@ -197,7 +197,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
         if (constant.getJavaKind() == JavaKind.Object) {
             return new ConstantNode(constant, StampFactory.forConstant(constant, metaAccess), stableDimension, isDefaultStable);
         } else {
-            assert stableDimension == 0;
+            assert stableDimension == 0 : stableDimension;
             return createPrimitive(constant);
         }
     }
@@ -222,7 +222,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
      * Returns a node for a Java primitive.
      */
     public static ConstantNode forPrimitive(JavaConstant constant, StructuredGraph graph) {
-        assert constant.getJavaKind() != JavaKind.Object;
+        assert constant.getJavaKind() != JavaKind.Object : constant;
         return forConstant(constant, null, graph);
     }
 
@@ -230,7 +230,7 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
      * Returns a node for a Java primitive.
      */
     public static ConstantNode forPrimitive(JavaConstant constant) {
-        assert constant.getJavaKind() != JavaKind.Object;
+        assert constant.getJavaKind() != JavaKind.Object : constant;
         return forConstant(constant, null);
     }
 
@@ -239,11 +239,12 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
      */
     public static ConstantNode forPrimitive(Stamp stamp, JavaConstant constant, StructuredGraph graph) {
         if (stamp instanceof IntegerStamp) {
-            assert constant.getJavaKind().isNumericInteger() && stamp.getStackKind() == constant.getJavaKind().getStackKind();
+            assert constant.getJavaKind().isNumericInteger() && stamp.getStackKind() == constant.getJavaKind().getStackKind() : Assertions.errorMessageContext("constant", constant, "stamp",
+                            stamp);
             IntegerStamp istamp = (IntegerStamp) stamp;
             return forIntegerBits(istamp.getBits(), constant, graph);
         } else {
-            assert constant.getJavaKind().isNumericFloat() && stamp.getStackKind() == constant.getJavaKind();
+            assert constant.getJavaKind().isNumericFloat() && stamp.getStackKind() == constant.getJavaKind() : Assertions.errorMessageContext("constant", constant, "stamp", stamp);
             return forPrimitive(constant, graph);
         }
     }
@@ -254,15 +255,16 @@ public final class ConstantNode extends FloatingNode implements LIRLowerable, Ar
     public static ConstantNode forPrimitive(Stamp stamp, Constant constant) {
         if (stamp instanceof IntegerStamp) {
             PrimitiveConstant primitive = (PrimitiveConstant) constant;
-            assert primitive.getJavaKind().isNumericInteger() && stamp.getStackKind() == primitive.getJavaKind().getStackKind();
+            assert primitive.getJavaKind().isNumericInteger() && stamp.getStackKind() == primitive.getJavaKind().getStackKind() : Assertions.errorMessageContext("primitive", primitive, "stamp",
+                            stamp);
             IntegerStamp istamp = (IntegerStamp) stamp;
             return forIntegerBits(istamp.getBits(), primitive);
         } else if (stamp instanceof FloatStamp) {
             PrimitiveConstant primitive = (PrimitiveConstant) constant;
-            assert primitive.getJavaKind().isNumericFloat() && stamp.getStackKind() == primitive.getJavaKind();
+            assert primitive.getJavaKind().isNumericFloat() && stamp.getStackKind() == primitive.getJavaKind() : Assertions.errorMessageContext("primitive", primitive, "stamp", stamp);
             return forConstant(primitive, null);
         } else {
-            assert !(stamp instanceof AbstractObjectStamp);
+            assert !(stamp instanceof AbstractObjectStamp) : Assertions.errorMessageContext("constant", constant, "stamp", stamp);
             return new ConstantNode(constant, stamp.constant(constant, null));
         }
     }

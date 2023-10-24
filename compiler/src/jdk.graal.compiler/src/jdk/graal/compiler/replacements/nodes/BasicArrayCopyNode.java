@@ -29,6 +29,9 @@ import static jdk.graal.compiler.nodeinfo.InputType.State;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_64;
 import static org.graalvm.word.LocationIdentity.any;
 
+import org.graalvm.word.LocationIdentity;
+
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.NodeClass;
@@ -54,8 +57,6 @@ import jdk.graal.compiler.nodes.spi.VirtualizerTool;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.nodes.virtual.VirtualArrayNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
-import org.graalvm.word.LocationIdentity;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -216,7 +217,7 @@ public abstract class BasicArrayCopyNode extends WithExceptionNode
     }
 
     public static boolean checkBounds(int position, int length, VirtualObjectNode virtualObject) {
-        assert length >= 0;
+        assert NumUtil.assertNonNegativeInt(length);
         return position >= 0 && position <= virtualObject.entryCount() - length;
     }
 

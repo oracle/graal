@@ -28,6 +28,7 @@ import static jdk.graal.compiler.nodeinfo.NodeCycles.CYCLES_2;
 import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import jdk.graal.compiler.core.common.type.StampFactory;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.VirtualStackSlot;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -53,7 +54,7 @@ public final class AllocaNode extends FixedWithNextNode implements LIRLowerable 
 
     public AllocaNode(@InjectedNodeParameter WordTypes wordTypes, int sizeInBytes, int alignmentInBytes) {
         super(TYPE, StampFactory.forKind(wordTypes.getWordKind()));
-        assert sizeInBytes > 0 && alignmentInBytes > 0;
+        assert sizeInBytes > 0 && alignmentInBytes > 0 : Assertions.errorMessage(sizeInBytes, alignmentInBytes);
         this.sizeInBytes = sizeInBytes;
         this.alignmentInBytes = alignmentInBytes;
     }

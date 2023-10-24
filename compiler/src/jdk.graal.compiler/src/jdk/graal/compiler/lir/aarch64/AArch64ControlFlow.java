@@ -24,10 +24,10 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.lr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.ILLEGAL;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.REG;
+import static jdk.vm.ci.aarch64.AArch64.lr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
 
 import java.util.Arrays;
 import java.util.function.Consumer;
@@ -46,8 +46,8 @@ import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.CompilationResult.JumpTable.EntryFormat;
 import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.LabelRef;
@@ -56,7 +56,7 @@ import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.SwitchStrategy;
 import jdk.graal.compiler.lir.SwitchStrategy.BaseSwitchClosure;
 import jdk.graal.compiler.lir.Variable;
-
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -256,7 +256,8 @@ public class AArch64ControlFlow {
 
         public CondMoveOp(Variable result, AArch64Assembler.ConditionFlag condition, AllocatableValue trueValue, AllocatableValue falseValue) {
             super(TYPE);
-            assert trueValue.getPlatformKind() == falseValue.getPlatformKind() && trueValue.getPlatformKind() == result.getPlatformKind();
+            assert trueValue.getPlatformKind() == falseValue.getPlatformKind() : Assertions.errorMessageContext("result", result, "trueVal", trueValue, "falseVal", falseValue);
+            assert trueValue.getPlatformKind() == result.getPlatformKind() : Assertions.errorMessageContext("result", result, "trueVal", trueValue, "falseVal", falseValue);
             this.result = result;
             this.condition = condition;
             this.trueValue = trueValue;
@@ -318,8 +319,8 @@ public class AArch64ControlFlow {
             this.keyTargets = keyTargets;
             this.defaultTarget = defaultTarget;
             this.key = key;
-            assert keyConstants.length == keyTargets.length;
-            assert keyConstants.length == strategy.keyProbabilities.length;
+            assert keyConstants.length == keyTargets.length : Assertions.errorMessage(keyConstants, keyTargets);
+            assert keyConstants.length == strategy.keyProbabilities.length : Assertions.errorMessage(keyConstants, strategy.keyProbabilities);
         }
 
         @Override
@@ -368,7 +369,7 @@ public class AArch64ControlFlow {
         }
 
         private static void emitCompareHelper(CompilationResultBuilder crb, AArch64MacroAssembler masm, int cmpSize, Value key, JavaConstant jc) {
-            assert cmpSize == key.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            assert cmpSize == key.getPlatformKind().getSizeInBytes() * Byte.SIZE : Assertions.errorMessage(cmpSize, key.getPlatformKind());
             long imm = jc.asLong();
             if (AArch64MacroAssembler.isComparisonImmediate(imm)) {
                 masm.compare(cmpSize, asRegister(key), NumUtil.safeToInt(imm));
@@ -522,7 +523,7 @@ public class AArch64ControlFlow {
                     // jump to target
                     masm.jmp(jumpTableEntry);
                 } else {
-                    assert format == EntryFormat.VALUE_AND_OFFSET;
+                    assert format == EntryFormat.VALUE_AND_OFFSET : format;
                     /*
                      * Note jumpTableEntry contains the value to compare again originalValue in its
                      * lower 32 bits and the offset in its upper 32 bits.
@@ -594,4 +595,5 @@ public class AArch64ControlFlow {
             masm.neon.bslVVV(size, asRegister(result), asRegister(trueVal), asRegister(falseVal));
         }
     }
+
 }

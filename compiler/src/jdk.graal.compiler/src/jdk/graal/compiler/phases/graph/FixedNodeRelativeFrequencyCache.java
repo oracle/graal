@@ -30,7 +30,9 @@ import java.util.function.ToDoubleFunction;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph;
@@ -101,7 +103,7 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
             return 1D;
         }
 
-        assert current instanceof AbstractBeginNode;
+        assert current instanceof AbstractBeginNode : Assertions.errorMessage(current);
         Double cachedValue = cache.get(current);
         if (cachedValue != null) {
             return cachedValue;
@@ -112,7 +114,7 @@ public class FixedNodeRelativeFrequencyCache implements ToDoubleFunction<FixedNo
             if (current instanceof AbstractMergeNode) {
                 relativeFrequency = handleMerge(current, relativeFrequency);
             } else {
-                assert current instanceof StartNode;
+                assert current instanceof StartNode : Assertions.errorMessage(current);
                 relativeFrequency = 1D;
             }
         } else {

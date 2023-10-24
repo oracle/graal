@@ -81,14 +81,14 @@ import jdk.vm.ci.runtime.JVMCIBackend;
 public final class HotSpotGraalRuntime implements HotSpotGraalRuntimeProvider {
 
     private static boolean checkArrayIndexScaleInvariants(MetaAccessProvider metaAccess) {
-        assert metaAccess.getArrayIndexScale(JavaKind.Byte) == 1;
-        assert metaAccess.getArrayIndexScale(JavaKind.Boolean) == 1;
-        assert metaAccess.getArrayIndexScale(JavaKind.Char) == 2;
-        assert metaAccess.getArrayIndexScale(JavaKind.Short) == 2;
-        assert metaAccess.getArrayIndexScale(JavaKind.Int) == 4;
-        assert metaAccess.getArrayIndexScale(JavaKind.Long) == 8;
-        assert metaAccess.getArrayIndexScale(JavaKind.Float) == 4;
-        assert metaAccess.getArrayIndexScale(JavaKind.Double) == 8;
+        assert metaAccess.getArrayIndexScale(JavaKind.Byte) == 1 : "Invariant " + metaAccess.getArrayIndexScale(JavaKind.Byte);
+        assert metaAccess.getArrayIndexScale(JavaKind.Boolean) == 1 : "Invariant " + metaAccess.getArrayIndexScale(JavaKind.Boolean);
+        assert metaAccess.getArrayIndexScale(JavaKind.Char) == 2 : "Invariant " + metaAccess.getArrayIndexScale(JavaKind.Char);
+        assert metaAccess.getArrayIndexScale(JavaKind.Short) == 2 : "Invariant " + metaAccess.getArrayIndexScale(JavaKind.Short);
+        assert metaAccess.getArrayIndexScale(JavaKind.Int) == 4 : "Invariant " + metaAccess.getArrayIndexScale(JavaKind.Int);
+        assert metaAccess.getArrayIndexScale(JavaKind.Long) == 8 : "Invariant " + metaAccess.getArrayIndexScale(JavaKind.Long);
+        assert metaAccess.getArrayIndexScale(JavaKind.Float) == 4 : "Invariant " + metaAccess.getArrayIndexScale(JavaKind.Float);
+        assert metaAccess.getArrayIndexScale(JavaKind.Double) == 8 : "Invariant " + metaAccess.getArrayIndexScale(JavaKind.Double);
         return true;
     }
 

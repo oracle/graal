@@ -31,6 +31,7 @@ import jdk.graal.compiler.asm.amd64.AMD64Address;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.core.common.LIRKind;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
@@ -71,7 +72,7 @@ public enum AMD64Arithmetic {
                 masm.movflt(tmp, asRegister(x));
                 masm.flds(tmp);
             } else {
-                assert opcode == DREM;
+                assert opcode == DREM : opcode;
                 masm.movdbl(tmp, asRegister(y));
                 masm.fldd(tmp);
                 masm.movdbl(tmp, asRegister(x));
@@ -102,7 +103,8 @@ public enum AMD64Arithmetic {
         public void verify() {
             super.verify();
             assert (opcode.name().startsWith("F") && result.getPlatformKind() == AMD64Kind.SINGLE && x.getPlatformKind() == AMD64Kind.SINGLE && y.getPlatformKind() == AMD64Kind.SINGLE) ||
-                            (opcode.name().startsWith("D") && result.getPlatformKind() == AMD64Kind.DOUBLE && x.getPlatformKind() == AMD64Kind.DOUBLE && y.getPlatformKind() == AMD64Kind.DOUBLE);
+                            (opcode.name().startsWith("D") && result.getPlatformKind() == AMD64Kind.DOUBLE && x.getPlatformKind() == AMD64Kind.DOUBLE &&
+                                            y.getPlatformKind() == AMD64Kind.DOUBLE) : Assertions.errorMessage(x, y, result);
         }
     }
 }

@@ -408,7 +408,7 @@ public final class MethodHandleNode extends MacroNode implements Simplifiable {
                         originalIntrinsicMethod == IntrinsicMethod.LINK_TO_STATIC ||
                         originalIntrinsicMethod == IntrinsicMethod.LINK_TO_SPECIAL ||
                         originalIntrinsicMethod == IntrinsicMethod.LINK_TO_VIRTUAL ||
-                        originalIntrinsicMethod == IntrinsicMethod.LINK_TO_INTERFACE;
+                        originalIntrinsicMethod == IntrinsicMethod.LINK_TO_INTERFACE : "Must be one of a specific type but is " + originalIntrinsicMethod;
         IntrinsicMethod targetIntrinsicMethod = methodHandleAccess.lookupMethodHandleIntrinsic(target);
         Signature originalSignature = original.getSignature();
         Signature targetSignature = target.getSignature();

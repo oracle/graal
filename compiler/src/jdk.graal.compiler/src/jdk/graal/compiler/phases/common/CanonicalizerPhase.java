@@ -33,9 +33,10 @@ import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Optional;
 
-import jdk.graal.compiler.phases.BasePhase;
 import org.graalvm.collections.EconomicSet;
+
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
@@ -84,7 +85,7 @@ import jdk.graal.compiler.options.Option;
 import jdk.graal.compiler.options.OptionKey;
 import jdk.graal.compiler.options.OptionType;
 import jdk.graal.compiler.options.OptionValues;
-
+import jdk.graal.compiler.phases.BasePhase;
 import jdk.vm.ci.meta.Assumptions;
 import jdk.vm.ci.meta.Constant;
 
@@ -526,7 +527,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
         if (nodeClass.valueNumberable()) {
             Node newNode = node.graph().findDuplicate(node);
             if (newNode != null) {
-                assert !(node instanceof FixedNode || newNode instanceof FixedNode);
+                assert !(node instanceof FixedNode || newNode instanceof FixedNode) : Assertions.errorMessageContext("node", node, "newNode", newNode);
                 node.replaceAtUsagesAndDelete(newNode);
                 StructuredGraph graph = (StructuredGraph) node.graph();
                 graph.getOptimizationLog().report(CanonicalizerPhase.class, "GlobalValueNumbering", node);
@@ -682,7 +683,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         withException.killExceptionEdge();
                         graph.replaceSplitWithFloating(withException, (FloatingNode) canonical, withException.next());
                     } else {
-                        assert canonical instanceof FixedNode;
+                        assert canonical instanceof FixedNode : Assertions.errorMessage(canonical);
                         if (canonical.predecessor() == null) {
                             assert !canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " shouldn't have successors";
                             // case 5
@@ -702,7 +703,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                     }
 
                 } else {
-                    assert fixed instanceof FixedWithNextNode;
+                    assert fixed instanceof FixedWithNextNode : Assertions.errorMessage(fixed);
                     FixedWithNextNode fixedWithNext = (FixedWithNextNode) fixed;
                     // When removing a fixed node, new canonicalization
                     // opportunities for its successor may arise
@@ -716,7 +717,7 @@ public class CanonicalizerPhase extends BasePhase<CoreProviders> {
                         // case 4
                         graph.replaceFixedWithFloating(fixedWithNext, (FloatingNode) canonical);
                     } else {
-                        assert canonical instanceof FixedNode;
+                        assert canonical instanceof FixedNode : Assertions.errorMessage(canonical);
                         if (canonical.predecessor() == null) {
                             assert !canonical.cfgSuccessors().iterator().hasNext() : "replacement " + canonical + " shouldn't have successors";
                             // case 5

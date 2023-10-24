@@ -24,10 +24,11 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
-import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 import static jdk.graal.compiler.nodes.graphbuilderconf.IntrinsicContext.CompilationContext.INLINE_AFTER_PARSING;
+import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
 
 import jdk.graal.compiler.core.common.CompilationIdentifier;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.hotspot.HotSpotGraphBuilderInstance;
@@ -44,7 +45,6 @@ import jdk.graal.compiler.phases.common.inlining.InliningUtil;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.replacements.GraphKit;
 import jdk.graal.compiler.word.WordTypes;
-
 import jdk.vm.ci.meta.ResolvedJavaMethod;
 
 /**
@@ -82,7 +82,7 @@ public class HotSpotGraphKit extends GraphKit {
      * same manner as for snippets and method substitutions (e.g. intrinsics).
      */
     public void inlineAsIntrinsic(Invoke invoke, String reason, String phase) {
-        assert invoke instanceof Node;
+        assert invoke instanceof Node : Assertions.errorMessage(invoke, reason, phase);
         Node invokeNode = (Node) invoke;
         ResolvedJavaMethod method = invoke.callTarget().targetMethod();
 

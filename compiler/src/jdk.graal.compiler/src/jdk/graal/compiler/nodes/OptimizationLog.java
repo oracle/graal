@@ -156,7 +156,7 @@ public interface OptimizationLog {
 
         @Override
         public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
-            assert logLevel >= MINIMUM_LOG_LEVEL;
+            assert logLevel >= MINIMUM_LOG_LEVEL : logLevel;
         }
     }
 
@@ -245,7 +245,7 @@ public interface OptimizationLog {
          */
         @Override
         public void report(int logLevel, Class<?> optimizationClass, String eventName, Node node) {
-            assert logLevel >= MINIMUM_LOG_LEVEL;
+            assert logLevel >= MINIMUM_LOG_LEVEL : logLevel;
         }
 
         /**

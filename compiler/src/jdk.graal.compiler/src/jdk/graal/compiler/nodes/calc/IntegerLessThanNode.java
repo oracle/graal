@@ -32,6 +32,7 @@ import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.FloatStamp;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
@@ -44,7 +45,6 @@ import jdk.graal.compiler.nodes.NodeView;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.options.OptionValues;
-
 import jdk.vm.ci.code.CodeUtil;
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
@@ -151,7 +151,7 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
             } else if (cst <= -1) {
                 return LogicConstantNode.contradiction();
             } else {
-                assert cst >= 2;
+                assert cst >= 2 : cst;
                 return LogicConstantNode.tautology();
             }
         }
@@ -229,9 +229,8 @@ public final class IntegerLessThanNode extends IntegerLowerThanNode {
             }
 
             if (forX.stamp(view) instanceof IntegerStamp) {
-                assert forY.stamp(view) instanceof IntegerStamp;
                 int bits = ((IntegerStamp) forX.stamp(view)).getBits();
-                assert ((IntegerStamp) forY.stamp(view)).getBits() == bits;
+                assert forY.stamp(view) instanceof IntegerStamp && ((IntegerStamp) forY.stamp(view)).getBits() == bits : Assertions.errorMessageContext("this", this, "forX", forX, "forY", forY);
                 LogicNode logic = canonicalizeRangeFlip(forX, forY, bits, true, view);
                 if (logic != null) {
                     return logic;

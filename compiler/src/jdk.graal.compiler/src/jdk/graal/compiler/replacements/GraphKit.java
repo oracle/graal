@@ -24,9 +24,9 @@
  */
 package jdk.graal.compiler.replacements;
 
+import static jdk.graal.compiler.nodes.CallTargetNode.InvokeKind.Static;
 import static jdk.vm.ci.code.BytecodeFrame.UNKNOWN_BCI;
 import static jdk.vm.ci.services.Services.IS_IN_NATIVE_IMAGE;
-import static jdk.graal.compiler.nodes.CallTargetNode.InvokeKind.Static;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -37,6 +37,7 @@ import jdk.graal.compiler.core.common.CompilationIdentifier;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.StampPair;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -76,7 +77,6 @@ import jdk.graal.compiler.nodes.spi.CoreProvidersDelegate;
 import jdk.graal.compiler.nodes.type.StampTool;
 import jdk.graal.compiler.phases.util.Providers;
 import jdk.graal.compiler.word.WordTypes;
-
 import jdk.vm.ci.code.BytecodeFrame;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.JavaType;
@@ -163,7 +163,8 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
     }
 
     public Stamp wordStamp(ResolvedJavaType type) {
-        assert wordTypes != null && wordTypes.isWord(type);
+        assert wordTypes != null;
+        assert wordTypes.isWord(type) : type;
         return wordTypes.getWordStamp(type);
     }
 
@@ -250,7 +251,7 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
     @SuppressWarnings("try")
     public InvokeNode createInvoke(ResolvedJavaMethod method, InvokeKind invokeKind, FrameStateBuilder frameStateBuilder, int bci, ValueNode... args) {
         try (DebugCloseable context = graph.withNodeSourcePosition(invokePosition(bci))) {
-            assert method.isStatic() == (invokeKind == InvokeKind.Static);
+            assert method.isStatic() == (invokeKind == InvokeKind.Static) : Assertions.errorMessage(method, invokeKind, frameStateBuilder, bci, args);
             Signature signature = method.getSignature();
             JavaType returnType = signature.getReturnType(null);
             assert checkArgs(method, args);
@@ -490,7 +491,7 @@ public abstract class GraphKit extends CoreProvidersDelegate implements GraphBui
     public InvokeWithExceptionNode startInvokeWithException(ResolvedJavaMethod method, InvokeKind invokeKind,
                     FrameStateBuilder frameStateBuilder, int invokeBci, ValueNode... args) {
 
-        assert method.isStatic() == (invokeKind == InvokeKind.Static);
+        assert method.isStatic() == (invokeKind == InvokeKind.Static) : Assertions.errorMessage(method, invokeKind, frameStateBuilder, invokeBci, args);
         Signature signature = method.getSignature();
         JavaType returnType = signature.getReturnType(null);
         assert checkArgs(method, args);

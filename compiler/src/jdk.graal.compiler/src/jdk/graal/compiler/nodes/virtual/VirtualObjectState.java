@@ -26,6 +26,7 @@ package jdk.graal.compiler.nodes.virtual;
 
 import java.util.List;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.Node;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.graph.NodeInputList;
@@ -47,13 +48,13 @@ public final class VirtualObjectState extends EscapeObjectState implements Node.
 
     public VirtualObjectState(VirtualObjectNode object, ValueNode[] values) {
         super(TYPE, object);
-        assert object.entryCount() == values.length;
+        assert object.entryCount() == values.length : Assertions.errorMessageContext("object", object, "values", values);
         this.values = new NodeInputList<>(this, values);
     }
 
     public VirtualObjectState(VirtualObjectNode object, List<ValueNode> values) {
         super(TYPE, object);
-        assert object.entryCount() == values.size();
+        assert object.entryCount() == values.size() : Assertions.errorMessageContext("object", object, "values", values);
         this.values = new NodeInputList<>(this, values);
     }
 

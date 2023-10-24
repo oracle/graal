@@ -37,8 +37,8 @@ import java.util.function.DoubleBinaryOperator;
 import jdk.graal.compiler.core.common.LIRKind;
 import jdk.graal.compiler.core.common.calc.ReinterpretUtils;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
@@ -59,8 +59,9 @@ public class FloatStamp extends PrimitiveStamp {
 
     public FloatStamp(int bits, double lowerBound, double upperBound, boolean nonNaN) {
         super(bits, OPS);
-        assert bits == 64 || (bits == 32 && (Double.isNaN(lowerBound) || (float) lowerBound == lowerBound) && (Double.isNaN(upperBound) || (float) upperBound == upperBound));
-        assert Double.isNaN(lowerBound) == Double.isNaN(upperBound);
+        assert bits == 64 || (bits == 32 && (Double.isNaN(lowerBound) || (float) lowerBound == lowerBound) && (Double.isNaN(upperBound) || (float) upperBound == upperBound)) : Assertions.errorMessage(
+                        bits, lowerBound, upperBound, nonNaN);
+        assert Double.isNaN(lowerBound) == Double.isNaN(upperBound) : Assertions.errorMessage(lowerBound, upperBound);
         this.lowerBound = lowerBound;
         this.upperBound = upperBound;
         this.nonNaN = nonNaN;
@@ -79,7 +80,7 @@ public class FloatStamp extends PrimitiveStamp {
     @Override
     public Stamp constant(Constant c, MetaAccessProvider meta) {
         JavaConstant jc = (JavaConstant) c;
-        assert jc.getJavaKind().isNumericFloat() && jc.getJavaKind().getBitCount() == getBits();
+        assert jc.getJavaKind().isNumericFloat() && jc.getJavaKind().getBitCount() == getBits() : Assertions.errorMessage(jc, getBits());
         return StampFactory.forConstant(jc);
     }
 
@@ -218,7 +219,7 @@ public class FloatStamp extends PrimitiveStamp {
             return this;
         }
         FloatStamp other = (FloatStamp) otherStamp;
-        assert getBits() == other.getBits();
+        assert getBits() == other.getBits() : "Bits must match " + Assertions.errorMessageContext("thisBits", getBits(), "otherBits", other.getBits(), "other", other);
         double meetUpperBound = meetBounds(upperBound, other.upperBound, Math::max);
         double meetLowerBound = meetBounds(lowerBound, other.lowerBound, Math::min);
         boolean meetNonNaN = nonNaN && other.nonNaN;
@@ -237,7 +238,7 @@ public class FloatStamp extends PrimitiveStamp {
             return this;
         }
         FloatStamp other = (FloatStamp) otherStamp;
-        assert getBits() == other.getBits();
+        assert getBits() == other.getBits() : "Bits must match " + Assertions.errorMessageContext("thisBits", getBits(), "otherBits", other.getBits(), "other", other);
         double joinUpperBound = Math.min(upperBound, other.upperBound);
         double joinLowerBound = Math.max(lowerBound, other.lowerBound);
         boolean joinNonNaN = nonNaN || other.nonNaN;
@@ -422,7 +423,7 @@ public class FloatStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant const1, Constant const2) {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
-                            assert a.getJavaKind() == b.getJavaKind();
+                            assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
                             switch (a.getJavaKind()) {
                                 case Float:
                                     return JavaConstant.forFloat(a.asFloat() + b.asFloat());
@@ -470,7 +471,7 @@ public class FloatStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant const1, Constant const2) {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
-                            assert a.getJavaKind() == b.getJavaKind();
+                            assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
                             switch (a.getJavaKind()) {
                                 case Float:
                                     return JavaConstant.forFloat(a.asFloat() - b.asFloat());
@@ -518,7 +519,7 @@ public class FloatStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant const1, Constant const2) {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
-                            assert a.getJavaKind() == b.getJavaKind();
+                            assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
                             switch (a.getJavaKind()) {
                                 case Float:
                                     return JavaConstant.forFloat(a.asFloat() * b.asFloat());
@@ -570,7 +571,7 @@ public class FloatStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant const1, Constant const2) {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
-                            assert a.getJavaKind() == b.getJavaKind();
+                            assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
                             switch (a.getJavaKind()) {
                                 case Float:
                                     float floatDivisor = b.asFloat();
@@ -620,7 +621,7 @@ public class FloatStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant const1, Constant const2) {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
-                            assert a.getJavaKind() == b.getJavaKind();
+                            assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
                             switch (a.getJavaKind()) {
                                 case Float:
                                     return JavaConstant.forFloat(a.asFloat() % b.asFloat());
@@ -692,7 +693,7 @@ public class FloatStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant const1, Constant const2) {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
-                            assert a.getJavaKind() == b.getJavaKind();
+                            assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
                             switch (a.getJavaKind()) {
                                 case Float:
                                     int fa = Float.floatToRawIntBits(a.asFloat());
@@ -744,13 +745,13 @@ public class FloatStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant const1, Constant const2) {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
-                            assert a.getJavaKind() == b.getJavaKind();
+                            assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
                             switch (a.getJavaKind()) {
                                 case Float:
                                     int fa = Float.floatToRawIntBits(a.asFloat());
                                     int fb = Float.floatToRawIntBits(b.asFloat());
                                     float floatOr = Float.intBitsToFloat(fa | fb);
-                                    assert (fa | fb) == Float.floatToRawIntBits((floatOr));
+                                    assert (fa | fb) == Float.floatToRawIntBits((floatOr)) : Assertions.errorMessageContext("a", a, "b", b);
                                     return JavaConstant.forFloat(floatOr);
                                 case Double:
                                     long da = Double.doubleToRawLongBits(a.asDouble());
@@ -798,7 +799,7 @@ public class FloatStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant const1, Constant const2) {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
-                            assert a.getJavaKind() == b.getJavaKind();
+                            assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
                             switch (a.getJavaKind()) {
                                 case Float:
                                     int fa = Float.floatToRawIntBits(a.asFloat());
@@ -915,7 +916,7 @@ public class FloatStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant const1, Constant const2) {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
-                            assert a.getJavaKind() == b.getJavaKind();
+                            assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
                             switch (a.getJavaKind()) {
                                 case Float:
                                     return JavaConstant.forFloat(Math.max(a.asFloat(), b.asFloat()));
@@ -964,7 +965,7 @@ public class FloatStamp extends PrimitiveStamp {
                         public Constant foldConstant(Constant const1, Constant const2) {
                             PrimitiveConstant a = (PrimitiveConstant) const1;
                             PrimitiveConstant b = (PrimitiveConstant) const2;
-                            assert a.getJavaKind() == b.getJavaKind();
+                            assert a.getJavaKind() == b.getJavaKind() : "Must have same kind " + Assertions.errorMessageContext("a", a, "b", b);
                             switch (a.getJavaKind()) {
                                 case Float:
                                     return JavaConstant.forFloat(Math.min(a.asFloat(), b.asFloat()));
@@ -1045,7 +1046,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 return StampFactory.empty(JavaKind.Int);
                             }
                             FloatStamp floatStamp = (FloatStamp) stamp;
-                            assert floatStamp.getBits() == 32;
+                            assert floatStamp.getBits() == 32 : floatStamp;
                             boolean mustHaveZero = !floatStamp.isNonNaN();
                             int lowerBound = (int) floatStamp.lowerBound();
                             int upperBound = (int) floatStamp.upperBound();
@@ -1074,7 +1075,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 return StampFactory.empty(JavaKind.Long);
                             }
                             FloatStamp floatStamp = (FloatStamp) stamp;
-                            assert floatStamp.getBits() == 32;
+                            assert floatStamp.getBits() == 32 : floatStamp;
                             boolean mustHaveZero = !floatStamp.isNonNaN();
                             long lowerBound = (long) floatStamp.lowerBound();
                             long upperBound = (long) floatStamp.upperBound();
@@ -1103,7 +1104,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 return StampFactory.empty(JavaKind.Int);
                             }
                             FloatStamp floatStamp = (FloatStamp) stamp;
-                            assert floatStamp.getBits() == 64;
+                            assert floatStamp.getBits() == 64 : floatStamp;
                             boolean mustHaveZero = !floatStamp.isNonNaN();
                             int lowerBound = (int) floatStamp.lowerBound();
                             int upperBound = (int) floatStamp.upperBound();
@@ -1132,7 +1133,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 return StampFactory.empty(JavaKind.Long);
                             }
                             FloatStamp floatStamp = (FloatStamp) stamp;
-                            assert floatStamp.getBits() == 64;
+                            assert floatStamp.getBits() == 64 : floatStamp;
                             boolean mustHaveZero = !floatStamp.isNonNaN();
                             long lowerBound = (long) floatStamp.lowerBound();
                             long upperBound = (long) floatStamp.upperBound();
@@ -1161,7 +1162,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 return StampFactory.empty(JavaKind.Double);
                             }
                             FloatStamp floatStamp = (FloatStamp) stamp;
-                            assert floatStamp.getBits() == 32;
+                            assert floatStamp.getBits() == 32 : floatStamp;
                             return StampFactory.forFloat(JavaKind.Double, floatStamp.lowerBound(), floatStamp.upperBound(), floatStamp.isNonNaN());
                         }
                     },
@@ -1180,7 +1181,7 @@ public class FloatStamp extends PrimitiveStamp {
                                 return StampFactory.empty(JavaKind.Float);
                             }
                             FloatStamp floatStamp = (FloatStamp) stamp;
-                            assert floatStamp.getBits() == 64;
+                            assert floatStamp.getBits() == 64 : Assertions.errorMessage(floatStamp);
                             return StampFactory.forFloat(JavaKind.Float, (float) floatStamp.lowerBound(), (float) floatStamp.upperBound(), floatStamp.isNonNaN());
                         }
                     });

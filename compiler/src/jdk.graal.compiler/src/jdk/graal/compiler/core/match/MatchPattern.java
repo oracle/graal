@@ -25,6 +25,7 @@
 package jdk.graal.compiler.core.match;
 
 import jdk.graal.compiler.core.common.memory.BarrierType;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Node;
@@ -195,7 +196,7 @@ public class MatchPattern {
 
     private MatchPattern(Class<? extends Node> nodeClass, String name, boolean singleUser, boolean consumable,
                     boolean ignoresSideEffects, MatchPattern[] patterns, Position[] inputs) {
-        assert inputs == null || inputs.length == patterns.length;
+        assert inputs == null || inputs.length == patterns.length : Assertions.errorMessage(inputs, patterns);
         this.nodeClass = nodeClass;
         this.name = name;
         this.singleUser = singleUser;
@@ -332,7 +333,7 @@ public class MatchPattern {
                     }
                 }
             }
-            assert valueUsage == 1;
+            assert valueUsage == 1 : Assertions.errorMessage(node, valueUsage);
             return true;
         }
         return false;

@@ -24,14 +24,6 @@
  */
 package jdk.graal.compiler.lir.aarch64;
 
-import static jdk.vm.ci.aarch64.AArch64.CPU;
-import static jdk.vm.ci.aarch64.AArch64.SIMD;
-import static jdk.vm.ci.aarch64.AArch64.sp;
-import static jdk.vm.ci.aarch64.AArch64.zr;
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.asStackSlot;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.COMPOSITE;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.CONST;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.HINT;
@@ -41,6 +33,14 @@ import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.STACK;
 import static jdk.graal.compiler.lir.LIRInstruction.OperandFlag.UNINITIALIZED;
 import static jdk.graal.compiler.lir.LIRValueUtil.asJavaConstant;
 import static jdk.graal.compiler.lir.LIRValueUtil.isJavaConstant;
+import static jdk.vm.ci.aarch64.AArch64.CPU;
+import static jdk.vm.ci.aarch64.AArch64.SIMD;
+import static jdk.vm.ci.aarch64.AArch64.sp;
+import static jdk.vm.ci.aarch64.AArch64.zr;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.asStackSlot;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.function.Function;
 
@@ -54,8 +54,8 @@ import jdk.graal.compiler.core.common.CompressEncoding;
 import jdk.graal.compiler.core.common.memory.MemoryExtendKind;
 import jdk.graal.compiler.core.common.spi.LIRKindTool;
 import jdk.graal.compiler.core.common.type.DataPointerConstant;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstructionClass;
 import jdk.graal.compiler.lir.Opcode;
@@ -64,7 +64,7 @@ import jdk.graal.compiler.lir.StandardOp.LoadConstantOp;
 import jdk.graal.compiler.lir.StandardOp.NullCheck;
 import jdk.graal.compiler.lir.StandardOp.ValueMoveOp;
 import jdk.graal.compiler.lir.VirtualStackSlot;
-
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.vm.ci.aarch64.AArch64Kind;
 import jdk.vm.ci.code.MemoryBarriers;
 import jdk.vm.ci.code.Register;
@@ -126,7 +126,8 @@ public class AArch64Move {
             this.moveKind = moveKind;
             int resultSize = result.getPlatformKind().getSizeInBytes();
             int inputSize = input.getPlatformKind().getSizeInBytes();
-            assert resultSize == moveKind.getSizeInBytes() && resultSize <= inputSize;
+            assert resultSize == moveKind.getSizeInBytes() : Assertions.errorMessageContext("resultSize", resultSize, "moveKind", moveKind);
+            assert resultSize <= inputSize : Assertions.errorMessageContext("resultSize", resultSize, "inputSize", inputSize);
             assert !(isStackSlot(result) && isStackSlot(input));
         }
 
@@ -193,7 +194,7 @@ public class AArch64Move {
 
         public StackLoadAddressOp(AllocatableValue result, AllocatableValue slot) {
             super(TYPE);
-            assert slot instanceof VirtualStackSlot || slot instanceof StackSlot;
+            assert slot instanceof VirtualStackSlot || slot instanceof StackSlot : slot;
             this.result = result;
             this.slot = slot;
         }
@@ -218,7 +219,10 @@ public class AArch64Move {
 
         @Override
         public void emitCode(CompilationResultBuilder crb, AArch64MacroAssembler masm) {
-            assert barriers >= MemoryBarriers.LOAD_LOAD && barriers <= (MemoryBarriers.STORE_STORE | MemoryBarriers.STORE_LOAD | MemoryBarriers.LOAD_STORE | MemoryBarriers.LOAD_LOAD);
+            assert barriers >= MemoryBarriers.LOAD_LOAD &&
+                            barriers <= (MemoryBarriers.STORE_STORE | MemoryBarriers.STORE_LOAD | MemoryBarriers.LOAD_STORE | MemoryBarriers.LOAD_LOAD) : Assertions.errorMessageContext(
+                                            "barriers",
+                                            barriers);
             switch (barriers) {
                 case MemoryBarriers.STORE_STORE:
                     masm.dmb(AArch64MacroAssembler.BarrierKind.STORE_STORE);
@@ -245,7 +249,7 @@ public class AArch64Move {
             super(c);
 
             int size = address.getBitMemoryTransferSize();
-            assert size == AArch64Address.ANY_SIZE || size == accessKind.getSizeInBytes() * Byte.SIZE;
+            assert size == AArch64Address.ANY_SIZE || size == accessKind.getSizeInBytes() * Byte.SIZE : size + " " + accessKind;
 
             this.accessKind = accessKind;
             this.addressValue = address;
@@ -337,7 +341,7 @@ public class AArch64Move {
             } else {
                 assert accessKind.isInteger();
                 dstBitSize = extend.getExtendedBitSize();
-                assert dstBitSize >= srcBitSize;
+                assert dstBitSize >= srcBitSize : Assertions.errorMessageContext("dstBitSize", dstBitSize, "srcBitSize", srcBitSize);
             }
             int memPosition = masm.position();
             boolean tryMerge = mergingAllowed(crb, memPosition);
@@ -366,7 +370,7 @@ public class AArch64Move {
                 }
             } else {
                 // floating point or vector access
-                assert srcBitSize == result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+                assert srcBitSize == result.getPlatformKind().getSizeInBytes() * Byte.SIZE : Assertions.errorMessageContext("srcBitSize", srcBitSize, "result", result);
                 masm.fldr(srcBitSize, dst, address, tryMerge);
             }
             return memPosition;
@@ -386,7 +390,7 @@ public class AArch64Move {
             if (extend.isExtended()) {
                 assert accessKind.isInteger();
                 assert extend.isZeroExtend();
-                assert extend.getExtendedBitSize() >= srcBitSize;
+                assert extend.getExtendedBitSize() >= srcBitSize : Assertions.errorMessageContext("extend", extend, "srcBitSize", srcBitSize);
             }
 
             Register dst = asRegister(result);
@@ -406,7 +410,7 @@ public class AArch64Move {
                     masm.ldar(srcBitSize, dst, addrReg);
                 } else {
                     // floating point access
-                    assert srcBitSize == result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+                    assert srcBitSize == result.getPlatformKind().getSizeInBytes() * Byte.SIZE : Assertions.errorMessage(srcBitSize, result);
                     try (ScratchRegister scratch2 = masm.getScratchRegister()) {
                         Register temp = scratch2.getRegister();
                         masm.ldar(srcBitSize, temp, addrReg);
@@ -427,7 +431,7 @@ public class AArch64Move {
 
         public StoreZeroOp(AArch64Kind accessKind, AArch64AddressValue address, LIRFrameState state) {
             super(TYPE, accessKind, address, state);
-            assert accessKind.getSizeInBytes() <= Long.BYTES;
+            assert accessKind.getSizeInBytes() <= Long.BYTES : accessKind;
         }
 
         @Override
@@ -623,11 +627,11 @@ public class AArch64Move {
             return;
         }
         final int size = moveKind.getSizeInBytes() * Byte.SIZE;
-        assert size == 32 || size == 64 || size == 128;
+        assert size == 32 || size == 64 || size == 128 : size;
         if (result.getRegisterCategory().equals(CPU) && input.getRegisterCategory().equals(CPU)) {
             masm.mov(size, result, input);
         } else if (size == 128) {
-            assert result.getRegisterCategory().equals(SIMD) && input.getRegisterCategory().equals(SIMD);
+            assert result.getRegisterCategory().equals(SIMD) && input.getRegisterCategory().equals(SIMD) : Assertions.errorMessageContext("result", result, "input", input);
             masm.neon.moveVV(AArch64ASIMDAssembler.ASIMDSize.FullReg, result, input);
         } else {
             masm.fmov(size, result, input);
@@ -663,7 +667,7 @@ public class AArch64Move {
 
     static void const2reg(AArch64Kind moveKind, CompilationResultBuilder crb, AArch64MacroAssembler masm, Register result, JavaConstant input) {
         JavaKind stackKind = input.getJavaKind().getStackKind();
-        assert stackKind.isObject() || moveKind.getSizeInBytes() <= stackKind.getByteCount();
+        assert stackKind.isObject() || moveKind.getSizeInBytes() <= stackKind.getByteCount() : Assertions.errorMessageContext("stackKind", stackKind, "moveKind", moveKind);
         switch (stackKind) {
             case Int:
                 masm.mov(result, input.asInt());
@@ -740,13 +744,13 @@ public class AArch64Move {
     private static int determineStackSlotLoadSize(AArch64Kind originalLoadKind, StackSlot slot, Register targetReg) {
         int slotBitSize = slot.getPlatformKind().getSizeInBytes() * Byte.SIZE;
         int accessBitSize = originalLoadKind.getSizeInBytes() * Byte.SIZE;
-        assert accessBitSize <= slotBitSize;
+        assert accessBitSize <= slotBitSize : Assertions.errorMessageContext("accessBitSize", accessBitSize, "slotBitSize", slotBitSize);
         // maximum load size of GP regs is 64 bits
-        assert targetReg.getRegisterCategory().equals(SIMD) || accessBitSize <= Long.SIZE;
+        assert targetReg.getRegisterCategory().equals(SIMD) || accessBitSize <= Long.SIZE : Assertions.errorMessageContext("targetReg", targetReg, "accessBitSize", accessBitSize);
         if (accessBitSize == slotBitSize || targetReg.getRegisterCategory().equals(SIMD)) {
             return slotBitSize;
         } else {
-            assert targetReg.getRegisterCategory().equals(CPU);
+            assert targetReg.getRegisterCategory().equals(CPU) : Assertions.errorMessageContext("targetReg", targetReg);
             // maximum load size of GP regs is 64 bits
             return Integer.min(slotBitSize, Long.SIZE);
         }
@@ -771,9 +775,9 @@ public class AArch64Move {
         int displacement = crb.frameMap.offsetForStackSlot(slot);
         // Ensure memory access does not exceed the stack slot size.
         if (isLoad) {
-            assert size <= slot.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            assert size <= slot.getPlatformKind().getSizeInBytes() * Byte.SIZE : Assertions.errorMessageContext("size", size, "slot", slot);
         } else {
-            assert size == slot.getPlatformKind().getSizeInBytes() * Byte.SIZE;
+            assert size == slot.getPlatformKind().getSizeInBytes() * Byte.SIZE : Assertions.errorMessageContext("size", size, "slot", slot);
         }
         return masm.makeAddress(size, sp, displacement, scratchReg);
     }
@@ -921,7 +925,7 @@ public class AArch64Move {
             this.input = input;
             int inputSize = input.getPlatformKind().getSizeInBytes() * Byte.SIZE;
             int resultSize = result.getPlatformKind().getSizeInBytes() * Byte.SIZE;
-            assert inputSize == resultSize && resultSize == 64;
+            assert inputSize == resultSize && resultSize == 64 : Assertions.errorMessageContext("inputSize", inputSize, "resultSize", resultSize, "result", result, "input", input);
         }
 
         @Override

@@ -89,7 +89,8 @@ public final class OptionDescriptor {
             result = new OptionDescriptor(name, optionType, optionValueType, help, extraHelpList, declaringClass, fieldName, option, stability, deprecated, deprecationMessage);
             option.setDescriptor(result);
         }
-        assert result.name.equals(name) && result.optionValueType == optionValueType && result.declaringClass == declaringClass && result.fieldName.equals(fieldName) && result.optionKey == option;
+        assert result.name.equals(name) && result.optionValueType == optionValueType && result.declaringClass == declaringClass && result.fieldName.equals(fieldName) &&
+                        result.optionKey == option : result + " must match with args";
         return result;
     }
 

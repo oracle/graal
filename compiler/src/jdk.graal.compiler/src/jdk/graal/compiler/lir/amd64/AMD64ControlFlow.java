@@ -24,12 +24,12 @@
  */
 package jdk.graal.compiler.lir.amd64;
 
-import static jdk.vm.ci.code.ValueUtil.asRegister;
-import static jdk.vm.ci.code.ValueUtil.isRegister;
-import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.DWORD;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.QWORD;
 import static jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize.WORD;
+import static jdk.vm.ci.code.ValueUtil.asRegister;
+import static jdk.vm.ci.code.ValueUtil.isRegister;
+import static jdk.vm.ci.code.ValueUtil.isStackSlot;
 
 import java.util.Arrays;
 import java.util.function.IntConsumer;
@@ -38,14 +38,15 @@ import java.util.stream.Stream;
 
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.asm.amd64.AMD64Address;
-import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.asm.amd64.AMD64Assembler.ConditionFlag;
 import jdk.graal.compiler.asm.amd64.AMD64BaseAssembler.OperandSize;
 import jdk.graal.compiler.asm.amd64.AMD64MacroAssembler;
 import jdk.graal.compiler.code.CompilationResult.JumpTable;
 import jdk.graal.compiler.code.CompilationResult.JumpTable.EntryFormat;
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.calc.Condition;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.LIRFrameState;
 import jdk.graal.compiler.lir.LIRInstruction;
@@ -56,7 +57,6 @@ import jdk.graal.compiler.lir.StandardOp;
 import jdk.graal.compiler.lir.SwitchStrategy;
 import jdk.graal.compiler.lir.Variable;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
-
 import jdk.vm.ci.amd64.AMD64;
 import jdk.vm.ci.amd64.AMD64Kind;
 import jdk.vm.ci.code.Register;
@@ -179,7 +179,7 @@ public class AMD64ControlFlow {
         public TestBranchOp(OperandSize size, AllocatableValue x, Value y, LIRFrameState state, Condition cond, LabelRef trueDestination, LabelRef falseDestination,
                         double trueDestinationProbability) {
             super(TYPE, intCond(cond), trueDestination, falseDestination, trueDestinationProbability);
-            assert size == WORD || size == DWORD || size == QWORD;
+            assert size == WORD || size == DWORD || size == QWORD : size;
             this.size = size;
 
             this.x = x;
@@ -257,10 +257,10 @@ public class AMD64ControlFlow {
 
         public TestConstBranchOp(OperandSize size, Value x, int y, LIRFrameState state, Condition cond, LabelRef trueDestination, LabelRef falseDestination, double trueDestinationProbability) {
             super(TYPE, intCond(cond), trueDestination, falseDestination, trueDestinationProbability);
-            assert size == DWORD || size == QWORD;
+            assert size == DWORD || size == QWORD : size;
             this.size = size;
 
-            assert x.getPlatformKind().getVectorLength() == 1;
+            assert x.getPlatformKind().getVectorLength() == 1 : Assertions.errorMessage(x);
 
             this.x = x;
             this.y = y;
@@ -585,8 +585,8 @@ public class AMD64ControlFlow {
             this.defaultTarget = defaultTarget;
             this.key = key;
             this.scratch = scratch;
-            assert keyConstants.length == keyTargets.length;
-            assert keyConstants.length == strategy.keyProbabilities.length;
+            assert keyConstants.length == keyTargets.length : Assertions.errorMessage(keyConstants, keyTargets);
+            assert keyConstants.length == strategy.keyProbabilities.length : Assertions.errorMessage(keyConstants, strategy);
         }
 
         @Override

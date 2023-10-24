@@ -29,6 +29,7 @@ import static jdk.graal.compiler.nodeinfo.NodeSize.SIZE_1;
 
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
 import jdk.graal.compiler.lir.gen.ArithmeticLIRGeneratorTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
@@ -41,7 +42,6 @@ import jdk.graal.compiler.nodes.spi.CanonicalizerTool;
 import jdk.graal.compiler.nodes.spi.Lowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
 import jdk.graal.compiler.nodes.type.StampTool;
-
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 
@@ -54,7 +54,7 @@ public final class CountTrailingZerosNode extends UnaryNode implements Arithmeti
 
     protected CountTrailingZerosNode(ValueNode value) {
         super(TYPE, computeStamp(value.stamp(NodeView.DEFAULT), value), value);
-        assert value.getStackKind() == JavaKind.Int || value.getStackKind() == JavaKind.Long;
+        assert value.getStackKind() == JavaKind.Int || value.getStackKind() == JavaKind.Long : Assertions.errorMessage(value);
     }
 
     public static ValueNode create(ValueNode value) {

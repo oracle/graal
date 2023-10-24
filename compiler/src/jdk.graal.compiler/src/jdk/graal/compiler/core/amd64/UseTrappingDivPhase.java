@@ -26,9 +26,11 @@ package jdk.graal.compiler.core.amd64;
 
 import java.util.Optional;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.collections.EconomicMap;
+
 import jdk.graal.compiler.core.common.GraalOptions;
+import jdk.graal.compiler.debug.Assertions;
+import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.AbstractDeoptimizeNode;
 import jdk.graal.compiler.nodes.BeginNode;
@@ -56,7 +58,6 @@ import jdk.graal.compiler.phases.common.UseTrappingOperationPhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase;
 import jdk.graal.compiler.phases.schedule.SchedulePhase.SchedulingStrategy;
 import jdk.graal.compiler.phases.tiers.LowTierContext;
-
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -117,7 +118,7 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
                             HIRBlock ifBlock = sched.getNodeToBlockMap().get(ifNode);
                             HIRBlock dividendBlock = sched.getNodeToBlockMap().get(dividend);
                             if (dividendBlock == null) {
-                                assert dividend instanceof PhiNode;
+                                assert dividend instanceof PhiNode : Assertions.errorMessage(dividend);
                                 dividendBlock = sched.getNodeToBlockMap().get(((PhiNode) dividend).merge());
                             }
                             if (dividendBlock.dominates(ifBlock)) {
@@ -167,7 +168,7 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
 
         @Override
         public DeoptimizingFixedWithNextNode createImplicitNode(StructuredGraph graph, LogicNode condition, JavaConstant deoptReasonAndAction, JavaConstant deoptSpeculation) {
-            assert condition instanceof IntegerEqualsNode;
+            assert condition instanceof IntegerEqualsNode : condition;
             IntegerEqualsNode ieq = (IntegerEqualsNode) condition;
             IntegerDivRemNode divRem = trappingReplaceTargets.get(ieq);
             ValueNode dividend = divRem.getX();
@@ -192,7 +193,7 @@ public class UseTrappingDivPhase extends BasePhase<LowTierContext> {
 
         @Override
         public void finalAction(DeoptimizingFixedWithNextNode trappingVersionNode, LogicNode condition) {
-            assert trappingVersionNode instanceof IntegerDivRemNode;
+            assert trappingVersionNode instanceof IntegerDivRemNode : trappingVersionNode;
             IntegerDivRemNode fixedNonTrappingVersion = trappingReplaceTargets.get((IntegerEqualsNode) condition);
             fixedNonTrappingVersion.replaceAtUsages(trappingVersionNode);
             GraphUtil.unlinkFixedNode(fixedNonTrappingVersion);

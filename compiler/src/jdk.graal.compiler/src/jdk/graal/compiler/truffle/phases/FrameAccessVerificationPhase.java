@@ -34,13 +34,12 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-import jdk.graal.compiler.truffle.nodes.frame.NewFrameNode;
-import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameAccessFlags;
-import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameAccessType;
-import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameAccessVerificationNode;
-import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameSetNode;
 import org.graalvm.collections.EconomicMap;
+
+import com.oracle.truffle.compiler.TruffleCompilable;
+
 import jdk.graal.compiler.core.common.util.CompilationAlarm;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.graph.Graph;
 import jdk.graal.compiler.graph.Node;
@@ -63,9 +62,11 @@ import jdk.graal.compiler.phases.graph.ReentrantNodeIterator.NodeIteratorClosure
 import jdk.graal.compiler.truffle.PerformanceInformationHandler;
 import jdk.graal.compiler.truffle.TruffleCompilerOptions.PerformanceWarningKind;
 import jdk.graal.compiler.truffle.TruffleTierContext;
-
-import com.oracle.truffle.compiler.TruffleCompilable;
-
+import jdk.graal.compiler.truffle.nodes.frame.NewFrameNode;
+import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameAccessFlags;
+import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameAccessType;
+import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameAccessVerificationNode;
+import jdk.graal.compiler.truffle.nodes.frame.VirtualFrameSetNode;
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog.Speculation;
@@ -123,12 +124,12 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
     private static final int MODE_VALUE = 0x10;
 
     private static byte cleared(byte tag) {
-        assert tag <= TYPE_MASK;
+        assert tag <= TYPE_MASK : tag;
         return (byte) ((tag & TYPE_MASK) | MODE_CLEARED);
     }
 
     private static byte withValue(byte tag) {
-        assert tag <= TYPE_MASK;
+        assert tag <= TYPE_MASK : tag;
         return (byte) ((tag & TYPE_MASK) | MODE_VALUE);
     }
 
@@ -402,7 +403,7 @@ public final class FrameAccessVerificationPhase extends BasePhase<TruffleTierCon
                 info = ReentrantNodeIterator.processLoop(this, loop, initialState.clone());
                 ArrayList<State> states = new ArrayList<>();
                 states.add(initialState);
-                assert loop.forwardEndCount() == 1;
+                assert loop.forwardEndCount() == 1 : Assertions.errorMessageContext("loop", loop);
                 for (int i = 1; i < loop.phiPredecessorCount(); i++) {
                     states.add(info.endStates.get((LoopEndNode) loop.phiPredecessorAt(i)));
                 }

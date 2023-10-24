@@ -30,6 +30,7 @@ import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.util.UnsignedLong;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugCloseable;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -52,10 +53,10 @@ import jdk.graal.compiler.nodes.calc.NegateNode;
 import jdk.graal.compiler.nodes.cfg.ControlFlowGraph;
 import jdk.graal.compiler.nodes.cfg.HIRBlock;
 import jdk.graal.compiler.nodes.extended.GuardingNode;
+import jdk.graal.compiler.nodes.loop.InductionVariable.Direction;
 import jdk.graal.compiler.nodes.util.IntegerHelper;
 import jdk.graal.compiler.nodes.util.SignedIntegerHelper;
 import jdk.graal.compiler.nodes.util.UnsignedIntegerHelper;
-
 import jdk.vm.ci.meta.DeoptimizationAction;
 import jdk.vm.ci.meta.DeoptimizationReason;
 import jdk.vm.ci.meta.SpeculationLog;
@@ -349,7 +350,7 @@ public class CountedLoopInfo {
             max = getTripCountLimit();
             min = getBodyIV().initNode();
         } else {
-            assert getBodyIV().direction() == InductionVariable.Direction.Down;
+            assert getBodyIV().direction() == Direction.Down : Assertions.errorMessage(getBodyIV());
             max = getBodyIV().initNode();
             min = getTripCountLimit();
         }
@@ -399,7 +400,7 @@ public class CountedLoopInfo {
             range = endValue - getBodyIV().constantInit();
             absStride = getBodyIV().constantStride();
         } else {
-            assert getBodyIV().direction() == InductionVariable.Direction.Down;
+            assert getBodyIV().direction() == Direction.Down : Assertions.errorMessage(getBodyIV());
             if (helper.compare(initValue, endValue) < 0) {
                 return 0;
             }
@@ -485,7 +486,7 @@ public class CountedLoopInfo {
         if (getLimitTest().trueSuccessor() == getBody()) {
             return getLimitTest().falseSuccessor();
         } else {
-            assert getLimitTest().falseSuccessor() == getBody();
+            assert getLimitTest().falseSuccessor() == getBody() : Assertions.errorMessage(this, getLimitTest(), getLimitTest().falseSuccessor(), getBody());
             return getLimitTest().trueSuccessor();
         }
     }
@@ -618,7 +619,7 @@ public class CountedLoopInfo {
             }
             cond = graph.addOrUniqueWithInputs(integerHelper.createCompareNode(v1, getTripCountLimit(), NodeView.DEFAULT));
         } else {
-            assert getBodyIV().direction() == InductionVariable.Direction.Down;
+            assert getBodyIV().direction() == Direction.Down : Assertions.errorMessage(getBodyIV());
             ValueNode v1 = BinaryArithmeticNode.add(ConstantNode.forIntegerStamp(stamp, integerHelper.minValue()), BinaryArithmeticNode.sub(one, getBodyIV().strideNode()));
             if (isLimitIncluded) {
                 v1 = BinaryArithmeticNode.add(v1, one);

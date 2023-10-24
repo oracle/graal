@@ -34,17 +34,12 @@ import java.util.BitSet;
 import java.util.Iterator;
 import java.util.LinkedList;
 
-import jdk.graal.compiler.nodes.spi.CoreProviders;
-import jdk.graal.compiler.phases.common.inlining.info.AssumptionInlineInfo;
-import jdk.graal.compiler.phases.common.inlining.info.ExactInlineInfo;
-import jdk.graal.compiler.phases.common.inlining.info.InlineInfo;
-import jdk.graal.compiler.phases.common.inlining.info.MultiTypeGuardInlineInfo;
-import jdk.graal.compiler.phases.common.inlining.info.TypeGuardInlineInfo;
-import jdk.graal.compiler.phases.common.inlining.info.elem.Inlineable;
-import jdk.graal.compiler.phases.common.inlining.policy.InliningPolicy;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
+import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.type.ObjectStamp;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.CounterKey;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
@@ -59,15 +54,22 @@ import jdk.graal.compiler.nodes.StructuredGraph;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.java.AbstractNewObjectNode;
 import jdk.graal.compiler.nodes.java.MethodCallTargetNode;
+import jdk.graal.compiler.nodes.spi.CoreProviders;
 import jdk.graal.compiler.nodes.virtual.AllocatedObjectNode;
 import jdk.graal.compiler.nodes.virtual.VirtualObjectNode;
 import jdk.graal.compiler.options.OptionValues;
 import jdk.graal.compiler.phases.OptimisticOptimizations;
 import jdk.graal.compiler.phases.common.CanonicalizerPhase;
 import jdk.graal.compiler.phases.common.inlining.InliningUtil;
+import jdk.graal.compiler.phases.common.inlining.info.AssumptionInlineInfo;
+import jdk.graal.compiler.phases.common.inlining.info.ExactInlineInfo;
+import jdk.graal.compiler.phases.common.inlining.info.InlineInfo;
+import jdk.graal.compiler.phases.common.inlining.info.MultiTypeGuardInlineInfo;
+import jdk.graal.compiler.phases.common.inlining.info.TypeGuardInlineInfo;
+import jdk.graal.compiler.phases.common.inlining.info.elem.Inlineable;
 import jdk.graal.compiler.phases.common.inlining.info.elem.InlineableGraph;
+import jdk.graal.compiler.phases.common.inlining.policy.InliningPolicy;
 import jdk.graal.compiler.phases.tiers.HighTierContext;
-
 import jdk.vm.ci.code.BailoutException;
 import jdk.vm.ci.meta.Assumptions.AssumptionResult;
 import jdk.vm.ci.meta.JavaTypeProfile;
@@ -586,11 +588,11 @@ public class InliningData {
 
     private void popGraph() {
         graphQueue.pop();
-        assert graphQueue.size() <= maxGraphs;
+        assert graphQueue.size() <= maxGraphs : Assertions.errorMessageContext("graphQueue", graphQueue, "maxGraphs", maxGraphs);
     }
 
     private void popGraphs(int count) {
-        assert count >= 0;
+        assert NumUtil.assertNonNegativeInt(count);
         for (int i = 0; i < count; i++) {
             graphQueue.pop();
         }
@@ -621,18 +623,18 @@ public class InliningData {
         invocationQueue.addFirst(methodInvocation);
         InlineInfo info = methodInvocation.callee();
         maxGraphs += info.numberOfMethods();
-        assert graphQueue.size() <= maxGraphs;
+        assert graphQueue.size() <= maxGraphs : Assertions.errorMessageContext("graphQueue", graphQueue, "maxGraphs", maxGraphs);
         for (int i = 0; i < info.numberOfMethods(); i++) {
             CallsiteHolder ch = methodInvocation.buildCallsiteHolderForElement(i);
             assert !contains(ch.graph());
             graphQueue.push(ch);
-            assert graphQueue.size() <= maxGraphs;
+            assert graphQueue.size() <= maxGraphs : Assertions.errorMessageContext("graphQueue", graphQueue, "maxGraphs", maxGraphs);
         }
     }
 
     private void popInvocation() {
         maxGraphs -= invocationQueue.peekFirst().callee().numberOfMethods();
-        assert graphQueue.size() <= maxGraphs;
+        assert graphQueue.size() <= maxGraphs : Assertions.errorMessageContext("graphQueue", graphQueue, "maxGraphs", maxGraphs);
         invocationQueue.removeFirst();
     }
 
@@ -647,7 +649,7 @@ public class InliningData {
     }
 
     public int inliningDepth() {
-        assert invocationQueue.size() > 0;
+        assert invocationQueue.size() > 0 : this;
         return invocationQueue.size() - 1;
     }
 
@@ -730,7 +732,7 @@ public class InliningData {
                         !inliningPolicy.isWorthInlining(context.getReplacements(), currentInvocation, currentInvocation.callee(), inliningDepth(), false).shouldInline());
         if (backtrack) {
             int remainingGraphs = currentInvocation.totalGraphs() - currentInvocation.processedGraphs();
-            assert remainingGraphs > 0;
+            assert NumUtil.assertPositiveInt(remainingGraphs);
             popGraphs(remainingGraphs);
             popInvocation();
             return false;
@@ -782,7 +784,7 @@ public class InliningData {
         }
         if (currentInvocation().isRoot()) {
             if (!graphQueue.isEmpty()) {
-                assert graphQueue.size() == 1;
+                assert graphQueue.size() == 1 : graphQueue;
             }
             return true;
         }

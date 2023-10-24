@@ -35,7 +35,9 @@ import java.util.TreeSet;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.core.common.cfg.BlockMap;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -197,9 +199,10 @@ public class CFStackifierSortPhase extends BasePhase<StackifierData> {
         }
 
         /**
-         * We need to update the blockToNodesMap in {@link StructuredGraph.ScheduleResult} because
-         * it internally uses an array that uses the basic block id as an index. Since we update the
-         * basic block indices we also have to update the array.
+         * We need to update the blockToNodesMap in
+         * {@link jdk.graal.compiler.nodes.StructuredGraph.ScheduleResult} because it internally
+         * uses an array that uses the basic block id as an index. Since we update the basic block
+         * indices we also have to update the array.
          */
         @SuppressWarnings("unchecked")
         private void updateIds() {
@@ -227,7 +230,7 @@ public class CFStackifierSortPhase extends BasePhase<StackifierData> {
 
             freeBlocks.add(cfg.getStartBlock());
             while (!freeBlocks.isEmpty()) {
-                assert id < sortedBlocks.length;
+                assert id < sortedBlocks.length : Assertions.errorMessage(id, sortedBlocks);
                 HIRBlock current = freeBlocks.first();
                 freeBlocks.remove(current);
                 cfg.graph.getDebug().log("Current free block %s", current);

@@ -34,6 +34,7 @@ import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.Equivalence;
 
 import jdk.graal.compiler.core.common.NumUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.core.common.RetryableBailoutException;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
@@ -447,9 +448,9 @@ public abstract class LoopTransformations {
         mainLoopBegin.setLoopOrigFrequency(originalFrequency);
         postLoopBegin.setLoopOrigFrequency(originalFrequency);
 
-        assert preLoopExitNode.predecessor() instanceof IfNode;
-        assert mainLoopExitNode.predecessor() instanceof IfNode;
-        assert postLoopExitNode.predecessor() instanceof IfNode;
+        assert preLoopExitNode.predecessor() instanceof IfNode : Assertions.errorMessage(preLoopExitNode);
+        assert mainLoopExitNode.predecessor() instanceof IfNode : Assertions.errorMessage(mainLoopExitNode);
+        assert postLoopExitNode.predecessor() instanceof IfNode : Assertions.errorMessage(postLoopExitNode);
 
         setSingleVisitedLoopFrequencySplitProbability(preLoopExitNode);
         setSingleVisitedLoopFrequencySplitProbability(postLoopExitNode);
@@ -547,12 +548,12 @@ public abstract class LoopTransformations {
             for (ProxyNode proxy : exit.proxies()) {
                 for (Node usage : proxy.usages().snapshot()) {
                     if (usage instanceof PhiNode && ((PhiNode) usage).merge() == mainMergeNode) {
-                        assert usage instanceof PhiNode;
+                        assert usage instanceof PhiNode : Assertions.errorMessage(usage);
                         // replace with the post loop proxy
                         PhiNode pUsage = (PhiNode) usage;
                         // get the other input phi at pre loop end
                         Node v = pUsage.valueAt(0);
-                        assert v instanceof PhiNode;
+                        assert v instanceof PhiNode : Assertions.errorMessage(v);
                         PhiNode vP = (PhiNode) v;
                         usage.replaceAtUsages(vP.valueAt(postEndNode));
                         usage.safeDelete();

@@ -32,9 +32,8 @@ import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampFactory;
 import jdk.graal.compiler.core.common.type.TypeReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.graph.NodeClass;
-import jdk.graal.compiler.nodes.spi.Simplifiable;
-import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodeinfo.NodeInfo;
 import jdk.graal.compiler.nodes.AbstractBeginNode;
 import jdk.graal.compiler.nodes.ConstantNode;
@@ -46,8 +45,9 @@ import jdk.graal.compiler.nodes.extended.LoadHubNode;
 import jdk.graal.compiler.nodes.extended.SwitchNode;
 import jdk.graal.compiler.nodes.spi.LIRLowerable;
 import jdk.graal.compiler.nodes.spi.NodeLIRBuilderTool;
+import jdk.graal.compiler.nodes.spi.Simplifiable;
+import jdk.graal.compiler.nodes.spi.SimplifierTool;
 import jdk.graal.compiler.nodes.util.GraphUtil;
-
 import jdk.vm.ci.meta.Constant;
 import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.vm.ci.meta.ResolvedJavaType;
@@ -66,10 +66,10 @@ public final class TypeSwitchNode extends SwitchNode implements LIRLowerable, Si
     public TypeSwitchNode(ValueNode value, AbstractBeginNode[] successors, ResolvedJavaType[] keys, int[] keySuccessors, ConstantReflectionProvider constantReflection,
                     SwitchProbabilityData profileData) {
         super(TYPE, value, successors, keySuccessors, profileData);
-        assert successors.length <= keys.length + 1;
-        assert keySuccessors.length == profileData.getKeyProbabilities().length;
+        assert keySuccessors.length == keys.length + 1 : "Must have etry key for default " + Assertions.errorMessageContext("keySucc", keySuccessors, "keys", keys);
+        assert keySuccessors.length == profileData.getKeyProbabilities().length : Assertions.errorMessageContext("keySucc", keySuccessors, "profiles", profileData.getKeyProbabilities());
         this.keys = keys;
-        assert value.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp;
+        assert value.stamp(NodeView.DEFAULT) instanceof AbstractPointerStamp : Assertions.errorMessageContext("value", value);
         assert assertKeys();
 
         hubs = new Constant[keys.length];

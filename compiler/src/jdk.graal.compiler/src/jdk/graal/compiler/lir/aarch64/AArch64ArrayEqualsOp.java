@@ -51,6 +51,7 @@ import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler;
 import jdk.graal.compiler.asm.aarch64.AArch64MacroAssembler.ScratchRegister;
 import jdk.graal.compiler.core.common.Stride;
 import jdk.graal.compiler.core.common.StrideUtil;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.LIRInstructionClass;
@@ -309,7 +310,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                         asm.fldp(128, v(10), v(11), createImmediateAddress(128, AddressingMode.IMMEDIATE_PAIR_POST_INDEXED, arrayMask, 32));
                     } else {
                         // special case for java.lang.String
-                        assert strideMax == Stride.S2 && strideMask == Stride.S1;
+                        assert strideMax == Stride.S2 && strideMask == Stride.S1 : Assertions.errorMessage(strideMax, strideMask);
                         asm.neon.uxtlVV(ElementSize.Byte, v(10), v(9));
                         asm.neon.uxtl2VV(ElementSize.Byte, v(11), v(9));
                         asm.neon.uxtl2VV(ElementSize.Byte, v(9), v(8));
@@ -466,7 +467,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
                         asm.fldp(128, v(10), v(11), createPairBaseRegisterOnlyAddress(128, arrayMask));
                     } else {
                         asm.fldr(128, v(10), createBaseRegisterOnlyAddress(128, arrayMask));
-                        assert strideMax == Stride.S2 && strideMask == Stride.S1;
+                        assert strideMax == Stride.S2 && strideMask == Stride.S1 : Assertions.errorMessage(strideMask, strideMax);
                         asm.neon.uxtl2VV(ElementSize.Byte, v(9), v(8));
                         asm.neon.uxtl2VV(ElementSize.Byte, v(11), v(10));
                         asm.neon.uxtlVV(ElementSize.Byte, v(8), v(8));
@@ -731,7 +732,7 @@ public final class AArch64ArrayEqualsOp extends AArch64ComplexVectorOp {
         Register vecArrayB2 = v(3);
         Register vecArrayM1 = withMask() ? v(4) : null;
         Register vecArrayM2 = withMask() ? v(5) : null;
-        assert nBytes <= 8;
+        assert nBytes <= 8 : nBytes;
         int bitsA = loadBits(strideA, strideMax, nBytes);
         int bitsB = loadBits(strideB, strideMax, nBytes);
         int bitsM = loadBits(strideM, strideMax, nBytes);

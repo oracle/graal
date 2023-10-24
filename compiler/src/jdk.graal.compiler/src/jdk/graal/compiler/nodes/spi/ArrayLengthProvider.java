@@ -24,11 +24,11 @@
  */
 package jdk.graal.compiler.nodes.spi;
 
-import jdk.vm.ci.meta.ConstantReflectionProvider;
 import jdk.graal.compiler.nodes.ValueNode;
 import jdk.graal.compiler.nodes.ValuePhiNode;
 import jdk.graal.compiler.nodes.ValueProxyNode;
 import jdk.graal.compiler.nodes.util.GraphUtil;
+import jdk.vm.ci.meta.ConstantReflectionProvider;
 
 public interface ArrayLengthProvider {
 

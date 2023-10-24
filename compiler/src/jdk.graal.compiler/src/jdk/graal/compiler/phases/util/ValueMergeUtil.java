@@ -27,6 +27,7 @@ package jdk.graal.compiler.phases.util;
 import java.util.List;
 import java.util.function.Function;
 
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.nodes.AbstractMergeNode;
 import jdk.graal.compiler.nodes.ControlSinkNode;
 import jdk.graal.compiler.nodes.EndNode;
@@ -75,7 +76,7 @@ public class ValueMergeUtil {
             EndNode endNode = merge.graph().add(new EndNode());
             merge.addForwardEnd(endNode);
             if (lastInstrFunction == null) {
-                assert valueProducer instanceof ReturnNode || valueProducer instanceof UnwindNode;
+                assert valueProducer instanceof ReturnNode || valueProducer instanceof UnwindNode : Assertions.errorMessage(valueProducer);
                 ((ControlSinkNode) valueProducer).replaceAndDelete(endNode);
             } else {
                 FixedWithNextNode lastInstr = lastInstrFunction.apply(valueProducer);

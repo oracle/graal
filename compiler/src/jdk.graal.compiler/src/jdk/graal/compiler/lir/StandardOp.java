@@ -27,14 +27,15 @@ package jdk.graal.compiler.lir;
 import java.util.ArrayList;
 import java.util.Arrays;
 
-import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import org.graalvm.collections.EconomicSet;
 import org.graalvm.collections.Equivalence;
+
 import jdk.graal.compiler.asm.Label;
 import jdk.graal.compiler.core.common.cfg.BasicBlock;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
+import jdk.graal.compiler.lir.asm.CompilationResultBuilder;
 import jdk.graal.compiler.lir.framemap.FrameMap;
-
 import jdk.vm.ci.code.Register;
 import jdk.vm.ci.code.RegisterSaveLayout;
 import jdk.vm.ci.meta.AllocatableValue;
@@ -101,7 +102,7 @@ public class StandardOp {
         }
 
         private void setNumberOfPhis(int numPhis) {
-            assert numbPhis == 0;
+            assert numbPhis == 0 : Assertions.errorMessage(numPhis);
             numbPhis = numPhis;
         }
 
@@ -110,7 +111,7 @@ public class StandardOp {
         }
 
         public void setIncomingValues(Value[] values) {
-            assert this.incomingValues.length == 0;
+            assert this.incomingValues.length == 0 : Assertions.errorMessage(this.incomingValues, values);
             assert values != null;
             this.incomingValues = values;
         }
@@ -205,7 +206,7 @@ public class StandardOp {
         }
 
         public void setPhiValues(Value[] values) {
-            assert this.outgoingValues.length == 0;
+            assert this.outgoingValues.length == 0 : this.outgoingValues;
             assert values != null;
             this.outgoingValues = values;
         }

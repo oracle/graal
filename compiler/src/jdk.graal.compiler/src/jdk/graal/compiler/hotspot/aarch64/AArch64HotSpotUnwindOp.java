@@ -61,7 +61,7 @@ public final class AArch64HotSpotUnwindOp extends AArch64HotSpotEpilogueOp {
 
         ForeignCallLinkage linkage = crb.foreignCalls.lookupForeignCall(HotSpotBackend.UNWIND_EXCEPTION_TO_CALLER);
         CallingConvention cc = linkage.getOutgoingCallingConvention();
-        assert cc.getArgumentCount() == 2;
+        assert cc.getArgumentCount() == 2 : cc;
         assert exception.equals(cc.getArgument(0));
 
         // Get return address (is in lr after frame leave)

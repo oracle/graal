@@ -57,6 +57,7 @@ import jdk.graal.compiler.core.common.type.ObjectStamp;
 import jdk.graal.compiler.core.common.type.Stamp;
 import jdk.graal.compiler.core.common.type.StampPair;
 import jdk.graal.compiler.core.common.type.SymbolicJVMCIReference;
+import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.DebugContext;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.graph.Node;
@@ -878,7 +879,7 @@ public class SymbolicSnippetEncoder {
                     actualLines = Arrays.copyOf(actualLines, limit + 1);
                     actualLines[diffIndex] = "";
                 } else {
-                    assert expectedLines.length == limit;
+                    assert expectedLines.length == limit : Assertions.errorMessage(expectedLines, limit);
                     expectedLines = Arrays.copyOf(expectedLines, limit + 1);
                     expectedLines[diffIndex] = "";
                 }

@@ -175,7 +175,7 @@ public final class BytecodeStream {
      * @return the constant pool index
      */
     public int readCPI4() {
-        assert opcode == Bytecodes.INVOKEDYNAMIC;
+        assert opcode == Bytecodes.INVOKEDYNAMIC : opcode;
         return Bytes.beS4(code, curBCI + 1);
     }
 

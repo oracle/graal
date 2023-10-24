@@ -196,7 +196,7 @@ public final class ReentrantNodeIterator {
                 current = nodeQueue.removeFirst();
                 assert blockEndStates.containsKey(current);
                 state = blockEndStates.removeKey(current);
-                assert !(current instanceof AbstractMergeNode) && current instanceof AbstractBeginNode;
+                assert !(current instanceof AbstractMergeNode) && current instanceof AbstractBeginNode : current;
             }
         } while (true); // TERMINATION ARGUMENT: visits all fixed nodes of a graph
     }

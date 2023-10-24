@@ -90,7 +90,7 @@ final class AMD64HotSpotReturnOp extends AMD64HotSpotEpilogueBlockEndOp implemen
                 }
                 ForeignCallLinkage enableStackReservedZone = foreignCalls.lookupForeignCall(HotSpotHostBackend.ENABLE_STACK_RESERVED_ZONE);
                 CallingConvention cc = enableStackReservedZone.getOutgoingCallingConvention();
-                assert cc.getArgumentCount() == 1;
+                assert cc.getArgumentCount() == 1 : cc;
                 Register arg0 = ((RegisterValue) cc.getArgument(0)).getRegister();
                 masm.movq(arg0, thread);
                 AMD64Call.directCall(crb, masm, enableStackReservedZone, scratchForSafepointOnReturn, false, null);

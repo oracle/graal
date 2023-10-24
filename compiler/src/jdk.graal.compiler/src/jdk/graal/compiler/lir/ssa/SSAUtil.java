@@ -32,7 +32,7 @@ import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.lir.LIR;
 import jdk.graal.compiler.lir.LIRInstruction;
 import jdk.graal.compiler.lir.StandardOp;
-
+import jdk.graal.compiler.lir.StandardOp.JumpOp;
 import jdk.vm.ci.meta.Value;
 
 /**
@@ -45,10 +45,11 @@ import jdk.vm.ci.meta.Value;
  *
  * The variables introduced by <code>PHI</code>s of a specific {@linkplain BasicBlock merge block}
  * are {@linkplain StandardOp.LabelOp#setIncomingValues attached} to the
- * {@linkplain StandardOp.LabelOp} of the block. The outgoing values from the predecessor are
- * {@link StandardOp.JumpOp#getOutgoingValue input} to the {@linkplain StandardOp.BlockEndOp} of the
- * predecessor. Because there are no critical edges we know that the {@link StandardOp.BlockEndOp}
- * of the predecessor has to be a {@link StandardOp.JumpOp}.
+ * {@linkplain jdk.graal.compiler.lir.StandardOp.LabelOp} of the block. The outgoing values from the
+ * predecessor are {@link StandardOp.JumpOp#getOutgoingValue input} to the
+ * {@linkplain jdk.graal.compiler.lir.StandardOp.BlockEndOp} of the predecessor. Because there are
+ * no critical edges we know that the {@link jdk.graal.compiler.lir.StandardOp.BlockEndOp} of the
+ * predecessor has to be a {@link jdk.graal.compiler.lir.StandardOp.JumpOp}.
  *
  * <h3>Example:</h3>
  *
@@ -110,7 +111,7 @@ public final class SSAUtil {
     }
 
     public static StandardOp.JumpOp phiOut(LIR lir, BasicBlock<?> block) {
-        assert block.getSuccessorCount() == 1;
+        assert block.getSuccessorCount() == 1 : Assertions.errorMessage(block);
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
         int index = instructions.size() - 1;
         LIRInstruction op = instructions.get(index);
@@ -118,15 +119,15 @@ public final class SSAUtil {
     }
 
     public static int phiOutIndex(LIR lir, BasicBlock<?> block) {
-        assert block.getSuccessorCount() == 1;
+        assert block.getSuccessorCount() == 1 : Assertions.errorMessage(block);
         ArrayList<LIRInstruction> instructions = lir.getLIRforBlock(block);
         int index = instructions.size() - 1;
-        assert instructions.get(index) instanceof StandardOp.JumpOp;
+        assert instructions.get(index) instanceof JumpOp : instructions.get(index);
         return index;
     }
 
     public static StandardOp.LabelOp phiIn(LIR lir, BasicBlock<?> block) {
-        assert block.getPredecessorCount() > 1;
+        assert block.getPredecessorCount() > 1 : Assertions.errorMessageContext("block", block);
         StandardOp.LabelOp label = (StandardOp.LabelOp) lir.getLIRforBlock(block).get(0);
         return label;
     }
@@ -146,12 +147,14 @@ public final class SSAUtil {
     }
 
     public static void verifyPhi(LIR lir, BasicBlock<?> merge) {
-        assert merge.getPredecessorCount() > 1;
+        assert merge.getPredecessorCount() > 1 : Assertions.errorMessageContext("merge", merge);
         for (int i = 0; i < merge.getPredecessorCount(); i++) {
             BasicBlock<?> pred = merge.getPredecessorAt(i);
             forEachPhiValuePair(lir, merge, pred, (phiIn, phiOut) -> {
                 assert phiIn.getValueKind().equals(phiOut.getValueKind()) ||
-                                (phiIn.getPlatformKind().equals(phiOut.getPlatformKind()) && LIRKind.isUnknownReference(phiIn) && LIRKind.isValue(phiOut));
+                                (phiIn.getPlatformKind().equals(phiOut.getPlatformKind()) && LIRKind.isUnknownReference(phiIn) && LIRKind.isValue(phiOut)) : Assertions.errorMessageContext(
+                                                "phiIn",
+                                                phiIn, "phiOut", phiOut);
             });
         }
     }

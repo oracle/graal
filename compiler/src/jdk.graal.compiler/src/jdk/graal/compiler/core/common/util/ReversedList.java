@@ -28,6 +28,8 @@ import java.util.AbstractList;
 import java.util.List;
 import java.util.RandomAccess;
 
+import jdk.graal.compiler.debug.Assertions;
+
 /**
  * A {@code ReversedList} is a view on an other list with the elements in reverse order.
  *
@@ -37,7 +39,7 @@ public class ReversedList<T> extends AbstractList<T> implements RandomAccess {
     private final List<T> original;
 
     public ReversedList(List<T> original) {
-        assert original instanceof RandomAccess;
+        assert original instanceof RandomAccess : Assertions.errorMessage(original);
         this.original = original;
     }
 
