@@ -453,13 +453,15 @@ local devkits = graal_common.devkits;
   full_vm_build_darwin_aarch64: self.ruby_python_vm_build_darwin_aarch64,
 
   graalvm_complete_build_deps(edition, os, arch):
-<<<<<<< HEAD
       local java_deps(edition) =
         if (edition == 'ce') then
           {
             downloads+: {
               JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17'],
               EXTRA_JAVA_HOMES: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+            } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
+              LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-17-llvm'],
+            } else {
             },
             environment+: {
               JVMCI_VERSION_CHECK: 'ignore',
@@ -469,20 +471,13 @@ local devkits = graal_common.devkits;
           {
             downloads+: {
               JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
+            } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
+              LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21-llvm'],
+            } else {
             }
           }
         else
           error 'Unknown edition: ' + edition;
-=======
-      local java_deps(edition) = {
-        downloads+: {
-          JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21'],
-        } + if (os == 'linux' || os == 'darwin') && (arch == 'amd64') then {
-            LLVM_JAVA_HOME: graal_common.jdks_data['labsjdk-' + edition + '-21-llvm'],
-        } else {
-        }
-      };
->>>>>>> 264da2ab8ab (Set $LLVM_JAVA_HOME where it is supported (GR-49324).)
 
       if (os == 'linux') then
         if (arch == 'amd64') then
