@@ -94,7 +94,7 @@ public final class BinaryParser {
             return null;
         }
         if (bcSource != null) {
-            LibraryLocator.traceParseBitcode(context, bcSource.getPath(), bitcodeID);
+            LibraryLocator.traceParseBitcode(context, bcSource.getPath(), bitcodeID, bcSource);
         }
         return new BinaryParserResult(libraries, paths, bitcode, locator, exportSymbolsMapper, bcSource, libraryName);
     }
