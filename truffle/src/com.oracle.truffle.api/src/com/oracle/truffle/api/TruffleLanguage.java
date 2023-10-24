@@ -2899,6 +2899,8 @@ public abstract class TruffleLanguage<C> {
          * @return {@link TruffleFile}
          * @throws UnsupportedOperationException when {@link URI} scheme is not supported
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
+         * @throws FileSystemNotFoundException is the file system, identified by the {@code uri},
+         *             does not exist and cannot be created automatically
          * @since 19.3.0
          */
         @TruffleBoundary
@@ -2960,6 +2962,8 @@ public abstract class TruffleLanguage<C> {
          * @since 19.3.0
          * @throws UnsupportedOperationException when {@link URI} scheme is not supported
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
+         * @throws FileSystemNotFoundException is the file system, identified by the {@code uri},
+         *             does not exist and cannot be created automatically
          * @see #getTruffleFileInternal(URI, Predicate)
          * @see #getPublicTruffleFile(java.net.URI)
          */
@@ -3039,6 +3043,8 @@ public abstract class TruffleLanguage<C> {
          * @throws UnsupportedOperationException when the {@link FileSystem} supports only
          *             {@link URI}
          * @throws IllegalArgumentException if preconditions on the {@code uri} do not hold.
+         * @throws FileSystemNotFoundException is the file system, identified by the {@code uri},
+         *             does not exist and cannot be created automatically
          * @since 21.1.0
          * @see #getTruffleFileInternal(String, Predicate)
          * @see #getPublicTruffleFile(URI)
