@@ -906,7 +906,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         initializeThreadLocals(threadInfo);
                     }
 
-                    prev = threadInfo.enterInternal(engine);
+                    prev = threadInfo.enterInternal();
                     if (leaveAndEnter) {
                         threadInfo.setLeaveAndEnterInterrupter(null);
                         notifyAll();
@@ -918,7 +918,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         try {
                             threadInfo.notifyEnter(engine, this);
                         } catch (Throwable t) {
-                            threadInfo.leaveInternal(engine, prev);
+                            threadInfo.leaveInternal(prev);
                             throw t;
                         }
                     }
@@ -1130,7 +1130,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
              * Thread finalization notification is invoked outside of the context lock so that the
              * guest languages can operate freely without the risk of a deadlock.
              */
-            ex = notifyThreadFinalizing(threadInfo, null);
+            ex = notifyThreadFinalizing(threadInfo, null, false);
         }
         synchronized (this) {
             if (finalizeAndDispose) {
@@ -1145,7 +1145,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                         threadInfo.notifyLeave(engine, this);
                     }
                 } finally {
-                    threadInfo.leaveInternal(engine, prev);
+                    threadInfo.leaveInternal(prev);
                 }
             }
             if (threadInfo.getEnteredCount() == 0) {
@@ -1205,7 +1205,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    private Throwable notifyThreadFinalizing(PolyglotThreadInfo threadInfo, Throwable previousEx) {
+    private Throwable notifyThreadFinalizing(PolyglotThreadInfo threadInfo, Throwable previousEx, boolean mustSucceed) {
         Throwable ex = previousEx;
         Thread thread = threadInfo.getThread();
         if (thread == null) {
@@ -1258,7 +1258,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
             }
             synchronized (this) {
                 if (finalizedContexts.cardinality() == threadInfo.initializedLanguageContextsCount()) {
-                    threadInfo.setFinalizationComplete();
+                    threadInfo.setFinalizationComplete(engine, mustSucceed);
                     break;
                 }
             }
@@ -3243,7 +3243,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
                 embedderThreads = getSeenThreads().values().stream().filter(threadInfo -> !threadInfo.isPolyglotThread(this)).toList().toArray(new PolyglotThreadInfo[0]);
             }
             for (PolyglotThreadInfo threadInfo : embedderThreads) {
-                ex = notifyThreadFinalizing(threadInfo, ex);
+                ex = notifyThreadFinalizing(threadInfo, ex, mustSucceed);
             }
             if (ex != null) {
                 if (!mustSucceed || isInternalError(ex)) {
