@@ -37,8 +37,7 @@
       machine_name:: error "machine_name must be set!",
       local _machine_name = self.machine_name,
       capabilities+: [_machine_name],
-      local GR26994_ActiveProcessorCount = "-Dnative-image.benchmark.extra-run-arg=-XX:ActiveProcessorCount="+std.toString(self.threads_per_node), # remove once GR-26994 is fixed
-      environment+: { "MACHINE_NAME": _machine_name, "GR26994": GR26994_ActiveProcessorCount },
+      environment+: { "MACHINE_NAME": _machine_name },
       numa_nodes:: [],
       is_numa:: std.length(self.numa_nodes) > 0,
       num_threads:: error "num_threads must bet set!",
