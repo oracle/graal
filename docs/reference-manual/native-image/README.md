@@ -41,9 +41,9 @@ Choose your operating system to find instructions to meet the prerequisites.
 
 {%
 include snippet-tabs
-tab1type="markdown" tab1id="Linux" tab1name="Linux" 
-tab2type="markdown" tab2id="macOS" tab2name="macOS" 
-tab3type="markdown" tab3id="Windows" tab3name="Windows" 
+tab1type="markdown" tab1id="Linux" tab1name="Linux" tab1path="native_image/linux.md"
+tab2type="markdown" tab2id="macOS" tab2name="macOS" tab2path="native_image/macos.md"
+tab3type="markdown" tab3id="Windows" tab3name="Windows" tab3path="native_image/windows.md"
 %}
 
 <!-- #### Linux
