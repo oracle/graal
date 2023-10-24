@@ -45,14 +45,21 @@
 
     x52:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "x52",
-      capabilities+: ["no_frequency_scaling", "tmpfs25g"],
+      capabilities+: ["tmpfs25g"],
       numa_nodes:: [0, 1],
       default_numa_node:: 0,
       num_threads:: 72
     },
+    e4_8_64:: common.linux_amd64 + self._bench_machine + {
+      machine_name:: "e4_8_64",
+      capabilities+: ["tmpfs25g"],
+      numa_nodes:: [0],
+      default_numa_node:: 0,
+      num_threads:: 16
+    },
     x82:: common.linux_amd64 + self._bench_machine + {
       machine_name:: "x82",
-      capabilities+: ["no_frequency_scaling", "tmpfs25g"],
+      capabilities+: ["tmpfs25g"],
       numa_nodes:: [0, 1],
       default_numa_node:: 0,
       num_threads:: 96
@@ -64,7 +71,7 @@
     },
     a12c:: common.linux_aarch64 + self._bench_machine + {
       machine_name:: "a12c",
-      capabilities+: ["no_frequency_scaling", "tmpfs25g"],
+      capabilities+: ["tmpfs25g"],
       numa_nodes:: [0, 1],
       default_numa_node:: 0,
       num_threads:: 160
