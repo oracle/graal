@@ -25,6 +25,9 @@
 
 package com.oracle.svm.core.jdk.localization;
 
+import static com.oracle.svm.util.StringUtil.toDotSeparated;
+import static com.oracle.svm.util.StringUtil.toSlashSeparated;
+
 import java.nio.charset.Charset;
 import java.util.Collection;
 import java.util.Collections;
@@ -52,6 +55,8 @@ import com.oracle.svm.core.ClassLoaderSupport;
 import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.util.VMError;
+
+import jdk.compiler.graal.debug.GraalError;
 
 /**
  * Holder for localization information that is computed during image generation and used at run
@@ -107,7 +112,7 @@ public class LocalizationSupport {
             String[] bundleNameWithModule = SubstrateUtil.split(bundleName, ":", 2);
             String resourceName;
             if (bundleNameWithModule.length < 2) {
-                resourceName = control.toBundleName(bundleName, locale).replace('.', '/').concat(".properties");
+                resourceName = toSlashSeparated(control.toBundleName(bundleName, locale)).concat(".properties");
 
                 Map<String, Set<Module>> packageToModules = ImageSingletons.lookup(ClassLoaderSupport.class).getPackageToModules();
                 Set<Module> modules = packageToModules.getOrDefault(packageName(bundleName), Collections.emptySet());
@@ -121,7 +126,7 @@ public class LocalizationSupport {
                 }
             } else {
                 if (findModule != null) {
-                    resourceName = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/').concat(".properties");
+                    resourceName = toSlashSeparated(control.toBundleName(bundleNameWithModule[1], locale)).concat(".properties");
                     Optional<Module> module = findModule.apply(bundleNameWithModule[0]);
                     String finalResourceName = resourceName;
                     module.ifPresent(m -> ImageSingletons.lookup(RuntimeResourceSupport.class).addResource(m, finalResourceName));
@@ -136,7 +141,7 @@ public class LocalizationSupport {
     }
 
     private static String packageName(String bundleName) {
-        String uniformBundleName = bundleName.replace("/", ".");
+        String uniformBundleName = toDotSeparated(bundleName);
         int classSep = uniformBundleName.lastIndexOf('.');
         if (classSep == -1) {
             return ""; /* unnamed package */
@@ -152,9 +157,9 @@ public class LocalizationSupport {
     private String getBundleName(String fixedBundleName, Locale locale) {
         String[] bundleNameWithModule = SubstrateUtil.split(fixedBundleName, ":", 2);
         if (bundleNameWithModule.length < 2) {
-            return control.toBundleName(fixedBundleName, locale).replace('.', '/');
+            return toSlashSeparated(control.toBundleName(fixedBundleName, locale));
         } else {
-            String patternWithLocale = control.toBundleName(bundleNameWithModule[1], locale).replace('.', '/');
+            String patternWithLocale = toSlashSeparated(control.toBundleName(bundleNameWithModule[1], locale));
             return bundleNameWithModule[0] + ':' + patternWithLocale;
         }
     }
