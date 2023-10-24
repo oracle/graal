@@ -37,7 +37,6 @@
       machine_name:: error "machine_name must be set!",
       local _machine_name = self.machine_name,
       capabilities+: [_machine_name],
-      environment+: { "MACHINE_NAME": _machine_name },
       numa_nodes:: [],
       is_numa:: std.length(self.numa_nodes) > 0,
       num_threads:: error "num_threads must bet set!",
