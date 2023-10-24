@@ -805,6 +805,11 @@ public class LLVMLanguage extends TruffleLanguage<LLVMContext> {
             lazyCacheCleanup();
             LibraryCacheKey key = new LibraryCacheKey(source);
             LibraryCacheEntry entry = libraryCache.get(key);
+            if (LibraryLocator.loggingEnabled()) {
+                LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage get cached library, source name", source.getName());
+                LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage get cached library, source", source);
+                LibraryLocator.traceStaticInits(getContext(), "LLVMLanguage get cached library, entry", entry);
+            }
             if (entry == null) {
                 return null;
             }

@@ -122,7 +122,7 @@ public abstract class LibraryLocator {
 
     public static void traceParseBitcode(LLVMContext context, Object path, IDGenerater.BitcodeID bitcodeID) {
         if (loggingEnabled()) {
-            traceLoader(context, "parse bitcode=%s (bitcode id=%s)", path, bitcodeID);
+            traceLoader(context, "parse bitcode=%s (bitcode id=%s, %s)", path, bitcodeID.getName(), bitcodeID.getId());
         }
     }
 
