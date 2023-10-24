@@ -46,6 +46,7 @@ import java.util.BitSet;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
@@ -171,9 +172,13 @@ final class PolyglotThreadInfo {
         return finalizationComplete;
     }
 
-    void setFinalizationComplete() {
+    void setFinalizationComplete(PolyglotEngineImpl engine, boolean mustSucceed) {
         assert Thread.holdsLock(context);
         this.finalizationComplete = true;
+        // Assert only when !mustSucceed, partity might not be met on cancellation.
+        if (ASSERT_ENTER_RETURN_PARITY && !mustSucceed && engine.probeAssertionsEnabled) {
+            assertProbeThreadFinalized();
+        }
     }
 
     boolean isSafepointActive() {
@@ -218,13 +223,10 @@ final class PolyglotThreadInfo {
      * {@link PolyglotEngineImpl#enter(PolyglotContextImpl, boolean, Node, boolean)} instead.
      */
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
-    Object[] enterInternal(PolyglotEngineImpl engine) {
+    Object[] enterInternal() {
         Object[] prev = PolyglotFastThreadLocals.enter(this);
         assert Thread.currentThread() == getThread() : "Volatile increment is safe on a single thread only.";
         enteredCount++;
-        if (ASSERT_ENTER_RETURN_PARITY && engine.probeAssertionsEnabled) {
-            assertProbeThreadEnter();
-        }
         return prev;
     }
 
@@ -238,12 +240,9 @@ final class PolyglotThreadInfo {
      * {@link PolyglotEngineImpl#leave(PolyglotContextImpl, PolyglotContextImpl)} instead.
      */
     @SuppressFBWarnings("VO_VOLATILE_INCREMENT")
-    void leaveInternal(PolyglotEngineImpl engine, Object[] prev) {
+    void leaveInternal(Object[] prev) {
         assert Thread.currentThread() == getThread() : "Volatile decrement is safe on a single thread only.";
         enteredCount--;
-        if (ASSERT_ENTER_RETURN_PARITY && engine.probeAssertionsEnabled) {
-            assertProbeThreadLeave();
-        }
         PolyglotFastThreadLocals.leave(prev);
     }
 
@@ -282,33 +281,38 @@ final class PolyglotThreadInfo {
     }
 
     @TruffleBoundary
-    private void assertProbeThreadEnter() {
+    private void assertProbeThreadFinalized() {
         if (probesEnterList != null) {
-            probesEnterList.add(null);
+            assert probesEnterList.isEmpty() : getEnteredProbesMessage(probesEnterList);
         }
     }
 
-    @TruffleBoundary
-    private void assertProbeThreadLeave() {
-        if (probesEnterList != null) {
-            int size = probesEnterList.size();
-            assert size > 0 : "Leave of polyglot thread does not have a preceding enter.";
-            ProbeNode probe = probesEnterList.remove(size - 1);
-            assert probe == null : "Found an entered probe without return: " + probe + " with parent node " + probe.getParent().getClass() + "\n" +
-                            "Specifically, a call to ProbeNode.onEnter()/onResume() does not have a corresponding call to ProbeNode.onReturnValue()/onReturnExceptionalOrUnwind()/onYield().";
+    private static String getEnteredProbesMessage(List<ProbeNode> probes) {
+        StringBuilder sb = new StringBuilder("Found entered probes without return: ");
+        sb.append(probes);
+        sb.append("\nSpecifically, a call to ProbeNode.onEnter()/onResume() does not have a corresponding call to ProbeNode.onReturnValue()/onReturnExceptionalOrUnwind()/onYield().");
+        for (ProbeNode probe : probes) {
+            sb.append("\n  probe ");
+            sb.append(probe);
+            sb.append(" with parent node ");
+            sb.append(probe.getParent().getClass());
         }
+        sb.append('\n');
+        return sb.toString();
     }
 
     @TruffleBoundary
     void assertProbeEntered(ProbeNode probe) {
+        Objects.requireNonNull(probe);
         probesEnterList.add(probe);
     }
 
     @TruffleBoundary
     void assertProbeReturned(ProbeNode probe) {
-        assert !probesEnterList.isEmpty() : "ProbeNode exited without enter";
+        assert !probesEnterList.isEmpty() : "ProbeNode " + probe + " with parent " + probe.getParent().getClass() + " exited without enter";
         ProbeNode lastProbe = probesEnterList.remove(probesEnterList.size() - 1);
-        assert probe == lastProbe : "Entered probe " + lastProbe + " differs from the returned probe " + probe + " with parent " + probe.getParent().getClass() + "\n" +
+        assert probe == lastProbe : "Entered probe " + lastProbe + " with parent " + lastProbe.getParent().getClass() + " differs from the returned probe " +
+                        probe + " with parent " + probe.getParent().getClass() + "\n" +
                         "Specifically, a call to onEnter()/onResume() on " + lastProbe + " was not followed by a call to onReturnValue()/onReturnExceptionalOrUnwind()/onYield() on the same probe, " +
                         "but on " + probe + " instead.";
     }

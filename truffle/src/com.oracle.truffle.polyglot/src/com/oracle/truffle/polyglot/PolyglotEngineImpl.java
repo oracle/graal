@@ -2060,7 +2060,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
         boolean enterReverted = false;
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, info.getThread() == Thread.currentThread())) {
             // Volatile increment is safe if only one thread does it.
-            prev = info.enterInternal(this);
+            prev = info.enterInternal();
 
             // Check again whether the cached thread info is still the same as expected
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, info == context.getCachedThread())) {
@@ -2073,7 +2073,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                 try {
                     info.notifyEnter(this, context);
                 } catch (Throwable e) {
-                    info.leaveInternal(this, prev);
+                    info.leaveInternal(prev);
                     throw e;
                 }
                 return prev;
@@ -2082,7 +2082,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
                  * If we go this path and enteredCount drops to 0, the subsequent slowpath enter
                  * must call deactivateThread.
                  */
-                info.leaveInternal(this, prev);
+                info.leaveInternal(prev);
                 enterReverted = true;
             }
         }
@@ -2133,7 +2133,7 @@ final class PolyglotEngineImpl implements com.oracle.truffle.polyglot.PolyglotIm
             try {
                 info.notifyLeave(this, context);
             } finally {
-                info.leaveInternal(this, prev);
+                info.leaveInternal(prev);
                 entered = false;
             }
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, info == context.getCachedThread())) {
