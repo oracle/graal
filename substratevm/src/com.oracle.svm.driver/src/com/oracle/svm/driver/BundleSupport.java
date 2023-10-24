@@ -860,8 +860,8 @@ final class BundleSupport {
     private static final String substitutionMapDstField = "dst";
 
     private static void printPathMapping(Map.Entry<Path, Path> entry, JsonWriter w) throws IOException {
-        w.append('{').quote(substitutionMapSrcField).append(':').quote(entry.getKey());
-        w.append(',').quote(substitutionMapDstField).append(':').quote(entry.getValue());
+        w.append('{').quote(substitutionMapSrcField).append(':').printValue(entry.getKey());
+        w.append(',').quote(substitutionMapDstField).append(':').printValue(entry.getValue());
         w.append('}');
     }
 
