@@ -51,6 +51,7 @@ import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializatio
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
+import jdk.compiler.graal.debug.GraalError;
 import sun.util.resources.OpenListResourceBundle;
 import sun.util.resources.ParallelListResourceBundle;
 
@@ -175,7 +176,7 @@ public class BundleContentSubstitutedLocalizationSupport extends LocalizationSup
 
     @Override
     public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale) {
-        super.prepareBundle(bundleName, bundle, null, locale);
+        super.prepareBundle(bundleName, bundle, findModule, locale);
         /* Initialize ResourceBundle.keySet eagerly */
         bundle.keySet();
         this.existingBundles.add(control.toBundleName(bundleName, locale));

@@ -30,15 +30,11 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
-import java.util.Optional;
 import java.util.ResourceBundle;
 import java.util.Set;
-import java.util.function.Function;
 import java.util.spi.LocaleServiceProvider;
 
 import org.graalvm.collections.Pair;
-import org.graalvm.nativeimage.Platform;
-import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.util.ReflectionUtil;
@@ -91,7 +87,8 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
             /*- Set the basename and locale to be consistent with JVM lookup process */
             bundleNameField.set(bundle, basename);
             bundleLocaleField.set(bundle, locale);
-            prepareBundle(basename, bundle, null, locale);
+            bundle.keySet();
+            this.resourceBundles.put(Pair.create(basename, locale), bundle);
         } catch (ReflectionUtil.ReflectionUtilError | ReflectiveOperationException e) {
             throw UserError.abort(e, "Failed to instantiated bundle from class %s, reason %s", bundleClass, e.getCause().getMessage());
         }
@@ -104,13 +101,6 @@ public class OptimizedLocalizationSupport extends LocalizationSupport {
             return Locale.ROOT;
         }
         return parseLocaleFromTag(name.substring(split + 1));
-    }
-
-    @Platforms(Platform.HOSTED_ONLY.class)
-    @Override
-    public void prepareBundle(String bundleName, ResourceBundle bundle, Function<String, Optional<Module>> findModule, Locale locale) {
-        bundle.keySet();
-        this.resourceBundles.put(Pair.create(bundleName, locale), bundle);
     }
 
     @Override
