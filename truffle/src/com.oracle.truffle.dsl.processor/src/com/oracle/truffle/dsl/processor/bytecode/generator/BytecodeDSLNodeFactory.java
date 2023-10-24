@@ -206,7 +206,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         finalFields.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int[].class), "handlers")));
         finalFields.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "numLocals"));
         finalFields.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "numNodes"));
-        finalFields.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "numConditionalBranches"));
         finalFields.add(new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(int.class), "buildIndex"));
         if (model.enableTracing) {
             finalFields.add(compFinal(1, new CodeVariableElement(Set.of(PRIVATE, FINAL), context.getType(boolean[].class), "basicBlockBoundary")));
@@ -353,14 +352,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         }
         consts.addElementsTo(bytecodeNodeGen);
 
-        // Define helpers for obtaining and initializing the cached nodes.
-        bytecodeNodeGen.add(createGetCachedNodes());
-        bytecodeNodeGen.add(createInitializeCachedNodes());
-        bytecodeNodeGen.add(createCreateCachedNodes());
-
-        // Define helpers for obtaining and initializing branch profiles.
+        // Define helpers for obtaining and initializing cached data.
+        bytecodeNodeGen.add(createGetOrInitializeCachedNodes());
+        bytecodeNodeGen.add(createInitializeCachedData());
+        bytecodeNodeGen.add(createCreateCachedData());
         bytecodeNodeGen.add(createGetBranchProfiles());
-        bytecodeNodeGen.add(createInitializeBranchProfiles());
 
         return bytecodeNodeGen;
     }
@@ -681,7 +677,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                 b.tree(createTransferToInterpreterAndInvalidate("this"));
             } else {
                 // Obtain the cached nodes, forcing initialization if necessary
-                b.statement("Node[] cachedNodes = getCachedNodes()");
+                b.statement("Node[] cachedNodes = getOrInitializeCachedNodes()");
                 b.statement("int[] branchProfiles = getBranchProfiles()");
             }
             b.startAssign("state").startCall(tier.interpreterClassName() + ".continueAt");
@@ -693,7 +689,7 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("constants");
             if (!tier.isUncached) {
                 b.string("cachedNodes");
-                b.string("branchProfiles");
+                b.string("this.branchProfiles");
             }
             b.string("state");
             b.end(2);
@@ -1210,26 +1206,48 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return ex;
     }
 
-    private CodeExecutableElement createCreateCachedNodes() {
+    private CodeExecutableElement createCreateCachedData() {
         TypeMirror nodeArrayType = new ArrayCodeTypeMirror(types.Node);
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), nodeArrayType, "createCachedNodes");
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), nodeArrayType, "createCachedData");
+
+        ex.createDocBuilder().startDoc() //
+                        .string("This method allocates an array of Nodes and an array of branch profiles for use by cached interpreters.").newLine() //
+                        .string("The latter is stored directly to the branchProfiles field; the former is returned and stored to cachedNodes behind a fence to avoid reading inconsistent state.").newLine() //
+                        .end();
+
         CodeTreeBuilder b = ex.createBuilder();
 
         b.tree(createNeverPartOfCompilation());
         b.declaration(nodeArrayType, "result", "new Node[numNodes]");
         b.statement("int bci = 0");
+        b.statement("int numConditionalBranches = 0");
         b.string("loop: ").startWhile().string("bci < bc.length").end().startBlock();
         b.statement("int nodeIndex");
         b.statement("Node node");
         b.startSwitch().string(readBc("bci")).end().startBlock();
 
-        Map<Boolean, List<InstructionModel>> instructionsGroupedByHasNode = model.getInstructions().stream().collect(Collectors.partitioningBy(instr -> instr.hasNodeImmediate()));
-        Map<Integer, List<InstructionModel>> nodelessGroupedByLength = instructionsGroupedByHasNode.get(false).stream().collect(
-                        Collectors.groupingBy(instr -> instr.getInstructionLength()));
+        Map<Boolean, List<InstructionModel>> instructionsGroupedByHasConditionalBranch = model.getInstructions().stream() //
+                        .collect(Collectors.partitioningBy(InstructionModel::hasConditionalBranch));
+        Map<Boolean, List<InstructionModel>> instructionsGroupedByHasNode = instructionsGroupedByHasConditionalBranch.get(false).stream() //
+                        .collect(Collectors.partitioningBy(InstructionModel::hasNodeImmediate));
+        Map<Integer, List<InstructionModel>> nodelessGroupedByLength = instructionsGroupedByHasNode.get(false).stream() //
+                        .collect(Collectors.groupingBy(InstructionModel::getInstructionLength));
 
-        // Skip the instructions without nodes. Group by size to simplify the generated code.
+        // 1. Instructions with conditional branches
+        List<InstructionModel> hasConditionalBranch = instructionsGroupedByHasConditionalBranch.get(true);
+        if (hasConditionalBranch.size() != 1 || hasConditionalBranch.get(0) != model.branchFalseInstruction) {
+            throw new AssertionError("Unexpected list of instructions with a conditional branch profile. Expected {BRANCH_FALSE}, but was " + hasConditionalBranch);
+        }
+        b.startCase().tree(createInstructionConstant(model.branchFalseInstruction)).end().startBlock();
+        b.statement("numConditionalBranches++");
+        b.statement("bci += " + model.branchFalseInstruction.getInstructionLength());
+        b.statement("continue loop");
+        b.end();
+
+        // 2. Instructions without nodes. Group by size to reduce generated code size.
         for (Map.Entry<Integer, List<InstructionModel>> entry : nodelessGroupedByLength.entrySet()) {
             for (InstructionModel instr : entry.getValue()) {
+
                 b.startCase().tree(createInstructionConstant(instr)).end();
             }
             b.startBlock();
@@ -1258,18 +1276,18 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         // when there's no node.
         b.startAssert().string("result[nodeIndex] == null").end();
         b.statement("result[nodeIndex] = insert(node)");
-
         b.end(); // } while
-        b.startAssert().string("bci == bc.length").end();
 
+        b.startAssert().string("bci == bc.length").end();
+        b.startAssign("this.branchProfiles").startStaticCall(types.BytecodeSupport, "allocateBranchProfiles").string("numConditionalBranches").end(2);
         b.startReturn().string("result").end();
 
         return ex;
     }
 
-    private CodeExecutableElement createInitializeCachedNodes() {
+    private CodeExecutableElement createInitializeCachedData() {
         TypeMirror nodeArrayType = new ArrayCodeTypeMirror(types.Node);
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), nodeArrayType, "initializeCachedNodes");
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), nodeArrayType, "initializeCachedData");
         CodeTreeBuilder b = ex.createBuilder();
 
         b.tree(createNeverPartOfCompilation());
@@ -1279,9 +1297,10 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.startReturn().string("result").end();
         b.end();
 
-        b.startAssign("result").startCall("createCachedNodes").end(2);
+        b.startAssign("result").startCall("createCachedData").end(2);
 
-        b.lineComment("For thread-safety, ensure that all stores into \"result\" happen before we make \"cachedNodes\" point to it.");
+        b.lineComment("cachedNodes being non-null indicates that the cached data is created and ready to use.");
+        b.lineComment("For thread-safety, ensure that all stores into the node and branch profile arrays happen before we set this field.");
         emitFence(b);
         b.startAssign("this.cachedNodes").string("result").end();
         b.startReturn().string("result").end();
@@ -1289,16 +1308,16 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         return ex;
     }
 
-    private CodeExecutableElement createGetCachedNodes() {
+    private CodeExecutableElement createGetOrInitializeCachedNodes() {
         TypeMirror nodeArrayType = new ArrayCodeTypeMirror(types.Node);
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), nodeArrayType, "getCachedNodes");
+        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), nodeArrayType, "getOrInitializeCachedNodes");
         CodeTreeBuilder b = ex.createBuilder();
 
         b.declaration(nodeArrayType, "result", "this.cachedNodes");
 
         b.startIf().string("result == null").end().startBlock();
         b.tree(createTransferToInterpreterAndInvalidate("this"));
-        b.startAssign("result").startCall("initializeCachedNodes").end(2);
+        b.startAssign("result").startCall("initializeCachedData").end(2);
         b.end();
 
         b.startReturn().string("result").end();
@@ -1315,31 +1334,11 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
         b.declaration(intArrayType, "result", "this.branchProfiles");
 
         b.startIf().string("result == null").end().startBlock();
-        b.tree(createTransferToInterpreterAndInvalidate("this"));
-        b.startAssign("result").startCall("initializeBranchProfiles").end(2);
+        emitThrowAssertionError(b, "\"Branch profiles should have been initialized by calling getOrInitializeCachedNodes before calling getBranchProfiles.\"");
         b.end();
 
         b.startReturn().string("result").end();
         b.end();
-
-        return ex;
-    }
-
-    private CodeExecutableElement createInitializeBranchProfiles() {
-        TypeMirror intArrayType = arrayOf(context.getType(int.class));
-        CodeExecutableElement ex = new CodeExecutableElement(Set.of(PRIVATE), intArrayType, "initializeBranchProfiles");
-        CodeTreeBuilder b = ex.createBuilder();
-
-        b.tree(createNeverPartOfCompilation());
-        b.declaration(intArrayType, "result", "this.branchProfiles");
-
-        b.startIf().string("result != null").end().startBlock();
-        b.startReturn().string("result").end();
-        b.end();
-
-        b.startAssign("result").startStaticCall(types.BytecodeSupport, "allocateBranchProfiles").string("numConditionalBranches").end(2);
-        b.startAssign("this.branchProfiles").string("result").end();
-        b.startReturn().string("result").end();
 
         return ex;
     }
@@ -2057,14 +2056,13 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                         b.statement("BytecodeLocal[] ", argumentName, " = new BytecodeLocal[buffer.readShort()]");
                         b.startFor().string("int i = 0; i < ", argumentName, ".length; i++").end().startBlock();
                         // this can be optimized since they are consecutive
-                        b.statement(argumentName, "[i] = locals.get(buffer.readShort());");
+                        b.statement(argumentName, "[i] = locals.get(buffer.readShort())");
                         b.end();
                     } else if (ElementUtils.typeEquals(argType, types.BytecodeLabel)) {
                         b.statement("BytecodeLabel ", argumentName, " = labels.get(buffer.readShort())");
                     } else if (ElementUtils.typeEquals(argType, context.getType(int.class))) {
                         b.statement("int ", argumentName, " = buffer.readInt()");
                     } else if (operation.kind == OperationKind.INSTRUMENT_TAG && i == 0) {
-
                         b.startStatement().type(argType).string(" ", argumentName, " = TAG_MASK_TO_TAGS.computeIfAbsent(buffer.readInt(), (v) -> mapTagMaskToTagsArray(v))").end();
                     } else if (ElementUtils.isObject(argType) || ElementUtils.typeEquals(argType, types.Source)) {
                         b.startStatement().type(argType).string(" ", argumentName, " = ");
@@ -2831,7 +2829,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
                     constructorCallBuilder.string("null"); // handlers
                     constructorCallBuilder.string("0"); // numLocals
                     constructorCallBuilder.string("0"); // numNodes
-                    constructorCallBuilder.string("0"); // numConditionalBranches
                     constructorCallBuilder.string("buildIndex++");
                     constructorCallBuilder.end();
                     b.declaration(bytecodeNodeGen.asType(), "node", constructorCallBuilder.build());
@@ -2877,7 +2874,6 @@ public class BytecodeDSLNodeFactory implements ElementHelpers {
             b.string("Arrays.copyOf(exHandlers, exHandlerCount)"); // handlers
             b.string("numLocals");
             b.string("numNodes");
-            b.string("numConditionalBranches");
             b.string("buildIndex");
             if (model.enableTracing) {
                 b.string("Arrays.copyOf(basicBlockBoundary, bci)");
