@@ -95,7 +95,11 @@ public class SVMImageHeapVerifier extends HeapSnapshotVerifier {
         @Override
         protected JavaConstant readFieldValue(AnalysisField field, JavaConstant receiver) {
             AnalysisConstantReflectionProvider constantReflectionProvider = (AnalysisConstantReflectionProvider) bb.getConstantReflectionProvider();
-            return constantReflectionProvider.readValue(metaAccess, field, receiver, true);
+            /*
+             * The verifier compares the hosted values with the ones from the shadow heap, so the
+             * constant reflection must not return shadow heap values.
+             */
+            return constantReflectionProvider.readValue(metaAccess, field, receiver, true, false);
         }
     }
 

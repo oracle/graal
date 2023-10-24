@@ -27,10 +27,12 @@ package com.oracle.graal.pointsto.heap;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicReference;
 
 import com.oracle.graal.pointsto.ObjectScanner;
 import com.oracle.graal.pointsto.heap.value.ValueSupplier;
 import com.oracle.graal.pointsto.meta.AnalysisField;
+import com.oracle.graal.pointsto.util.AnalysisError;
 import com.oracle.graal.pointsto.util.AnalysisFuture;
 
 import jdk.vm.ci.meta.JavaConstant;
@@ -52,34 +54,53 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     private static final VarHandle arrayHandle = MethodHandles.arrayElementVarHandle(Object[].class);
 
     /**
-     * Stores either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
+     * A reference to the field values array. It is only set when the constant is actually used and
+     * the hosted values of its fields/elements may be read.
+     *
+     * Each value is either an {@link AnalysisFuture} of {@link JavaConstant} or its result, a
      * {@link JavaConstant}, indexed by {@link AnalysisField#getPosition()}.
      * <p>
      * Evaluating the {@link AnalysisFuture} runs
      * {@link ImageHeapScanner#createFieldValue(AnalysisField, ImageHeapInstance, ValueSupplier, ObjectScanner.ScanReason)}
      * which adds the result to the image heap.
      */
-    private final Object[] fieldValues;
+    private final AtomicReference<Object[]> fieldValuesRef;
+
+    ImageHeapInstance(ResolvedJavaType type, JavaConstant object) {
+        super(type, object, createIdentityHashCode(object), false);
+        this.fieldValuesRef = new AtomicReference<>();
+    }
 
     public ImageHeapInstance(ResolvedJavaType type) {
         this(type, null, type.getInstanceFields(true).length);
     }
 
-    ImageHeapInstance(ResolvedJavaType type, JavaConstant object, int length) {
+    private ImageHeapInstance(ResolvedJavaType type, JavaConstant object, int length) {
         this(type, object, new Object[length], createIdentityHashCode(object), false);
     }
 
     private ImageHeapInstance(ResolvedJavaType type, JavaConstant object, Object[] fieldValues, int identityHashCode, boolean compressed) {
         super(type, object, identityHashCode, compressed);
-        this.fieldValues = fieldValues;
+        this.fieldValuesRef = new AtomicReference<>(fieldValues);
+    }
+
+    private ImageHeapInstance(ResolvedJavaType type, JavaConstant object, AtomicReference<Object[]> fieldValuesRef, int identityHashCode, boolean compressed) {
+        super(type, object, identityHashCode, compressed);
+        this.fieldValuesRef = fieldValuesRef;
+    }
+
+    void setFieldValues(Object[] fieldValues) {
+        boolean success = this.fieldValuesRef.compareAndSet(null, fieldValues);
+        AnalysisError.guarantee(success, "Unexpected field values reference for constant %s", this);
     }
 
     /**
      * Record the task computing the field value. It will be retrieved and executed when the field
      * is marked as read.
      */
-    public void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
-        arrayHandle.setVolatile(this.fieldValues, field.getPosition(), task);
+    void setFieldTask(AnalysisField field, AnalysisFuture<JavaConstant> task) {
+        AnalysisError.guarantee(isReaderInstalled());
+        arrayHandle.setVolatile(this.fieldValuesRef.get(), field.getPosition(), task);
     }
 
     /**
@@ -88,7 +109,8 @@ public final class ImageHeapInstance extends ImageHeapConstant {
      * and replaced.
      */
     public void setFieldValue(AnalysisField field, JavaConstant value) {
-        arrayHandle.setVolatile(this.fieldValues, field.getPosition(), value);
+        AnalysisError.guarantee(isReaderInstalled());
+        arrayHandle.setVolatile(this.fieldValuesRef.get(), field.getPosition(), value);
     }
 
     /**
@@ -97,7 +119,8 @@ public final class ImageHeapInstance extends ImageHeapConstant {
      * or the result of executing the task, i.e., a {@link JavaConstant}.
      */
     public Object getFieldValue(AnalysisField field) {
-        return arrayHandle.getVolatile(this.fieldValues, field.getPosition());
+        AnalysisError.guarantee(isReaderInstalled());
+        return arrayHandle.getVolatile(this.fieldValuesRef.get(), field.getPosition());
     }
 
     /**
@@ -113,13 +136,13 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     @Override
     public JavaConstant compress() {
         assert !compressed : this;
-        return new ImageHeapInstance(type, hostedObject, fieldValues, identityHashCode, true);
+        return new ImageHeapInstance(type, hostedObject, fieldValuesRef, identityHashCode, true);
     }
 
     @Override
     public JavaConstant uncompress() {
         assert compressed : this;
-        return new ImageHeapInstance(type, hostedObject, fieldValues, identityHashCode, false);
+        return new ImageHeapInstance(type, hostedObject, fieldValuesRef, identityHashCode, false);
     }
 
     @Override
@@ -128,7 +151,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
             return null;
         }
 
-        Object[] newFieldValues = Arrays.copyOf(fieldValues, fieldValues.length);
+        Object[] newFieldValues = Arrays.copyOf(fieldValuesRef.get(), fieldValuesRef.get().length);
         /* The new constant is never backed by a hosted object, regardless of the input object. */
         JavaConstant newObject = null;
         return new ImageHeapInstance(type, newObject, newFieldValues, createIdentityHashCode(newObject), compressed);
@@ -137,7 +160,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     @Override
     public boolean equals(Object o) {
         if (o instanceof ImageHeapInstance) {
-            return super.equals(o) && this.fieldValues == ((ImageHeapInstance) o).fieldValues;
+            return super.equals(o) && this.fieldValuesRef == ((ImageHeapInstance) o).fieldValuesRef;
         }
         return false;
     }
@@ -146,7 +169,7 @@ public final class ImageHeapInstance extends ImageHeapConstant {
     public int hashCode() {
         final int prime = 31;
         int result = super.hashCode();
-        result = prime * result + System.identityHashCode(fieldValues);
+        result = prime * result + System.identityHashCode(fieldValuesRef);
         return result;
     }
 }

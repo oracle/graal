@@ -37,6 +37,10 @@ public class AnalysisFuture<V> extends FutureTask<V> {
         super(callable);
     }
 
+    public AnalysisFuture(Runnable runnable) {
+        super(runnable, null);
+    }
+
     public AnalysisFuture(Runnable runnable, V result) {
         super(runnable, result);
     }

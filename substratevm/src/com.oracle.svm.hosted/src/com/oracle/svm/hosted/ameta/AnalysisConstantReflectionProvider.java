@@ -123,6 +123,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
              */
             AnalysisType type = (AnalysisType) imageHeapConstant.getType(metaAccess);
             if (BOXING_CLASSES.contains(type.getJavaClass())) {
+                imageHeapConstant.ensureReaderInstalled();
                 ResolvedJavaField[] fields = type.getInstanceFields(true);
                 assert fields.length == 1 && fields[0].getName().equals("value");
                 return ((ImageHeapInstance) imageHeapConstant).readFieldValue((AnalysisField) fields[0]);
@@ -144,8 +145,8 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
             return null;
         }
         if (array instanceof ImageHeapConstant) {
-            if (array instanceof ImageHeapArray) {
-                return ((ImageHeapArray) array).getLength();
+            if (array instanceof ImageHeapArray heapArray) {
+                return heapArray.getLength();
             }
             return null;
         }
@@ -162,6 +163,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
                 if (index < 0 || index >= heapArray.getLength()) {
                     return null;
                 }
+                heapArray.ensureReaderInstalled();
                 return replaceObject(heapArray.readElementValue(index));
             }
             return null;
@@ -174,6 +176,7 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     public void forEachArrayElement(JavaConstant array, ObjIntConsumer<JavaConstant> consumer) {
         if (array instanceof ImageHeapConstant) {
             if (array instanceof ImageHeapArray heapArray) {
+                heapArray.ensureReaderInstalled();
                 for (int index = 0; index < heapArray.getLength(); index++) {
                     JavaConstant element = heapArray.readElementValue(index);
                     consumer.accept(replaceObject(element), index);
@@ -191,6 +194,10 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
     }
 
     public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues) {
+        return readValue(suppliedMetaAccess, field, receiver, returnSimulatedValues, true);
+    }
+
+    public JavaConstant readValue(UniverseMetaAccess suppliedMetaAccess, AnalysisField field, JavaConstant receiver, boolean returnSimulatedValues, boolean readFromShadowHeap) {
         if (!field.isStatic()) {
             if (receiver.isNull() || !field.getDeclaringClass().isAssignableFrom(((TypedConstant) receiver).getType(metaAccess))) {
                 /*
@@ -210,7 +217,24 @@ public class AnalysisConstantReflectionProvider extends SharedConstantReflection
         if (returnSimulatedValues) {
             value = readSimulatedValue(field);
         }
-        if (value == null && receiver instanceof ImageHeapConstant) {
+        if (value == null && field.isStatic() && returnSimulatedValues && readFromShadowHeap) {
+            /*
+             * The shadow heap uses simulated values for static fields by default. So, only when
+             * simulated values are explicitly requested we can read via the shadow heap. Otherwise,
+             * this will lead to recursive parsing request errors.
+             */
+            if (SimulateClassInitializerSupport.singleton().isEnabled()) {
+                /*
+                 * The "late initialization" doesn't work with heap snapshots because the wrong
+                 * value will be snapshot for classes proven late, so we only read via the shadow
+                 * heap if simulation of class initializers is enabled. The check and this comment
+                 * will be removed when the old initialization strategy is removed.
+                 */
+                value = field.getDeclaringClass().getOrComputeData().readFieldValue(field);
+            }
+        }
+        if (value == null && receiver instanceof ImageHeapConstant heapConstant) {
+            heapConstant.ensureReaderInstalled();
             AnalysisError.guarantee(ReadableJavaField.isValueAvailable(field), "Value not yet available for %s", field);
             ImageHeapInstance heapObject = (ImageHeapInstance) receiver;
             value = heapObject.readFieldValue(field);

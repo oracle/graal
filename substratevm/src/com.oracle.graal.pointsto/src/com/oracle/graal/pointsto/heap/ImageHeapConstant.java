@@ -27,14 +27,15 @@ package com.oracle.graal.pointsto.heap;
 import java.util.Objects;
 import java.util.concurrent.atomic.AtomicReferenceFieldUpdater;
 
-import jdk.graal.compiler.core.common.type.CompressibleConstant;
-import jdk.graal.compiler.core.common.type.TypedConstant;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
 import com.oracle.graal.pointsto.ObjectScanner;
+import com.oracle.graal.pointsto.util.AnalysisFuture;
 import com.oracle.graal.pointsto.util.AtomicUtils;
 
+import jdk.graal.compiler.core.common.type.CompressibleConstant;
+import jdk.graal.compiler.core.common.type.TypedConstant;
 import jdk.vm.ci.meta.JavaConstant;
 import jdk.vm.ci.meta.JavaKind;
 import jdk.vm.ci.meta.MetaAccessProvider;
@@ -50,7 +51,7 @@ import jdk.vm.ci.meta.VMConstant;
 @Platforms(Platform.HOSTED_ONLY.class)
 public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, CompressibleConstant, VMConstant {
     /** Stores the type of this object. */
-    protected ResolvedJavaType type;
+    protected final ResolvedJavaType type;
     /**
      * Stores the hosted object, already processed by the object transformers. It is null for
      * instances of partially evaluated classes.
@@ -62,17 +63,45 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
 
     @SuppressWarnings("unused") private volatile Object isReachable;
 
+    /**
+     * A future that reads the hosted field or array elements values lazily only when the receiver
+     * object is used. This way the shadow heap can contain hosted only objects, i.e., objects that
+     * cannot be reachable at run time but are processed ahead-of-time.
+     */
+    protected AnalysisFuture<Void> hostedValuesReader;
+
     private static final AtomicReferenceFieldUpdater<ImageHeapConstant, Object> isReachableUpdater = AtomicReferenceFieldUpdater
                     .newUpdater(ImageHeapConstant.class, Object.class, "isReachable");
 
     ImageHeapConstant(ResolvedJavaType type, JavaConstant object, int identityHashCode, boolean compressed) {
+        Objects.requireNonNull(type);
         this.type = type;
         this.hostedObject = object;
         this.identityHashCode = identityHashCode;
         this.compressed = compressed;
     }
 
+    public void ensureReaderInstalled() {
+        if (hostedValuesReader != null) {
+            hostedValuesReader.ensureDone();
+        }
+    }
+
+    /**
+     * A regular image heap constant starts off without any fields or array elements installed. It
+     * instead contains a future task, the hostedValuesReader, which creates the tasks that read the
+     * hosted values. It must be executed before any values can be accessed. This ensures that the
+     * hosted values are only read when the constant is indeed used, i.e., it was not eliminated by
+     * constant folding.
+     *
+     * Simulated constants are fully initialized when they are created.
+     */
+    protected boolean isReaderInstalled() {
+        return hostedValuesReader == null || hostedValuesReader.isDone();
+    }
+
     public boolean markReachable(ObjectScanner.ScanReason reason) {
+        ensureReaderInstalled();
         return AtomicUtils.atomicSet(this, reason, isReachableUpdater);
     }
 
@@ -145,10 +174,6 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
         return type;
     }
 
-    public void setType(ResolvedJavaType type) {
-        this.type = type;
-    }
-
     @Override
     public Object asBoxedPrimitive() {
         return null;
@@ -211,5 +236,10 @@ public abstract class ImageHeapConstant implements JavaConstant, TypedConstant, 
     @Override
     public int hashCode() {
         return hostedObject != null ? hostedObject.hashCode() : 0;
+    }
+
+    @Override
+    public String toString() {
+        return "ImageHeapConstant< " + type.toJavaName() + ", reachable: " + isReachable() + ", reader installed: " + isReaderInstalled() + ">";
     }
 }
