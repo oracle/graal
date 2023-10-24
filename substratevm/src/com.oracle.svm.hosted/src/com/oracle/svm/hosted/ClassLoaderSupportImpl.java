@@ -116,12 +116,12 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
 
         /* Collect remaining resources from classpath */
         classLoaderSupport.classpath().stream().parallel().forEach(classpathFile -> {
-            boolean includeAll = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile);
+            boolean includeCurrent = classLoaderSupport.getJavaPathsToInclude().contains(classpathFile);
             try {
                 if (Files.isDirectory(classpathFile)) {
-                    scanDirectory(classpathFile, resourceCollector, includeAll);
+                    scanDirectory(classpathFile, resourceCollector, includeCurrent);
                 } else if (ClasspathUtils.isJar(classpathFile)) {
-                    scanJar(classpathFile, resourceCollector, includeAll);
+                    scanJar(classpathFile, resourceCollector, includeCurrent);
                 }
             } catch (IOException ex) {
                 throw UserError.abort("Unable to handle classpath element '%s'. Make sure that all classpath entries are either directories or valid jar files.", classpathFile);
@@ -132,10 +132,10 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     private void collectResourceFromModule(ResourceCollector resourceCollector, ResourceLookupInfo info) {
         ModuleReference moduleReference = info.resolvedModule.reference();
         try (ModuleReader moduleReader = moduleReference.open()) {
-            boolean includeAll = classLoaderSupport.getJavaModuleNamesToInclude().contains(info.resolvedModule().name());
+            boolean includeCurrent = classLoaderSupport.getJavaModuleNamesToInclude().contains(info.resolvedModule().name());
             List<ConditionalResource> resourcesFound = new ArrayList<>();
             moduleReader.list().forEach(resourceName -> {
-                List<ConfigurationCondition> conditions = shouldIncludeEntry(info.module, resourceCollector, resourceName, moduleReference.location().orElse(null), includeAll);
+                List<ConfigurationCondition> conditions = shouldIncludeEntry(info.module, resourceCollector, resourceName, moduleReference.location().orElse(null), includeCurrent);
                 for (ConfigurationCondition condition : conditions) {
                     resourcesFound.add(new ConditionalResource(condition, resourceName));
                 }
@@ -164,7 +164,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void scanDirectory(Path root, ResourceCollector collector, boolean includeAll) {
+    private static void scanDirectory(Path root, ResourceCollector collector, boolean includeCurrent) {
         ArrayDeque<Path> queue = new ArrayDeque<>();
         queue.push(root);
         while (!queue.isEmpty()) {
@@ -178,7 +178,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                 relativeFilePath = String.valueOf(RESOURCES_INTERNAL_PATH_SEPARATOR);
             }
 
-            List<ConfigurationCondition> conditions = shouldIncludeEntry(null, collector, relativeFilePath, Path.of(relativeFilePath).toUri(), includeAll);
+            List<ConfigurationCondition> conditions = shouldIncludeEntry(null, collector, relativeFilePath, Path.of(relativeFilePath).toUri(), includeCurrent);
             for (ConfigurationCondition condition : conditions) {
                 includeResource(collector, null, relativeFilePath, condition);
             }
@@ -201,7 +201,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static void scanJar(Path jarPath, ResourceCollector collector, boolean includeAll) throws IOException {
+    private static void scanJar(Path jarPath, ResourceCollector collector, boolean includeCurrent) throws IOException {
         try (JarFile jf = new JarFile(jarPath.toFile())) {
             Enumeration<JarEntry> entries = jf.entries();
             while (entries.hasMoreElements()) {
@@ -211,7 +211,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
                     entryName = entryName.substring(0, entry.getName().length() - 1);
                 }
 
-                List<ConfigurationCondition> conditions = shouldIncludeEntry(null, collector, entryName, jarPath.toUri(), includeAll);
+                List<ConfigurationCondition> conditions = shouldIncludeEntry(null, collector, entryName, jarPath.toUri(), includeCurrent);
                 for (ConfigurationCondition condition : conditions) {
                     includeResource(collector, null, entryName, condition);
                 }
@@ -227,8 +227,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         }
     }
 
-    private static List<ConfigurationCondition> shouldIncludeEntry(Module module, ResourceCollector collector, String fileName, URI uri, boolean includeAll) {
-        if (includeAll && !(fileName.endsWith(".class") || fileName.endsWith(".jar"))) {
+    private static List<ConfigurationCondition> shouldIncludeEntry(Module module, ResourceCollector collector, String fileName, URI uri, boolean includeCurrent) {
+        if (includeCurrent && !(fileName.endsWith(".class") || fileName.endsWith(".jar"))) {
             return Collections.singletonList(ConfigurationCondition.alwaysTrue());
         }
 
