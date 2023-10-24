@@ -676,7 +676,7 @@ local devkits = graal_common.devkits;
               [['echo', 'Skipping the archiving and the final deployment of the reduced Maven bundle']]
             else [
               ['set-export', 'MAVEN_BUNDLE_PATH', '${LOCAL_MAVEN_REDUCED_REPO_REL_PATH}'],
-              ['set-export', 'MAVEN_BUNDLE_ARTIFACT_ID', 'maven-reduced-bundle-' + vm.maven_deploy_base_functions.edition],
+              ['set-export', 'MAVEN_BUNDLE_ARTIFACT_ID', 'maven-reduced-bundle-' + vm.maven_deploy_base_functions.edition + (if (std.length(other_platforms) == 0) then '-' + main_platform else '')],
               ['mx', 'build', '--targets', 'MAVEN_BUNDLE'],
               ['mx', '--suite', 'vm', 'maven-deploy', '--tags=resource-bundle', '--all-distribution-types', '--validate=none', '--with-suite-revisions-metadata', remote_non_mvn_repo],
             ]
