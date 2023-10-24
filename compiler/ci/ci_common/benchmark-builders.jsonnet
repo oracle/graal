@@ -6,20 +6,22 @@
   local bench = (import 'benchmark-suites.libsonnet'),
   local hw = bc.bench_hw,
 
+  local PR_bench_libgraal = {unicorn_pull_request_benchmarking:: 'libgraal', secondary_metrics: ['top-tier-throughput', 'max-rss']},
+
   local main_builds = std.flattenArrays([
     [
-    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.dacapo + { unicorn_pull_request_benchmarking:: {name: 'libgraal', metrics: ['time']}},
+    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.dacapo + PR_bench_libgraal,
     c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.dacapo_size_variants,
     c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.dacapo_timing,
-    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo + {unicorn_pull_request_benchmarking:: 'libgraal'},
+    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo + PR_bench_libgraal,
     c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo_size_variants,
     c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.scala_dacapo_timing,
-    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.renaissance + {unicorn_pull_request_benchmarking:: 'libgraal'},
-    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.specjvm2008 + {unicorn_pull_request_benchmarking:: 'libgraal'},
+    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.renaissance + PR_bench_libgraal,
+    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.specjvm2008 + PR_bench_libgraal,
     c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.specjbb2015,
     c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.specjbb2015_full_machine,
     c.weekly                   + hw.x52 + jdk + cc.libgraal + bench.renaissance_0_11,
-    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.awfy + {unicorn_pull_request_benchmarking:: 'libgraal'},
+    c.daily + c.opt_post_merge + hw.x52 + jdk + cc.libgraal + bench.awfy + PR_bench_libgraal,
     c.daily                    + hw.x52 + jdk + cc.libgraal + bench.microservice_benchmarks,
     c.daily                    + hw.x52 + jdk + cc.libgraal + bench.renaissance_legacy,
     c.daily                    + hw.x52 + jdk + cc.libgraal + bench.micros_graal_whitebox,
