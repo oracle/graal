@@ -641,7 +641,9 @@ public abstract class SharedGraphBuilderPhase extends GraphBuilderPhase.Instance
         }
 
         protected static boolean isDeoptimizationEnabled() {
-            return DeoptimizationSupport.enabled() && !SubstrateUtil.isBuildingLibgraal();
+            boolean result = DeoptimizationSupport.enabled();
+            assert !(result && SubstrateUtil.isBuildingLibgraal()) : "Deoptimization support should not be enabled while building libgraal";
+            return result;
         }
 
         protected final boolean isMethodDeoptTarget() {
