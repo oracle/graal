@@ -424,7 +424,7 @@ public class VerifyAssertionUsageTest {
         HighTierContext context = new HighTierContext(providers, graphBuilderSuite, OptimisticOptimizations.NONE);
         OptionValues options = GraalCompilerTest.getInitialOptions();
         DebugContext debug = new Builder(options).build();
-        VerifyAssertionUsage vaU = new VerifyAssertionUsage(null, metaAccess);
+        VerifyAssertionUsage vaU = new VerifyAssertionUsage(metaAccess);
         for (Method m : c.getDeclaredMethods()) {
             if (!Modifier.isNative(m.getModifiers()) && !Modifier.isAbstract(m.getModifiers())) {
                 ResolvedJavaMethod method = metaAccess.lookupJavaMethod(m);

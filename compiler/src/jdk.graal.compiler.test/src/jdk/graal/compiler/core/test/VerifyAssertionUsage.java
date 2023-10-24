@@ -24,9 +24,6 @@
  */
 package jdk.graal.compiler.core.test;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -40,7 +37,6 @@ import jdk.graal.compiler.core.common.NumUtil;
 import jdk.graal.compiler.core.common.calc.CanonicalCondition;
 import jdk.graal.compiler.core.common.type.IntegerStamp;
 import jdk.graal.compiler.core.common.type.PrimitiveStamp;
-import jdk.graal.compiler.core.test.CheckGraalInvariants.InvariantsTool;
 import jdk.graal.compiler.debug.Assertions;
 import jdk.graal.compiler.debug.GraalError;
 import jdk.graal.compiler.debug.TTY;
@@ -159,11 +155,6 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
     private final boolean allPathsMustAssert;
 
     /**
-     * File of {@link NodeSourcePosition} based source locations to ignore during verification.
-     */
-    private List<String> excludeListByFile = new ArrayList<>();
-
-    /**
      * Meta-access to do all the necessary resolutions.
      */
     private final MetaAccessProvider metaAccess;
@@ -188,12 +179,7 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
      */
     private final ArrayList<ResolvedJavaMethod> excludeAssertionCalls = new ArrayList<>();
 
-    /**
-     * Absolute path to the file containing all excluded NSPs of missed assertions.
-     */
-    private final String excludeListPath;
-
-    public VerifyAssertionUsage(InvariantsTool iv, MetaAccessProvider metaAccess) {
+    public VerifyAssertionUsage(MetaAccessProvider metaAccess) {
         this.metaAccess = metaAccess;
         assertionType = metaAccess.lookupJavaType(AssertionError.class);
 
@@ -212,29 +198,6 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
         propagateStaticExcludeList();
 
         allPathsMustAssert = Boolean.getBoolean(ALL_PATHS_MUST_ASSERT_PROPERTY_NAME);
-
-        if (iv == null || iv.getAssertionExcludeListFile() == null) {
-            // Unit testing only: if we dont have an exclude list we are done here.
-            excludeListPath = "<noExcludeListFile>";
-            return;
-        } else {
-            excludeListPath = iv.getAssertionExcludeListFile().getPath();
-        }
-        URL excludeList = iv.getAssertionExcludeListFile();
-        if (excludeList != null) {
-            InputStream in;
-            try {
-                in = excludeList.openStream();
-                String input = new String(in.readAllBytes());
-                for (String line : input.split(System.lineSeparator())) {
-                    excludeListByFile.add(line);
-                }
-            } catch (IOException e) {
-                throw new VerificationError("cannot open file", e);
-            }
-        } else {
-            throw new VerificationError("Supplied assertion exclude list path does not point to a valid resource");
-        }
     }
 
     private void getMethodFromType(Class<?> c, String methodName, ArrayList<ResolvedJavaMethod> result) {
@@ -511,11 +474,10 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
         }
         if (!sbMissingAssertionMessages.isEmpty()) {
             allErrorMessages.append(String.format("Found the following assertions that need error messages %n%s%n " +
-                            "The cause of this error is either (a) you added a new assertion without an error message or (b) " +
-                            "you changed code such that an entry in %s no longer matches the source position of an assertion. " +
-                            "Please fix all assertions in the report above such that they have error messages and then remove all entries from %s." +
+                            "This is because you added a new assertion without an error message. " +
+                            "Please fix all assertions in the report above such that they have error messages." +
                             "Consider using API from Assertions.java to format assertion error messages with more context.",
-                            sbMissingAssertionMessages, excludeListPath, excludeListPath));
+                            sbMissingAssertionMessages));
             allErrorMessages.append(System.lineSeparator());
         }
     }
@@ -660,20 +622,11 @@ public class VerifyAssertionUsage extends VerifyStringFormatterUsage {
             ResolvedJavaMethod callee = t.targetMethod();
             InvokeWithExceptionNode invoke = (InvokeWithExceptionNode) t.invoke();
             NodeSourcePosition assertionNSP = t.getNodeSourcePosition();
-            String nsp = formatNSP(assertionNSP);
 
             checkedMethodInfo.callees.add(callee);
 
             if (callsAssertWithoutMsg(callee) || callsAssertWithMsg(callee)) {
                 callsAssertionTransitively = true;
-
-                if (excludeListByFile.contains(nsp)) {
-                    /*
-                     * Exclude listed for now: a line change or change that will touch this will
-                     * require fixing this and removal of the exclude listed entries.
-                     */
-                    continue;
-                }
 
                 boolean invalidAdded = false;
 

@@ -32,7 +32,6 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -221,17 +220,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
             return true;
         }
 
-        public URL getAssertionExcludeListFile() {
-            return null;
+        public boolean checkAssertions() {
+            return true;
         }
 
-        /**
-         * Indicates if a return value of {@code null} from {@link #getAssertionExcludeListFile()}
-         * indicates that assertion checking should be skipped all together.
-         */
-        public boolean missingAssertionExcludeListIsSkip() {
-            return false;
-        }
     }
 
     @Test
@@ -353,10 +345,10 @@ public class CheckGraalInvariants extends GraalCompilerTest {
         verifiers.add(new VerifyGraphUniqueUsages());
         verifiers.add(new VerifyEndlessLoops());
         VerifyAssertionUsage assertionUsages = null;
-        boolean checkAssertions = tool.getAssertionExcludeListFile() == null ? !tool.missingAssertionExcludeListIsSkip() : true;
+        boolean checkAssertions = tool.checkAssertions();
 
         if (checkAssertions) {
-            assertionUsages = new VerifyAssertionUsage(tool, metaAccess);
+            assertionUsages = new VerifyAssertionUsage(metaAccess);
             verifiers.add(assertionUsages);
         }
 
