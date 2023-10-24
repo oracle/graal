@@ -28,6 +28,12 @@
     c.daily                    + hw.x52 + jdk + cc.libgraal + bench.micros_graal_dist,
     c.daily                    + hw.x52 + jdk + cc.libgraal + bench.micros_misc_graal_dist,
     c.daily                    + hw.x52 + jdk + cc.libgraal + bench.micros_shootout_graal_dist,
+    c.daily                    + hw.e4_8_64 + jdk + cc.libgraal + bench.awfy + {job_prefix:: "bench-e4vm-compiler"},
+    c.daily                    + hw.e4_8_64 + jdk + cc.libgraal + bench.dacapo + {job_prefix:: "bench-e4vm-compiler"},
+    c.daily                    + hw.e4_8_64 + jdk + cc.libgraal + bench.scala_dacapo + {job_prefix:: "bench-e4vm-compiler"},
+    c.daily                    + hw.e4_8_64 + jdk + cc.libgraal + bench.renaissance + {job_prefix:: "bench-e4vm-compiler"},
+    c.daily                    + hw.e4_8_64 + jdk + cc.libgraal + bench.specjvm2008 + {job_prefix:: "bench-e4vm-compiler"},
+    c.daily                    + hw.e4_8_64 + jdk + cc.libgraal + bench.microservice_benchmarks + {job_prefix:: "bench-e4vm-compiler"},
     ]
   for jdk in cc.bench_jdks
   ]),
