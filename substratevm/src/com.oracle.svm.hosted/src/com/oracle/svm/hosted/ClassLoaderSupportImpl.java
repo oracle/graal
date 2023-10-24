@@ -93,7 +93,7 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
         return false;
     }
 
-    public record ResourceLookupInfo(ResolvedModule resolvedModule, Module module) {
+    private record ResourceLookupInfo(ResolvedModule resolvedModule, Module module) {
     }
 
     private static Stream<ResourceLookupInfo> extractModuleLookupData(ModuleLayer layer) {
@@ -110,8 +110,8 @@ public class ClassLoaderSupportImpl extends ClassLoaderSupport {
     public void collectResources(ResourceCollector resourceCollector) {
         /* Collect resources from modules */
         NativeImageClassLoaderSupport.allLayers(classLoaderSupport.moduleLayerForImageBuild).stream()
-                        .parallel()
                         .flatMap(ClassLoaderSupportImpl::extractModuleLookupData)
+                        .parallel()
                         .forEach(lookup -> collectResourceFromModule(resourceCollector, lookup));
 
         /* Collect remaining resources from classpath */

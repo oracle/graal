@@ -253,20 +253,29 @@ public final class ResourcesFeature implements InternalFeature {
          * different conditions
          */
         public boolean shouldRegisterResource(Module module, String resourceName) {
+            // we only do this if we are on the classPath
             if ((module == null || !module.isNamed())) {
-                // addResources can be called from multiple threads so this should be synchronized
+                /*
+                 * This check is not thread safe! If the resource is not added yet, maybe some other
+                 * thread is attempting to do it, so we have to perform same check again in
+                 * synchronized block (in that case). Anyway this check will cut the case when we
+                 * are sure that resource is added (so we don't need to enter synchronized block)
+                 */
+                if (alreadyAddedResources.contains(resourceName)) {
+                    return false;
+                }
+
+                // addResources can be called from multiple threads
                 synchronized (alreadyAddedResources) {
-                    // we only do this if we are on the classPath
                     if (!alreadyAddedResources.contains(resourceName)) {
                         alreadyAddedResources.add(resourceName);
                         return true;
                     } else {
                         return false;
                     }
-
                 }
             } else {
-                // always try to register module entries (duplicates checked later in addEntries)
+                // always try to register module entries (we will check duplicates in addEntries)
                 return true;
             }
         }
