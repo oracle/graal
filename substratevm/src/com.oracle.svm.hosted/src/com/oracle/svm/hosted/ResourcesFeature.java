@@ -27,7 +27,6 @@ package com.oracle.svm.hosted;
 
 import static com.oracle.svm.core.jdk.Resources.RESOURCES_INTERNAL_PATH_SEPARATOR;
 
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.InvocationTargetException;
@@ -292,13 +291,13 @@ public final class ResourcesFeature implements InternalFeature {
                 }
 
                 InputStream is = module.getResourceAsStream(resourcePath);
-                boolean isDirectory = new File(resourcePath).isDirectory();
-                String content = "";
+                boolean isDirectory = Files.isDirectory(Path.of(resourcePath));
                 if (isDirectory) {
-                    content = getDirectoryContent(resourcePath, false);
+                    String content = getDirectoryContent(resourcePath, false);
+                    Resources.singleton().registerDirectoryResource(module, resourcePath, content, false);
+                } else {
+                    registerResource(module, resourcePath, false, is);
                 }
-
-                registerResource(module, resourcePath, isDirectory, false, is, content);
             } catch (IOException e) {
                 // we should ignore if user failed to provide resource
             }
@@ -314,7 +313,7 @@ public final class ResourcesFeature implements InternalFeature {
                  */
                 urls = imageClassLoader.getClassLoader().getResources(resourcePath);
             } catch (IOException e) {
-                throw new RuntimeException(e);
+                throw VMError.shouldNotReachHere("getResources for resourcePath " + resourcePath + " failed", e);
             }
 
             while (urls.hasMoreElements()) {
@@ -323,31 +322,27 @@ public final class ResourcesFeature implements InternalFeature {
                     InputStream is = url.openStream();
                     boolean fromJar = url.getProtocol().equalsIgnoreCase("jar");
                     boolean isDirectory = resourceIsDirectory(url, fromJar, resourcePath);
-                    String content = "";
                     if (isDirectory) {
-                        content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
+                        String content = getDirectoryContent(fromJar ? url.toString() : Paths.get(url.toURI()).toString(), fromJar);
+                        Resources.singleton().registerDirectoryResource(module, resourcePath, content, fromJar);
+                    } else {
+                        registerResource(module, resourcePath, fromJar, is);
                     }
-
-                    registerResource(module, resourcePath, isDirectory, fromJar, is, content);
                 } catch (IOException e) {
                     // we should ignore if user failed to provide resource
                     return;
                 } catch (URISyntaxException e) {
-                    throw new RuntimeException(e);
+                    throw VMError.shouldNotReachHere("resourceIsDirectory for resourcePath " + resourcePath + " failed", e);
                 }
             }
         }
 
-        private void registerResource(Module module, String resourcePath, boolean isDirectory, boolean fromJar, InputStream is, String content) {
+        private void registerResource(Module module, String resourcePath, boolean fromJar, InputStream is) {
             if (is == null) {
                 return;
             }
 
-            if (isDirectory) {
-                Resources.singleton().registerDirectoryResource(module, resourcePath, content, fromJar);
-            } else {
-                Resources.singleton().registerResource(module, resourcePath, is, fromJar);
-            }
+            Resources.singleton().registerResource(module, resourcePath, is, fromJar);
 
             try {
                 is.close();
@@ -525,8 +520,6 @@ public final class ResourcesFeature implements InternalFeature {
 
         @Override
         public List<ConfigurationCondition> isIncluded(Module module, String resourceName, URI resource) {
-            // Possibly we can have multiple conditions for one resource
-            List<ConfigurationCondition> conditions = new ArrayList<>();
             this.currentlyProcessedEntry = resource.getScheme().equals("jrt") ? (resource + "/" + resourceName) : resource.toString();
 
             this.reachedResourceEntries.increment();
@@ -542,10 +535,12 @@ public final class ResourcesFeature implements InternalFeature {
                     continue;
                 }
                 if (rp.pattern.matcher(resourceName).matches() || rp.pattern.matcher(relativePathWithTrailingSlash).matches()) {
-                    return conditions; // returns empty list
+                    return List.of(); // nothing should match excluded resource
                 }
             }
 
+            // Possibly we can have multiple conditions for one resource
+            List<ConfigurationCondition> conditions = new ArrayList<>();
             for (CompiledConditionalPattern rp : includePatterns) {
                 if (!rp.compiledPattern().moduleNameMatches(moduleName)) {
                     continue;
