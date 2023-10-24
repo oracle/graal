@@ -91,7 +91,6 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.ThreadLocalAction;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleContext;
@@ -1741,27 +1740,6 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         }
     }
 
-    private static boolean isCurrentEngineHostCallback(PolyglotEngineImpl engine) {
-        RootNode topMostGuestToHostRootNode = Truffle.getRuntime().iterateFrames((f) -> {
-            RootNode root = ((RootCallTarget) f.getCallTarget()).getRootNode();
-            if (EngineAccessor.HOST.isGuestToHostRootNode(root)) {
-                return root;
-            }
-            return null;
-        });
-        if (topMostGuestToHostRootNode == null) {
-            return false;
-        } else {
-            PolyglotSharingLayer sharing = (PolyglotSharingLayer) EngineAccessor.NODES.getSharingLayer(topMostGuestToHostRootNode);
-            PolyglotEngineImpl rootEngine = sharing.engine;
-            if (rootEngine == engine) {
-                return true;
-            } else {
-                return false;
-            }
-        }
-    }
-
     /**
      * Embedder close.
      */
@@ -2690,7 +2668,7 @@ final class PolyglotContextImpl implements com.oracle.truffle.polyglot.PolyglotI
         if (parent == null) {
             engine.polyglotHostService.notifyClearExplicitContextStack(this);
         }
-        if (isActive(Thread.currentThread()) && !isCurrentEngineHostCallback(engine)) {
+        if (isActive(Thread.currentThread()) && !engine.getImpl().getRootImpl().isInCurrentEngineHostCallback(engine)) {
             PolyglotThreadInfo threadInfo = getCurrentThreadInfo();
             if (!threadInfo.explicitContextStack.isEmpty()) {
                 PolyglotContextImpl c = this;
