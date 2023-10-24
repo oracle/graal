@@ -1186,6 +1186,10 @@ public abstract class AbstractPolyglotImpl {
         return getNext().createThreadScope();
     }
 
+    public boolean isInCurrentEngineHostCallback(Object engine) {
+        return getNext().isInCurrentEngineHostCallback(engine);
+    }
+
     public LogHandler newLogHandler(Object logHandlerOrStream) {
         return getNext().newLogHandler(logHandlerOrStream);
     }
