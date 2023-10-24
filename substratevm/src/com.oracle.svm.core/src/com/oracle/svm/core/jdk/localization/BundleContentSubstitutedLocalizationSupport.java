@@ -39,7 +39,6 @@ import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.regex.PatternSyntaxException;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
 
@@ -51,7 +50,7 @@ import com.oracle.svm.core.jdk.localization.compression.utils.BundleSerializatio
 import com.oracle.svm.core.util.UserError;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.compiler.graal.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 import sun.util.resources.OpenListResourceBundle;
 import sun.util.resources.ParallelListResourceBundle;
 

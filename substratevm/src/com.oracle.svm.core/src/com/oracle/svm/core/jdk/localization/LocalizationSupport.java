@@ -42,7 +42,6 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import jdk.graal.compiler.debug.GraalError;
 import org.graalvm.nativeimage.ImageSingletons;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
@@ -56,7 +55,7 @@ import com.oracle.svm.core.SubstrateUtil;
 import com.oracle.svm.core.jdk.Resources;
 import com.oracle.svm.core.util.VMError;
 
-import jdk.compiler.graal.debug.GraalError;
+import jdk.graal.compiler.debug.GraalError;
 
 /**
  * Holder for localization information that is computed during image generation and used at run
