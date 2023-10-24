@@ -29,6 +29,13 @@
  */
 package com.oracle.truffle.llvm.tools;
 
+import com.oracle.truffle.llvm.parser.binary.BinaryParser;
+import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
+import com.oracle.truffle.llvm.parser.coff.WindowsLibraryLocator;
+import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
+import com.oracle.truffle.llvm.runtime.IDGenerater.BitcodeID;
+import org.graalvm.polyglot.io.ByteSequence;
+
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -36,13 +43,6 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.PrintStream;
 import java.util.Arrays;
-
-import com.oracle.truffle.llvm.parser.binary.BinaryParser;
-import com.oracle.truffle.llvm.parser.binary.BinaryParserResult;
-import com.oracle.truffle.llvm.parser.coff.WindowsLibraryLocator;
-import com.oracle.truffle.llvm.parser.scanner.LLVMScanner;
-
-import org.graalvm.polyglot.io.ByteSequence;
 
 public final class ExtractBitcode {
 
@@ -109,7 +109,7 @@ public final class ExtractBitcode {
             InputStream in = inName.equals("-") ? System.in : new FileInputStream(inName);
             OutputStream out = outName.equals("-") ? System.out : new FileOutputStream(outName);
             ByteSequence bytes = readFully(in);
-            BinaryParserResult result = BinaryParser.parse(bytes, null, null);
+            BinaryParserResult result = BinaryParser.parse(bytes, null, null, null);
             if (result == null) {
                 throw new IOException("No bitcode found in file '" + inName + "'");
             }
