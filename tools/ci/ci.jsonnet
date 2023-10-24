@@ -7,7 +7,7 @@
     setup+: [
       ["cd", "./tools"],
     ],
-    timelimit: "30:00",
+    timelimit: "45:00",
   },
 
   local common_guard = {
@@ -30,8 +30,8 @@
     }
   },
 
-  local tools_gate_lite = tools_common + {
-    name: 'gate-tools-lite-oraclejdk' + self.jdk_version + '-' + self.os + '-' + self.arch,
+  local tools_weekly = tools_common + {
+    name: 'weekly-tools-oraclejdk' + self.jdk_version + '-' + self.os + '-' + self.arch,
     run: [
       ["mx", "build"],
       ["mx", "unittest", "--verbose"],
@@ -81,17 +81,18 @@
   },
 
   builds: [
-    common.linux_amd64   + common.oraclejdk20 + tools_gate,
+    common.linux_amd64   + common.oraclejdk21 + tools_gate,
     common.linux_amd64   + common.oraclejdk17 + tools_gate,
 
-    common.linux_amd64   + common.oraclejdk20 + tools_javadoc,
+    common.linux_amd64   + common.oraclejdk21 + tools_javadoc,
     common.linux_amd64   + common.oraclejdk17 + tools_coverage_weekly,
-    common.linux_aarch64 + common.labsjdk17   + tools_gate_lite,
+    common.linux_aarch64 + common.labsjdk21   + tools_weekly,
+    common.linux_aarch64 + common.labsjdk17   + tools_weekly,
 
-    common.windows_amd64 + common.oraclejdk20 + tools_gate_lite + devkits["windows-jdk20"],
-    common.windows_amd64 + common.oraclejdk17 + tools_gate_lite + devkits["windows-jdk17"],
+    common.windows_amd64 + common.oraclejdk21 + tools_weekly + devkits["windows-jdk21"],
+    common.windows_amd64 + common.oraclejdk17 + tools_weekly + devkits["windows-jdk17"],
 
-    common.darwin_amd64  + common.oraclejdk20 + tools_gate_lite,
-    common.darwin_amd64  + common.oraclejdk17 + tools_gate_lite,
+    common.darwin_amd64  + common.oraclejdk21 + tools_weekly,
+    common.darwin_amd64  + common.oraclejdk17 + tools_weekly,
   ],
 }
