@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
-import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static jdk.graal.compiler.hotspot.stubs.ExceptionHandlerStub.checkExceptionNotNull;
 import static jdk.graal.compiler.hotspot.stubs.ExceptionHandlerStub.checkNoExceptionInThread;
@@ -114,7 +114,7 @@ public class UnwindExceptionToCallerStub extends SnippetStub {
         return Assertions.assertionsEnabled() || cAssertionsEnabled(config);
     }
 
-    public static final HotSpotForeignCallDescriptor EXCEPTION_HANDLER_FOR_RETURN_ADDRESS = newDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(), UnwindExceptionToCallerStub.class,
+    public static final HotSpotForeignCallDescriptor EXCEPTION_HANDLER_FOR_RETURN_ADDRESS = newDescriptor(SAFEPOINT, NO_SIDE_EFFECT, any(), UnwindExceptionToCallerStub.class,
                     "exceptionHandlerForReturnAddress", Word.class, Word.class, Word.class);
 
     @NodeIntrinsic(value = StubForeignCallNode.class)

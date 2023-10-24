@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
-import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static jdk.vm.ci.hotspot.HotSpotCallingConventionType.NativeCall;
 import static org.graalvm.word.LocationIdentity.any;
@@ -120,11 +120,11 @@ public class CreateExceptionStub extends SnippetStub {
         return clearPendingException;
     }
 
-    private static final HotSpotForeignCallDescriptor THROW_AND_POST_JVMTI_EXCEPTION = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(), "throw_and_post_jvmti_exception", int.class,
+    private static final HotSpotForeignCallDescriptor THROW_AND_POST_JVMTI_EXCEPTION = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, any(), "throw_and_post_jvmti_exception", int.class,
                     Word.class, Word.class, Word.class);
-    private static final HotSpotForeignCallDescriptor THROW_KLASS_EXTERNAL_NAME_EXCEPTION = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(), "throw_klass_external_name_exception",
+    private static final HotSpotForeignCallDescriptor THROW_KLASS_EXTERNAL_NAME_EXCEPTION = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, any(), "throw_klass_external_name_exception",
                     int.class, Word.class, Word.class, KlassPointer.class);
-    private static final HotSpotForeignCallDescriptor THROW_CLASS_CAST_EXCEPTION = new HotSpotForeignCallDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(), "throw_class_cast_exception", int.class,
+    private static final HotSpotForeignCallDescriptor THROW_CLASS_CAST_EXCEPTION = new HotSpotForeignCallDescriptor(SAFEPOINT, NO_SIDE_EFFECT, any(), "throw_class_cast_exception", int.class,
                     Word.class,
                     Word.class, KlassPointer.class, KlassPointer.class);
 

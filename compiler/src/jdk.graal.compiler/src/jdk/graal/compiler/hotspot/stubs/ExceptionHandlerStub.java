@@ -24,7 +24,7 @@
  */
 package jdk.graal.compiler.hotspot.stubs;
 
-import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.HAS_SIDE_EFFECT;
+import static jdk.graal.compiler.core.common.spi.ForeignCallDescriptor.CallSideEffect.NO_SIDE_EFFECT;
 import static jdk.graal.compiler.hotspot.meta.HotSpotForeignCallDescriptor.Transition.SAFEPOINT;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.cAssertionsEnabled;
 import static jdk.graal.compiler.hotspot.stubs.StubUtil.decipher;
@@ -143,7 +143,7 @@ public class ExceptionHandlerStub extends SnippetStub {
         return Assertions.assertionsEnabled() || cAssertionsEnabled(config);
     }
 
-    public static final HotSpotForeignCallDescriptor EXCEPTION_HANDLER_FOR_PC = newDescriptor(SAFEPOINT, HAS_SIDE_EFFECT, any(), ExceptionHandlerStub.class, "exceptionHandlerForPc", Word.class,
+    public static final HotSpotForeignCallDescriptor EXCEPTION_HANDLER_FOR_PC = newDescriptor(SAFEPOINT, NO_SIDE_EFFECT, any(), ExceptionHandlerStub.class, "exceptionHandlerForPc", Word.class,
                     Word.class);
 
     @NodeIntrinsic(value = StubForeignCallNode.class)
